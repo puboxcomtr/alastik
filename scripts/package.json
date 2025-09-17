@@ -1,0 +1,19 @@
+{
+  "name": "alastik-init-scripts",
+  "version": "1.0.0",
+  "description": "Alastik B2C Database Initialization Scripts",
+  "main": "init-databases.js",
+  "scripts": {
+    "init": "node init-databases.js",
+    "test-connections": "node test-connections.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "pg": "^8.11.3",
+    "ioredis": "^5.3.2",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": ["alastik", "database", "initialization"],
+  "author": "Alastik Team",
+  "license": "MIT"
+}

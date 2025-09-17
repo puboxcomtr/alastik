@@ -1,0 +1,100 @@
+.loginContainer {
+    height: 100vh;
+}
+
+.loginContainer :global(.bs-full) {
+    height: 100vh;
+}
+
+.loginContainer :global(.min-bs-\[100dvh\]) {
+    min-height: 100dvh;
+}
+
+.loginContainer :global(.plb-12) {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.loginContainer :global(.pis-12) {
+    padding-left: 3rem;
+}
+
+.loginContainer :global(.max-bs-\[500px\]) {
+    max-height: 500px;
+}
+
+.loginContainer :global(.max-is-full) {
+    max-width: 100%;
+}
+
+.loginContainer :global(.is-full) {
+    width: 100%;
+}
+
+.loginContainer :global(.min-is-full) {
+    min-width: 100%;
+}
+
+.loginContainer :global(.is-\[480px\]) {
+    width: 480px;
+}
+
+.loginContainer :global(.bg-backgroundPaper) {
+    background-color: var(--mui-palette-background-paper, white);
+}
+
+.loginContainer :global(.block-start-5) {
+    top: 1.25rem;
+}
+
+.loginContainer :global(.inline-start-6) {
+    left: 1.5rem;
+}
+
+@media (min-width: 600px) {
+    .loginContainer :global(.sm\:block-start-\[33px\]) {
+        top: 33px;
+    }
+
+    .loginContainer :global(.sm\:inline-start-\[38px\]) {
+        left: 38px;
+    }
+}
+.loginContainer :global(.md\:is-\[480px\]) {
+    width: 480px;
+    max-width: 480px;
+}
+
+/* Form container'ı ortala */
+.loginContainer :global(.flex.justify-center.items-center) {
+    justify-content: center !important;
+    padding: 1.5rem;
+}
+
+/* Form genişliğini sınırla */
+.loginContainer :global(.sm\:max-is-\[400px\]) {
+    max-width: 400px;
+    width: 100%;
+}
+
+/* Form input spacing */
+.loginContainer :global(.flex.flex-col.gap-5) > * {
+    margin-bottom: 1.25rem;
+}
+
+.loginContainer :global(.flex.flex-col.gap-5) > *:last-child {
+    margin-bottom: 0;
+}
+
+/* TextField margin fix */
+.loginContainer :global(.MuiTextField-root) {
+    margin-bottom: 1.25rem;
+}
+
+/* Button üst boşluk */
+.loginContainer :global(.MuiButton-root) {
+    margin-top: 0.5rem;
+}
+.loginContainer :global(.gap-3) {
+    margin: 1.5rem 0;
+}

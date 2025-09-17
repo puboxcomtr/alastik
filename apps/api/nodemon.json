@@ -1,0 +1,27 @@
+{
+  "watch": [
+    "src/"
+  ],
+  "ignore": [
+    "logs/",
+    "uploads/",
+    "node_modules/",
+    "*.test.js",
+    "*.spec.js",
+    "coverage/",
+    ".git/",
+    "temp/"
+  ],
+  "ext": "js,json",
+  "delay": 2500,
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "verbose": false,
+  "restartable": "rs",
+  "events": {
+    "restart": "echo '🔄 API Server restarting...'",
+    "crash": "echo '💥 API Server crashed!'",
+    "start": "echo '🚀 API Server started'"
+  }
+}

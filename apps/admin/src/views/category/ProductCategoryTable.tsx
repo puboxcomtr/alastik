@@ -1,0 +1,332 @@
+'use client'
+
+// React Imports
+import { useEffect, useMemo, useState } from 'react'
+
+// MUI Imports
+import Card from '@mui/material/Card'
+import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import IconButton from '@mui/material/IconButton'
+import TablePagination from '@mui/material/TablePagination'
+import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import type { TextFieldProps } from '@mui/material/TextField'
+
+// Third-party Imports
+import classnames from 'classnames'
+import { rankItem } from '@tanstack/match-sorter-utils'
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getFilteredRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFacetedMinMaxValues,
+  getPaginationRowModel,
+  getSortedRowModel
+} from '@tanstack/react-table'
+import type { ColumnDef, FilterFn } from '@tanstack/react-table'
+import type { RankingInfo } from '@tanstack/match-sorter-utils'
+
+// Component Imports
+import EditCategoryDrawer from './EditCategoryDrawer'
+
+// Style Imports
+import tableStyles from '@core/styles/table.module.css'
+
+declare module '@tanstack/table-core' {
+  interface FilterFns {
+    fuzzy: FilterFn<unknown>
+  }
+  interface FilterMeta {
+    itemRank: RankingInfo
+  }
+}
+
+export type categoryType = {
+  id: number
+  categoryTitle: string
+  description: string
+  totalProduct: number
+  order: number
+  image: string
+}
+
+type CategoryWithActionsType = categoryType & {
+  actions?: string
+}
+
+const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
+  const itemRank = rankItem(row.getValue(columnId), value)
+  addMeta({ itemRank })
+  return itemRank.passed
+}
+
+const DebouncedInput = ({
+  value: initialValue,
+  onChange,
+  debounce = 500,
+  ...props
+}: {
+  value: string | number
+  onChange: (value: string | number) => void
+  debounce?: number
+} & Omit<TextFieldProps, 'onChange'>) => {
+  const [value, setValue] = useState(initialValue)
+
+  useEffect(() => {
+    setValue(initialValue)
+  }, [initialValue])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      onChange(value)
+    }, debounce)
+
+    return () => clearTimeout(timeout)
+  }, [value, onChange, debounce])
+
+  return <TextField {...props} value={value} onChange={e => setValue(e.target.value)} size='small' />
+}
+
+const categoryData: categoryType[] = [
+  {
+    id: 1,
+    categoryTitle: 'Lastik',
+    description: 'Lastik Kategori Açıklaması',
+    totalProduct: 692,
+    order: 0,
+    image: '/images/apps/ecommerce/product-1.png'
+  },
+  {
+    id: 2,
+    categoryTitle: 'Jant',
+    description: 'Jant Kategori Açıklaması',
+    totalProduct: 562,
+    order: 0,
+    image: '/images/apps/ecommerce/product-1.png'
+  },
+  {
+    id: 3,
+    categoryTitle: 'Kar Paleti',
+    description: 'Kar Paleti Kategori Açıklaması',
+    totalProduct: 267,
+    order: 0,
+    image: '/images/apps/ecommerce/product-1.png'
+  },
+  {
+    id: 4,
+    categoryTitle: 'Kar Zinciri',
+    description: 'Kar Zinciri Kategori Açıklaması',
+    totalProduct: 103,
+    order: 0,
+    image: '/images/apps/ecommerce/product-1.png'
+  }
+]
+
+const columnHelper = createColumnHelper<CategoryWithActionsType>()
+
+const ProductCategoryTable = () => {
+  const [selectedCategory, setSelectedCategory] = useState<categoryType | null>(null)
+  const [EditCategoryOpen, setEditCategoryOpen] = useState(false)
+  const [rowSelection, setRowSelection] = useState({})
+  const [data, setData] = useState(categoryData)
+  const [globalFilter, setGlobalFilter] = useState('')
+
+  const columns = useMemo<ColumnDef<CategoryWithActionsType, any>[]>(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            {...{
+              checked: table.getIsAllRowsSelected(),
+              indeterminate: table.getIsSomeRowsSelected(),
+              onChange: table.getToggleAllRowsSelectedHandler()
+            }}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            {...{
+              checked: row.getIsSelected(),
+              disabled: !row.getCanSelect(),
+              indeterminate: row.getIsSomeSelected(),
+              onChange: row.getToggleSelectedHandler()
+            }}
+          />
+        )
+      },
+      columnHelper.accessor('categoryTitle', {
+        header: 'Kategori Adı',
+        cell: ({ row }) => (
+          <div className='flex items-center gap-3'>
+            <img src={row.original.image} width={38} height={38} className='rounded bg-actionHover' />
+            <div className='flex flex-col items-start'>
+              <Typography className='font-medium' color='text.primary'>
+                {row.original.categoryTitle}
+              </Typography>
+              <Typography variant='body2'>{row.original.description}</Typography>
+            </div>
+          </div>
+        )
+      }),
+      columnHelper.accessor('totalProduct', {
+        header: 'Ürün Sayısı',
+        cell: ({ row }) => <Typography>{row.original.totalProduct.toLocaleString()}</Typography>
+      }),
+      columnHelper.accessor('order', {
+        header: 'Öncelik',
+        cell: ({ row }) => <Typography>{row.original.order}</Typography>
+      }),
+      columnHelper.accessor('actions', {
+        header: 'İşlemler',
+        cell: ({ row }) => (
+          <div className='flex items-center'>
+            <IconButton
+              size='small'
+              onClick={() => {
+                setSelectedCategory(row.original)
+                setEditCategoryOpen(true)
+              }}
+            >
+              <i className='ri-edit-box-line text-[22px] text-textSecondary' />
+            </IconButton>
+          </div>
+        ),
+        enableSorting: false
+      })
+    ],
+    [data]
+  )
+
+  const table = useReactTable({
+    data,
+    columns,
+    filterFns: {
+      fuzzy: fuzzyFilter
+    },
+    state: {
+      rowSelection,
+      globalFilter
+    },
+    initialState: {
+      pagination: {
+        pageSize: 10
+      }
+    },
+    enableRowSelection: true,
+    globalFilterFn: fuzzyFilter,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    getFacetedMinMaxValues: getFacetedMinMaxValues()
+  })
+
+  return (
+    <>
+      <Card>
+        <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
+          <DebouncedInput
+            value={globalFilter ?? ''}
+            onChange={value => setGlobalFilter(String(value))}
+            placeholder='Kategori adı ile arama'
+            className='max-sm:is-full'
+          />
+          <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
+            <Button
+              color='secondary'
+              fullWidth
+              variant='outlined'
+              className='max-sm:is-full is-auto'
+              startIcon={<i className='ri-upload-2-line' />}
+            >
+              Dışarı Aktar
+            </Button>
+          </div>
+        </div>
+        <div className='overflow-x-auto'>
+          <table className={tableStyles.table}>
+            <thead>
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <th key={header.id}>
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={classnames({
+                            'flex items-center': header.column.getIsSorted(),
+                            'cursor-pointer select-none': header.column.getCanSort()
+                          })}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{
+                            asc: <i className='ri-arrow-up-s-line text-xl' />,
+                            desc: <i className='ri-arrow-down-s-line text-xl' />
+                          }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            {table.getFilteredRowModel().rows.length === 0 ? (
+              <tbody>
+                <tr>
+                  <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
+                    No data available
+                  </td>
+                </tr>
+              </tbody>
+            ) : (
+              <tbody>
+                {table
+                  .getRowModel()
+                  .rows.slice(0, table.getState().pagination.pageSize)
+                  .map(row => (
+                    <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
+                      {row.getVisibleCells().map(cell => (
+                        <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                      ))}
+                    </tr>
+                  ))}
+              </tbody>
+            )}
+          </table>
+        </div>
+        <TablePagination
+          rowsPerPageOptions={[10, 15, 25]}
+          component='div'
+          className='border-bs'
+          count={table.getFilteredRowModel().rows.length}
+          rowsPerPage={table.getState().pagination.pageSize}
+          page={table.getState().pagination.pageIndex}
+          onPageChange={(_, page) => {
+            table.setPageIndex(page)
+          }}
+          onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
+        />
+      </Card>
+
+      <EditCategoryDrawer
+        open={EditCategoryOpen}
+        categoryData={data}
+        selectedCategory={selectedCategory}
+        setData={setData}
+        handleClose={() => setEditCategoryOpen(false)}
+      />
+    </>
+  )
+}
+
+export default ProductCategoryTable
