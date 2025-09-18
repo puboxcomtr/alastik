@@ -38,10 +38,14 @@ const ProductFeatures = ({ product }: ProductFeaturesProps) => {
 
   useEffect(() => {
     if (product?.properties) {
-      const features = Object.entries(product.properties).map(([name, value]) => ({
-        name,
-        value: String(value)
-      }))
+      const features = Object.entries(product.properties)
+        .filter(([key, value]) => {
+          return key !== 'm_kategoriler'
+        })
+        .map(([name, value]) => ({
+          name,
+          value: String(value)
+        }))
       setDiaFeatures(features)
     }
   }, [product])

@@ -174,7 +174,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
       fiili_stok: 1,
       durum: 1,
       note: 1,
-      'm_kategoriler.kategori_aciklama_1': 1,
+      'm_kategoriler': 1,
       'm_resimler.aws_url': 1,
       'm_resimler.order_id': 1,
       'm_urunOzellikleri.ozellikadi': 1,
@@ -221,7 +221,10 @@ router.get('/:id', maybeAuth, async (req, res) => {
       status: p.durum === 'A' ? 'Aktif' : 'Pasif',
       image: images[0] || '',
       images: images,
-      properties: properties,
+      properties: {
+        ...properties,
+        m_kategoriler: p.m_kategoriler || []
+      },
       note: p.note || '',
       tag: ''
     };

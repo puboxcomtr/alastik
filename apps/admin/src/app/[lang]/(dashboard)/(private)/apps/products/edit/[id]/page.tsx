@@ -59,7 +59,7 @@ export default async function eCommerceProductsEdit({ params }: PageProps) {
       <Grid size={{ xs: 12, md: 4 }}>
         <Grid container spacing={6}>
           <Grid size={{ xs: 12 }}>
-            <ProductOrganize />
+            <ProductOrganize product={product} />
           </Grid>
           <Grid size={{ xs: 12 }}>
             <ProductBrand product={product} />
