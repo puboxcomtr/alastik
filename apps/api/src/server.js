@@ -293,10 +293,15 @@ app.post('/api/dia-stock/sync-images', async (req, res) => {
 const productRoutes = require('./routes/admin/catalog/products');
 app.use('/api/products', productRoutes);
 
+/* Kategori Listeleme */
+const categoryRoutes = require('./routes/admin/catalog/categories');
+app.use('/api/categories', categoryRoutes);
 
+/* Marka Listeleme */
+const brandRoutes = require('./routes/admin/catalog/brands');
+app.use('/api/brands', brandRoutes);
 
 // API Routes
-
 // Auth routes
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
@@ -306,8 +311,7 @@ const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
 
 // Categories routes
-const categoryRoutes = require('./routes/categories');
-app.use('/api/categories', categoryRoutes);
+
 
 // Inventory routes
 const inventoryRoutes = require('./routes/inventory');

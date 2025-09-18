@@ -12,11 +12,12 @@ const router = express.Router();
 const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (req, res, next) => next();
 
 /**
- * Ürün Listeleme *
- */
+ * Ürün Listeleme - Temiz Versiyon (Pagination Yok)
+**/
 router.get('/', maybeAuth, async (req, res) => {
   try {
-    const { search, category, status, page = 1, limit = 50 } = req.query;
+    const { search, sku, web_status, main_category, sub_category, brand } = req.query;
+
     const diaFilter = {};
     MAIN_DIA_FILTERS.forEach(filter => {
       const { field, operator, value } = filter;
@@ -41,12 +42,29 @@ router.get('/', maybeAuth, async (req, res) => {
           diaFilter[field] = value;
       }
     });
-    if (search) {
+
+    if (sku && sku.trim() !== '') {
+      diaFilter.stokkartkodu = sku.trim();
+    }
+    else if (search) {
       diaFilter.$text = { $search: String(search) };
     }
 
-    // Pagination uygula
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    if (web_status && web_status.trim() !== '') {
+      diaFilter.web_status = web_status.trim();
+    }
+
+    if (main_category) {
+      diaFilter['m_kategoriler.kategori_aciklama_1'] = main_category;
+    }
+    if (sub_category) {
+      diaFilter['m_kategoriler.kategori_aciklama_2'] = sub_category;
+    }
+
+    if (brand && brand !== '') {
+      diaFilter.marka = brand;
+    }
+
     const products = await DiaStock.find(diaFilter)
       .select({
         _key: 1,
@@ -64,6 +82,7 @@ router.get('/', maybeAuth, async (req, res) => {
         urunagaci1: 1,
         note: 1,
         durum: 1,
+        web_status: 1,
         'm_urunOzellikleri.ozellikadi': 1,
         'm_urunOzellikleri.detayaciklama': 1,
         'm_urunOzellikleri.ozellisirano': 1,
@@ -75,16 +94,13 @@ router.get('/', maybeAuth, async (req, res) => {
         'm_resimler.aws_url': 1,
         'm_resimler.order_id': 1,
         'm_kategoriler.kategori_aciklama_1': 1,
+        'm_kategoriler.kategori_aciklama_2': 1,
+        'm_kategoriler.kategori_aciklama_3': 1,
         createdAt: 1
       })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
       .lean();
 
-    const total = await DiaStock.countDocuments(diaFilter);
-
-    // Response mapping
     res.json({
       success: true,
       data: products.map(p => {
@@ -115,6 +131,7 @@ router.get('/', maybeAuth, async (req, res) => {
           image2: images[1]?.aws_url || null,
           image3: images[2]?.aws_url || null,
           category: (p.m_kategoriler && p.m_kategoriler[0] && p.m_kategoriler[0].kategori_aciklama_1) || 'Genel',
+          m_kategoriler: p.m_kategoriler,
           kdv: p.kdvsatis || 20,
           addedBy: p.ekleyenkullaniciadi || '',
           updatedBy: p.kullaniciadi || '',
@@ -129,10 +146,7 @@ router.get('/', maybeAuth, async (req, res) => {
           properties: properties,
           createdAt: p.createdAt
         };
-      }),
-      totalRecords: total,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit))
+      })
     });
   } catch (error) {
     console.error('Products get error:', error);
@@ -145,7 +159,7 @@ router.get('/', maybeAuth, async (req, res) => {
 
 /**
  * Ürün Detay Görüntüleme *
- */
+**/
 router.get('/:id', maybeAuth, async (req, res) => {
   try {
     const id = String(req.params.id);

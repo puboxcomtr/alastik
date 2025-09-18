@@ -1,19 +1,39 @@
 const express = require('express');
 const DiaStock = require('../../../models/DiaStock');
+const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
+    const diaFilter = {};
+    MAIN_DIA_FILTERS.forEach(filter => {
+      const { field, operator, value } = filter;
+
+      switch (operator) {
+        case '=':
+          diaFilter[field] = value;
+          break;
+        case '>':
+          diaFilter[field] = { $gt: parseFloat(value) };
+          break;
+        case '<':
+          diaFilter[field] = { $lt: parseFloat(value) };
+          break;
+        case '>=':
+          diaFilter[field] = { $gte: parseFloat(value) };
+          break;
+        case '<=':
+          diaFilter[field] = { $lte: parseFloat(value) };
+          break;
+        default:
+          diaFilter[field] = value;
+      }
+    });
+
+    diaFilter['m_kategoriler'] = { $exists: true, $ne: [] };
+
     const categories = await DiaStock.aggregate([
-      {
-        $match: {
-          'm_kategoriler': { $exists: true, $ne: [] },
-          'durum': 'A',
-          'b2c_durum': 'E',
-          'b2c_gonder': 'E',
-          'fiili_stok': { $gt: 0 }
-        }
-      },
+      { $match: diaFilter },
       { $unwind: '$m_kategoriler' },
       {
         $group: {
@@ -28,7 +48,8 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, data: categories });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Hata' });
+    console.error('Categories get error:', error);
+    res.status(500).json({ success: false, message: 'Kategoriler getirilirken hata oluştu' });
   }
 });
 

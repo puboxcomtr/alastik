@@ -1,5 +1,5 @@
 // React Imports
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 // MUI Imports
 import Grid from '@mui/material/Grid2'
@@ -46,6 +46,9 @@ const TableFilters = ({
   const [brand, setBrand] = useState('')
   const [brandData, setBrandData] = useState<BrandType[]>([])
 
+  // Debounced search için
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
+
   // Marka verilerini çek
   useEffect(() => {
     fetch('http://localhost:3082/api/brands')
@@ -80,22 +83,21 @@ const TableFilters = ({
     }
   }, [mainCategory, categories])
 
-  // Ürün filtreleme API çağrısı
-  useEffect(() => {
-    if (productData) {
-      setLoading(true)
+  // API çağrısı fonksiyonu
+  const fetchFilteredData = useCallback(async () => {
+    setLoading(true)
+
+    try {
       const params = new URLSearchParams()
 
-      // Ürün Adı SKU filtresi
+      // Stok Kodu (SKU) filtresi - sadece SKU ile tam eşleştirme
       if (searchText && searchText.trim() !== '') {
-        params.append('search', searchText.trim())
+        params.append('sku', searchText.trim())
       }
 
       // Durum filtresi
-      if (stock === 'In Stock') {
-        params.append('web_status', 'active')
-      } else if (stock === 'Out of Stock') {
-        params.append('web_status', 'inactive')
+      if (stock && stock.trim() !== '') {
+        params.append('web_status', stock.trim())
       }
 
       // Kategori filtreleri
@@ -111,20 +113,54 @@ const TableFilters = ({
         params.append('brand', brand)
       }
 
+      console.log('API çağrısı parametreleri:', params.toString()) // Debug için
 
-      fetch(`http://localhost:3082/api/products?${params}`)
-        .then(res => res.json())
-        .then(data => {
-          setData(data.data || [])
-        })
-        .catch(error => {
-          console.error('Filter error:', error)
-        })
-        .finally(() => {
-          setLoading(false)
-        })
+      const response = await fetch(`http://localhost:3082/api/products?${params}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setData(data.data || [])
+        console.log(`${data.data?.length || 0} ürün bulundu`) // Debug için
+      } else {
+        console.error('API Hatası:', data.message)
+        setData([])
+      }
+
+    } catch (error) {
+      console.error('Filter error:', error)
+      setData([])
+    } finally {
+      setLoading(false)
     }
-  }, [stock, mainCategory, subCategory, brand, searchText, productData, setData, setLoading])
+  }, [stock, mainCategory, subCategory, brand, searchText, setData, setLoading])
+
+  useEffect(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+
+    const timeout = setTimeout(() => {
+      fetchFilteredData()
+    }, searchText ? 300 : 0) 
+
+    setSearchTimeout(timeout)
+
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+    }
+  }, [searchText])
+
+  useEffect(() => {
+    fetchFilteredData()
+  }, [stock, mainCategory, subCategory, brand])
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchText(value)
+    console.log('SKU Kodu:', value)
+  }
 
   return (
     <CardContent>
@@ -134,9 +170,9 @@ const TableFilters = ({
             fullWidth
             label="Stok Kodu"
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={handleSearchChange}
             variant="outlined"
-            placeholder="Arama yapın..."
+            placeholder="SKU kodu girin..."
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 3 }}>
@@ -151,8 +187,8 @@ const TableFilters = ({
               labelId='stock-select'
             >
               <MenuItem value=''>Tümü</MenuItem>
-              <MenuItem value='In Stock'>Aktif</MenuItem>
-              <MenuItem value='Out of Stock'>Pasif</MenuItem>
+              <MenuItem value='A'>Aktif</MenuItem>
+              <MenuItem value='P'>Pasif</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -176,7 +212,7 @@ const TableFilters = ({
               ) : (
                 categories.map(cat => (
                   <MenuItem key={cat._id} value={cat._id}>
-                    {cat._id} ({cat.count})
+                    {cat._id}
                   </MenuItem>
                 ))
               )}
@@ -213,7 +249,7 @@ const TableFilters = ({
               <MenuItem value=''>Tümü</MenuItem>
               {brandData.map((brandItem) => (
                 <MenuItem key={brandItem.name} value={brandItem.name}>
-                  {brandItem.name} ({brandItem.count})
+                  {brandItem.name}
                 </MenuItem>
               ))}
             </Select>
