@@ -81,7 +81,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
               <Tab value='advanced' label='Diğer Özellikler' icon={<i className='ri-link-m' />} iconPosition='start' />
             </CustomTabList>
 
-            <TabPanel value='seo' className='flex flex-col gap-4 is-full'>
+            <TabPanel value='seo'>
               <FormGroup className='flex flex-col gap-4'>
                 <Grid container spacing={7}>
                   <Grid size={{ xs: 12, sm: 12, md: 12 }}>
@@ -181,7 +181,6 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                   <Grid size={{ xs: 12 }}>
                     <Typography className='font-medium'>Ek Fiyat Alanları</Typography>
                   </Grid>
-
                   <Grid size={{ xs: 12, sm: 12, md: 4 }}>
                     <FormControl fullWidth>
                       <TextField
