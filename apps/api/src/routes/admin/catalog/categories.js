@@ -1,12 +1,8 @@
 const express = require('express');
 const DiaStock = require('../../../models/DiaStock');
-const { authenticateAdmin } = require('../../../middleware/auth');
-
 const router = express.Router();
 
-const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (req, res, next) => next();
-
-router.get('/', maybeAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const categories = await DiaStock.aggregate([
       {
@@ -27,35 +23,13 @@ router.get('/', maybeAuth, async (req, res) => {
           },
           count: { $sum: 1 }
         }
-      },
-      {
-        $project: {
-          _id: 1,
-          subCategories: {
-            $filter: {
-              input: '$subCategories',
-              cond: {
-                $and: [
-                  { $ne: ['$$this', null] },
-                  { $ne: ['$$this', ''] },
-                  { $ne: ['$$this', undefined] }
-                ]
-              }
-            }
-          },
-          count: 1
-        }
-      },
-      { $match: { '_id': { $ne: null, $ne: '' } } },
-      { $sort: { count: -1 } }
+      }
     ]);
 
     res.json({ success: true, data: categories });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Kategoriler getirilemedi'
-    });
+    res.status(500).json({ success: false, message: 'Hata' });
   }
 });
+
 module.exports = router;

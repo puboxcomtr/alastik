@@ -48,31 +48,27 @@ const SyncDropdown = () => {
             } else if (syncType === 'images') {
                 endpoint = `${baseUrl}/dia-stock/sync-images`;
             }
-
-            console.log(`Sync başlatılıyor: ${syncType}`, { endpoint });
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: syncType })
             });
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
+
             const result = await response.json();
-            console.log('Sync tamamlandı:', result);
-            const interval = setInterval(() => {
-                setProgress(prev => {
-                    if (prev >= 100) {
-                        clearInterval(interval)
-                        setLoading(false)
-                        setCurrentProduct('')
-                        return 100
-                    }
-                    const newProgress = prev + 10;
-                    setCurrentProduct(`${result.message || 'İşleniyor...'} (${newProgress}%)`)
-                    return newProgress
-                })
-            }, 500)
+
+            setProgress(100);
+            setCurrentProduct(`Tamamlandı: ${result.message}`);
+
+            setTimeout(() => {
+                setLoading(false);
+                setCurrentProduct('');
+                setProgress(0);
+            }, 3000);
+
         } catch (error) {
             console.error('Sync hatası:', error)
             setLoading(false)
@@ -123,6 +119,5 @@ const SyncDropdown = () => {
         </Box>
     )
 }
-
 
 export default SyncDropdown

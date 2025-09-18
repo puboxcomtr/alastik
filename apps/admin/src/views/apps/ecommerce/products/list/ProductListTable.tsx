@@ -38,38 +38,36 @@ import {
 
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 
+
 // Component Imports
 import TableFilters from './TableFilters'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
+
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-  // rankItem fonksiyonu missing - import gerekli ya da basit versiyon kullan
-  return true // Geçici çözüm
+  const itemRank = rankItem(row.getValue(columnId), value)
+
+  addMeta({
+    itemRank
+  })
+
+  return itemRank.passed
 }
-
 const columnHelper = createColumnHelper<ProductType>()
-
 const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
-  // State Tanıtımı - DÜZELTİLDİ
+  // State Tanıtımı
   const [rowSelection, setRowSelection] = useState({})
-  const [data, setData] = useState(productData || []) // ❌ ...[] spread'i kaldırıldı
-  const [filteredData, setFilteredData] = useState(productData || []) // ❌ data'ya dependency yok
+  
+  const [data, setData] = useState(() => productData || [])
+  const [filteredData, setFilteredData] = useState(() => productData || [])
+
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Props değiştiğinde state'i güncelle
-  useEffect(() => {
-    if (productData) {
-      setData(productData)
-      setFilteredData(productData)
-    }
-  }, [productData])
-
   // Hooks
   const { lang: locale } = useParams()
-
   const columns = useMemo<ColumnDef<ProductType, any>[]>(
     () => [
       {
@@ -94,7 +92,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
           />
         )
       },
-      columnHelper.accessor('name', { // ❌ 'name' field kullan, 'productName' değil
+      columnHelper.accessor('name', {
         header: 'Ürün Adı',
         cell: ({ row }) => (
           <div className='flex items-center' style={{ gap: '5px' }}>
@@ -102,12 +100,13 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
             <div className='flex flex-col'>
               <Tooltip title="Ürün Ziyaret Et">
                 <Link href={`/${locale}/apps/products/edit/${row.original.id}`}>
-                  <Typography variant='body2' fontWeight='bold'>{row.original.sku}</Typography>
+                  <Typography variant='body2' fontWeight='bold' >{row.original.sku}</Typography>
                   <Typography variant='body2'>
-                    {row.original.name} {/* ❌ name field kullan */}
+                    {row.original.name}
                   </Typography>
                 </Link>
               </Tooltip>
+
             </div>
           </div>
         )
@@ -148,13 +147,14 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
             <div className='flex flex-col' style={{ gap: '5px' }}>
               <div className='flex' style={{ gap: '5px' }}>
                 <Typography variant='body2' fontWeight={'bold'} color={'#eb3d63'}>Satış Fiyatı:</Typography>
-                <Typography variant='body2'>{row.original.price?.toLocaleString('tr-TR') + " TL"}</Typography>
+                <Typography variant='body2'>{row.original.price.toLocaleString('tr-TR') + " TL"}</Typography>
               </div>
               <div className='flex' style={{ gap: '5px' }}>
                 <Typography variant='body2' fontWeight={'bold'}>İndirimli Fiyatı:</Typography>
-                <Typography variant='body2'>{row.original.price2?.toLocaleString('tr-TR') + " TL"}</Typography>
+                <Typography variant='body2'>{row.original.price2.toLocaleString('tr-TR') + " TL"}</Typography>
               </div>
             </div>
+
           )
         }
       }),
@@ -163,7 +163,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
         cell: ({ row }) => (
           <div className='flex flex-col' style={{ gap: '5px' }}>
             <div className='flex' style={{ gap: '5px' }}>
-              <Typography variant='body2'>{row.original.qty?.toLocaleString('tr-TR')} Adet</Typography>
+              <Typography variant='body2'>{row.original.qty.toLocaleString('tr-TR')} Adet</Typography>
             </div>
           </div>
         )
@@ -182,7 +182,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
         enableSorting: false
       })
     ],
-    [locale] // data ve filteredData dependency'sini kaldır
+    [data, filteredData]
   )
 
   const table = useReactTable({

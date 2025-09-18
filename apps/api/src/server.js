@@ -128,7 +128,7 @@ try {
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? [process.env.FRONTEND_URL, process.env.ADMIN_URL]
     : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3080', 'http://localhost:3081'],
   credentials: true,
@@ -164,7 +164,7 @@ app.use(compression({
 // Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     logger.info({
@@ -176,7 +176,7 @@ app.use((req, res, next) => {
       userAgent: req.get('User-Agent')
     });
   });
-  
+
   next();
 });
 
@@ -191,27 +191,27 @@ mongoose.connect(process.env.MONGODB_URI, {
   heartbeatFrequencyMS: 10000,
   maxIdleTimeMS: 30000
 })
-.then(async () => {
-  logger.info('Connected to MongoDB');
-  
-  // Create default admin user if not exists
-  try {
-    await AdminUser.createDefaultAdmin();
-  } catch (error) {
-    logger.error('Failed to create default admin:', error);
-  }
-})
-.catch((error) => {
-  logger.error('MongoDB connection error:', error);
-  process.exit(1);
-});
+  .then(async () => {
+    logger.info('Connected to MongoDB');
+
+    // Create default admin user if not exists
+    try {
+      await AdminUser.createDefaultAdmin();
+    } catch (error) {
+      logger.error('Failed to create default admin:', error);
+    }
+  })
+  .catch((error) => {
+    logger.error('MongoDB connection error:', error);
+    process.exit(1);
+  });
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
     // Check database connection
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    
+
     // Check cache connection
     let cacheStatus = 'disconnected';
     try {
@@ -220,7 +220,7 @@ app.get('/health', async (req, res) => {
     } catch (error) {
       logger.error('Cache health check failed:', error);
     }
-    
+
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -240,6 +240,61 @@ app.get('/health', async (req, res) => {
   }
 });
 
+/**
+  * Admin DİA Senkronize Routes *
+*/
+/* * Sadece Ürün Adı Güncelle * */
+app.post('/api/dia-stock/sync-names', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyNames();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync names hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* * Sadece SKU Güncelle * */
+app.post('/api/dia-stock/sync-codes', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyCodes();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync codes hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* * Sadece Fiyat Güncelle * */
+app.post('/api/dia-stock/sync-prices', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyPrices();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync prices hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* * Sadece Görsel Güncelle * */
+app.post('/api/dia-stock/sync-images', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyImages();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync images hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+/**
+  * Admin Filtreleme Routes *
+*/
+/* * Ürün Listeleme * */
+const productRoutes = require('./routes/admin/catalog/products');
+app.use('/api/products', productRoutes);
+
+
+
 // API Routes
 
 // Auth routes
@@ -249,10 +304,6 @@ app.use('/api/auth', authRoutes);
 // Admin routes
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
-
-// Products routes
-const productRoutes = require('./routes/products');
-app.use('/api/products', productRoutes);
 
 // Categories routes
 const categoryRoutes = require('./routes/categories');
@@ -290,122 +341,13 @@ try {
 
 // Netahsilat routes removed
 
-// Products endpoints
-app.get('/api/products', async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      brand,
-      category,
-      season,
-      size,
-      minPrice,
-      maxPrice,
-      inStock,
-      featured,
-      sort = 'createdAt'
-    } = req.query;
 
-    // Build query
-    const query = { isActive: true };
-    
-    if (brand) query.brand = brand;
-    if (category) query.category = category;
-    if (season) query['specifications.season'] = season;
-    if (size) query['specifications.size'] = size;
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = parseFloat(minPrice);
-      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
-    }
-    if (inStock === 'true') query.stockStatus = 'in_stock';
-    if (featured === 'true') query.isFeatured = true;
-
-    // Check cache first
-    const cacheKey = `products:${JSON.stringify(query)}:${page}:${limit}:${sort}`;
-    const cachedProducts = await activeCache.get(cacheKey);
-    
-    if (cachedProducts) {
-      return res.json(JSON.parse(cachedProducts));
-    }
-
-    // Build sort object
-    const sortObj = {};
-    if (sort === 'price_asc') sortObj.price = 1;
-    else if (sort === 'price_desc') sortObj.price = -1;
-    else if (sort === 'name') sortObj.name = 1;
-    else if (sort === 'rating') sortObj['rating.average'] = -1;
-    else if (sort === 'sales') sortObj.salesCount = -1;
-    else sortObj.createdAt = -1;
-
-    // Execute query
-    const products = await Product.find(query)
-      .sort(sortObj)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .select('-__v')
-      .lean();
-
-    const total = await Product.countDocuments(query);
-
-    const result = {
-      products,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    };
-
-    // Cache result for 10 minutes
-    await activeCache.set(cacheKey, JSON.stringify(result), 600);
-
-    res.json(result);
-  } catch (error) {
-    logger.error('Products fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Single product endpoint
-app.get('/api/products/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Check cache first
-    const cachedProduct = await activeCache.getProduct(id);
-    if (cachedProduct) {
-      return res.json(cachedProduct);
-    }
-
-    const product = await Product.findById(id)
-      .populate('category')
-      .select('-__v');
-
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
-    // Increment view count
-    await product.incrementViewCount();
-
-    // Cache product for 1 hour
-    await activeCache.cacheProduct(id, product, 3600);
-
-    res.json(product);
-  } catch (error) {
-    logger.error('Product fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // Search endpoint
 app.get('/api/search', async (req, res) => {
   try {
     const { q, page = 1, limit = 20 } = req.query;
-    
+
     if (!q || q.trim().length < 2) {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
@@ -413,30 +355,30 @@ app.get('/api/search', async (req, res) => {
     // Check cache first
     const cacheKey = `search:${q}:${page}:${limit}`;
     const cachedResults = await activeCache.get(cacheKey);
-    
+
     if (cachedResults) {
       return res.json(JSON.parse(cachedResults));
     }
 
     // Perform text search
     const products = await Product.find(
-      { 
+      {
         $text: { $search: q },
-        isActive: true 
+        isActive: true
       },
-      { 
-        score: { $meta: 'textScore' } 
+      {
+        score: { $meta: 'textScore' }
       }
     )
-    .sort({ score: { $meta: 'textScore' } })
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .select('-__v')
-    .lean();
+      .sort({ score: { $meta: 'textScore' } })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .select('-__v')
+      .lean();
 
-    const total = await Product.countDocuments({ 
+    const total = await Product.countDocuments({
       $text: { $search: q },
-      isActive: true 
+      isActive: true
     });
 
     const result = {
@@ -460,36 +402,11 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// Categories endpoint
-app.get('/api/categories', async (req, res) => {
-  try {
-    // Check cache first
-    const cachedCategories = await activeCache.get('categories:all');
-    
-    if (cachedCategories) {
-      return res.json(JSON.parse(cachedCategories));
-    }
-
-    const categories = await Category.find({ isActive: true })
-      .sort({ sortOrder: 1 })
-      .select('-__v')
-      .lean();
-
-    // Cache categories for 30 minutes
-    await activeCache.set('categories:all', JSON.stringify(categories), 1800);
-
-    res.json(categories);
-  } catch (error) {
-    logger.error('Categories fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
 // Inventory endpoint
 app.get('/api/inventory/:productId', async (req, res) => {
   try {
     const { productId } = req.params;
-    
+
     const inventory = await Inventory.findOne({ productId })
       .populate('productId', 'name sku brand')
       .select('-__v');
@@ -527,7 +444,7 @@ app.get('/api/dia-stock', async (req, res) => {
     if (b2c_gonder) query.b2c_gonder = b2c_gonder;
     if (marka) query.marka = { $regex: marka, $options: 'i' };
     if (kategori) query['m_kategoriler.kategori_aciklama_1'] = { $regex: kategori, $options: 'i' };
-    
+
     // Stok durumu filtresi
     if (stok_durumu === 'in_stock') {
       query.fiili_stok = { $gt: 0 };
@@ -548,7 +465,7 @@ app.get('/api/dia-stock', async (req, res) => {
     // Check cache first
     const cacheKey = `dia-stock:${JSON.stringify(query)}:${page}:${limit}:${sort}`;
     const cachedResults = await activeCache.get(cacheKey);
-    
+
     if (cachedResults) {
       return res.json(JSON.parse(cachedResults));
     }
@@ -605,11 +522,11 @@ app.get('/api/dia-stock', async (req, res) => {
 app.get('/api/dia-stock/:_key', async (req, res) => {
   try {
     const { _key } = req.params;
-    
+
     // Check cache first
     const cacheKey = `dia-stock:${_key}`;
     const cachedStock = await activeCache.get(cacheKey);
-    
+
     if (cachedStock) {
       return res.json(JSON.parse(cachedStock));
     }
@@ -636,21 +553,21 @@ app.get('/api/dia-stock/:_key', async (req, res) => {
 app.post('/api/dia-stock', async (req, res) => {
   try {
     const stockData = req.body;
-    
+
     if (!stockData._key) {
       return res.status(400).json({ error: '_key field is required' });
     }
 
     const result = await diaStockService.addManualStock(stockData);
-    
+
     res.status(201).json(result);
   } catch (error) {
     logger.error('Manual stock add error:', error);
-    
+
     if (error.message.includes('zaten mevcut')) {
       return res.status(409).json({ error: error.message });
     }
-    
+
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -660,7 +577,7 @@ app.put('/api/dia-stock/:_key', async (req, res) => {
   try {
     const { _key } = req.params;
     const updateData = req.body;
-    
+
     const stock = await DiaStock.findOne({ _key });
     if (!stock) {
       return res.status(404).json({ error: 'Stock not found' });
@@ -695,9 +612,9 @@ app.put('/api/dia-stock/:_key', async (req, res) => {
 app.post('/api/dia-stock/sync', async (req, res) => {
   try {
     const { type = 'full', _key } = req.body;
-    
+
     let result;
-    
+
     if (type === 'single' && _key) {
       result = await diaStockService.syncSingleStock(_key);
     } else if (type === 'incremental') {
@@ -708,14 +625,14 @@ app.post('/api/dia-stock/sync', async (req, res) => {
       diaStockService.fullSync().catch(error => {
         logger.error('Background sync error:', error);
       });
-      
+
       result = {
         success: true,
         message: 'Full synchronization started in background',
         type: 'full'
       };
     }
-    
+
     res.json(result);
   } catch (error) {
     logger.error('DIA stock sync error:', error);
@@ -729,16 +646,16 @@ app.get('/api/dia-stock/stats', async (req, res) => {
     // Check cache first
     const cacheKey = 'dia-stock:stats';
     const cachedStats = await activeCache.get(cacheKey);
-    
+
     if (cachedStats) {
       return res.json(JSON.parse(cachedStats));
     }
 
     const stats = await diaStockService.getSyncStats();
-    
+
     // Cache stats for 10 minutes
     await activeCache.set(cacheKey, JSON.stringify(stats), 600);
-    
+
     res.json(stats);
   } catch (error) {
     logger.error('DIA stock stats error:', error);
@@ -777,7 +694,7 @@ app.get('/api/dia-stock/sync-status', async (req, res) => {
 app.get('/api/dia-stock/search', async (req, res) => {
   try {
     const { q, page = 1, limit = 20 } = req.query;
-    
+
     if (!q || q.trim().length < 2) {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
@@ -785,29 +702,29 @@ app.get('/api/dia-stock/search', async (req, res) => {
     // Check cache first
     const cacheKey = `dia-stock:search:${q}:${page}:${limit}`;
     const cachedResults = await activeCache.get(cacheKey);
-    
+
     if (cachedResults) {
       return res.json(JSON.parse(cachedResults));
     }
 
     // Perform text search
     const stocks = await DiaStock.find(
-      { 
+      {
         $text: { $search: q },
         durum: 'A',
         b2c_gonder: 'E'
       },
-      { 
-        score: { $meta: 'textScore' } 
+      {
+        score: { $meta: 'textScore' }
       }
     )
-    .sort({ score: { $meta: 'textScore' } })
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .select('_key aciklama marka stokkartkodu fiili_stok fiyat1 primaryCategory primaryImage')
-    .lean();
+      .sort({ score: { $meta: 'textScore' } })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .select('_key aciklama marka stokkartkodu fiili_stok fiyat1 primaryCategory primaryImage')
+      .lean();
 
-    const total = await DiaStock.countDocuments({ 
+    const total = await DiaStock.countDocuments({
       $text: { $search: q },
       durum: 'A',
       b2c_gonder: 'E'
@@ -840,7 +757,7 @@ app.get('/api/dia-stock/brands', async (req, res) => {
     // Check cache first
     const cacheKey = 'dia-stock:brands';
     const cachedBrands = await activeCache.get(cacheKey);
-    
+
     if (cachedBrands) {
       return res.json(JSON.parse(cachedBrands));
     }
@@ -868,7 +785,7 @@ app.get('/api/dia-stock/categories', async (req, res) => {
     // Check cache first
     const cacheKey = 'dia-stock:categories';
     const cachedCategories = await activeCache.get(cacheKey);
-    
+
     if (cachedCategories) {
       return res.json(JSON.parse(cachedCategories));
     }
@@ -908,16 +825,16 @@ app.get('/api/dia-stock/scheduler/status', async (req, res) => {
 app.post('/api/dia-stock/scheduler/trigger', async (req, res) => {
   try {
     const { type = 'incremental' } = req.body;
-    
+
     const result = await diaStockScheduler.triggerManualSync(type);
     res.json(result);
   } catch (error) {
     logger.error('Manual sync trigger error:', error);
-    
+
     if (error.message.includes('zaten çalışıyor')) {
       return res.status(409).json({ error: error.message });
     }
-    
+
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -926,7 +843,7 @@ app.post('/api/dia-stock/scheduler/trigger', async (req, res) => {
 app.post('/api/dia-stock/scheduler/control', async (req, res) => {
   try {
     const { action } = req.body;
-    
+
     if (action === 'start') {
       diaStockScheduler.start();
       res.json({ success: true, message: 'Scheduler started' });
@@ -946,11 +863,11 @@ app.post('/api/dia-stock/scheduler/control', async (req, res) => {
 app.post('/api/dia-stock/scheduler/custom', async (req, res) => {
   try {
     const { name, cronExpression, type = 'incremental' } = req.body;
-    
+
     if (!name || !cronExpression) {
       return res.status(400).json({ error: 'Name and cronExpression are required' });
     }
-    
+
     const callback = async () => {
       try {
         await diaStockScheduler.triggerManualSync(type);
@@ -958,9 +875,9 @@ app.post('/api/dia-stock/scheduler/custom', async (req, res) => {
         logger.error(`Custom schedule "${name}" error:`, error);
       }
     };
-    
+
     const success = diaStockScheduler.addCustomSchedule(name, cronExpression, callback);
-    
+
     if (success) {
       res.json({ success: true, message: `Custom schedule "${name}" added` });
     } else {
@@ -976,9 +893,9 @@ app.post('/api/dia-stock/scheduler/custom', async (req, res) => {
 app.delete('/api/dia-stock/scheduler/custom/:name', async (req, res) => {
   try {
     const { name } = req.params;
-    
+
     const success = diaStockScheduler.removeCustomSchedule(name);
-    
+
     if (success) {
       res.json({ success: true, message: `Custom schedule "${name}" removed` });
     } else {
@@ -999,7 +916,7 @@ async function tryWheelSize(path, cfg = {}) {
   const hasApi = /\/api$/i.test(base);
   const alt = hasApi ? base.replace(/\/api$/i, '') : `${base}/api`;
   const swapProtocol = (u) => u.startsWith('http://') ? u.replace('http://', 'https://') : (u.startsWith('https://') ? u.replace('https://', 'http://') : u);
-  
+
   [base, alt, swapProtocol(base), swapProtocol(alt), 'http://localhost:5058/api', 'http://localhost:5058']
     .filter(Boolean)
     .map(u => u.replace(/\/$/, ''))
@@ -1023,7 +940,7 @@ async function tryWheelSize(path, cfg = {}) {
 app.get('/api/arac/markalar', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== ARAÇ MARKALAR API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/arac/markalar',
@@ -1038,10 +955,10 @@ app.get('/api/arac/markalar', async (req, res) => {
     // Sadece eudm bölgesini iste
     params.bolgeler = 'eudm';
     const response = await tryWheelSize(`/arac/markalar`, { params });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== ARAÇ MARKALAR API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1052,11 +969,11 @@ app.get('/api/arac/markalar', async (req, res) => {
       sampleData: responseData.veri ? responseData.veri.slice(0, 3) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== ARAÇ MARKALAR API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1066,8 +983,8 @@ app.get('/api/arac/markalar', async (req, res) => {
       statusCode: error.response?.status,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Marka bilgileri alınırken hata oluştu',
       requestId
@@ -1078,7 +995,7 @@ app.get('/api/arac/markalar', async (req, res) => {
 app.get('/api/arac/modeller', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== ARAÇ MODELLER API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/arac/modeller',
@@ -1092,10 +1009,10 @@ app.get('/api/arac/modeller', async (req, res) => {
     const params = { ...(req.query || {}) };
     params.bolgeler = 'eudm';
     const response = await tryWheelSize(`/arac/modeller`, { params });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== ARAÇ MODELLER API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1106,11 +1023,11 @@ app.get('/api/arac/modeller', async (req, res) => {
       sampleData: responseData.veri ? responseData.veri.slice(0, 3) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== ARAÇ MODELLER API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1120,8 +1037,8 @@ app.get('/api/arac/modeller', async (req, res) => {
       statusCode: error.response?.status,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Model bilgileri alınırken hata oluştu',
       requestId
@@ -1132,7 +1049,7 @@ app.get('/api/arac/modeller', async (req, res) => {
 app.get('/api/arac/yillar', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== ARAÇ YILLAR API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/arac/yillar',
@@ -1145,10 +1062,10 @@ app.get('/api/arac/yillar', async (req, res) => {
     const params = { ...(req.query || {}) };
     params.bolgeler = 'eudm';
     const response = await tryWheelSize(`/arac/yillar`, { params });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== ARAÇ YILLAR API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1158,19 +1075,19 @@ app.get('/api/arac/yillar', async (req, res) => {
       sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== ARAÇ YILLAR API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
       error: error.message,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Yıl bilgileri alınırken hata oluştu',
       requestId
@@ -1181,7 +1098,7 @@ app.get('/api/arac/yillar', async (req, res) => {
 app.get('/api/arac/jenerasyonlar', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== ARAÇ JENERASYONLAR API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/arac/jenerasyonlar',
@@ -1192,10 +1109,10 @@ app.get('/api/arac/jenerasyonlar', async (req, res) => {
 
   try {
     const response = await tryWheelSize(`/arac/jenerasyonlar`, { params: req.query });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== ARAÇ JENERASYONLAR API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1204,19 +1121,19 @@ app.get('/api/arac/jenerasyonlar', async (req, res) => {
       success: responseData.basarili,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== ARAÇ JENERASYONLAR API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
       error: error.message,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Jenerasyon bilgileri alınırken hata oluştu',
       requestId
@@ -1227,7 +1144,7 @@ app.get('/api/arac/jenerasyonlar', async (req, res) => {
 app.get('/api/arac/modifikasyonlar', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== ARAÇ MODİFİKASYONLAR API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/arac/modifikasyonlar',
@@ -1241,7 +1158,7 @@ app.get('/api/arac/modifikasyonlar', async (req, res) => {
     // Bölgeyi varsayılan olarak eudm ile sınırla (çoğalmayı azaltır)
     if (!params.bolgeler && !params.bolge) params.bolgeler = 'eudm';
     const response = await tryWheelSize(`/arac/modifikasyonlar`, { params, timeout: 30000 });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data || {};
 
@@ -1275,7 +1192,7 @@ app.get('/api/arac/modifikasyonlar', async (req, res) => {
       const k = m?.trim || m?.name || '(yok)';
       trimBuckets[k] = (trimBuckets[k] || 0) + 1;
     }
-    
+
     logger.info('=== ARAÇ MODİFİKASYONLAR API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1289,11 +1206,11 @@ app.get('/api/arac/modifikasyonlar', async (req, res) => {
       sampleData: rawList.slice(0, 3),
       timestamp: new Date().toISOString()
     });
-    
+
     res.json({ ...responseData, veri: deduped });
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== ARAÇ MODİFİKASYONLAR API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1303,11 +1220,11 @@ app.get('/api/arac/modifikasyonlar', async (req, res) => {
       statusCode: error.response?.status,
       timestamp: new Date().toISOString()
     });
-    
+
     // Wheel Size API'den gelen hata mesajını kullan
     const errorMessage = error.response?.data?.hata || error.response?.data?.mesaj || error.message;
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: errorMessage || 'Modifikasyon bilgileri alınırken hata oluştu',
       mesaj: errorMessage || 'Modifikasyon bilgileri alınırken hata oluştu',
@@ -1319,7 +1236,7 @@ app.get('/api/arac/modifikasyonlar', async (req, res) => {
 app.get('/api/arac/model-arama', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== ARAÇ MODEL ARAMA API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/arac/model-arama',
@@ -1332,10 +1249,10 @@ app.get('/api/arac/model-arama', async (req, res) => {
     const params = { ...(req.query || {}) };
     params.bolgeler = 'eudm';
     const response = await tryWheelSize(`/arac/model-arama`, { params, timeout: 30000 });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     // Wheels array'ini lastikler/jantlar ve ön-arka kombinasyonlarına dönüştür
     if (responseData.basarili && responseData.veri && Array.isArray(responseData.veri)) {
       responseData.veri.forEach(modifikasyon => {
@@ -1354,7 +1271,7 @@ app.get('/api/arac/model-arama', async (req, res) => {
               mevsim: wheel.is_recommended_for_winter ? 'kis' : 'yaz',
               yukEndeksi: wheel.front.load_index?.toString(),
               hizEndeksi: wheel.front.speed_index,
-              
+
               // Ek bilgiler
               id: `${modifikasyon.slug}_${wheel.front.tire}`,
               ebat: wheel.front.tire,
@@ -1367,7 +1284,7 @@ app.get('/api/arac/model-arama', async (req, res) => {
               aciklama: `${wheel.front.tire} ebadında lastik`
             };
           });
-          
+
           // 2) Jant bilgilerini de ekle
           modifikasyon.jantlar = modifikasyon.wheels.map(wheel => {
             return {
@@ -1431,7 +1348,7 @@ app.get('/api/arac/model-arama', async (req, res) => {
               arka
             };
           });
-          
+
           // Örnek log
           logger.info('=== ARAÇ LASTİK KOMBİNASYONLARI ===', {
             requestId,
@@ -1442,7 +1359,7 @@ app.get('/api/arac/model-arama', async (req, res) => {
         }
       });
     }
-    
+
     logger.info('=== ARAÇ MODEL ARAMA API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1453,11 +1370,11 @@ app.get('/api/arac/model-arama', async (req, res) => {
       sampleLastikler: responseData.veri?.[0]?.lastikler ? responseData.veri[0].lastikler.slice(0, 3) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== ARAÇ MODEL ARAMA API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1467,11 +1384,11 @@ app.get('/api/arac/model-arama', async (req, res) => {
       statusCode: error.response?.status,
       timestamp: new Date().toISOString()
     });
-    
+
     // Wheel Size API'den gelen hata mesajını kullan
     const errorMessage = error.response?.data?.hata || error.response?.data?.mesaj || error.message;
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: errorMessage || 'Model arama sırasında hata oluştu',
       mesaj: errorMessage || 'Model arama sırasında hata oluştu',
@@ -1486,9 +1403,9 @@ app.get('/api/arac/bolgeler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Bölgeler error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Bölge bilgileri alınırken hata oluştu' 
+      hata: 'Bölge bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1500,9 +1417,9 @@ app.get('/api/jant/caplar', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Jant çapları error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Jant çap bilgileri alınırken hata oluştu' 
+      hata: 'Jant çap bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1513,9 +1430,9 @@ app.get('/api/jant/genislikler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Jant genişlikleri error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Jant genişlik bilgileri alınırken hata oluştu' 
+      hata: 'Jant genişlik bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1526,9 +1443,9 @@ app.get('/api/jant/offsetler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Jant offsetleri error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Jant offset bilgileri alınırken hata oluştu' 
+      hata: 'Jant offset bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1539,9 +1456,9 @@ app.get('/api/jant/merkez-delikler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Merkez delikler error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Merkez delik bilgileri alınırken hata oluştu' 
+      hata: 'Merkez delik bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1552,9 +1469,9 @@ app.get('/api/jant/vida-sablonlari', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Vida şablonları error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Vida şablon bilgileri alınırken hata oluştu' 
+      hata: 'Vida şablon bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1565,9 +1482,9 @@ app.get('/api/jant/arama', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Jant arama error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Jant arama sırasında hata oluştu' 
+      hata: 'Jant arama sırasında hata oluştu'
     });
   }
 });
@@ -1578,9 +1495,9 @@ app.get('/api/jant/modifikasyon-arama', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Jant modifikasyon arama error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Jant modifikasyon arama sırasında hata oluştu' 
+      hata: 'Jant modifikasyon arama sırasında hata oluştu'
     });
   }
 });
@@ -1592,9 +1509,9 @@ app.get('/api/lastik/caplar', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Lastik çapları error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Lastik çap bilgileri alınırken hata oluştu' 
+      hata: 'Lastik çap bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1605,9 +1522,9 @@ app.get('/api/lastik/genislikler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Lastik genişlikleri error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Lastik genişlik bilgileri alınırken hata oluştu' 
+      hata: 'Lastik genişlik bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1616,7 +1533,7 @@ app.get('/api/lastik/genislikler', async (req, res) => {
 app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== LASTİK KESİT GENİŞLİKLERİ API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/kesit-genislikleri',
@@ -1629,10 +1546,10 @@ app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
     const params = { ...(req.query || {}) };
     params.regions = 'eudm';
     const response = await tryWheelSize(`/lastik/kesit-genislikleri`, { params });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== LASTİK KESİT GENİŞLİKLERİ API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1642,19 +1559,19 @@ app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
       sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== LASTİK KESİT GENİŞLİKLERİ API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
       error: error.message,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Kesit genişlik bilgileri alınırken hata oluştu',
       requestId
@@ -1665,7 +1582,7 @@ app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
 app.get('/api/lastik/yanak-oranlari', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== LASTİK YANAK ORANLARI API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/yanak-oranlari',
@@ -1678,10 +1595,10 @@ app.get('/api/lastik/yanak-oranlari', async (req, res) => {
     const params = { ...(req.query || {}) };
     params.regions = 'eudm';
     const response = await tryWheelSize(`/lastik/yanak-oranlari`, { params });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== LASTİK YANAK ORANLARI API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1691,19 +1608,19 @@ app.get('/api/lastik/yanak-oranlari', async (req, res) => {
       sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== LASTİK YANAK ORANLARI API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
       error: error.message,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Yanak oranı bilgileri alınırken hata oluştu',
       requestId
@@ -1714,7 +1631,7 @@ app.get('/api/lastik/yanak-oranlari', async (req, res) => {
 app.get('/api/lastik/jant-caplari', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== LASTİK JANT ÇAPLARI API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/jant-caplari',
@@ -1727,10 +1644,10 @@ app.get('/api/lastik/jant-caplari', async (req, res) => {
     const params = { ...(req.query || {}) };
     params.regions = 'eudm';
     const response = await tryWheelSize(`/lastik/jant-caplari`, { params });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== LASTİK JANT ÇAPLARI API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1740,19 +1657,19 @@ app.get('/api/lastik/jant-caplari', async (req, res) => {
       sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== LASTİK JANT ÇAPLARI API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
       error: error.message,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Jant çapı bilgileri alınırken hata oluştu',
       requestId
@@ -1766,9 +1683,9 @@ app.get('/api/lastik/yanakOranlari', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Lastik yanak oranları error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Lastik yanak oranı bilgileri alınırken hata oluştu' 
+      hata: 'Lastik yanak oranı bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -1776,7 +1693,7 @@ app.get('/api/lastik/yanakOranlari', async (req, res) => {
 app.get('/api/lastik/arama', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== LASTİK ARAMA API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/arama',
@@ -1787,10 +1704,10 @@ app.get('/api/lastik/arama', async (req, res) => {
 
   try {
     const response = await tryWheelSize(`/lastik/arama`, { params: req.query });
-    
+
     const duration = Date.now() - startTime;
     const responseData = response.data;
-    
+
     logger.info('=== LASTİK ARAMA API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1804,11 +1721,11 @@ app.get('/api/lastik/arama', async (req, res) => {
       })) : null,
       timestamp: new Date().toISOString()
     });
-    
+
     res.json(responseData);
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== LASTİK ARAMA API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -1817,8 +1734,8 @@ app.get('/api/lastik/arama', async (req, res) => {
       response: error.response?.data,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       basarili: false,
       hata: 'Lastik arama sırasında hata oluştu',
       requestId
@@ -1832,9 +1749,9 @@ app.get('/api/lastik/modifikasyon-arama', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Lastik modifikasyon arama error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Lastik modifikasyon arama sırasında hata oluştu' 
+      hata: 'Lastik modifikasyon arama sırasında hata oluştu'
     });
   }
 });
@@ -1843,7 +1760,7 @@ app.get('/api/lastik/modifikasyon-arama', async (req, res) => {
 app.get('/api/lastik/genel-arama', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== GENEL LASTİK ARAMA API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/genel-arama',
@@ -1854,7 +1771,7 @@ app.get('/api/lastik/genel-arama', async (req, res) => {
 
   try {
     const { q, page = 1, limit = 20 } = req.query;
-    
+
     if (!q || q.trim().length < 2) {
       return res.json({ basarili: false, mesaj: 'Arama terimi en az 2 karakter olmalıdır' });
     }
@@ -1986,7 +1903,7 @@ app.get('/api/lastik/genel-arama', async (req, res) => {
 app.get('/api/lastik/ebat-arama', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== LASTİK EBAT ARAMA API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/ebat-arama',
@@ -2012,7 +1929,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
       });
       return res.json(JSON.parse(cachedResults));
     }
-    
+
     if (!genislik || !yanak || !cap) {
       return res.status(400).json({
         basarili: false,
@@ -2023,11 +1940,11 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
 
     // DiaStock modelini import et
     const DiaStock = require('./models/DiaStock');
-    
+
     // Lastik ebat regex'i oluştur (225/45R17, 225/45ZR17, 225-45-17 gibi formatları destekler)
     const sizePattern = `${genislik}[/-]${yanak}[ZR/-]*${cap}`;
     const sizeRegex = new RegExp(sizePattern, 'i');
-    
+
     // MongoDB query oluştur
     const query = {
       durum: 'A', // Aktif
@@ -2044,7 +1961,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
     if (marka && marka !== 'tum') {
       query.marka = new RegExp(marka, 'i');
     }
-    
+
     // Mevsim filtresi
     if (mevsim && mevsim !== 'tum') {
       const seasonQuery = [];
@@ -2062,18 +1979,18 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
           { aciklama: { $regex: /4 mevsim|all season|4season/i } }
         );
       }
-      
+
       if (seasonQuery.length > 0) {
         query.$and = query.$and || [];
         query.$and.push({ $or: seasonQuery });
       }
     }
-    
+
     if (minFiyat || maxFiyat) {
       const priceQuery = {};
       if (minFiyat) priceQuery.$gte = parseFloat(minFiyat);
       if (maxFiyat) priceQuery.$lte = parseFloat(maxFiyat);
-      
+
       query.$and = query.$and || [];
       query.$and.push({
         $or: [
@@ -2088,7 +2005,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
 
     // Sayfalama
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Arama yap
     const [diaProducts, totalCount] = await Promise.all([
       DiaStock.find(query)
@@ -2106,7 +2023,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
       let parsedWidth = parseInt(genislik);
       let parsedAspect = parseInt(yanak);
       let parsedRim = parseInt(cap);
-      
+
       if (sizeMatch) {
         parsedWidth = parseInt(sizeMatch[1]);
         parsedAspect = parseInt(sizeMatch[2]);
@@ -2147,12 +2064,12 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
           speedIndex: speedIndex,
           vehicleType: 'otomobil'
         },
-        images: item.m_resimler && item.m_resimler.length > 0 ? 
+        images: item.m_resimler && item.m_resimler.length > 0 ?
           item.m_resimler.map(img => ({
             url: img.aws_url || '/assets/img/tires/default-tire.jpg',
             alt: item.aciklama,
             isPrimary: true
-          })) : 
+          })) :
           [{
             url: '/assets/img/tires/default-tire.jpg',
             alt: item.aciklama || 'Lastik',
@@ -2170,7 +2087,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
     });
 
     const duration = Date.now() - startTime;
-    
+
     logger.info('=== LASTİK EBAT ARAMA API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -2211,7 +2128,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== LASTİK EBAT ARAMA API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -2233,7 +2150,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
 app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== DIA STOK KONTROL API İSTEĞİ ===', {
     requestId,
     endpoint: '/api/lastik/dia-stok-kontrol',
@@ -2244,17 +2161,17 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
 
   try {
     const { wheelsizeProducts } = req.body;
-    
+
     // Cache key oluştur (ürün ID'lerine göre)
     const productIds = wheelsizeProducts.map(p => p._id || p.id).filter(Boolean);
     const cacheKey = cacheKeys.diaStock(productIds);
-    
+
     // Cache'den kontrol et
     const cachedData = await activeCache.get(cacheKey);
     if (cachedData) {
       const cachedResult = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
       const duration = Date.now() - startTime;
-      
+
       logger.info('=== DIA STOK KONTROL CACHE HIT ===', {
         requestId,
         duration: `${duration}ms`,
@@ -2263,14 +2180,14 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
         outputCount: cachedResult.veri ? cachedResult.veri.length : 0,
         timestamp: new Date().toISOString()
       });
-      
+
       return res.json({
         ...cachedResult,
         requestId,
         cached: true
       });
     }
-    
+
     if (!wheelsizeProducts || !Array.isArray(wheelsizeProducts)) {
       return res.status(400).json({
         basarili: false,
@@ -2281,7 +2198,7 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
 
     // DiaStock modelini import et
     const DiaStock = require('./models/DiaStock');
-    
+
     const enhancedProducts = [];
 
     // Her wheelsize ürünü için Dia stok karşılaştırması yap
@@ -2301,10 +2218,10 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
 
         // Dia stokta eşleşen ürünleri ara
         const diaMatches = await findDiaStockMatches(sizeInfo);
-        
+
         // En iyi eşleşmeyi seç (stok durumu, fiyat vs. göre)
         const bestMatch = selectBestDiaMatch(diaMatches, sizeInfo);
-        
+
         // Wheelsize ürünü ile Dia stok bilgisini birleştir
         enhancedProducts.push({
           ...wheelsizeProduct,
@@ -2322,7 +2239,7 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
           product: wheelsizeProduct,
           error: productError.message
         });
-        
+
         // Hatalı ürünleri olduğu gibi ekle
         enhancedProducts.push({
           ...wheelsizeProduct,
@@ -2333,7 +2250,7 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
     }
 
     const duration = Date.now() - startTime;
-    
+
     const responseData = {
       basarili: true,
       veri: enhancedProducts,
@@ -2346,10 +2263,10 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
       },
       requestId
     };
-    
+
     // Başarılı sonucu cache'le (5 dakika TTL)
     await activeCache.set(cacheKey, JSON.stringify(responseData), 300);
-    
+
     logger.info('=== DIA STOK KONTROL API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -2367,7 +2284,7 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== DIA STOK KONTROL API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -2398,7 +2315,7 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
 app.get('/api/lastik/kategori/:kategori', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   logger.info('=== LASTİK KATEGORİ API İSTEĞİ ===', {
     requestId,
     endpoint: `/api/lastik/kategori/${req.params.kategori}`,
@@ -2410,17 +2327,17 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
   try {
     const { kategori } = req.params;
     const { marka, ebat, teknoloji, desen } = req.query;
-    
+
     // Cache key oluştur - marka parametresini normalize et
     const normalizedMarka = marka ? marka.toLowerCase().trim() : '';
     const cacheKey = `lastik:kategori:${kategori}:${normalizedMarka}:${ebat || ''}:${teknoloji || ''}:${desen || ''}`;
-    
+
     // Cache'den kontrol et
     const cachedData = await activeCache.get(cacheKey);
     if (cachedData) {
       const cachedResult = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
       const duration = Date.now() - startTime;
-      
+
       logger.info('=== LASTİK KATEGORİ CACHE HIT ===', {
         requestId,
         duration: `${duration}ms`,
@@ -2429,7 +2346,7 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
         resultCount: cachedResult.veri ? cachedResult.veri.length : 0,
         timestamp: new Date().toISOString()
       });
-      
+
       return res.json({
         ...cachedResult,
         requestId,
@@ -2439,7 +2356,7 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
 
     // DiaStock modelini import et
     const DiaStock = require('./models/DiaStock');
-    
+
     // Kategori bazlı filtreleme
     let query = {
       durum: 'A',
@@ -2529,7 +2446,7 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
     }));
 
     const duration = Date.now() - startTime;
-    
+
     const responseData = {
       basarili: true,
       veri: formattedLastikler,
@@ -2547,10 +2464,10 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
       },
       requestId
     };
-    
+
     // Başarılı sonucu cache'le (10 dakika TTL)
     await activeCache.set(cacheKey, JSON.stringify(responseData), 600);
-    
+
     logger.info('=== LASTİK KATEGORİ API YANITI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -2567,7 +2484,7 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('=== LASTİK KATEGORİ API HATASI ===', {
       requestId,
       duration: `${duration}ms`,
@@ -2595,7 +2512,7 @@ function parseWheelsizeProduct(product) {
   try {
     // Farklı kaynaklardan ölçü bilgisini çıkar
     let genislik, yanak, cap;
-    
+
     // 1. Direkt alanlardan
     if (product.kesitGenisligi && product.yanakOrani && product.jantCapi) {
       genislik = product.kesitGenisligi;
@@ -2620,11 +2537,11 @@ function parseWheelsizeProduct(product) {
         cap = parseInt(sizeMatch[3]);
       }
     }
-    
+
     if (!genislik || !yanak || !cap) {
       return null;
     }
-    
+
     return {
       genislik,
       yanak,
@@ -2632,7 +2549,7 @@ function parseWheelsizeProduct(product) {
       mevsim: detectSeason(product),
       wheelsizeProduct: product
     };
-    
+
   } catch (error) {
     logger.error('Wheelsize ürün parse hatası:', { product, error: error.message });
     return null;
@@ -2642,7 +2559,7 @@ function parseWheelsizeProduct(product) {
 // Mevsim bilgisini tespit et
 function detectSeason(product) {
   const searchText = `${product.aciklama || ''} ${product.model || ''} ${product.mevsim || ''}`.toLowerCase();
-  
+
   if (searchText.includes('kış') || searchText.includes('winter') || searchText.includes('snow')) {
     return 'kis';
   } else if (searchText.includes('4 mevsim') || searchText.includes('all season') || searchText.includes('4season')) {
@@ -2655,13 +2572,13 @@ function detectSeason(product) {
 // Dia stokta eşleşen ürünleri bul
 async function findDiaStockMatches(sizeInfo) {
   const DiaStock = require('./models/DiaStock');
-  
+
   try {
     // 1. Ana arama: ozelkod3 ile (175/70R14 formatı)
     const sizePattern1 = `${sizeInfo.genislik}/${sizeInfo.yanak}R${sizeInfo.cap}`;
     const sizePattern2 = `${sizeInfo.genislik}/${sizeInfo.yanak}ZR${sizeInfo.cap}`;
     const sizePattern3 = `${sizeInfo.genislik}-${sizeInfo.yanak}-${sizeInfo.cap}`;
-    
+
     const query = {
       durum: 'A',
       // b2c_gonder filtresi kaldırıldı - tüm ürünleri dahil et
@@ -2697,7 +2614,7 @@ async function findDiaStockMatches(sizeInfo) {
 
     // Sonuçları birleştir ve unique yap
     const allResults = [...mainResults, ...propertyResults];
-    const uniqueResults = allResults.filter((item, index, self) => 
+    const uniqueResults = allResults.filter((item, index, self) =>
       index === self.findIndex(t => t._key === item._key)
     );
 
@@ -2737,12 +2654,12 @@ function selectBestDiaMatch(matches, sizeInfo) {
     // Önce stok durumuna göre sırala
     if (a.fiili_stok > 0 && b.fiili_stok <= 0) return -1;
     if (a.fiili_stok <= 0 && b.fiili_stok > 0) return 1;
-    
+
     // Sonra fiyata göre (düşük fiyat önce)
     const priceA = a.fiyat1 || a.sontuketicifiyati || 999999;
     const priceB = b.fiyat1 || b.sontuketicifiyati || 999999;
     if (priceA !== priceB) return priceA - priceB;
-    
+
     // Son olarak stok miktarına göre (yüksek stok önce)
     return b.fiili_stok - a.fiili_stok;
   })[0];
@@ -2757,9 +2674,9 @@ function detectSeasonFromDiaProduct(diaProduct) {
     diaProduct.ozelkod1,
     diaProduct.ozelkod1kodu
   ].filter(Boolean);
-  
+
   const searchText = searchFields.join(' ').toLowerCase();
-  
+
   if (searchText.includes('kış') || searchText.includes('winter') || searchText.includes('snow')) {
     return 'kis';
   } else if (searchText.includes('4 mevsim') || searchText.includes('all season') || searchText.includes('4season')) {
@@ -2773,7 +2690,7 @@ function detectSeasonFromDiaProduct(diaProduct) {
 app.get('/api/cache/stats', async (req, res) => {
   try {
     const stats = await activeCache.getStats();
-    
+
     res.json({
       basarili: true,
       veri: {
@@ -2796,7 +2713,7 @@ app.get('/api/cache/stats', async (req, res) => {
 app.post('/api/cache/clear', async (req, res) => {
   try {
     const { pattern } = req.body;
-    
+
     if (pattern) {
       const deletedCount = await activeCache.invalidateDiaStockCache(pattern);
       res.json({
@@ -2827,9 +2744,9 @@ app.get('/api/genel/bilgiler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - Genel bilgiler error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'Genel bilgiler alınırken hata oluştu' 
+      hata: 'Genel bilgiler alınırken hata oluştu'
     });
   }
 });
@@ -2840,9 +2757,9 @@ app.get('/api/genel/istatistikler', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     logger.error('Wheel Size API - İstatistikler error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       basarili: false,
-      hata: 'İstatistik bilgileri alınırken hata oluştu' 
+      hata: 'İstatistik bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -2850,18 +2767,18 @@ app.get('/api/genel/istatistikler', async (req, res) => {
 // Error handling middleware
 app.use((error, req, res, next) => {
   logger.error('Unhandled error:', error);
-  
+
   if (error.name === 'ValidationError') {
     return res.status(400).json({
       error: 'Validation error',
       details: Object.values(error.errors).map(err => err.message)
     });
   }
-  
+
   if (error.name === 'CastError') {
     return res.status(400).json({ error: 'Invalid ID format' });
   }
-  
+
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -2873,12 +2790,12 @@ app.use('*', (req, res) => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully...');
-  
+
   try {
     // Stop scheduler first
     diaStockScheduler.stop();
     logger.info('DIA Stock Scheduler stopped');
-    
+
     await mongoose.connection.close();
     await activeCache.disconnect();
     logger.info('Database and cache connections closed');
@@ -2891,12 +2808,12 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully...');
-  
+
   try {
     // Stop scheduler first
     diaStockScheduler.stop();
     logger.info('DIA Stock Scheduler stopped');
-    
+
     await mongoose.connection.close();
     await activeCache.disconnect();
     logger.info('Database and cache connections closed');
@@ -2913,15 +2830,15 @@ async function checkAndRunStartupSync() {
   try {
     logger.info('🚀 Startup DIA sync kontrolü - DEVRE DIŞI');
     logger.info('💡 Stok senkronizasyonu günlük olarak gece saat 05:00\'da çalışacak');
-    
+
     // Son sync bilgisini sadece log için kontrol et
     const lastSyncInfo = await activeCache.get('dia-sync:last-full-sync');
-    
+
     if (lastSyncInfo) {
       const lastSync = JSON.parse(lastSyncInfo);
       const lastSyncDate = new Date(lastSync.timestamp);
       const hoursAgo = Math.round((Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60));
-      
+
       logger.info('Son sync bilgisi:', {
         lastSyncDate: lastSyncDate,
         hoursAgo: hoursAgo,
@@ -2930,7 +2847,7 @@ async function checkAndRunStartupSync() {
     } else {
       logger.info('Henüz sync yapılmamış - İlk sync gece saat 05:00\'da otomatik çalışacak');
     }
-    
+
   } catch (error) {
     logger.error('Startup sync kontrolü hatası:', error);
   }
@@ -2942,7 +2859,7 @@ app.listen(PORT, async () => {
   logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
   console.log(`🚀 Alastik API Server started on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  
+
   // Start DIA Stock Scheduler
   try {
     diaStockScheduler.start();
@@ -2950,7 +2867,7 @@ app.listen(PORT, async () => {
   } catch (error) {
     logger.error('Failed to start DIA Stock Scheduler:', error);
   }
-  
+
   // Startup sync kontrolü
   await checkAndRunStartupSync();
 });
