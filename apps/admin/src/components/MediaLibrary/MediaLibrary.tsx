@@ -86,13 +86,12 @@ const MediaLibrary = ({
     const [currentPage, setCurrentPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
     const [error, setError] = useState<string | null>(null)
+    const [refreshTrigger, setRefreshTrigger] = useState(0) // Cache yenileme tetikleyicisi
 
-    // API Base URL
     const API_BASE_URL = 'http://localhost:3082'
     const getApiUrl = useCallback((endpoint: string) =>
         `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, [])
 
-    // API çağrıları
     const apiCall = useCallback(async <T,>(url: string, options?: RequestInit): Promise<ApiResponse<T>> => {
         try {
             const response = await fetch(url, {
@@ -116,7 +115,7 @@ const MediaLibrary = ({
     }, [])
 
     // Medya dosyalarını getir
-    const fetchMediaFiles = useCallback(async (searchQuery = '', page = 1) => {
+    const fetchMediaFiles = useCallback(async (searchQuery = '', page = 1, forceRefresh = false) => {
         setLoading(true)
         setError(null)
 
@@ -124,11 +123,15 @@ const MediaLibrary = ({
             const params = new URLSearchParams({
                 folder: currentFolder,
                 search: searchQuery,
-                limit: '24', // 6 sütunlu grid için 24 görsel
+                limit: '24', 
                 page: page.toString(),
                 sortBy: 'date',
                 sortOrder: 'desc'
             })
+
+            if (forceRefresh) {
+                params.append('_t', Date.now().toString())
+            }
 
             const data = await apiCall<MediaFile>(getApiUrl(`/api/media/list?${params}`))
 
@@ -148,7 +151,6 @@ const MediaLibrary = ({
         }
     }, [currentFolder, apiCall, getApiUrl])
 
-    // Klasörleri getir
     const fetchFolders = useCallback(async () => {
         try {
             const data = await apiCall<never>(getApiUrl('/api/media/folders'))
@@ -157,7 +159,6 @@ const MediaLibrary = ({
                 setFolders(data.folders)
             }
         } catch (error) {
-            // Klasör yüklemede hata olsa da devam et
             setFolders(Object.keys(MEDIA_FOLDERS))
         }
     }, [apiCall, getApiUrl])
@@ -165,18 +166,20 @@ const MediaLibrary = ({
     // Effects
     useEffect(() => {
         if (open) {
-            fetchMediaFiles('', 1)
-            fetchFolders()
             setCurrentPage(1)
+            setSearchTerm('')
+            setSelectedFiles([])
+            fetchMediaFiles('', 1, true) 
+            fetchFolders()
         }
-    }, [open, currentFolder, fetchMediaFiles, fetchFolders])
+    }, [open, currentFolder, fetchMediaFiles, fetchFolders, refreshTrigger])
 
     useEffect(() => {
         const delayedSearch = setTimeout(() => {
             if (currentPage === 1) {
                 fetchMediaFiles(searchTerm, 1)
             } else {
-                setCurrentPage(1) // Reset to first page on search
+                setCurrentPage(1) 
             }
         }, 500)
 
@@ -195,6 +198,7 @@ const MediaLibrary = ({
         setCurrentFolder(newFolder)
         setSelectedFiles([])
         setCurrentPage(1)
+        setRefreshTrigger(prev => prev + 1) 
     }
 
     const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
@@ -220,7 +224,7 @@ const MediaLibrary = ({
         }
     }
 
-    // Dosya yükleme
+    // Dosya yükleme - GÜNCELLENDİ
     const uploadFiles = async (files: File[]) => {
         if (files.length === 0) return
 
@@ -246,7 +250,18 @@ const MediaLibrary = ({
 
             if (data.success) {
                 toast.success(`${files.length} dosya başarıyla yüklendi`)
-                await fetchMediaFiles(searchTerm, currentPage) // Listeyi yenile
+
+                // Upload sonrası state'i resetle ve zorla yenile
+                setSearchTerm('')
+                setCurrentPage(1)
+                setSelectedFiles([])
+
+                // 1 saniye bekle (WebP dönüşümü için) sonra yenile
+                setTimeout(() => {
+                    setRefreshTrigger(prev => prev + 1)
+                    fetchMediaFiles('', 1, true) // Zorla yenile
+                }, 1000)
+
             } else {
                 throw new Error(data.message || 'Upload hatası')
             }
@@ -384,7 +399,7 @@ const MediaLibrary = ({
                     {uploading ? (
                         <Box>
                             <CircularProgress size={40} />
-                            <Typography sx={{ mt: 1 }}>Yükleniyor...</Typography>
+                            <Typography sx={{ mt: 1 }}>Yükleniyor ve WebP dönüştürülüyor...</Typography>
                         </Box>
                     ) : (
                         <Box>
@@ -396,7 +411,7 @@ const MediaLibrary = ({
                                 Maksimum dosya boyutu: {formatFileSize(maxFileSize)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                                Klasör: {MEDIA_FOLDERS[currentFolder]}
+                                Klasör: {MEDIA_FOLDERS[currentFolder]} • Sadece WebP gösterilir
                             </Typography>
                         </Box>
                     )}
@@ -460,7 +475,10 @@ const MediaLibrary = ({
                                                 }}
                                             >
                                                 <img
-                                                    src={`/api/proxy-image?url=${encodeURIComponent(file.url)}`}
+                                                    src={file.url.includes('/api/proxy-image')
+                                                        ? file.url
+                                                        : `/api/proxy-image?url=${encodeURIComponent(file.url)}`
+                                                    }
                                                     alt={file.filename}
                                                     style={{
                                                         width: '100%',
@@ -561,7 +579,7 @@ const MediaLibrary = ({
                     <Box sx={{ textAlign: 'center', py: 4 }}>
                         <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
                         <Typography color="text.secondary" sx={{ mt: 2 }}>
-                            {searchTerm ? 'Arama sonucu bulunamadı' : `${MEDIA_FOLDERS[currentFolder]} klasöründe henüz dosya yok`}
+                            {searchTerm ? 'Arama sonucu bulunamadı' : `${MEDIA_FOLDERS[currentFolder]} klasöründe henüz WebP dosya yok`}
                         </Typography>
                         {!searchTerm && (
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

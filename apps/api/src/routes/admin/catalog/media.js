@@ -3,12 +3,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const router = express.Router();
-
 const paths = require('../../../config/path');
 const MEDIA_FOLDERS = paths.mediaFolders;
 const getUploadPath = paths.getUploadPath;
 const generateFileUrl = paths.generateFileUrl;
 
+// Sharp.js import
+const SimpleImageProcessor = require('../../../utils/SimpleImageProcessor');
+const imageProcessor = new SimpleImageProcessor(paths.public);
 
 const upload = multer({
     storage: multer.diskStorage({
@@ -28,24 +30,11 @@ const upload = multer({
             }
         },
         filename: (req, file, cb) => {
-            const cleanName = file.originalname
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[ğüşıöç]/g, match => {
-                    const map = { 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ı': 'i', 'ö': 'o', 'ç': 'c' };
-                    return map[match];
-                })
-                .replace(/[^a-z0-9.-]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '');
-
-            const timestamp = Date.now();
-            const ext = path.extname(cleanName);
-            const nameWithoutExt = path.basename(cleanName, ext) || 'file';
-
-            const fileName = `${nameWithoutExt}-${timestamp}${ext}`;
-            cb(null, fileName);
+            // Yeni temiz filename sistemi
+            const folder = req.query.folder || req.body?.folder || 'general';
+            const uploadPath = getUploadPath();
+            const cleanFilename = imageProcessor.generateCleanFilename(file.originalname, uploadPath, folder);
+            cb(null, cleanFilename);
         }
     }),
     limits: {
@@ -63,6 +52,7 @@ const upload = multer({
         }
     }
 });
+
 router.post('/upload', upload.array('files', paths.config.maxFileCount), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
@@ -85,6 +75,8 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
                 filename: file.filename,
                 originalname: file.originalname,
                 url: generateFileUrl(file.filename, folder),
+                // WebP URL'leri de ekle
+                urls: SimpleImageProcessor.generateImageUrls(file.filename, folder, generateFileUrl),
                 size: file.size,
                 mimetype: file.mimetype,
                 folder: folder,
@@ -93,6 +85,9 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
             };
 
             uploadedFiles.push(fileInfo);
+
+            // Background'da WebP oluştur (kullanıcı beklemez)
+            imageProcessor.processInBackground(file.path, file.filename, folder);
         }
 
         res.json({
@@ -108,6 +103,7 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
         });
     }
 });
+
 router.get('/list', async (req, res) => {
     try {
         const {
@@ -132,9 +128,20 @@ router.get('/list', async (req, res) => {
             const fileList = await Promise.all(
                 files
                     .filter(file => {
-                        const isImage = paths.config.allowedFileTypes.test(path.extname(file).toLowerCase());
+                        const ext = path.extname(file).toLowerCase();
+                        if (ext !== '.webp') {
+                            return false;
+                        }
                         const matchesSearch = file.toLowerCase().includes(search.toLowerCase());
-                        return isImage && matchesSearch;
+                        return matchesSearch;
+                    })
+                    .filter((file, index, array) => {
+                        const baseName = path.basename(file, path.extname(file));
+                        const firstIndex = array.findIndex(f => {
+                            const fBaseName = path.basename(f, path.extname(f));
+                            return fBaseName === baseName;
+                        });
+                        return index === firstIndex;
                     })
                     .map(async (file) => {
                         try {
@@ -144,6 +151,8 @@ router.get('/list', async (req, res) => {
                                 id: file,
                                 filename: file,
                                 url: generateFileUrl(file, folder),
+                                // WebP URL'leri de liste için ekle
+                                urls: SimpleImageProcessor.generateImageUrls(file, folder, generateFileUrl),
                                 size: stats.size,
                                 uploadDate: stats.mtime.toISOString(),
                                 folder: folder
@@ -197,4 +206,5 @@ router.get('/list', async (req, res) => {
         });
     }
 });
+
 module.exports = router;
