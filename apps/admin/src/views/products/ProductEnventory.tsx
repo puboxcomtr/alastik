@@ -31,17 +31,14 @@ import { useTheme } from '@mui/material/styles'
 import Link from '@components/Link'
 import CustomTabList from '@core/components/mui/TabList'
 
-// Styled Component Imports
-import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
-
 /* Json TS Export */
-import type { ProductType } from '@/types/apps/ecommerceTypes'
+import type { ProductType } from '@/types/apps/productTypes'
 import { InputAdornment } from '@mui/material'
-export interface ProductInformationProps {
+export interface ProductEnventoryProps {
   product: ProductType
 }
 
-const ProductEnventory = ({ product }: ProductInformationProps) => {
+const ProductEnventory = ({ product }: ProductEnventoryProps) => {
   const [seoTitle, setSeoTitle] = useState('')
   const [seoDescription, setSeoDescription] = useState('')
   const [seoUrl, setSeoUrl] = useState('')
@@ -49,12 +46,11 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
 
   // States
   useEffect(() => {
-    setSeoTitle(product.seo_title)
-    setSeoDescription(product.seo_description)
-    setSeoUrl(product.seo_url)
+    setSeoTitle(product.seo_title || '')
+    setSeoDescription(product.seo_description || '')
+    setSeoUrl(product.seo_url || '')
   }, [product])
   const [activeTab, setActiveTab] = useState('seo')
-  const [date, setDate] = useState<Date | null>(null)
 
   // Hooks
   const theme = useTheme()
@@ -83,7 +79,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
 
             <TabPanel value='seo'>
               <FormGroup className='flex flex-col gap-4'>
-                <Grid container spacing={7}>
+                <Grid container spacing={10}>
                   <Grid size={{ xs: 12, sm: 12, md: 12 }}>
                     <FormControl fullWidth>
                       <TextField
@@ -93,6 +89,17 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         value={seoTitle}
                         onChange={e => setSeoTitle(e.target.value)}
                         required
+                        inputProps={{ maxLength: 100 }}
+                        helperText={
+                          <div className="flex justify-between items-center">
+                            <span>Bu alan arama motorlarında görünecek başlıktır</span>
+                            <span className="flex items-center gap-1">
+                              <span className={seoTitle.length <= 70 ? "text-green-500" : "text-red-500"}>
+                                {seoTitle.length}/70
+                              </span>
+                            </span>
+                          </div>
+                        }
                       />
                     </FormControl>
                   </Grid>
@@ -111,7 +118,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                   <Grid size={{ xs: 12, sm: 12, md: 12 }}>
                     <FormControl fullWidth>
                       <TextField
-                        fullWidth
+                        fullWidthx
                         label='SEO URL'
                         placeholder='SEO URL Giriniz'
                         value={seoUrl}
@@ -148,7 +155,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         fullWidth
                         label='Alış Fiyatı'
                         placeholder='Alış Fiyatı Giriniz'
-                        value={product.price.toLocaleString('tr-TR') + " TL"}
+                        value={product.price ? product.price.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -160,7 +167,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         fullWidth
                         label='Satış Fiyatı'
                         placeholder='Satış Fiyatı Giriniz'
-                        value={product.price2.toLocaleString('tr-TR') + " TL"}
+                        value={product.price2 ? product.price2.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -172,7 +179,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         fullWidth
                         label='İndirimli Satış Fiyatı'
                         placeholder='İndirimli Satış Fiyatı Giriniz'
-                        value={product.price3.toLocaleString('tr-TR') + " TL"}
+                        value={product.price3 ? product.price3.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -187,7 +194,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         fullWidth
                         label='Fiyat 4'
                         placeholder='Fiyat 4 Giriniz'
-                        value={product.price4.toLocaleString('tr-TR') + " TL"}
+                        value={product.price4 ? product.price4.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -199,7 +206,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         fullWidth
                         label='Fiyat 5'
                         placeholder='Fiyat 5 Giriniz'
-                        value={product.price5.toLocaleString('tr-TR') + " TL"}
+                        value={product.price5 ? product.price5.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -211,7 +218,7 @@ const ProductEnventory = ({ product }: ProductInformationProps) => {
                         fullWidth
                         label='Fiyat 6'
                         placeholder='Fiyat 6 Giriniz'
-                        value={product.price6.toLocaleString('tr-TR') + " TL"}
+                        value={product.price6 ? product.price6.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
