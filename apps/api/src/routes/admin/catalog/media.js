@@ -4,12 +4,11 @@ const path = require('path');
 const fs = require('fs').promises;
 const router = express.Router();
 
-// Path
 const paths = require('../../../config/path');
-
 const MEDIA_FOLDERS = paths.mediaFolders;
 const getUploadPath = paths.getUploadPath;
 const generateFileUrl = paths.generateFileUrl;
+
 
 const upload = multer({
     storage: multer.diskStorage({

@@ -15,7 +15,6 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const winston = require('winston');
-require('dotenv').config();
 
 // Import cache managers
 const { cache, cacheKeys, withCache, cachedFunction } = require('./utils/cache');
@@ -325,7 +324,7 @@ const mediaRoutes = require('./routes/admin/catalog/media');
 app.use('/api/media', mediaRoutes);
 
 /* * Static Görsel Upload *  */
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+app.use('/uploads', express.static(paths.getStaticPath('')));
 
 // API Routes
 // Auth routes
