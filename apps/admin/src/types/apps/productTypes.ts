@@ -1,5 +1,6 @@
 export type ProductType = {
   id: string | number
+  _key?: string
   name: string
   sku: string
   price: number

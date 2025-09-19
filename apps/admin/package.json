@@ -16,6 +16,9 @@
     "removeI18n": "tsx src/remove-translation-scripts/index.ts"
   },
   "dependencies": {
+    "react-filepond": "^7.1.2",
+    "filepond": "^4.30.4",
+    "filepond-plugin-image-preview": "^4.6.11",
     "@auth/prisma-adapter": "2.7.4",
     "@emoji-mart/data": "1.2.1",
     "@emoji-mart/react": "1.1.1",

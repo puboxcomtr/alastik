@@ -1,4 +1,5 @@
 const path = require('path');
+const paths = require('./config/path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 // Test
@@ -135,8 +136,11 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Body parsing & cookies
 const cookieParser = require('cookie-parser');
@@ -287,7 +291,7 @@ app.post('/api/dia-stock/sync-images', async (req, res) => {
   }
 });
 /**
-  * Admin Filtreleme Routes *
+  * Admin - Routes *
 */
 /* * Ürün Listeleme * */
 const productRoutes = require('./routes/admin/catalog/products');
@@ -300,6 +304,28 @@ app.use('/api/categories', categoryRoutes);
 /* Marka Listeleme */
 const brandRoutes = require('./routes/admin/catalog/brands');
 app.use('/api/brands', brandRoutes);
+
+/**
+  * Admin - Functions *
+*/
+/* Görsel Listeleme */
+const mediaFolders = Object.keys(paths.mediaFolders);
+mediaFolders.forEach(folder => {
+  const staticPath = paths.getStaticPath(folder);
+  console.log(`Static path for ${folder}: ${staticPath}`);
+  app.use(`/${folder}`, express.static(staticPath, {
+    setHeaders: (res, path, stat) => {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET');
+    }
+  }));
+});
+/* * Görsel Upload * */
+const mediaRoutes = require('./routes/admin/catalog/media');
+app.use('/api/media', mediaRoutes);
+
+/* * Static Görsel Upload *  */
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // API Routes
 // Auth routes

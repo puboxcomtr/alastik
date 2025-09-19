@@ -9,6 +9,14 @@ const DiaStockSchema = new mongoose.Schema({
     trim: true
   },
   
+  // **YENİ ALAN - Senkronizasyon Kontrolü**
+  synchronization: {
+    type: String,
+    enum: ['Y', 'N'],
+    default: 'Y', // Default: Her şeyi senkronize et
+    description: 'Y: Her şeyi senkronize et, N: Sadece stok/fiyat senkronize et'
+  },
+  
   // Tarih bilgileri
   _cdate: String,
   _date: String,
@@ -322,6 +330,7 @@ DiaStockSchema.index({ stokkartkodu: 1, durum: 1 });
 DiaStockSchema.index({ fiili_stok: 1, durum: 1 });
 DiaStockSchema.index({ 'syncInfo.lastSyncDate': 1 });
 DiaStockSchema.index({ 'syncInfo.syncStatus': 1 });
+DiaStockSchema.index({ synchronization: 1 }); // **YENİ INDEX**
 
 // Text search index
 DiaStockSchema.index({ 
@@ -419,6 +428,15 @@ DiaStockSchema.statics.findSyncErrors = function() {
   return this.find({ 'syncInfo.syncStatus': 'error' });
 };
 
+// **YENİ STATIC METHODS - Synchronization için**
+DiaStockSchema.statics.findLimitedSyncProducts = function() {
+  return this.find({ synchronization: 'N' }); // N: Sadece stok/fiyat
+};
+
+DiaStockSchema.statics.findFullSyncProducts = function() {
+  return this.find({ synchronization: 'Y' }); // Y: Her şey
+};
+
 // Instance methods
 DiaStockSchema.methods.markSyncSuccess = function() {
   this.syncInfo.syncStatus = 'synced';
@@ -442,12 +460,23 @@ DiaStockSchema.methods.updateStock = function(newStock) {
 };
 
 DiaStockSchema.methods.updateFromDiaData = function(diaData) {
-  // DIA verilerini güncelle
-  Object.keys(diaData).forEach(key => {
-    if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt') {
-      this[key] = diaData[key];
-    }
-  });
+  // synchronization kontrolü
+  if (this.synchronization === 'N') {
+    // Sadece stok ve fiyat alanlarını güncelle
+    const limitedFields = ['fiili_stok', 'gercek_stok', 'fiyat1', 'fiyat2', 'fiyat3', 'fiyat4', 'fiyat10', 'sontuketicifiyati'];
+    limitedFields.forEach(field => {
+      if (diaData.hasOwnProperty(field)) {
+        this[field] = diaData[field];
+      }
+    });
+  } else {
+    // Tüm alanları güncelle (normal senkronizasyon)
+    Object.keys(diaData).forEach(key => {
+      if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt') {
+        this[key] = diaData[key];
+      }
+    });
+  }
   
   // Sync bilgilerini güncelle
   this.syncInfo.lastSyncDate = new Date();
@@ -457,4 +486,18 @@ DiaStockSchema.methods.updateFromDiaData = function(diaData) {
   return this.save();
 };
 
-module.exports = mongoose.model('DiaStock', DiaStockSchema); 
+DiaStockSchema.methods.enableLimitedSync = function() {
+  return this.save();
+};
+
+DiaStockSchema.methods.enableFullSync = function() {
+  this.synchronization = 'Y'; 
+  return this.save();
+};
+
+DiaStockSchema.methods.toggleSyncMode = function() {
+  this.synchronization = this.synchronization === 'Y' ? 'N' : 'Y';
+  return this.save();
+};
+
+module.exports = mongoose.model('DiaStock', DiaStockSchema);

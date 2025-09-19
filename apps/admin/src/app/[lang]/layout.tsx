@@ -50,6 +50,7 @@ const RootLayout = async (props: ChildrenType & { params: Promise<{ lang: Locale
         <body className='flex is-full min-bs-full flex-auto flex-col'>
           <InitColorSchemeScript attribute='data' defaultMode={systemMode} />
           {children}
+
         </body>
       </html>
     </TranslationWrapper>

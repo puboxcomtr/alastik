@@ -1,63 +1,35 @@
 'use client'
-
-// React Imports
 import { useState, useEffect } from 'react'
-
-// MUI Imports
-import Card from '@mui/material/Card'
-import CardHeader from '@mui/material/CardHeader'
-import CardContent from '@mui/material/CardContent'
-import Button from '@mui/material/Button'
-import IconButton from '@mui/material/IconButton'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import Typography from '@mui/material/Typography'
-import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
-import { styled } from '@mui/material/styles'
-import type { BoxProps } from '@mui/material/Box'
-
-// Third-party Imports
-import { useDropzone } from 'react-dropzone'
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Button,
+  IconButton,
+  Typography,
+  Box
+} from '@mui/material'
 import { toast } from 'react-toastify'
-
-// Component Imports
-import Link from '@components/Link'
-import CustomAvatar from '@core/components/mui/Avatar'
-
-// Styled Component Imports
-import AppReactDropzone from '@/libs/styles/AppReactDropzone'
-
+import MediaLibrary from '@/components/MediaLibrary/MediaLibrary'
 import type { ProductType } from '@/types/apps/productTypes'
-
-type FileProp = {
-  name: string
-  type: string
-  size: number
-}
 
 interface ProductImageProps {
   product?: ProductType
 }
 
-// Styled Dropzone Component
-const Dropzone = styled(AppReactDropzone)<BoxProps>(({ theme }) => ({
-  '& .dropzone': {
-    minHeight: 'unset',
-    padding: theme.spacing(12),
-    [theme.breakpoints.down('sm')]: {
-      paddingInline: theme.spacing(5)
-    },
-    '&+.MuiList-root .MuiListItem-root .file-name': {
-      fontWeight: theme.typography.body1.fontWeight
-    }
-  }
-}))
+interface MediaFile {
+  id: string
+  filename: string
+  url: string
+  size: number
+  uploadDate: string
+  folder: string
+}
 
 const ProductImage = ({ product }: ProductImageProps) => {
-  const [files, setFiles] = useState<File[]>([])
   const [diaImages, setDiaImages] = useState<string[]>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
 
   useEffect(() => {
     if (product?.images && product.images.length > 0) {
@@ -67,7 +39,37 @@ const ProductImage = ({ product }: ProductImageProps) => {
     }
   }, [product])
 
-  // Drag & Drop fonksiyonları
+  // Media Library'den seçilen görselleri işle
+  const handleMediaSelect = (selectedFiles: MediaFile[]) => {
+    const selectedUrls = selectedFiles.map(file => file.url)
+    setDiaImages(prev => [...prev, ...selectedUrls])
+
+    toast.success(`${selectedFiles.length} görsel eklendi`)
+
+    updateProductSynchronization('N')
+  }
+
+  const updateProductSynchronization = async (syncValue: 'Y' | 'N') => {
+    if (!product?._key) return
+
+    try {
+      const response = await fetch(`http://localhost:3082/api/products/${product._key}/synchronization`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ synchronization: syncValue })
+      })
+
+      if (response.ok) {
+        console.log(`Synchronization updated to ${syncValue}`)
+      }
+    } catch (error) {
+      console.error('Synchronization update error:', error)
+    }
+  }
+
+  // Sıralama için Drag & Drop
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = 'move'
@@ -86,155 +88,72 @@ const ProductImage = ({ product }: ProductImageProps) => {
     const newImages = [...diaImages]
     const draggedImage = newImages[draggedIndex]
 
-    // Sürüklenen öğeyi kaldır
     newImages.splice(draggedIndex, 1)
-    // Yeni pozisyona ekle
     newImages.splice(dropIndex, 0, draggedImage)
 
     setDiaImages(newImages)
     setDraggedIndex(null)
 
-    toast.success('Görsel sıralaması güncellendi.', {
-      position: 'top-right'
-    })
+    toast.success('Görsel sıralaması güncellendi')
+    updateProductSynchronization('N')
   }
 
   const handleDragEnd = () => {
     setDraggedIndex(null)
   }
 
-  // DIA görseli silme fonksiyonu
-  const handleRemoveDiaImage = (imageUrl: string, index: number) => {
-    toast.warn(
-      <div>
-        <p>Bu görseli silmek istediğinize emin misiniz?</p>
-        <div className="flex gap-2 mt-3">
-          <Button
-            size="small"
-            variant="contained"
-            color="error"
-            onClick={() => {
-              const updatedImages = diaImages.filter((_, i) => i !== index)
-              setDiaImages(updatedImages)
-              toast.dismiss()
-              toast.success('Görsel başarıyla kaldırıldı (geçici)', {
-                position: 'top-right'
-              })
-            }}
-          >
-            Sil
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => toast.dismiss()}
-          >
-            İptal
-          </Button>
-        </div>
-      </div>,
-      {
-        position: 'top-right',
-        autoClose: false,
-        closeButton: false,
-        draggable: false
-      }
-    )
-  }
-
-  // Hooks
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: (acceptedFiles: File[]) => {
-      setFiles(acceptedFiles.map((file: File) => Object.assign(file)))
-    }
-  })
-
-  const renderFilePreview = (file: FileProp) => {
-    if (file.type.startsWith('image')) {
-      return <img width={38} height={38} alt={file.name} src={URL.createObjectURL(file as any)} />
-    } else {
-      return <i className='ri-file-text-line' />
-    }
-  }
-
-  const handleRemoveFile = (file: FileProp) => {
-    const uploadedFiles = files
-    const filtered = uploadedFiles.filter((i: FileProp) => i.name !== file.name)
-    setFiles([...filtered])
-  }
-
-  const fileList = files.map((file: FileProp) => (
-    <ListItem key={file.name} className='px-4 py-3'>
-      <div className='file-details'>
-        <div className='file-preview'>{renderFilePreview(file)}</div>
-        <div>
-          <Typography className='file-name font-medium' color='text.primary'>
-            {file.name}
-          </Typography>
-          <Typography className='file-size' variant='body2'>
-            {Math.round(file.size / 100) / 10 > 1000
-              ? `${(Math.round(file.size / 100) / 10000).toFixed(1)} mb`
-              : `${(Math.round(file.size / 100) / 10).toFixed(1)} kb`}
-          </Typography>
-        </div>
-      </div>
-      <IconButton onClick={() => handleRemoveFile(file)}>
-        <i className='ri-close-line text-xl' />
-      </IconButton>
-    </ListItem>
-  ))
-
-  const handleRemoveAllFiles = () => {
-    setFiles([])
+  // Görsel silme
+  const handleRemoveImage = (imageUrl: string, index: number) => {
+    const updatedImages = diaImages.filter((_, i) => i !== index)
+    setDiaImages(updatedImages)
+    toast.success('Görsel kaldırıldı')
+    updateProductSynchronization('N')
   }
 
   return (
-    <Dropzone>
+    <>
       <Card>
         <CardHeader
-          title='Görsel Galerisi'
-          sx={{ '& .MuiCardHeader-action': { alignSelf: 'center' } }}
+          title='Ürün Görselleri'
+          action={
+            <Button
+              variant="contained"
+              onClick={() => setMediaLibraryOpen(true)}
+              startIcon={<i className='ri-image-add-line' />}
+            >
+              Görsel Ekle
+            </Button>
+          }
         />
         <CardContent>
-          <div {...getRootProps({ className: 'dropzone' })}>
-            <input {...getInputProps()} />
-            <div className='flex items-center flex-col gap-2 text-center'>
-              <CustomAvatar variant='rounded' skin='light' color='secondary'>
-                <i className='ri-upload-2-line' />
-              </CustomAvatar>
-              <Typography variant='h4'>Ürün görsellerini sürükle ve bu alana bırak</Typography>
-              <Typography color='text.disabled'>veya</Typography>
-              <Button variant='outlined' size='small'>
-                Dosya Seçiniz
-              </Button>
-            </div>
-          </div>
-          {files.length ? (
-            <>
-              <List>{fileList}</List>
-              <div className='buttons'>
-                <Button color='error' variant='outlined' onClick={handleRemoveAllFiles}>
-                  Temizle
-                </Button>
-                <Button variant='contained'>Yükle</Button>
-              </div>
-            </>
-          ) : null}
-
-          {diaImages.length > 0 && (
-            <>
-              <Box className="flex gap-2 mb-3 mt-3 overflow-x-auto">
+          {/* Mevcut Görseller */}
+          {diaImages.length > 0 ? (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Görselleri sürükleyerek sıralayabilirsiniz
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 {diaImages.map((imageUrl, index) => (
                   <Box
                     key={`${imageUrl}-${index}`}
-                    className="relative border-2 border-gray-300 rounded-lg overflow-hidden cursor-pointer select-none transition-all hover:shadow-lg"
                     sx={{
-                      width: 120,
-                      height: 120,
+                      position: 'relative',
+                      width: 150,
+                      height: 150,
+                      border: '2px solid',
+                      borderColor: draggedIndex === index ? 'primary.main' : 'grey.300',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      cursor: 'grab',
                       opacity: draggedIndex === index ? 0.5 : 1,
                       transform: draggedIndex === index ? 'scale(1.05)' : 'scale(1)',
+                      transition: 'all 0.2s',
                       '&:hover': {
-                        borderColor: '#1976d2'
+                        borderColor: 'primary.main',
+                        boxShadow: 2
+                      },
+                      '&:active': {
+                        cursor: 'grabbing'
                       }
                     }}
                     draggable
@@ -244,54 +163,74 @@ const ProductImage = ({ product }: ProductImageProps) => {
                     onDragEnd={handleDragEnd}
                   >
                     <img
-                      src={imageUrl}
-                      alt={`DIA Görsel ${index + 1}`}
-                      className="w-full h-full object-cover pointer-events-none"
+                      src={imageUrl.includes('/api/proxy-image')
+                        ? imageUrl
+                        : `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`
+                      }
+                      alt={`Ürün Görseli ${index + 1}`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        pointerEvents: 'none'
+                      }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = '/images/placeholder-image.png'
+                      }}
                     />
-
-                    {/* Sıra numarası */}
-                    <Box
-                      className="absolute top-1 left-1 bg-black bg-opacity-70 text-white rounded px-1"
-                      sx={{ fontSize: '12px' }}
-                    >
-                      {index + 1}
-                    </Box>
 
                     {/* Silme butonu */}
                     <IconButton
-                      className="absolute top-1 right-1"
                       sx={{
-                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        backgroundColor: 'error.main',
+                        color: 'white',
+                        width: 24,
+                        height: 24,
                         '&:hover': {
-                          backgroundColor: 'rgba(255,0,0,0.1)',
-                          color: 'red'
-                        },
-                        width: 32,
-                        height: 32
+                          backgroundColor: 'error.dark'
+                        }
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleRemoveDiaImage(imageUrl, index)
+                        handleRemoveImage(imageUrl, index)
                       }}
                     >
-                      <i className='ri-close-line' style={{ fontSize: '20px' }} />
+                      <i className='ri-close-line'  />
                     </IconButton>
-
-                    {/* Drag handle */}
-                    <Box
-                      className="absolute bottom-1 right-1 text-white bg-black bg-opacity-50 rounded px-1"
-                      sx={{ fontSize: '12px' }}
-                    >
-                      <i className='ri-drag-move-line' />
-                    </Box>
                   </Box>
                 ))}
               </Box>
-            </>
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
+              <Typography color="text.secondary" sx={{ mt: 2 }}>
+                Henüz ürün görseli eklenmemiş
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                "Görsel Ekle" butonuna tıklayarak görsel ekleyebilirsiniz
+              </Typography>
+            </Box>
           )}
         </CardContent>
       </Card>
-    </Dropzone>
+
+      {/* Media Library Modal */}
+      <MediaLibrary
+        open={mediaLibraryOpen}
+        onClose={() => setMediaLibraryOpen(false)}
+        onSelect={handleMediaSelect}
+        multiple={true}
+        folder="urun"
+        title="Ürün Görseli Seç"
+        maxFileSize={10 * 1024 * 1024} // 10MB
+      />
+    </>
   )
 }
+
 export default ProductImage
