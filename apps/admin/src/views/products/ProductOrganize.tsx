@@ -24,6 +24,7 @@ interface ProductOrganizeProps {
     category?: string
     properties?: Record<string, string>
     brand?: string
+    readOnly?: boolean
   }
 }
 
@@ -32,7 +33,7 @@ interface CategoryVariant {
   value: string
 }
 
-const ProductOrganize = ({ product }: ProductOrganizeProps) => {
+const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => {
   const [variants, setVariants] = useState<CategoryVariant[]>([])
   const [categories, setCategories] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
@@ -68,7 +69,6 @@ const ProductOrganize = ({ product }: ProductOrganizeProps) => {
         setLoading(false)
       }
     }
-
     fetchCategories()
   }, [])
 
@@ -133,58 +133,16 @@ const ProductOrganize = ({ product }: ProductOrganizeProps) => {
           })
         }
       }
-
-      console.log('Çoklu kategori eşleştirmesi:', {
-        productData: {
-          category: product.category,
-          allProperties: Object.keys(product.properties || {}),
-          m_kategoriler: product.properties?.m_kategoriler?.map((k: any) => ({
-            kategori_1: k.kategori_aciklama_1,
-            kategori_2: k.kategori_aciklama_2,
-            kategori_3: k.kategori_aciklama_3
-          })),
-          direct_m_kategoriler: (product as any).m_kategoriler?.map((k: any) => ({
-            kategori_1: k.kategori_aciklama_1,
-            kategori_2: k.kategori_aciklama_2,
-            kategori_3: k.kategori_aciklama_3
-          }))
-        },
-        matchedVariants: newVariants,
-        availableCategories: Object.keys(categories)
-      })
       if (newVariants.length === 0) {
         newVariants.push({ group: '', value: '' })
       }
-
       setVariants(newVariants)
     } else if (!loading && variants.length === 0) {
       setVariants([{ group: '', value: '' }])
     }
   }, [product, categories, loading])
 
-  const handleGroupChange = (index: number, newGroup: string) => {
-    const updated = [...variants]
-    updated[index] = { group: newGroup, value: '' }
-    setVariants(updated)
-  }
 
-  const handleValueChange = (index: number, newValue: string) => {
-    const updated = [...variants]
-    updated[index].value = newValue
-    setVariants(updated)
-  }
-
-  const addVariant = () => {
-    setVariants([...variants, { group: '', value: '' }])
-  }
-
-  const removeVariant = (index: number) => {
-    if (variants.length > 1) {
-      const updated = [...variants]
-      updated.splice(index, 1)
-      setVariants(updated)
-    }
-  }
   return (
     <Card>
       <CardHeader title='Ürün Kategori Bilgileri' />
@@ -200,6 +158,7 @@ const ProductOrganize = ({ product }: ProductOrganizeProps) => {
                       label='Ana Kategori'
                       value={variant.group}
                       onChange={e => handleGroupChange(index, e.target.value)}
+                      disabled={readOnly}
                     >
                       {Object.keys(categories).map(category => (
                         <MenuItem key={category} value={category}>
@@ -217,7 +176,7 @@ const ProductOrganize = ({ product }: ProductOrganizeProps) => {
                         value={variant.value}
                         label='Alt Kategori'
                         onChange={e => handleValueChange(index, e.target.value)}
-                        disabled={!variant.group}
+                        disabled={readOnly || !variant.group}
                       >
                         {variant.group && categories[variant.group]?.map(subCategory => (
                           <MenuItem key={subCategory} value={subCategory}>
@@ -226,28 +185,11 @@ const ProductOrganize = ({ product }: ProductOrganizeProps) => {
                         ))}
                       </Select>
                     </FormControl>
-                    {variants.length > 1 && (
-                      <CustomIconButton
-                        onClick={() => removeVariant(index)}
-                        className='min-is-fit'
-                      >
-                        <i className='ri-close-line' />
-                      </CustomIconButton>
-                    )}
                   </div>
                 </Grid>
               </Grid>
             </Grid>
           ))}
-          <Grid size={{ xs: 12 }}>
-            <Button
-              variant='contained'
-              onClick={addVariant}
-              startIcon={<i className='ri-add-line' />}
-            >
-              Kategori Ekle
-            </Button>
-          </Grid>
         </Grid>
       </CardContent>
     </Card>
