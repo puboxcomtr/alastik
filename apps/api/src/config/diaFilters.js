@@ -5,7 +5,7 @@
 
 const MAIN_DIA_FILTERS = [
     { field: "durum", operator: "=", value: "A" },
-    { field: "ozelkod11kodu", operator: "=", value: "E" }
+    { field: "ozelkod11", operator: "=", value: "E (E)" }
 ];
 
 // Kategori filtreleri kaldırıldı - Web panel kontrolü ile yapılacak
@@ -39,6 +39,7 @@ const DIA_FIELDS = [
     'fiili_stok',
     'gercek_stok',
     'durum',
+    'ozelkod11',
     'ozelkod11kodu',
     'm_kategoriler',
     'm_resimler',
@@ -60,7 +61,7 @@ const DIA_FIELDS = [
 
 const FILTER_DESCRIPTIONS = {
     "durum": "Aktif Ürünler (A)",
-    "ozelkod11kodu": "Özel Kod 11 (E)"
+    "ozelkod11": "Özel Kod 11 (E)"
 };
 
 /**
@@ -87,9 +88,7 @@ function getDiaFieldsCustom(customFields = null) {
 /**
  * Tüm filtreleri döndürür - artık sadece temel filtreler
  */
-function getAllFilters() {
-    return getBasicFilters();
-}
+
 
 /**
  * Sync türüne göre filtreler
@@ -125,12 +124,11 @@ function getFilterDescriptions() {
  * Filtre konfigürasyonunu loglar
  */
 function logFilterConfig() {
-    console.log('=== DIA FİLTRE KONFIGÜRASYONU (MİNİMAL) ===');
+    console.log('=== DIA FİLTRE KONFIGÜRASYONU ===');
     console.log('Temel Filtreler:', JSON.stringify(MAIN_DIA_FILTERS, null, 2));
     console.log('DIA Fields:', DIA_FIELDS.length, 'alan çekilecek');
     console.log('Sync Tipleri:', Object.keys(SYNC_SPECIFIC_FILTERS));
     console.log('NOT: Sadece durum kontrolleri uygulanıyor');
-    console.log('===============================================');
 }
 
 module.exports = {
@@ -144,7 +142,6 @@ module.exports = {
 
     // Fonksiyonlar
     getBasicFilters,
-    getAllFilters,
     getFiltersForSyncType,
     getCategoryFilter,
     getAvailableSyncTypes,
