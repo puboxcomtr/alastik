@@ -584,42 +584,6 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Mevcut kayıtları temizleme *
-   */
-  async cleanupNonCompliantRecords() {
-    try {
-      this.logger.info('=== MEVCUT KAYITLAR TEMİZLENİYOR ===');
-      const deleteResult = await DiaStock.deleteMany({
-        $or: [
-          { durum: { $ne: 'A' } },
-          { b2c_durum: { $ne: 'E' } },
-          { b2c_gonder: { $ne: 'E' } },
-          { fiili_stok: { $lte: 0 } },
-          { 'm_kategoriler.kategori_aciklama_1': { $nin: require('../config/diaFilters').CATEGORY_FILTERS } },
-          {
-            'm_urunOzellikleri': {
-              $elemMatch: {
-                ozellikadi: 'Durumu',
-                detayaciklama: 'İkinci El'
-              }
-            }
-          }
-        ]
-      });
-
-      this.logger.info('=== MEVCUT KAYIT TEMİZLEME TAMAMLANDI ===', {
-        deletedCount: deleteResult.deletedCount,
-        reason: 'Filtreleri geçmeyen kayıtlar silindi'
-      });
-
-      return { deletedCount: deleteResult.deletedCount };
-
-    } catch (error) {
-      this.logger.error('Kayıt temizleme hatası:', { error: error.message });
-      throw error;
-    }
-  }
 
   /**
    * DIA verisini temizle ve dönüştür
@@ -785,14 +749,9 @@ class DiaStockService {
   async fullSync() {
     try {
       this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON BAŞLANGICI ===');
-
       const startTime = Date.now();
 
-      // 1. Önce mevcut filtreleri geçmeyen kayıtları temizle
-      const cleanupResult = await this.cleanupNonCompliantRecords();
-      this.logger.info('Cleanup tamamlandı:', cleanupResult);
-
-      // 2. Sadece filtrelenmiş verileri getir ve veritabanına yaz
+      // 1. Sadece filtrelenmiş verileri getir ve veritabanına yaz
       const result = await this.fetchAndSyncIncrementally();
 
       const endTime = Date.now();
@@ -800,13 +759,11 @@ class DiaStockService {
 
       this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON TAMAMLANDI ===', {
         duration: `${duration}ms`,
-        cleanup: cleanupResult,
         sync: result
       });
 
       return {
         ...result,
-        cleanup: cleanupResult,
         duration,
         timestamp: new Date()
       };
@@ -896,11 +853,8 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          const isSecondHand = this.isSecondHandProduct(product);
-          if (!isSecondHand) {
-            const updated = await this.updateOnlyProductNames(product);
-            if (updated) totalUpdated++;
-          }
+          const updated = await this.updateOnlyProductNames(product);
+          if (updated) totalUpdated++;
           totalProcessed++;
         }
 
@@ -941,16 +895,6 @@ class DiaStockService {
       return false;
     }
   }
-  isSecondHandProduct(product) {
-    if (product.m_urunOzellikleri && Array.isArray(product.m_urunOzellikleri)) {
-      return product.m_urunOzellikleri.some(ozellik =>
-        ozellik.ozellikadi === 'Durumu' &&
-        ozellik.detayaciklama === 'İkinci El'
-      );
-    }
-    return false;
-  }
-
   /* * Sadece SKU Güncelle * */
   async syncOnlyCodes() {
     const operationId = `sync_codes_${Date.now()}`;
@@ -982,11 +926,8 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          const isSecondHand = this.isSecondHandProduct(product);
-          if (!isSecondHand) {
-            const updated = await this.updateOnlyProductCodes(product);
-            if (updated) totalUpdated++;
-          }
+          const updated = await this.updateOnlyProductCodes(product);
+          if (updated) totalUpdated++;
           totalProcessed++;
         }
 
@@ -1077,11 +1018,8 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          const isSecondHand = this.isSecondHandProduct(product);
-          if (!isSecondHand) {
-            const updated = await this.updateOnlyProductPrices(product);
-            if (updated) totalUpdated++;
-          }
+          const updated = await this.updateOnlyProductPrices(product);
+          if (updated) totalUpdated++;
           totalProcessed++;
         }
 
@@ -1190,11 +1128,8 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          const isSecondHand = this.isSecondHandProduct(product);
-          if (!isSecondHand) {
-            const updated = await this.updateOnlyProductImages(product);
-            if (updated) totalUpdated++;
-          }
+          const updated = await this.updateOnlyProductImages(product);
+          if (updated) totalUpdated++;
           totalProcessed++;
         }
 

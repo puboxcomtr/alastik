@@ -3,6 +3,9 @@ const winston = require('winston');
 const DiaStockService = require('./DiaStockService');
 const CacheManager = require('../../../../packages/cache');
 
+
+const { getBasicFilters, logFilterConfig } = require('../config/diaFilters');
+
 class DiaStockScheduler {
   constructor() {
     this.diaStockService = new DiaStockService();
