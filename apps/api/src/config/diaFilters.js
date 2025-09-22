@@ -1,27 +1,20 @@
 /**
  * TÜM DIA SYNC İŞLEMLERİ İÇİN MERKEZI FİLTRELER
+ * SADECE TEMEL DURUM FİLTRELERİ - Kategori filtreleri kaldırıldı
  */
 
 const MAIN_DIA_FILTERS = [
     { field: "durum", operator: "=", value: "A" },
-    { field: "b2c_durum", operator: "=", value: "E" },
-    { field: "b2c_gonder", operator: "=", value: "E" },
-    { field: "fiili_stok", operator: ">", value: "0" }
+    { field: "ozelkod11kodu", operator: "=", value: "E" }
 ];
 
-const CATEGORY_FILTERS = [
-    "Lastik",
-    "Jant",
-    "Aksesuar",
-    "Kar Paleti ve Zinciri",
-    "Akü"
-];
+// Kategori filtreleri kaldırıldı - Web panel kontrolü ile yapılacak
+const CATEGORY_FILTERS = [];
 
-const EXCLUDED_CATEGORIES = [
-    "İkinci El Lastik",
-    "Hizmetlerimiz"
-];
+// Hariç tutulan kategoriler kaldırıldı - Web panel kontrolü ile yapılacak  
+const EXCLUDED_CATEGORIES = [];
 
+// Sync türleri için ek filtreler (boş)
 const SYNC_SPECIFIC_FILTERS = {
     names: [],
     codes: [],
@@ -30,58 +23,133 @@ const SYNC_SPECIFIC_FILTERS = {
     all: []
 };
 
+// DIA API'dan çekilecek alanlar
+const DIA_FIELDS = [
+    '_key',
+    'stokkartkodu',
+    'aciklama',
+    'marka',
+    'markaack',
+    'fiyat1',
+    'fiyat2',
+    'fiyat3',
+    'fiyat4',
+    'fiyat10',
+    'sontuketicifiyati',
+    'fiili_stok',
+    'gercek_stok',
+    'durum',
+    'ozelkod11kodu',
+    'm_kategoriler',
+    'm_resimler',
+    'm_urunOzellikleri',
+    'm_birimler',
+    'ekalan1',
+    'ekalan2',
+    'ekalan3',
+    'ekalan4',
+    'ekalan5',
+    'menseiulkeadi',
+    'urunagaci1',
+    'azamimiktar',
+    'azamimiktar_firma',
+    'anabarkod',
+    'anabirimkey',
+    'anabirimdesi'
+];
+
 const FILTER_DESCRIPTIONS = {
     "durum": "Aktif Ürünler (A)",
-    "b2c_durum": "B2C Etkin (E)",
-    "b2c_gonder": "B2C Gönderim Aktif (E)",
-    "fiili_stok": "Stokta Var (>0)",
+    "ozelkod11kodu": "Özel Kod 11 (E)"
 };
 
-function getCategoryFilter() {
-    return CATEGORY_FILTERS.map(category => ({
-        field: "m_kategoriler.kategori_aciklama_1",
-        operator: "=",
-        value: category
-    }));
+/**
+ * Sadece temel filtreleri döndürür - kategori filtreleri kaldırıldı
+ */
+function getBasicFilters() {
+    return [...MAIN_DIA_FILTERS];
 }
 
+/**
+ * DIA API fields listesini döndürür
+ */
+function getDiaFields() {
+    return [...DIA_FIELDS];
+}
+
+/**
+ * Custom fields listesi ile override edebilir
+ */
+function getDiaFieldsCustom(customFields = null) {
+    return customFields ? customFields : getDiaFields();
+}
+
+/**
+ * Tüm filtreleri döndürür - artık sadece temel filtreler
+ */
 function getAllFilters() {
-    const categoryFilters = getCategoryFilter();
-    return [...MAIN_DIA_FILTERS, ...categoryFilters];
+    return getBasicFilters();
 }
 
+/**
+ * Sync türüne göre filtreler
+ */
 function getFiltersForSyncType(syncType) {
-    const mainFilters = getAllFilters();
+    const basicFilters = getBasicFilters();
     const specificFilters = SYNC_SPECIFIC_FILTERS[syncType] || [];
-    return [...mainFilters, ...specificFilters];
+    return [...basicFilters, ...specificFilters];
 }
 
+/**
+ * Kategori filtreleri - artık boş döndürür
+ */
+function getCategoryFilter() {
+    return [];
+}
+
+/**
+ * Mevcut sync türlerini döndürür
+ */
 function getAvailableSyncTypes() {
     return Object.keys(SYNC_SPECIFIC_FILTERS);
 }
 
+/**
+ * Filtre açıklamalarını döndürür
+ */
 function getFilterDescriptions() {
     return { ...FILTER_DESCRIPTIONS };
 }
 
+/**
+ * Filtre konfigürasyonunu loglar
+ */
 function logFilterConfig() {
-    console.log('=== DIA FİLTRE KONFIGÜRASYONU ===');
+    console.log('=== DIA FİLTRE KONFIGÜRASYONU (MİNİMAL) ===');
     console.log('Temel Filtreler:', JSON.stringify(MAIN_DIA_FILTERS, null, 2));
-    console.log('Kategori Filtreleri:', CATEGORY_FILTERS);
+    console.log('DIA Fields:', DIA_FIELDS.length, 'alan çekilecek');
     console.log('Sync Tipleri:', Object.keys(SYNC_SPECIFIC_FILTERS));
-    console.log('================================');
+    console.log('NOT: Sadece durum kontrolleri uygulanıyor');
+    console.log('===============================================');
 }
 
 module.exports = {
+    // Ana exports 
     MAIN_DIA_FILTERS,
     CATEGORY_FILTERS,
     EXCLUDED_CATEGORIES,
     SYNC_SPECIFIC_FILTERS,
     FILTER_DESCRIPTIONS,
-    getCategoryFilter,
+    DIA_FIELDS,
+
+    // Fonksiyonlar
+    getBasicFilters,
     getAllFilters,
     getFiltersForSyncType,
+    getCategoryFilter,
     getAvailableSyncTypes,
     getFilterDescriptions,
+    getDiaFields,
+    getDiaFieldsCustom,
     logFilterConfig
 };

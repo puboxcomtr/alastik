@@ -4,7 +4,7 @@ const DiaStock = require('../models/DiaStock');
 const CacheManager = require('../../../../packages/cache');
 
 /* Filter Config */
-const { getFiltersForSyncType, logFilterConfig, getAllFilters } = require('../config/diaFilters');
+const { getFiltersForSyncType, logFilterConfig, getBasicFilters, getDiaFields } = require('../config/diaFilters');
 
 
 class DiaStockService {
@@ -235,13 +235,15 @@ class DiaStockService {
       if (!sessionId) {
         throw new Error('DIA login başarısız');
       }
-      const mandatoryFilters = getAllFilters();
+
+      // Sadece config'den gelen temel filtreleri kullan
+      const configFilters = getBasicFilters();
 
       const defaultParams = {
         session_id: sessionId,
         firma_kodu: this.diaApiConfig.firmaKodu,
         donem_kodu: this.diaApiConfig.donemKodu,
-        filters: mandatoryFilters,
+        filters: configFilters,
         sorts: [{ field: "stokkartkodu", sorttype: "DESC" }],
         params: {
           _key_sis_depo: 0,
@@ -251,24 +253,27 @@ class DiaStockService {
         limit: this.apiBatchSize,
         offset: 0
       };
+
       const requestPayload = {
         scf_stokkart_detay_listele: {
           ...defaultParams,
           ...params,
-          filters: mandatoryFilters.concat(params.filters || [])
+          filters: configFilters.concat(params.filters || []),
+          fields: getDiaFields()
         }
       };
 
       const endpoint = `${this.diaApiConfig.baseURL}/api/v3/scf/json`;
 
-      this.logger.info('=== FILTRELENMIŞ DIA STOK API REQUEST ===', {
+      this.logger.info('=== CONFIG FİLTRELİ DIA STOK API REQUEST ===', {
         timestamp: new Date().toISOString(),
         requestId: `req_${Date.now()}`,
         endpoint: endpoint,
-        mandatoryFilters,
+        configFilters,
         additionalFilters: params.filters || [],
         offset: params.offset || 0,
-        limit: params.limit || defaultParams.limit
+        limit: params.limit || defaultParams.limit,
+        note: 'Sadece config/diaFilters.js temel filtreler kullanılıyor'
       });
 
       const response = await this.axiosInstance.post(endpoint, requestPayload);
@@ -282,57 +287,22 @@ class DiaStockService {
         throw new Error(`DIA API Error: ${response.data.msg || 'Unknown error'}`);
       }
 
+      // DIA'dan dönen tüm veriyi direkt döndür - MANUEL FİLTRELEME KALDIRILDI
       let stockData = response.data.result || [];
 
-      // EK FİLTRELEME: İkinci El ürünlerini hariç tut
-      stockData = stockData.filter(item => {
-        // İkinci El kontrolü
-        if (item.m_urunOzellikleri && Array.isArray(item.m_urunOzellikleri)) {
-          const hasSecondHand = item.m_urunOzellikleri.some(prop =>
-            prop.ozellikadi === 'Durumu' && prop.detayaciklama === 'İkinci El'
-          );
-          if (hasSecondHand) {
-            this.logger.debug('İkinci El ürün filtrelendi:', {
-              _key: item._key,
-              stokkartkodu: item.stokkartkodu
-            });
-            return false;
-          }
-        }
-
-        // YENİ EKLEME - İstenmeyen kategorileri filtrele
-        if (item.m_kategoriler && Array.isArray(item.m_kategoriler)) {
-          const { CATEGORY_FILTERS } = require('../config/diaFilters');
-
-          const hasAllowedCategory = item.m_kategoriler.some(kat =>
-            CATEGORY_FILTERS.includes(kat.kategori_aciklama_1)
-          );
-
-          if (!hasAllowedCategory) {
-            this.logger.debug('İstenmeyen kategori filtrelendi:', {
-              _key: item._key,
-              kategori: item.m_kategoriler[0]?.kategori_aciklama_1
-            });
-            return false;
-          }
-        }
-
-        return true;
-      });
-
-      this.logger.info('=== FİLTRELEME SONUÇLARI ===', {
-        originalCount: response.data.result?.length || 0,
-        filteredCount: stockData.length,
-        filteredOutCount: (response.data.result?.length || 0) - stockData.length,
-        filters: {
-          categories: 'Config\'den gelen kategoriler',
-          status: 'Active',
-          b2cStatus: 'Enabled',
-          b2cSend: 'Enabled',
-          stock: '> 0',
-          excludeSecondHand: true,
-          excludeUnwantedCategories: true
-        }
+      this.logger.info('=== CONFIG FİLTRE SONUÇLARI (MANUEL FİLTRE KALDIRILDI) ===', {
+        receivedCount: stockData.length,
+        actualFieldCount: stockData.length > 0 ? Object.keys(stockData[0]).length : 0,
+        requestedFieldCount: getDiaFields().length,
+        note: 'Tüm manuel filtreleme kaldırıldı - DIA API filtreleri yeterli',
+        configFiltersUsed: configFilters.length,
+        sampleData: stockData.length > 0 ? {
+          _key: stockData[0]._key,
+          stokkartkodu: stockData[0].stokkartkodu,
+          aciklama: stockData[0].aciklama,
+          durum: stockData[0].durum,
+          ozelkod11kodu: stockData[0].ozelkod11kodu
+        } : null
       });
 
       return stockData;
@@ -353,7 +323,7 @@ class DiaStockService {
           this.logger.error('Session yenileme başarısız:', retryError.message);
         }
       }
-      this.logger.error('=== FILTRELENMIŞ DIA STOK API HATASI ===', {
+      this.logger.error('=== CONFIG FİLTRELİ DIA STOK API HATASI ===', {
         timestamp: new Date().toISOString(),
         totalDuration: `${totalDuration}ms`,
         error: error.message,
