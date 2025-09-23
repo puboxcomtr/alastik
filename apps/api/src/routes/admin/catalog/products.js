@@ -19,7 +19,7 @@ const router = express.Router();
 const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (req, res, next) => next();
 
 /**
- * Ürün Listeleme - Temiz Versiyon (Pagination Yok)
+ * Ürün Listeleme
 **/
 router.get('/', maybeAuth, async (req, res) => {
   try {
@@ -171,11 +171,12 @@ router.get('/', maybeAuth, async (req, res) => {
           originCountry: diaData.menseiulkeadi || '',
 
           // Fiyat detayları
-          price1: pricing.fiyat1 || 0,
+          price1: pricing.fiyat1 || 0, // Liste Fiyatı (Üstü Çizili)
           price2: pricing.fiyat2 || 0,
           price3: pricing.fiyat3 || 0,
-          price4: pricing.fiyat4 || 0,
+          price4: pricing.fiyat4 || 0, // Satış Fiyatı
           price10: pricing.fiyat10 || 0,
+
 
           // Web özel alanları
           seoUrl: customData.seoUrl || null,
@@ -319,10 +320,10 @@ router.get('/:id', maybeAuth, async (req, res) => {
       discountType: customData.discountType || 'percentage',
 
       // Tüm fiyat seviyeleri
-      price1: pricing.fiyat1 || 0,
+      price1: pricing.fiyat1 || 0, // Liste Fiyatı (Üstü Çizili)
       price2: pricing.fiyat2 || 0,
       price3: pricing.fiyat3 || 0,
-      price4: pricing.fiyat4 || 0,
+      price4: pricing.fiyat4 || 0, // Satış Fiyatı
       price10: pricing.fiyat10 || 0,
 
       // SEO bilgileri
@@ -394,7 +395,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
 /**
  * Ürün Detay Güncelleme - WebProduct Kullanarak
  */
-
 router.patch('/:id', maybeAuth, [
   body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
   body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),

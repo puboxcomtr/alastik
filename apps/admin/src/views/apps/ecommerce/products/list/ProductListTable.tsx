@@ -147,7 +147,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
             <div className='flex flex-col' style={{ gap: '5px' }}>
               <div className='flex' style={{ gap: '5px' }}>
                 <Typography variant='body2' fontWeight={'bold'} color={'#eb3d63'}>Satış Fiyatı:</Typography>
-                <Typography variant='body2'>{row.original.price.toLocaleString('tr-TR') + " TL"}</Typography>
+                <Typography variant='body2'>{row.original.price1.toLocaleString('tr-TR') + " TL"}</Typography>
               </div>
               <div className='flex' style={{ gap: '5px' }}>
                 <Typography variant='body2' fontWeight={'bold'}>İndirimli Fiyatı:</Typography>

@@ -18,7 +18,6 @@ import Tab from '@mui/material/Tab'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 
 // Context
@@ -62,21 +61,17 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
 
   // SEO Title değişiklik handler
   const handleSeoTitleChange = (value: string) => {
-    console.log('SEO Title değişti:', value)
     setSeoTitle(value)
     updateField('seoTitle', value)
   }
 
-  // SEO Description değişiklik handler
   const handleSeoDescriptionChange = (value: string) => {
-    console.log('SEO Description değişti:', value)
     setSeoDescription(value)
     updateField('seoDescription', value)
   }
 
   // SEO URL değişiklik handler
   const handleSeoUrlChange = (value: string) => {
-    console.log('SEO URL değişti:', value)
     const cleanUrl = value
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
@@ -119,14 +114,14 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         required
                         inputProps={{ maxLength: 100 }}
                         helperText={
-                          <div className="flex justify-between items-center">
+                          <span className="flex justify-between items-center">
                             <span>Bu alan arama motorlarında görünecek başlıktır</span>
                             <span className="flex items-center gap-1">
                               <span className={seoTitle.length <= 70 ? "text-green-500" : "text-red-500"}>
                                 {seoTitle.length}/70
                               </span>
                             </span>
-                          </div>
+                          </span>
                         }
                       />
                     </FormControl>
@@ -144,14 +139,14 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         rows={3}
                         inputProps={{ maxLength: 160 }}
                         helperText={
-                          <div className="flex justify-between items-center">
+                          <span className="flex justify-between items-center">
                             <span>Bu alan arama motorlarında açıklama olarak görünecektir</span>
                             <span className="flex items-center gap-1">
                               <span className={seoDescription.length <= 160 ? "text-green-500" : "text-red-500"}>
                                 {seoDescription.length}/160
                               </span>
                             </span>
-                          </div>
+                          </span>
                         }
                       />
                     </FormControl>
@@ -196,9 +191,9 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
-                        label='Alış Fiyatı'
-                        placeholder='Alış Fiyatı Giriniz'
-                        value={product.price ? product.price.toLocaleString('tr-TR') + " TL" : "0 TL"}
+                        label='Piyasa Fiyatı'
+                        placeholder='Piyasa Giriniz'
+                        value={product.price1 ? product.price1.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -210,7 +205,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         fullWidth
                         label='Satış Fiyatı'
                         placeholder='Satış Fiyatı Giriniz'
-                        value={product.price2 ? product.price2.toLocaleString('tr-TR') + " TL" : "0 TL"}
+                        value={product.price4 ? product.price4.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />
@@ -222,46 +217,6 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         fullWidth
                         label='İndirimli Satış Fiyatı'
                         placeholder='İndirimli Satış Fiyatı Giriniz'
-                        value={product.price3 ? product.price3.toLocaleString('tr-TR') + " TL" : "0 TL"}
-                        disabled
-                        required
-                      />
-                    </FormControl>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography className='font-medium'>Ek Fiyat Alanları</Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
-                    <FormControl fullWidth>
-                      <TextField
-                        fullWidth
-                        label='Fiyat 4'
-                        placeholder='Fiyat 4 Giriniz'
-                        value={product.price4 ? product.price4.toLocaleString('tr-TR') + " TL" : "0 TL"}
-                        disabled
-                        required
-                      />
-                    </FormControl>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
-                    <FormControl fullWidth>
-                      <TextField
-                        fullWidth
-                        label='Fiyat 5'
-                        placeholder='Fiyat 5 Giriniz'
-                        value={product.price5 ? product.price5.toLocaleString('tr-TR') + " TL" : "0 TL"}
-                        disabled
-                        required
-                      />
-                    </FormControl>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
-                    <FormControl fullWidth>
-                      <TextField
-                        fullWidth
-                        label='Fiyat 6'
-                        placeholder='Fiyat 6 Giriniz'
-                        value={product.price6 ? product.price6.toLocaleString('tr-TR') + " TL" : "0 TL"}
                         disabled
                         required
                       />

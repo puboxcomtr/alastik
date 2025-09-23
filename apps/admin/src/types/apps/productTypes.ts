@@ -19,17 +19,17 @@ export type ProductType = {
 
   // Fiyatlandırma - Tüm Fiyat Seviyeleri
   price: number
-  price1?: number
-  price2?: number
-  price3?: number
-  price4?: number
-  price5?: number
-  price6?: number
-  price10?: number
-  webPrice?: number | null
-  originalPrice?: number | null
-  discount?: number
-  discountType?: 'percentage' | 'fixed'
+  price1: number
+  price2: number
+  price3: number
+  price4: number
+  price5: number
+  price6: number
+  price10: number
+  webPrice: number | null
+  originalPrice: number | null
+  discount: number
+  discountType: 'percentage' | 'fixed'
 
   // Görseller
   image: string
