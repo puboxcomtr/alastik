@@ -336,6 +336,9 @@ router.get('/:id', maybeAuth, async (req, res) => {
       image: featuredImage,
       images: images,
       customImages: customData.customImages || [],
+      
+      // Kargo
+      delivery: customData.delivery || 'same_day',
 
       // İçerik
       description: customData.customDescription || null,
@@ -400,6 +403,7 @@ router.patch('/:id', maybeAuth, [
   body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
   body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
   body('seoKeywords').optional().isArray().withMessage('SEO anahtar kelimeleri array olmalıdır'),
+  body('delivery').optional().isIn(['same_day', 'next_day', 'next_week']).withMessage('Geçersiz teslimat seçeneği'),
   body('webVisible').optional().isBoolean().withMessage('Web görünürlük boolean olmalıdır'),
   body('webPrice').optional().isFloat({ min: 0 }).withMessage('Web fiyatı 0 veya daha büyük olmalıdır'),
   body('webDiscount').optional().isFloat({ min: 0, max: 100 }).withMessage('İndirim 0-100 arasında olmalıdır'),
@@ -434,6 +438,9 @@ router.patch('/:id', maybeAuth, [
       webTags,
       webCategory,
       webSubCategory,
+
+      // Kargo
+      delivery,
 
       // İçerik
       customDescription,
@@ -495,6 +502,9 @@ router.patch('/:id', maybeAuth, [
     if (webTags !== undefined) updateData['customData.webTags'] = Array.isArray(webTags) ? webTags : [];
     if (webCategory !== undefined) updateData['customData.webCategory'] = webCategory;
     if (webSubCategory !== undefined) updateData['customData.webSubCategory'] = webSubCategory;
+    
+    // Kargo Süresi
+    if (delivery !== undefined) updateData['customData.delivery'] = delivery;
 
     // İçerik
     if (customDescription !== undefined) updateData['customData.customDescription'] = customDescription;
@@ -561,7 +571,7 @@ router.patch('/:id', maybeAuth, [
       console.log('Cache temizleme hatası (önemsiz):', error.message);
     }
 
-    const updatedFieldsCount = Object.keys(updateData).length - 1; 
+    const updatedFieldsCount = Object.keys(updateData).length - 1;
 
     res.json({
       success: true,

@@ -178,6 +178,13 @@ const customDataSchema = new mongoose.Schema({
     webOrder: { type: Number, default: 0 },
     webVisible: { type: Boolean, default: true },
 
+    // Kargo Süresi
+    delivery: {
+        type: String,
+        enum: ['same_day', 'next_day', 'next_week'],
+        default: 'next_week'
+    },
+
     // İçerik
     customDescription: String,
     shortDescription: String,

@@ -41,7 +41,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
   const [seoTitle, setSeoTitle] = useState('')
   const [seoDescription, setSeoDescription] = useState('')
   const [seoUrl, setSeoUrl] = useState('')
-  const [value, setValue] = useState('cargo_time')
+  const [delivery, setDelivery] = useState('next_week')
   const [activeTab, setActiveTab] = useState('seo')
 
   // Hooks
@@ -52,6 +52,8 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
     setSeoTitle(product.seo_title || '')
     setSeoDescription(product.seo_description || '')
     setSeoUrl(product.seo_url || '')
+    console.log('Product data:', product.delivery);
+    setDelivery(product.delivery || 'same_day')
   }, [product])
 
   // Tab değişikliği
@@ -81,6 +83,10 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
 
     setSeoUrl(cleanUrl)
     updateField('seoUrl', cleanUrl)
+  }
+  const handleDeliveryChange = (value: string) => {
+    setDelivery(value)
+    updateField('delivery', value)
   }
 
   return (
@@ -233,13 +239,13 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                     <InputLabel id='select-label'>Kargolanma Süresi</InputLabel>
                     <Select
                       labelId='select-label'
-                      value={value}
+                      value={delivery}
                       label='Lütfen Seçim Yapınız'
-                      onChange={e => setValue(e.target.value)}
+                      onChange={e => handleDeliveryChange(e.target.value)}
                     >
-                      <MenuItem value='today'>Aynı Gün</MenuItem>
-                      <MenuItem value='tomorrow'>Ertesi Gün</MenuItem>
-                      <MenuItem value='nextWeek'>Gelecek Hafta</MenuItem>
+                      <MenuItem value='same_day'>Aynı Gün</MenuItem>
+                      <MenuItem value='next_day'>Ertesi Gün</MenuItem>
+                      <MenuItem value='next_week'>Gelecek Hafta</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

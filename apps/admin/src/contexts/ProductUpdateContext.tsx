@@ -8,6 +8,7 @@ interface ProductUpdateData {
     seoTitle?: string
     seoDescription?: string
     seoUrl?: string
+    delivery?: string
     seoKeywords?: string[]
     webVisible?: boolean
     webTags?: string[]

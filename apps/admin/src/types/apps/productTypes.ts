@@ -46,6 +46,9 @@ export type ProductType = {
   seo_description?: string
   seo_url?: string | null
   seo_keywords?: string[]
+  
+  // İçerik ve Açıklamalar
+  delivery?: string
 
   // İçerik ve Açıklamalar
   description?: string | null
