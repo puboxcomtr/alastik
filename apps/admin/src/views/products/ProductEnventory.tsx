@@ -228,33 +228,6 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
               </FormGroup>
             </TabPanel>
             <TabPanel value='advanced'>
-              <Typography className='font-medium mbe-2'>Ürün Görünümü</Typography>
-              <Grid container spacing={5}>
-                <Grid size={{ xs: 12, sm: 12, md: 6 }}>
-                  <FormControl fullWidth>
-                    <FormControlLabel
-                      control={<Checkbox />}
-                      label={
-                        <Typography className='font-medium' color='text.primary'>
-                          Ziyaretçi Görebilir
-                        </Typography>
-                      }
-                    />
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 12, md: 6 }}>
-                  <FormControlLabel
-                    control={<Checkbox />}
-                    className='mbe-2'
-                    label={
-                      <Typography className='font-medium' color='text.primary'>
-                        Üye Görebilir
-                      </Typography>
-                    }
-                  />
-                </Grid>
-              </Grid>
-              <hr className='border-t border-gray-300 my-4' />
               <Grid container spacing={5}>
                 <Grid size={{ xs: 12, sm: 12, md: 12 }}>
                   <FormControl fullWidth>
@@ -269,28 +242,6 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                       <MenuItem value='tomorrow'>Ertesi Gün</MenuItem>
                       <MenuItem value='nextWeek'>Gelecek Hafta</MenuItem>
                     </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-              <hr className='border-t border-gray-300 my-4' />
-
-              <Grid container spacing={5}>
-                <Grid size={{ xs: 12, sm: 12, md: 12 }}>
-                  <FormControl fullWidth>
-                    <Grid container spacing={5}>
-                      <Grid size={{ xs: 12, sm: 12, md: 12 }}>
-                        <FormControl fullWidth>
-                          <FormControlLabel
-                            control={<Checkbox />}
-                            label={
-                              <Typography className='font-medium' color='text.primary'>
-                                Sadece Stok ve Fiyatları Dia ile eşleştirsin.
-                              </Typography>
-                            }
-                          />
-                        </FormControl>
-                      </Grid>
-                    </Grid>
                   </FormControl>
                 </Grid>
               </Grid>

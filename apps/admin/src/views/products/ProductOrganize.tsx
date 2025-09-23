@@ -9,13 +9,9 @@ import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import FormControl from '@mui/material/FormControl'
-import Button from '@mui/material/Button'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-
-// Component Imports
-import CustomIconButton from '@core/components/mui/IconButton'
 
 // Types
 interface ProductOrganizeProps {
