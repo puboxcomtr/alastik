@@ -1,6 +1,7 @@
-'use server'
+import { Suspense, useEffect } from 'react'
 // MUI Imports
 import Grid from '@mui/material/Grid2'
+import { CircularProgress, Box } from '@mui/material'
 
 // Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
@@ -13,6 +14,9 @@ import ProductFeatures from '@views/products/ProductFeatures'
 import ProductEnventory from '@/views/products/ProductEnventory'
 import ProductOrganize from '@/views/products/ProductOrganize'
 import ProductBrand from '@/views/products/ProductBrand'
+
+// Context Import
+import { ProductUpdateProvider } from '@/contexts/ProductUpdateContext'
 
 async function fetchProduct(id: string): Promise<ProductType | null> {
   const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
@@ -33,11 +37,8 @@ interface PageProps {
   }
 }
 
-export default async function eCommerceProductsEdit({ params }: PageProps) {
-  const id = (await params).id
-  const product = await fetchProduct(id)
-  if (!product) return <div>Ürün bulunamadı</div>
-
+// Context'i başlatan client component
+function ProductEditContent({ product }: { product: ProductType }) {
   return (
     <Grid container spacing={6}>
       <Grid size={{ xs: 12 }}>
@@ -70,5 +71,41 @@ export default async function eCommerceProductsEdit({ params }: PageProps) {
         </Grid>
       </Grid>
     </Grid>
+  )
+}
+
+export default async function eCommerceProductsEdit({ params }: PageProps) {
+  const id = (await params).id
+  const product = await fetchProduct(id)
+  
+  if (!product) {
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="400px"
+        textAlign="center"
+        bgcolor="#fafafa"
+        borderRadius={2}
+        p={4}
+      >
+        <h2>Ürün Bulunamadı</h2>
+        <p>ID: {id} ile eşleşen ürün bulunamadı.</p>
+      </Box>
+    )
+  }
+
+  return (
+    <ProductUpdateProvider productId={id}>
+      <Suspense fallback={
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
+      }>
+        <ProductEditContent product={product} />
+      </Suspense>
+    </ProductUpdateProvider>
   )
 }

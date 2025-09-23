@@ -1,4 +1,4 @@
-onst mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 const productCustomSchema = new mongoose.Schema({
     dia_id: {

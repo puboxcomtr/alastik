@@ -6,58 +6,86 @@ import type { SyntheticEvent } from 'react'
 // MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
+import { InputAdornment } from '@mui/material'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
-import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
-import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
 import Select from '@mui/material/Select'
 import Tab from '@mui/material/Tab'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 
+// Context
+import { useProductUpdate } from '@/contexts/ProductUpdateContext'
+
 // Component Imports
-import Link from '@components/Link'
 import CustomTabList from '@core/components/mui/TabList'
 
-/* Json TS Export */
+// Types
 import type { ProductType } from '@/types/apps/productTypes'
-import { InputAdornment } from '@mui/material'
+
 export interface ProductEnventoryProps {
   product: ProductType
 }
 
 const ProductEnventory = ({ product }: ProductEnventoryProps) => {
+  // Context hook
+  const { updateField } = useProductUpdate()
+
+  // States
   const [seoTitle, setSeoTitle] = useState('')
   const [seoDescription, setSeoDescription] = useState('')
   const [seoUrl, setSeoUrl] = useState('')
   const [value, setValue] = useState('cargo_time')
+  const [activeTab, setActiveTab] = useState('seo')
 
-  // States
+  // Hooks
+  const theme = useTheme()
+
+  // Initialize values
   useEffect(() => {
     setSeoTitle(product.seo_title || '')
     setSeoDescription(product.seo_description || '')
     setSeoUrl(product.seo_url || '')
   }, [product])
-  const [activeTab, setActiveTab] = useState('seo')
 
-  // Hooks
-  const theme = useTheme()
-  const isBelowMdScreen = useMediaQuery(theme.breakpoints.down('md'))
-
+  // Tab değişikliği
   const handleChange = (event: SyntheticEvent, value: string) => {
     setActiveTab(value)
+  }
+
+  // SEO Title değişiklik handler
+  const handleSeoTitleChange = (value: string) => {
+    console.log('SEO Title değişti:', value)
+    setSeoTitle(value)
+    updateField('seoTitle', value)
+  }
+
+  // SEO Description değişiklik handler
+  const handleSeoDescriptionChange = (value: string) => {
+    console.log('SEO Description değişti:', value)
+    setSeoDescription(value)
+    updateField('seoDescription', value)
+  }
+
+  // SEO URL değişiklik handler
+  const handleSeoUrlChange = (value: string) => {
+    console.log('SEO URL değişti:', value)
+    const cleanUrl = value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
+    setSeoUrl(cleanUrl)
+    updateField('seoUrl', cleanUrl)
   }
 
   return (
@@ -87,7 +115,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         label='SEO Başlığı'
                         placeholder='SEO Başlığı'
                         value={seoTitle}
-                        onChange={e => setSeoTitle(e.target.value)}
+                        onChange={e => handleSeoTitleChange(e.target.value)}
                         required
                         inputProps={{ maxLength: 100 }}
                         helperText={
@@ -110,19 +138,32 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         label='SEO Açıklaması'
                         placeholder='SEO Açıklaması'
                         value={seoDescription}
-                        onChange={e => setSeoDescription(e.target.value)}
+                        onChange={e => handleSeoDescriptionChange(e.target.value)}
                         required
+                        multiline
+                        rows={3}
+                        inputProps={{ maxLength: 160 }}
+                        helperText={
+                          <div className="flex justify-between items-center">
+                            <span>Bu alan arama motorlarında açıklama olarak görünecektir</span>
+                            <span className="flex items-center gap-1">
+                              <span className={seoDescription.length <= 160 ? "text-green-500" : "text-red-500"}>
+                                {seoDescription.length}/160
+                              </span>
+                            </span>
+                          </div>
+                        }
                       />
                     </FormControl>
                   </Grid>
                   <Grid size={{ xs: 12, sm: 12, md: 12 }}>
                     <FormControl fullWidth>
                       <TextField
-                        fullWidthx
+                        fullWidth
                         label='SEO URL'
                         placeholder='SEO URL Giriniz'
                         value={seoUrl}
-                        onChange={e => setSeoUrl(e.target.value)}
+                        onChange={e => handleSeoUrlChange(e.target.value)}
                         required
                         InputProps={{
                           startAdornment: (
@@ -140,12 +181,14 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                             </InputAdornment>
                           )
                         }}
+                        helperText="URL sadece küçük harf, sayı ve tire (-) içermelidir"
                       />
                     </FormControl>
                   </Grid>
                 </Grid>
               </FormGroup>
             </TabPanel>
+
             <TabPanel value='price'>
               <FormGroup className='flex flex-col gap-4'>
                 <Grid container spacing={5}>
@@ -227,6 +270,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                 </Grid>
               </FormGroup>
             </TabPanel>
+
             <TabPanel value='advanced'>
               <Grid container spacing={5}>
                 <Grid size={{ xs: 12, sm: 12, md: 12 }}>

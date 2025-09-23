@@ -1,11 +1,18 @@
 const express = require('express');
+// Buda Kaldırılacak
 const Product = require('../../../models/Product');
-const DiaStock = require('../../../models/DiaStock');
+
+const DiaStock = require('../../../models/DiaStock');  // Bu Kaldırılacak.
+
+// Web Product model
+const WebProduct = require('../../../models/WebProduct');
+
 const { authenticateAdmin } = require('../../../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 // @IMPORT Library
 const DiaStockService = require('../../../services/DiaStockService');
+
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 const router = express.Router();
 
@@ -17,99 +24,113 @@ const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (r
 router.get('/', maybeAuth, async (req, res) => {
   try {
     const { search, sku, web_status, main_category, sub_category, brand } = req.query;
+    const webFilter = {};
 
-    const diaFilter = {};
-    MAIN_DIA_FILTERS.forEach(filter => {
-      const { field, operator, value } = filter;
+    // Temel WebProduct filtreleri - aktif ve senkronize ürünler
+    webFilter['syncInfo.diaStatus'] = 'synced';
+    webFilter['diaData.durum'] = 'A';
 
-      switch (operator) {
-        case '=':
-          diaFilter[field] = value;
-          break;
-        case '>':
-          diaFilter[field] = { $gt: parseFloat(value) };
-          break;
-        case '<':
-          diaFilter[field] = { $lt: parseFloat(value) };
-          break;
-        case '>=':
-          diaFilter[field] = { $gte: parseFloat(value) };
-          break;
-        case '<=':
-          diaFilter[field] = { $lte: parseFloat(value) };
-          break;
-        default:
-          diaFilter[field] = value;
-      }
-    });
-
+    // SKU araması - diaData içinde
     if (sku && sku.trim() !== '') {
-      diaFilter.stokkartkodu = sku.trim();
+      webFilter['diaData.stokkartkodu'] = sku.trim();
     }
+    // Genel arama - text search
     else if (search) {
-      diaFilter.$text = { $search: String(search) };
+      webFilter.$text = { $search: String(search) };
     }
 
+    // Web status filtreleme - customData ve syncInfo'dan
     if (web_status && web_status.trim() !== '') {
-      diaFilter.web_status = web_status.trim();
+      if (web_status.trim() === 'Published') {
+        webFilter['syncInfo.webStatus'] = 'active';
+        webFilter['customData.webVisible'] = true;
+      } else if (web_status.trim() === 'Draft') {
+        webFilter['syncInfo.webStatus'] = 'draft';
+      } else if (web_status.trim() === 'Hidden') {
+        webFilter['customData.webVisible'] = false;
+      }
     }
 
+    // Kategori filtreleme - diaData içinde
     if (main_category) {
-      diaFilter['m_kategoriler.kategori_aciklama_1'] = main_category;
+      webFilter['diaData.m_kategoriler.kategori_aciklama_1'] = main_category;
     }
     if (sub_category) {
-      diaFilter['m_kategoriler.kategori_aciklama_2'] = sub_category;
+      webFilter['diaData.m_kategoriler.kategori_aciklama_2'] = sub_category;
     }
 
+    // Marka filtreleme - diaData içinde
     if (brand && brand !== '') {
-      diaFilter.marka = brand;
+      webFilter['diaData.marka'] = brand;
     }
 
-    const products = await DiaStock.find(diaFilter)
+    const products = await WebProduct.find(webFilter)
       .select({
         _key: 1,
-        aciklama: 1,
-        fiyat1: 1,
-        sontuketicifiyati: 1,
-        marka: 1,
-        stokkartkodu: 1,
-        fiili_stok: 1,
-        b2c_gonder: 1,
-        kdvsatis: 1,
-        ekleyenkullaniciadi: 1,
-        kullaniciadi: 1,
-        menseiulkeadi: 1,
-        urunagaci1: 1,
-        note: 1,
-        durum: 1,
-        web_status: 1,
-        'm_urunOzellikleri.ozellikadi': 1,
-        'm_urunOzellikleri.detayaciklama': 1,
-        'm_urunOzellikleri.ozellisirano': 1,
-        'm_birimler.fiyat1': 1,
-        'm_birimler.fiyat2': 1,
-        'm_birimler.fiyat3': 1,
-        'm_birimler.fiyat4': 1,
-        'm_birimler.fiyat10': 1,
-        'm_resimler.aws_url': 1,
-        'm_resimler.order_id': 1,
-        'm_kategoriler.kategori_aciklama_1': 1,
-        'm_kategoriler.kategori_aciklama_2': 1,
-        'm_kategoriler.kategori_aciklama_3': 1,
-        createdAt: 1
+        'diaData.aciklama': 1,
+        'diaData.marka': 1,
+        'diaData.stokkartkodu': 1,
+        'diaData.gercek_stok': 1,
+        'diaData.durum': 1,
+        'diaData.menseiulkeadi': 1,
+        'diaData.m_urunOzellikleri': 1,
+        'diaData.m_birimler': 1,
+        'diaData.m_resimler': 1,
+        'diaData.m_kategoriler': 1,
+        'customData.seoTitle': 1,
+        'customData.seoUrl': 1,
+        'customData.webPrice': 1,
+        'customData.webVisible': 1,
+        'customData.featuredImage': 1,
+        'customData.customImages': 1,
+        'syncInfo.webStatus': 1,
+        'syncInfo.lastDiaSync': 1,
+        createdAt: 1,
+        updatedAt: 1
       })
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .lean();
 
     res.json({
       success: true,
       data: products.map(p => {
-        const images = (p.m_resimler || [])
-          .sort((a, b) => parseInt(a.order_id || 0) - parseInt(b.order_id || 0))
-          .slice(0, 3);
-        const pricing = p.m_birimler && p.m_birimler[0] ? p.m_birimler[0] : {};
+        // DIA Data'dan gerekli alanları al
+        const diaData = p.diaData || {};
+        const customData = p.customData || {};
+        const syncInfo = p.syncInfo || {};
 
-        const properties = (p.m_urunOzellikleri || [])
+        // Görseller - önce custom images, sonra DIA images
+        let images = [];
+
+        // Custom images varsa onları kullan
+        if (customData.customImages && customData.customImages.length > 0) {
+          images = customData.customImages
+            .sort((a, b) => a.order - b.order)
+            .map(img => ({ aws_url: img.url }))
+            .slice(0, 3);
+        }
+        // Custom image yoksa DIA images kullan
+        else if (diaData.m_resimler && diaData.m_resimler.length > 0) {
+          images = diaData.m_resimler
+            .sort((a, b) => parseInt(a.order_id || 0) - parseInt(b.order_id || 0))
+            .slice(0, 3);
+        }
+
+        // Featured image - custom öncelikli
+        const featuredImage = customData.featuredImage ||
+          (images[0] && images[0].aws_url) ||
+          '/images/urun/gorsel-bulunamadi.jpg';
+
+        // Fiyatlandırma - custom price öncelikli
+        const pricing = diaData.m_birimler && diaData.m_birimler[0] ? diaData.m_birimler[0] : {};
+        const displayPrice = customData.webPrice ||
+          pricing.fiyat1 ||
+          diaData.fiyat1 ||
+          diaData.sontuketicifiyati ||
+          0;
+
+        // Ürün özellikleri
+        const properties = (diaData.m_urunOzellikleri || [])
           .filter(prop => prop.ozellikadi && prop.detayaciklama)
           .sort((a, b) => parseInt(a.ozellisirano || 0) - parseInt(b.ozellisirano || 0))
           .reduce((acc, prop) => {
@@ -117,122 +138,482 @@ router.get('/', maybeAuth, async (req, res) => {
             return acc;
           }, {});
 
-        const defaultImage = '/images/urun/gorsel-bulunamadi.jpg';
+        let webStatus = 'Inactive';
+        if (syncInfo.webStatus === 'active' && customData.webVisible) {
+          webStatus = 'Published';
+        } else if (syncInfo.webStatus === 'draft') {
+          webStatus = 'Draft';
+        } else if (!customData.webVisible) {
+          webStatus = 'Hidden';
+        }
 
         return {
           id: p._key,
-          name: p.aciklama || p.kodveaciklama || p.stokkartkodu,
-          price: p.fiyat1 || p.sontuketicifiyati || 0,
-          brand: p.marka || '',
-          sku: p.stokkartkodu,
-          qty: p.fiili_stok || 0,
-          status: p.durum === 'A' ? 'Published' : 'Inactive',
-          image: images[0]?.aws_url || defaultImage,
+          name: customData.seoTitle || diaData.aciklama || diaData.stokkartkodu,
+          price: displayPrice,
+          brand: diaData.marka || '',
+          sku: diaData.stokkartkodu,
+          qty: diaData.gercek_stok || 0,
+          status: webStatus,
+
+          // Görseller
+          image: featuredImage,
           image2: images[1]?.aws_url || null,
           image3: images[2]?.aws_url || null,
-          category: (p.m_kategoriler && p.m_kategoriler[0] && p.m_kategoriler[0].kategori_aciklama_1) || 'Genel',
-          m_kategoriler: p.m_kategoriler,
-          kdv: p.kdvsatis || 20,
-          addedBy: p.ekleyenkullaniciadi || '',
-          updatedBy: p.kullaniciadi || '',
-          originCountry: p.menseiulkeadi || '',
-          categoryPath: p.urunagaci1 || '',
-          note: p.note || '',
-          price1: pricing.fiyat1 || p.fiyat1 || 0,
+
+          // Kategori bilgileri
+          category: (diaData.m_kategoriler && diaData.m_kategoriler[0] &&
+            diaData.m_kategoriler[0].kategori_aciklama_1) || 'Genel',
+          m_kategoriler: diaData.m_kategoriler,
+
+          // Diğer bilgiler
+          kdv: pricing.kdvsatis || diaData.kdvsatis || 20,
+          originCountry: diaData.menseiulkeadi || '',
+
+          // Fiyat detayları
+          price1: pricing.fiyat1 || 0,
           price2: pricing.fiyat2 || 0,
           price3: pricing.fiyat3 || 0,
           price4: pricing.fiyat4 || 0,
           price10: pricing.fiyat10 || 0,
+
+          // Web özel alanları
+          seoUrl: customData.seoUrl || null,
+          webPrice: customData.webPrice || null,
+          webVisible: customData.webVisible !== undefined ? customData.webVisible : true,
+
+          // Ürün özellikleri
           properties: properties,
-          createdAt: p.createdAt
+
+          // Tarih bilgileri
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          lastDiaSync: syncInfo.lastDiaSync
         };
       })
     });
   } catch (error) {
-    console.error('Products get error:', error);
+    console.error('WebProducts get error:', error);
     res.status(500).json({
       success: false,
       message: 'Ürünler getirilirken hata oluştu'
     });
   }
 });
-
 /**
- * Ürün Detay Görüntüleme *
-**/
+ * Ürün Detay Görüntüleme - WebProduct Modeli Kullanarak
+ */
 router.get('/:id', maybeAuth, async (req, res) => {
   try {
     const id = String(req.params.id);
-    const p = await DiaStock.findOne({ _key: id }).select({
-      _key: 1,
-      aciklama: 1,
-      fiyat1: 1,
-      sontuketicifiyati: 1,
-      marka: 1,
-      stokkartkodu: 1,
-      barkodu: 1,
-      fiili_stok: 1,
-      durum: 1,
-      note: 1,
-      'm_kategoriler': 1,
-      'm_resimler.aws_url': 1,
-      'm_resimler.order_id': 1,
-      'm_urunOzellikleri.ozellikadi': 1,
-      'm_urunOzellikleri.detayaciklama': 1,
-      'm_urunOzellikleri.ozellisirano': 1
-    }).lean();
 
-    if (!p) {
-      return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
+    // WebProduct'tan veri çek
+    const webProduct = await WebProduct.findOne({ _key: id })
+      .select({
+        _key: 1,
+        'diaData.aciklama': 1,
+        'diaData.stokkartkodu': 1,
+        'diaData.barkodu': 1,
+        'diaData.anabarkod': 1,
+        'diaData.marka': 1,
+        'diaData.gercek_stok': 1,
+        'diaData.durum': 1,
+        'diaData.menseiulkeadi': 1,
+        'diaData.m_birimler': 1,
+        'diaData.m_kategoriler': 1,
+        'diaData.m_resimler': 1,
+        'diaData.m_urunOzellikleri': 1,
+        'diaData.ekalan1': 1,
+        'diaData.ekalan2': 1,
+        'diaData.ekalan3': 1,
+        'diaData.ekalan4': 1,
+        'diaData.ekalan5': 1,
+        'customData': 1,
+        'syncInfo.webStatus': 1,
+        'syncInfo.diaStatus': 1,
+        'syncInfo.lastDiaSync': 1,
+        createdAt: 1,
+        updatedAt: 1
+      })
+      .lean();
+
+    if (!webProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün bulunamadı'
+      });
     }
 
-    // Görselleri sırala ve array yap
-    const images = (p.m_resimler || [])
-      .sort((a, b) => parseInt(a.order_id || 0) - parseInt(b.order_id || 0))
-      .map(img => img.aws_url)
-      .filter(Boolean);
+    const { diaData = {}, customData = {}, syncInfo = {} } = webProduct;
 
-    const properties = (p.m_urunOzellikleri || [])
+    // Görseller - Önce customImages, sonra DIA images
+    let images = [];
+
+    if (customData.customImages && customData.customImages.length > 0) {
+      // Custom görseller varsa onları kullan
+      images = customData.customImages
+        .sort((a, b) => a.order - b.order)
+        .map(img => img.url)
+        .filter(Boolean);
+    } else if (diaData.m_resimler && diaData.m_resimler.length > 0) {
+      // DIA görsellerini kullan
+      images = diaData.m_resimler
+        .sort((a, b) => parseInt(a.order_id || 0) - parseInt(b.order_id || 0))
+        .map(img => img.aws_url)
+        .filter(Boolean);
+    }
+
+    // Featured image - custom öncelikli
+    const featuredImage = customData.featuredImage ||
+      images[0] ||
+      '/images/urun/gorsel-bulunamadi.jpg';
+
+    // Ürün özellikleri - DIA'dan
+    const properties = (diaData.m_urunOzellikleri || [])
       .filter(prop => prop.ozellikadi && prop.detayaciklama)
       .sort((a, b) => parseInt(a.ozellisirano || 0) - parseInt(b.ozellisirano || 0))
       .reduce((acc, prop) => {
         acc[prop.ozellikadi] = prop.detayaciklama;
         return acc;
       }, {});
-
+    // Fiyat - custom öncelikli, sonra DIA
+    const pricing = diaData.m_birimler && diaData.m_birimler[0] ? diaData.m_birimler[0] : {};
+    const displayPrice = customData.webPrice ||
+      pricing.fiyat1 ||
+      0;
+    // Kategori bilgisi
+    const mainCategory = (diaData.m_kategoriler && diaData.m_kategoriler[0] &&
+      diaData.m_kategoriler[0].kategori_aciklama_1) || 'Genel';
+    // Web durumu
+    let webStatus = 'Pasif';
+    if (syncInfo.webStatus === 'active' && customData.webVisible) {
+      webStatus = 'Yayında';
+    } else if (syncInfo.webStatus === 'draft') {
+      webStatus = 'Taslak';
+    } else if (!customData.webVisible) {
+      webStatus = 'Gizli';
+    }
     const mapped = {
-      id: Number(p._key) || p._key,
-      name: p.aciklama || p.kodveaciklama || p.stokkartkodu || 'Ürün',
-      category: (p.m_kategoriler && p.m_kategoriler[0] && p.m_kategoriler[0].kategori_aciklama_1) || 'Lastik',
-      stock: (p.fiili_stok || 0) > 0,
-      qty: p.fiili_stok || 0,
-      sku: p.stokkartkodu || '',
-      barcode: p.barkodu || '',
-      brand: p.marka || '',
-      seo_title: p.aciklama || '',
-      seo_description: p.aciklama || '',
-      seo_url: (p.stokkartkodu || '').toLowerCase(),
-      price: p.fiyat1 || p.sontuketicifiyati || 0,
-      price2: 0,
-      price3: 0,
-      price4: 0,
-      price5: 0,
-      price6: 0,
-      status: p.durum === 'A' ? 'Aktif' : 'Pasif',
-      image: images[0] || '',
+      // Temel bilgiler
+      id: webProduct._key,
+      name: diaData.aciklama || diaData.aciklama || customData.seoTitle || 'Ürün',
+      sku: diaData.stokkartkodu || '',
+      barcode: diaData.barkodu || diaData.anabarkod || '',
+      brand: diaData.marka || '',
+
+      // Kategori
+      category: customData.webCategory || mainCategory,
+      subcategory: customData.webSubCategory || null,
+
+      // Stok ve durum
+      stock: (diaData.gercek_stok || 0) > 0,
+      qty: diaData.gercek_stok || 0,
+      status: diaData.durum === 'A' ? 'Aktif' : 'Pasif',
+      webStatus: webStatus,
+
+      // Fiyatlar
+      price: displayPrice,
+      webPrice: customData.webPrice || null,
+      originalPrice: customData.originalPrice || null,
+      discount: customData.webDiscount || 0,
+      discountType: customData.discountType || 'percentage',
+
+      // Tüm fiyat seviyeleri
+      price1: pricing.fiyat1 || 0,
+      price2: pricing.fiyat2 || 0,
+      price3: pricing.fiyat3 || 0,
+      price4: pricing.fiyat4 || 0,
+      price10: pricing.fiyat10 || 0,
+
+      // SEO bilgileri
+      seo_title: customData.seoTitle || diaData.aciklama || '',
+      seo_description: customData.seoDescription || diaData.aciklama || '',
+      seo_url: customData.seoUrl || null,
+      seo_keywords: customData.seoKeywords || [],
+
+      // Görseller
+      image: featuredImage,
       images: images,
+      customImages: customData.customImages || [],
+
+      // İçerik
+      description: customData.customDescription || null,
+      shortDescription: customData.shortDescription || null,
+
+      // Web özel alanları
+      webVisible: customData.webVisible !== undefined ? customData.webVisible : true,
+      webOrder: customData.webOrder || 0,
+      webTags: customData.webTags || [],
+
+      // Stok yönetimi
+      minOrderQuantity: customData.minOrderQuantity || 1,
+      maxOrderQuantity: customData.maxOrderQuantity || null,
+      stockAlert: customData.stockAlert || 5,
+
+      // Etiketler
+      isNew: customData.isNew || false,
+      isBestSeller: customData.isBestSeller || false,
+      isFeatured: customData.isFeatured || false,
+
+      // Ürün özellikleri
       properties: {
         ...properties,
-        m_kategoriler: p.m_kategoriler || []
+        m_kategoriler: diaData.m_kategoriler || [],
+        ekalan1: diaData.ekalan1 || '',
+        ekalan2: diaData.ekalan2 || '',
+        ekalan3: diaData.ekalan3 || '',
+        ekalan4: diaData.ekalan4 || '',
+        ekalan5: diaData.ekalan5 || '',
+        originCountry: diaData.menseiulkeadi || ''
       },
-      note: p.note || '',
-      tag: ''
+      note: '',
+      tag: Array.isArray(customData.webTags) ? customData.webTags.join(', ') : '',
+
+      // Tarih bilgileri
+      createdAt: webProduct.createdAt,
+      updatedAt: webProduct.updatedAt,
+      lastDiaSync: syncInfo.lastDiaSync,
+
+      syncStatus: syncInfo.diaStatus || 'unknown'
     };
 
-    return res.json({ success: true, data: mapped });
+    return res.json({
+      success: true,
+      data: mapped
+    });
+
   } catch (error) {
-    console.error('Product get error:', error);
-    res.status(500).json({ success: false, message: 'Ürün getirilirken hata oluştu' });
+    console.error('WebProduct detail get error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ürün detayı getirilirken hata oluştu',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+/**
+ * Ürün Detay Güncelleme - WebProduct Kullanarak
+ */
+
+router.patch('/:id', maybeAuth, [
+  body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
+  body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
+  body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
+  body('seoKeywords').optional().isArray().withMessage('SEO anahtar kelimeleri array olmalıdır'),
+  body('webVisible').optional().isBoolean().withMessage('Web görünürlük boolean olmalıdır'),
+  body('webPrice').optional().isFloat({ min: 0 }).withMessage('Web fiyatı 0 veya daha büyük olmalıdır'),
+  body('webDiscount').optional().isFloat({ min: 0, max: 100 }).withMessage('İndirim 0-100 arasında olmalıdır'),
+  body('minOrderQuantity').optional().isInt({ min: 1 }).withMessage('Minimum sipariş adedi 1 veya daha büyük olmalıdır')
+], async (req, res) => {
+  try {
+    console.log('Product Update Request:', {
+      productId: req.params.id,
+      body: req.body
+    });
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçersiz veri',
+        errors: errors.array()
+      });
+    }
+
+    const productId = String(req.params.id);
+    const {
+      // SEO alanları
+      seoTitle,
+      seoDescription,
+      seoUrl,
+      seoKeywords,
+
+      // Web görünüm
+      webVisible,
+      webOrder,
+      webTags,
+      webCategory,
+      webSubCategory,
+
+      // İçerik
+      customDescription,
+      shortDescription,
+
+      // Fiyatlandırma
+      webPrice,
+      originalPrice,
+      webDiscount,
+      discountType,
+
+      // Stok yönetimi
+      minOrderQuantity,
+      maxOrderQuantity,
+      stockAlert,
+
+      // Etiketler
+      isNew,
+      isBestSeller,
+      isFeatured
+    } = req.body;
+
+    // WebProduct'ı bul
+    const existingProduct = await WebProduct.findOne({ _key: productId });
+    if (!existingProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün bulunamadı'
+      });
+    }
+
+    // SEO URL benzersizlik kontrolü
+    if (seoUrl && seoUrl !== existingProduct.customData?.seoUrl) {
+      const urlExists = await WebProduct.findOne({
+        'customData.seoUrl': seoUrl,
+        _key: { $ne: productId }
+      });
+
+      if (urlExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Bu SEO URL başka bir ürün tarafından kullanılıyor'
+        });
+      }
+    }
+
+    // Güncelleme objesi oluştur - sadece gönderilen alanları güncelle
+    const updateData = {};
+
+    // SEO Bilgileri
+    if (seoTitle !== undefined) updateData['customData.seoTitle'] = seoTitle.trim();
+    if (seoDescription !== undefined) updateData['customData.seoDescription'] = seoDescription.trim();
+    if (seoUrl !== undefined) updateData['customData.seoUrl'] = seoUrl.trim().toLowerCase();
+    if (seoKeywords !== undefined) updateData['customData.seoKeywords'] = seoKeywords;
+
+    // Web Görünüm
+    if (webVisible !== undefined) updateData['customData.webVisible'] = Boolean(webVisible);
+    if (webOrder !== undefined) updateData['customData.webOrder'] = Number(webOrder) || 0;
+    if (webTags !== undefined) updateData['customData.webTags'] = Array.isArray(webTags) ? webTags : [];
+    if (webCategory !== undefined) updateData['customData.webCategory'] = webCategory;
+    if (webSubCategory !== undefined) updateData['customData.webSubCategory'] = webSubCategory;
+
+    // İçerik
+    if (customDescription !== undefined) updateData['customData.customDescription'] = customDescription;
+    if (shortDescription !== undefined) updateData['customData.shortDescription'] = shortDescription;
+
+    // Fiyatlandırma
+    if (webPrice !== undefined) updateData['customData.webPrice'] = webPrice ? Number(webPrice) : null;
+    if (originalPrice !== undefined) updateData['customData.originalPrice'] = originalPrice ? Number(originalPrice) : null;
+    if (webDiscount !== undefined) updateData['customData.webDiscount'] = Number(webDiscount) || 0;
+    if (discountType !== undefined) updateData['customData.discountType'] = discountType;
+
+    // Stok Yönetimi
+    if (minOrderQuantity !== undefined) updateData['customData.minOrderQuantity'] = Number(minOrderQuantity) || 1;
+    if (maxOrderQuantity !== undefined) updateData['customData.maxOrderQuantity'] = maxOrderQuantity ? Number(maxOrderQuantity) : null;
+    if (stockAlert !== undefined) updateData['customData.stockAlert'] = Number(stockAlert) || 5;
+
+    // Etiketler
+    if (isNew !== undefined) updateData['customData.isNew'] = Boolean(isNew);
+    if (isBestSeller !== undefined) updateData['customData.isBestSeller'] = Boolean(isBestSeller);
+    if (isFeatured !== undefined) updateData['customData.isFeatured'] = Boolean(isFeatured);
+
+    // Sync bilgilerini güncelle
+    updateData['syncInfo.lastWebUpdate'] = new Date();
+
+    // Web durumunu otomatik ayarla
+    if (webVisible === true && existingProduct.syncInfo?.diaStatus === 'synced') {
+      updateData['syncInfo.webStatus'] = 'active';
+    } else if (webVisible === false) {
+      updateData['syncInfo.webStatus'] = 'hidden';
+    }
+
+    console.log('Update data:', updateData);
+
+    // Güncelleme işlemini yap
+    const updatedProduct = await WebProduct.findOneAndUpdate(
+      { _key: productId },
+      { $set: updateData },
+      {
+        new: true,
+        runValidators: true
+      }
+    ).select({
+      _key: 1,
+      'customData': 1,
+      'syncInfo.webStatus': 1,
+      'syncInfo.lastWebUpdate': 1,
+      'diaData.aciklama': 1,
+      'diaData.stokkartkodu': 1,
+      updatedAt: 1
+    });
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün güncellenirken hata oluştu'
+      });
+    }
+
+    try {
+      const CacheManager = require('../../../../packages/cache');
+      const cache = new CacheManager();
+      await cache.invalidateSearchCache();
+    } catch (error) {
+      console.log('Cache temizleme hatası (önemsiz):', error.message);
+    }
+
+    const updatedFieldsCount = Object.keys(updateData).length - 1; 
+
+    res.json({
+      success: true,
+      message: `${updatedFieldsCount} alan başarıyla güncellendi`,
+      data: {
+        _key: updatedProduct._key,
+        name: updatedProduct.customData?.seoTitle || updatedProduct.diaData?.aciklama,
+        sku: updatedProduct.diaData?.stokkartkodu,
+        customData: updatedProduct.customData,
+        webStatus: updatedProduct.syncInfo?.webStatus,
+        lastUpdate: updatedProduct.syncInfo?.lastWebUpdate,
+        updatedAt: updatedProduct.updatedAt
+      },
+      toast: {
+        type: 'success',
+        title: 'Güncelleme Başarılı',
+        message: `${updatedProduct.diaData?.aciklama || 'Ürün'} başarıyla güncellendi`
+      }
+    });
+
+  } catch (error) {
+    console.error('WebProduct güncelleme hatası:', error);
+
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message
+      }));
+
+      return res.status(400).json({
+        success: false,
+        message: 'Veri doğrulama hatası',
+        errors: validationErrors,
+        toast: {
+          type: 'error',
+          title: 'Doğrulama Hatası',
+          message: 'Lütfen form alanlarını kontrol edin'
+        }
+      });
+    }
+
+    // Genel hata
+    res.status(500).json({
+      success: false,
+      message: 'Ürün güncellenirken hata oluştu',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      toast: {
+        type: 'error',
+        title: 'Güncelleme Hatası',
+        message: 'Ürün güncellenirken bir hata oluştu. Lütfen tekrar deneyin.'
+      }
+    });
   }
 });
 
