@@ -1107,7 +1107,107 @@ class DiaStockService {
    * DIA Verilerini
    * Ürün Listesi Üzerinden Manuel Senkronize Etme
   */
-  /* * Sadece Ürün Adı Güncelle * */
+  /* * Sadece Ürün İsmi Güncelle * */
+  async syncOnlyNames() {
+    const operationId = `sync_names_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info(`=== SADECE ÜRÜN İSİMLERİ SYNC BAŞLANGICI ===`, { operationId });
+
+      let totalProcessed = 0;
+      let totalUpdated = 0;
+      let webUpdated = 0;
+      let offset = 0;
+      let hasMore = true;
+      let batchCount = 0;
+
+      while (hasMore) {
+        batchCount++;
+
+        const params = {
+          limit: 500,
+          offset: offset,
+          filters: getFiltersForSyncType('names')
+        };
+
+        const batchData = await this.fetchStockFromDia(params);
+
+        if (!batchData || batchData.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const product of batchData) {
+          // 1. DiaStock güncelle
+          const diaUpdated = await this.updateOnlyProductNames(product);
+          if (diaUpdated) totalUpdated++;
+
+          // 2. WebProduct güncelle
+          const webUpdateResult = await this.updateOnlyWebProductNames(product);
+          if (webUpdateResult) webUpdated++;
+
+          totalProcessed++;
+        }
+
+        offset += 500;
+        await this.sleep(100);
+      }
+
+      const duration = Date.now() - startTime;
+      return {
+        success: true,
+        processed: totalProcessed,
+        updated: totalUpdated,
+        webUpdated: webUpdated,
+        message: `${totalUpdated} DiaStock + ${webUpdated} WebProduct ismi güncellendi`
+      };
+
+    } catch (error) {
+      this.logger.error(`Ürün isimleri sync hatası:`, { error: error.message });
+      throw error;
+    }
+  }
+  async updateOnlyProductNames(product) {
+    if (!product._key) return false;
+
+    const filter = { _key: product._key };
+    const updateData = {
+      aciklama: product.aciklama || '',
+      aciklama_2: product.aciklama_2 || '',
+      'syncInfo.lastSyncDate': new Date(),
+      'syncInfo.syncStatus': 'synced',
+      'syncInfo.syncType': 'names_only'
+    };
+
+    try {
+      const result = await DiaStock.updateOne(filter, { $set: updateData }, { upsert: false });
+      return result.modifiedCount > 0;
+    } catch (error) {
+      this.logger.error(`Ürün isim güncelleme hatası: ${product._key}`, { error: error.message });
+      return false;
+    }
+  }
+  async updateOnlyWebProductNames(product) {
+    if (!product._key) return false;
+
+    const filter = { _key: product._key };
+    const updateData = {
+      'diaData.aciklama': product.aciklama || '',
+      'syncInfo.lastDiaSync': new Date(),
+      'syncInfo.diaStatus': 'synced'
+    };
+
+    try {
+      const result = await WebProduct.updateOne(filter, { $set: updateData }, { upsert: false });
+      return result.modifiedCount > 0;
+    } catch (error) {
+      this.logger.error(`WebProduct isim güncelleme hatası: ${product._key}`, { error: error.message });
+      return false;
+    }
+  }
+
+  /* * Sadece Stok Kodu Güncelle * */
   async syncOnlyCodes() {
     const operationId = `sync_codes_${Date.now()}`;
     const startTime = Date.now();
@@ -1177,7 +1277,6 @@ class DiaStockService {
       throw error;
     }
   }
-
   async updateOnlyProductCodes(product) {
     if (!product._key) return false;
     const filter = { _key: product._key };
@@ -1208,7 +1307,6 @@ class DiaStockService {
       return false;
     }
   }
-
   async updateOnlyWebProductCodes(product) {
     if (!product._key) return false;
 
@@ -1224,97 +1322,6 @@ class DiaStockService {
       return result.modifiedCount > 0;
     } catch (error) {
       this.logger.error(`WebProduct stok kod güncelleme hatası: ${product._key}`, { error: error.message });
-      return false;
-    }
-  }
-  /* * Sadece SKU Güncelle * */
-  async syncOnlyCodes() {
-    const operationId = `sync_codes_${Date.now()}`;
-    const startTime = Date.now();
-
-    try {
-      this.logger.info(`=== SADECE STOK KODLARI SYNC BAŞLANGICI ===`, { operationId });
-
-      let totalProcessed = 0;
-      let totalUpdated = 0;
-      let offset = 0;
-      let hasMore = true;
-      let batchCount = 0;
-
-      while (hasMore) {
-        batchCount++;
-
-        const params = {
-          limit: 500,
-          offset: offset,
-          filters: getFiltersForSyncType('codes')
-        };
-
-        const batchData = await this.fetchStockFromDia(params);
-
-        if (!batchData || batchData.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        for (const product of batchData) {
-          const updated = await this.updateOnlyProductCodes(product);
-          if (updated) totalUpdated++;
-          totalProcessed++;
-        }
-
-        offset += 500;
-        await this.sleep(100);
-
-        this.logger.info(`Codes Batch ${batchCount} tamamlandı`, {
-          operationId,
-          processed: totalProcessed,
-          updated: totalUpdated
-        });
-      }
-
-      const duration = Date.now() - startTime;
-      return {
-        success: true,
-        processed: totalProcessed,
-        updated: totalUpdated,
-        type: 'codes_only',
-        duration: `${duration}ms`,
-        message: `${totalUpdated} stok kodu güncellendi (${totalProcessed} ürün kontrol edildi)`
-      };
-
-    } catch (error) {
-      this.logger.error(`Stok kodları sync hatası:`, { error: error.message, operationId });
-      throw error;
-    }
-  }
-  async updateOnlyProductCodes(product) {
-    if (!product._key) return false;
-    const filter = { _key: product._key };
-    const updateData = {
-      stokkartkodu: product.stokkartkodu,
-      'syncInfo.lastSyncDate': new Date(),
-      'syncInfo.syncStatus': 'synced',
-      'syncInfo.syncType': 'codes_only'
-    };
-    if (product.m_birimler && product.m_birimler[0] && product.m_birimler[0].__barkodlar) {
-      const barkodlar = product.m_birimler[0].__barkodlar;
-      if (barkodlar.length > 0) {
-        updateData.barkod = barkodlar[0].barkod;
-      }
-    }
-    try {
-      const result = await DiaStock.updateOne(
-        filter,
-        { $set: updateData },
-        { upsert: false }
-      );
-
-      return result.modifiedCount > 0;
-    } catch (error) {
-      this.logger.error(`Stok kod güncelleme hatası: ${product._key}`, {
-        error: error.message
-      });
       return false;
     }
   }
