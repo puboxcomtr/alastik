@@ -1,6 +1,12 @@
 const axios = require('axios');
 const winston = require('winston');
+
+/* DİA Ürün Modeli  */
 const DiaStock = require('../models/DiaStock');
+
+/* WEB Ürün Modeli */
+const WebProduct = require('../models/WebProduct');
+
 const CacheManager = require('../../../../packages/cache');
 
 /* Filter Config */
@@ -450,6 +456,193 @@ class DiaStockService {
   }
 
   /**
+   * Web Ürünlerini DİA Collections Çek *
+  **/
+  transformDiaDataForWeb(diaProduct) {
+    return {
+      _key_scf_karebarkod: diaProduct._key_scf_karebarkod,
+      _key_scf_marka: diaProduct._key_scf_marka,
+      _key_scf_odeme_plani: diaProduct._key_scf_odeme_plani,
+      _key_scf_urun_ozellik: diaProduct._key_scf_urun_ozellik,
+      _key_sis_ozelkod1: diaProduct._key_sis_ozelkod1,
+      _key_sis_ozelkod2: diaProduct._key_sis_ozelkod2,
+      _key_sis_ozelkod3: diaProduct._key_sis_ozelkod3,
+      _key_sis_ozelkod4: diaProduct._key_sis_ozelkod4,
+      _key_sis_ozelkod5: diaProduct._key_sis_ozelkod5,
+      _key_sis_ozelkod6: diaProduct._key_sis_ozelkod6,
+      _key_sis_ozelkod7: diaProduct._key_sis_ozelkod7,
+      _key_sis_ozelkod8: diaProduct._key_sis_ozelkod8,
+      _key_sis_ozelkod9: diaProduct._key_sis_ozelkod9,
+      _key_sis_ozelkod10: diaProduct._key_sis_ozelkod10,
+      _key_sis_ozelkod11: diaProduct._key_sis_ozelkod11,
+      _key_sis_resim: diaProduct._key_sis_resim,
+
+      aciklama: diaProduct.aciklama,
+      anabarkod: diaProduct.anabarkod,
+      barkodu: diaProduct.barkodu,
+      durum: diaProduct.durum,
+
+      ekalan1: diaProduct.ekalan1,
+      ekalan2: diaProduct.ekalan2,
+      ekalan3: diaProduct.ekalan3,
+      ekalan4: diaProduct.ekalan4,
+      ekalan5: diaProduct.ekalan5,
+      ekalan6: diaProduct.ekalan6,
+      ekalan7: diaProduct.ekalan7,
+      ekalan8: diaProduct.ekalan8,
+      ekalan9: diaProduct.ekalan9,
+      ekalan10: diaProduct.ekalan10,
+
+      gercek_stok: diaProduct.gercek_stok || diaProduct.fiili_stok || 0,
+      marka: diaProduct.marka,
+      menseiulkeadi: diaProduct.menseiulkeadi,
+
+      ozelkod1: diaProduct.ozelkod1,
+      ozelkod1kodu: diaProduct.ozelkod1kodu,
+      ozelkod2: diaProduct.ozelkod2,
+      ozelkod2kodu: diaProduct.ozelkod2kodu,
+      ozelkod3: diaProduct.ozelkod3,
+      ozelkod3kodu: diaProduct.ozelkod3kodu,
+      ozelkod4: diaProduct.ozelkod4,
+      ozelkod4kodu: diaProduct.ozelkod4kodu,
+      ozelkod5: diaProduct.ozelkod5,
+      ozelkod5kodu: diaProduct.ozelkod5kodu,
+      ozelkod6: diaProduct.ozelkod6,
+      ozelkod6kodu: diaProduct.ozelkod6kodu,
+      ozelkod7: diaProduct.ozelkod7,
+      ozelkod7kodu: diaProduct.ozelkod7kodu,
+      ozelkod8: diaProduct.ozelkod8,
+      ozelkod8kodu: diaProduct.ozelkod8kodu,
+      ozelkod9: diaProduct.ozelkod9,
+      ozelkod9kodu: diaProduct.ozelkod9kodu,
+      ozelkod10: diaProduct.ozelkod10,
+      ozelkod10kodu: diaProduct.ozelkod10kodu,
+      ozelkod11: diaProduct.ozelkod11,
+      ozelkod11kodu: diaProduct.ozelkod11kodu,
+
+      stokkartkodu: diaProduct.stokkartkodu,
+      synced: diaProduct.synced || 'synced',
+
+      m_birimler: diaProduct.m_birimler || [],
+      m_kategoriler: diaProduct.m_kategoriler || [],
+      m_resimler: diaProduct.m_resimler || [],
+      m_urunOzellikleri: diaProduct.m_urunOzellikleri || []
+    };
+  }
+  /**
+     * Web Ürünlerini DB Kaydet *
+  **/
+  generateSeoUrl(text) {
+    if (!text) return null;
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/gi, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 100);
+  }
+  generateSmartCustomData(diaProduct, existingCustomData = null) {
+    const generateSeoDescription = (product) => {
+      const parts = [];
+      if (product.marka) parts.push(product.marka);
+      if (product.aciklama) parts.push(product.aciklama);
+      if (product.ekalan1) parts.push(product.ekalan1);
+      return parts.join(' - ').substring(0, 160);
+    };
+
+    const determineWebCategory = (product) => {
+      if (!product.m_kategoriler || product.m_kategoriler.length === 0) return 'diger';
+
+      const firstCategory = product.m_kategoriler[0];
+      const kategori1 = firstCategory.kategori_aciklama_1?.toLowerCase();
+      const kategori2 = firstCategory.kategori_aciklama_2?.toLowerCase();
+
+      if (kategori1?.includes('lastik')) {
+        if (kategori2?.includes('yaz')) return 'yaz-lastikleri';
+        if (kategori2?.includes('kış')) return 'kis-lastikleri';
+        if (kategori2?.includes('oto')) return 'oto-lastikleri';
+        return 'lastikler';
+      }
+
+      if (kategori1?.includes('jant')) return 'jantlar';
+      if (kategori1?.includes('akü')) return 'aküler';
+      return 'diger';
+    };
+
+    const generateWebTags = (product) => {
+      const tags = [];
+      if (product.marka) tags.push(product.marka.toLowerCase());
+      if (product.ozelkod3kodu) tags.push(product.ozelkod3kodu.toLowerCase());
+      if (product.m_kategoriler && product.m_kategoriler[0]) {
+        const kat = product.m_kategoriler[0];
+        if (kat.kategori_aciklama_1) tags.push(kat.kategori_aciklama_1.toLowerCase());
+        if (kat.kategori_aciklama_2) tags.push(kat.kategori_aciklama_2.toLowerCase());
+      }
+      return [...new Set(tags)];
+    };
+
+    const getFeaturedImage = (images) => {
+      if (!images || images.length === 0) return null;
+      return images[0].aws_url || null;
+    };
+
+    const isNewProduct = (product) => {
+      if (product.ekalan5) {
+        const currentYear = new Date().getFullYear();
+        const productYear = parseInt(product.ekalan5);
+        return productYear >= currentYear - 1;
+      }
+      return false;
+    };
+
+    // Smart update - sadece boş veya varsayılan değerleri güncelle
+    const smartCustomData = {
+      // SEO Bilgileri - manuel güncellenmişse DIA karışmaz
+      seoUrl: existingCustomData?.seoUrl || this.generateSeoUrl(diaProduct.aciklama || diaProduct.stokkartkodu),
+      seoTitle: existingCustomData?.seoTitle || diaProduct.aciklama,
+      seoDescription: existingCustomData?.seoDescription || generateSeoDescription(diaProduct),
+      seoKeywords: existingCustomData?.seoKeywords || generateWebTags(diaProduct),
+
+      // Web görünüm - mevcut değerleri koru
+      webOrder: existingCustomData?.webOrder || 0,
+      webVisible: existingCustomData?.webVisible !== undefined ? existingCustomData.webVisible : true,
+
+      // İçerik - her zaman null, manuel doldurulur
+      customDescription: existingCustomData?.customDescription || null,
+      shortDescription: existingCustomData?.shortDescription || null,
+
+      // Kategoriler - her zaman null, manuel doldurulur
+      webTags: existingCustomData?.webTags || null,
+      webCategory: existingCustomData?.webCategory || null,
+      webSubCategory: existingCustomData?.webSubCategory || null,
+
+      // Görseller - her zaman null, manuel doldurulur
+      customImages: existingCustomData?.customImages || [],
+      featuredImage: existingCustomData?.featuredImage || null,
+
+      // Fiyatlandırma - her zaman null, manuel doldurulur
+      webPrice: existingCustomData?.webPrice || null,
+      originalPrice: existingCustomData?.originalPrice || null,
+      webDiscount: existingCustomData?.webDiscount !== undefined ? existingCustomData.webDiscount : 0,
+      discountType: existingCustomData?.discountType || 'percentage',
+
+      // Stok bilgileri - her zaman null, manuel doldurulur
+      minOrderQuantity: existingCustomData?.minOrderQuantity || 1,
+      maxOrderQuantity: existingCustomData?.maxOrderQuantity || null,
+      stockAlert: existingCustomData?.stockAlert || 5,
+
+      // Meta bilgiler - her zaman null, manuel doldurulur
+      isNewProduct: existingCustomData?.isNewProduct || false,
+      isBestSeller: existingCustomData?.isBestSeller || false,
+      isFeatured: existingCustomData?.isFeatured || false
+    };
+
+    return smartCustomData;
+  }
+
+
+  /**
    * Stok verilerini MongoDB'ye senkronize et *
    */
   async syncStockToDatabase(stockData) {
@@ -511,9 +704,17 @@ class DiaStockService {
    * Batch verilerini işle - FİLTRE KONTROLÜ İLE *
    */
   async processBatch(batch) {
-    const bulkOperations = [];
+    const diaOperations = [];
+    const webOperations = [];
     const errors = [];
-    let filteredOutCount = 0;
+
+    // Mevcut WebProduct'ları toplu çek (performans için)
+    const keys = batch.map(item => item._key).filter(key => key);
+    const existingWebProducts = await WebProduct.find({ _key: { $in: keys } });
+    const webProductMap = {};
+    existingWebProducts.forEach(wp => {
+      webProductMap[wp._key] = wp;
+    });
 
     for (const item of batch) {
       try {
@@ -525,11 +726,14 @@ class DiaStockService {
           continue;
         }
 
-        // DIA verisini temizle ve dönüştür
-        const cleanedData = this.cleanDiaData(item);
+        // Filtreleme kontrolü
+        if (item.durum !== 'A' || item.ozelkod11kodu !== 'E') {
+          continue; // Bu ürün web'de gösterilmeyecek
+        }
 
-        // Upsert operation
-        bulkOperations.push({
+        // 1. DiaStock operation (mevcut kod)
+        const cleanedData = this.cleanDiaData(item);
+        diaOperations.push({
           updateOne: {
             filter: { _key: item._key },
             update: {
@@ -544,6 +748,79 @@ class DiaStockService {
           }
         });
 
+        // 2. WebProduct operation (yeni)
+        const existingWebProduct = webProductMap[item._key];
+        const transformedDiaData = this.transformDiaDataForWeb(item);
+
+        if (existingWebProduct) {
+          // Mevcut ürün - sadece DIA data ve akıllı customData güncelle
+          const smartCustomData = this.generateSmartCustomData(item, existingWebProduct.customData);
+
+          webOperations.push({
+            updateOne: {
+              filter: { _key: item._key },
+              update: {
+                $set: {
+                  'diaData': transformedDiaData,
+                  'customData': smartCustomData,
+                  'syncInfo.lastDiaSync': new Date(),
+                  'syncInfo.diaStatus': 'synced',
+                  'syncInfo.syncSource': 'dia_api'
+                }
+              }
+            }
+          });
+        } else {
+          // Yeni ürün - tam veri oluştur
+          const newCustomData = {
+            // Migration'dan sonra DIA'nın karışmayacağı 4 alan (sadece ilk kez)
+            seoUrl: this.generateSeoUrl(item.aciklama || item.stokkartkodu),
+            seoTitle: item.aciklama,
+            seoDescription: generateSeoDescription(item),
+            seoKeywords: generateWebTags(item),
+            // Diğer tüm alanlar null - manuel doldurulacak
+            webOrder: 0,
+            webVisible: true,
+            customDescription: null,
+            shortDescription: null,
+            webTags: null,
+            webCategory: null,
+            webSubCategory: null,
+            customImages: [],
+            featuredImage: null,
+            webPrice: null,
+            originalPrice: null,
+            webDiscount: 0,
+            discountType: 'percentage',
+            minOrderQuantity: 1,
+            maxOrderQuantity: null,
+            stockAlert: 5,
+            isNewProduct: false,
+            isBestSeller: false,
+            isFeatured: false
+          };
+
+          webOperations.push({
+            updateOne: {
+              filter: { _key: item._key },
+              update: {
+                $set: {
+                  _key: item._key,
+                  diaData: transformedDiaData,
+                  customData: newCustomData,
+                  syncInfo: {
+                    lastDiaSync: new Date(),
+                    diaStatus: 'synced',
+                    webStatus: 'active',
+                    syncSource: 'dia_api'
+                  }
+                }
+              },
+              upsert: true
+            }
+          });
+        }
+
       } catch (error) {
         errors.push({
           item: item._key || item.stokkartkodu || 'Unknown',
@@ -551,37 +828,50 @@ class DiaStockService {
         });
       }
     }
+    // Bulk operations çalıştır
+    let diaResult = { upsertedCount: 0, modifiedCount: 0 };
+    let webResult = { upsertedCount: 0, modifiedCount: 0 };
 
-    if (filteredOutCount > 0) {
-      this.logger.info('DB yazımından önce filtrelenen ürün sayısı:', {
-        filteredOutCount,
-        totalBatchSize: batch.length,
-        willBeProcessed: bulkOperations.length
-      });
+    if (diaOperations.length > 0) {
+      try {
+        diaResult = await DiaStock.bulkWrite(diaOperations, {
+          ordered: false,
+          writeConcern: { w: 1, j: true }
+        });
+      } catch (error) {
+        this.logger.error('DiaStock bulk write hatası', { error: error.message });
+        throw error;
+      }
     }
 
-    if (bulkOperations.length === 0) {
-      return { processed: 0, inserted: 0, updated: 0, errors, filteredOut: filteredOutCount };
+    if (webOperations.length > 0) {
+      try {
+        webResult = await WebProduct.bulkWrite(webOperations, {
+          ordered: false,
+          writeConcern: { w: 1, j: true }
+        });
+      } catch (error) {
+        this.logger.error('WebProduct bulk write hatası', { error: error.message });
+      }
     }
 
-    try {
-      const result = await DiaStock.bulkWrite(bulkOperations, {
-        ordered: false,
-        writeConcern: { w: 1, j: true }
-      });
+    this.logger.info('Batch işlendi', {
+      diaProcessed: diaOperations.length,
+      webProcessed: webOperations.length,
+      diaInserted: diaResult.upsertedCount || 0,
+      diaUpdated: diaResult.modifiedCount || 0,
+      webInserted: webResult.upsertedCount || 0,
+      webUpdated: webResult.modifiedCount || 0,
+      errors: errors.length
+    });
 
-      return {
-        processed: bulkOperations.length,
-        inserted: result.upsertedCount || 0,
-        updated: result.modifiedCount || 0,
-        filteredOut: filteredOutCount,
-        errors
-      };
-
-    } catch (error) {
-      this.logger.error('Bulk write hatası', { error: error.message });
-      throw error;
-    }
+    return {
+      processed: diaOperations.length,
+      inserted: (diaResult.upsertedCount || 0) + (webResult.upsertedCount || 0),
+      updated: (diaResult.modifiedCount || 0) + (webResult.modifiedCount || 0),
+      errors: errors,
+      webProductsProcessed: webOperations.length
+    };
   }
 
 
