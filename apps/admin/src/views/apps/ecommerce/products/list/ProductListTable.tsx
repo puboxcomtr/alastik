@@ -217,7 +217,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
     <>
       <Card>
         <CardHeader title='Ürün Filtreleme' className='pbe-4' />
-        <TableFilters setData={setFilteredData} productData={data} setLoading={setLoading} />
+        {/* <TableFilters setData={setFilteredData} productData={data} setLoading={setLoading} /> DAHA SONRA AÇ*/} 
         <Divider />
         <div style={{ position: 'relative' }}>
           {loading && (

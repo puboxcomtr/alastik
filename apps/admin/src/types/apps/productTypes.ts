@@ -46,7 +46,7 @@ export type ProductType = {
   seo_description?: string
   seo_url?: string | null
   seo_keywords?: string[]
-  
+
   // İçerik ve Açıklamalar
   delivery?: string
 
@@ -104,4 +104,46 @@ export type ProductType = {
   updatedAt?: string | Date
   lastDiaSync?: string | Date
   syncStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
+}
+
+
+export type WebCategoryType = {
+  id: string
+  name: string
+  slug: string
+  level: number
+  levelName: string
+
+  // Hiyerarşi
+  parent: string | null
+  parentName: string
+  parentPath: string
+
+  // DIA bağlantısı
+  diaCategory: string
+  diaLevel: string
+
+  // Web yönetimi
+  webVisible: boolean
+  webOrder: number
+  status: string
+
+  // SEO
+  seoTitle: string
+  seoUrl: string
+
+  // Görsel
+  image: string
+
+  // İstatistikler
+  productCount: number
+  activeProductCount: number
+  totalStock: number
+
+  // Tarihler
+  createdAt: string
+  updatedAt: string
+  lastSync: string | null
+  lastProductSync: string | null
+  syncStatus: string
 }

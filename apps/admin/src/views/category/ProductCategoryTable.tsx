@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import Alert from '@mui/material/Alert'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 // Third-party Imports
@@ -46,17 +47,47 @@ declare module '@tanstack/table-core' {
   }
 }
 
-export type categoryType = {
-  id: number
-  categoryTitle: string
-  description: string
-  totalProduct: number
-  order: number
-  image: string
+// Props Interface
+interface CategorySyncInfo {
+  lastDiaSync?: Date
+  diaStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
+  webStatus?: 'active' | 'draft' | 'hidden' | 'archived'
+  syncErrors?: string[]
+  lastWebUpdate?: Date
+  syncSource?: string
 }
 
-type CategoryWithActionsType = categoryType & {
+export type CategoryType = {
+  id: string
+  name: string
+  slug: string
+  level: number
+  parent: string | null
+  parentPath: string[]
+  diaCategory: string
+  diaLevel: string
+  webVisible: boolean
+  webOrder: number
+  seoTitle: string
+  seoUrl: string
+  seoKeywords: string[]
+  productCount: number
+  activeProductCount: number
+  totalStock: number
+  syncInfo: CategorySyncInfo
+  showcase: any[]
+  createdAt?: string | Date
+  updatedAt?: string | Date
+}
+
+type CategoryWithActionsType = CategoryType & {
   actions?: string
+}
+
+interface ProductCategoryTableProps {
+  categoryData: CategoryType[]
+  totalCategories: number
+  error?: string | null
 }
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
@@ -92,49 +123,22 @@ const DebouncedInput = ({
   return <TextField {...props} value={value} onChange={e => setValue(e.target.value)} size='small' />
 }
 
-const categoryData: categoryType[] = [
-  {
-    id: 1,
-    categoryTitle: 'Lastik',
-    description: 'Lastik Kategori Açıklaması',
-    totalProduct: 692,
-    order: 0,
-    image: '/images/apps/ecommerce/product-1.png'
-  },
-  {
-    id: 2,
-    categoryTitle: 'Jant',
-    description: 'Jant Kategori Açıklaması',
-    totalProduct: 562,
-    order: 0,
-    image: '/images/apps/ecommerce/product-1.png'
-  },
-  {
-    id: 3,
-    categoryTitle: 'Kar Paleti',
-    description: 'Kar Paleti Kategori Açıklaması',
-    totalProduct: 267,
-    order: 0,
-    image: '/images/apps/ecommerce/product-1.png'
-  },
-  {
-    id: 4,
-    categoryTitle: 'Kar Zinciri',
-    description: 'Kar Zinciri Kategori Açıklaması',
-    totalProduct: 103,
-    order: 0,
-    image: '/images/apps/ecommerce/product-1.png'
-  }
-]
-
 const columnHelper = createColumnHelper<CategoryWithActionsType>()
 
-const ProductCategoryTable = () => {
-  const [selectedCategory, setSelectedCategory] = useState<categoryType | null>(null)
+const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductCategoryTableProps) => {
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null)
   const [EditCategoryOpen, setEditCategoryOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
-  const [data, setData] = useState(categoryData)
+  const [data, setData] = useState<CategoryType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
+
+  // Props'tan gelen veriyi state'e set et - SADECE ANA KATEGORİLER (level 1)
+  useEffect(() => {
+    const mainCategories = (categoryData || []).filter(category => category.level === 1)
+    setData(mainCategories)
+  }, [categoryData])
+
+
 
   const columns = useMemo<ColumnDef<CategoryWithActionsType, any>[]>(
     () => [
@@ -160,27 +164,26 @@ const ProductCategoryTable = () => {
           />
         )
       },
-      columnHelper.accessor('categoryTitle', {
+      columnHelper.accessor('name', {
         header: 'Kategori Adı',
         cell: ({ row }) => (
           <div className='flex items-center gap-3'>
-            <img src={row.original.image} width={38} height={38} className='rounded bg-actionHover' />
             <div className='flex flex-col items-start'>
               <Typography className='font-medium' color='text.primary'>
-                {row.original.categoryTitle}
+                {row.original.name}
               </Typography>
-              <Typography variant='body2'>{row.original.description}</Typography>
+              <Typography variant='body2'>{row.original.diaCategory}</Typography>
             </div>
           </div>
         )
       }),
-      columnHelper.accessor('totalProduct', {
+      columnHelper.accessor('productCount', {
         header: 'Ürün Sayısı',
-        cell: ({ row }) => <Typography>{row.original.totalProduct.toLocaleString()}</Typography>
+        cell: ({ row }) => <Typography>{row.original.productCount.toLocaleString()}</Typography>
       }),
-      columnHelper.accessor('order', {
+      columnHelper.accessor('webOrder', {
         header: 'Öncelik',
-        cell: ({ row }) => <Typography>{row.original.order}</Typography>
+        cell: ({ row }) => <Typography>{row.original.webOrder}</Typography>
       }),
       columnHelper.accessor('actions', {
         header: 'İşlemler',
@@ -233,14 +236,22 @@ const ProductCategoryTable = () => {
 
   return (
     <>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Kategori verileri yüklenirken hata oluştu: {error}
+        </Alert>
+      )}
+
       <Card>
         <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
-          <DebouncedInput
-            value={globalFilter ?? ''}
-            onChange={value => setGlobalFilter(String(value))}
-            placeholder='Kategori adı ile arama'
-            className='max-sm:is-full'
-          />
+          <div className='flex flex-col gap-2'>
+            <DebouncedInput
+              value={globalFilter ?? ''}
+              onChange={value => setGlobalFilter(String(value))}
+              placeholder='Kategori adı ile arama'
+              className='max-sm:is-full'
+            />
+          </div>
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
             <Button
               color='secondary'
@@ -283,8 +294,10 @@ const ProductCategoryTable = () => {
             {table.getFilteredRowModel().rows.length === 0 ? (
               <tbody>
                 <tr>
-                  <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    No data available
+                  <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
+                    <Typography variant='body1' color='text.secondary'>
+                      {globalFilter ? 'Arama kriterlerinize uygun kategori bulunamadı' : 'Kategori bulunamadı'}
+                    </Typography>
                   </td>
                 </tr>
               </tbody>
@@ -305,7 +318,7 @@ const ProductCategoryTable = () => {
           </table>
         </div>
         <TablePagination
-          rowsPerPageOptions={[10, 15, 25]}
+          rowsPerPageOptions={[10, 15, 25, 50]}
           component='div'
           className='border-bs'
           count={table.getFilteredRowModel().rows.length}

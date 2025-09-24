@@ -108,7 +108,6 @@ class DiaStockService {
       }
     );
   }
-
   /**
    * Session'ın geçerli olup olmadığını kontrol et
    */
@@ -532,25 +531,7 @@ class DiaStockService {
   /**
      * Web Ürünlerini DB Kaydet *
   **/
-  generateSeoUrl(text) {
-    if (!text) return null;
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/gi, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .substring(0, 100);
-  }
   generateSmartCustomData(diaProduct, existingCustomData = null) {
-    const generateSeoDescription = (product) => {
-      const parts = [];
-      if (product.marka) parts.push(product.marka);
-      if (product.aciklama) parts.push(product.aciklama);
-      if (product.ekalan1) parts.push(product.ekalan1);
-      return parts.join(' - ').substring(0, 160);
-    };
-
     const determineWebCategory = (product) => {
       if (!product.m_kategoriler || product.m_kategoriler.length === 0) return 'diger';
 
@@ -581,12 +562,10 @@ class DiaStockService {
       }
       return [...new Set(tags)];
     };
-
     const getFeaturedImage = (images) => {
       if (!images || images.length === 0) return null;
       return images[0].aws_url || null;
     };
-
     const isNewProduct = (product) => {
       if (product.ekalan5) {
         const currentYear = new Date().getFullYear();
@@ -595,13 +574,12 @@ class DiaStockService {
       }
       return false;
     };
-
     // Smart update - sadece boş veya varsayılan değerleri güncelle
     const smartCustomData = {
       // SEO Bilgileri - manuel güncellenmişse DIA karışmaz
       seoUrl: existingCustomData?.seoUrl || this.generateSeoUrl(diaProduct.aciklama || diaProduct.stokkartkodu),
       seoTitle: existingCustomData?.seoTitle || diaProduct.aciklama,
-      seoDescription: existingCustomData?.seoDescription || generateSeoDescription(diaProduct),
+      seoDescription: existingCustomData?.seoDescription || this.generateSeoDescription(diaProduct),
       seoKeywords: existingCustomData?.seoKeywords || generateWebTags(diaProduct),
 
       // Web görünüm - mevcut değerleri koru
@@ -633,12 +611,235 @@ class DiaStockService {
       stockAlert: existingCustomData?.stockAlert || 5,
 
       // Meta bilgiler - her zaman null, manuel doldurulur
-      isNewProduct: existingCustomData?.isNewProduct || false,
+      isNew: existingCustomData?.isNew || false,
       isBestSeller: existingCustomData?.isBestSeller || false,
       isFeatured: existingCustomData?.isFeatured || false
     };
 
     return smartCustomData;
+  }
+  /* (Boşsa) Otomatik SEO URL Oluştur */
+  generateSeoUrl(text) {
+    if (!text) return null;
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/gi, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 100);
+  }
+  /* (Boşsa) Otomatik SEO Description Oluştur */
+  generateSeoDescription = (product) => {
+    const parts = [];
+    if (product.marka) parts.push(product.marka);
+    if (product.aciklama) parts.push(product.aciklama);
+    if (product.ekalan1) parts.push(product.ekalan1);
+    return parts.join(' - ').substring(0, 160);
+  };
+  /**
+   * DIA Verilerini
+   * Kategori Listesini Senkronize Etme (categories collection'da)
+  */
+  async syncCategoriesToWebCategory() {
+    const operationId = `sync_categories_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== KATEGORİ SENKRONİZASYONU BAŞLANGICI ===', { operationId });
+
+      const WebCategory = require('../models/WebCategory');
+
+      // WebProduct'lardan kategorileri topla
+      const categoryPipeline = [
+        { $match: { 'syncInfo.diaStatus': 'synced' } },
+        { $unwind: '$diaData.m_kategoriler' },
+        {
+          $group: {
+            _id: {
+              level1: '$diaData.m_kategoriler.kategori_aciklama_1',
+              level2: '$diaData.m_kategoriler.kategori_aciklama_2',
+              level3: '$diaData.m_kategoriler.kategori_aciklama_3'
+            },
+            productCount: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.level1': 1, '_id.level2': 1, '_id.level3': 1 } }
+      ];
+
+      const categories = await WebProduct.aggregate(categoryPipeline);
+
+      let created = 0;
+      let updated = 0;
+
+      for (const cat of categories) {
+        const { level1, level2, level3 } = cat._id;
+
+        // Level 1 işle
+        if (level1) {
+          const result = await this.createOrUpdateWebCategory({
+            name: level1,
+            level: 1,
+            diaCategory: level1,
+            diaLevel: 'kategori_aciklama_1'
+          });
+          if (result.created) created++;
+          if (result.updated) updated++;
+        }
+
+        // Level 2 işle
+        if (level1 && level2) {
+          const parentCat = await WebCategory.findOne({
+            level: 1,
+            diaCategory: level1
+          });
+
+          if (parentCat) {
+            const result = await this.createOrUpdateWebCategory({
+              name: level2,
+              level: 2,
+              parent: parentCat._id,
+              parentPath: [parentCat._id],
+              diaCategory: level2,
+              diaLevel: 'kategori_aciklama_2'
+            });
+            if (result.created) created++;
+            if (result.updated) updated++;
+          }
+        }
+
+        // Level 3 işle
+        if (level1 && level2 && level3) {
+          const parentCat = await WebCategory.findOne({
+            level: 2,
+            diaCategory: level2
+          });
+
+          if (parentCat) {
+            const result = await this.createOrUpdateWebCategory({
+              name: level3,
+              level: 3,
+              parent: parentCat._id,
+              parentPath: parentCat.parentPath.concat([parentCat._id]),
+              diaCategory: level3,
+              diaLevel: 'kategori_aciklama_3'
+            });
+            if (result.created) created++;
+            if (result.updated) updated++;
+          }
+        }
+      }
+
+      // Ürün sayılarını güncelle
+      await this.updateCategoryProductCounts();
+
+      const duration = Date.now() - startTime;
+
+      this.logger.info('=== KATEGORİ SENKRONİZASYONU TAMAMLANDI ===', {
+        operationId,
+        created,
+        updated,
+        duration: `${duration}ms`
+      });
+
+      return {
+        success: true,
+        created,
+        updated,
+        totalCategories: categories.length,
+        duration: `${duration}ms`
+      };
+
+    } catch (error) {
+      this.logger.error('Kategori senkronizasyonu hatası:', { error: error.message, operationId });
+      throw error;
+    }
+  }
+  async createOrUpdateWebCategory(categoryData) {
+    const WebCategory = require('../models/WebCategory');
+
+    const slug = this.generateCategorySlug(categoryData.name);
+
+    const existingCategory = await WebCategory.findOne({
+      level: categoryData.level,
+      diaCategory: categoryData.diaCategory,
+      diaLevel: categoryData.diaLevel
+    });
+
+    if (existingCategory) {
+      await WebCategory.updateOne(
+        { _id: existingCategory._id },
+        {
+          $set: {
+            name: categoryData.name,
+            slug: slug,
+            'syncInfo.lastSync': new Date(),
+            'syncInfo.syncStatus': 'synced'
+          }
+        }
+      );
+      return { updated: true };
+    } else {
+      await WebCategory.create({
+        ...categoryData,
+        slug: slug,
+        webVisible: true,
+        webOrder: 0,
+        seoTitle: categoryData.name,
+        seoUrl: slug,
+        syncInfo: {
+          lastSync: new Date(),
+          syncStatus: 'synced',
+          syncSource: 'diasync'
+        }
+      });
+      return { created: true };
+    }
+  }
+  /* Ürün Slug Oluştur */
+  generateCategorySlug(text) {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/ç/g, 'c')
+      .replace(/ğ/g, 'g')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ş/g, 's')
+      .replace(/ü/g, 'u')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+  /* Web Product Kategori İçerisindeki Ürün Sayılarını Kaydet */
+  async updateCategoryProductCounts() {
+    const WebCategory = require('../models/WebCategory');
+    const categories = await WebCategory.find({});
+    for (const category of categories) {
+      const productCount = await WebProduct.countDocuments({
+        'syncInfo.diaStatus': 'synced',
+        [`diaData.m_kategoriler.${category.diaLevel}`]: category.diaCategory
+      });
+
+      const activeProductCount = await WebProduct.countDocuments({
+        'syncInfo.diaStatus': 'synced',
+        'customData.webVisible': true,
+        'diaData.durum': 'A',
+        [`diaData.m_kategoriler.${category.diaLevel}`]: category.diaCategory
+      });
+
+      await WebCategory.updateOne(
+        { _id: category._id },
+        {
+          $set: {
+            productCount,
+            activeProductCount,
+            'syncInfo.lastProductSync': new Date()
+          }
+        }
+      );
+    }
   }
   /**
    * Stok verilerini MongoDB'ye senkronize et *
@@ -771,7 +972,6 @@ class DiaStockService {
         } else {
           // Yeni ürün - tam veri oluştur
           const newCustomData = {
-            // Migration'dan sonra DIA'nın karışmayacağı 4 alan (sadece ilk kez)
             seoUrl: this.generateSeoUrl(item.aciklama || item.stokkartkodu),
             seoTitle: item.aciklama,
             seoDescription: generateSeoDescription(item),
@@ -1027,22 +1227,21 @@ class DiaStockService {
       return [];
     }
   }
-
   /**
    * Tam senkronizasyon işlemi - FİLTRELENMİŞ *
    */
   async fullSync() {
     try {
-      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON BAŞLANGICI ===');
+      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (ÜRÜN VE KATEGORİ) BAŞLANGICI ===');
       const startTime = Date.now();
 
       // 1. Sadece filtrelenmiş verileri getir ve veritabanına yaz
       const result = await this.fetchAndSyncIncrementally();
+      const categoryResult = await this.syncCategoriesToWebCategory();
 
       const endTime = Date.now();
       const duration = endTime - startTime;
-
-      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON TAMAMLANDI ===', {
+      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (ÜRÜN VE KATEGORİ) TAMAMLANDI ===', {
         duration: `${duration}ms`,
         sync: result
       });
@@ -1050,6 +1249,7 @@ class DiaStockService {
       return {
         ...result,
         duration,
+        categories: categoryResult,
         timestamp: new Date()
       };
 
@@ -1206,7 +1406,6 @@ class DiaStockService {
       return false;
     }
   }
-
   /* * Sadece Stok Kodu Güncelle * */
   async syncOnlyCodes() {
     const operationId = `sync_codes_${Date.now()}`;
