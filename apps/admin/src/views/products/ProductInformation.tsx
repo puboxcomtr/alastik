@@ -1,6 +1,6 @@
 'use client'
 // React Import
-import React from 'react'
+import React, { useEffect } from 'react'
 
 // Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
@@ -22,6 +22,9 @@ import { StarterKit } from '@tiptap/starter-kit'
 import { Underline } from '@tiptap/extension-underline'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
+
+// Context
+import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
 // Components Imports
 import CustomIconButton from '@core/components/mui/IconButton'
@@ -228,6 +231,9 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
 }
 
 const ProductInformation = ({ product }: ProductInformationProps) => {
+  // Context hook
+  const { updateField } = useProductUpdate()
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -240,8 +246,25 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
       Underline
     ],
     immediatelyRender: false,
-    content: product?.note || '<p></p>'
+    content: product?.description || product?.customDescription || '',
+    onUpdate: ({ editor }) => {
+      // Her değişiklikte context'e gönder
+      const htmlContent = editor.getHTML()
+      updateField('customDescription', htmlContent)
+    }
   })
+
+  // Product değiştiğinde editor içeriğini güncelle
+  useEffect(() => {
+    if (editor && product) {
+      const currentContent = product.description || product.customDescription || ''
+      // HTML string'i temizle ve doğru formata çevir
+      if (currentContent && currentContent !== '<p></p>' && currentContent !== '') {
+        // Eğer content zaten HTML ise, editor'a HTML olarak set et
+        editor.commands.setContent(currentContent, false)
+      }
+    }
+  }, [product, editor])
 
   return (
     <Card>

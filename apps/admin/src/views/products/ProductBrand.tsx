@@ -1,7 +1,13 @@
 'use client'
 
 // React Imports
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+// Type Imports
+import type { ProductType } from '@/types/apps/productTypes'
+
+// Context
+import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
 // MUI Imports
 import Card from '@mui/material/Card'
@@ -13,19 +19,28 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 
-// Component Imports
-import CustomIconButton from '@core/components/mui/IconButton'
-
-/* Json TS Export */
-import type { ProductType } from '@/types/apps/ecommerceTypes'
-export interface ProductInformationProps {
+export interface ProductBrandProps {
   product: ProductType
 }
 
-const ProductBrand = ({ product }: ProductInformationProps) => {
+const ProductBrand = ({ product }: ProductBrandProps) => {
+  // Context hook
+  const { updateField } = useProductUpdate()
+
   // States
-  const [vendor, setVendor] = useState('0')
-  const [status, setStatus] = useState('Aktif')
+  const [webVisible, setWebVisible] = useState(true)
+
+  // Initialize values
+  useEffect(() => {
+    setWebVisible(product.webVisible ?? true)
+  }, [product])
+
+  // Ürün durumu değişiklik handler
+  const handleStatusChange = (value: string) => {
+    const isVisible = value === 'Aktif'
+    setWebVisible(isVisible)
+    updateField('webVisible', isVisible)
+  }
 
   return (
     <Card>
@@ -33,24 +48,39 @@ const ProductBrand = ({ product }: ProductInformationProps) => {
       <CardContent>
         <form onSubmit={e => e.preventDefault()} className='flex flex-col gap-5'>
           <FormControl fullWidth>
-            <InputLabel>Ürün Durumu Seçiniz</InputLabel>
-            <Select label='Ürün Durumunu Seçiniz' value={status} onChange={e => setStatus(e.target.value)}>
+            <InputLabel>Ürün Durumu</InputLabel>
+            <Select
+              label='Ürün Durumu'
+              value={webVisible ? 'Aktif' : 'Pasif'}
+              onChange={e => handleStatusChange(e.target.value)}
+            >
               <MenuItem value='Aktif'>Aktif</MenuItem>
               <MenuItem value='Pasif'>Pasif</MenuItem>
             </Select>
           </FormControl>
+
           <FormControl fullWidth>
-            <InputLabel>Marka Seçiniz</InputLabel>
-            <Select label='Select Vendor' value={vendor} onChange={e => setVendor(e.target.value)}>
-              <MenuItem value={`0`}>Pirelli</MenuItem>
-              <MenuItem value={`1`}>Lassa</MenuItem>
-              <MenuItem value={`2`}>Bridgestone</MenuItem>
-              <MenuItem value={`3`}>Michelin</MenuItem>
-              <MenuItem value={`4`}>Hankook</MenuItem>
-              <MenuItem value={`5`}>Petlas</MenuItem>
-            </Select>
+            <TextField
+              fullWidth
+              label='Marka'
+              value={product.brand || 'Marka Bulunamadı'}
+              disabled
+              InputProps={{
+                readOnly: true,
+              }}
+            />
           </FormControl>
-          <TextField fullWidth label={product.tag} placeholder={product.tag} disabled />
+
+          <TextField
+            fullWidth
+            label='Etiketler'
+            value={product.tag || ''}
+            placeholder="Ürün etiketleri"
+            disabled
+            InputProps={{
+              readOnly: true,
+            }}
+          />
         </form>
       </CardContent>
     </Card>

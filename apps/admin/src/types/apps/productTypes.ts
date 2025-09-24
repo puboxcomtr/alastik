@@ -52,6 +52,7 @@ export type ProductType = {
 
   // İçerik ve Açıklamalar
   description?: string | null
+  customDescription?: string | null
   shortDescription?: string | null
   note?: string
 

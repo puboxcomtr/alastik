@@ -141,7 +141,7 @@ const TableFilters = ({
 
     const timeout = setTimeout(() => {
       fetchFilteredData()
-    }, searchText ? 300 : 0) 
+    }, searchText ? 300 : 0)
 
     setSearchTimeout(timeout)
 
@@ -150,11 +150,7 @@ const TableFilters = ({
         clearTimeout(timeout)
       }
     }
-  }, [searchText])
-
-  useEffect(() => {
-    fetchFilteredData()
-  }, [stock, mainCategory, subCategory, brand])
+  }, [searchText, stock, mainCategory, subCategory, brand])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
