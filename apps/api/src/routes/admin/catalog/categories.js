@@ -36,8 +36,6 @@ router.get('/', maybeAuth, async (req, res) => {
       with_children = 'false'
     } = req.query;
 
-    console.log('🟢 CATEGORIES.JS ROUTE ÇALIŞTI - Listeleme');
-
     // WebCategory filtreleri
     const webFilter = {};
 
@@ -77,7 +75,6 @@ router.get('/', maybeAuth, async (req, res) => {
       webFilter.$text = { $search: String(search.trim()) };
     }
 
-    console.log('Category Filter:', webFilter);
 
     // WebCategory'leri getir
     let query = WebCategory.find(webFilter)
@@ -112,8 +109,6 @@ router.get('/', maybeAuth, async (req, res) => {
     }
 
     const categories = await query.lean();
-
-    console.log(`${categories.length} kategori bulundu`);
 
     // Response formatını product.js gibi ayarla
     const formattedCategories = categories.map(cat => {
@@ -187,7 +182,8 @@ router.get('/', maybeAuth, async (req, res) => {
         syncStatus: cat.syncInfo?.syncStatus || 'unknown'
       };
     });
-
+    const formattedKarPaleti = formattedCategories.find(c => c.name === 'Kar Paleti ve Zinciri');
+   
     res.json({
       success: true,
       data: formattedCategories,
@@ -212,184 +208,46 @@ router.get('/', maybeAuth, async (req, res) => {
 });
 
 /**
- * Kategori Detay Görüntüleme
- * GET /api/categories/:id
+ * Kategori Detay Güncelleme - WebProduct Kullanarak
  */
-router.get('/:id', maybeAuth, async (req, res) => {
+router.patch('/:id', maybeAuth, [
+  body('description').optional().isLength({ max: 500 }).withMessage('Açıklama en fazla 500 karakter olabilir'),
+  body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
+  body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
+  body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır')
+], async (req, res) => {
   try {
-    const id = String(req.params.id);
-    console.log('🟢 CATEGORY DETAIL - ID:', id);
+    const { id } = req.params;
+    const { description, seoTitle, seoUrl, webOrder } = req.body;
 
-    // ID veya slug ile kategori bul
-    const category = await WebCategory.findOne({
-      $or: [
-        { _id: id },
-        { slug: id }
-      ]
-    })
-      .populate('parent', 'name slug level')
-      .populate('parentPath', 'name slug level')
-      .populate('showcase.productKey', 'diaData.aciklama customData.webPrice diaData.m_resimler customData.featuredImage')
-      .lean();
+    const updateData = {};
+    if (description !== undefined) updateData.description = description;
+    if (seoTitle !== undefined) updateData.seoTitle = seoTitle?.trim();
+    if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase();
+    if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0;
 
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Kategori bulunamadı'
-      });
-    }
+    updateData.updatedAt = new Date();
 
-    // Alt kategorileri getir
-    const subCategories = await WebCategory.find({
-      parent: category._id,
-      webVisible: true
-    })
-      .sort({ webOrder: 1, name: 1 })
-      .select('name slug level productCount activeProductCount')
-      .lean();
-
-    // Showcase ürünlerini düzenle
-    const showcaseProducts = (category.showcase || [])
-      .filter(item => item.productKey)
-      .map(item => ({
-        ...item,
-        product: item.productKey ? {
-          name: item.productKey.diaData?.aciklama,
-          price: item.productKey.customData?.webPrice,
-          image: item.productKey.customData?.featuredImage ||
-            (item.productKey.diaData?.m_resimler?.[0]?.aws_url)
-        } : null
-      }))
-      .sort((a, b) => a.order - b.order);
-
-    const responseData = {
-      // Temel bilgiler
-      id: category._id,
-      name: category.name,
-      slug: category.slug,
-      level: category.level,
-
-      // Hiyerarşi
-      parent: category.parent,
-      parentPath: category.parentPath || [],
-      subCategories: subCategories,
-
-      // DIA bağlantısı
-      diaCategory: category.diaCategory,
-      diaLevel: category.diaLevel,
-      diaKey: category.diaKey,
-
-      // Web yönetimi
-      webVisible: category.webVisible,
-      webOrder: category.webOrder,
-
-      // SEO bilgileri
-      seoTitle: category.seoTitle || category.name,
-      seoDescription: category.seoDescription || '',
-      seoUrl: category.seoUrl || category.slug,
-      seoKeywords: category.seoKeywords || [],
-
-      // Görsel ve içerik
-      customImage: category.customImage || { url: '', alt: '', title: '' },
-      detail: category.detail || '',
-
-      // Showcase
-      showcase: showcaseProducts,
-
-      // İstatistikler
-      productCount: category.productCount || 0,
-      activeProductCount: category.activeProductCount || 0,
-      totalStock: category.totalStock || 0,
-
-      // Senkronizasyon
-      syncInfo: category.syncInfo || {},
-
-      // Tarihler
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt
-    };
-
-    res.json({
-      success: true,
-      data: responseData
-    });
-
-  } catch (error) {
-    console.error('Category detail get error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Kategori detayı getirilirken hata oluştu',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-/**
- * Kategori İstatistikleri
- * GET /api/categories/stats
- */
-router.get('/stats/overview', maybeAuth, async (req, res) => {
-  try {
-    console.log('📊 CATEGORY STATS İSTEĞİ');
-
-    const stats = await WebCategory.aggregate([
+    const updatedCategory = await WebCategory.findByIdAndUpdate(
+      id,
+      { $set: updateData },
       {
-        $group: {
-          _id: null,
-          totalCategories: { $sum: 1 },
-          visibleCategories: {
-            $sum: { $cond: ['$webVisible', 1, 0] }
-          },
-          mainCategories: {
-            $sum: { $cond: [{ $eq: ['$level', 1] }, 1, 0] }
-          },
-          subCategories: {
-            $sum: { $cond: [{ $eq: ['$level', 2] }, 1, 0] }
-          },
-          subSubCategories: {
-            $sum: { $cond: [{ $eq: ['$level', 3] }, 1, 0] }
-          },
-          totalProducts: { $sum: '$productCount' },
-          totalActiveProducts: { $sum: '$activeProductCount' },
-          totalStock: { $sum: '$totalStock' },
-          categoriesWithProducts: {
-            $sum: { $cond: [{ $gt: ['$productCount', 0] }, 1, 0] }
-          }
-        }
+        new: true,
+        strict: false
       }
-    ]);
-
-    const result = stats[0] || {
-      totalCategories: 0,
-      visibleCategories: 0,
-      mainCategories: 0,
-      subCategories: 0,
-      subSubCategories: 0,
-      totalProducts: 0,
-      totalActiveProducts: 0,
-      totalStock: 0,
-      categoriesWithProducts: 0
-    };
-
-    // Son senkronizasyon tarihi
-    const lastSync = await WebCategory.findOne({}, { 'syncInfo.lastSync': 1 })
-      .sort({ 'syncInfo.lastSync': -1 });
+    );
 
     res.json({
       success: true,
-      data: {
-        ...result,
-        lastSync: lastSync?.syncInfo?.lastSync,
-        syncRequired: result.totalCategories === 0
-      }
+      data: updatedCategory,
+      message: 'Kategori başarıyla güncellendi'
     });
 
   } catch (error) {
-    console.error('Category stats error:', error);
+    console.error('Hata:', error);
     res.status(500).json({
       success: false,
-      message: 'Kategori istatistikleri alınamadı',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Kategori güncellenirken hata oluştu'
     });
   }
 });

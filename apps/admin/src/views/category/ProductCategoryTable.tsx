@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 
 // Types Imports
 import type { CategoryType } from '@/types/apps/productTypes'
-
 // MUI Imports
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
@@ -102,10 +101,8 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
   const [data, setData] = useState<CategoryType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
 
-  // Props'tan gelen veriyi state'e set et - SADECE ANA KATEGORİLER (level 1)
   useEffect(() => {
-    const mainCategories = (categoryData || []).filter(category => category.level === 1)
-    setData(mainCategories)
+    setData(categoryData || [])
   }, [categoryData])
 
   const columns = useMemo<ColumnDef<CategoryWithActionsType, any>[]>(
@@ -134,16 +131,61 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
       },
       columnHelper.accessor('name', {
         header: 'Kategori Adı',
-        cell: ({ row }) => (
-          <div className='flex items-center gap-3'>
-            <div className='flex flex-col items-start'>
-              <Typography className='font-medium' color='text.primary'>
-                {row.original.name}
-              </Typography>
-              <Typography variant='body2'>{row.original.diaCategory}</Typography>
+        cell: ({ row }) => {
+          const category = row.original
+          let displayName = category.name
+          let categoryInfo = ''
+          if (category.level === 1) {
+            displayName = category.name
+            categoryInfo = 'Ana Kategori'
+          } else if (category.level === 2) {
+            displayName = category.name
+            const parentName = typeof category.parent === 'string'
+              ? category.parent
+              : category.parent?.name
+
+            const pathName = typeof category.parentPath === 'string'
+              ? category.parentPath
+              : parentName
+
+            categoryInfo = pathName
+              ? `${pathName} > ${category.name}`
+              : 'Alt Kategori'
+          } else if (category.level === 3) {
+            displayName = category.name
+            const parentNames = []
+            if (typeof category.parentPath === 'string') {
+              parentNames.push(category.parentPath)
+            }
+            const parentName = typeof category.parent === 'string'
+              ? category.parent
+              : category.parent?.name
+
+            if (parentName) {
+              parentNames.push(parentName)
+            }
+
+            categoryInfo = parentNames.length > 0
+              ? `${parentNames.join(' > ')} > ${category.name}`
+              : 'Alt-Alt Kategori'
+          }
+
+          return (
+            <div className='flex items-center gap-3'>
+              <div className='flex flex-col items-start'>
+                <Typography
+                  className='font-medium'
+                  color='text.primary'
+                >
+                  {displayName}
+                </Typography>
+                <Typography variant='body2' color='text.disabled'>
+                  {categoryInfo}
+                </Typography>
+              </div>
             </div>
-          </div>
-        )
+          )
+        }
       }),
       columnHelper.accessor('productCount', {
         header: 'Ürün Sayısı',
@@ -220,7 +262,7 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
               className='max-sm:is-full'
             />
             <Typography variant='body2' color='text.secondary'>
-              Toplam <strong>{data.length} Ana Kategori</strong> bulundu
+              Toplam <strong>{data.length} Kategori</strong> bulundu
             </Typography>
           </div>
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>

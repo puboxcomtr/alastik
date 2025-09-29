@@ -66,7 +66,11 @@ const webCategorySchema = new mongoose.Schema({
     default: 0,
     index: true
   },
-
+  // Açıklama Alanı
+  description: {
+    type: String,
+    default: null
+  },
   // SEO Bilgileri
   seoTitle: String,
   seoDescription: String,
