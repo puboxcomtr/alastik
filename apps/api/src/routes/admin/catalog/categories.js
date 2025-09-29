@@ -100,7 +100,9 @@ router.get('/', maybeAuth, async (req, res) => {
         'syncInfo.syncStatus': 1,
         'syncInfo.lastProductSync': 1,
         createdAt: 1,
-        updatedAt: 1
+        updatedAt: 1,
+        description: 1,
+        customImage: 1
       })
       .sort({ level: 1, webOrder: 1, name: 1 });
 
@@ -173,6 +175,9 @@ router.get('/', maybeAuth, async (req, res) => {
         productCount: cat.productCount || 0,
         activeProductCount: cat.activeProductCount || 0,
         totalStock: cat.totalStock || 0,
+
+        // Opsiyonel Alanlar
+        description: cat.description || '',
 
         // Tarihler
         createdAt: cat.createdAt,

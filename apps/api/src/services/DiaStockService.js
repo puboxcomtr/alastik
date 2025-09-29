@@ -7,6 +7,9 @@ const DiaStock = require('../models/DiaStock');
 /* WEB Ürün Modeli */
 const WebProduct = require('../models/WebProduct');
 
+/* Web kategori Modeli */
+const WebCategory = require('../models/WebCategory');
+
 const CacheManager = require('../../../../packages/cache');
 
 /* Filter Config */
@@ -756,10 +759,7 @@ class DiaStockService {
     }
   }
   async createOrUpdateWebCategory(categoryData) {
-    const WebCategory = require('../models/WebCategory');
-
     const slug = this.generateCategorySlug(categoryData.name);
-
     const existingCategory = await WebCategory.findOne({
       level: categoryData.level,
       diaCategory: categoryData.diaCategory,
@@ -767,16 +767,23 @@ class DiaStockService {
     });
 
     if (existingCategory) {
+      const updateData = {
+        name: categoryData.name,
+        slug: slug,
+        diaCategory: categoryData.diaCategory,
+        diaLevel: categoryData.diaLevel,
+        'syncInfo.lastSync': new Date(),
+        'syncInfo.syncStatus': 'synced'
+      };
+      if (existingCategory.description === undefined) {
+        updateData.description = null;
+      }
+      if (existingCategory.customImage === undefined) {
+        updateData.customImage = null;
+      }
       await WebCategory.updateOne(
         { _id: existingCategory._id },
-        {
-          $set: {
-            name: categoryData.name,
-            slug: slug,
-            'syncInfo.lastSync': new Date(),
-            'syncInfo.syncStatus': 'synced'
-          }
-        }
+        { $set: updateData }
       );
       return { updated: true };
     } else {
@@ -787,6 +794,8 @@ class DiaStockService {
         webOrder: 0,
         seoTitle: categoryData.name,
         seoUrl: slug,
+        description: null,
+        customImage: null,
         syncInfo: {
           lastSync: new Date(),
           syncStatus: 'synced',

@@ -92,7 +92,7 @@ class DiaStockScheduler {
   stop() {
     try {
       this.logger.info('Scheduler durduruluyor...');
-      
+
       Object.keys(this.cronJobs).forEach(jobName => {
         if (this.cronJobs[jobName]) {
           this.cronJobs[jobName].stop();
@@ -132,7 +132,11 @@ class DiaStockScheduler {
         processed: result.processed,
         inserted: result.inserted,
         updated: result.updated,
-        errors: result.errors.length
+        errors: result.errors.length,
+        categories: {
+          created: result.categories?.created || 0,
+          updated: result.categories?.updated || 0
+        }
       });
 
       // Cache'i temizle
@@ -148,7 +152,7 @@ class DiaStockScheduler {
     } catch (error) {
       this.schedulerStatus.fullSyncRunning = false;
       this.logger.error('Zamanlanmış tam senkronizasyon hatası:', error);
-      
+
       // Hata bildirimini cache'e kaydet
       await this.cache.set('dia-sync:last-full-sync-error', JSON.stringify({
         timestamp: new Date(),
@@ -240,9 +244,9 @@ class DiaStockScheduler {
   async generateWeeklyReport() {
     try {
       this.logger.info('Haftalık performans raporu oluşturuluyor...');
-      
+
       const performanceReport = this.diaStockService.generatePerformanceReport();
-      
+
       // Cache'e kaydet
       await this.cache.set('dia-sync:weekly-performance-report', JSON.stringify({
         timestamp: new Date(),
@@ -270,16 +274,16 @@ class DiaStockScheduler {
     try {
       // Sonraki çalışma zamanlarını hesapla
       const now = new Date();
-      
+
       // Sonraki tam senkronizasyon (yarın saat 02:00)
       const nextFullSync = new Date(now);
       nextFullSync.setDate(now.getDate() + 1);
       nextFullSync.setHours(2, 0, 0, 0);
-      
+
       // Sonraki artımlı senkronizasyon (sonraki saat başı)
       const nextIncrementalSync = new Date(now);
       nextIncrementalSync.setHours(now.getHours() + 1, 0, 0, 0);
-      
+
       this.schedulerStatus.nextFullSync = nextFullSync;
       this.schedulerStatus.nextIncrementalSync = nextIncrementalSync;
 

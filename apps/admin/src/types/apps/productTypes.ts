@@ -106,6 +106,43 @@ export type ProductType = {
   syncStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
 }
 
+// Kategori Senkronizasyon Bilgileri
+export interface CategorySyncInfo {
+  lastSync?: Date
+  syncStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
+  syncSource?: string
+  lastProductSync?: Date
+}
+
+// Kategori Type Definition
+export type CategoryType = {
+  id: string
+  name: string
+  slug: string
+  level: number
+  parent: string | null
+  parentPath: string[]
+  diaCategory: string
+  diaLevel: string
+  webVisible: boolean
+  webOrder: number
+  seoTitle: string
+  seoUrl: string
+  seoKeywords: string[]
+  productCount: number
+  activeProductCount: number
+  totalStock: number
+  syncInfo: CategorySyncInfo
+  showcase: any[]
+  description?: string // Açıklama alanı - manuel doldurulabilir
+  customImage?: {      // Görsel objesi - manuel doldurulabilir
+    url: string
+    alt?: string
+    title?: string
+  }
+  createdAt?: string | Date
+  updatedAt?: string | Date
+}
 
 export type WebCategoryType = {
   id: string
@@ -132,8 +169,14 @@ export type WebCategoryType = {
   seoTitle: string
   seoUrl: string
 
-  // Görsel
+  // Görsel ve içerik - manuel doldurulabilir
   image: string
+  customImage?: {
+    url: string
+    alt?: string
+    title?: string
+  } | null
+  description?: string | null
 
   // İstatistikler
   productCount: number

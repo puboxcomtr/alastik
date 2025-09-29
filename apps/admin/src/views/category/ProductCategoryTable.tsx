@@ -3,6 +3,9 @@
 // React Imports
 import { useEffect, useMemo, useState } from 'react'
 
+// Types Imports
+import type { CategoryType } from '@/types/apps/productTypes'
+
 // MUI Imports
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
@@ -45,39 +48,6 @@ declare module '@tanstack/table-core' {
   interface FilterMeta {
     itemRank: RankingInfo
   }
-}
-
-// Props Interface
-interface CategorySyncInfo {
-  lastDiaSync?: Date
-  diaStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
-  webStatus?: 'active' | 'draft' | 'hidden' | 'archived'
-  syncErrors?: string[]
-  lastWebUpdate?: Date
-  syncSource?: string
-}
-
-export type CategoryType = {
-  id: string
-  name: string
-  slug: string
-  level: number
-  parent: string | null
-  parentPath: string[]
-  diaCategory: string
-  diaLevel: string
-  webVisible: boolean
-  webOrder: number
-  seoTitle: string
-  seoUrl: string
-  seoKeywords: string[]
-  productCount: number
-  activeProductCount: number
-  totalStock: number
-  syncInfo: CategorySyncInfo
-  showcase: any[]
-  createdAt?: string | Date
-  updatedAt?: string | Date
 }
 
 type CategoryWithActionsType = CategoryType & {
@@ -137,8 +107,6 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
     const mainCategories = (categoryData || []).filter(category => category.level === 1)
     setData(mainCategories)
   }, [categoryData])
-
-
 
   const columns = useMemo<ColumnDef<CategoryWithActionsType, any>[]>(
     () => [
@@ -251,6 +219,9 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
               placeholder='Kategori adı ile arama'
               className='max-sm:is-full'
             />
+            <Typography variant='body2' color='text.secondary'>
+              Toplam <strong>{data.length} Ana Kategori</strong> bulundu
+            </Typography>
           </div>
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
             <Button

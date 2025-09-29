@@ -4,7 +4,6 @@ import 'server-only'
 
 /* @Import Page */
 import ProductCategoryTable from '@views/category/ProductCategoryTable'
-
 async function fetchCategories() {
   try {
     const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
@@ -32,7 +31,7 @@ async function fetchCategories() {
       parentPath: category.parentPath || [],
       diaCategory: category.diaCategory || '',
       diaLevel: category.diaLevel || '',
-      webVisible: category.webVisible !== false, 
+      webVisible: category.webVisible !== false,
       webOrder: category.webOrder || 0,
       seoTitle: category.seoTitle || category.name || '',
       seoUrl: category.seoUrl || category.slug || '',

@@ -1,14 +1,17 @@
+'use client'
+
 // React Imports
 import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 
+// Type Imports
+import type { CategoryType } from '@/types/apps/productTypes'
+
+
 // MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
-import FormControl from '@mui/material/FormControl'
 import IconButton from '@mui/material/IconButton'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -18,32 +21,26 @@ import InputAdornment from '@mui/material/InputAdornment'
 // Third-party Imports
 import { useForm, Controller } from 'react-hook-form'
 
-// Type Imports
-import type { categoryType } from './ProductCategoryTable'
 
 type Props = {
   open: boolean
   handleClose: () => void
-  categoryData: categoryType[]
-  selectedCategory: categoryType | null
-  setData: (data: categoryType[]) => void
+  categoryData: CategoryType[]
+  selectedCategory: CategoryType | null
+  setData: (data: CategoryType[]) => void
 }
 
 type FormValues = {
-  title: string
-  description: string
-  meta_title: string
-  meta_description: string
-  detail: string
-  order: number
-  image: string
+  name: string
+  diaCategory: string
+  seoTitle: string
+  seoUrl: string
+  webOrder: number
 }
 
 const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory, setData }: Props) => {
   const [fileName, setFileName] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // React Hook Form kullanıyoruz
   const {
     control,
     reset,
@@ -51,40 +48,30 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     formState: { errors }
   } = useForm<FormValues>({
     defaultValues: {
-      title: '',
-      description: '',
-      meta_title: '',
-      meta_description: '',
-      detail: '',
-      order: 0,
-      image: ''
+      name: '',
+      diaCategory: '',
+      seoTitle: '',
+      seoUrl: '',
+      webOrder: 0
     }
   })
-
-  // Seçili kategori değiştiğinde formu resetle (alanları doldur)
   useEffect(() => {
     if (selectedCategory) {
       reset({
-        title: selectedCategory.categoryTitle,
-        description: selectedCategory.description,
-        meta_title: '',
-        meta_description: '',
-        detail: '',
-        order: selectedCategory.order,
-        image: selectedCategory.image
+        name: selectedCategory.name,
+        diaCategory: selectedCategory.diaCategory,
+        seoTitle: selectedCategory.seoTitle,
+        seoUrl: selectedCategory.seoUrl,
+        webOrder: selectedCategory.webOrder
       })
-      // Dosya adı görüntüleme için:
-      const imgParts = selectedCategory.image.split('/')
-      setFileName(imgParts[imgParts.length - 1] || '')
+      setFileName('')
     } else {
       reset({
-        title: '',
-        description: '',
-        meta_title: '',
-        meta_description: '',
-        detail: '',
-        order: 0,
-        image: ''
+        name: '',
+        diaCategory: '',
+        seoTitle: '',
+        seoUrl: '',
+        webOrder: 0
       })
       setFileName('')
     }
@@ -94,12 +81,13 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
   const onSubmit = (data: FormValues) => {
     if (!selectedCategory) return
 
-    const updatedCategory: categoryType = {
+    const updatedCategory: CategoryType = {
       ...selectedCategory,
-      categoryTitle: data.title,
-      description: data.description,
-      order: data.order,
-      image: data.image || selectedCategory.image
+      name: data.name,
+      diaCategory: data.diaCategory,
+      seoTitle: data.seoTitle,
+      seoUrl: data.seoUrl,
+      webOrder: data.webOrder
     }
 
     // Kategori listesini güncelle
@@ -141,23 +129,23 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
       <div className='p-5'>
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5'>
           <Controller
-            name='title'
+            name='name'
             control={control}
-            rules={{ required: 'Kategori başlığı zorunludur' }}
+            rules={{ required: 'Kategori adı zorunludur' }}
             render={({ field }) => (
               <TextField
                 {...field}
                 fullWidth
-                label='Kategori Başlık'
-                placeholder='Kategori Başlık Giriniz'
-                error={!!errors.title}
-                helperText={errors.title?.message}
+                label='Kategori Adı'
+                placeholder='Kategori Adı Giriniz'
+                error={!!errors.name}
+                helperText={errors.name?.message}
               />
             )}
           />
 
           <Controller
-            name='description'
+            name='diaCategory'
             control={control}
             rules={{ required: 'Kategori açıklaması zorunludur' }}
             render={({ field }) => (
@@ -166,60 +154,46 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
                 fullWidth
                 label='Kategori Açıklama'
                 placeholder='Kategori Açıklaması Giriniz'
-                error={!!errors.description}
-                helperText={errors.description?.message}
+                error={!!errors.diaCategory}
+                helperText={errors.diaCategory?.message}
               />
             )}
           />
+
           <Controller
-            name='meta_title'
+            name='seoTitle'
             control={control}
-            rules={{ required: 'Meta Başlığı Açıklaması Zorunludur' }}
+            rules={{ required: 'SEO Başlığı zorunludur' }}
             render={({ field }) => (
               <TextField
                 {...field}
                 fullWidth
-                label='Meta Başlık'
-                placeholder='Meta Başlık Giriniz'
-                error={!!errors.meta_title}
-                helperText={errors.meta_title?.message}
+                label='SEO Başlık'
+                placeholder='SEO Başlık Giriniz'
+                error={!!errors.seoTitle}
+                helperText={errors.seoTitle?.message}
               />
             )}
           />
+
           <Controller
-            name='meta_description'
+            name='seoUrl'
             control={control}
-            rules={{ required: 'Meta Açıklaması Zorunludur' }}
+            rules={{ required: 'SEO URL zorunludur' }}
             render={({ field }) => (
               <TextField
                 {...field}
                 fullWidth
-                label='Meta Açıklaması'
-                placeholder='Meta Açıklaması Giriniz'
-                error={!!errors.meta_description}
-                helperText={errors.meta_description?.message}
+                label='SEO URL'
+                placeholder='SEO URL Giriniz'
+                error={!!errors.seoUrl}
+                helperText={errors.seoUrl?.message}
               />
             )}
           />
+
           <Controller
-            name='detail'
-            control={control}
-            rules={{ required: 'Kategori Detay Zorunludur' }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                multiline
-                minRows={4}
-                fullWidth
-                label='Kategori Detay Açıklaması'
-                placeholder='Kategori Detay Açıklaması Giriniz'
-                error={!!errors.meta_description}
-                helperText={errors.meta_description?.message}
-              />
-            )}
-          />
-          <Controller
-            name='order'
+            name='webOrder'
             control={control}
             rules={{ required: 'Öncelik zorunludur' }}
             render={({ field }) => (
@@ -229,8 +203,8 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
                 type='number'
                 label='Öncelik'
                 placeholder='Öncelik Giriniz'
-                error={!!errors.order}
-                helperText={errors.order?.message}
+                error={!!errors.webOrder}
+                helperText={errors.webOrder?.message}
               />
             )}
           />
