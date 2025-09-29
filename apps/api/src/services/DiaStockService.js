@@ -10,6 +10,9 @@ const WebProduct = require('../models/WebProduct');
 /* Web kategori Modeli */
 const WebCategory = require('../models/WebCategory');
 
+/* Web kategori Modeli */
+const WebBrand = require('../models/WebBrand');
+
 const CacheManager = require('../../../../packages/cache');
 
 /* Filter Config */
@@ -642,7 +645,7 @@ class DiaStockService {
   };
   /**
    * DIA Verilerini
-   * Kategori Listesini Senkronize Etme (categories collection'da)
+   * Kategori Listesini Senkronize Et (categories collection'da)
   */
   async syncCategoriesToWebCategory() {
     const operationId = `sync_categories_${Date.now()}`;
@@ -650,9 +653,6 @@ class DiaStockService {
 
     try {
       this.logger.info('=== KATEGORİ SENKRONİZASYONU BAŞLANGICI ===', { operationId });
-
-      const WebCategory = require('../models/WebCategory');
-
       // WebProduct'lardan kategorileri topla
       const categoryPipeline = [
         { $match: { 'syncInfo.diaStatus': 'synced' } },
@@ -840,6 +840,227 @@ class DiaStockService {
 
       await WebCategory.updateOne(
         { _id: category._id },
+        {
+          $set: {
+            productCount,
+            activeProductCount,
+            'syncInfo.lastProductSync': new Date()
+          }
+        }
+      );
+    }
+  }
+  /**
+   * DIA Verilerini
+   * Marka Listesini Senkronize Et (brands collection'da)
+  */
+  async syncBrandsToWebBrand() {
+    const operationId = `sync_brands_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== MARKA SENKRONİZASYONU BAŞLANGICI ===', { operationId });
+
+      // diastocks collection'ından markaları topla
+      const brandPipeline = [
+        {
+          $match: {
+            'syncInfo.syncStatus': 'synced',
+            'marka': { $exists: true, $ne: null, $ne: '' }
+          }
+        },
+        {
+          $group: {
+            _id: '$marka',
+            markaAck: { $first: '$markaack' },
+            diaKey: { $first: '$_key_scf_marka' },
+            productCount: { $sum: 1 },
+            activeProductCount: { $sum: 1 },
+            totalStock: { $sum: '$fiili_stok' },
+            totalValue: {
+              $sum: {
+                $multiply: ['$fiili_stok', '$fiyat1']
+              }
+            },
+            minPrice: { $min: '$fiyat1' },
+            maxPrice: { $max: '$fiyat1' },
+            avgPrice: { $avg: '$fiyat1' },
+            categories: { $addToSet: { $arrayElemAt: ['$m_kategoriler.kategori_aciklama_1', 0] } }
+          }
+        },
+        { $sort: { productCount: -1, _id: 1 } }
+      ];
+
+      const brands = await DiaStock.aggregate(brandPipeline);
+
+      let created = 0;
+      let updated = 0;
+
+      for (const brandData of brands) {
+        try {
+          const result = await this.createOrUpdateWebBrand(brandData);
+          if (result.created) created++;
+          if (result.updated) updated++;
+        } catch (brandError) {
+          this.logger.error('Marka işleme hatası:', {
+            brand: brandData._id,
+            error: brandError.message
+          });
+        }
+      }
+
+      const duration = Date.now() - startTime;
+
+      this.logger.info('=== MARKA SENKRONİZASYONU TAMAMLANDI ===', {
+        operationId,
+        created,
+        updated,
+        totalBrands: brands.length,
+        duration: `${duration}ms`
+      });
+
+      return {
+        success: true,
+        created,
+        updated,
+        totalBrands: brands.length,
+        duration: `${duration}ms`
+      };
+
+    } catch (error) {
+      this.logger.error('Marka senkronizasyonu hatası:', {
+        error: error.message,
+        operationId
+      });
+      throw error;
+    }
+  }
+  async createOrUpdateWebBrand(brandData) {
+    try {
+      const slug = this.generateBrandSlug(brandData._id);
+      const seoUrl = this.generateSeoUrl(brandData._id);
+
+      const existingBrand = await WebBrand.findOne({
+        diaBrand: brandData._id
+      });
+
+      const categoryDistribution = brandData.categories
+        .filter(cat => cat)
+        .map(cat => ({
+          categoryName: cat,
+          productCount: 1
+        }));
+
+      if (existingBrand) {
+        // Mevcut marka - güncelle
+        await WebBrand.updateOne(
+          { _id: existingBrand._id },
+          {
+            $set: {
+              name: brandData._id.toUpperCase(),
+              diaMarkaAck: brandData.markaAck,
+              diaKey: brandData.diaKey,
+              productCount: brandData.productCount,
+              activeProductCount: brandData.activeProductCount,
+              totalStock: brandData.totalStock || 0,
+              totalValue: brandData.totalValue || 0,
+              categoryDistribution: categoryDistribution,
+              'priceRange.min': brandData.minPrice || 0,
+              'priceRange.max': brandData.maxPrice || 0,
+              'priceRange.average': brandData.avgPrice || 0,
+              'syncInfo.lastSync': new Date(),
+              'syncInfo.syncStatus': 'synced',
+              'syncInfo.lastDiaSync': new Date()
+            }
+          }
+        );
+        return { updated: true };
+      } else {
+        // Yeni marka oluştur
+        await WebBrand.create({
+          name: brandData._id.toUpperCase(),
+          slug: slug,
+          diaBrand: brandData._id,
+          diaMarkaAck: brandData.markaAck,
+          diaKey: brandData.diaKey,
+          webVisible: true,
+          webOrder: 0,
+          seoTitle: brandData._id,
+          seoDescription: `${brandData._id} markası ürünleri`,
+          seoUrl: seoUrl,
+          seoKeywords: [brandData._id.toLowerCase()],
+          customImage: { url: null, alt: brandData._id, title: brandData._id },
+          description: null,
+          logo: { url: null, alt: `${brandData._id} Logo`, title: `${brandData._id} Logo` },
+          bannerImage: { url: null, alt: `${brandData._id} Banner`, title: `${brandData._id} Banner` },
+          brandInfo: { foundedYear: null, country: null, website: null, about: null },
+          showcase: [],
+          productCount: brandData.productCount,
+          activeProductCount: brandData.activeProductCount,
+          totalStock: brandData.totalStock || 0,
+          totalValue: brandData.totalValue || 0,
+          categoryDistribution: categoryDistribution,
+          priceRange: {
+            min: brandData.minPrice || 0,
+            max: brandData.maxPrice || 0,
+            average: brandData.avgPrice || 0
+          },
+          syncInfo: {
+            lastSync: new Date(),
+            syncStatus: 'synced',
+            syncSource: 'diasync',
+            lastDiaSync: new Date()
+          }
+        });
+        return { created: true };
+      }
+    } catch (error) {
+      this.logger.error('WebBrand oluşturma/güncelleme hatası:', {
+        brand: brandData._id,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+  /**
+   * Marka için slug oluştur
+   */
+  generateBrandSlug(brandName) {
+    if (!brandName) return null;
+
+    return brandName
+      .toLowerCase()
+      .trim()
+      .replace(/ç/g, 'c')
+      .replace(/ğ/g, 'g')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ş/g, 's')
+      .replace(/ü/g, 'u')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  /**
+   * Markalardaki ürün sayılarını güncelle
+   */
+  async updateBrandProductCounts() {
+    const brands = await WebBrand.find({});
+
+    for (const brand of brands) {
+      const productCount = await DiaStock.countDocuments({
+        'marka': brand.diaBrand
+      });
+
+      const activeProductCount = await DiaStock.countDocuments({
+        'marka': brand.diaBrand,
+        'durum': 'A'
+      });
+
+      await WebBrand.updateOne(
+        { _id: brand._id },
         {
           $set: {
             productCount,
@@ -1241,24 +1462,28 @@ class DiaStockService {
    */
   async fullSync() {
     try {
-      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (ÜRÜN VE KATEGORİ) BAŞLANGICI ===');
+      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (Ürün, Kategori ve Marka) BAŞLANGICI ===');
       const startTime = Date.now();
 
       // 1. Sadece filtrelenmiş verileri getir ve veritabanına yaz
       const result = await this.fetchAndSyncIncrementally();
       const categoryResult = await this.syncCategoriesToWebCategory();
+      const brandResult = await this.syncBrandsToWebBrand();
 
       const endTime = Date.now();
       const duration = endTime - startTime;
-      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (ÜRÜN VE KATEGORİ) TAMAMLANDI ===', {
+      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (Ürün, Kategori ve Marka) TAMAMLANDI ===', {
         duration: `${duration}ms`,
-        sync: result
+        sync: result,
+        categories: categoryResult,
+        brands: brandResult
       });
 
       return {
         ...result,
         duration,
         categories: categoryResult,
+        brands: brandResult,
         timestamp: new Date()
       };
 

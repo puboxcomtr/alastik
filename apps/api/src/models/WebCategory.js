@@ -1,18 +1,14 @@
-// models/WebCategory.js
 const mongoose = require('mongoose');
 
-// Showcase Ürün Schema (Vitrin için)
 const showcaseProductSchema = new mongoose.Schema({
-  productKey: { type: String, required: true }, // WebProduct _key referansı
+  productKey: { type: String, required: true },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   addedAt: { type: Date, default: Date.now },
-  addedBy: String // Admin kullanıcı adı
+  addedBy: String 
 }, { _id: false });
 
-// Ana WebCategory Schema
 const webCategorySchema = new mongoose.Schema({
-  // Temel Bilgiler
   name: {
     type: String,
     required: true,
@@ -26,11 +22,10 @@ const webCategorySchema = new mongoose.Schema({
     trim: true
   },
 
-  // Hiyerarşi Bilgileri
   level: {
     type: Number,
     required: true,
-    enum: [1, 2, 3], // 1: Ana, 2: Alt, 3: Alt-Alt
+    enum: [1, 2, 3], 
     index: true
   },
   parent: {
@@ -41,21 +36,19 @@ const webCategorySchema = new mongoose.Schema({
   parentPath: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'WebCategory'
-  }], // Tüm üst kategoriler
+  }], 
 
-  // DIA Bağlantısı
   diaCategory: {
     type: String,
     required: true
-  }, // DIA'daki orijinal kategori adı
+  }, 
   diaLevel: {
     type: String,
     required: true,
     enum: ['kategori_aciklama_1', 'kategori_aciklama_2', 'kategori_aciklama_3']
   },
-  diaKey: String, // DIA'dan gelen _key varsa
+  diaKey: String,
 
-  // Web Yönetimi
   webVisible: {
     type: Boolean,
     default: true,
@@ -66,12 +59,10 @@ const webCategorySchema = new mongoose.Schema({
     default: 0,
     index: true
   },
-  // Açıklama Alanı
   description: {
     type: String,
     default: null
   },
-  // SEO Bilgileri
   seoTitle: String,
   seoDescription: String,
   seoUrl: {
@@ -81,18 +72,14 @@ const webCategorySchema = new mongoose.Schema({
   },
   seoKeywords: [String],
 
-  // Görsel ve İçerik
   customImage: {
     url: String,
     alt: String,
     title: String
   },
-  detail: String, // Kategori detay açıklaması
-
-  // Showcase (Vitrin Ürünleri)
+  detail: String, 
   showcase: [showcaseProductSchema],
 
-  // İstatistikler
   productCount: {
     type: Number,
     default: 0,
@@ -101,13 +88,12 @@ const webCategorySchema = new mongoose.Schema({
   activeProductCount: {
     type: Number,
     default: 0
-  }, // Aktif ürün sayısı
+  }, 
   totalStock: {
     type: Number,
     default: 0
   },
 
-  // Senkronizasyon Bilgileri
   syncInfo: {
     lastSync: {
       type: Date,
@@ -119,7 +105,7 @@ const webCategorySchema = new mongoose.Schema({
       default: 'synced'
     },
     errorMessage: String,
-    lastProductSync: Date, // Son ürün sayısı güncellemesi
+    lastProductSync: Date,
     syncSource: {
       type: String,
       default: 'diasync'
@@ -131,7 +117,6 @@ const webCategorySchema = new mongoose.Schema({
   collection: 'webcategories'
 });
 
-// Index'ler
 webCategorySchema.index({ level: 1, webVisible: 1, webOrder: 1 });
 webCategorySchema.index({ parent: 1, level: 1, webOrder: 1 });
 webCategorySchema.index({ slug: 1 }, { unique: true });

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 // Types Imports
 import type { CategoryType } from '@/types/apps/productTypes'
+
 // MUI Imports
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
@@ -14,6 +15,8 @@ import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
+import Tooltip from '@mui/material/Tooltip'
+
 import type { TextFieldProps } from '@mui/material/TextField'
 
 // Third-party Imports
@@ -199,15 +202,18 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
         header: 'İşlemler',
         cell: ({ row }) => (
           <div className='flex items-center'>
-            <IconButton
-              size='small'
-              onClick={() => {
-                setSelectedCategory(row.original)
-                setEditCategoryOpen(true)
-              }}
-            >
-              <i className='ri-edit-box-line text-[22px] text-textSecondary' />
-            </IconButton>
+
+            <Tooltip title="Kategori Düzenle">
+              <IconButton
+                size='small'
+                onClick={() => {
+                  setSelectedCategory(row.original)
+                  setEditCategoryOpen(true)
+                }}
+              >
+                <i className='ri-edit-box-line text-[22px] text-textSecondary' />
+              </IconButton>
+            </Tooltip>
           </div>
         ),
         enableSorting: false

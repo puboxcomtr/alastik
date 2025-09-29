@@ -24,16 +24,14 @@ const CacheManager = require('../../../packages/cache');
 const redisCache = new CacheManager();
 
 // Import models
-const Product = require('./models/Product');
+const WebProduct = require('./models/WebProduct');
+const WebCategory = require('./models/WebCategory');
+const WebBrand = require('./models/WebBrand');
+
 const Inventory = require('./models/Inventory');
 const Category = require('./models/Category');
 const DiaStock = require('./models/DiaStock');
 const AdminUser = require('./models/AdminUser');
-const User = require('./models/User');
-const Cart = require('./models/Cart');
-const Order = require('./models/Order');
-const Wishlist = require('./models/Wishlist');
-const Review = require('./models/Review');
 
 // Import services
 const DiaStockService = require('./services/DiaStockService');

@@ -1,4 +1,3 @@
-// routes/admin/catalog/categories.js
 const express = require('express');
 
 // Models
