@@ -134,8 +134,8 @@ export type CategoryType = {
   totalStock: number
   syncInfo: CategorySyncInfo
   showcase: any[]
-  description?: string // Açıklama alanı - manuel doldurulabilir
-  customImage?: {      // Görsel objesi - manuel doldurulabilir
+  description?: string 
+  customImage?: {     
     url: string
     alt?: string
     title?: string

@@ -4,6 +4,7 @@ import 'server-only'
 
 /* @Import Page */
 import ProductCategoryTable from '@views/category/ProductCategoryTable'
+
 async function fetchCategories() {
   try {
     const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'

@@ -174,10 +174,13 @@ router.get('/', maybeAuth, async (req, res) => {
                 description: brand.description || '',
 
                 // Görseller
-                logo: brand.logo?.url || null,
+                logo: brand.logo?.url ||
+                    brand.bannerImage?.url ||
+                    brand.customImage?.url ||
+                    '/images/urun/gorsel-bulunamadi.jpg',
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,
                 bannerImage: brand.bannerImage?.url || null,
-                customImage: brand.customImage?.url || '/images/brands/default-brand.jpg',
+                customImage: brand.customImage?.url || '/images/urun/gorsel-bulunamadi.jpg',
 
                 // Marka bilgileri
                 brandInfo: {

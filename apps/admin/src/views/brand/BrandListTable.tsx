@@ -47,16 +47,29 @@ declare module '@tanstack/table-core' {
 }
 
 export type brandType = {
-  id: number
-  brandTitle: string
+  id: string
+  name: string
   description: string
-  totalProduct: number
-  order: number
-  image: string
+  productCount: number
+  webOrder: number
+  logo: string
+  status: string
+  completenessScore: number
+  totalStock: number
+  priceRange: {
+    averageFormatted: string
+  }
 }
 
 type brandWithActionsType = brandType & {
   actions?: string
+}
+
+interface BrandListTableProps {
+  brandData: any[]
+  totalBrands: number
+  meta: any
+  error: string | null
 }
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
@@ -92,33 +105,35 @@ const DebouncedInput = ({
   return <TextField {...props} value={value} onChange={e => setValue(e.target.value)} size='small' />
 }
 
-const brandData: brandType[] = [
-  {
-    id: 1,
-    brandTitle: 'Pirelli',
-    description: 'Pirelli Marka Açıklaması',
-    totalProduct: 125,
-    order: 0,
-    image: '/images/apps/ecommerce/product-1.png'
-  },
-  {
-    id: 2,
-    brandTitle: 'Hankook',
-    description: 'Hankook Marka Açıklaması',
-    totalProduct: 251,
-    order: 0,
-    image: '/images/apps/ecommerce/product-1.png'
-  }
-]
-
 const columnHelper = createColumnHelper<brandWithActionsType>()
 
-const BrandListTable = () => {
+const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableProps) => {
   const [selectedbrand, setSelectedbrand] = useState<brandType | null>(null)
   const [EditbrandOpen, setEditbrandOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
-  const [data, setData] = useState(brandData)
+  const [data, setData] = useState<brandType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
+
+  // Props'tan gelen veriyi state'e aktar
+  useEffect(() => {
+    if (brandData && brandData.length > 0) {
+      const mappedData: brandType[] = brandData.map(brand => ({
+        id: brand.id,
+        name: brand.diaMarkaAck,
+        description: brand.description || '',
+        productCount: brand.productCount,
+        webOrder: brand.webOrder,
+        logo: brand.logo,
+        status: brand.status,
+        completenessScore: brand.completenessScore,
+        totalStock: brand.totalStock,
+        priceRange: {
+          averageFormatted: brand.priceRange?.averageFormatted || '₺0'
+        }
+      }))
+      setData(mappedData)
+    }
+  }, [brandData])
 
   const columns = useMemo<ColumnDef<brandWithActionsType, any>[]>(
     () => [
@@ -144,27 +159,32 @@ const BrandListTable = () => {
           />
         )
       },
-      columnHelper.accessor('brandTitle', {
+      columnHelper.accessor('name', {
         header: 'Marka Adı',
         cell: ({ row }) => (
           <div className='flex items-center gap-3'>
-            <img src={row.original.image} width={38} height={38} className='rounded bg-actionHover' />
+            <img
+              src={row.original.logo}
+              width={38}
+              height={38}
+              className='rounded bg-actionHover'
+            />
             <div className='flex flex-col items-start'>
               <Typography className='font-medium' color='text.primary'>
-                {row.original.brandTitle}
+                {row.original.name}
               </Typography>
               <Typography variant='body2'>{row.original.description}</Typography>
             </div>
           </div>
         )
       }),
-      columnHelper.accessor('totalProduct', {
+      columnHelper.accessor('productCount', {
         header: 'Ürün Sayısı',
-        cell: ({ row }) => <Typography>{row.original.totalProduct.toLocaleString()}</Typography>
+        cell: ({ row }) => <Typography>{row.original.productCount.toLocaleString()}</Typography>
       }),
-      columnHelper.accessor('order', {
+      columnHelper.accessor('webOrder', {
         header: 'Öncelik',
-        cell: ({ row }) => <Typography>{row.original.order}</Typography>
+        cell: ({ row }) => <Typography>{row.original.webOrder}</Typography>
       }),
       columnHelper.accessor('actions', {
         header: 'İşlemler',
@@ -214,6 +234,16 @@ const BrandListTable = () => {
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues()
   })
+
+  if (error) {
+    return (
+      <Card>
+        <div className='p-5 text-center'>
+          <Typography color='error'>Hata: {error}</Typography>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <>
@@ -268,7 +298,7 @@ const BrandListTable = () => {
               <tbody>
                 <tr>
                   <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    No data available
+                    Veri bulunamadı
                   </td>
                 </tr>
               </tbody>
