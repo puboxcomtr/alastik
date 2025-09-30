@@ -336,7 +336,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
       image: featuredImage,
       images: images,
       customImages: customData.customImages || [],
-      
+
       // Kargo
       delivery: customData.delivery || 'same_day',
 
@@ -502,7 +502,7 @@ router.patch('/:id', maybeAuth, [
     if (webTags !== undefined) updateData['customData.webTags'] = Array.isArray(webTags) ? webTags : [];
     if (webCategory !== undefined) updateData['customData.webCategory'] = webCategory;
     if (webSubCategory !== undefined) updateData['customData.webSubCategory'] = webSubCategory;
-    
+
     // Kargo Süresi
     if (delivery !== undefined) updateData['customData.delivery'] = delivery;
 

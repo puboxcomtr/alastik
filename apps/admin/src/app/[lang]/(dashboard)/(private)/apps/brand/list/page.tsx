@@ -22,7 +22,7 @@ async function fetchBrands() {
     }
 
     const data = await res.json()
-
+    console.log('API Response:', data.data[0])
     const brands = (data.data || data || []).map((brand) => ({
       id: brand._id || brand.id,
       name: brand.name || '',

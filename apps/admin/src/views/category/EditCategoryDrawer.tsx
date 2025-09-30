@@ -41,7 +41,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
 
   useEffect(() => {
     if (selectedCategory) {
-      
+
       setFormData({
         description: selectedCategory.description || '',
         seoTitle: selectedCategory.seoTitle || '',
@@ -184,15 +184,6 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
 
           <TextField
             fullWidth
-            label='SEO Başlık'
-            value={formData.seoTitle}
-            onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
-            placeholder='SEO başlık giriniz'
-            disabled={isLoading}
-          />
-
-          <TextField
-            fullWidth
             multiline
             minRows={3}
             label='Kategori Açıklama'
@@ -201,7 +192,14 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             placeholder='Kategori açıklaması giriniz'
             disabled={isLoading}
           />
-
+          <TextField
+            fullWidth
+            label='SEO Başlık'
+            value={formData.seoTitle}
+            onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
+            placeholder='SEO başlık giriniz'
+            disabled={isLoading}
+          />
           <TextField
             fullWidth
             label='SEO URL'

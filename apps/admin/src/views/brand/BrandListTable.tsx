@@ -50,6 +50,9 @@ export type brandType = {
   id: string
   name: string
   description: string
+  seoTitle: string
+  seoDescription: string
+  seoUrl: string
   productCount: number
   webOrder: number
   logo: string
@@ -121,6 +124,9 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
         id: brand.id,
         name: brand.diaMarkaAck,
         description: brand.description || '',
+        seoTitle: brand.seoTitle || brand.name || '',
+        seoDescription: brand.seoDescription || '',
+        seoUrl: brand.seoUrl || '',
         productCount: brand.productCount,
         webOrder: brand.webOrder,
         logo: brand.logo,

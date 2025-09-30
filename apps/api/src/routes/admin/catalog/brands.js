@@ -278,6 +278,55 @@ router.get('/', maybeAuth, async (req, res) => {
         });
     }
 });
+/**
+ * Marka Detay Güncelleme - WebBrand Collection'dan
+ */
+router.patch('/:id', maybeAuth, [
+    body('description').optional().isLength({ max: 500 }).withMessage('Açıklama en fazla 500 karakter olabilir'),
+    body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
+    body('seoDescription').optional().isLength({ max: 200 }).withMessage('SEO açıklaması en fazla 200 karakter olabilir'),
+    body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
+    body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır')
+], async (req, res) => {
+    try {
+        const { id } = req.params
+        const { description, seoTitle, seoDescription, seoUrl, webOrder } = req.body
 
+        const updateData = {}
+        if (description !== undefined) updateData.description = description
+        if (seoTitle !== undefined) updateData.seoTitle = seoTitle?.trim()
+        if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim()
+        if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase()
+        if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0
+
+        updateData.updatedAt = new Date()
+
+        const updatedBrand = await WebBrand.findByIdAndUpdate(
+            id,
+            { $set: updateData },
+            { new: true, strict: false }
+        )
+
+        if (!updatedBrand) {
+            return res.status(404).json({
+                success: false,
+                message: 'Marka bulunamadı'
+            })
+        }
+
+        res.json({
+            success: true,
+            data: updatedBrand,
+            message: 'Marka başarıyla güncellendi'
+        })
+
+    } catch (error) {
+        console.error('Marka güncelleme hatası:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Marka güncellenirken hata oluştu'
+        })
+    }
+})
 
 module.exports = router;
