@@ -96,7 +96,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/products/list`}>{dictionary['navigation'].products}</MenuItem>
             <MenuItem href={`/${locale}/apps/category/list`}>{dictionary['navigation'].category}</MenuItem>
             <MenuItem href={`/${locale}/apps/brand/list`}>{dictionary['navigation'].brands}</MenuItem>
-            <MenuItem href={`/${locale}/apps/variant/list`}>{dictionary['navigation'].variant}</MenuItem>
             <MenuItem href={`/${locale}/apps/label/list`}>{dictionary['navigation'].label}</MenuItem>
             <MenuItem href={`/${locale}/apps/features/list`}>{dictionary['navigation'].features}</MenuItem>
             <MenuItem href={`/${locale}/apps/filter/list`}>{dictionary['navigation'].filter}</MenuItem>

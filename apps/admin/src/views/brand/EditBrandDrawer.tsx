@@ -4,6 +4,9 @@
 import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 
+// Type import
+import type { BrandType } from '@/types/apps/brandTypes'
+
 // MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -16,15 +19,11 @@ import InputAdornment from '@mui/material/InputAdornment'
 // Toast import
 import { toast } from 'react-toastify'
 
-// Type import
-import type { brandType } from './BrandListTable'
 
 type Props = {
-  open: boolean
-  handleClose: () => void
-  brandData: brandType[]
-  selectedbrand: brandType | null
-  setData: (data: brandType[]) => void
+  brandData: BrandType[]
+  selectedbrand: BrandType | null
+  setData: (data: BrandType[]) => void
 }
 
 const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData }: Props) => {

@@ -3,6 +3,9 @@
 // React Imports
 import { useEffect, useMemo, useState } from 'react'
 
+// Type Imports
+import type { BrandType } from '@/types/apps/brandTypes'
+
 // MUI Imports
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
@@ -12,6 +15,7 @@ import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { TextFieldProps } from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -46,27 +50,10 @@ declare module '@tanstack/table-core' {
   }
 }
 
-export type brandType = {
-  id: string
-  name: string
-  description: string
-  seoTitle: string
-  seoDescription: string
-  seoUrl: string
-  productCount: number
-  webOrder: number
-  logo: string
-  status: string
-  completenessScore: number
-  totalStock: number
-  priceRange: {
-    averageFormatted: string
-  }
-}
-
-type brandWithActionsType = brandType & {
+export type brandWithActionsType = BrandType & {
   actions?: string
 }
+
 
 interface BrandListTableProps {
   brandData: any[]
@@ -196,15 +183,17 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
         header: 'İşlemler',
         cell: ({ row }) => (
           <div className='flex items-center'>
-            <IconButton
-              size='small'
-              onClick={() => {
-                setSelectedbrand(row.original)
-                setEditbrandOpen(true)
-              }}
-            >
-              <i className='ri-edit-box-line text-[22px] text-textSecondary' />
-            </IconButton>
+            <Tooltip title="Düzenle">
+              <IconButton
+                size='small'
+                onClick={() => {
+                  setSelectedbrand(row.original)
+                  setEditbrandOpen(true)
+                }}
+              >
+                <i className='ri-edit-box-line text-[22px] text-textSecondary' />
+              </IconButton>
+            </Tooltip>
           </div>
         ),
         enableSorting: false

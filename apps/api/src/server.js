@@ -27,6 +27,8 @@ const redisCache = new CacheManager();
 const WebProduct = require('./models/WebProduct');
 const WebCategory = require('./models/WebCategory');
 const WebBrand = require('./models/WebBrand');
+const WebTag = require('./models/WebTag');
+
 
 const Inventory = require('./models/Inventory');
 const Category = require('./models/Category');
@@ -301,6 +303,10 @@ app.use('/api/categories', categoryRoutes);
 /* Marka Listeleme */
 const brandRoutes = require('./routes/admin/catalog/brands');
 app.use('/api/brands', brandRoutes);
+
+/* Etiket Listelem */
+const tagRoutes = require('./routes/admin/catalog/tags');
+app.use('/api/tags', tagRoutes);
 
 /**
   * Admin - Functions *

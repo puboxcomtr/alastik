@@ -30,13 +30,21 @@ router.get('/', maybeAuth, async (req, res) => {
     webFilter['syncInfo.diaStatus'] = 'synced';
     webFilter['diaData.durum'] = 'A';
 
-    // SKU araması - diaData içinde
     if (sku && sku.trim() !== '') {
       webFilter['diaData.stokkartkodu'] = sku.trim();
     }
-    // Genel arama - text search
     else if (search) {
-      webFilter.$text = { $search: String(search) };
+      const searchTerm = String(search).trim();
+      const keywords = searchTerm.split(/\s+/).filter(k => k.length > 0);
+      const searchConditions = keywords.map(keyword => ({
+        $or: [
+          { 'diaData.aciklama': { $regex: keyword, $options: 'i' } },
+          { 'diaData.stokkartkodu': { $regex: keyword, $options: 'i' } },
+          { 'diaData.marka': { $regex: keyword, $options: 'i' } },
+          { 'customData.seoTitle': { $regex: keyword, $options: 'i' } }
+        ]
+      }));
+      webFilter.$and = searchConditions;
     }
 
     // Web status filtreleme - customData ve syncInfo'dan
