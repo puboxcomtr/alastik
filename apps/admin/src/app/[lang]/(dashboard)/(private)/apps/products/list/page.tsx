@@ -17,7 +17,7 @@ async function fetchProducts() {
   const data = await res.json()
   const products = (data.data || []).map((product: any) => ({
     id: product.id,
-    productName: product.name,
+    name: product.name,
     sku: product.sku,
     price: product.price,
     price1: product.price1,

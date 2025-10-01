@@ -206,7 +206,10 @@ const LabelListTable = () => {
         cell: ({ row }) => (
           <div className='flex items-center'>
             <Tooltip title="Düzenle">
-              <IconButton size='small'>
+              <IconButton
+                size='small'
+                onClick={() => router.push(`/tr/apps/label/edit/${row.original._id}`)}
+              >
                 <i className='ri-edit-box-line text-[22px] text-textSecondary' />
               </IconButton>
             </Tooltip>

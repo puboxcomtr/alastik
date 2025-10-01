@@ -30,6 +30,28 @@ export const fetchTags = async (): Promise<TagsResponse> => {
     return response.json();
 };
 
+export const fetchTagById = async (id: string): Promise<TagType> => {
+    const response = await fetch(`${API_BASE_URL}/tags/${id}`);
+    if (!response.ok) throw new Error('Etiket yüklenirken hata oluştu');
+    const result = await response.json();
+    return result.data;
+};
+
+export const updateTag = async (id: string, data: Partial<TagType>) => {
+    const response = await fetch(`${API_BASE_URL}/tags/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Etiket güncellenirken hata oluştu');
+    }
+    return response.json();
+};
+
 export const deleteTag = async (id: string) => {
     const response = await fetch(`${API_BASE_URL}/tags/${id}`, {
         method: 'DELETE',

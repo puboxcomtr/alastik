@@ -118,7 +118,9 @@ const AddLabelPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-
+        console.log('🔍 Seçili ürünler:', selectedProducts)
+        console.log('🔍 Seçili ürün sayısı:', selectedProducts.length)
+        console.log('🔍 İlk 3 ürün:', selectedProducts.slice(0, 3))
         try {
             const response = await fetch('http://localhost:3082/api/tags', {
                 method: 'POST',
@@ -127,7 +129,7 @@ const AddLabelPage = () => {
                 },
                 body: JSON.stringify({
                     ...formData,
-                    products: selectedProducts  // ← Seçili ürünleri ekle
+                    products: selectedProducts
                 }),
             })
 

@@ -157,7 +157,7 @@ router.get('/', maybeAuth, async (req, res) => {
 
         return {
           id: p._key,
-          name: customData.seoTitle || diaData.aciklama || diaData.stokkartkodu,
+          name: diaData.aciklama || customData.seoTitle || diaData.stokkartkodu,
           price: displayPrice,
           brand: diaData.marka || '',
           sku: diaData.stokkartkodu,

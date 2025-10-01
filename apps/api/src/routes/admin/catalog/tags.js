@@ -150,8 +150,7 @@ router.post('/', async (req, res) => {
 // Etiket Detayı
 router.get('/:id', async (req, res) => {
     try {
-        const tag = await WebTag.findById(req.params.id)
-            .populate('products', 'diaData.aciklama diaData.stokkartkodu diaData.marka customData.webPrice');
+        const tag = await WebTag.findById(req.params.id);
 
         if (!tag) {
             return res.status(404).json({
@@ -160,9 +159,32 @@ router.get('/:id', async (req, res) => {
             });
         }
 
+        // Ürünleri _key ile çek (ObjectId validasyonu yapma)
+        let populatedProducts = [];
+        if (tag.products && tag.products.length > 0) {
+            const products = await WebProduct.find({
+                _key: { $in: tag.products }  // Tüm products array'ini kullan
+            })
+                .select('_key diaData.aciklama diaData.stokkartkodu diaData.marka diaData.gercek_stok customData.webPrice')
+                .lean();
+
+            // Frontend için formatla
+            populatedProducts = products.map(p => ({
+                id: p._key,
+                name: p.diaData?.aciklama || 'N/A',
+                sku: p.diaData?.stokkartkodu || 'N/A',
+                brand: p.diaData?.marka || 'N/A',
+                qty: p.diaData?.gercek_stok || 0,
+                diaData: p.diaData
+            }));
+        }
+
+        const tagObject = tag.toObject();
+        tagObject.products = populatedProducts;
+
         res.json({
             success: true,
-            data: tag
+            data: tagObject
         });
 
     } catch (error) {
@@ -178,7 +200,7 @@ router.get('/:id', async (req, res) => {
 // Etiket Güncelleme
 router.put('/:id', async (req, res) => {
     try {
-        const { title, description, seoTitle, seoDescription, seoUrl, isActive, order } = req.body;
+        const { title, description, seoTitle, seoDescription, seoUrl, isActive, order, products } = req.body;
 
         const tag = await WebTag.findById(req.params.id);
 
@@ -207,6 +229,12 @@ router.put('/:id', async (req, res) => {
         if (seoUrl) tag.seoUrl = seoUrl;
         if (isActive !== undefined) tag.isActive = isActive;
         if (order !== undefined) tag.order = order;
+
+        // Products array'i güncelle
+        if (products !== undefined && Array.isArray(products)) {
+            tag.products = products;
+            tag.productCount = products.length;
+        }
 
         await tag.save();
 
@@ -362,6 +390,33 @@ router.get('/:id/available-products', async (req, res) => {
             message: 'Ürünler yüklenirken hata oluştu',
             error: error.message
         });
+    }
+});
+
+// GEÇİCİ: Geçersiz ID'leri temizle
+router.get('/:id/clean', async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        const tag = await WebTag.findById(req.params.id);
+
+        if (!tag) {
+            return res.status(404).json({ success: false, message: 'Etiket bulunamadı' });
+        }
+
+        const before = tag.products.length;
+
+        // Sadece geçerli ObjectId'leri tut
+        tag.products = tag.products.filter(id => mongoose.Types.ObjectId.isValid(id));
+        tag.productCount = tag.products.length;
+
+        await tag.save();
+
+        res.json({
+            success: true,
+            message: `${before} üründen ${tag.products.length} geçerli ürün kaldı. ${before - tag.products.length} geçersiz ID temizlendi.`
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
