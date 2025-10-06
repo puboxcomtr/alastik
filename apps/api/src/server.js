@@ -304,9 +304,27 @@ app.use('/api/categories', categoryRoutes);
 const brandRoutes = require('./routes/admin/catalog/brands');
 app.use('/api/brands', brandRoutes);
 
-/* Etiket Listelem */
+/* Etiket Listeleme */
 const tagRoutes = require('./routes/admin/catalog/tags');
 app.use('/api/tags', tagRoutes);
+
+/* Özellik Listeleme */
+const featureRoutes = require('./routes/admin/catalog/features');
+app.use('/api/features', featureRoutes);
+
+/**
+  * Siparişler - Routes *
+*/
+/* * Sipariş Listeleme * */
+const orderRoutes = require('./routes/admin/orders/order');
+app.use('/api/admin/orders', orderRoutes);
+
+/**
+  * Sayfalar - Routes *
+*/
+/* * Sayfalar Listeleme * */
+const pageRoutes = require('./routes/admin/content/pages');
+app.use('/api/admin/pages', pageRoutes);
 
 /**
   * Admin - Functions *
@@ -359,10 +377,6 @@ app.use('/api/users', userRoutes);
 // Cart routes
 const cartRoutes = require('./routes/cart');
 app.use('/api/cart', cartRoutes);
-
-// Order routes
-const orderRoutes = require('./routes/orders');
-app.use('/api/orders', orderRoutes);
 
 // Payment routes (iyzico mock)
 const paymentRoutes = require('./routes/payment');

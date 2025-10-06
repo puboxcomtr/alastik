@@ -36,7 +36,6 @@ class DiaStockService {
         new winston.transports.Console()
       ]
     });
-
     // DIA API konfigürasyonu
     this.diaApiConfig = {
       baseURL: process.env.DIA_BASE_URL || 'https://artlastik.ws.dia.com.tr',
@@ -1072,6 +1071,123 @@ class DiaStockService {
     }
   }
   /**
+ * DIA Verilerini
+ * Özellik Listesini Senkronize Et (feature collection'da)
+  **/
+  async syncFeaturesToWebFeature() {
+    const operationId = `sync_features_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== ÖZELLİK SENKRONİZASYONU BAŞLANGICI ===', { operationId });
+
+      const WebFeature = require('../models/WebFeature');
+
+      // WebProduct'lardan tüm özellikleri topla
+      const featurePipeline = [
+        { $match: { 'syncInfo.diaStatus': 'synced' } },
+        { $unwind: '$diaData.m_urunOzellikleri' },
+        {
+          $match: {
+            'diaData.m_urunOzellikleri.ozellikadi': { $exists: true, $ne: null, $ne: '' },
+            'diaData.m_urunOzellikleri.detayaciklama': { $exists: true, $ne: null, $ne: '' }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              featureName: '$diaData.m_urunOzellikleri.ozellikadi',
+              featureValue: '$diaData.m_urunOzellikleri.detayaciklama'
+            },
+            productKeys: { $addToSet: '$_key' },
+            diaFeatureKey: { $first: '$diaData.m_urunOzellikleri._key_scf_urun_ozellik' }
+          }
+        },
+        { $sort: { '_id.featureName': 1, '_id.featureValue': 1 } }
+      ];
+
+      const features = await WebProduct.aggregate(featurePipeline);
+
+      let created = 0;
+      let updated = 0;
+
+      for (const feature of features) {
+        const { featureName, featureValue } = feature._id;
+
+        const result = await this.createOrUpdateWebFeature({
+          featureName,
+          featureValue,
+          productKeys: feature.productKeys,
+          diaFeatureKey: feature.diaFeatureKey
+        });
+
+        if (result.created) created++;
+        if (result.updated) updated++;
+      }
+
+      const duration = Date.now() - startTime;
+
+      this.logger.info('=== ÖZELLİK SENKRONİZASYONU TAMAMLANDI ===', {
+        operationId,
+        created,
+        updated,
+        totalFeatures: features.length,
+        duration: `${duration}ms`
+      });
+
+      return {
+        success: true,
+        created,
+        updated,
+        totalFeatures: features.length,
+        duration: `${duration}ms`
+      };
+
+    } catch (error) {
+      this.logger.error('Özellik senkronizasyonu hatası:', { error: error.message, operationId });
+      throw error;
+    }
+  }
+  /* Özellik Listesini DB Kaydet */
+  async createOrUpdateWebFeature(featureData) {
+    const WebFeature = require('../models/WebFeature');
+
+    const existingFeature = await WebFeature.findOne({
+      featureName: featureData.featureName,
+      featureValue: featureData.featureValue
+    });
+
+    if (existingFeature) {
+      await WebFeature.updateOne(
+        { _id: existingFeature._id },
+        {
+          $set: {
+            productKeys: featureData.productKeys,
+            productCount: featureData.productKeys.length,
+            lastSync: new Date()
+          }
+        }
+      );
+      return { updated: true };
+    } else {
+      await WebFeature.create({
+        featureName: featureData.featureName,
+        featureValue: featureData.featureValue,
+        diaFeatureKey: featureData.diaFeatureKey,
+        productKeys: featureData.productKeys,
+        productCount: featureData.productKeys.length,
+        displayLocation: 'both',
+        featureGroupOrder: 0,
+        featureValueOrder: 0,
+        isActive: true,
+        lastSync: new Date(),
+        syncSource: 'dia_sync'
+      });
+      return { created: true };
+    }
+  }
+
+  /**
    * Stok verilerini MongoDB'ye senkronize et *
    */
   async syncStockToDatabase(stockData) {
@@ -1469,6 +1585,7 @@ class DiaStockService {
       const result = await this.fetchAndSyncIncrementally();
       const categoryResult = await this.syncCategoriesToWebCategory();
       const brandResult = await this.syncBrandsToWebBrand();
+      const featureResult = await this.syncFeaturesToWebFeature();
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -1476,7 +1593,8 @@ class DiaStockService {
         duration: `${duration}ms`,
         sync: result,
         categories: categoryResult,
-        brands: brandResult
+        brands: brandResult,
+        features: featureResult
       });
 
       return {
@@ -1484,6 +1602,7 @@ class DiaStockService {
         duration,
         categories: categoryResult,
         brands: brandResult,
+        features: featureResult,
         timestamp: new Date()
       };
 

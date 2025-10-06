@@ -7,13 +7,13 @@ const OrderSchema = new mongoose.Schema({
     required: true,
     uppercase: true
   },
-  
+
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
-  
+
   // Sipariş durumu
   status: {
     type: String,
@@ -29,7 +29,7 @@ const OrderSchema = new mongoose.Schema({
     ],
     default: 'pending'
   },
-  
+
   // Ödeme durumu
   paymentStatus: {
     type: String,
@@ -42,7 +42,7 @@ const OrderSchema = new mongoose.Schema({
     ],
     default: 'pending'
   },
-  
+
   // Sipariş kalemleri
   items: [{
     productId: {
@@ -96,7 +96,7 @@ const OrderSchema = new mongoose.Schema({
       default: 0
     }
   }],
-  
+
   // Fiyat bilgileri
   pricing: {
     subtotal: {
@@ -126,7 +126,7 @@ const OrderSchema = new mongoose.Schema({
       default: 'TRY'
     }
   },
-  
+
   // Teslimat bilgileri
   shipping: {
     address: {
@@ -151,7 +151,7 @@ const OrderSchema = new mongoose.Schema({
     actualDelivery: Date,
     deliveryInstructions: String
   },
-  
+
   // Fatura bilgileri
   billing: {
     address: {
@@ -172,13 +172,13 @@ const OrderSchema = new mongoose.Schema({
       default: false
     }
   },
-  
+
   // Ödeme bilgileri
   payment: {
     method: {
       type: String,
       enum: ['credit_card', 'credit_card_3d', 'debit_card', 'bank_transfer', 'cash_on_delivery', 'installment'],
-      required: true
+      required: false
     },
     provider: String, // Ödeme sağlayıcısı (Iyzico, PayTR, vs)
     transactionId: String,
@@ -248,7 +248,7 @@ const OrderSchema = new mongoose.Schema({
       status: String
     }]
   },
-  
+
   // Kupon ve indirimler
   discounts: [{
     type: {
@@ -264,14 +264,14 @@ const OrderSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  
+
   // Notlar ve özel talepler
   notes: {
     customer: String, // Müşteri notu
     internal: String, // İç not
     delivery: String  // Teslimat notu
   },
-  
+
   // Sipariş geçmişi
   history: [{
     status: String,
@@ -289,7 +289,7 @@ const OrderSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  
+
   // İade bilgileri
   return: {
     requested: {
@@ -310,7 +310,7 @@ const OrderSchema = new mongoose.Schema({
     refundAmount: Number,
     processedAt: Date
   },
-  
+
   // Müşteri değerlendirmesi
   review: {
     rating: {
@@ -321,38 +321,50 @@ const OrderSchema = new mongoose.Schema({
     comment: String,
     reviewedAt: Date
   },
-  
+
   // Entegrasyon bilgileri
   integration: {
-    diaOrderId: String,
-    diaStatus: String,
-    lastSyncAt: Date,
-    syncErrors: [String]
+    diaSync: {
+      status: {
+        type: String,
+        enum: ['synced', 'pending_sync', 'not_in_dia', 'error'],
+        default: 'synced'
+      },
+      diaOrderKey: {
+        type: String,
+        unique: true,
+        sparse: true 
+      },
+      diaOrderNumber: String,
+      diaCustomerKey: String,
+      syncedAt: Date,
+      syncErrors: [String]
+    }
   },
-  
+
   // Meta bilgiler
   source: {
     type: String,
-    enum: ['web', 'mobile', 'admin', 'api'],
+    enum: ['web', 'mobile', 'admin', 'api', 'dia_sync'],
     default: 'web'
   },
-  
+
   device: {
     userAgent: String,
     ip: String
   },
-  
+
   // Tarih bilgileri
   createdAt: {
     type: Date,
     default: Date.now
   },
-  
+
   updatedAt: {
     type: Date,
     default: Date.now
   },
-  
+
   confirmedAt: Date,
   shippedAt: Date,
   deliveredAt: Date,
@@ -365,35 +377,38 @@ const OrderSchema = new mongoose.Schema({
 
 // Indexes for performance
 OrderSchema.index({ userId: 1, createdAt: -1 });
-OrderSchema.index({ orderNumber: 1 }, { unique: true });
+OrderSchema.index({ orderNumber: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ paymentStatus: 1 });
 OrderSchema.index({ createdAt: -1 });
 OrderSchema.index({ 'items.productId': 1 });
 OrderSchema.index({ 'payment.transactionId': 1 });
 OrderSchema.index({ 'shipping.trackingNumber': 1 });
+OrderSchema.index({ 'integration.diaSync.diaOrderKey': 1 }, { unique: true, sparse: true });
+OrderSchema.index({ 'integration.diaSync.status': 1 });
+OrderSchema.index({ source: 1 });
 
 // Virtual fields
-OrderSchema.virtual('totalItems').get(function() {
+OrderSchema.virtual('totalItems').get(function () {
   return this.items.reduce((total, item) => total + item.quantity, 0);
 });
 
-OrderSchema.virtual('isCompleted').get(function() {
+OrderSchema.virtual('isCompleted').get(function () {
   return ['delivered', 'returned', 'refunded'].includes(this.status);
 });
 
-OrderSchema.virtual('canBeCancelled').get(function() {
+OrderSchema.virtual('canBeCancelled').get(function () {
   return ['pending', 'confirmed'].includes(this.status);
 });
 
-OrderSchema.virtual('daysSinceOrder').get(function() {
+OrderSchema.virtual('daysSinceOrder').get(function () {
   return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 });
 
 // Middleware
-OrderSchema.pre('save', function(next) {
+OrderSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
-  
+
   // Sipariş numarası oluştur
   if (!this.orderNumber) {
     const date = new Date();
@@ -403,26 +418,26 @@ OrderSchema.pre('save', function(next) {
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     this.orderNumber = `ALT${year}${month}${day}${random}`;
   }
-  
+
   // Fiyat hesaplamaları
   if (this.items && this.items.length > 0) {
     this.pricing.subtotal = this.items.reduce((total, item) => total + item.totalPrice, 0);
     this.pricing.vatAmount = this.items.reduce((total, item) => total + item.vatAmount, 0);
     this.pricing.total = this.pricing.subtotal + this.pricing.shippingCost - this.pricing.discountAmount;
   }
-  
+
   next();
 });
 
 // Sipariş durumu değiştiğinde history'ye ekle
-OrderSchema.pre('save', function(next) {
+OrderSchema.pre('save', function (next) {
   if (this.isModified('status') && !this.isNew) {
     this.history.push({
       status: this.status,
       note: `Sipariş durumu ${this.status} olarak güncellendi`,
       timestamp: new Date()
     });
-    
+
     // Durum tarihlerini güncelle
     switch (this.status) {
       case 'confirmed':
@@ -443,7 +458,7 @@ OrderSchema.pre('save', function(next) {
 });
 
 // Static methods
-OrderSchema.statics.generateOrderNumber = function() {
+OrderSchema.statics.generateOrderNumber = function () {
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -452,14 +467,14 @@ OrderSchema.statics.generateOrderNumber = function() {
   return `ALT${year}${month}${day}${random}`;
 };
 
-OrderSchema.statics.getOrdersByUser = function(userId, options = {}) {
+OrderSchema.statics.getOrdersByUser = function (userId, options = {}) {
   const { page = 1, limit = 10, status } = options;
   const query = { userId };
-  
+
   if (status) {
     query.status = status;
   }
-  
+
   return this.find(query)
     .populate('items.productId', 'name brand model images')
     .sort({ createdAt: -1 })
@@ -467,7 +482,7 @@ OrderSchema.statics.getOrdersByUser = function(userId, options = {}) {
     .skip((page - 1) * limit);
 };
 
-OrderSchema.statics.getOrderStats = function(userId) {
+OrderSchema.statics.getOrderStats = function (userId) {
   return this.aggregate([
     { $match: { userId: mongoose.Types.ObjectId(userId) } },
     {
@@ -483,7 +498,7 @@ OrderSchema.statics.getOrderStats = function(userId) {
 };
 
 // Instance methods
-OrderSchema.methods.addToHistory = function(status, note, updatedBy = null) {
+OrderSchema.methods.addToHistory = function (status, note, updatedBy = null) {
   this.history.push({
     status,
     note,
@@ -493,7 +508,7 @@ OrderSchema.methods.addToHistory = function(status, note, updatedBy = null) {
   return this.save();
 };
 
-OrderSchema.methods.calculateTotals = function() {
+OrderSchema.methods.calculateTotals = function () {
   this.pricing.subtotal = this.items.reduce((total, item) => total + item.totalPrice, 0);
   this.pricing.vatAmount = this.items.reduce((total, item) => total + item.vatAmount, 0);
   this.pricing.total = this.pricing.subtotal + this.pricing.shippingCost - this.pricing.discountAmount;

@@ -54,9 +54,6 @@ const EditLabelPage = () => {
         try {
             setLoading(true)
             const tag = await fetchTagById(tagId)
-            console.log('🔍 Tag products:', tag.products)
-            console.log('🔍 İlk ürün tipi:', typeof tag.products?.[0])
-            console.log('🔍 İlk ürün:', tag.products?.[0])
             setFormData({
                 title: tag.title || '',
                 description: tag.description || '',

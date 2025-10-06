@@ -98,13 +98,12 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/brand/list`}>{dictionary['navigation'].brands}</MenuItem>
             <MenuItem href={`/${locale}/apps/label/list`}>{dictionary['navigation'].label}</MenuItem>
             <MenuItem href={`/${locale}/apps/features/list`}>{dictionary['navigation'].features}</MenuItem>
-            <MenuItem href={`/${locale}/apps/filter/list`}>{dictionary['navigation'].filter}</MenuItem>
           </SubMenu>
           <SubMenu label={dictionary['navigation'].order_management} icon={<i className='ri-wallet-line' />}>
-            <MenuItem href={`/${locale}/apps/order/list`}>{dictionary['navigation'].order}</MenuItem>
-            <MenuItem href={`/${locale}/apps/order/order-draft`}>{dictionary['navigation'].order_draft}</MenuItem>
-            <MenuItem href={`/${locale}/apps/order/payment`}>{dictionary['navigation'].payment}</MenuItem>
-            <MenuItem href={`/${locale}/apps/order/cart`}>{`${dictionary['navigation'].active} ${dictionary['navigation'].cart}`}</MenuItem>
+            <MenuItem href={`/${locale}/apps/orders/list`}>{dictionary['navigation'].order}</MenuItem>
+            <MenuItem href={`/${locale}/apps/orders/order-draft`}>{dictionary['navigation'].order_draft}</MenuItem>
+            <MenuItem href={`/${locale}/apps/orders/payment`}>{dictionary['navigation'].payment}</MenuItem>
+            <MenuItem href={`/${locale}/apps/orders/cart`}>{`${dictionary['navigation'].active} ${dictionary['navigation'].cart}`}</MenuItem>
           </SubMenu>
 
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>

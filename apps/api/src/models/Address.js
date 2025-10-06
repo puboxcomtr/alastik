@@ -4,67 +4,48 @@ const addressSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   title: {
     type: String,
     required: true,
     trim: true
   },
-  type: {
+  firstName: {
     type: String,
-    enum: ['home', 'work', 'other'],
-    default: 'home'
+    required: true
   },
-  fullName: {
+  lastName: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   phone: {
     type: String,
-    required: true,
-    trim: true
+    required: true
+  },
+  address: {
+    type: String,
+    required: true
   },
   city: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   district: {
     type: String,
-    required: true,
-    trim: true
-  },
-  neighborhood: {
-    type: String,
-    trim: true
-  },
-  addressLine: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  buildingNo: {
-    type: String,
-    trim: true
-  },
-  floor: {
-    type: String,
-    trim: true
-  },
-  apartmentNo: {
-    type: String,
-    trim: true
+    required: true
   },
   postalCode: {
-    type: String,
-    trim: true
+    type: String
   },
-  directions: {
+  country: {
     type: String,
-    trim: true
+    default: 'Turkey'
+  },
+  type: {
+    type: String,
+    enum: ['shipping', 'billing', 'both'],
+    default: 'both'
   },
   isDefault: {
     type: Boolean,
@@ -74,80 +55,21 @@ const addressSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  tcNo: {
-    type: String,
-    trim: true,
-    validate: {
-      validator: function(v) {
-        // TC Kimlik No validation (opsiyonel)
-        if (!v) return true;
-        return /^[1-9][0-9]{10}$/.test(v);
-      },
-      message: 'Geçersiz TC Kimlik No'
-    }
-  },
-  companyName: {
-    type: String,
-    trim: true
-  },
-  taxNumber: {
-    type: String,
-    trim: true
-  },
-  taxOffice: {
-    type: String,
-    trim: true
-  },
-  invoiceType: {
-    type: String,
-    enum: ['individual', 'corporate'],
-    default: 'individual'
+  deletedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
 });
 
-// Bir kullanıcının sadece bir tane default adresi olabilir
-addressSchema.pre('save', async function(next) {
-  if (this.isDefault) {
-    await this.constructor.updateMany(
-      { userId: this.userId, _id: { $ne: this._id } },
-      { isDefault: false }
-    );
-  }
-  next();
-});
+addressSchema.index({ userId: 1, isActive: 1 });
+addressSchema.index({ userId: 1, isDefault: 1 });
 
-// Kullanıcının ilk adresi otomatik olarak default olsun
-addressSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await this.constructor.countDocuments({ userId: this.userId });
-    if (count === 0) {
-      this.isDefault = true;
-    }
-  }
-  next();
-});
+addressSchema.methods.softDelete = function () {
+  this.isActive = false;
+  this.deletedAt = new Date();
+  return this.save();
+};
 
-// Virtual field for full address
-addressSchema.virtual('fullAddress').get(function() {
-  const parts = [
-    this.addressLine,
-    this.buildingNo && `No: ${this.buildingNo}`,
-    this.floor && `Kat: ${this.floor}`,
-    this.apartmentNo && `Daire: ${this.apartmentNo}`,
-    this.neighborhood,
-    this.district,
-    this.city,
-    this.postalCode
-  ].filter(Boolean);
-  
-  return parts.join(', ');
-});
-
-// JSON'a çevirirken virtual field'ları da dahil et
-addressSchema.set('toJSON', { virtuals: true });
-
-const Address = mongoose.model('Address', addressSchema);
-
-module.exports = Address;
+module.exports = mongoose.model('Address', addressSchema);
