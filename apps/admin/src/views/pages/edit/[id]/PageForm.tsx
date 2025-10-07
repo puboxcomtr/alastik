@@ -20,7 +20,6 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Popover from '@mui/material/Popover'
 
-
 /* Editor */
 import classnames from 'classnames'
 import { useEditor, EditorContent } from '@tiptap/react'
@@ -37,7 +36,6 @@ import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
-import { HorizontalRule } from '@tiptap/extension-horizontal-rule'
 import { Image } from '@tiptap/extension-image'
 
 /* Toast */
@@ -387,6 +385,18 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
+    const [isHtmlMode, setIsHtmlMode] = useState(() => {
+        if (typeof window !== 'undefined' && isEdit && page?._id) {
+            const savedMode = localStorage.getItem(`page-editor-mode-${page._id}`)
+            if (savedMode) {
+                return savedMode === 'html'
+            }
+        }
+        return isEdit && page?.content ? true : false
+    })
+
+    const [htmlContent, setHtmlContent] = useState('')
+
     const [formData, setFormData] = useState({
         title: page?.title || '',
         slug: page?.slug || '',
@@ -402,7 +412,20 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
 
     const editor = useEditor({
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                paragraph: {
+                    HTMLAttributes: {
+                        class: null,
+                    }
+                },
+                heading: {
+                    HTMLAttributes: {
+                        class: null,
+                    }
+                },
+                hardBreak: false,
+                horizontalRule: false,
+            }),
             Placeholder.configure({
                 placeholder: 'Sayfa içeriğini giriniz...'
             }),
@@ -428,29 +451,53 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
             TableRow,
             TableHeader,
             TableCell,
-            HorizontalRule,
             Image.configure({
                 inline: true,
+                allowBase64: true,
                 HTMLAttributes: {
-                    class: 'rounded-lg max-w-full h-auto',
+                    class: null,
                 },
             })
         ],
-        immediatelyRender: false,
+        content: '',
         editorProps: {
             attributes: {
                 class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[400px] p-5',
             },
+        },
+        immediatelyRender: false,
+        parseOptions: {
+            preserveWhitespace: 'full'
         }
     })
 
     useEffect(() => {
-        if (editor && isEdit && page?.content) {
-            setTimeout(() => {
-                editor.commands.setContent(page.content)
-            }, 100)
+        if (page?.content) {
+            setHtmlContent(page.content)
         }
-    }, [editor, isEdit, page])
+    }, [page?.content])
+
+    useEffect(() => {
+        if (editor && !isHtmlMode && htmlContent) {
+            editor.commands.setContent(htmlContent)
+        }
+    }, [editor, isHtmlMode])
+
+    const toggleHtmlMode = () => {
+        if (!editor) return;
+
+        if (isHtmlMode) {
+            setIsHtmlMode(false);
+            setTimeout(() => {
+                editor.commands.setContent(htmlContent);
+            }, 100);
+        } else {
+            // Editor'dan HTML'e geç
+            const editorHTML = editor.getHTML()
+            setHtmlContent(editorHTML);
+            setIsHtmlMode(true);
+        }
+    }
 
     const generateSlug = (title: string) => {
         return title
@@ -500,7 +547,7 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
             return
         }
 
-        const content = editor?.getHTML() || ''
+        const content = isHtmlMode ? htmlContent : (editor?.getHTML() || '')
 
         if (!content || content === '<p></p>') {
             toast.error('İçerik boş bırakılamaz')
@@ -524,16 +571,26 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                 }
             }
 
+            let savedPageId = page?._id
+
             if (isEdit && page) {
                 await updatePage(page._id, pageData)
+                savedPageId = page._id
                 toast.success('Sayfa güncellendi')
             } else {
-                await createPage(pageData)
+                const newPage = await createPage(pageData)
+                savedPageId = newPage._id || newPage.data?._id
                 toast.success('Sayfa oluşturuldu')
+            }
+
+            // MODE'U KAYDET (HTML veya Editor)
+            if (savedPageId) {
+                localStorage.setItem(`page-editor-mode-${savedPageId}`, isHtmlMode ? 'html' : 'editor')
             }
 
             router.push('/tr/apps/pages/list')
         } catch (error) {
+            console.error('HATA:', error)
             toast.error(error instanceof Error ? error.message : 'Bir hata oluştu')
         } finally {
             setLoading(false)
@@ -610,32 +667,53 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
-                                    <Typography variant='h6' className='mb-4'>
-                                        Sayfa İçeriği
-                                    </Typography>
-                                    <Card className='p-0 border shadow-none'>
-                                        <CardContent className='p-0'>
-                                            <EditorToolbar editor={editor} />
-                                            <Divider className='mli-5' />
-                                            {editor && (
-                                                <EditorContent
-                                                    editor={editor}
-                                                    className='prose prose-sm max-w-none overflow-y-auto p-5'
-                                                    style={{ minHeight: '400px', maxHeight: '600px' }}
-                                                />
-                                            ) as any}
-                                        </CardContent>
-                                    </Card>
+                                    <div className='flex items-center justify-between mb-4'>
+                                        <Typography variant='h6'>
+                                            Sayfa İçeriği
+                                        </Typography>
+                                        <Button
+                                            variant='outlined'
+                                            size='small'
+                                            onClick={toggleHtmlMode}
+                                            startIcon={<i className={isHtmlMode ? 'ri-edit-line' : 'ri-code-line'} />}
+                                        >
+                                            {isHtmlMode ? 'Editör Modu' : 'HTML Modu'}
+                                        </Button>
+                                    </div>
+
+                                    {isHtmlMode ? (
+                                        <TextField
+                                            fullWidth
+                                            multiline
+                                            rows={20}
+                                            value={htmlContent}
+                                            onChange={(e) => setHtmlContent(e.target.value)}
+                                            placeholder='HTML kodunu buraya yazın...'
+                                            sx={{
+                                                '& .MuiInputBase-input': {
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '14px'
+                                                }
+                                            }}
+                                        />
+                                    ) : (
+                                        <Card className='p-0 border shadow-none'>
+                                            <CardContent className='p-0'>
+                                                <EditorToolbar editor={editor} />
+                                                <Divider className='mli-5' />
+                                                <EditorContent editor={editor} />
+                                            </CardContent>
+                                        </Card>
+                                    )}
                                 </CardContent>
                             </Card>
                         </Grid>
                     </Grid>
                 </Grid>
 
-                {/* Sağ Kolon */}
+                {/* Sağ Kolon - SEO vb. aynı kalacak */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Grid container spacing={6}>
-                        {/* Durum ve Şablon */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -654,7 +732,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                 </Select>
                                             </FormControl>
                                         </Grid>
-
                                         <Grid size={{ xs: 12 }}>
                                             <FormControl fullWidth>
                                                 <InputLabel>Şablon</InputLabel>
@@ -674,8 +751,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                 </CardContent>
                             </Card>
                         </Grid>
-
-                        {/* SEO */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -706,7 +781,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                 {formData.seo.metaTitle.length} / 60 karakter
                                             </Typography>
                                         </Grid>
-
                                         <Grid size={{ xs: 12 }}>
                                             <TextField
                                                 fullWidth
@@ -732,11 +806,10 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                 {formData.seo.metaDescription.length} / 160 karakter
                                             </Typography>
                                         </Grid>
-
                                         <Grid size={{ xs: 12 }}>
                                             <TextField
                                                 fullWidth
-                                                label='Slug (URL)'
+                                                label='SEO URL'
                                                 placeholder='hakkimizda'
                                                 value={formData.slug}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
@@ -772,19 +845,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                         </InputAdornment>
                                                     )
                                                 }}
-                                            />
-                                        </Grid>
-                                        <Grid size={{ xs: 12 }}>
-                                            <TextField
-                                                fullWidth
-                                                label='Anahtar Kelimeler'
-                                                placeholder='kelime1, kelime2, kelime3'
-                                                value={formData.seo.metaKeywords}
-                                                onChange={(e) => setFormData(prev => ({
-                                                    ...prev,
-                                                    seo: { ...prev.seo, metaKeywords: e.target.value }
-                                                }))}
-                                                helperText='Virgülle ayırarak yazın'
                                             />
                                         </Grid>
                                     </Grid>

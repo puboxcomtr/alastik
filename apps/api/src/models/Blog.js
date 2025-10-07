@@ -1,0 +1,92 @@
+const mongoose = require('mongoose');
+
+const blogSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    slug: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true
+    },
+    content: {
+        type: String,
+        required: true,
+        default: '<p></p>'
+    },
+    excerpt: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    seo: {
+        metaTitle: {
+            type: String,
+            default: ''
+        },
+        metaDescription: {
+            type: String,
+            default: ''
+        },
+        metaKeywords: {
+            type: [String],
+            default: []
+        },
+        ogImage: {
+            type: String,
+            default: ''
+        }
+    },
+    status: {
+        type: String,
+        enum: ['draft', 'published', 'archived'],
+        default: 'published'
+    },
+    author: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    publishedAt: {
+        type: Date,
+        default: null
+    },
+    viewCount: {
+        type: Number,
+        default: 0
+    }
+}, {
+    timestamps: true
+});
+
+blogSchema.index({ slug: 1 });
+blogSchema.index({ status: 1 });
+blogSchema.index({ publishedAt: -1 });
+
+blogSchema.pre('save', function (next) {
+    if (this.isModified('title') && !this.slug) {
+        this.slug = this.title
+            .toLowerCase()
+            .replace(/ğ/g, 'g')
+            .replace(/ü/g, 'u')
+            .replace(/ş/g, 's')
+            .replace(/ı/g, 'i')
+            .replace(/ö/g, 'o')
+            .replace(/ç/g, 'c')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim();
+    }
+
+    if (this.isModified('status') && this.status === 'published' && !this.publishedAt) {
+        this.publishedAt = new Date();
+    }
+
+    next();
+});
+
+module.exports = mongoose.model('Blog', blogSchema);

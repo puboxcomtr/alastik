@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 import PageForm from '@/views/pages/edit/[id]/PageForm'
 
 /* API */
-import { fetchPage, type PageType } from '@/utils/api/pages'
+import { getPageById, type PageType } from '@/utils/api/pages' 
 
 /* MUI */
 import CircularProgress from '@mui/material/CircularProgress'
@@ -26,8 +26,8 @@ const EditPage = () => {
         const loadPage = async () => {
             try {
                 setLoading(true)
-                const result = await fetchPage(pageId)
-                setPage(result.data)
+                const data = await getPageById(pageId)
+                setPage(data)
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Sayfa yüklenemedi')
             } finally {

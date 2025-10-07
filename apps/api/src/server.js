@@ -12,7 +12,6 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
 const hpp = require('hpp');
 const winston = require('winston');
 
@@ -149,7 +148,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Security middleware
 app.use(mongoSanitize());
-app.use(xss());
 app.use(hpp());
 
 // Compression middleware
@@ -320,11 +318,15 @@ const orderRoutes = require('./routes/admin/orders/order');
 app.use('/api/admin/orders', orderRoutes);
 
 /**
-  * Sayfalar - Routes *
+  * İçerikler - Routes *
 */
 /* * Sayfalar Listeleme * */
 const pageRoutes = require('./routes/admin/content/pages');
 app.use('/api/admin/pages', pageRoutes);
+
+/* * Blog Listeleme * */
+const blogRoutes = require('./routes/admin/content/blogs');
+app.use('/api/admin/blogs', blogRoutes);
 
 /**
   * Admin - Functions *

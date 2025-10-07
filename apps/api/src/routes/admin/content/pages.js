@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
     try {
-        const page = await Page.findById(req.params.id);
+        const page = await Page.findById(req.params.id).lean();
 
         if (!page) {
             return res.status(404).json({
@@ -56,6 +56,7 @@ router.get('/:id', async (req, res) => {
             });
         }
 
+        // Content'i olduğu gibi gönder, encode etme
         res.json({
             success: true,
             data: page
@@ -118,7 +119,12 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
-        // Eğer slug değiştiriliyorsa, başka bir sayfada kullanılıp kullanılmadığını kontrol et
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('🔥 BACKEND - Gelen Content:', req.body.content.substring(0, 200))
+        console.log('🔥 BACKEND - Content Length:', req.body.content.length)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+        // Eğer slug değiştiriliyorsa...
         if (req.body.slug) {
             const existingPage = await Page.findOne({
                 slug: req.body.slug,
@@ -139,6 +145,8 @@ router.put('/:id', async (req, res) => {
             { new: true, runValidators: true }
         );
 
+        console.log('🔥 BACKEND - Kaydedilen Content:', page.content.substring(0, 200))
+
         if (!page) {
             return res.status(404).json({
                 success: false,
@@ -155,7 +163,6 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         console.error('Sayfa güncelleme hatası:', error);
 
-        // MongoDB duplicate key hatası
         if (error.code === 11000) {
             return res.status(400).json({
                 success: false,

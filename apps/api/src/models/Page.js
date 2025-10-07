@@ -16,7 +16,7 @@ const pageSchema = new mongoose.Schema({
     content: {
         type: String,
         required: true,
-        default: '<p></p>'  // Boş içerik
+        default: '<p></p>' 
     },
     excerpt: {
         type: String,
@@ -44,12 +44,12 @@ const pageSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['draft', 'published', 'archived'],
-        default: 'published'  // ← Varsayılan yayında
+        default: 'published' 
     },
     template: {
         type: String,
         enum: ['default', 'full-width', 'landing', 'contact'],
-        default: 'default'  // ← Varsayılan şablon
+        default: 'default' 
     },
     author: {
         type: mongoose.Schema.Types.ObjectId,
