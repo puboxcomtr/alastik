@@ -1,4 +1,4 @@
-import PageForm from '@/views/pages/PageForm'
+import PageForm from '@/views/pages/add/PageForm'
 
 const PageAdd = () => {
     return <PageForm />

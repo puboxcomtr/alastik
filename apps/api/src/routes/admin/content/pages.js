@@ -76,6 +76,15 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
     try {
+        // Slug kontrolü
+        const existingPage = await Page.findOne({ slug: req.body.slug });
+        if (existingPage) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bu URL zaten kullanılıyor'
+            });
+        }
+
         const page = new Page(req.body);
         await page.save();
 
@@ -87,6 +96,15 @@ router.post('/', async (req, res) => {
 
     } catch (error) {
         console.error('Sayfa oluşturma hatası:', error);
+
+        // MongoDB duplicate key hatası
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bu URL zaten kullanılıyor'
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: error.message || 'Sayfa oluşturulamadı'
@@ -100,6 +118,21 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
+        // Eğer slug değiştiriliyorsa, başka bir sayfada kullanılıp kullanılmadığını kontrol et
+        if (req.body.slug) {
+            const existingPage = await Page.findOne({
+                slug: req.body.slug,
+                _id: { $ne: req.params.id }
+            });
+
+            if (existingPage) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Bu URL zaten başka bir sayfa tarafından kullanılıyor'
+                });
+            }
+        }
+
         const page = await Page.findByIdAndUpdate(
             req.params.id,
             req.body,
@@ -121,6 +154,15 @@ router.put('/:id', async (req, res) => {
 
     } catch (error) {
         console.error('Sayfa güncelleme hatası:', error);
+
+        // MongoDB duplicate key hatası
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bu URL zaten kullanılıyor'
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: 'Sayfa güncellenemedi'

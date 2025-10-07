@@ -45,6 +45,24 @@ export async function fetchPage(id: string) {
     return response.json()
 }
 
+export async function getPageById(id: string) {
+    const response = await fetch(`${API_URL}/admin/pages/${id}`, {
+        cache: 'no-store'
+    })
+
+    if (!response.ok) {
+        throw new Error('Sayfa bulunamadı')
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+        throw new Error(result.message || 'Sayfa detayı alınamadı')
+    }
+
+    return result.data
+}
+
 export async function createPage(data: Partial<PageType>) {
     const response = await fetch(`${API_URL}/admin/pages`, {
         method: 'POST',
