@@ -15,33 +15,50 @@ const pageSchema = new mongoose.Schema({
     },
     content: {
         type: String,
-        required: true
+        required: true,
+        default: '<p></p>'  // Boş içerik
     },
     excerpt: {
         type: String,
-        trim: true
+        trim: true,
+        default: ''
     },
     seo: {
-        metaTitle: String,
-        metaDescription: String,
-        metaKeywords: [String],
-        ogImage: String
+        metaTitle: {
+            type: String,
+            default: ''
+        },
+        metaDescription: {
+            type: String,
+            default: ''
+        },
+        metaKeywords: {
+            type: [String],
+            default: []
+        },
+        ogImage: {
+            type: String,
+            default: ''
+        }
     },
     status: {
         type: String,
         enum: ['draft', 'published', 'archived'],
-        default: 'draft'
+        default: 'published'  // ← Varsayılan yayında
     },
     template: {
         type: String,
         enum: ['default', 'full-width', 'landing', 'contact'],
-        default: 'default'
+        default: 'default'  // ← Varsayılan şablon
     },
     author: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
-    publishedAt: Date,
+    publishedAt: {
+        type: Date,
+        default: null
+    },
     viewCount: {
         type: Number,
         default: 0
@@ -55,16 +72,27 @@ pageSchema.index({ slug: 1 });
 pageSchema.index({ status: 1 });
 pageSchema.index({ publishedAt: -1 });
 
-// Slug otomatik oluştur
+// Slug otomatik oluştur (eğer yoksa)
 pageSchema.pre('save', function (next) {
     if (this.isModified('title') && !this.slug) {
         this.slug = this.title
             .toLowerCase()
+            .replace(/ğ/g, 'g')
+            .replace(/ü/g, 'u')
+            .replace(/ş/g, 's')
+            .replace(/ı/g, 'i')
+            .replace(/ö/g, 'o')
+            .replace(/ç/g, 'c')
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-')
             .trim();
     }
+
+    if (this.isModified('status') && this.status === 'published' && !this.publishedAt) {
+        this.publishedAt = new Date();
+    }
+
     next();
 });
 

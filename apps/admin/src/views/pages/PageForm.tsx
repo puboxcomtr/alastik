@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 /* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
-import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
@@ -16,8 +15,9 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
-import Switch from '@mui/material/Switch'
-import FormControlLabel from '@mui/material/FormControlLabel'
+import InputAdornment from '@mui/material/InputAdornment'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 
 /* Editor */
 import classnames from 'classnames'
@@ -133,7 +133,7 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
         title: page?.title || '',
         slug: page?.slug || '',
         excerpt: page?.excerpt || '',
-        status: page?.status || 'draft',
+        status: page?.status || 'published',
         template: page?.template || 'default',
         seo: {
             metaTitle: page?.seo?.metaTitle || '',
@@ -179,6 +179,22 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
             title,
             slug: !isEdit ? generateSlug(title) : prev.slug
         }))
+    }
+
+    const handleAutoGenerateSeoUrl = () => {
+        if (!formData.title || formData.title.trim() === '') {
+            toast.error('Lütfen önce başlık alanını doldurun')
+            return
+        }
+
+        const generatedUrl = generateSlug(formData.title)
+
+        setFormData(prev => ({
+            ...prev,
+            slug: generatedUrl
+        }))
+
+        toast.success('SEO URL otomatik oluşturuldu')
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -279,19 +295,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                 required
                                             />
                                         </Grid>
-
-                                        <Grid size={{ xs: 12 }}>
-                                            <TextField
-                                                fullWidth
-                                                label='Slug (URL)'
-                                                placeholder='hakkimizda'
-                                                value={formData.slug}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                                                required
-                                                helperText='URL dostu format'
-                                            />
-                                        </Grid>
-
                                         <Grid size={{ xs: 12 }}>
                                             <TextField
                                                 fullWidth
@@ -339,9 +342,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
-                                    <Typography variant='h6' className='mb-4'>
-                                        Ayarlar
-                                    </Typography>
                                     <Grid container spacing={5}>
                                         <Grid size={{ xs: 12 }}>
                                             <FormControl fullWidth>
@@ -351,8 +351,8 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                     label='Durum'
                                                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
                                                 >
-                                                    <MenuItem value='draft'>Taslak</MenuItem>
                                                     <MenuItem value='published'>Yayında</MenuItem>
+                                                    <MenuItem value='draft'>Taslak</MenuItem>
                                                     <MenuItem value='archived'>Arşivlendi</MenuItem>
                                                 </Select>
                                             </FormControl>
@@ -389,21 +389,32 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                         <Grid size={{ xs: 12 }}>
                                             <TextField
                                                 fullWidth
-                                                label='Meta Başlık'
-                                                placeholder='SEO başlığı'
+                                                label='SEO Başlık'
+                                                placeholder='Sayfa için SEO başlığı'
                                                 value={formData.seo.metaTitle}
                                                 onChange={(e) => setFormData(prev => ({
                                                     ...prev,
                                                     seo: { ...prev.seo, metaTitle: e.target.value }
                                                 }))}
                                             />
+                                            <Typography
+                                                variant='caption'
+                                                sx={{
+                                                    display: 'block',
+                                                    mt: 1,
+                                                    textAlign: 'right',
+                                                    color: formData.seo.metaTitle.length > 60 ? 'error.main' : 'success.main'
+                                                }}
+                                            >
+                                                {formData.seo.metaTitle.length} / 60 karakter
+                                            </Typography>
                                         </Grid>
 
                                         <Grid size={{ xs: 12 }}>
                                             <TextField
                                                 fullWidth
-                                                label='Meta Açıklama'
-                                                placeholder='SEO açıklaması'
+                                                label='SEO Açıklama'
+                                                placeholder='Sayfa için SEO açıklaması'
                                                 multiline
                                                 rows={3}
                                                 value={formData.seo.metaDescription}
@@ -412,19 +423,71 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                     seo: { ...prev.seo, metaDescription: e.target.value }
                                                 }))}
                                             />
+                                            <Typography
+                                                variant='caption'
+                                                sx={{
+                                                    display: 'block',
+                                                    mt: 1,
+                                                    textAlign: 'right',
+                                                    color: formData.seo.metaDescription.length > 160 ? 'error.main' : 'success.main'
+                                                }}
+                                            >
+                                                {formData.seo.metaDescription.length} / 160 karakter
+                                            </Typography>
                                         </Grid>
 
                                         <Grid size={{ xs: 12 }}>
                                             <TextField
                                                 fullWidth
+                                                label='Slug (URL)'
+                                                placeholder='hakkimizda'
+                                                value={formData.slug}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                                                required
+                                                helperText='Boş bırakılırsa başlıktan otomatik oluşturulur'
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment
+                                                            position='start'
+                                                            sx={{
+                                                                backgroundColor: '#f0f0f0',
+                                                                borderRadius: '4px',
+                                                                paddingX: 1,
+                                                                marginRight: 1,
+                                                                color: 'text.secondary',
+                                                                fontSize: '0.9rem'
+                                                            }}
+                                                        >
+                                                            https://alastik.com/sayfa/
+                                                        </InputAdornment>
+                                                    ),
+                                                    endAdornment: (
+                                                        <InputAdornment position='end'>
+                                                            <Tooltip title='Başlıktan otomatik URL oluştur'>
+                                                                <IconButton
+                                                                    size='small'
+                                                                    onClick={handleAutoGenerateSeoUrl}
+                                                                    edge='end'
+                                                                >
+                                                                    <i className='ri-sparkling-line' />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </InputAdornment>
+                                                    )
+                                                }}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12 }}>
+                                            <TextField
+                                                fullWidth
                                                 label='Anahtar Kelimeler'
-                                                placeholder='kelime1, kelime2'
+                                                placeholder='kelime1, kelime2, kelime3'
                                                 value={formData.seo.metaKeywords}
                                                 onChange={(e) => setFormData(prev => ({
                                                     ...prev,
                                                     seo: { ...prev.seo, metaKeywords: e.target.value }
                                                 }))}
-                                                helperText='Virgülle ayırın'
+                                                helperText='Virgülle ayırarak yazın'
                                             />
                                         </Grid>
                                     </Grid>
