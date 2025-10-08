@@ -42,7 +42,7 @@
     "customers": "Customers",
     "manageReviews": "Manage Reviews",
     "referrals": "Referrals",
-    "settings": "Settings",
+    "settings": "Ayarlar",
     "myCourses": "My Courses",
     "courseDetails": "Course Details",
     "fleet": "Fleet",
@@ -54,6 +54,7 @@
     "preview": "Preview",
     "edit": "Edit",
     "user": "Üyeler",
+    "users": "Kullanıcılar",
     "user_management": "Üye Yönetimi",
     "support": "Destek Talepleri",
     "view": "View",
@@ -126,6 +127,11 @@
     "menuLevel2": "Menu Level 2",
     "menuLevel3": "Menu Level 3",
     "disabledMenu": "Disabled Menu",
-    "visit": "Ziyaret"
+    "visit": "Ziyaret",
+    "general": "Genel Ayarlar",
+    "design_settings": "Tasarım Ayarları",
+    "cargo_settings": "Kargo Ayarları",
+    "mail_settings": "Mail Ayarları",
+    "process": "İşlem Kuyruğu"
   }
 }

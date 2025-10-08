@@ -58,7 +58,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-  ],
+, "src/app/[lang]/(dashboard)/(private)/apps/settings/general/pagejtsx"  ],
   "exclude": [
     "node_modules"
   ]

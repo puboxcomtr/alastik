@@ -328,6 +328,17 @@ app.use('/api/admin/pages', pageRoutes);
 const blogRoutes = require('./routes/admin/content/blogs');
 app.use('/api/admin/blogs', blogRoutes);
 
+/* * Formlar * */
+const formRoutes = require('./routes/admin/content/forms');
+app.use('/api/admin/forms', formRoutes);
+
+/**
+  * Ayarlar - Routes *
+*/
+/* * Genel Ayarlar * */
+const settingRoutes = require('./routes/admin/settings/settings');
+app.use('/api/admin/settings', settingRoutes);
+
 /**
   * Admin - Functions *
 */
