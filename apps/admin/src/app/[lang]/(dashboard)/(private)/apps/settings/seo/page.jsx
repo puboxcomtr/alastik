@@ -1,26 +1,24 @@
 // Next Imports
 import dynamic from 'next/dynamic'
 
-// Component Imports
-import Settings from '@/views/apps/settings'
-
-const Order = dynamic(() => import('@/views/apps/settings/order'))
-const Showcase = dynamic(() => import('@/views/apps/settings/showcase'))
-const Member = dynamic(() => import('@/views/apps/settings/member'))
-const Campaign = dynamic(() => import('@/views/apps/settings/campaign'))
-const Other = dynamic(() => import('@/views/apps/settings/other'))
+import Seo from '@/views/seo'
+const Homepage = dynamic(() => import('@/views/seo/homepage'))
+const Category = dynamic(() => import('@/views/seo/category'))
+const Brand = dynamic(() => import('@/views/seo/brand'))
+const Product = dynamic(() => import('@/views/seo/product'))
+const Other = dynamic(() => import('@/views/seo/other'))
 
 // Vars
 const tabContentList = () => ({
-    tab1: <Order />,
-    tab2: <Showcase />,
-    tab3: <Member />,
-    tab4: <Campaign />,
+    tab1: <Homepage />,
+    tab2: <Category />,
+    tab3: <Brand />,
+    tab4: <Product />,
     tab5: <Other />
 })
 
-const GeneralSettings = () => {
-    return <Settings tabContentList={tabContentList()} />
+const SeoSettings = () => {
+    return <Seo tabContentList={tabContentList()} />
 }
 
-export default GeneralSettings
+export default SeoSettings

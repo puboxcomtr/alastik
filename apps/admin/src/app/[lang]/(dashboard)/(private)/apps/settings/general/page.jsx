@@ -2,13 +2,13 @@
 import dynamic from 'next/dynamic'
 
 // Component Imports
-import Settings from '@/views/apps/settings'
+import Settings from '@/views/settings'
 
-const Order = dynamic(() => import('@/views/apps/settings/order'))
-const Showcase = dynamic(() => import('@/views/apps/settings/showcase'))
-const Member = dynamic(() => import('@/views/apps/settings/member'))
-const Campaign = dynamic(() => import('@/views/apps/settings/campaign'))
-const Other = dynamic(() => import('@/views/apps/settings/other'))
+const Order = dynamic(() => import('@/views/settings/order'))
+const Showcase = dynamic(() => import('@/views/settings/showcase'))
+const Member = dynamic(() => import('@/views/settings/member'))
+const Campaign = dynamic(() => import('@/views/settings/campaign'))
+const Other = dynamic(() => import('@/views/settings/other'))
 
 // Vars
 const tabContentList = () => ({
