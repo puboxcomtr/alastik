@@ -14,42 +14,42 @@ const SettingsList = () => {
             title: 'Ek Ayarlar',
             description: 'Site temel ayarlarınızı yönetin.',
             href: '/tr/apps/settings/general',
-            color: '#EA5455'
+            color: '#2e263db3'
         },
         {
             icon: 'ri-search-line',
             title: 'SEO Ayarları',
             description: 'Arama motoru ayarlarınızı ve takip kodlarınızı düzenleyin.',
             href: '/tr/apps/settings/seo',
-            color: '#EA5455'
+            color: '#2e263db3'
         },
         {
             icon: 'ri-bank-card-line',
             title: 'Ödeme Ayarları',
             description: 'Ödeme yöntemlerinizi seçin ve ödeme ayarlarınızı yönetin.',
             href: '/tr/apps/settings/payment',
-            color: '#EA5455'
+            color: '#2e263db3'
         },
         {
             icon: 'ri-translate-2',
             title: 'Dil Ayarları',
             description: 'Sitenizde yer alan içeriklerinizi düzenleyin.',
             href: '/tr/apps/settings/language',
-            color: '#EA5455'
+            color: '#2e263db3'
         },
         {
             icon: 'ri-building-line',
             title: 'Tanımlamalar',
             description: 'Kurumsal bilgilerinizi satış sözleşmelerini düzenleyin.',
             href: '/tr/apps/settings/definitions',
-            color: '#EA5455'
+            color: '#2e263db3'
         },
         {
             icon: 'ri-file-text-line',
             title: 'Dosya Yönetimi',
             description: 'Özel dosya ve klasörlerinizi yönetin.',
             href: '/tr/apps/settings/files',
-            color: '#EA5455'
+            color: '#2e263db3'
         }
     ]
 

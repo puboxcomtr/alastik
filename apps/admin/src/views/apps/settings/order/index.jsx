@@ -60,15 +60,11 @@ const Order = () => {
       setLoading(false)
     }
   }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     try {
       setSaving(true)
-
       await updateSettings('order', formData)
-
       toast.success('Ayarlar kaydedildi')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Ayarlar kaydedilemedi')

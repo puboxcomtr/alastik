@@ -13,7 +13,7 @@ const settingSchema = new mongoose.Schema({
     },
     group: {
         type: String,
-        enum: ['order', 'general', 'seo', 'payment', 'email'],
+        enum: ['order', 'showcase', 'member', 'campaign', 'connections'],
         default: 'general'
     },
     type: {
