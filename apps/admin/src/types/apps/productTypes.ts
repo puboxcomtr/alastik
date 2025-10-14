@@ -127,6 +127,7 @@ export type CategoryType = {
   webVisible: boolean
   webOrder: number
   seoTitle: string
+  seoDescription: string
   seoUrl: string
   seoKeywords: string[]
   productCount: number

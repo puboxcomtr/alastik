@@ -1,101 +1,113 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Grid from '@mui/material/Grid2'
-import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
-import { FormControl, Select, Switch } from '@mui/material'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
+import { FormControl } from '@mui/material'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
 
-const Homepage = () => {
-  const [formData, setFormData] = useState({
-    homePageTitle: '',
-    homePageKeywords: '',
-    homePageDescription: ''
-  })
+const Homepage = ({ formData, setFormData, handleSave, saving }) => {
   return (
     <Card>
-      <Grid container size={{ xs: 12, md: 8 }}>
-        <CardHeader
-          title='Anasayfa SEO Ayarları'
-          subheader='Sitenize ait SEO Ayarlarını görüntüleyebilir ve güncelleyebilirsiniz.'
-        />
-        <Divider />
-        <CardContent>
-          <Grid container spacing={12}>
-            <Grid size={{ sm: 6 }}>
-              <FormControl fullWidth>
-                <TextField
-                  fullWidth
-                  label='Anasayfa SEO Başlığı'
-                  placeholder='Anasayfa SEO Başlığı'
-                  value={formData.homePageTitle}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    homePageTitle: e.target.value
-                  }))}
-                  inputProps={{ maxLength: 60 }}
-                  helperText={
-                    <span className="flex justify-between items-center">
-                      <span>Bu alan arama motorlarında başlık olarak görünecektir</span>
-                      <span className={formData.homePageTitle.length <= 60 ? "text-green-500" : "text-red-500"}>
-                        {formData.homePageTitle.length}/60
+      <Grid container justifyContent="center">
+        <Grid size={{ xs: 12, md: 10 }}>
+          <CardHeader
+            title='Anasayfa SEO Ayarları'
+            subheader='Sitenize ait SEO Ayarlarını görüntüleyebilir ve güncelleyebilirsiniz.'
+          />
+          <Divider />
+          <CardContent>
+            <Grid container spacing={10} justifyContent="center">
+              <Grid size={{ sm: 12 }}>
+                <FormControl fullWidth>
+                  <TextField
+                    fullWidth
+                    label='Anasayfa SEO Başlığı'
+                    placeholder='Anasayfa SEO Başlığı'
+                    value={formData.homepage.title}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      homepage: { ...prev.homepage, title: e.target.value }
+                    }))}
+                    inputProps={{ maxLength: 60 }}
+                    helperText={
+                      <span className="flex justify-between items-center mt-1 w-full">
+                        <Typography variant="label" color="text.secondary">
+                          Bu alan arama motorlarında başlık olarak görünecektir
+                        </Typography>
+                        <span className={formData.homepage.title.length <= 60 ? "text-green-500" : "text-red-500"}>
+                          {formData.homepage.title.length}/60
+                        </span>
                       </span>
-                    </span>
-                  }
-                />
-              </FormControl>
-            </Grid>
-            <Grid size={{ sm: 6 }}>
-              <FormControl fullWidth>
-                <TextField
-                  fullWidth
-                  label='Anasayfa SEO Anahtar Kelimeleri'
-                  placeholder='Örn: lastik, oto lastik, otomobil lastiği'
-                  value={formData.homePageKeywords}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    homePageKeywords: e.target.value
-                  }))}
-                  helperText="Virgül ile ayırarak birden fazla anahtar kelime girebilirsiniz"
-                />
-              </FormControl>
-            </Grid>
-            <Grid size={{ sm: 12 }}>
-              <FormControl fullWidth>
-                <TextField
-                  fullWidth
-                  label='Anasayfa SEO Açıklaması'
-                  placeholder='Anasayfa SEO Açıklaması'
-                  value={formData.homePageDescription}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    homePageDescription: e.target.value
-                  }))}
-                  multiline
-                  rows={3}
-                  inputProps={{ maxLength: 160 }}
-                  helperText={
-                    <span className="flex justify-between items-center">
-                      <span>Bu alan arama motorlarında açıklama olarak görünecektir</span>
-                      <span className={formData.homePageDescription.length <= 160 ? "text-green-500" : "text-red-500"}>
-                        {formData.homePageDescription.length}/160
+                    }
+                  />
+                </FormControl>
+              </Grid>
+              <Grid size={{ sm: 12 }}>
+                <FormControl fullWidth>
+                  <TextField
+                    fullWidth
+                    label='Anasayfa SEO Açıklaması'
+                    placeholder='Anasayfa SEO açıklaması giriniz'
+                    value={formData.homepage.description}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      homepage: { ...prev.homepage, description: e.target.value }
+                    }))}
+                    multiline
+                    rows={3}
+                    inputProps={{ maxLength: 160 }}
+                    helperText={
+                      <span className="flex justify-between items-center mt-1 w-full">
+                        <Typography variant="label" color="text.secondary">
+                          Bu alan arama motorlarında açıklama olarak görünecektir
+                        </Typography>
+                        <span className={formData.homepage.description.length <= 160 ? "text-green-500" : "text-red-500"}>
+                          {formData.homepage.description.length}/160
+                        </span>
                       </span>
-                    </span>
-                  }
-                />
-              </FormControl>
+                    }
+                  />
+                </FormControl>
+              </Grid>
+              <Grid size={{ sm: 12 }}>
+                <FormControl fullWidth>
+                  <TextField
+                    fullWidth
+                    label='Anasayfa SEO Anahtar Kelimeleri'
+                    placeholder='Anasayfa SEO anahtar kelimeleri giriniz'
+                    value={formData.homepage.keywords}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      homepage: { ...prev.homepage, keywords: e.target.value }
+                    }))}
+                    helperText={
+                      <span className="flex justify-between items-center mt-1 w-full">
+                        <Typography variant="label" color="text.secondary">
+                          Virgül ile ayırarak birden fazla anahtar kelime girebilirsiniz
+                        </Typography>
+                      </span>
+                    }
+                  />
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12 }} className='flex gap-4 flex-wrap justify-end'>
+                <Button
+                  variant='contained'
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                </Button>
+              </Grid>
             </Grid>
-          </Grid>
-        </CardContent>
-      </Grid>
+          </CardContent>
+        </Grid>
+      </Grid >
     </Card >
   )
 }

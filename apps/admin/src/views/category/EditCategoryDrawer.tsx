@@ -35,6 +35,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
   const [formData, setFormData] = useState({
     description: '',
     seoTitle: '',
+    seoDescription: '',
     seoUrl: '',
     webOrder: 0
   })
@@ -45,6 +46,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
       setFormData({
         description: selectedCategory.description || '',
         seoTitle: selectedCategory.seoTitle || '',
+        seoDescription: selectedCategory.seoDescription || '',
         seoUrl: selectedCategory.seoUrl || '',
         webOrder: selectedCategory.webOrder || 0
       })
@@ -53,6 +55,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
       setFormData({
         description: '',
         seoTitle: '',
+        seoDescription: '',
         seoUrl: '',
         webOrder: 0
       })
@@ -60,7 +63,6 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     }
   }, [selectedCategory])
 
-  // Form submit handler - düzenleme işlemi
   const onSubmit = async () => {
     if (!selectedCategory || isLoading) return
 
@@ -76,6 +78,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
         body: JSON.stringify({
           description: formData.description,
           seoTitle: formData.seoTitle,
+          seoDescription: formData.seoDescription,
           seoUrl: formData.seoUrl,
           webOrder: formData.webOrder
         })
@@ -83,13 +86,13 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
 
       const result = await response.json()
       if (result.success && result.data) {
-        // Backend'ten gelen güncel veriyi kullan - Frontend state'ini güncelle
         const updatedCategoryData = categoryData.map(cat => {
           if (cat.id === selectedCategory.id) {
             return {
               ...cat,
               description: result.data.description,
               seoTitle: result.data.seoTitle,
+              seoDescription: result.data.seoDescription,
               seoUrl: result.data.seoUrl,
               webOrder: result.data.webOrder,
               updatedAt: result.data.updatedAt
@@ -135,7 +138,6 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     }
   }
 
-  // Dosya seçildiğinde, sadece ismini gösteriyoruz (örnek amaçlı)
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const { files } = event.target
     if (files && files.length > 0) {
@@ -199,6 +201,18 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
             placeholder='SEO başlık giriniz'
             disabled={isLoading}
+          />
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            label='SEO Açıklama'
+            value={formData.seoDescription}
+            onChange={(e) => setFormData({ ...formData, seoDescription: e.target.value })}
+            placeholder='SEO açıklaması giriniz (Meta Description)'
+            disabled={isLoading}
+            inputProps={{ maxLength: 160 }}
+            helperText={`${formData.seoDescription.length}/160 karakter`}
           />
           <TextField
             fullWidth

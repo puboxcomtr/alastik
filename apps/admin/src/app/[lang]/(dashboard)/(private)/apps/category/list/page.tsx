@@ -35,6 +35,7 @@ async function fetchCategories() {
       webVisible: category.webVisible !== false,
       webOrder: category.webOrder || 0,
       seoTitle: category.seoTitle || category.name || '',
+      seoDescription: category.seoDescription || '',
       seoUrl: category.seoUrl || category.slug || '',
       seoKeywords: category.seoKeywords || [],
       description: category.description || '',

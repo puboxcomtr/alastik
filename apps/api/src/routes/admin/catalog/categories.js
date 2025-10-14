@@ -87,6 +87,7 @@ router.get('/', maybeAuth, async (req, res) => {
         webVisible: 1,
         webOrder: 1,
         seoTitle: 1,
+        seoDescription: 1,
         seoUrl: 1,
         customImage: 1,
         productCount: 1,
@@ -160,6 +161,7 @@ router.get('/', maybeAuth, async (req, res) => {
 
         // SEO
         seoTitle: cat.seoTitle || cat.name,
+        seoDescription: cat.seoDescription || '',
         seoUrl: cat.seoUrl || cat.slug,
 
         // Görsel
@@ -182,7 +184,7 @@ router.get('/', maybeAuth, async (req, res) => {
       };
     });
     const formattedKarPaleti = formattedCategories.find(c => c.name === 'Kar Paleti ve Zinciri');
-   
+
     res.json({
       success: true,
       data: formattedCategories,
@@ -212,16 +214,18 @@ router.get('/', maybeAuth, async (req, res) => {
 router.patch('/:id', maybeAuth, [
   body('description').optional().isLength({ max: 500 }).withMessage('Açıklama en fazla 500 karakter olabilir'),
   body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
+  body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
   body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
   body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır')
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, seoTitle, seoUrl, webOrder } = req.body;
+    const { description, seoTitle, seoDescription, seoUrl, webOrder } = req.body;
 
     const updateData = {};
     if (description !== undefined) updateData.description = description;
     if (seoTitle !== undefined) updateData.seoTitle = seoTitle?.trim();
+    if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim(); 
     if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase();
     if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0;
 

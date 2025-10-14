@@ -339,6 +339,10 @@ app.use('/api/admin/forms', formRoutes);
 const settingRoutes = require('./routes/admin/settings/settings');
 app.use('/api/admin/settings', settingRoutes);
 
+/* * SEO Ayarları * */
+const seoRoutes = require('./routes/admin/settings/seo');
+app.use('/api/admin/settings/seo', seoRoutes);
+
 /**
   * Admin - Functions *
 */
