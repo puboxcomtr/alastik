@@ -27,6 +27,8 @@ import DialogTitle from '@mui/material/DialogTitle'
 
 /* Add Payment Method Drawer */
 import AddPaymentMethodDrawer from '../add/AddPaymentMethodDrawer'
+import EditPaymentMethodDrawer from '../edit/EditPaymentMethodDrawer'
+
 
 /* Toast */
 import { toast } from 'react-toastify'
@@ -145,6 +147,8 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [methodToDelete, setMethodToDelete] = useState<PaymentMethodType | null>(null)
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [methodToEdit, setMethodToEdit] = useState<PaymentMethodType | null>(null)
 
   useEffect(() => {
     setData(methodData || [])
@@ -222,66 +226,42 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
   const getModeBadge = (mode?: string) => {
     if (!mode) return null
     const badges = {
-      test: { label: 'Test', color: 'warning' as const },
-      live: { label: 'Canlı', color: 'success' as const },
-      sandbox: { label: 'Sandbox', color: 'secondary' as const }
+      test: { label: 'Test' as const },
+      live: { label: 'Canlı' as const },
+      sandbox: { label: 'Sandbox' as const }
     }
     return badges[mode as keyof typeof badges] || { label: mode, color: 'default' as const }
+  }
+  const handleEdit = (method: PaymentMethodType) => {
+    setMethodToEdit(method)
+    setEditDrawerOpen(true)
+  }
+
+  const handleEditSuccess = () => {
+    setEditDrawerOpen(false)
+    setMethodToEdit(null)
+    setTimeout(() => {
+      window.location.reload()
+    }, 1500)
   }
 
   const columns = useMemo<ColumnDef<PaymentMethodWithActionsType, any>[]>(
     () => [
-      {
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            {...{
-              checked: table.getIsAllRowsSelected(),
-              indeterminate: table.getIsSomeRowsSelected(),
-              onChange: table.getToggleAllRowsSelectedHandler()
-            }}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            {...{
-              checked: row.getIsSelected(),
-              disabled: !row.getCanSelect(),
-              indeterminate: row.getIsSomeSelected(),
-              onChange: row.getToggleSelectedHandler()
-            }}
-          />
-        )
-      },
       columnHelper.accessor('name', {
         header: 'Ödeme Yöntemi',
-        cell: ({ row }) => (
-          <div className='flex items-center gap-3'>
-            {row.original.providerMeta?.icon && (
-              <span className='text-2xl'>{row.original.providerMeta.icon}</span>
-            )}
-            <div className='flex flex-col'>
-              <Typography className='font-medium' color='text.primary'>
-                {row.original.name}
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                {row.original.providerMeta?.displayName || row.original.provider}
-              </Typography>
-            </div>
-          </div>
-        )
-      }),
-      columnHelper.accessor('type', {
-        header: 'Tip',
         cell: ({ row }) => {
           const badge = getTypeBadge(row.original.type)
           return (
-            <Chip
-              label={badge.label}
-              color={badge.color}
-              variant='tonal'
-              size='small'
-            />
+            <div className='flex items-center gap-3'>
+              <div className='flex flex-col'>
+                <Typography className='font-medium' color='text.primary'>
+                  {row.original.name}
+                </Typography>
+                <Typography variant='body2' color='text.secondary'>
+                  {badge.label}
+                </Typography>
+              </div>
+            </div>
           )
         }
       }),
@@ -293,36 +273,9 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
           const badge = getModeBadge(mode)
           if (!badge) return null
           return (
-            <Chip
-              label={badge.label}
-              color={badge.color}
-              variant='tonal'
-              size='small'
-            />
+            <Typography>{badge.label}</Typography>
           )
         }
-      }),
-      columnHelper.accessor('priority', {
-        header: 'Öncelik',
-        cell: ({ row }) => (
-          <Typography className='font-medium'>
-            {row.original.priority}
-          </Typography>
-        )
-      }),
-      columnHelper.accessor('stats', {
-        header: 'İstatistikler',
-        cell: ({ row }) => (
-          <div className='flex flex-col'>
-            <Typography variant='body2'>
-              {row.original.stats?.totalOrders || 0} sipariş
-            </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              ₺{(row.original.stats?.totalAmount || 0).toLocaleString('tr-TR')}
-            </Typography>
-          </div>
-        ),
-        enableSorting: false
       }),
       columnHelper.accessor('isActive', {
         header: 'Durum',
@@ -334,27 +287,27 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
           />
         )
       }),
+      columnHelper.accessor('priority', {
+        header: 'Öncelik',
+        cell: ({ row }) => (
+          <Typography className='font-medium'>
+            {row.original.priority}
+          </Typography>
+        )
+      }),
       columnHelper.accessor('actions', {
         header: 'İşlemler',
         cell: ({ row }) => (
-          <div className='flex items-center'>
+          <div className='flex items-end-safe'>
             <Tooltip title='Düzenle'>
               <IconButton
                 size='small'
-                onClick={() => router.push(`/apps/settings/payment/edit/${row.original._id}`)}
+                onClick={() => handleEdit(row.original)}
               >
                 <i className='ri-edit-box-line text-[22px] text-textSecondary' />
               </IconButton>
             </Tooltip>
-            <Tooltip title='Detay'>
-              <IconButton
-                size='small'
-                onClick={() => router.push(`/apps/settings/payment/view/${row.original._id}`)}
-              >
-                <i className='ri-eye-line text-[22px] text-textSecondary' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Arşivle'>
+            <Tooltip title='Sil'>
               <IconButton size='small' onClick={() => handleDeleteClick(row.original)}>
                 <i className='ri-archive-line text-[22px] text-textSecondary' />
               </IconButton>
@@ -479,6 +432,12 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
           onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
         />
       </Card>
+      <EditPaymentMethodDrawer
+        open={editDrawerOpen}
+        handleClose={() => setEditDrawerOpen(false)}
+        onSuccess={handleEditSuccess}
+        method={methodToEdit}
+      />
       <AddPaymentMethodDrawer
         open={addDrawerOpen}
         handleClose={() => setAddDrawerOpen(false)}
@@ -486,13 +445,13 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
       />
       {/* Silme Onay Dialog */}
       <Dialog open={deleteConfirmOpen} onClose={handleDeleteCancel}>
-        <DialogTitle>Ödeme Yöntemini Arşivle</DialogTitle>
+        <DialogTitle>Ödeme Yöntemini Sil</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            <strong>"{methodToDelete?.name}"</strong> ödeme yöntemini arşivlemek istediğinizden emin misiniz?
+            <strong>"{methodToDelete?.name}"</strong> ödeme yöntemini silmek istediğinizden emin misiniz?
             <br />
             <br />
-            Bu işlem ödeme yöntemini pasif hale getirecektir. Geçmiş işlemler korunacaktır.
+            Bu işlem ödeme yöntemini silecektir. Geçmiş işlemler korunacaktır.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -500,7 +459,7 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
             İptal
           </Button>
           <Button onClick={handleDeleteConfirm} color='error' variant='contained'>
-            Arşivle
+            Sil
           </Button>
         </DialogActions>
       </Dialog>
