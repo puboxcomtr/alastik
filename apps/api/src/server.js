@@ -335,6 +335,10 @@ app.use('/api/admin/forms', formRoutes);
 /**
   * Ayarlar - Routes *
 */
+
+/* * Ödeme Yöntemleri Ayarları * */
+const paymentRoutes = require('./routes/admin/settings/payment');
+app.use('/api/admin/settings/payment', paymentRoutes);
 /* * Genel Ayarlar * */
 const settingRoutes = require('./routes/admin/settings/settings');
 app.use('/api/admin/settings', settingRoutes);
@@ -342,6 +346,7 @@ app.use('/api/admin/settings', settingRoutes);
 /* * SEO Ayarları * */
 const seoRoutes = require('./routes/admin/settings/seo');
 app.use('/api/admin/settings/seo', seoRoutes);
+
 
 /**
   * Admin - Functions *
@@ -394,10 +399,6 @@ app.use('/api/users', userRoutes);
 // Cart routes
 const cartRoutes = require('./routes/cart');
 app.use('/api/cart', cartRoutes);
-
-// Payment routes (iyzico mock)
-const paymentRoutes = require('./routes/payment');
-app.use('/api/payment', paymentRoutes);
 
 // External payments (Netahsilat gateway entegrasyonu)
 try {
