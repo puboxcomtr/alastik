@@ -339,6 +339,15 @@ app.use('/api/admin/forms', formRoutes);
 /* * Ödeme Yöntemleri Ayarları * */
 const paymentRoutes = require('./routes/admin/settings/payment');
 app.use('/api/admin/settings/payment', paymentRoutes);
+
+/* * Çeviri Ayarları * */
+const translationsRoutes = require('./routes/admin/settings/translations');
+app.use('/api/admin/settings/translations', translationsRoutes);
+
+/* * Genel Tanımlamalar * */
+const generalSettingsRoutes = require('./routes/admin/settings/general');
+app.use('/api/admin/settings/general', generalSettingsRoutes);
+
 /* * Genel Ayarlar * */
 const settingRoutes = require('./routes/admin/settings/settings');
 app.use('/api/admin/settings', settingRoutes);
@@ -347,6 +356,27 @@ app.use('/api/admin/settings', settingRoutes);
 const seoRoutes = require('./routes/admin/settings/seo');
 app.use('/api/admin/settings/seo', seoRoutes);
 
+/**
+ * Kullanıcı Ayarları *
+**/
+const authRoutes = require('./routes/admin/user/auth');
+app.use('/api/admin/user/auth', authRoutes);
+
+/* Admin Yönetimi */
+const adminsRoutes = require('./routes/admin/user/admins');
+app.use('/api/admin/user/admins', adminsRoutes);
+
+/* Rol Yönetimi */
+const rolesRoutes = require('./routes/admin/user/roles');
+app.use('/api/admin/user/roles', rolesRoutes);
+
+/* Engellenen IP'ler */
+const blockedIPsRoutes = require('./routes/admin/user/blocked-ips');
+app.use('/api/admin/user/blocked-ips', blockedIPsRoutes);
+
+/* İşlem Kayıtları */
+const activityLogsRoutes = require('./routes/admin/user/activity-logs');
+app.use('/api/admin/user/activity-logs', activityLogsRoutes);
 
 /**
   * Admin - Functions *
@@ -376,8 +406,6 @@ app.use('/uploads', express.static(paths.getStaticPath('')));
 
 // API Routes
 // Auth routes
-const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
 
 // Admin routes
 const adminRoutes = require('./routes/admin');

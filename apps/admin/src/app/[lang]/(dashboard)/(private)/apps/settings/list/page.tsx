@@ -34,7 +34,7 @@ const SettingsList = () => {
             icon: 'ri-translate-2',
             title: 'Dil Ayarları',
             description: 'Sitenizde yer alan içeriklerinizi düzenleyin.',
-            href: '/tr/apps/settings/language',
+            href: '/tr/apps/settings/translations',
             color: '#2e263db3'
         },
         {

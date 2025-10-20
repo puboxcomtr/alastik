@@ -1,7 +1,8 @@
 import NextAuth from 'next-auth'
+import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
             name: 'credentials',
@@ -30,13 +31,14 @@ const handler = NextAuth({
                             id: data.id,
                             email: data.email,
                             name: data.name,
-                            role: data.role
+                            role: data.role,
+                            accessToken: data.token || 'dummy-token'
                         }
                     } else {
                         const errorMsg = data.message ? data.message[0] : 'Giriş başarısız'
                         throw new Error(errorMsg)
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Auth error:', error)
                     throw new Error(error.message || 'Sunucu hatası')
                 }
@@ -45,27 +47,35 @@ const handler = NextAuth({
     ],
     pages: {
         signIn: '/login',
-        error: '/login'  // BU SATIRI EKLE
+        error: '/login'
     },
-    session: { strategy: 'jwt' },
+    session: {
+        strategy: 'jwt',
+        maxAge: 8 * 60 * 60 // 8 saat
+    },
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
+                token.id = user.id
                 token.role = user.role
+                token.accessToken = user.accessToken 
             }
             return token
         },
         async session({ session, token }) {
-            if (token) {
-                session.user.id = token.sub
-                session.user.role = token.role
+            if (token && session.user) {
+                session.user.id = token.id as string
+                session.user.role = token.role as string
+                session.user.accessToken = token.accessToken as string 
             }
             return session
         },
-        async signIn({ user }) {  // BU CALLBACK'İ EKLE
+        async signIn({ user }) {
             return true
         }
     }
-})
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }
