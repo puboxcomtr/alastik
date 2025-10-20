@@ -132,7 +132,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <SubMenu label={dictionary['navigation'].settings} icon={<i className="ri-settings-2-line"></i>}>
             <MenuItem href={`/${locale}/apps/settings/list`}>{dictionary['navigation'].general}</MenuItem>
-            <MenuItem href={`/${locale}/apps/users/list`}>{dictionary['navigation'].users}</MenuItem>
+            <MenuItem href={`/${locale}/apps/manager/list`}>{dictionary['navigation'].users}</MenuItem>
             <MenuItem href={`/${locale}/apps/campaign/promotions`}>{dictionary['navigation'].design_settings}</MenuItem>
             <MenuItem href={`/${locale}/apps/cargo/index`}>{dictionary['navigation'].cargo_settings}</MenuItem>
             <MenuItem href={`/${locale}/apps/mail/index`}>{dictionary['navigation'].mail_settings}</MenuItem>

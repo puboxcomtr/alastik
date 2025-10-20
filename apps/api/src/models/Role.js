@@ -4,12 +4,13 @@ const permissionSchema = new mongoose.Schema({
     module: {
         type: String,
         required: true,
-        enum: ['products', 'categories', 'brands', 'tags']
     },
     view: { type: Boolean, default: false },
     create: { type: Boolean, default: false },
     edit: { type: Boolean, default: false },
-    delete: { type: Boolean, default: false }
+    delete: { type: Boolean, default: false },
+    sync: { type: Boolean, default: false }
+
 }, { _id: false });
 
 const roleSchema = new mongoose.Schema({

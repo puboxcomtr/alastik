@@ -352,5 +352,27 @@ router.delete('/:id', async (req, res) => {
         });
     }
 });
+/**
+ * @route   GET /api/admin/user/roles/modules
+ * @desc    Modül tanımlarını getir
+ * @access  Private
+ */
+router.get('/modules', async (req, res) => {
+    try {
+        const { getModulesByCategory } = require('../../../config/modules');
+        const modules = getModulesByCategory();
+
+        res.json({
+            success: true,
+            data: { modules }
+        });
+    } catch (error) {
+        console.error('Get modules error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Modüller alınırken bir hata oluştu'
+        });
+    }
+});
 
 module.exports = router;

@@ -23,9 +23,6 @@ export type AdminType = {
 
 const getManagersData = async (token: string): Promise<AdminType[]> => {
     try {
-        console.log('🔑 Gönderilen Token:', token.substring(0, 50) + '...')
-        console.log('🔗 API URL:', `${process.env.API_URL}/admin/user/admins`)
-
         const res = await fetch(`${process.env.API_URL}/admin/user/admins?limit=100`, {
             cache: 'no-store',
             headers: {
@@ -34,19 +31,15 @@ const getManagersData = async (token: string): Promise<AdminType[]> => {
             }
         })
 
-        console.log('📊 Response Status:', res.status)
-
-        const responseText = await res.text()
-        console.log('📄 Response:', responseText)
-
         if (!res.ok) {
+            console.error('Failed to fetch managers:', res.status)
             return []
         }
 
-        const response = JSON.parse(responseText)
+        const response = await res.json()
         return response.data?.admins || []
     } catch (error) {
-        console.error('❌ Error fetching managers:', error)
+        console.error('Error fetching managers:', error)
         return []
     }
 }
@@ -54,22 +47,17 @@ const getManagersData = async (token: string): Promise<AdminType[]> => {
 const ManagerListPage = async () => {
     const session = await getServerSession(authOptions)
 
-    console.log('📋 Full Session:', JSON.stringify(session, null, 2))
-
     if (!session || !session.user) {
         redirect('/login')
     }
 
     const token = (session.user as any).accessToken
 
-    console.log('🔑 Token from session:', token)
-
     if (!token) {
         return (
             <div style={{ padding: '20px', textAlign: 'center' }}>
                 <h2>Token Bulunamadı</h2>
                 <p>Lütfen çıkış yapıp tekrar giriş yapın.</p>
-                <p>Session: {JSON.stringify(session.user)}</p>
             </div>
         )
     }
