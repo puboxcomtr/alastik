@@ -1,15 +1,23 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   basePath: process.env.BASEPATH,
 
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true
   },
+
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true
   },
-  redirects: async () => {
+
+  generateBuildId: async function () {
+    return 'build-id'
+  },
+
+  output: 'standalone',
+
+  redirects: async function () {
     return [
       {
         source: '/',
@@ -33,4 +41,4 @@ const nextConfig: NextConfig = {
   }
 }
 
-export default nextConfig
+module.exports = nextConfig

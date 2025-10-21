@@ -6,8 +6,6 @@ import { useState } from 'react'
 // Next Imports
 import Link from 'next/link'
 
-// MUI Imports
-import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import useScrollTrigger from '@mui/material/useScrollTrigger'
@@ -21,15 +19,10 @@ import type { Mode } from '@core/types'
 
 // Component Imports
 import Logo from '@components/layout/shared/Logo'
-import ModeDropdown from '@components/layout/shared/ModeDropdown'
-import FrontMenu from './FrontMenu'
-import CustomIconButton from '@core/components/mui/IconButton'
 
 // Util Imports
 import { frontLayoutClasses } from '@layouts/utils/layoutClasses'
 
-// Styles Imports
-import styles from './styles.module.css'
 
 const Header = ({ mode }: { mode: Mode }) => {
   // States

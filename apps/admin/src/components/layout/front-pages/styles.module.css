@@ -29,15 +29,12 @@
     @media (min-width: 600px) {
       padding-inline: 2rem;
     }
-
     @media (min-width: 900px) {
       max-inline-size: calc(900px - 48px);
     }
-
     @media (min-width: 1200px) {
       max-inline-size: calc(1200px - 48px);
     }
-
     @media (min-width: 1920px) {
       max-inline-size: calc(1440px - 48px);
     }
@@ -52,7 +49,7 @@
 }
 
 .inputBorder {
-  :global(fieldset) {
+  fieldset {
     border-color: rgb(var(--mui-mainColorChannels-dark) / 0.22) !important;
   }
   label,

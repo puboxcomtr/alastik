@@ -71,7 +71,7 @@
     "keen-slider": "6.8.6",
     "mapbox-gl": "3.9.0",
     "negotiator": "1.0.0",
-    "next": "15.1.2",
+    "next": "14.2.18",
     "next-auth": "4.24.11",
     "react": "18.3.1",
     "react-apexcharts": "1.4.1",
@@ -128,10 +128,12 @@
   },
   "resolutions": {
     "rimraf": "^5.0.7",
-    "@tiptap/core": "^2.0.0"
+    "@tiptap/core": "^2.0.0",
+    "styled-jsx": "5.1.6"
   },
   "overrides": {
-    "rimraf": "^5.0.7"
+    "rimraf": "^5.0.7",
+    "styled-jsx": "5.1.6"
   },
   "prisma": {
     "schema": "./src/prisma/schema.prisma"
