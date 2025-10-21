@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-toastify'
 
 // MUI Imports
 import Checkbox from '@mui/material/Checkbox'
@@ -12,6 +12,12 @@ import TablePagination from '@mui/material/TablePagination'
 import Typography from '@mui/material/Typography'
 import Tooltip from '@mui/material/Tooltip'
 import Avatar from '@mui/material/Avatar'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -24,9 +30,13 @@ import {
     getPaginationRowModel,
     getSortedRowModel
 } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 
 // Type Imports
 import type { AdminType } from '@/app/[lang]/(dashboard)/(private)/apps/manager/list/page'
+
+// API
+import { deleteAdmin } from '@/utils/api/admins'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
@@ -34,11 +44,52 @@ import tableStyles from '@core/styles/table.module.css'
 const columnHelper = createColumnHelper<AdminType>()
 
 const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
+    const router = useRouter()
     const [rowSelection, setRowSelection] = useState({})
-    const [data] = useState(() => managersData)
+    const [data, setData] = useState(() => managersData)
     const [globalFilter, setGlobalFilter] = useState('')
 
-    const { lang: locale } = useParams()
+    // Delete dialog state
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [adminToDelete, setAdminToDelete] = useState<AdminType | null>(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
+
+    const handleDeleteClick = (admin: AdminType) => {
+        setAdminToDelete(admin)
+        setDeleteDialogOpen(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!adminToDelete) return
+
+        setDeleteLoading(true)
+
+        try {
+            await deleteAdmin(adminToDelete._id)
+
+            setData(prevData => prevData.filter(a => a._id !== adminToDelete._id))
+
+            toast.success(`"${adminToDelete.name}" başarıyla silindi`, {
+                autoClose: 1500
+            })
+
+            setDeleteDialogOpen(false)
+            setAdminToDelete(null)
+
+            setTimeout(() => {
+                router.refresh()
+            }, 500)
+        } catch (error: any) {
+            toast.error(error.message || 'Yönetici silinirken bir hata oluştu')
+        } finally {
+            setDeleteLoading(false)
+        }
+    }
+
+    const handleDeleteCancel = () => {
+        setDeleteDialogOpen(false)
+        setAdminToDelete(null)
+    }
 
     const columns = useMemo<ColumnDef<AdminType, any>[]>(
         () => [
@@ -96,22 +147,31 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
                     />
                 )
             }),
-            columnHelper.accessor('permissions', {
-                header: 'Yetkiler',
+            columnHelper.accessor('role', {
+                header: 'Rol',
                 cell: ({ row }) => {
-                    const permissions = Array.isArray(row.original.permissions)
-                        ? row.original.permissions
-                        : [];
+                    const role = row.original.role;
 
-                    return (
-                        <Tooltip title={permissions.length > 0 ? permissions.join(', ') : 'Yetki yok'}>
+                    // Eğer role populate edilmişse
+                    if (role && typeof role === 'object' && 'name' in role) {
+                        return (
                             <Chip
-                                label={`${permissions.length} Yetki`}
+                                label={role.name}
                                 size='small'
                                 variant='outlined'
+                                color='primary'
                             />
-                        </Tooltip>
-                    )
+                        );
+                    }
+
+                    return (
+                        <Chip
+                            label='Rol Yok'
+                            size='small'
+                            variant='outlined'
+                            color='default'
+                        />
+                    );
                 }
             }),
             columnHelper.accessor('lastLogin', {
@@ -146,12 +206,18 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
                 cell: ({ row }) => (
                     <div className='flex items-center gap-2'>
                         <Tooltip title='Düzenle'>
-                            <IconButton size='small'>
+                            <IconButton
+                                size='small'
+                                onClick={() => router.push(`/apps/manager/edit/${row.original._id}`)}
+                            >
                                 <i className='ri-edit-box-line text-textSecondary' />
                             </IconButton>
                         </Tooltip>
                         <Tooltip title='Sil'>
-                            <IconButton size='small'>
+                            <IconButton
+                                size='small'
+                                onClick={() => handleDeleteClick(row.original)}
+                            >
                                 <i className='ri-delete-bin-7-line text-textSecondary' />
                             </IconButton>
                         </Tooltip>
@@ -160,7 +226,7 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
                 enableSorting: false
             }
         ],
-        [data]
+        [data, router]
     )
 
     const table = useReactTable({
@@ -186,65 +252,101 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
     })
 
     return (
-        <div className='overflow-x-auto'>
-            <table className={tableStyles.table}>
-                <thead>
-                    {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                                <th key={header.id}>
-                                    {header.isPlaceholder ? null : (
-                                        <div
-                                            className={classnames({
-                                                'flex items-center': header.column.getIsSorted(),
-                                                'cursor-pointer select-none': header.column.getCanSort()
-                                            })}
-                                            onClick={header.column.getToggleSortingHandler()}
-                                        >
-                                            {flexRender(header.column.columnDef.header, header.getContext())}
-                                            {{
-                                                asc: <i className='ri-arrow-up-s-line text-xl' />,
-                                                desc: <i className='ri-arrow-down-s-line text-xl' />
-                                            }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                                        </div>
-                                    )}
-                                </th>
-                            ))}
-                        </tr>
-                    ))}
-                </thead>
-                {table.getFilteredRowModel().rows.length === 0 ? (
-                    <tbody>
-                        <tr>
-                            <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                                Yönetici Bulunamadı
-                            </td>
-                        </tr>
-                    </tbody>
-                ) : (
-                    <tbody>
-                        {table.getRowModel().rows.map(row => (
-                            <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
-                                {row.getVisibleCells().map(cell => (
-                                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+        <>
+            <div className='overflow-x-auto'>
+                <table className={tableStyles.table}>
+                    <thead>
+                        {table.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id}>
+                                {headerGroup.headers.map(header => (
+                                    <th key={header.id}>
+                                        {header.isPlaceholder ? null : (
+                                            <div
+                                                className={classnames({
+                                                    'flex items-center': header.column.getIsSorted(),
+                                                    'cursor-pointer select-none': header.column.getCanSort()
+                                                })}
+                                                onClick={header.column.getToggleSortingHandler()}
+                                            >
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                                {{
+                                                    asc: <i className='ri-arrow-up-s-line text-xl' />,
+                                                    desc: <i className='ri-arrow-down-s-line text-xl' />
+                                                }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                                            </div>
+                                        )}
+                                    </th>
                                 ))}
                             </tr>
                         ))}
-                    </tbody>
-                )}
-            </table>
+                    </thead>
+                    {table.getFilteredRowModel().rows.length === 0 ? (
+                        <tbody>
+                            <tr>
+                                <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
+                                    Yönetici Bulunamadı
+                                </td>
+                            </tr>
+                        </tbody>
+                    ) : (
+                        <tbody>
+                            {table.getRowModel().rows.map(row => (
+                                <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
+                                    {row.getVisibleCells().map(cell => (
+                                        <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    )}
+                </table>
 
-            <TablePagination
-                rowsPerPageOptions={[10, 25, 50]}
-                component='div'
-                className='border-bs'
-                count={table.getFilteredRowModel().rows.length}
-                rowsPerPage={table.getState().pagination.pageSize}
-                page={table.getState().pagination.pageIndex}
-                onPageChange={(_, page) => table.setPageIndex(page)}
-                onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
-            />
-        </div>
+                <TablePagination
+                    rowsPerPageOptions={[10, 25, 50]}
+                    component='div'
+                    className='border-bs'
+                    count={table.getFilteredRowModel().rows.length}
+                    rowsPerPage={table.getState().pagination.pageSize}
+                    page={table.getState().pagination.pageIndex}
+                    onPageChange={(_, page) => table.setPageIndex(page)}
+                    onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
+                />
+            </div>
+
+            {/* Delete Dialog */}
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={deleteLoading ? undefined : handleDeleteCancel}
+                maxWidth='sm'
+                fullWidth
+            >
+                <DialogTitle>Yöneticiyi Sil</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        "{adminToDelete?.name}" kullanıcısını silmek istediğinizden emin misiniz?
+                        Bu işlem geri alınamaz.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        onClick={handleDeleteCancel}
+                        disabled={deleteLoading}
+                        color='secondary'
+                    >
+                        İptal
+                    </Button>
+                    <Button
+                        onClick={handleDeleteConfirm}
+                        disabled={deleteLoading}
+                        variant='contained'
+                        color='error'
+                        startIcon={deleteLoading ? <CircularProgress size={20} /> : null}
+                    >
+                        {deleteLoading ? 'Siliniyor...' : 'Sil'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
     )
 }
 
