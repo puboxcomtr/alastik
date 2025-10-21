@@ -20,9 +20,9 @@ const adminSchema = new mongoose.Schema({
     select: false
   },
   role: {
-    type: String,
-    enum: ['admin', 'superadmin', 'manager'],
-    default: 'admin'
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Role',
+    required: true
   },
   isActive: {
     type: Boolean,

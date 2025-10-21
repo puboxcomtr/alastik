@@ -9,6 +9,133 @@ const { authenticateAdmin, authorize, getClientIP } = require('../../../middlewa
 router.use(authenticateAdmin);
 
 /**
+ * @route   GET /api/admin/user/roles/modules
+ * @desc    Modül tanımlarını getir
+ * @access  Private
+ */
+router.get('/modules', async (req, res) => {
+    try {
+        const { getModulesByCategory } = require('../../../config/modules');
+        const modules = getModulesByCategory();
+
+        res.json({
+            success: true,
+            data: { modules }
+        });
+    } catch (error) {
+        console.error('Get modules error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Modüller alınırken bir hata oluştu'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/admin/user/roles
+ * @desc    Yeni rol oluştur
+ * @access  Private
+ */
+router.post('/', async (req, res) => {
+    try {
+        const {
+            name,
+            description,
+            permissions,
+            status = 'active'
+        } = req.body;
+
+        // Validasyon
+        if (!name || name.trim() === '') {
+            console.log('Validasyon hatası: Rol adı eksik');
+            return res.status(400).json({
+                success: false,
+                message: 'Rol adı gereklidir'
+            });
+        }
+
+        if (!permissions || permissions.length === 0) {
+            console.log('Validasyon hatası: İzinler eksik');
+            return res.status(400).json({
+                success: false,
+                message: 'En az bir izin seçmelisiniz'
+            });
+        }
+
+        // Aynı isimde rol var mı kontrol et
+        const existingRole = await Role.findByName(name.trim());
+        if (existingRole) {
+            console.log('Rol zaten mevcut:', name);
+            return res.status(400).json({
+                success: false,
+                message: 'Bu isimde bir rol zaten mevcut'
+            });
+        }
+
+        // İzinleri temizle ve formatla
+        const cleanPermissions = permissions
+            .filter(p => p.module)
+            .map(p => ({
+                module: p.module,
+                view: p.view === true,
+                create: p.create === true,
+                edit: p.edit === true,
+                delete: p.delete === true,
+                sync: p.sync === true
+            }));
+
+        console.log('Temizlenmiş izinler:', cleanPermissions);
+
+        // Rol oluştur
+        const role = new Role({
+            name: name.trim(),
+            description: description?.trim() || '',
+            permissions: cleanPermissions,
+            status,
+            isSystem: false
+        });
+
+        await role.save();
+        console.log('Rol başarıyla oluşturuldu:', role._id);
+
+        // Activity log
+        try {
+            await ActivityLog.logActivity({
+                user: req.adminId,
+                action: 'create',
+                module: 'roles',
+                targetId: role._id.toString(),
+                targetType: 'Role',
+                details: {
+                    roleName: name,
+                    permissionCount: cleanPermissions.length
+                },
+                ipAddress: getClientIP(req),
+                userAgent: req.get('user-agent'),
+                status: 'success'
+            });
+        } catch (logError) {
+            console.error('Activity log hatası:', logError);
+            // Log hatası ana işlemi engellemez
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Rol başarıyla oluşturuldu',
+            data: { role }
+        });
+
+    } catch (error) {
+        console.error('Rol oluşturma hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Rol oluşturulurken bir hata oluştu',
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+/**
  * @route   GET /api/admin/user/roles
  * @desc    Rol listesi
  * @access  Private
@@ -24,7 +151,6 @@ router.get('/', async (req, res) => {
             sortOrder = 'asc'
         } = req.query;
 
-        // Filtreler
         const filter = {};
 
         if (search) {
@@ -38,11 +164,9 @@ router.get('/', async (req, res) => {
             filter.status = status;
         }
 
-        // Pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-        // Query
         const roles = await Role.find(filter)
             .sort(sort)
             .skip(skip)
@@ -50,7 +174,6 @@ router.get('/', async (req, res) => {
 
         const total = await Role.countDocuments(filter);
 
-        // Her rol için kullanıcı sayısını hesapla
         const rolesWithCount = await Promise.all(
             roles.map(async (role) => {
                 const userCount = await Admin.countDocuments({ role: role._id });
@@ -61,7 +184,6 @@ router.get('/', async (req, res) => {
             })
         );
 
-        // İstatistikler
         const stats = {
             total: await Role.countDocuments(),
             active: await Role.countDocuments({ status: 'active' }),
@@ -108,7 +230,6 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Bu role sahip kullanıcıları getir
         const users = await Admin.find({ role: role._id })
             .select('firstName lastName email username status')
             .limit(10);
@@ -129,79 +250,6 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Rol bilgileri alınırken bir hata oluştu'
-        });
-    }
-});
-
-/**
- * @route   POST /api/admin/user/roles
- * @desc    Yeni rol oluştur
- * @access  Private
- */
-router.post('/', async (req, res) => {
-    try {
-        const {
-            name,
-            description,
-            permissions,
-            status = 'active'
-        } = req.body;
-
-        // Validasyon
-        if (!name) {
-            return res.status(400).json({
-                success: false,
-                message: 'Rol adı gereklidir'
-            });
-        }
-
-        // Aynı isimde rol var mı kontrol et
-        const existingRole = await Role.findByName(name);
-        if (existingRole) {
-            return res.status(400).json({
-                success: false,
-                message: 'Bu isimde bir rol zaten mevcut'
-            });
-        }
-
-        // Rol oluştur
-        const role = new Role({
-            name,
-            description,
-            permissions: permissions || [],
-            status,
-            isSystem: false
-        });
-
-        await role.save();
-
-        // Activity log
-        await ActivityLog.logActivity({
-            user: req.adminId,
-            action: 'create',
-            module: 'roles',
-            targetId: role._id.toString(),
-            targetType: 'Role',
-            details: {
-                roleName: name,
-                permissionCount: permissions?.length || 0
-            },
-            ipAddress: getClientIP(req),
-            userAgent: req.get('user-agent'),
-            status: 'success'
-        });
-
-        res.status(201).json({
-            success: true,
-            message: 'Rol başarıyla oluşturuldu',
-            data: { role }
-        });
-
-    } catch (error) {
-        console.error('Create role error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Rol oluşturulurken bir hata oluştu'
         });
     }
 });
@@ -229,7 +277,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // Sistem rollerini güncelleme engeli
         if (role.isSystem) {
             return res.status(400).json({
                 success: false,
@@ -237,7 +284,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // İsim değişikliği kontrolü
         if (name && name !== role.name) {
             const existingRole = await Role.findByName(name);
             if (existingRole) {
@@ -249,27 +295,29 @@ router.put('/:id', async (req, res) => {
             role.name = name;
         }
 
-        // Güncelle
         if (description !== undefined) role.description = description;
         if (permissions) role.permissions = permissions;
         if (status) role.status = status;
 
         await role.save();
 
-        // Activity log
-        await ActivityLog.logActivity({
-            user: req.adminId,
-            action: 'update',
-            module: 'roles',
-            targetId: role._id.toString(),
-            targetType: 'Role',
-            details: {
-                updatedFields: Object.keys(req.body)
-            },
-            ipAddress: getClientIP(req),
-            userAgent: req.get('user-agent'),
-            status: 'success'
-        });
+        try {
+            await ActivityLog.logActivity({
+                user: req.adminId,
+                action: 'update',
+                module: 'roles',
+                targetId: role._id.toString(),
+                targetType: 'Role',
+                details: {
+                    updatedFields: Object.keys(req.body)
+                },
+                ipAddress: getClientIP(req),
+                userAgent: req.get('user-agent'),
+                status: 'success'
+            });
+        } catch (logError) {
+            console.error('Activity log hatası:', logError);
+        }
 
         res.json({
             success: true,
@@ -302,7 +350,6 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
-        // Sistem rollerini silme engeli
         if (role.isSystem) {
             return res.status(400).json({
                 success: false,
@@ -310,7 +357,6 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
-        // Bu role sahip kullanıcı var mı kontrol et
         const userCount = await Admin.countDocuments({ role: role._id });
         if (userCount > 0) {
             return res.status(400).json({
@@ -321,23 +367,26 @@ router.delete('/:id', async (req, res) => {
 
         await role.deleteOne();
 
-        // Activity log
-        await ActivityLog.logActivity({
-            user: req.adminId,
-            action: 'delete',
-            module: 'roles',
-            targetId: role._id.toString(),
-            targetType: 'Role',
-            details: {
-                deletedRole: {
-                    name: role.name,
-                    permissionCount: role.permissions.length
-                }
-            },
-            ipAddress: getClientIP(req),
-            userAgent: req.get('user-agent'),
-            status: 'success'
-        });
+        try {
+            await ActivityLog.logActivity({
+                user: req.adminId,
+                action: 'delete',
+                module: 'roles',
+                targetId: role._id.toString(),
+                targetType: 'Role',
+                details: {
+                    deletedRole: {
+                        name: role.name,
+                        permissionCount: role.permissions.length
+                    }
+                },
+                ipAddress: getClientIP(req),
+                userAgent: req.get('user-agent'),
+                status: 'success'
+            });
+        } catch (logError) {
+            console.error('Activity log hatası:', logError);
+        }
 
         res.json({
             success: true,
@@ -349,28 +398,6 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Rol silinirken bir hata oluştu'
-        });
-    }
-});
-/**
- * @route   GET /api/admin/user/roles/modules
- * @desc    Modül tanımlarını getir
- * @access  Private
- */
-router.get('/modules', async (req, res) => {
-    try {
-        const { getModulesByCategory } = require('../../../config/modules');
-        const modules = getModulesByCategory();
-
-        res.json({
-            success: true,
-            data: { modules }
-        });
-    } catch (error) {
-        console.error('Get modules error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Modüller alınırken bir hata oluştu'
         });
     }
 });

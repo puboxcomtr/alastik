@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 // Component Imports
-import RoleForm from '@views/manager/roles/AddRole'
+import RoleForm from '@/views/manager/roles/AddRole'
 
 const RoleCreatePage = async () => {
     const session = await getServerSession(authOptions)
@@ -25,18 +25,37 @@ const RoleCreatePage = async () => {
         )
     }
 
-    // Modül listesini çek
-    const modulesRes = await fetch(`${process.env.API_URL}/admin/user/roles/modules`, {
-        cache: 'no-store',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+    try {
+        const modulesRes = await fetch(`${process.env.API_URL}/admin/user/roles/modules`, {
+            cache: 'no-store',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        })
+
+        if (!modulesRes.ok) {
+            console.error('Modüller yüklenemedi:', modulesRes.status)
+            return (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                    <h2>Modüller Yüklenemedi</h2>
+                    <p>Lütfen daha sonra tekrar deneyin.</p>
+                </div>
+            )
         }
-    })
 
-    const modulesData = modulesRes.ok ? await modulesRes.json() : { data: { modules: {} } }
+        const modulesData = await modulesRes.json()
 
-    return <RoleForm modules={modulesData.data.modules} />
+        return <RoleForm modules={modulesData.data?.modules || {}} />
+    } catch (error) {
+        console.error('Sayfa yükleme hatası:', error)
+        return (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h2>Bir Hata Oluştu</h2>
+                <p>Sayfa yüklenirken bir hata oluştu. Lütfen tekrar deneyin.</p>
+            </div>
+        )
+    }
 }
 
 export default RoleCreatePage

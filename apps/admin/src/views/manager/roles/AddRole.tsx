@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'react-toastify'
+import { useSession } from 'next-auth/react'
 
 // MUI Imports
 import Card from '@mui/material/Card'
@@ -10,15 +12,17 @@ import CardContent from '@mui/material/CardContent'
 import Grid from '@mui/material/Grid'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import Box from '@mui/material/Box'
-import Accordion from '@mui/material/Accordion'
-import AccordionSummary from '@mui/material/AccordionSummary'
-import AccordionDetails from '@mui/material/AccordionDetails'
-import Chip from '@mui/material/Chip'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 
 type ModuleDefinition = {
@@ -32,44 +36,62 @@ type ModulesByCategory = {
     [category: string]: ModuleDefinition[]
 }
 
+type RoleType = {
+    _id: string
+    name: string
+    description?: string
+    permissions: Array<{
+        module: string
+        view: boolean
+        create: boolean
+        edit: boolean
+        delete: boolean
+        sync: boolean
+    }>
+    isSystem: boolean
+    status: 'active' | 'inactive'
+}
+
 type RoleFormProps = {
     modules: ModulesByCategory
+    role?: RoleType
+    isEdit?: boolean
 }
 
-const actionLabels: Record<string, string> = {
-    view: 'Görüntüleme',
-    create: 'Ekleme',
-    edit: 'Düzenleme',
-    delete: 'Silme',
-    sync: 'Senkronizasyon'
-}
-
-const RoleForm = ({ modules }: RoleFormProps) => {
+const RoleForm = ({ modules, role, isEdit = false }: RoleFormProps) => {
     const router = useRouter()
+    const { data: session } = useSession()
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
 
     const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        permissions: [] as any[]
+        name: role?.name || '',
+        description: role?.description || '',
+        status: (role?.status || 'active') as const,
+        permissions: role?.permissions || [] as Array<{
+            module: string
+            view: boolean
+            create: boolean
+            edit: boolean
+            delete: boolean
+            sync: boolean
+        }>
     })
 
-    const [expanded, setExpanded] = useState<string[]>(
-        Object.keys(modules)
-    )
-
-    const handleAccordionChange = (category: string) => {
-        setExpanded(prev =>
-            prev.includes(category)
-                ? prev.filter(c => c !== category)
-                : [...prev, category]
-        )
-    }
+    // Role değiştiğinde form'u güncelle
+    useEffect(() => {
+        if (role) {
+            setFormData({
+                name: role.name,
+                description: role.description || '',
+                status: role.status,
+                permissions: role.permissions || []
+            })
+        }
+    }, [role])
 
     const handlePermissionChange = (moduleKey: string, action: string, checked: boolean) => {
         setFormData(prev => {
-            const existingPermIndex = prev.permissions.findIndex((p: any) => p.module === moduleKey)
+            const existingPermIndex = prev.permissions.findIndex(p => p.module === moduleKey)
 
             if (existingPermIndex >= 0) {
                 const newPermissions = [...prev.permissions]
@@ -98,216 +120,294 @@ const RoleForm = ({ modules }: RoleFormProps) => {
     }
 
     const isActionChecked = (moduleKey: string, action: string) => {
-        const perm = formData.permissions.find((p: any) => p.module === moduleKey)
-        return perm ? perm[action] === true : false
+        const perm = formData.permissions.find(p => p.module === moduleKey)
+        return perm ? perm[action as keyof typeof perm] === true : false
     }
 
-    const handleSelectAll = (category: string, action: string) => {
-        const categoryModules = modules[category]
+    const handleSelectAll = () => {
+        const allPermissions: typeof formData.permissions = []
 
-        setFormData(prev => {
-            let newPermissions = [...prev.permissions]
-
+        Object.values(modules).forEach(categoryModules => {
             categoryModules.forEach(mod => {
-                if (!mod.actions.includes(action)) return
-
-                const existingIndex = newPermissions.findIndex((p: any) => p.module === mod.key)
-
-                if (existingIndex >= 0) {
-                    newPermissions[existingIndex] = {
-                        ...newPermissions[existingIndex],
-                        [action]: true
-                    }
-                } else {
-                    newPermissions.push({
-                        module: mod.key,
-                        view: action === 'view',
-                        create: action === 'create',
-                        edit: action === 'edit',
-                        delete: action === 'delete',
-                        sync: action === 'sync'
-                    })
-                }
+                allPermissions.push({
+                    module: mod.key,
+                    view: mod.actions.includes('view'),
+                    create: mod.actions.includes('create'),
+                    edit: mod.actions.includes('edit'),
+                    delete: mod.actions.includes('delete'),
+                    sync: mod.actions.includes('sync')
+                })
             })
-
-            return { ...prev, permissions: newPermissions }
         })
+
+        setFormData(prev => ({ ...prev, permissions: allPermissions }))
+        toast.success('Tüm izinler seçildi')
+    }
+
+    const handleDeselectAll = () => {
+        setFormData(prev => ({ ...prev, permissions: [] }))
+        toast.success('Tüm izinler kaldırıldı')
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        if (!formData.name.trim()) {
+            toast.error('Lütfen rol adını girin')
+            return
+        }
+
+        if (formData.permissions.length === 0) {
+            toast.error('Lütfen en az bir izin seçin')
+            return
+        }
+
+        if (!session || !(session.user as any)?.accessToken) {
+            toast.error('Oturum bulunamadı. Lütfen tekrar giriş yapın.')
+            return
+        }
+
+        const token = (session.user as any).accessToken
         setLoading(true)
-        setError('')
 
         try {
-            console.log('Form Data:', formData)
+            const apiUrl = isEdit
+                ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/user/roles/${role?._id}`
+                : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/user/roles`
 
-            // Backend çağrısı yapılacak
-            setTimeout(() => {
-                router.push('/apps/manager/roles/list')
-            }, 1000)
+            const response = await fetch(apiUrl, {
+                method: isEdit ? 'PUT' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(formData)
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.message || `Rol ${isEdit ? 'güncellenemedi' : 'oluşturulamadı'}`)
+            }
+
+            if (!data.success) {
+                throw new Error(data.message || `Rol ${isEdit ? 'güncellenemedi' : 'oluşturulamadı'}`)
+            }
+
+            toast.success(`Rol başarıyla ${isEdit ? 'güncellendi' : 'oluşturuldu'}`)
+            router.push('/apps/manager/roles/list')
+            router.refresh()
         } catch (err: any) {
-            setError(err.message || 'Bir hata oluştu')
+            toast.error(err.message || `Rol ${isEdit ? 'güncellenirken' : 'oluşturulurken'} bir hata oluştu`)
+        } finally {
             setLoading(false)
         }
     }
 
     const getTotalSelectedPermissions = () => {
-        return formData.permissions.reduce((sum: number, p: any) => {
-            return sum + (p.view ? 1 : 0) + (p.create ? 1 : 0) + (p.edit ? 1 : 0) + (p.delete ? 1 : 0) + (p.sync ? 1 : 0)
+        return formData.permissions.reduce((sum, p) => {
+            return sum +
+                (p.view ? 1 : 0) +
+                (p.create ? 1 : 0) +
+                (p.edit ? 1 : 0) +
+                (p.delete ? 1 : 0) +
+                (p.sync ? 1 : 0)
         }, 0)
     }
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <Grid container spacing={6}>
-                <Grid item xs={12}>
+    const allModules = Object.values(modules).flat()
+
+    if (!modules || allModules.length === 0) {
+        return (
+            <Grid container spacing={6} className='flex items-center justify-center'>
+                <Grid item xs={12} lg={10} xl={8}>
                     <Card>
-                        <CardHeader title='Rol Bilgileri' />
                         <CardContent>
+                            <Alert severity='warning'>
+                                Hiç modül bulunamadı. Lütfen sistem yöneticisi ile iletişime geçin.
+                            </Alert>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                                <Button
+                                    variant='contained'
+                                    onClick={() => router.push('/apps/manager/roles/list')}
+                                >
+                                    Geri Dön
+                                </Button>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+        )
+    }
+
+    // Sistem rolü düzenleme engeli
+    if (isEdit && role?.isSystem) {
+        return (
+            <Grid container spacing={6} className='flex items-center justify-center'>
+                <Grid item xs={12} lg={10} xl={8}>
+                    <Card>
+                        <CardContent>
+                            <Alert severity='error'>
+                                Sistem rolleri düzenlenemez.
+                            </Alert>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                                <Button
+                                    variant='contained'
+                                    onClick={() => router.push('/apps/manager/roles/list')}
+                                >
+                                    Geri Dön
+                                </Button>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+        )
+    }
+
+    return (
+        <Grid container spacing={6} className='flex items-center justify-center'>
+            <Grid item xs={12} lg={10} xl={8}>
+                <Card>
+                    <CardHeader
+                        title={isEdit ? 'Yetki Düzenle' : 'Yeni Yetki Ekle'}
+                        subheader='Yetki İzinlerini Ayarla'
+                    />
+                    <CardContent>
+                        <form onSubmit={handleSubmit}>
                             <Grid container spacing={5}>
-                                <Grid item xs={12} sm={6}>
+                                <Grid item xs={12}>
                                     <TextField
                                         fullWidth
-                                        label='Rol Adı'
-                                        placeholder='Admin, Editor, vb.'
+                                        label='Yetki Adı'
+                                        placeholder='Yetki adını girin'
                                         value={formData.name}
                                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                                         required
+                                        disabled={loading}
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6}>
+
+                                <Grid item xs={12}>
                                     <TextField
                                         fullWidth
                                         label='Açıklama'
-                                        placeholder='Rolün açıklaması'
+                                        placeholder='Rol açıklaması (opsiyonel)'
                                         value={formData.description}
                                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                        multiline
+                                        rows={2}
+                                        disabled={loading}
                                     />
                                 </Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
-                </Grid>
 
-                <Grid item xs={12}>
-                    <Card>
-                        <CardHeader
-                            title='Yetkilendirme'
-                            action={
-                                <Chip
-                                    label={`${getTotalSelectedPermissions()} Yetki Seçili`}
-                                    color='primary'
-                                    variant='tonal'
-                                />
-                            }
-                        />
-                        <CardContent>
-                            {error && (
-                                <Alert severity='error' sx={{ mb: 4 }}>
-                                    {error}
-                                </Alert>
-                            )}
-
-                            {Object.entries(modules).map(([category, categoryModules]) => (
-                                <Accordion
-                                    key={category}
-                                    expanded={expanded.includes(category)}
-                                    onChange={() => handleAccordionChange(category)}
-                                    sx={{ mb: 2 }}
-                                >
-                                    <AccordionSummary expandIcon={<i className='ri-arrow-down-s-line' />}>
-                                        <Typography variant='h6'>{category}</Typography>
-                                        <Chip
-                                            label={`${categoryModules.length} Modül`}
-                                            size='small'
-                                            sx={{ ml: 2 }}
-                                            variant='outlined'
-                                        />
-                                    </AccordionSummary>
-                                    <AccordionDetails>
+                                <Grid item xs={12}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                         <Box>
-                                            <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                                <Typography variant='body2' sx={{ mr: 2, alignSelf: 'center' }}>
-                                                    Hızlı Seçim:
-                                                </Typography>
-                                                {['view', 'create', 'edit', 'delete', 'sync'].map(action => (
-                                                    <Button
-                                                        key={action}
-                                                        size='small'
-                                                        variant='outlined'
-                                                        onClick={() => handleSelectAll(category, action)}
-                                                    >
-                                                        Tüm {actionLabels[action]}
-                                                    </Button>
-                                                ))}
-                                            </Box>
+                                            <Typography variant='h6'>Yetki İzinleri</Typography>
+                                            <Typography variant='caption' color='text.secondary'>
+                                                Toplam: {getTotalSelectedPermissions()} izin seçildi
+                                            </Typography>
+                                        </Box>
+                                        <Box>
+                                            <Button
+                                                size='small'
+                                                variant='text'
+                                                onClick={handleSelectAll}
+                                                disabled={loading}
+                                                sx={{ mr: 1 }}
+                                            >
+                                                Hepsini Seç
+                                            </Button>
+                                            <Button
+                                                size='small'
+                                                variant='text'
+                                                color='secondary'
+                                                onClick={handleDeselectAll}
+                                                disabled={loading}
+                                            >
+                                                Hepsini Kaldır
+                                            </Button>
+                                        </Box>
+                                    </Box>
+                                    <Divider />
+                                </Grid>
 
-                                            <Divider sx={{ mb: 3 }} />
-
-                                            <Grid container spacing={3}>
-                                                {categoryModules.map(module => (
-                                                    <Grid item xs={12} key={module.key}>
-                                                        <Box sx={{
-                                                            p: 3,
-                                                            border: '1px solid',
-                                                            borderColor: 'divider',
-                                                            borderRadius: 1,
-                                                            '&:hover': {
-                                                                borderColor: 'primary.main',
-                                                                bgcolor: 'action.hover'
-                                                            }
-                                                        }}>
-                                                            <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
+                                <Grid item xs={12}>
+                                    <TableContainer>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Modül</TableCell>
+                                                    <TableCell align='center'>Görüntüleme</TableCell>
+                                                    <TableCell align='center'>Ekleme</TableCell>
+                                                    <TableCell align='center'>Düzenleme</TableCell>
+                                                    <TableCell align='center'>Silme</TableCell>
+                                                    <TableCell align='center'>Senkronizasyon</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {allModules.map(module => (
+                                                    <TableRow key={module.key} hover>
+                                                        <TableCell>
+                                                            <Typography variant='body2' fontWeight={500}>
                                                                 {module.name}
                                                             </Typography>
-                                                            <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                                                {module.actions.map(action => (
-                                                                    <FormControlLabel
-                                                                        key={action}
-                                                                        control={
-                                                                            <Checkbox
-                                                                                checked={isActionChecked(module.key, action)}
-                                                                                onChange={(e) => handlePermissionChange(module.key, action, e.target.checked)}
-                                                                            />
-                                                                        }
-                                                                        label={actionLabels[action]}
+                                                            <Typography variant='caption' color='text.secondary'>
+                                                                {module.category}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        {['view', 'create', 'edit', 'delete', 'sync'].map(action => (
+                                                            <TableCell key={action} align='center'>
+                                                                {module.actions.includes(action) ? (
+                                                                    <Checkbox
+                                                                        checked={isActionChecked(module.key, action)}
+                                                                        onChange={(e) => handlePermissionChange(module.key, action, e.target.checked)}
+                                                                        disabled={loading}
                                                                     />
-                                                                ))}
-                                                            </Box>
-                                                        </Box>
-                                                    </Grid>
+                                                                ) : (
+                                                                    <Typography variant='body2' color='text.disabled'>
+                                                                        -
+                                                                    </Typography>
+                                                                )}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
                                                 ))}
-                                            </Grid>
-                                        </Box>
-                                    </AccordionDetails>
-                                </Accordion>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </Grid>
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Grid>
 
-                <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', gap: 4 }}>
-                        <Button
-                            variant='contained'
-                            type='submit'
-                            disabled={loading || !formData.name}
-                        >
-                            {loading ? 'Kaydediliyor...' : 'Kaydet'}
-                        </Button>
-                        <Button
-                            variant='outlined'
-                            color='secondary'
-                            onClick={() => router.push('/apps/manager/roles/list')}
-                            disabled={loading}
-                        >
-                            İptal
-                        </Button>
-                    </Box>
-                </Grid>
+                                <Grid item xs={12}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 4 }}>
+                                        <Button
+                                            variant='contained'
+                                            type='submit'
+                                            disabled={loading || !formData.name}
+                                            size='large'
+                                            startIcon={loading ? <CircularProgress size={20} /> : null}
+                                        >
+                                            {loading ? (isEdit ? 'Güncelleniyor...' : 'Kaydediliyor...') : (isEdit ? 'Güncelle' : 'Kaydet')}
+                                        </Button>
+                                        <Button
+                                            variant='outlined'
+                                            color='secondary'
+                                            onClick={() => router.push('/apps/manager/roles/list')}
+                                            disabled={loading}
+                                            size='large'
+                                        >
+                                            İptal
+                                        </Button>
+                                    </Box>
+                                </Grid>
+                            </Grid>
+                        </form>
+                    </CardContent>
+                </Card>
             </Grid>
-        </form>
+        </Grid>
     )
 }
 

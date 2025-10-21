@@ -24,7 +24,6 @@ import {
     getPaginationRowModel,
     getSortedRowModel
 } from '@tanstack/react-table'
-import type { ColumnDef } from '@tantml/react-table'
 
 // Type Imports
 import type { AdminType } from '@/app/[lang]/(dashboard)/(private)/apps/manager/list/page'

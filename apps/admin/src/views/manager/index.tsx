@@ -53,6 +53,7 @@ const ManagerList = ({ managersData }: { managersData: AdminType[] }) => {
                             variant='contained'
                             color='primary'
                             startIcon={<i className='ri-add-line' />}
+                            onClick={() => router.push('/apps/manager/add')}
                         >
                             Yeni Yönetici Ekle
                         </Button>

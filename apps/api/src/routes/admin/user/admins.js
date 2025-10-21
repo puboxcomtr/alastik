@@ -143,8 +143,10 @@ router.post('/', async (req, res) => {
       status = 'active'
     } = req.body;
 
+    const name = `${firstName} ${lastName}`.trim();
+
     // Validasyon
-    if (!firstName || !lastName || !username || !email || !password || !role) {
+    if (!name || !username || !email || !password || !role) {
       return res.status(400).json({
         success: false,
         message: 'Tüm zorunlu alanları doldurunuz'
@@ -186,16 +188,17 @@ router.post('/', async (req, res) => {
       });
     }
 
+    const isActive = status === 'active';
+
     // Admin oluştur
     const admin = new Admin({
-      firstName,
-      lastName,
+      name,
       username,
       email,
       password,
       role,
       permissions,
-      status
+      isActive  
     });
 
     await admin.save();
@@ -224,6 +227,10 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
+
+    console.error('=== HATA ===');
+    console.error('Message:', error.message);
+    console.error('Stack:', error.stack);
     console.error('Create admin error:', error);
     res.status(500).json({
       success: false,
@@ -278,9 +285,13 @@ router.put('/:id', async (req, res) => {
       admin.email = email;
     }
 
-    // Güncelle
-    if (firstName) admin.firstName = firstName;
-    if (lastName) admin.lastName = lastName;
+    // firstName ve lastName varsa name'e çevir
+    if (firstName || lastName) {
+      const newFirstName = firstName || admin.firstName;
+      const newLastName = lastName || admin.lastName;
+      admin.name = `${newFirstName} ${newLastName}`.trim();
+    }
+
     if (role) admin.role = role;
     if (permissions) admin.permissions = permissions;
     if (status) admin.status = status;
