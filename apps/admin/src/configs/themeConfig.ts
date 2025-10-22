@@ -39,7 +39,7 @@ export type Config = {
 
 const themeConfig: Config = {
   templateName: 'A Lastik',
-  homePageUrl: '/dashboards/ecommerce',
+  homePageUrl: '/apps/ecommerce/',
   settingsCookieName: 'materio-mui-next-demo-1',
   mode: 'light', // 'system', 'light', 'dark'
   skin: 'bordered', // 'default', 'bordered'

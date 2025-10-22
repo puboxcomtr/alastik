@@ -21,13 +21,13 @@ const nextConfig = {
     return [
       {
         source: '/',
-        destination: '/tr/dashboards/ecommerce',
+        destination: '/tr/apps/ecommerce/',
         permanent: true,
         locale: false
       },
       {
         source: '/:lang(tr)',
-        destination: '/:lang/dashboards/ecommerce',
+        destination: '/:lang/apps/ecommerce/',
         permanent: true,
         locale: false
       },
