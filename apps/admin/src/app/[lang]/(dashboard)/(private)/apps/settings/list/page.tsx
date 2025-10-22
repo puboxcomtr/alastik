@@ -54,51 +54,57 @@ const SettingsList = () => {
     ]
 
     return (
-        <div>
-            <div className='mb-6'>
-                <Typography variant='h4' className='mb-1'>
-                    Genel Ayarlar
-                </Typography>
-            </div>
 
-            <Card>
-                <div className='p-6'>
-                    <Grid container spacing={6}>
-                        {settings.map((setting, index) => (
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
-                                <div
-                                    className='flex items-start gap-4 cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-all'
-                                    onClick={() => router.push(setting.href)}
-                                >
-                                    <div
-                                        className='flex items-center justify-center w-12 h-12 rounded-lg'
-                                        style={{ backgroundColor: `${setting.color}15` }}
-                                    >
-                                        <i
-                                            className={`${setting.icon} text-2xl`}
-                                            style={{ color: setting.color }}
-                                        />
-                                    </div>
-                                    <div className='flex-1'>
-                                        <Typography
-                                            variant='h6'
-                                            className='mb-1'
-                                            style={{ color: setting.color }}
+        <div>
+            <Grid container spacing={6} justifyContent="center">
+                <Grid size={{ xs: 12, md: 8 }}>
+                    <div className='mb-6'>
+                        <Typography variant='h4' className='mb-1'>
+                            Genel Ayarlar
+                        </Typography>
+                    </div>
+                    <Card>
+                        <Grid container>
+                            {settings.map((setting, index) => (
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
+                                        <div
+                                            className='flex items-start gap-4 cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-all'
+                                            onClick={() => router.push(setting.href)}
                                         >
-                                            {setting.title}
-                                        </Typography>
-                                        <Typography variant='body2' color='text.secondary'>
-                                            {setting.description}
-                                        </Typography>
-                                    </div>
-                                </div>
-                            </Grid>
-                        ))}
-                    </Grid>
-                </div>
-            </Card>
+                                            <div
+                                                className='flex items-center justify-center w-12 h-12 rounded-lg'
+                                                style={{ backgroundColor: `${setting.color}15` }}
+                                            >
+                                                <i
+                                                    className={`${setting.icon} text-2xl`}
+                                                    style={{ color: setting.color }}
+                                                />
+                                            </div>
+                                            <div className='flex-1'>
+                                                <Typography
+                                                    variant='h6'
+                                                    className='mb-1'
+                                                    style={{ color: setting.color }}
+                                                >
+                                                    {setting.title}
+                                                </Typography>
+                                                <Typography variant='body2' color='text.secondary'>
+                                                    {setting.description}
+                                                </Typography>
+                                            </div>
+                                        </div>
+                                    </Grid>
+                                ))
+                            }
+                        </Grid>
+                    </Card>
+                </Grid>
+            </Grid>
         </div>
     )
 }
+
+
+
 
 export default SettingsList
