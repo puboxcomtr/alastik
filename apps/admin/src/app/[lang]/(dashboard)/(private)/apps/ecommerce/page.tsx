@@ -1,4 +1,15 @@
-// /apps/admin/src/app/[lang]/(dashboard)/(private)/dashboards/ecommerce/page.tsx
+// MUI Imports
+import Grid from '@mui/material/Grid2'
+
+// Components Imports
+import CardStatVertical from '@views/dashboard/Vertical'
+import TotalProfitStackedBar from '@views/dashboard/TotalProfitStackedBar'
+import Transactions from '@views/dashboard/Transactions'
+import WebsiteStatistics from '@views/dashboard/WebsiteStatistics'
+import Table from '@views/dashboard/Table'
+
+import MeetingSchedule from '@views/dashboard/MeetingSchedule'
+import TotalSales from '@views/dashboard/TotalSales'
 
 export const metadata = {
     title: "Yönetici Paneli - Türkiye'nin En Yaygın Lastikçisi",
@@ -6,28 +17,70 @@ export const metadata = {
 }
 
 const EcommerceDashboard = () => {
+
     return (
-        <div className='p-6'>
-            <h1 className='text-2xl font-bold mb-4'>ALastik Dashboard</h1>
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-                <div className='p-6 bg-white rounded-lg shadow'>
-                    <h3 className='text-gray-500 text-sm'>Toplam Ürün</h3>
-                    <p className='text-3xl font-bold mt-2'>1,234</p>
-                </div>
-                <div className='p-6 bg-white rounded-lg shadow'>
-                    <h3 className='text-gray-500 text-sm'>Toplam Kategori</h3>
-                    <p className='text-3xl font-bold mt-2'>45</p>
-                </div>
-                <div className='p-6 bg-white rounded-lg shadow'>
-                    <h3 className='text-gray-500 text-sm'>Toplam Marka</h3>
-                    <p className='text-3xl font-bold mt-2'>78</p>
-                </div>
-                <div className='p-6 bg-white rounded-lg shadow'>
-                    <h3 className='text-gray-500 text-sm'>Aktif Ürünler</h3>
-                    <p className='text-3xl font-bold mt-2'>987</p>
-                </div>
-            </div>
-        </div>
+        <Grid container spacing={6}>
+            <Grid size={{ xs: 12, md: 12 }}>
+                <Grid container spacing={6}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <CardStatVertical
+                            title='Toplam Satış Tutarı'
+                            stats='38.250,00 TL'
+                            avatarIcon='ri-wallet-2-line'
+                            avatarColor='success'
+                            trendNumber='12%'
+                            trend='positive'
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <CardStatVertical
+                            title='Toplam Sipariş'
+                            stats='12 Adet'
+                            avatarIcon='ri-shopping-cart-line'
+                            avatarColor='info'
+                            trendNumber='14%'
+                            trend='positive'
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <CardStatVertical
+                            title='Onay Bekleyen Sipariş'
+                            stats='1 Adet'
+                            avatarIcon='ri-alarm-line'
+                            avatarColor='error'
+                            trendNumber='4%'
+                            trend='positive'
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <CardStatVertical
+                            title='Yeni Üye'
+                            stats='3 Üye'
+                            avatarIcon='ri-bank-card-line'
+                            avatarColor='warning'
+                            trendNumber='6%'
+                            trend='positive'
+                        />
+                    </Grid>
+                </Grid>
+            </Grid>
+            <Grid size={{ xs: 12, md: 12 }}>
+                <TotalProfitStackedBar />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+                <Grid container spacing={6}>
+                    <Grid size={{ xs: 12 }}>
+                        <WebsiteStatistics />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                        <Transactions />
+                    </Grid>
+                </Grid>
+            </Grid>
+            <Grid size={{ xs: 12, lg: 8 }} className='order-last lg:order-[unset]'>
+                <Table />
+            </Grid>
+        </Grid>
     )
 }
 
