@@ -1,0 +1,342 @@
+const express = require('express');
+const router = express.Router();
+const Menu = require('../../../models/TMenu');
+const WebCategory = require('../../../models/WebCategory');
+const Page = require('../../../models/Page');
+
+router.get('/', async (req, res) => {
+    try {
+        const { displayArea, rowLevel, isActive } = req.query;
+
+        const filter = {};
+        if (displayArea) filter.displayArea = displayArea;
+        if (rowLevel) filter.rowLevel = parseInt(rowLevel);
+        if (isActive !== undefined) filter.isActive = isActive === 'true';
+
+        const menus = await Menu.find(filter)
+            .populate('parentId', 'name')
+            .sort({ order: 1, createdAt: 1 })
+            .lean();
+
+        // Hiyerarşik yapı oluştur
+        const menuTree = [];
+        const menuMap = {};
+
+        menus.forEach(menu => {
+            menuMap[menu._id] = { ...menu, children: [] };
+        });
+
+        menus.forEach(menu => {
+            if (menu.rowLevel === 1) {
+                menuTree.push(menuMap[menu._id]);
+            } else if (menu.parentId) {
+                const parent = menuMap[menu.parentId._id || menu.parentId];
+                if (parent) {
+                    parent.children.push(menuMap[menu._id]);
+                }
+            }
+        });
+
+        res.json({
+            success: true,
+            data: menuTree,
+            flatData: menus
+        });
+    } catch (error) {
+        console.error('Menü listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menüler listelenemedi',
+            error: error.message
+        });
+    }
+});
+// Tek menü getir
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const menu = await Menu.findById(id)
+            .populate('parentId', 'name')
+            .lean();
+
+        if (!menu) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menü bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: menu
+        });
+    } catch (error) {
+        console.error('Menü getirme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menü getirilemedi',
+            error: error.message
+        });
+    }
+});
+// Kategorileri getir (dropdown için)
+router.get('/options/categories', async (req, res) => {
+    try {
+        const { level } = req.query;
+
+        const filter = { 'syncInfo.webStatus': 'active' };
+        if (level) {
+            filter.categoryLevel = parseInt(level);
+        }
+
+        const categories = await WebCategory.find(filter)
+            .select('_key name categoryLevel')
+            .sort({ name: 1 })
+            .lean();
+
+        res.json({
+            success: true,
+            data: categories
+        });
+    } catch (error) {
+        console.error('Kategori listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Kategoriler listelenemedi',
+            error: error.message
+        });
+    }
+});
+// Sayfaları getir (dropdown için)
+router.get('/options/pages', async (req, res) => {
+    try {
+        const pages = await Page.find({ isActive: true })
+            .select('_id title slug')
+            .sort({ title: 1 })
+            .lean();
+
+        res.json({
+            success: true,
+            data: pages
+        });
+    } catch (error) {
+        console.error('Sayfa listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Sayfalar listelenemedi',
+            error: error.message
+        });
+    }
+});
+// Ana menüleri getir (alt menü eklerken kullanılacak)
+router.get('/options/parent-menus', async (req, res) => {
+    try {
+        const { displayArea } = req.query;
+        const filter = {
+            rowLevel: 1,
+            isActive: true
+        };
+
+        if (displayArea) {
+            filter.displayArea = displayArea;
+        }
+
+        const parentMenus = await Menu.find(filter)
+            .select('_id name displayArea')
+            .sort({ order: 1 })
+            .lean();
+
+        res.json({
+            success: true,
+            data: parentMenus
+        });
+    } catch (error) {
+        console.error('Ana menü listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ana menüler listelenemedi',
+            error: error.message
+        });
+    }
+});
+// Yeni menü oluştur
+router.post('/', async (req, res) => {
+    try {
+        const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive } = req.body;
+
+        // Validasyon
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Menü adı zorunludur'
+            });
+        }
+
+        if (!menuType || !['link', 'category', 'page'].includes(menuType)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Geçerli bir menü tipi seçmelisiniz'
+            });
+        }
+
+        if (!displayArea || !['header', 'footer', 'mobile'].includes(displayArea)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Geçerli bir gösterilecek alan seçmelisiniz'
+            });
+        }
+
+        if (rowLevel === 2 && !parentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Alt menü için ana menü seçmelisiniz'
+            });
+        }
+
+        // linkData validasyonu
+        if (menuType === 'link' && (!linkData.url || !linkData.url.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: 'Link URL adresi zorunludur'
+            });
+        }
+
+        if (menuType === 'category' && !linkData.categoryId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Kategori seçimi zorunludur'
+            });
+        }
+
+        if (menuType === 'page' && !linkData.pageId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Sayfa seçimi zorunludur'
+            });
+        }
+
+        const newMenu = new Menu({
+            name: name.trim(),
+            menuType,
+            linkData,
+            openNewTab: openNewTab || false,
+            displayArea,
+            rowLevel: rowLevel || 1,
+            parentId: rowLevel === 2 ? parentId : null,
+            order: order || 0,
+            isActive: isActive !== undefined ? isActive : true
+        });
+
+        await newMenu.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Menü başarıyla oluşturuldu',
+            data: newMenu
+        });
+    } catch (error) {
+        console.error('Menü oluşturma hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menü oluşturulamadı',
+            error: error.message
+        });
+    }
+});
+// Menü güncelle
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive } = req.body;
+
+        const menu = await Menu.findById(id);
+        if (!menu) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menü bulunamadı'
+            });
+        }
+
+        // Validasyonlar (create ile aynı)
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Menü adı zorunludur'
+            });
+        }
+
+        if (rowLevel === 2 && !parentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Alt menü için ana menü seçmelisiniz'
+            });
+        }
+
+        menu.name = name.trim();
+        menu.menuType = menuType;
+        menu.linkData = linkData;
+        menu.openNewTab = openNewTab;
+        menu.displayArea = displayArea;
+        menu.rowLevel = rowLevel;
+        menu.parentId = rowLevel === 2 ? parentId : null;
+        menu.order = order;
+        menu.isActive = isActive;
+
+        await menu.save();
+
+        res.json({
+            success: true,
+            message: 'Menü başarıyla güncellendi',
+            data: menu
+        });
+    } catch (error) {
+        console.error('Menü güncelleme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menü güncellenemedi',
+            error: error.message
+        });
+    }
+});
+
+// Menü sil
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const menu = await Menu.findById(id);
+        if (!menu) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menü bulunamadı'
+            });
+        }
+
+        // Eğer ana menü ise, alt menüleri kontrol et
+        if (menu.rowLevel === 1) {
+            const childCount = await Menu.countDocuments({ parentId: id });
+            if (childCount > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Bu menüye bağlı alt menüler var. Önce alt menüleri silmelisiniz.'
+                });
+            }
+        }
+
+        await Menu.findByIdAndDelete(id);
+
+        res.json({
+            success: true,
+            message: 'Menü başarıyla silindi'
+        });
+    } catch (error) {
+        console.error('Menü silme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menü silinemedi',
+            error: error.message
+        });
+    }
+});
+
+module.exports = router;

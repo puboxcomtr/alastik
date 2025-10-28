@@ -42,6 +42,11 @@ const axios = require('axios');
 // Initialize Express app
 const app = express();
 
+app.use(cors({
+  origin: '*',
+  credentials: true
+}));
+
 // Cache is already imported from utils/cache
 // Use redisCache in production, simple cache in development
 
@@ -379,6 +384,17 @@ const activityLogsRoutes = require('./routes/admin/user/activity-logs');
 app.use('/api/admin/user/activity-logs', activityLogsRoutes);
 
 /**
+  * Tasarım Ayarları *
+*/
+/* * Slider Ayarları * */
+const sliderRoutes = require('./routes/admin/design/slider');
+app.use('/api/admin/design/slider', sliderRoutes);
+
+/* * Menü Ayarları * */
+const menuRoutes = require('./routes/admin/design/menus');
+app.use('/api/admin/design/menu', menuRoutes);
+
+/**
   * Admin - Functions *
 */
 /* Görsel Listeleme */
@@ -397,12 +413,28 @@ mediaFolders.forEach(folder => {
     }
   }, express.static(staticPath));
 });
+
+/* CORS */
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+}, express.static(path.join(__dirname, 'public/uploads')));
+
 /* * Görsel Upload * */
 const mediaRoutes = require('./routes/admin/catalog/media');
 app.use('/api/media', mediaRoutes);
 
 /* * Static Görsel Upload *  */
 app.use('/uploads', express.static(paths.getStaticPath('')));
+
+/* * Sliders Upload * */
+app.use('/sliders', express.static(path.join(__dirname, 'public/sliders')));
 
 // API Routes
 // Auth routes
