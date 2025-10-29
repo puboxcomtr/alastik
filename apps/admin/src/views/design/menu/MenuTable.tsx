@@ -34,7 +34,6 @@ const MenuTable = () => {
             setLoading(true)
             const result = await fetchMenus()
             if (result.success) {
-                // flatData kullanıyoruz çünkü tablo düz yapı istiyor
                 setData(result.flatData || [])
             }
         } catch (error: any) {
@@ -111,67 +110,75 @@ const MenuTable = () => {
                 </div>
             )
         }),
-        columnHelper.accessor('menuType', {
-            header: 'Menü Tipi',
-            cell: ({ row }) => (
-                <Chip
-                    label={getMenuTypeLabel(row.original.menuType)}
-                    size='small'
-                    variant='outlined'
-                    color={
-                        row.original.menuType === 'link' ? 'primary' :
-                            row.original.menuType === 'category' ? 'secondary' :
-                                'default'
-                    }
-                />
-            )
-        }),
-        columnHelper.accessor('displayArea', {
-            header: 'Gösterilecek Alan',
-            cell: ({ row }) => (
-                <Chip
-                    label={getDisplayAreaLabel(row.original.displayArea)}
-                    size='small'
-                    variant='outlined'
-                />
-            )
-        }),
-        columnHelper.accessor('rowLevel', {
-            header: 'Seviye',
-            cell: ({ row }) => (
-                <Chip
-                    label={row.original.rowLevel === 1 ? 'Ana Menü' : 'Alt Menü'}
-                    size='small'
-                    color={row.original.rowLevel === 1 ? 'primary' : 'default'}
-                />
-            )
+        columnHelper.display({
+            id: 'linkTarget',
+            header: 'Yönlendirilecek Yer',
+            cell: ({ row }) => {
+                const menu = row.original
+                let displayText = '-'
+                let typeLabel = ''
+                let color: 'default' | 'primary' | 'secondary' | 'success' = 'default'
+                let url = ''
+
+                if (menu.menuType === 'link') {
+                    typeLabel = 'Bağlantı'
+                    displayText = menu.linkData?.url || '-'
+                    url = menu.linkData?.url || ''
+                    color = 'primary'
+                } else if (menu.menuType === 'category') {
+                    typeLabel = 'Kategori'
+                    displayText = menu.linkData?.categoryName || `Kategori ID: ${menu.linkData?.categoryId || '-'}`
+                    color = 'secondary'
+                } else if (menu.menuType === 'page') {
+                    typeLabel = 'Sayfa'
+                    displayText = menu.linkData?.pageTitle || `Sayfa ID: ${menu.linkData?.pageId || '-'}`
+                    color = 'success'
+                }
+
+                return (
+                    <div className='flex flex-col'>
+                        <Typography className='font-medium'>
+                            {typeLabel}
+                        </Typography>
+                        <div className='flex items-center'>
+                            <Typography variant='body2' color='text.disabled'>
+                                {displayText}
+                            </Typography>
+                            {(menu.menuType === 'link' || menu.menuType === 'category' || menu.menuType === 'page') && (
+                                <Tooltip title="Sitede Görüntüle">
+                                    <IconButton
+                                        size='small'
+                                        color='primary'
+                                        onClick={() => {
+                                            if (menu.menuType === 'link') {
+                                            } else if (menu.menuType === 'category') {
+                                            } else if (menu.menuType === 'page') {
+                                            }
+                                        }}
+                                    >
+                                        <i className='ri-external-link-line' style={{ fontSize: '1rem' }} />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                        </div>
+                    </div>
+                )
+            }
         }),
         columnHelper.accessor('order', {
             header: 'Sıra',
             cell: ({ row }) => (
-                <Typography variant='body2' className='text-center'>
+                <Typography variant='body2'>
                     {row.original.order}
                 </Typography>
-            )
-        }),
-        columnHelper.accessor('openNewTab', {
-            header: 'Yeni Sekme',
-            cell: ({ row }) => (
-                row.original.openNewTab ? (
-                    <i className='ri-checkbox-circle-line text-success text-xl' />
-                ) : (
-                    <i className='ri-close-circle-line text-error text-xl' />
-                )
             )
         }),
         columnHelper.accessor('isActive', {
             header: 'Durum',
             cell: ({ row }) => (
-                <Chip
-                    label={row.original.isActive ? 'Aktif' : 'Pasif'}
-                    color={row.original.isActive ? 'success' : 'default'}
-                    size='small'
-                />
+                <Typography>
+                    {row.original.isActive ? 'Aktif' : 'Pasif'}
+                </Typography>
             )
         }),
         columnHelper.display({

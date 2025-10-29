@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'react-toastify'
 
+/* MUI */
+import Autocomplete from '@mui/material/Autocomplete'
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -19,6 +20,9 @@ import InputLabel from '@mui/material/InputLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import FormLabel from '@mui/material/FormLabel'
+
+/* Toast */
+import { toast } from 'react-toastify'
 
 import {
     createMenu,
@@ -102,8 +106,12 @@ const AddMenuForm = () => {
     // MenuType değiştiğinde ilgili verileri yükle
     useEffect(() => {
         if (menuType === 'category') {
-            loadCategories()
+            setCategories([])
+            setCategoryId('')
+            loadCategories(categoryLevel)
         } else if (menuType === 'page') {
+            setPages([])
+            setPageId('')
             loadPages()
         }
     }, [menuType])
@@ -111,16 +119,18 @@ const AddMenuForm = () => {
     // CategoryLevel değiştiğinde kategorileri yeniden yükle
     useEffect(() => {
         if (menuType === 'category') {
+            setCategories([])
+            setCategoryId('')
             loadCategories(categoryLevel)
-            setCategoryId('') // Seçimi sıfırla
         }
     }, [categoryLevel])
 
     // DisplayArea veya RowLevel değiştiğinde parent menüleri yükle
     useEffect(() => {
         if (rowLevel === 2) {
+            setParentMenus([])
+            setParentId('')
             loadParentMenus(displayArea)
-            setParentId('') // Seçimi sıfırla
         }
     }, [displayArea, rowLevel])
 
@@ -244,9 +254,9 @@ const AddMenuForm = () => {
                                                         label='Menü Tipi'
                                                         onChange={(e) => setMenuType(e.target.value as any)}
                                                     >
-                                                        <MenuItem value='link'>Bağlantı (Link)</MenuItem>
-                                                        <MenuItem value='category'>Kategori</MenuItem>
-                                                        <MenuItem value='page'>Sayfa</MenuItem>
+                                                        <MenuItem key="link" value='link'>Bağlantı</MenuItem>
+                                                        <MenuItem key="category" value='category'>Kategori</MenuItem>
+                                                        <MenuItem key="page" value='page'>Sayfa</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
@@ -259,7 +269,6 @@ const AddMenuForm = () => {
                                                         label='Bağlantı URL'
                                                         value={linkUrl}
                                                         onChange={(e) => setLinkUrl(e.target.value)}
-                                                        placeholder='https://example.com'
                                                         required
                                                     />
                                                 </Grid>
@@ -274,47 +283,56 @@ const AddMenuForm = () => {
                                                             <Select
                                                                 value={categoryLevel}
                                                                 label='Kategori Seviyesi'
-                                                                onChange={(e) => setCategoryLevel(e.target.value as 1 | 2)}
+                                                                onChange={(e) => setCategoryLevel(parseInt(e.target.value) as 1 | 2)}
                                                             >
-                                                                <MenuItem value={1}>1. Seviye Kategori</MenuItem>
-                                                                <MenuItem value={2}>2. Seviye Kategori</MenuItem>
+                                                                <MenuItem key="level-1" value={1}>1. Seviye Kategori</MenuItem>
+                                                                <MenuItem key="level-2" value={2}>2. Seviye Kategori</MenuItem>
                                                             </Select>
                                                         </FormControl>
                                                     </Grid>
 
                                                     <Grid size={{ xs: 12, sm: 6 }}>
                                                         <FormControl fullWidth>
-                                                            <InputLabel>Kategori Seç</InputLabel>
-                                                            <Select
-                                                                value={categoryId}
-                                                                label='Kategori Seç'
-                                                                onChange={(e) => setCategoryId(e.target.value)}
-                                                                disabled={loadingOptions || categories.length === 0}
-                                                                required
-                                                            >
-                                                                {categories.map((cat) => (
-                                                                    <MenuItem key={cat._key} value={cat._key}>
-                                                                        {cat.name}
-                                                                    </MenuItem>
-                                                                ))}
-                                                            </Select>
+                                                            <Autocomplete
+                                                                value={categories.find(cat => cat._id === categoryId) || null}
+                                                                onChange={(event, newValue) => {
+                                                                    console.log('Seçilen kategori:', newValue?._id)
+                                                                    setCategoryId(newValue?._id || '')
+                                                                }}
+                                                                options={categories}
+                                                                getOptionLabel={(option) => option.name}
+                                                                loading={loadingOptions}
+                                                                loadingText="Yükleniyor..."
+                                                                noOptionsText="Kategori bulunamadı"
+                                                                renderInput={(params) => (
+                                                                    <TextField
+                                                                        {...params}
+                                                                        label="Kategori Seç"
+                                                                        required
+                                                                    />
+                                                                )}
+                                                                disabled={loadingOptions}
+                                                            />
                                                         </FormControl>
                                                     </Grid>
                                                 </>
                                             )}
-
                                             {/* Sayfa Seçimi - Sadece menuType: page ise */}
                                             {menuType === 'page' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
                                                         <InputLabel>Sayfa Seç</InputLabel>
                                                         <Select
-                                                            value={pageId}
+                                                            value={pageId || ''}
                                                             label='Sayfa Seç'
                                                             onChange={(e) => setPageId(e.target.value)}
-                                                            disabled={loadingOptions || pages.length === 0}
+                                                            disabled={loadingOptions}
+                                                            displayEmpty
                                                             required
                                                         >
+                                                            <MenuItem key="empty-page" value="">
+                                                                <em>{pages.length === 0 ? 'Yükleniyor...' : 'Seçiniz'}</em>
+                                                            </MenuItem>
                                                             {pages.map((page) => (
                                                                 <MenuItem key={page._id} value={page._id}>
                                                                     {page.title}
@@ -365,9 +383,9 @@ const AddMenuForm = () => {
                                                         label='Alan Seç'
                                                         onChange={(e) => setDisplayArea(e.target.value as any)}
                                                     >
-                                                        <MenuItem value='header'>Header</MenuItem>
-                                                        <MenuItem value='footer'>Footer</MenuItem>
-                                                        <MenuItem value='mobile'>Mobil</MenuItem>
+                                                        <MenuItem key="header" value='header'>Header</MenuItem>
+                                                        <MenuItem key="footer" value='footer'>Footer</MenuItem>
+                                                        <MenuItem key="mobile" value='mobile'>Mobil</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </CardContent>
@@ -382,8 +400,8 @@ const AddMenuForm = () => {
                                                     value={rowLevel}
                                                     onChange={(e) => setRowLevel(parseInt(e.target.value) as 1 | 2)}
                                                 >
-                                                    <FormControlLabel value={1} control={<Radio />} label='Ana Menü' />
-                                                    <FormControlLabel value={2} control={<Radio />} label='Alt Menü' />
+                                                    <FormControlLabel key="row-1" value={1} control={<Radio />} label='Ana Menü' />
+                                                    <FormControlLabel key="row-2" value={2} control={<Radio />} label='Alt Menü' />
                                                 </RadioGroup>
 
                                                 {/* Parent Menü Seçimi - Sadece rowLevel: 2 ise */}
@@ -391,12 +409,15 @@ const AddMenuForm = () => {
                                                     <FormControl fullWidth className='mt-4'>
                                                         <InputLabel>Ana Menü Seç</InputLabel>
                                                         <Select
-                                                            value={parentId}
+                                                            value={parentId || ''}
                                                             label='Ana Menü Seç'
                                                             onChange={(e) => setParentId(e.target.value)}
-                                                            disabled={loadingOptions || parentMenus.length === 0}
+                                                            disabled={loadingOptions}
                                                             required
                                                         >
+                                                            <MenuItem key="empty-parent" value="">
+                                                                <em>{parentMenus.length === 0 ? 'Yükleniyor...' : 'Seçiniz'}</em>
+                                                            </MenuItem>
                                                             {parentMenus.map((menu) => (
                                                                 <MenuItem key={menu._id} value={menu._id}>
                                                                     {menu.name}

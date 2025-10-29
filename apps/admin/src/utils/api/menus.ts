@@ -24,7 +24,7 @@ export type MenuType = {
 }
 
 export type CategoryOptionType = {
-    _key: string
+    _id: string
     name: string
     categoryLevel: number
 }

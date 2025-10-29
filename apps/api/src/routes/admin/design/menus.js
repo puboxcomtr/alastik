@@ -1,102 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const Menu = require('../../../models/TMenu');
+const Menu = require('../../../models/Menu');
 const WebCategory = require('../../../models/WebCategory');
 const Page = require('../../../models/Page');
 
-router.get('/', async (req, res) => {
-    try {
-        const { displayArea, rowLevel, isActive } = req.query;
-
-        const filter = {};
-        if (displayArea) filter.displayArea = displayArea;
-        if (rowLevel) filter.rowLevel = parseInt(rowLevel);
-        if (isActive !== undefined) filter.isActive = isActive === 'true';
-
-        const menus = await Menu.find(filter)
-            .populate('parentId', 'name')
-            .sort({ order: 1, createdAt: 1 })
-            .lean();
-
-        // Hiyerarşik yapı oluştur
-        const menuTree = [];
-        const menuMap = {};
-
-        menus.forEach(menu => {
-            menuMap[menu._id] = { ...menu, children: [] };
-        });
-
-        menus.forEach(menu => {
-            if (menu.rowLevel === 1) {
-                menuTree.push(menuMap[menu._id]);
-            } else if (menu.parentId) {
-                const parent = menuMap[menu.parentId._id || menu.parentId];
-                if (parent) {
-                    parent.children.push(menuMap[menu._id]);
-                }
-            }
-        });
-
-        res.json({
-            success: true,
-            data: menuTree,
-            flatData: menus
-        });
-    } catch (error) {
-        console.error('Menü listele hatası:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Menüler listelenemedi',
-            error: error.message
-        });
-    }
-});
-// Tek menü getir
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const menu = await Menu.findById(id)
-            .populate('parentId', 'name')
-            .lean();
-
-        if (!menu) {
-            return res.status(404).json({
-                success: false,
-                message: 'Menü bulunamadı'
-            });
-        }
-
-        res.json({
-            success: true,
-            data: menu
-        });
-    } catch (error) {
-        console.error('Menü getirme hatası:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Menü getirilemedi',
-            error: error.message
-        });
-    }
-});
 // Kategorileri getir (dropdown için)
 router.get('/options/categories', async (req, res) => {
     try {
         const { level } = req.query;
 
-        const filter = { 'syncInfo.webStatus': 'active' };
+        const filter = {
+            webVisible: true
+        };
+
         if (level) {
-            filter.categoryLevel = parseInt(level);
+            filter.level = parseInt(level);
         }
 
         const categories = await WebCategory.find(filter)
-            .select('_key name categoryLevel')
+            .select('_id  name level')
             .sort({ name: 1 })
             .lean();
 
+        const formattedCategories = categories.map(cat => ({
+            _id: cat._id,
+            name: cat.name,
+            categoryLevel: cat.level
+        }));
+
         res.json({
             success: true,
-            data: categories
+            data: formattedCategories
         });
     } catch (error) {
         console.error('Kategori listele hatası:', error);
@@ -107,10 +41,11 @@ router.get('/options/categories', async (req, res) => {
         });
     }
 });
+
 // Sayfaları getir (dropdown için)
 router.get('/options/pages', async (req, res) => {
     try {
-        const pages = await Page.find({ isActive: true })
+        const pages = await Page.find({ status: 'published' })
             .select('_id title slug')
             .sort({ title: 1 })
             .lean();
@@ -159,6 +94,132 @@ router.get('/options/parent-menus', async (req, res) => {
         });
     }
 });
+// Menüleri Listele
+router.get('/', async (req, res) => {
+    try {
+        const { displayArea, rowLevel, isActive } = req.query;
+
+        const filter = {};
+        if (displayArea) filter.displayArea = displayArea;
+        if (rowLevel) filter.rowLevel = parseInt(rowLevel);
+        if (isActive !== undefined) filter.isActive = isActive === 'true';
+
+        const menus = await Menu.find(filter)
+            .populate('parentId', 'name')
+            .sort({ order: 1, createdAt: 1 })
+            .lean();
+
+        // Model import'larını ekleyin (dosyanın en üstünde olmalı)
+        const WebCategory = require('../../../models/WebCategory');
+        const Page = require('../../../models/Page');
+
+        // Her menü için kategori ve sayfa bilgilerini ekle
+        const enrichedMenus = await Promise.all(menus.map(async (menu) => {
+            const enriched = { ...menu };
+
+            // Kategori menüsü ise
+            if (menu.menuType === 'category' && menu.linkData?.categoryId) {
+                try {
+                    const category = await WebCategory.findById(menu.linkData.categoryId)
+                        .select('name seoUrl')
+                        .lean();
+
+                    if (category) {
+                        enriched.linkData = {
+                            ...enriched.linkData,
+                            categoryName: category.name,
+                            categoryUrl: category.seoUrl
+                        };
+                    }
+                } catch (err) {
+                    console.error('Kategori bulunamadı:', menu.linkData.categoryId, err);
+                }
+            }
+
+            // Sayfa menüsü ise
+            if (menu.menuType === 'page' && menu.linkData?.pageId) {
+                try {
+                    const page = await Page.findById(menu.linkData.pageId)
+                        .select('title slug')
+                        .lean();
+
+                    if (page) {
+                        enriched.linkData = {
+                            ...enriched.linkData,
+                            pageTitle: page.title,
+                            pageUrl: page.slug
+                        };
+                    }
+                } catch (err) {
+                    console.error('Sayfa bulunamadı:', menu.linkData.pageId, err);
+                }
+            }
+
+            return enriched;
+        }));
+
+        // Hiyerarşik yapı oluştur (enrichedMenus kullan)
+        const menuTree = [];
+        const menuMap = {};
+
+        enrichedMenus.forEach(menu => {
+            menuMap[menu._id] = { ...menu, children: [] };
+        });
+
+        enrichedMenus.forEach(menu => {
+            if (menu.rowLevel === 1) {
+                menuTree.push(menuMap[menu._id]);
+            } else if (menu.parentId) {
+                const parent = menuMap[menu.parentId._id || menu.parentId];
+                if (parent) {
+                    parent.children.push(menuMap[menu._id]);
+                }
+            }
+        });
+
+        res.json({
+            success: true,
+            data: menuTree,
+            flatData: enrichedMenus 
+        });
+    } catch (error) {
+        console.error('Menü listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menüler listelenemedi',
+            error: error.message
+        });
+    }
+});
+// Tek menü getir
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const menu = await Menu.findById(id)
+            .populate('parentId', 'name')
+            .lean();
+
+        if (!menu) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menü bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: menu
+        });
+    } catch (error) {
+        console.error('Menü getirme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menü getirilemedi',
+            error: error.message
+        });
+    }
+});
+
 // Yeni menü oluştur
 router.post('/', async (req, res) => {
     try {
@@ -298,7 +359,6 @@ router.put('/:id', async (req, res) => {
         });
     }
 });
-
 // Menü sil
 router.delete('/:id', async (req, res) => {
     try {
