@@ -394,6 +394,10 @@ app.use('/api/admin/design/slider', sliderRoutes);
 const menuRoutes = require('./routes/admin/design/menus');
 app.use('/api/admin/design/menu', menuRoutes);
 
+/* * Banner Ayarları * */
+const bannerRoutes = require('./routes/admin/design/banners');
+app.use('/api/admin/design/banners', bannerRoutes);
+
 /**
   * Admin - Functions *
 */
@@ -435,6 +439,9 @@ app.use('/uploads', express.static(paths.getStaticPath('')));
 
 /* * Sliders Upload * */
 app.use('/sliders', express.static(path.join(__dirname, 'public/sliders')));
+
+/* Banners Upload */
+app.use('/banners', express.static(path.join(__dirname, 'public/banners')));
 
 // API Routes
 // Auth routes
