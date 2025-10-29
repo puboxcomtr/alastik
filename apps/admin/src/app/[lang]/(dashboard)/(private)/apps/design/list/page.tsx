@@ -19,35 +19,35 @@ const DesignSettings = () => {
         {
             icon: 'ri-search-line',
             title: 'Slider',
-            description: 'Arama motoru ayarlarınızı ve takip kodlarınızı düzenleyin.',
+            description: 'Sliderları düzenleyin.',
             href: '/tr/apps/design/slider',
             color: '#2e263db3'
         },
         {
             icon: 'ri-bank-card-line',
             title: 'Menü Yönetimi',
-            description: 'Ödeme yöntemlerinizi seçin ve ödeme ayarlarınızı yönetin.',
+            description: 'Menüleri düzenleyin.',
             href: '/tr/apps/design/menu',
             color: '#2e263db3'
         },
         {
             icon: 'ri-translate-2',
             title: 'Banner',
-            description: 'Sitenizde yer alan içeriklerinizi düzenleyin.',
+            description: 'Bannerları yönetin.',
             href: '/tr/apps/design/banner',
             color: '#2e263db3'
         },
         {
             icon: 'ri-building-line',
             title: 'Popup ve Bar',
-            description: 'Kurumsal bilgilerinizi satış sözleşmelerini düzenleyin.',
+            description: 'Popup ve Bar tasarımlarını yönetin.',
             href: '/tr/apps/design/popup',
             color: '#2e263db3'
         },
         {
             icon: 'ri-file-text-line',
             title: 'Vitrin Blokları',
-            description: 'Özel dosya ve klasörlerinizi yönetin.',
+            description: 'Vitrin bloklarını yönetin.',
             href: '/tr/apps/design/showcase',
             color: '#2e263db3'
         }

@@ -81,17 +81,27 @@ const BannerTable = () => {
             cell: ({ row }) => <Typography variant='body2'>#{row.index + 1}</Typography>
         }),
         columnHelper.accessor('image', {
-            header: 'Görsel',
+            header: 'Görsel Önizleme',
             cell: ({ row }) => {
                 const bannerImage = row.original.image
                 const fullUrl = `http://localhost:3082${bannerImage}`
-                console.log('Banner URL:', fullUrl) // ← Konsola yazdır
                 return (
                     <img
                         src={fullUrl}
                         alt={row.original.altTag || row.original.description}
                         className='w-20 h-12 object-cover rounded'
                     />
+                )
+            }
+        }),
+        columnHelper.accessor('description', {
+            header: 'Banner Adı',
+            cell: ({ row }) => {
+                const bannerName = row.original.description
+                return (
+                    <Typography>
+                        {bannerName}
+                    </Typography>
                 )
             }
         }),
@@ -108,6 +118,16 @@ const BannerTable = () => {
         columnHelper.accessor('order', {
             header: 'Sıra',
             cell: ({ row }) => <Typography variant='body2'>{row.original.order}</Typography>
+        }),
+        columnHelper.accessor('status', {
+            header: 'Durum',
+            cell: ({ row }) => (
+             <Chip
+                label={row.original.status === 'active' ? 'Aktif' : 'Pasif'}
+                color={row.original.status === 'active' ? 'success' : 'default'}
+                size='small'
+             />
+            )
         }),
         columnHelper.accessor('createdAt', {
             header: 'Eklenme',
