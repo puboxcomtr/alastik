@@ -1,27 +1,10 @@
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Next.js build
+﻿node_modules/
 .next/
-**/.next/
-
-# Build outputs
 dist/
 build/
-coverage/
-
-# backups and archives
-_backup/
-web-backup-*.tar.gz
-api-update.tar.gz
-
-# keys and certs
-*.pem
-apps/web/ca.crt
-apps/web/ca.key
-
-# logs
-apps/api/logs/
+.env.local
 *.log
-
+.DS_Store
+coverage/
+.vscode/
+.idea/

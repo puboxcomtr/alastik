@@ -10,8 +10,6 @@ import ProductCard from '@components/shop/Product/Showcase/Card';
 import CategorySlider from '@components/category/Top/Slider';
 import CategoryTop from '@components/category/Top/Content';
 import CategoryTireSearch from '@components/category/Top/CategoryTireSearch';
-
-
 interface CategoryPageProps {
     params: {
         slug: string;
