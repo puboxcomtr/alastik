@@ -8,3 +8,10 @@ build/
 coverage/
 .vscode/
 .idea/
+
+# Package locks (platform-specific)
+package-lock.json
+apps/*/package-lock.json
+
+# NPM config (local only)
+.npmrc
