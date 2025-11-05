@@ -1,6 +1,12 @@
 const path = require('path');
 const paths = require('./config/path');
 
+// ============================================
+// ENVIRONMENT CONFIGURATION
+// ============================================
+// Dynamically load the correct .env file based on NODE_ENV
+// - Development: loads .env.local
+// - Production: loads .env.production
 const envFile = process.env.NODE_ENV === 'production'
   ? '.env.production'
   : '.env.local';
@@ -9,6 +15,9 @@ require('dotenv').config({
   path: path.resolve(__dirname, `../${envFile}`)
 });
 
+// ============================================
+// CORE DEPENDENCIES
+// ============================================
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -19,33 +28,53 @@ const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
 const winston = require('winston');
 
-// Import cache managers
+// ============================================
+// CACHE MANAGERS
+// ============================================
+// Import cache utilities and Redis-based cache manager
 const { cache, cacheKeys, withCache, cachedFunction } = require('./utils/cache');
 const CacheManager = require('../../../packages/cache');
 
 // Use Redis cache in both production and development
 const redisCache = new CacheManager();
 
-// Import models
+// ============================================
+// DATA MODELS
+// ============================================
+// Web-facing models (synced from DIA)
 const WebProduct = require('./models/WebProduct');
 const WebCategory = require('./models/WebCategory');
 const WebBrand = require('./models/WebBrand');
 const WebTag = require('./models/WebTag');
 
-
+// Legacy and internal models
 const Inventory = require('./models/Inventory');
 const Category = require('./models/Category');
 const DiaStock = require('./models/DiaStock');
 const AdminUser = require('./models/AdminUser');
 
-// Import services
+// ============================================
+// SERVICES
+// ============================================
+// DIA ERP integration services
 const DiaStockService = require('./services/DiaStockService');
 const DiaStockScheduler = require('./services/DiaStockScheduler');
 const axios = require('axios');
 
-// Initialize Express app
+// ============================================
+// EXPRESS APP INITIALIZATION
+// ============================================
 const app = express();
 
+// Trust proxy - Required when running behind Nginx/reverse proxy
+// This ensures correct IP addresses in request logs and rate limiting
+app.set('trust proxy', 1);
+
+// ============================================
+// CORS CONFIGURATION
+// ============================================
+// Allow all origins with credentials
+// TODO: Restrict origins in production for better security
 app.use(cors({
   origin: '*',
   credentials: true
