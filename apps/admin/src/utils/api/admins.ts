@@ -18,19 +18,31 @@ export type AdminType = {
 }
 
 const apiClientWithAuth = async (endpoint: string, options: any = {}) => {
-    const { getSession } = await import('next-auth/react')
-    const session = await getSession()
-    const token = (session?.user as any)?.accessToken
-
-    const headers = {
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers
+    // Client-side check
+    if (typeof window === 'undefined') {
+        // Server-side: Token olmadan devam et
+        return apiClient(endpoint, options)
     }
 
-    return apiClient(endpoint, {
-        ...options,
-        headers
-    })
+    try {
+        const { getSession } = await import('next-auth/react')
+        const session = await getSession()
+        const token = (session?.user as any)?.accessToken
+
+        const headers = {
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+            ...options.headers
+        }
+
+        return apiClient(endpoint, {
+            ...options,
+            headers
+        })
+    } catch (error) {
+        console.error('Auth token alınamadı:', error)
+        // Token alınamazsa normal apiClient kullan
+        return apiClient(endpoint, options)
+    }
 }
 
 export async function fetchAdmins(params?: {
