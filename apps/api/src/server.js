@@ -75,10 +75,10 @@ app.set('trust proxy', 1);
 // ============================================
 // Allow all origins with credentials
 // TODO: Restrict origins in production for better security
-app.use(cors({
-  origin: '*',
-  credentials: true
-}));
+// app.use(cors({
+//   origin: '*',
+//   credentials: true
+// }));
 
 // Cache is already imported from utils/cache
 // Use redisCache in production, simple cache in development
@@ -419,6 +419,10 @@ app.use('/api/admin/user/activity-logs', activityLogsRoutes);
 /**
   * Tasarım Ayarları *
 */
+/* * Tema Ayarları * */
+const settingsRouter = require('./routes/admin/design/settings');
+app.use('/api/admin/design/settings', settingsRouter);
+
 /* * Slider Ayarları * */
 const sliderRoutes = require('./routes/admin/design/slider');
 app.use('/api/admin/design/slider', sliderRoutes);

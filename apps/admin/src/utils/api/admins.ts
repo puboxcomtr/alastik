@@ -1,4 +1,5 @@
 // apps/admin/src/utils/api/admins.ts
+import { apiClient } from './apiClient'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 export type AdminType = {

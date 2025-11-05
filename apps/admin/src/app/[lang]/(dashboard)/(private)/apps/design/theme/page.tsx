@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
@@ -12,6 +12,9 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
+import { toast } from 'react-toastify'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 const menuItems = [
     { id: 'tab1', label: 'Genel Ayarlar' },
@@ -23,56 +26,192 @@ const menuItems = [
 
 const ThemeSettings = () => {
     const [activeMenu, setActiveMenu] = useState('tab1')
-    const [brandDisplayType, setBrandDisplayType] = useState('name')
-    const [showcaseDisplayCount, setshowcaseDisplayCount] = useState('4')
-    const [blogDisplayCount, setblogDisplayCount] = useState('4')
-    const [isActive, setIsActive] = useState(true)
-    const [isBrand, setIsBrand] = useState(true)
+    const [saving, setSaving] = useState(false)
+
+    // Tab 1
+    const [brandDisplayType, setBrandDisplayType] = useState('')
+    const [showcaseDisplayCount, setshowcaseDisplayCount] = useState('')
+    const [blogDisplayCount, setblogDisplayCount] = useState('')
+    const [isActive, setIsActive] = useState(false)
+    const [isBrand, setIsBrand] = useState(false)
     const [isTax, setIsTax] = useState(false)
     const [isFacebook, setIsFacebook] = useState(false)
-    const [isGoogle, setIsGoogle] = useState(true)
-    const [isLazyLoad, setIsLazyLoad] = useState(true)
+    const [isGoogle, setIsGoogle] = useState(false)
+    const [isLazyLoad, setIsLazyLoad] = useState(false)
 
-    /* Footer */
-    const [footerMobile, setFooterMobile] = useState('accordion')
-    const [seoTitle, setSeoTitle] = useState('Copyright © ALastik.com - Tüm Hakları Saklıdır.')
-    const [newsletterTitle, setNewsletterTitle] = useState('HABERLER VE ÖZEL FIRSATLAR İÇİN E-POSTA ADRESİNİ KAYDET!')
-    const [newsletterContent, setNewsletterContent] = useState('E-posta adresiniz')
+    // Tab 2 - Footer
+    const [footerMobile, setFooterMobile] = useState('')
+    const [seoTitle, setSeoTitle] = useState('')
+    const [newsletterTitle, setNewsletterTitle] = useState('')
+    const [newsletterContent, setNewsletterContent] = useState('')
 
-    /* Sosyal Ağ */
-    const [facebook, setFacebook] = useState('https://facebook.com/alastik')
-    const [instagram, setInstagram] = useState('https://instagram.com/alastik')
-    const [twitter, setTwitter] = useState('https://twitter.com/alastik')
-    const [youtube, setYoutube] = useState('https://youtube.com/alastik')
-    const [linkedin, setLinkedin] = useState('https://linkedin.com/alastik')
-    const [whatsapp, setWhatsapp] = useState('(0505) 111 123 32 32')
+    // Tab 3 - Sosyal Ağ
+    const [facebook, setFacebook] = useState('')
+    const [instagram, setInstagram] = useState('')
+    const [twitter, setTwitter] = useState('')
+    const [youtube, setYoutube] = useState('')
+    const [linkedin, setLinkedin] = useState('')
+    const [whatsapp, setWhatsapp] = useState('')
+    const [trendyol, setTrendyol] = useState('')
+    const [hepsiburada, setHepsiburada] = useState('')
+    const [pttavm, setPttavm] = useState('')
+    const [pazarama, setPazarama] = useState('')
+    const [n11, setN11] = useState('')
+    const [idefix, setIdefix] = useState('')
 
-    /* Stores */
-    const [trendyol, setTrendyol] = useState('https://trendyol.com/alastik')
-    const [hepsiburada, setHepsiburada] = useState('https://hepsiburada.com/alastik')
-    const [pttavm, setPttavm] = useState('https://pttavm.com/alastik')
-    const [pazarama, setPazarama] = useState('https://pazarama.com/alastik')
-    const [n11, setN11] = useState('https://n11.com/alastik')
-    const [idefix, setIdefix] = useState('https://idefix.com/alastik')
-
-    /* Slider */
-    const [homepage, setHomepage] = useState(true)
-    const [sliderSelect, setSliderSelect] = useState('1')
-    const [mobileSelect, setMobileSelect] = useState('2')
+    // Tab 4 - Slider
+    const [homepage, setHomepage] = useState(false)
+    const [sliderSelect, setSliderSelect] = useState('')
+    const [mobileSelect, setMobileSelect] = useState('')
     const [autostart, setAutoStart] = useState(false)
 
-    /* Showcase */
-    const [showcaseFirst, setShowcaseFirst] = useState('1')
-    const [showcasenameFirst, setShowcasenameFirst] = useState('Yaz Oto Lastikleri')
-    const [showcasesubFirst, setShowcasesubFirst] = useState('A Lastikle Serin Sürüş')
-    
-    const [showcaseSecond, setShowcaseSecond] = useState('2')
-    const [showcasenameSecond, setShowcasenameSecond] = useState('Kış Oto Lastikleri')
-    const [showcasesubSecond, setShowcasesubSecond] = useState('A Lastikle Serin Sürüş')
-    
-    const [showcaseThird, setShowcaseThird] = useState('3')
-    const [showcasenameThird, setShowcasenameThird] = useState('4 Mevsim Oto Lastikleri')
-    const [showcasesubThird, setShowcasesubThird] = useState('A Lastikle Serin Sürüş')
+    // Tab 5 - Showcase
+    const [showcaseFirst, setShowcaseFirst] = useState('')
+    const [showcasenameFirst, setShowcasenameFirst] = useState('')
+    const [showcasesubFirst, setShowcasesubFirst] = useState('')
+    const [showcaseSecond, setShowcaseSecond] = useState('')
+    const [showcasenameSecond, setShowcasenameSecond] = useState('')
+    const [showcasesubSecond, setShowcasesubSecond] = useState('')
+    const [showcaseThird, setShowcaseThird] = useState('')
+    const [showcasenameThird, setShowcasenameThird] = useState('')
+    const [showcasesubThird, setShowcasesubThird] = useState('')
+
+    // Sayfa yüklendiğinde çalış
+    useEffect(() => {
+        fetchSettings()
+    }, [])
+
+    // DB'den ayarları çek
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch(`${API_URL}/admin/design/settings/theme`, {})
+            const data = await res.json()
+
+            if (data.success && data.data) {
+                const d = data.data
+                // Tab 1
+                setBrandDisplayType(d.brandDisplayType || '')
+                setshowcaseDisplayCount(d.showcaseDisplayCount || '')
+                setblogDisplayCount(d.blogDisplayCount || '')
+                setIsActive(d.isActive ?? false)
+                setIsBrand(d.isBrand ?? false)
+                setIsTax(d.isTax ?? false)
+                setIsFacebook(d.isFacebook ?? false)
+                setIsGoogle(d.isGoogle ?? false)
+                setIsLazyLoad(d.isLazyLoad ?? false)
+
+                // Tab 2
+                setFooterMobile(d.footerMobile || '')
+                setSeoTitle(d.seoTitle || '')
+                setNewsletterTitle(d.newsletterTitle || '')
+                setNewsletterContent(d.newsletterContent || '')
+
+                // Tab 3
+                setFacebook(d.facebook || '')
+                setInstagram(d.instagram || '')
+                setTwitter(d.twitter || '')
+                setYoutube(d.youtube || '')
+                setLinkedin(d.linkedin || '')
+                setWhatsapp(d.whatsapp || '')
+                setTrendyol(d.trendyol || '')
+                setHepsiburada(d.hepsiburada || '')
+                setPttavm(d.pttavm || '')
+                setPazarama(d.pazarama || '')
+                setN11(d.n11 || '')
+                setIdefix(d.idefix || '')
+
+                // Tab 4
+                setHomepage(d.homepage ?? false)
+                setSliderSelect(d.sliderSelect || '')
+                setMobileSelect(d.mobileSelect || '')
+                setAutoStart(d.autostart ?? false)
+
+                // Tab 5
+                setShowcaseFirst(d.showcaseFirst || '')
+                setShowcasenameFirst(d.showcasenameFirst || '')
+                setShowcasesubFirst(d.showcasesubFirst || '')
+                setShowcaseSecond(d.showcaseSecond || '')
+                setShowcasenameSecond(d.showcasenameSecond || '')
+                setShowcasesubSecond(d.showcasesubSecond || '')
+                setShowcaseThird(d.showcaseThird || '')
+                setShowcasenameThird(d.showcasenameThird || '')
+                setShowcasesubThird(d.showcasesubThird || '')
+            }
+        } catch (error) {
+            console.error('Settings fetch error:', error)
+        }
+    }
+
+    // Kaydet
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            const settings = {
+                // Tab 1
+                brandDisplayType,
+                showcaseDisplayCount,
+                blogDisplayCount,
+                isActive,
+                isBrand,
+                isTax,
+                isFacebook,
+                isGoogle,
+                isLazyLoad,
+                // Tab 2
+                footerMobile,
+                seoTitle,
+                newsletterTitle,
+                newsletterContent,
+                // Tab 3
+                facebook,
+                instagram,
+                twitter,
+                youtube,
+                linkedin,
+                whatsapp,
+                trendyol,
+                hepsiburada,
+                pttavm,
+                pazarama,
+                n11,
+                idefix,
+                // Tab 4
+                homepage,
+                sliderSelect,
+                mobileSelect,
+                autostart,
+                // Tab 5
+                showcaseFirst,
+                showcasenameFirst,
+                showcasesubFirst,
+                showcaseSecond,
+                showcasenameSecond,
+                showcasesubSecond,
+                showcaseThird,
+                showcasenameThird,
+                showcasesubThird
+            }
+
+            const res = await fetch(`${API_URL}/admin/design/settings/theme`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: settings })
+            })
+
+            const data = await res.json()
+
+            if (data.success) {
+                toast.success('Ayarlar kaydedildi')
+            } else {
+                toast.error('Kaydetme hatası')
+            }
+        } catch (error) {
+            console.error('Save error:', error)
+            toast.error('Ayarlar kaydedilemedi')
+        } finally {
+            setSaving(false)
+        }
+    }
 
 
     const renderContent = () => {
@@ -958,10 +1097,12 @@ const ThemeSettings = () => {
                             {renderContent()}
                             <Divider className='mb-4' />
                             <Button
-                                type='submit'
+                                type='button'
                                 variant='contained'
+                                onClick={handleSave}
+                                disabled={saving}
                             >
-                                Ayarları Kaydet
+                                {saving ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
                             </Button>
                         </Card>
                     </Grid>
