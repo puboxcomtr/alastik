@@ -476,6 +476,18 @@ app.use('/sliders', express.static(path.join(__dirname, 'public/sliders')));
 /* Banners Upload */
 app.use('/banners', express.static(path.join(__dirname, 'public/banners')));
 
+
+/**
+  * Tema - Routes *
+*/
+
+/* Tema Blokları */
+const blocksRoutes = require('./routes/public/theme/block');
+app.use('/api/blocks', blocksRoutes);
+
+
+
+
 // API Routes
 // Auth routes
 

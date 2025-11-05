@@ -1,18 +1,22 @@
 'use client';
 // React & Hooks
 import React, { useState, useEffect } from 'react';
+
 // Next.js Router
 import { useRouter } from 'next/navigation';
 
 // Next.js Link component
 import Link from 'next/link';
 
-// Modals & Components
-import Topbar from '@components/layout/Header/Topbar';
+// Template
+import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/layout/Header/Middle/Main';
 import Navbar from '@components/layout/Header/Navbar/Main';
+
+// Modals & Components
 import AuthModal from '@components/auth/AuthModal';
 import ShoppingCart, { cartUtils } from '@components/cart/ShoppingCart';
+
 
 
 // Library utils
@@ -95,7 +99,7 @@ export default function Header() {
 
     return (
         <>
-            <Topbar />
+            <BlockRenderer blockKey="topbar" />
             <Middle
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
