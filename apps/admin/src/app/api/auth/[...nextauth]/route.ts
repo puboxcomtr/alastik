@@ -15,7 +15,8 @@ export const authOptions: NextAuthOptions = {
                     throw new Error('Email ve şifre gereklidir')
                 }
                 try {
-                    const response = await fetch('http://localhost:3082/api/admin/login', {
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+                    const response = await fetch(`${API_URL}/admin/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -58,7 +59,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id
                 token.role = user.role
-                token.accessToken = user.accessToken 
+                token.accessToken = user.accessToken
             }
             return token
         },
@@ -66,7 +67,7 @@ export const authOptions: NextAuthOptions = {
             if (token && session.user) {
                 session.user.id = token.id as string
                 session.user.role = token.role as string
-                session.user.accessToken = token.accessToken as string 
+                session.user.accessToken = token.accessToken as string
             }
             return session
         },

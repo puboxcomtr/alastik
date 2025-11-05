@@ -1,70 +1,30 @@
-import { getServerSession } from 'next-auth/next'
-import { redirect } from 'next/navigation'
+'use client'
 
-// Auth options import et
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-
-// Component Imports
+import { useEffect, useState } from 'react'
+import { fetchAdmins } from '@/utils/api/admins' 
 import ManagerList from '@/views/manager/index'
 
-// Type Imports
-export type AdminType = {
-    _id: string
-    name: string
-    email: string
-    role: string
-    isActive: boolean
-    avatar: string | null
-    lastLogin: Date | null
-    permissions: string[]
-    createdAt: Date
-    updatedAt: Date
-}
+const ManagerListPage = () => {
+    const [managers, setManagers] = useState([])
+    const [loading, setLoading] = useState(true)
 
-const getManagersData = async (token: string): Promise<AdminType[]> => {
-    try {
-        const res = await fetch(`${process.env.API_URL}/admin/user/admins?limit=100`, {
-            cache: 'no-store',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const data = await fetchAdmins({ limit: 100 })
+                setManagers(data.data?.admins || [])
+            } catch (error) {
+                console.error(error)
+            } finally {
+                setLoading(false)
             }
-        })
-
-        if (!res.ok) {
-            console.error('Failed to fetch managers:', res.status)
-            return []
         }
+        load()
+    }, [])
 
-        const response = await res.json()
-        return response.data?.admins || []
-    } catch (error) {
-        console.error('Error fetching managers:', error)
-        return []
-    }
-}
+    if (loading) return <div>Yükleniyor...</div>
 
-const ManagerListPage = async () => {
-    const session = await getServerSession(authOptions)
-
-    if (!session || !session.user) {
-        redirect('/login')
-    }
-
-    const token = (session.user as any).accessToken
-
-    if (!token) {
-        return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h2>Token Bulunamadı</h2>
-                <p>Lütfen çıkış yapıp tekrar giriş yapın.</p>
-            </div>
-        )
-    }
-
-    const managersData = await getManagersData(token)
-
-    return <ManagerList managersData={managersData} />
+    return <ManagerList managersData={managers} />
 }
 
 export default ManagerListPage

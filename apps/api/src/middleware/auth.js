@@ -258,6 +258,7 @@ const optionalAuth = async (req, res, next) => {
  */
 const authenticateAdmin = async (req, res, next) => {
   try {
+
     const token = req.headers.authorization?.replace('Bearer ', '') ||
       req.cookies.adminToken;
 
@@ -515,10 +516,8 @@ const loginUser = async (user, req, res) => {
  */
 const loginAdmin = async (admin, req, res) => {
   try {
-    // Login attempts'ı sıfırla
     await admin.resetLoginAttempts();
 
-    // Son login bilgilerini güncelle
     const ip = getClientIP(req);
     const userAgent = req.headers['user-agent'] || '';
     await admin.updateLastLogin(ip, userAgent);
@@ -534,20 +533,18 @@ const loginAdmin = async (admin, req, res) => {
       type: 'admin'
     });
 
-    // Cookie'leri set et
-    res.cookie('adminToken', token, {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 8 * 60 * 60 * 1000 // 8 saat
-    });
-
-    res.cookie('adminSession', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 8 * 60 * 60 * 1000 // 8 saat
-    });
+      secure: isProduction,
+      sameSite: isProduction ? 'lax' : 'strict',
+      maxAge: 8 * 60 * 60 * 1000
+    };
+    if (isProduction) {
+      cookieOptions.domain = '.alastik.com';
+    }
+    res.cookie('adminToken', token, cookieOptions);
+    res.cookie('adminSession', sessionToken, cookieOptions);
 
     return {
       token,
@@ -565,7 +562,6 @@ const loginAdmin = async (admin, req, res) => {
     throw error;
   }
 };
-
 /**
  * Logout helper function
  */
