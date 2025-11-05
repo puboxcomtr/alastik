@@ -1,23 +1,25 @@
 const express = require('express');
-// Buda Kaldırılacak
+
+/* Model */
 const Product = require('../../../models/Product');
-
-const DiaStock = require('../../../models/DiaStock');  // Bu Kaldırılacak.
-
-// Web Product model
+const DiaStock = require('../../../models/DiaStock');
 const WebProduct = require('../../../models/WebProduct');
 
+/* Middleware */
 const { authenticateAdmin } = require('../../../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
-// @IMPORT Library
+/* Services Library */
 const DiaStockService = require('../../../services/DiaStockService');
 
+/* DİA Filters */
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 const router = express.Router();
 
-const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (req, res, next) => next();
 
+const maybeAuth = process.env.DISABLE_AUTH === 'true'
+  ? (req, res, next) => next()
+  : authenticateAdmin;
 /**
  * Ürün Listeleme
 **/

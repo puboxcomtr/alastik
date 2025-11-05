@@ -1,9 +1,13 @@
 const path = require('path');
 const paths = require('./config/path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-// Test
-console.log('MONGODB_URI =', process.env.MONGODB_URI);
+const envFile = process.env.NODE_ENV === 'production'
+  ? '.env.production'
+  : '.env.local';
+
+require('dotenv').config({
+  path: path.resolve(__dirname, `../${envFile}`)
+});
 
 const express = require('express');
 const mongoose = require('mongoose');
