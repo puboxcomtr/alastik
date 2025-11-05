@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+import { apiClient } from './apiClient'
 
 export type FormType = {
     _id: string
@@ -44,39 +44,21 @@ export async function fetchForms(params?: {
     if (params?.startDate) queryParams.append('startDate', params.startDate)
     if (params?.endDate) queryParams.append('endDate', params.endDate)
 
-    const response = await fetch(`${API_URL}/admin/forms?${queryParams}`, {
+    return apiClient(`/admin/forms?${queryParams}`, {
         cache: 'no-store'
     })
-
-    if (!response.ok) {
-        throw new Error('Formlar yüklenemedi')
-    }
-
-    return response.json()
 }
 
 export async function fetchForm(id: string) {
-    const response = await fetch(`${API_URL}/admin/forms/${id}`, {
+    return apiClient(`/admin/forms/${id}`, {
         cache: 'no-store'
     })
-
-    if (!response.ok) {
-        throw new Error('Form bulunamadı')
-    }
-
-    return response.json()
 }
 
 export async function getFormById(id: string) {
-    const response = await fetch(`${API_URL}/admin/forms/${id}`, {
+    const result = await apiClient(`/admin/forms/${id}`, {
         cache: 'no-store'
     })
-
-    if (!response.ok) {
-        throw new Error('Form bulunamadı')
-    }
-
-    const result = await response.json()
 
     if (!result.success) {
         throw new Error(result.message || 'Form detayı alınamadı')
@@ -86,31 +68,14 @@ export async function getFormById(id: string) {
 }
 
 export async function updateForm(id: string, data: { status?: string; adminNotes?: string }) {
-    const response = await fetch(`${API_URL}/admin/forms/${id}`, {
+    return apiClient(`/admin/forms/${id}`, {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
+        body: data
     })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Form güncellenemedi')
-    }
-
-    return response.json()
 }
 
 export async function deleteForm(id: string) {
-    const response = await fetch(`${API_URL}/admin/forms/${id}`, {
+    return apiClient(`/admin/forms/${id}`, {
         method: 'DELETE'
     })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Form silinemedi')
-    }
-
-    return response.json()
 }

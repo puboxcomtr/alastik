@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+import { apiClient } from './apiClient'
 
 export type BannerType = {
     _id: string
@@ -20,33 +20,24 @@ export async function fetchBanners(params?: {
     const queryParams = new URLSearchParams()
     if (params?.status) queryParams.append('status', params.status)
 
-    const response = await fetch(`${API_URL}/admin/design/banners?${queryParams.toString()}`, {
+    return apiClient(`/admin/design/banners?${queryParams.toString()}`, {
         cache: 'no-store'
     })
-
-    if (!response.ok) {
-        throw new Error('Bannerlar yüklenemedi')
-    }
-
-    return response.json()
 }
 
 export async function fetchBanner(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/banners/${id}`, {
+    return apiClient(`/admin/design/banners/${id}`, {
         cache: 'no-store'
     })
-
-    if (!response.ok) {
-        throw new Error('Banner bulunamadı')
-    }
-
-    return response.json()
 }
 
 export async function createBanner(formData: FormData) {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+
     const response = await fetch(`${API_URL}/admin/design/banners`, {
         method: 'POST',
-        body: formData
+        credentials: 'include', 
+        body: formData  
     })
 
     if (!response.ok) {
@@ -58,8 +49,11 @@ export async function createBanner(formData: FormData) {
 }
 
 export async function updateBanner(id: string, formData: FormData) {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+
     const response = await fetch(`${API_URL}/admin/design/banners/${id}`, {
         method: 'PUT',
+        credentials: 'include',
         body: formData
     })
 
@@ -72,14 +66,7 @@ export async function updateBanner(id: string, formData: FormData) {
 }
 
 export async function deleteBanner(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/banners/${id}`, {
+    return apiClient(`/admin/design/banners/${id}`, {
         method: 'DELETE'
     })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Banner silinemedi')
-    }
-
-    return response.json()
 }
