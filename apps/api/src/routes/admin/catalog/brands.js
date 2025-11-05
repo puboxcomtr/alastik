@@ -1,25 +1,58 @@
+// ============================================
+// DEPENDENCIES
+// ============================================
 const express = require('express');
 
-// Models
+// ============================================
+// MODELS
+// ============================================
+// DIA ERP stock model (raw data from ERP system)
 const DiaStock = require('../../../models/DiaStock');
+
+// Web product model (for brand statistics)
 const WebProduct = require('../../../models/WebProduct');
+
+// Web category model (for brand-category relations)
 const WebCategory = require('../../../models/WebCategory');
+
+// Web brand model (synced and enhanced version for frontend)
 const WebBrand = require('../../../models/WebBrand');
 
-// Middleware
+// ============================================
+// MIDDLEWARE
+// ============================================
+// Authentication middleware for admin routes
 const { authenticateAdmin } = require('../../../middleware/auth');
+
+// Request validation middleware
 const { body, validationResult } = require('express-validator');
 
-// @IMPORT Library
+// ============================================
+// SERVICES
+// ============================================
+// DIA ERP integration service
 const DiaStockService = require('../../../services/DiaStockService');
 
-// Config
+// ============================================
+// CONFIGURATION
+// ============================================
+// DIA filter configurations
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 
+// ============================================
+// ROUTER INITIALIZATION
+// ============================================
 const router = express.Router();
 
-// Auth kontrolü - production'da zorunlu
-const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (req, res, next) => next();
+// ============================================
+// AUTHENTICATION STRATEGY
+// ============================================
+// Conditional authentication based on environment
+// - Development (DISABLE_AUTH=true): Bypasses authentication for easier testing
+// - Production (DISABLE_AUTH=false): Enforces admin authentication
+const maybeAuth = process.env.DISABLE_AUTH === 'true'
+    ? (req, res, next) => next()
+    : authenticateAdmin;
 
 /**
  * Marka Listeleme - WebBrand Collection'dan
