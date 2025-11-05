@@ -1,28 +1,72 @@
+
+// ============================================
+// DEPENDENCIES
+// ============================================
 const express = require('express');
 
-// Models
+// ============================================
+// MODELS
+// ============================================
+// DIA ERP stock model (raw data from ERP system)
 const DiaStock = require('../../../models/DiaStock');
+
+// Web product model (for category statistics)
 const WebProduct = require('../../../models/WebProduct');
+
+// Web category model (synced and enhanced version for frontend)
 const WebCategory = require('../../../models/WebCategory');
 
-// Middleware
+// ============================================
+// MIDDLEWARE
+// ============================================
+// Authentication middleware for admin routes
 const { authenticateAdmin } = require('../../../middleware/auth');
+
+// Request validation middleware
 const { body, validationResult } = require('express-validator');
 
-// @IMPORT Library
+// ============================================
+// SERVICES
+// ============================================
+// DIA ERP integration service
 const DiaStockService = require('../../../services/DiaStockService');
 
-// Config
+// ============================================
+// CONFIGURATION
+// ============================================
+// DIA filter configurations
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 
+// ============================================
+// ROUTER INITIALIZATION
+// ============================================
 const router = express.Router();
 
-// Auth kontrolü - production'da zorunlu
-const maybeAuth = process.env.NODE_ENV === 'production' ? authenticateAdmin : (req, res, next) => next();
+// ============================================
+// AUTHENTICATION STRATEGY
+// ============================================
+// Conditional authentication based on environment
+// - Development (DISABLE_AUTH=true): Bypasses authentication for easier testing
+// - Production (DISABLE_AUTH=false): Enforces admin authentication
+const maybeAuth = process.env.DISABLE_AUTH === 'true'
+  ? (req, res, next) => next()
+  : authenticateAdmin;
+
+// ============================================
+// ROUTES
+// ============================================
 
 /**
- * Kategori Listeleme - WebCategory Collection'dan
  * GET /api/categories
+ * Get all categories with filtering and statistics
+ * 
+ * Query Parameters:
+ * - search: Search term for category name
+ * - level: Category level (1: Main, 2: Sub, 3: Sub-Sub)
+ * - web_status: Filter by status (active/hidden/empty)
+ * - parent_id: Filter by parent category
+ * - visible_only: Show only visible categories (default: true)
+ * - with_children: Include child categories (default: false)
  */
 router.get('/', maybeAuth, async (req, res) => {
   try {
@@ -225,7 +269,7 @@ router.patch('/:id', maybeAuth, [
     const updateData = {};
     if (description !== undefined) updateData.description = description;
     if (seoTitle !== undefined) updateData.seoTitle = seoTitle?.trim();
-    if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim(); 
+    if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim();
     if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase();
     if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0;
 

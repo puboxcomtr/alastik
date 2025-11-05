@@ -1,27 +1,58 @@
+// ============================================
+// DEPENDENCIES
+// ============================================
 const express = require('express');
 
-/* Model */
+// ============================================
+// MODELS
+// ============================================
+// Legacy product model (deprecated - for backward compatibility)
 const Product = require('../../../models/Product');
+
+// DIA ERP stock model (raw data from ERP system)
 const DiaStock = require('../../../models/DiaStock');
+
+// Web product model (synced and enhanced version for frontend)
 const WebProduct = require('../../../models/WebProduct');
 
-/* Middleware */
+// ============================================
+// MIDDLEWARE
+// ============================================
+// Authentication middleware for admin routes
 const { authenticateAdmin } = require('../../../middleware/auth');
+
+// Request validation middleware
 const { body, validationResult } = require('express-validator');
 
-/* Services Library */
+// ============================================
+// SERVICES
+// ============================================
+// DIA ERP integration service for stock synchronization
 const DiaStockService = require('../../../services/DiaStockService');
 
-/* DİA Filters */
+// ============================================
+// CONFIGURATION
+// ============================================
+// DIA filter configurations for stock queries
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+
+// ============================================
+// ROUTER INITIALIZATION
+// ============================================
 const router = express.Router();
 
-
+// ============================================
+// AUTHENTICATION STRATEGY
+// ============================================
+// Conditional authentication based on environment
+// - Development (DISABLE_AUTH=true): Bypasses authentication for easier testing
+// - Production (DISABLE_AUTH=false): Enforces admin authentication
 const maybeAuth = process.env.DISABLE_AUTH === 'true'
   ? (req, res, next) => next()
   : authenticateAdmin;
+
 /**
- * Ürün Listeleme
+ * Ürün Listeleme *
 **/
 router.get('/', maybeAuth, async (req, res) => {
   try {
