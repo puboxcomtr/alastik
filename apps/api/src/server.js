@@ -475,10 +475,32 @@ app.use('/api/media', mediaRoutes);
 app.use('/uploads', express.static(paths.getStaticPath('')));
 
 /* * Sliders Upload * */
-app.use('/sliders', express.static(path.join(__dirname, 'public/sliders')));
+app.use('/sliders', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'public/sliders')));
 
 /* Banners Upload */
-app.use('/banners', express.static(path.join(__dirname, 'public/banners')));
+app.use('/banners', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'public/banners')));
+
+/* * Theme Upload * */
+app.use('/theme', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'upload/public/theme')));
+
+/* * Theme Upload GET * */
+app.use('/uploads/theme', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'public/uploads/theme')));
 
 
 /**
@@ -2966,12 +2988,6 @@ app.use((error, req, res, next) => {
 
   res.status(500).json({ error: 'Internal server error' });
 });
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully...');
@@ -3037,7 +3053,10 @@ async function checkAndRunStartupSync() {
     logger.error('Startup sync kontrolü hatası:', error);
   }
 }
-
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 // Start server
 const PORT = process.env.PORT || 3082;
 app.listen(PORT, async () => {
