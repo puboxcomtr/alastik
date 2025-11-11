@@ -50,6 +50,9 @@
       "@src/*": [
         "src/*"
       ],
+      "@views/*": [
+        "views/*"
+      ],
       "@public/*": [
         "public/*"
       ]

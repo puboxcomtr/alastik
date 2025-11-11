@@ -66,34 +66,13 @@ export default function TireFilters() {
                     </AccordionSummary>
 
                     <AccordionDetails sx={{ padding: 0 }}>
-                        <FormControl fullWidth>
                             <TextField
                                 select
                                 fullWidth
                                 size="small"
                                 value={oem}
                                 onChange={(e) => setoem(e.target.value)}
-                                SelectProps={{
-                                    MenuProps: {
-                                        PaperProps: {
-                                            style: {
-                                                maxHeight: 200,
-                                                overflowY: "auto",
-                                            },
-                                        },
-                                    },
-                                    IconComponent: (props) => (
-                                        <i
-                                            {...props}
-                                            className="ri-arrow-down-s-line"
-                                            style={{ color: "#555", fontSize: 20 }}
-                                        />
-                                    ),
-                                }}
-                                sx={{
-                                    backgroundColor: "#f5f5f5",
-                                    borderRadius: 1,
-                                }}
+                                
                             >
                                 <MenuItem value="all">Tümü</MenuItem>
                                 {carBrand.map(car => (
@@ -102,7 +81,6 @@ export default function TireFilters() {
                                     </MenuItem>
                                 ))}
                             </TextField>
-                        </FormControl>
                     </AccordionDetails>
                 </Accordion>
             </Grid>

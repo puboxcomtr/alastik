@@ -15,6 +15,7 @@ import { api } from '@src/lib/api';
 /* Variables */
 export default function Header() {
     const [logo, setLogo] = useState('');
+    const [siteName, setSiteName] = useState('A Lastik');
 
     useEffect(() => {
         api.get('/admin/design/settings/theme').then(data => {
@@ -22,12 +23,13 @@ export default function Header() {
                 setLogo(api.getImageUrl(data.data.logo));
             }
         });
+        api.getSiteName().then(name => setSiteName(name));
     }, []);
 
     return (
         <>
             <BlockRenderer blockKey="topbar" />
-            <Middle logo={logo} />
+            <Middle logo={logo} siteName={siteName} />
             <Navbar />
         </>
     );

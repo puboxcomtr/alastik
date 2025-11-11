@@ -65,7 +65,6 @@ class ApiClient {
             };
         }
     }
-
     async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
         try {
             const res = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -83,12 +82,48 @@ class ApiClient {
             };
         }
     }
-
+    /* Sabit Fonksiyonlar */
     getImageUrl(path?: string): string {
         if (!path) return '';
         if (path.startsWith('http')) return path;
         if (path.startsWith('/')) return `${BASE_URL}${path}`;
         return `${BASE_URL}/${path}`;
+    }
+    async getSiteName(): Promise<string> {
+        try {
+            const data = await this.get<any>('/admin/settings/general');
+            return data.success && data.data?.companyInfo?.name ? data.data.companyInfo.name : 'A Lastik';
+        } catch {
+            return 'A Lastik';
+        }
+    }
+    /* Search Box */
+    async searchAutocomplete(query: string, limit = 10) {
+        return this.post<any>('/search/autocomplete', { query, limit });
+    }
+    async trackSearch(term: string) {
+        return this.post('/search/track', { term });
+    }
+    /* Auth Login and Register */
+    async register(data: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone: string;
+        password: string;
+        passwordConfirm: string;
+        marketingConsent: boolean;
+        termsAccepted: boolean;
+    }) {
+        return this.post<any>('/auth/register', data);
+    }
+    async login(email: string, password: string) {
+        return this.post<any>('/auth/login', { email, password });
+    }
+    /* Translate */
+    async getTranslations(category?: string) {
+        const endpoint = category ? `/translations/category/${category}` : '/translations';
+        return this.get<Record<string, string>>(endpoint);
     }
 }
 

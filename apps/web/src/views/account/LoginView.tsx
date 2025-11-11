@@ -1,0 +1,183 @@
+'use client';
+
+/* * React Core * */
+import { useState } from 'react';
+
+/* * Next.js * */
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+/* * Third Party Libraries */
+import { toast } from 'react-toastify';
+
+/* * Internal Imports  */
+import { api } from '@lib/api';
+import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+
+export default function LoginView() {
+    const router = useRouter();
+    const { t, loading: translationsLoading } = useTranslations('form');
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
+    const [showPassword, setShowPassword] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            const result = await api.login(formData.email, formData.password);
+
+            if (result.success) {
+                toast.success(result.message || t('login_success', 'Giriş başarılı.'));
+
+                if (result.data?.token) {
+                    localStorage.setItem('authToken', result.data.token);
+                    localStorage.setItem('user', JSON.stringify(result.data.member));
+                }
+
+                setTimeout(() => {
+                    router.push('/hesabim');
+                }, 1000);
+            } else {
+                toast.error(result.message || t('login_failed', 'Giriş başarısız.'));
+            }
+        } catch (error) {
+            toast.error(t('error_occurred', 'Bir hata oluştu. Lütfen tekrar deneyiniz.'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (translationsLoading) {
+        return <div className="container py-5 text-center">Yükleniyor...</div>;
+    }
+
+    return (
+        <div className="container py-5">
+            <div className="row justify-content-center">
+                <div className="col-lg-10">
+                    <div className="card shadow">
+                        <div className="row g-0">
+                            {/* Login Form */}
+                            <div className="col-md-6 p-5">
+                                <h5 className="mb-4 h5">{t('login_title')}</h5>
+                                <form onSubmit={handleSubmit}>
+                                    <div className="mb-3">
+                                        <label className="form-label">{t('email_label')}</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="form-control"
+                                            placeholder={t('email_placeholder')}
+                                            style={{
+                                                borderRadius: '0.375rem',
+                                                border: '1px solid black',
+                                                padding: '0.75rem'
+                                            }}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">{t('password_label')}</label>
+                                        <div className="position-relative">
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
+                                                className="form-control"
+                                                placeholder={t('password_placeholder')}
+                                                style={{
+                                                    borderRadius: '0.375rem',
+                                                    border: '1px solid black',
+                                                    padding: '0.75rem'
+                                                }}
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="btn btn-link position-absolute end-0 top-50 translate-middle-y"
+                                                style={{ textDecoration: 'none', color: 'black' }}
+                                            >
+                                                <i className={`ri-eye${showPassword ? '-off' : ''}-line`}></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className='d-flex justify-content-between align-items-center mb-4'>
+                                        <div>
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="btn btn-primary w-100 px-5"
+                                            >
+                                                {loading ? t('logging_in') : t('login_button')}
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <Link href="/sifremi-unuttum" className="fs-sm text-muted">
+                                                {t('forgot_password')}
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </form>
+                                <div className="d-flex justify-content-end">
+                                    <p className="text-success small fw-medium">
+                                        <i className="ri-lock-line me-1"></i>
+                                        {t('secure_data')}
+                                    </p>
+                                </div>
+                            </div>
+                            {/* Register Form */}
+                            <div className="col-md-6 bg-light p-5 d-flex flex-column justify-content-center">
+                                <h5 className="mb-4 h5">{t('register_title')}</h5>
+                                <p className="text-muted mb-4">
+                                    {t('register_description')}
+                                </p>
+
+                                <div className="mb-4">
+                                    <div className="d-flex align-items-center mb-2">
+                                        <i className="ri-car-fill text-danger me-1 fs-xl"></i>
+                                        <span className='fs-sm fw-normal text-black'>{t('benefit_garage')}</span>
+                                    </div>
+                                    <div className="d-flex align-items-center mb-2">
+                                        <i className="ri-map-pin-fill text-danger me-1 fs-xl"></i>
+                                        <span className='fs-sm fw-normal text-black'>{t('benefit_tracking')}</span>
+                                    </div>
+                                    <div className="d-flex align-items-center mb-2">
+                                        <i className="ri-discount-percent-fill text-danger me-1 fs-xl"></i>
+                                        <span className='fs-sm fw-normal text-black'>{t('benefit_orders')}</span>
+                                    </div>
+                                </div>
+
+                                <div className='d-flex justify-content-between align-items-center mb-4'>
+                                    <div>
+                                        <Link href="/uye-ol"
+                                            className="btn btn-primary w-100 px-5">
+                                            {t('register_button')}
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
