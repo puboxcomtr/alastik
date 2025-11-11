@@ -147,9 +147,12 @@ const ThemeSettings = () => {
             const res = await fetch(`${API_URL}/admin/design/slider`, {
                 credentials: 'include'
             })
-        
+            const data = await res.json()
+            if (data.success && data.data) {
+                setSliderList(data.data)
+            }
         } catch (error) {
-            console.error('❌ Slider listesi yüklenemedi:', error)
+            console.error('Slider listesi yüklenemedi:', error)
         } finally {
             setLoadingSliders(false)
         }
