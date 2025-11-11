@@ -326,6 +326,18 @@ app.post('/api/dia-stock/sync-images', async (req, res) => {
   }
 });
 /**
+  * Website - Routes *
+*/
+/* Translate */
+app.use('/api/translations', require('./routes/web/other/translations'));
+
+/* * Header Search * */
+app.use('/api/search', require('./routes/user/catalog/search'));
+
+/* Login */
+app.use('/api/auth', require('./routes/web/user/auth'));
+
+/**
   * Admin - Routes *
 */
 /* * Ürün Listeleme * */
