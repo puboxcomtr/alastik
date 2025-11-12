@@ -326,6 +326,17 @@ app.post('/api/dia-stock/sync-images', async (req, res) => {
   }
 });
 /**
+  * Wheelsize Senkronize Routes *
+*/
+// Kullanıcının araçlarını yönetmek için (CRUD işlemleri)
+const vehiclesRoutes = require('./routes/web/user/vehicles');
+app.use('/api/user/vehicles', vehiclesRoutes);
+
+// Wheel Size API'den marka/model/yıl bilgilerini getirmek için
+const wheelsizeRoutes = require('./routes/web/integration/wheelsize');
+app.use('/api/wheelsize', wheelsizeRoutes);
+app.use('/api/user/vehicles', vehiclesRoutes);
+/**
   * Website - Routes *
 */
 /* Translate */

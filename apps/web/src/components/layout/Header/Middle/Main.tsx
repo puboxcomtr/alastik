@@ -37,8 +37,7 @@ export default function Main({ logo, siteName }: MiddleProps) {
                     </Link>
                 </Col>
                 <Col lg="6">
-                    <SearchBox
-                    />
+                    <SearchBox />
                 </Col>
                 <Col lg="3" className="d-flex justify-content-end">
                     <ActionButtons />

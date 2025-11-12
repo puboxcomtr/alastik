@@ -13,10 +13,12 @@ import { toast } from 'react-toastify';
 /* * Internal Imports  */
 import { api } from '@lib/api';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+import { useAuth } from '@/src/hooks/Theme/useAuth';
 
 export default function LoginView() {
     const router = useRouter();
-    const { t, loading: translationsLoading } = useTranslations('form');
+    const { t } = useTranslations('form');
+    const { setAuth, clearAuth } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
@@ -37,32 +39,32 @@ export default function LoginView() {
         setLoading(true);
 
         try {
+            clearAuth();
+
             const result = await api.login(formData.email, formData.password);
 
             if (result.success) {
-                toast.success(result.message || t('login_success', 'Giriş başarılı.'));
+                toast.success('Giriş başarılı');
 
-                if (result.data?.token) {
-                    localStorage.setItem('authToken', result.data.token);
-                    localStorage.setItem('user', JSON.stringify(result.data.member));
+                if (result.data?.token && result.data?.member) {
+                    // localStorage'a kaydet
+                    setAuth(result.data.token, result.data.member);
+
+                    // Cookie'ye de kaydet (middleware için)
+                    document.cookie = `authToken=${result.data.token}; path=/; max-age=${30 * 24 * 60 * 60}`;
+
+                    router.replace('/hesabim');
                 }
-
-                setTimeout(() => {
-                    router.push('/hesabim');
-                }, 1000);
             } else {
-                toast.error(result.message || t('login_failed', 'Giriş başarısız.'));
+                toast.error(result.message || 'Giriş başarısız');
             }
         } catch (error) {
-            toast.error(t('error_occurred', 'Bir hata oluştu. Lütfen tekrar deneyiniz.'));
+            console.error('Login error:', error);
+            toast.error('Bir hata oluştu');
         } finally {
             setLoading(false);
         }
     };
-
-    if (translationsLoading) {
-        return <div className="container py-5 text-center">Yükleniyor...</div>;
-    }
 
     return (
         <div className="container py-5">
@@ -166,7 +168,7 @@ export default function LoginView() {
 
                                 <div className='d-flex justify-content-between align-items-center mb-4'>
                                     <div>
-                                        <Link href="/uye-ol"
+                                        <Link href="/kayit-ol"
                                             className="btn btn-primary w-100 px-5">
                                             {t('register_button')}
                                         </Link>
