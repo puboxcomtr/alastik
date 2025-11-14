@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 import VehicleList from '@/src/views/vehicle/VehicleList';
-import VehicleFormModal from '@/src/components/user/Vehicle/VehicleFormModal';
+import VehicleFormModal from '@/src/components/user/vehicle/VehicleFormModal';
 
 export default function AraclarimPage() {
     const router = useRouter();
