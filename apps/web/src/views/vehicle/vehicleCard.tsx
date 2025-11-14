@@ -1,10 +1,13 @@
-// apps/web/src/components/user/Vehicle/VehicleCard.tsx
 'use client';
 
 import { useState } from 'react';
 import type { Vehicle } from '@/src/types/vehicle';
 import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 import Image from 'next/image';
+import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+
+/* Config */
+import { ROUTES } from '@/src/config/routes';
 
 interface VehicleCardProps {
     vehicle: Vehicle;
@@ -15,6 +18,7 @@ interface VehicleCardProps {
 export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardProps) {
     const { deleteVehicle, setPrimaryVehicle } = useVehicles();
     const [showActions, setShowActions] = useState(false);
+    const { t } = useTranslations();
 
     const handleDelete = async () => {
         if (confirm('Bu aracı silmek istediğinize emin misiniz?')) {
@@ -33,14 +37,13 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
     };
 
     return (
-        <div className={`card ${vehicle.isPrimary ? 'border-primary' : ''}`}>
-            {vehicle.isPrimary && (
-                <div className="position-absolute top-0 end-0 m-2">
-                    <span className="badge bg-primary">Varsayılan</span>
-                </div>
-            )}
-
+        <div className={`card h-100 ${vehicle.isPrimary ? 'border-primary' : ''}`}>
             <div className="position-relative" style={{ height: '200px' }}>
+                {vehicle.isPrimary && (
+                    <div className="position-absolute top-0 end-0 m-2 z-3">
+                        <span className="badge bg-danger">Varsayılan</span>
+                    </div>
+                )}
                 <Image
                     src={vehicle.image.url || '/assets/img/default-car.png'}
                     alt={`${vehicle.wheelSizeData.makeName} ${vehicle.wheelSizeData.modelName}`}
@@ -51,56 +54,56 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
             </div>
 
             <div className="card-body">
-                <h5 className="card-title">
-                    {vehicle.wheelSizeData.makeName} {vehicle.wheelSizeData.modelName}
-                </h5>
-                <p className="card-text text-muted small mb-3">
-                    {vehicle.wheelSizeData.year}
-                    {vehicle.userInputs.bodyType && ` • ${vehicle.userInputs.bodyType}`}
-                    {vehicle.userInputs.enginePower && ` • ${vehicle.userInputs.enginePower}`}
-                </p>
+                <h6 className="card-title">
+                    {vehicle.wheelSizeData.makeName} {vehicle.wheelSizeData.modelName} - {vehicle.wheelSizeData.year} {vehicle.userInputs.bodyType && `  ${vehicle.userInputs.bodyType}`} {vehicle.userInputs.enginePower && `${vehicle.userInputs.enginePower}`}
+                </h6>
+                <div className="d-flex justify-content-between">
+                    <small className="fw-bold">Plaka:</small>
+                    <small className="ms-2">{vehicle.userInputs.plateNumber || 'Bilgisi Girilmedi'}</small>
+                </div>
+                <div className="d-flex justify-content-between mb-3">
+                    <small className="fw-bold">KM:</small>
+                    <small className="ms-2">
+                        {vehicle.userInputs.mileage
+                            ? vehicle.userInputs.mileage.toLocaleString()
+                            : 'Bilgisi Girilmedi'}
+                    </small>
+                </div>
 
-                {vehicle.userInputs.plateNumber && (
-                    <div className="mb-2">
-                        <small className="text-muted">Plaka:</small>
-                        <strong className="ms-2">{vehicle.userInputs.plateNumber}</strong>
-                    </div>
-                )}
-
-                {vehicle.userInputs.mileage && (
-                    <div className="mb-3">
-                        <small className="text-muted">KM:</small>
-                        <strong className="ms-2">{vehicle.userInputs.mileage.toLocaleString()}</strong>
-                    </div>
-                )}
-
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 mb-2">
                     <button
                         onClick={onEdit}
-                        className="btn btn-sm btn-outline-primary flex-grow-1"
+                        className="btn btn-md btn-outline-secondary"
                     >
-                        <i className="ri-edit-line me-1"></i>
-                        Düzenle
+                        <i className="ci-edit me-2"></i>
+                        {t('edit')}
                     </button>
 
                     {!vehicle.isPrimary && (
                         <button
                             onClick={handleSetPrimary}
-                            className="btn btn-sm btn-outline-secondary"
-                            title="Varsayılan yap"
+                            className="btn btn-md btn-outline-secondary"
+                            title={t('default')}
                         >
-                            <i className="ri-star-line"></i>
+                            <i className="ci-check-circle"></i>
                         </button>
                     )}
 
                     <button
                         onClick={handleDelete}
-                        className="btn btn-sm btn-outline-danger"
-                        title="Sil"
+                        className="btn btn-md btn-outline-secondary"
+                        title={t('remove')}
                     >
                         <i className="ri-delete-bin-line"></i>
                     </button>
                 </div>
+                <button
+                    onClick={handleDelete}
+                    className="btn btn-md btn-success w-100 d-block"
+                    title={t('remove')}
+                >
+                    {t('looks_car_products')}
+                </button>
             </div>
         </div>
     );

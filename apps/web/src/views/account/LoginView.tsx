@@ -15,6 +15,9 @@ import { api } from '@lib/api';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 
+/* Routes */
+import { ROUTES } from '@/src/config/routes';
+
 export default function LoginView() {
     const router = useRouter();
     const { t } = useTranslations('form');
@@ -47,13 +50,9 @@ export default function LoginView() {
                 toast.success('Giriş başarılı');
 
                 if (result.data?.token && result.data?.member) {
-                    // localStorage'a kaydet
                     setAuth(result.data.token, result.data.member);
-
-                    // Cookie'ye de kaydet (middleware için)
                     document.cookie = `authToken=${result.data.token}; path=/; max-age=${30 * 24 * 60 * 60}`;
-
-                    router.replace('/hesabim');
+                    window.location.href = ROUTES.ACCOUNT;
                 }
             } else {
                 toast.error(result.message || 'Giriş başarısız');

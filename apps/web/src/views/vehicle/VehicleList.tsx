@@ -6,6 +6,10 @@ import type { Vehicle } from '@/src/types/vehicle';
 import VehicleCard from './vehicleCard';
 import VehicleFormModal from '@components/user/vehicle/VehicleFormModal';
 
+
+/* Config */
+import { ROUTES } from '@/src/config/routes';
+
 interface VehicleListProps {
     vehicles: Vehicle[];
     onRefresh: () => void;
@@ -16,17 +20,15 @@ export default function VehicleList({ vehicles, onRefresh }: VehicleListProps) {
 
     return (
         <>
-            <div className="row g-3">
-                {vehicles.map((vehicle) => (
-                    <div key={vehicle._id} className="col-md-6 col-lg-4">
-                        <VehicleCard
-                            vehicle={vehicle}
-                            onEdit={() => setEditingVehicle(vehicle)}
-                            onRefresh={onRefresh}
-                        />
-                    </div>
-                ))}
-            </div>
+            {vehicles.map((vehicle) => (
+                <div key={vehicle._id} className="col">
+                    <VehicleCard
+                        vehicle={vehicle}
+                        onEdit={() => setEditingVehicle(vehicle)}
+                        onRefresh={onRefresh}
+                    />
+                </div>
+            ))}
 
             {editingVehicle && (
                 <VehicleFormModal

@@ -19,7 +19,10 @@ import SearchIcon from '@mui/icons-material/Search';
 
 // Hooks
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
-import { useAuth } from '@/src/hooks/Theme/useAuth'; // ← EKLE
+import { useAuth } from '@/src/hooks/Theme/useAuth';
+
+// Routes
+import { ROUTES } from '@/src/config/routes';
 
 interface ActionButtonsProps {
     setCartOpen: (open: boolean) => void;
@@ -29,21 +32,21 @@ interface ActionButtonsProps {
 export default function ActionButtons({ setCartOpen, cartItemCount }: ActionButtonsProps) {
     const router = useRouter();
     const { t } = useTranslations();
-    const { isLoggedIn, user, clearAuth } = useAuth(); 
+    const { isLoggedIn, user, clearAuth } = useAuth();
     const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
     const open = Boolean(menuAnchor);
 
     const handleLogout = () => {
         clearAuth();
         toast.success('Çıkış yapıldı');
-        window.location.href = '/';
+        window.location.href = ROUTES.HOME;
     };
 
     const handleOpenMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
     const handleCloseMenu = () => setMenuAnchor(null);
 
     const handleLoginClick = () => {
-        router.push('/giris-yap');
+        router.push(ROUTES.LOGIN);
     };
 
     return (
@@ -109,13 +112,13 @@ export default function ActionButtons({ setCartOpen, cartItemCount }: ActionButt
                     transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                     slotProps={{ paper: { sx: { minWidth: 220 } } }}
                 >
-                    <MenuItem component={Link} href="/hesabim" onClick={handleCloseMenu}>
+                    <MenuItem component={Link} href={ROUTES.ACCOUNT} onClick={handleCloseMenu}>
                         {t('my_account')}
                     </MenuItem>
-                    <MenuItem component={Link} href="/hesabim/siparislerim" onClick={handleCloseMenu}>
+                    <MenuItem component={Link} href={ROUTES.ACCOUNT_ORDERS} onClick={handleCloseMenu}>
                         {t('my_orders')}
                     </MenuItem>
-                    <MenuItem component={Link} href="/hesabim/favorilerim" onClick={handleCloseMenu}>
+                    <MenuItem component={Link} href={ROUTES.ACCOUNT_FAVORITES} onClick={handleCloseMenu}>
                         {t('my_favorites')}
                     </MenuItem>
                     <Divider />
@@ -127,7 +130,7 @@ export default function ActionButtons({ setCartOpen, cartItemCount }: ActionButt
 
             <Tooltip title={isLoggedIn ? t('my_garage') : t('login_to_garage')}>
                 <Link
-                    href={isLoggedIn ? "/garaj" : "/giris-yap"}
+                    href={isLoggedIn ? ROUTES.ACCOUNT_VEHICLES : ROUTES.LOGIN}
                     className="btn btn-icon btn-lg fs-lg btn-outline-secondary border-0 rounded-circle animate-pulse d-none d-md-inline-flex flex-column gap-1"
                 >
                     <PlaceOutlinedIcon className="animate-target" />

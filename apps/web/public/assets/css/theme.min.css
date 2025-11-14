@@ -7077,7 +7077,6 @@ fieldset:disabled .btn {
 
     .offcanvas-lg .offcanvas-body {
         background-color: #FFF !important;
-        padding: 0 2rem;
         display: flex;
         flex-grow: 0;
         overflow-y: visible;

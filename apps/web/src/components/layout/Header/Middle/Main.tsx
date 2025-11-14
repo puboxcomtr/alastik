@@ -13,6 +13,9 @@ import { Container, Row, Col } from 'react-bootstrap'
 import SearchBox from '@components/layout/Header/Middle/Partials/SearchBox';
 import ActionButtons from '@components/layout/Header/Middle/Partials/ActionButton';
 
+// Routes
+import { ROUTES } from '@/src/config/routes';
+
 interface MiddleProps {
     logo: string;
     siteName: string;
@@ -24,7 +27,7 @@ export default function Main({ logo, siteName }: MiddleProps) {
         <Container className="navbar navbar-expand-lg d-block p-0">
             <Row className='row-fluid align-items-center px-2 py-lg-3'>
                 <Col lg="3">
-                    <Link prefetch={false} href="/" className="navbar-brand fs-2 py-0 m-0 me-auto me-sm-n5">
+                    <Link prefetch={false} href={ROUTES.HOME} className="navbar-brand fs-2 py-0 m-0 me-auto me-sm-n5">
                         {settings?.logo && (
                             <img
                                 className="shop-header__logo hide-mobile"
