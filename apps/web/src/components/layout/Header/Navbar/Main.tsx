@@ -10,6 +10,10 @@ import Navbar from 'react-bootstrap/Navbar';
 import Container from 'react-bootstrap/Container';
 import Offcanvas from 'react-bootstrap/Offcanvas';
 
+
+import { ROUTES } from '@/src/config/routes';
+import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+
 // Components
 import MainMenu from '@components/layout/Header/Navbar/Partials/MainMenu'
 
@@ -17,6 +21,8 @@ export default function NavbarMain() {
     const [show, setShow] = useState(false);
     const handleClose = () => setShow(false);
     const handleOpen = () => setShow(true);
+    const { t } = useTranslations();
+    
     return (
         <Container className="bg-black navbar navbar-expand-lg d-block p-0">
             <div className="row-fluid w-100">
@@ -47,14 +53,14 @@ export default function NavbarMain() {
                             </Offcanvas.Body>
                             <div className="offcanvas-header border-top px-0 py-3 mt-3 d-md-none">
                                 <div className="nav nav-justified w-100">
-                                    <a className="nav-link border-end" href="account.html">
+                                    <Link href={ROUTES.ACCOUNT} className="nav-link border-end">
                                         <i className="ci-user fs-lg opacity-60 me-2"></i>
-                                        Hesabım
-                                    </a>
-                                    <a className="nav-link" href="garage.html">
+                                        {t('my_account')}
+                                    </Link>
+                                    <Link href={ROUTES.ACCOUNT_VEHICLES} className="nav-link">
                                         <i className="ci-heart fs-lg opacity-60 me-2"></i>
-                                        Garajım
-                                    </a>
+                                        {t('my_garage')}
+                                    </Link>
                                 </div>
                             </div>
                         </Navbar.Offcanvas>

@@ -46,12 +46,16 @@ const WebProduct = require('./models/WebProduct');
 const WebCategory = require('./models/WebCategory');
 const WebBrand = require('./models/WebBrand');
 const WebTag = require('./models/WebTag');
+const Page = require('./models/Page');
+const Menu  = require('./models/Menu');
+
 
 // Legacy and internal models
 const Inventory = require('./models/Inventory');
 const Category = require('./models/Category');
 const DiaStock = require('./models/DiaStock');
 const AdminUser = require('./models/AdminUser');
+
 
 // ============================================
 // SERVICES
@@ -342,11 +346,16 @@ app.use('/api/user/vehicles', vehiclesRoutes);
 /* Translate */
 app.use('/api/translations', require('./routes/web/other/translations'));
 
+/* * Menu * */
+app.use('/api/menus', require('./routes/web/design/menus'));
+
 /* * Header Search * */
 app.use('/api/search', require('./routes/user/catalog/search'));
 
 /* Login */
 app.use('/api/auth', require('./routes/web/user/auth'));
+
+/* Header Menu */
 
 /**
   * Admin - Routes *

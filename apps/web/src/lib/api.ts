@@ -213,6 +213,13 @@ class ApiClient {
         const endpoint = category ? `/translations/category/${category}` : '/translations';
         return this.get<Record<string, string>>(endpoint);
     }
+    /* Header Menu */ 
+    menu = {
+        getHeader: async () => {
+            return this.get<any>('/menus/header');
+        }
+    };
+
 }
 export const api = new ApiClient(API_URL);
 export type { ApiResponse };
