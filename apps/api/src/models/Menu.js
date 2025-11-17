@@ -16,7 +16,7 @@ const menuSchema = new mongoose.Schema({
     menuType: {
         type: String,
         required: true,
-        enum: ['link', 'category', 'page']
+        enum: ['link', 'category', 'page', 'heading']
     },
     linkData: {
         type: linkDataSchema,

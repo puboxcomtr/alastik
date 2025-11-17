@@ -47,11 +47,12 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
 
     // Form state
     const [name, setName] = useState('')
-    const [menuType, setMenuType] = useState<'link' | 'category' | 'page'>('link')
+    const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'heading'>('link')
     const [linkUrl, setLinkUrl] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [categoryLevel, setCategoryLevel] = useState<1 | 2>(1)
     const [pageId, setPageId] = useState('')
+    const [headingText, setHeadingText] = useState('')
     const [openNewTab, setOpenNewTab] = useState(false)
     const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile'>('header')
     const [rowLevel, setRowLevel] = useState<1 | 2>(1)
@@ -101,7 +102,6 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
             setLoadingOptions(true)
             const result = await fetchParentMenus(area)
             if (result.success) {
-                // Kendi ID'sini parent listesinden çıkar
                 setParentMenus(result.data.filter(menu => menu._id !== menuId))
             }
         } catch (error: any) {
@@ -111,7 +111,6 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
         }
     }
 
-    // Mevcut menüyü yükle
     const loadMenu = async () => {
         try {
             setInitialLoading(true)
@@ -137,17 +136,19 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                 } else if (menu.menuType === 'page') {
                     setPageId(menu.linkData?.pageId || '')
                     await loadPages()
+                } else if (menu.menuType === 'heading') {
+                    setHeadingText(menu.linkData?.heading || '')
                 }
 
                 if (menu.rowLevel === 2) {
-                    await loadParentMenus(menu.displayArea) 
+                    await loadParentMenus(menu.displayArea)
 
                     if (menu.parentId) {
                         const parentIdValue = typeof menu.parentId === 'string'
                             ? menu.parentId
                             : menu.parentId._id
 
-                        setParentId(parentIdValue) 
+                        setParentId(parentIdValue)
                     }
                 }
             } else {
@@ -169,7 +170,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
 
     // MenuType değiştiğinde
     useEffect(() => {
-        if (initialLoading) return // İlk yüklemede çalışmasın
+        if (initialLoading) return
 
         if (menuType === 'category') {
             setCategories([])
@@ -224,7 +225,6 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
             toast.error('Sayfa seçimi zorunludur')
             return false
         }
-
         if (rowLevel === 2 && !parentId) {
             toast.error('Alt menü için ana menü seçmelisiniz')
             return false
@@ -251,7 +251,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                     ...(menuType === 'category' && { categoryId, categoryLevel }),
                     ...(menuType === 'page' && { pageId })
                 },
-                openNewTab,
+                openNewTab: menuType === 'heading' ? false : openNewTab,
                 displayArea,
                 rowLevel,
                 ...(rowLevel === 2 && { parentId }),
@@ -337,6 +337,9 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                         <MenuItem key="link" value='link'>Bağlantı</MenuItem>
                                                         <MenuItem key="category" value='category'>Kategori</MenuItem>
                                                         <MenuItem key="page" value='page'>Sayfa</MenuItem>
+                                                        {rowLevel === 2 && (
+                                                            <MenuItem key="heading" value='heading'>Başlık</MenuItem>
+                                                        )}
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
@@ -421,7 +424,6 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-
                                             {/* Sıralama */}
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <TextField
@@ -433,18 +435,20 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                 />
                                             </Grid>
 
-                                            {/* Yeni Sekmede Aç */}
-                                            <Grid size={{ xs: 12, sm: 6 }}>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Switch
-                                                            checked={openNewTab}
-                                                            onChange={(e) => setOpenNewTab(e.target.checked)}
-                                                        />
-                                                    }
-                                                    label='Yeni Sekmede Aç'
-                                                />
-                                            </Grid>
+                                            {/* Yeni Sekmede Aç - Başlık tipinde gösterme */}
+                                            {menuType !== 'heading' && (
+                                                <Grid size={{ xs: 12, sm: 6 }}>
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Switch
+                                                                checked={openNewTab}
+                                                                onChange={(e) => setOpenNewTab(e.target.checked)}
+                                                            />
+                                                        }
+                                                        label='Yeni Sekmede Aç'
+                                                    />
+                                                </Grid>
+                                            )}
                                         </Grid>
                                     </CardContent>
                                 </Card>

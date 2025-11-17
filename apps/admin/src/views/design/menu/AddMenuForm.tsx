@@ -40,16 +40,17 @@ const AddMenuForm = () => {
 
     // Form state
     const [name, setName] = useState('')
-    const [menuType, setMenuType] = useState<'link' | 'category' | 'page'>('link')
+    const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'heading'>('link')
     const [linkUrl, setLinkUrl] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [categoryLevel, setCategoryLevel] = useState<1 | 2>(1)
     const [pageId, setPageId] = useState('')
+    const [headingText, setHeadingText] = useState('')
     const [openNewTab, setOpenNewTab] = useState(false)
     const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile'>('header')
     const [rowLevel, setRowLevel] = useState<1 | 2>(1)
     const [parentId, setParentId] = useState('')
-    const [order, setOrder] = useState(0)
+    const [order, setOrder] = useState(999)
     const [isActive, setIsActive] = useState(true)
 
     // Options state
@@ -154,7 +155,6 @@ const AddMenuForm = () => {
             toast.error('Sayfa seçimi zorunludur')
             return false
         }
-
         if (rowLevel === 2 && !parentId) {
             toast.error('Alt menü için ana menü seçmelisiniz')
             return false
@@ -181,7 +181,7 @@ const AddMenuForm = () => {
                     ...(menuType === 'category' && { categoryId, categoryLevel }),
                     ...(menuType === 'page' && { pageId })
                 },
-                openNewTab,
+                openNewTab: menuType === 'heading' ? false : openNewTab,
                 displayArea,
                 rowLevel,
                 ...(rowLevel === 2 && { parentId }),
@@ -257,6 +257,9 @@ const AddMenuForm = () => {
                                                         <MenuItem key="link" value='link'>Bağlantı</MenuItem>
                                                         <MenuItem key="category" value='category'>Kategori</MenuItem>
                                                         <MenuItem key="page" value='page'>Sayfa</MenuItem>
+                                                        {rowLevel === 2 && (
+                                                            <MenuItem key="heading" value='heading'>Başlık</MenuItem>
+                                                        )}
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
@@ -296,7 +299,6 @@ const AddMenuForm = () => {
                                                             <Autocomplete
                                                                 value={categories.find(cat => cat._id === categoryId) || null}
                                                                 onChange={(event, newValue) => {
-                                                                    console.log('Seçilen kategori:', newValue?._id)
                                                                     setCategoryId(newValue?._id || '')
                                                                 }}
                                                                 options={categories}
@@ -317,6 +319,7 @@ const AddMenuForm = () => {
                                                     </Grid>
                                                 </>
                                             )}
+
                                             {/* Sayfa Seçimi - Sadece menuType: page ise */}
                                             {menuType === 'page' && (
                                                 <Grid size={{ xs: 12 }}>
@@ -342,7 +345,6 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-
                                             {/* Sıralama */}
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <TextField
@@ -354,18 +356,20 @@ const AddMenuForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Yeni Sekmede Aç */}
-                                            <Grid size={{ xs: 12, sm: 6 }}>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Switch
-                                                            checked={openNewTab}
-                                                            onChange={(e) => setOpenNewTab(e.target.checked)}
-                                                        />
-                                                    }
-                                                    label='Yeni Sekmede Aç'
-                                                />
-                                            </Grid>
+                                            {/* Yeni Sekmede Aç - Başlık tipinde gösterme */}
+                                            {menuType !== 'heading' && (
+                                                <Grid size={{ xs: 12, sm: 6 }}>
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Switch
+                                                                checked={openNewTab}
+                                                                onChange={(e) => setOpenNewTab(e.target.checked)}
+                                                            />
+                                                        }
+                                                        label='Yeni Sekmede Aç'
+                                                    />
+                                                </Grid>
+                                            )}
                                         </Grid>
                                     </CardContent>
                                 </Card>

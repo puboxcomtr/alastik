@@ -24,6 +24,43 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
 
     const closeMenu = () => handleClose();
 
+    // Alt menüleri başlıklara göre grupla
+    const groupChildrenByHeading = (children: any[]) => {
+        const groups: { heading: string; items: any[] }[] = [];
+        let currentGroup: { heading: string; items: any[] } | null = null;
+
+        children.forEach((child) => {
+            if (child.menuType === 'heading') {
+                // Yeni başlık geldi, yeni grup başlat
+                if (currentGroup) {
+                    groups.push(currentGroup);
+                }
+                currentGroup = {
+                    heading: child.name,
+                    items: []
+                };
+            } else {
+                // Başlık değilse, mevcut gruba ekle
+                if (currentGroup) {
+                    currentGroup.items.push(child);
+                } else {
+                    // Henüz başlık yoksa, başlıksız grup oluştur
+                    currentGroup = {
+                        heading: '',
+                        items: [child]
+                    };
+                }
+            }
+        });
+
+        // Son grubu ekle
+        if (currentGroup) {
+            groups.push(currentGroup);
+        }
+
+        return groups;
+    };
+
     return (
         <Nav as="ul" className="navbar-nav align-items-baseline align-items-lg-center position-relative">
             {menus.map((menu) => {
@@ -43,6 +80,9 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                     );
                 }
 
+                // Alt menüleri başlıklara göre grupla
+                const groupedChildren = groupChildrenByHeading(menu.children);
+
                 // Alt menüsü varsa MegaMenu
                 return (
                     <MegaItem
@@ -51,20 +91,25 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                         title={menu.name}
                     >
                         <div className="p-4 d-flex flex-column flex-lg-row gap-4">
-                            {menu.children.map((child) => (
-                                <div style={{ minWidth: '190px' }} key={child._id}>
-                                    <div className="h6 mb-2">{child.name}</div>
-                                    {child.children && child.children.length > 0 && (
+                            {groupedChildren.map((group, groupIndex) => (
+                                <div style={{ minWidth: '190px' }} key={`group-${groupIndex}`}>
+                                    {/* Başlık varsa göster */}
+                                    {group.heading && (
+                                        <div className="h6 mb-2">{group.heading}</div>
+                                    )}
+
+                                    {/* Başlık altındaki linkler */}
+                                    {group.items.length > 0 && (
                                         <ul className="nav flex-column gap-2 mt-0">
-                                            {child.children.map((subChild) => (
-                                                <li className="d-flex w-100 pt-1" key={subChild._id}>
+                                            {group.items.map((item) => (
+                                                <li className="d-flex w-100 pt-1" key={item._id}>
                                                     <Link
-                                                        href={getMenuUrl(subChild)}
+                                                        href={getMenuUrl(item)}
                                                         className="nav-link fw-normal text-truncate p-0 text-muted fs-sm animate-underline animate-target"
                                                         onClick={closeMenu}
-                                                        target={subChild.openNewTab ? '_blank' : undefined}
+                                                        target={item.openNewTab ? '_blank' : undefined}
                                                     >
-                                                        {subChild.name}
+                                                        {item.name}
                                                     </Link>
                                                 </li>
                                             ))}

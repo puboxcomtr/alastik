@@ -34,13 +34,41 @@ const MenuTable = () => {
             setLoading(true)
             const result = await fetchMenus()
             if (result.success) {
-                setData(result.flatData || [])
+                const sortedData = sortMenusHierarchically(result.flatData || [])
+                setData(sortedData)
             }
         } catch (error: any) {
             toast.error(error.message || 'Menüler yüklenemedi')
         } finally {
             setLoading(false)
         }
+    }
+
+    const sortMenusHierarchically = (menus: MenuType[]) => {
+        const parentMenus = menus
+            .filter(m => m.rowLevel === 1)
+            .sort((a, b) => a.order - b.order)
+
+        const result: MenuType[] = []
+        parentMenus.forEach(parent => {
+            result.push(parent)
+            const children = menus
+                .filter(m => {
+                    const parentId = typeof m.parentId === 'string' ? m.parentId : m.parentId?._id
+                    return m.rowLevel === 2 && parentId === parent._id
+                })
+                .sort((a, b) => a.order - b.order)
+
+            result.push(...children)
+        })
+        const orphans = menus.filter(m => {
+            if (m.rowLevel !== 2) return false
+            const parentId = typeof m.parentId === 'string' ? m.parentId : m.parentId?._id
+            return !parentMenus.find(p => p._id === parentId)
+        })
+        result.push(...orphans)
+
+        return result
     }
 
     useEffect(() => {
@@ -73,29 +101,10 @@ const MenuTable = () => {
             setMenuToDelete(null)
         }
     }
-
-    const getMenuTypeLabel = (type: string) => {
-        const types: Record<string, string> = {
-            link: 'Link',
-            category: 'Kategori',
-            page: 'Sayfa'
-        }
-        return types[type] || type
-    }
-
-    const getDisplayAreaLabel = (area: string) => {
-        const areas: Record<string, string> = {
-            header: 'Header',
-            footer: 'Footer',
-            mobile: 'Mobil'
-        }
-        return areas[area] || area
-    }
-
     const columns = [
         columnHelper.accessor('_id', {
             header: 'ID',
-            cell: ({ row }) => <Typography variant='body2'>#{row.index + 1}</Typography>
+            cell: ({ row }) => <Typography variant='body2'>{row.index + 1}</Typography>
         }),
         columnHelper.accessor('name', {
             header: 'Menü Adı',
@@ -117,22 +126,19 @@ const MenuTable = () => {
                 const menu = row.original
                 let displayText = '-'
                 let typeLabel = ''
-                let color: 'default' | 'primary' | 'secondary' | 'success' = 'default'
-                let url = ''
 
                 if (menu.menuType === 'link') {
                     typeLabel = 'Bağlantı'
                     displayText = menu.linkData?.url || '-'
-                    url = menu.linkData?.url || ''
-                    color = 'primary'
                 } else if (menu.menuType === 'category') {
                     typeLabel = 'Kategori'
                     displayText = menu.linkData?.categoryName || `Kategori ID: ${menu.linkData?.categoryId || '-'}`
-                    color = 'secondary'
                 } else if (menu.menuType === 'page') {
                     typeLabel = 'Sayfa'
                     displayText = menu.linkData?.pageTitle || `Sayfa ID: ${menu.linkData?.pageId || '-'}`
-                    color = 'success'
+                } else if (menu.menuType === 'heading') {
+                    typeLabel = 'Başlık'
+                    displayText = 'Sadece Başlık (Link Yok)'
                 }
 
                 return (
@@ -151,8 +157,11 @@ const MenuTable = () => {
                                         color='primary'
                                         onClick={() => {
                                             if (menu.menuType === 'link') {
+                                                window.open(menu.linkData?.url, menu.openNewTab ? '_blank' : '_self')
                                             } else if (menu.menuType === 'category') {
+                                                // Kategori URL'si
                                             } else if (menu.menuType === 'page') {
+                                                // Sayfa URL'si
                                             }
                                         }}
                                     >
@@ -176,9 +185,11 @@ const MenuTable = () => {
         columnHelper.accessor('isActive', {
             header: 'Durum',
             cell: ({ row }) => (
-                <Typography>
-                    {row.original.isActive ? 'Aktif' : 'Pasif'}
-                </Typography>
+                <Chip
+                    label={row.original.isActive ? 'Aktif' : 'Pasif'}
+                    color={row.original.isActive ? 'success' : 'default'}
+                    size="small"
+                />
             )
         }),
         columnHelper.display({
@@ -277,7 +288,6 @@ const MenuTable = () => {
                 </div>
             </Card>
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={deleteConfirmOpen} onClose={handleDeleteCancel}>
                 <DialogTitle>Menüyü Sil</DialogTitle>
                 <DialogContent>

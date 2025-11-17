@@ -56,7 +56,6 @@ router.get('/header', async (req, res) => {
             return enriched;
         }));
 
-        // Hiyerarşik yapı oluştur
         const menuMap = new Map();
         const roots = [];
 

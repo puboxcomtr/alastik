@@ -180,7 +180,7 @@ router.get('/', async (req, res) => {
         res.json({
             success: true,
             data: menuTree,
-            flatData: enrichedMenus 
+            flatData: enrichedMenus
         });
     } catch (error) {
         console.error('Menü listele hatası:', error);
@@ -233,7 +233,8 @@ router.post('/', async (req, res) => {
             });
         }
 
-        if (!menuType || !['link', 'category', 'page'].includes(menuType)) {
+        // 'heading' eklendi
+        if (!menuType || !['link', 'category', 'page', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
@@ -275,7 +276,6 @@ router.post('/', async (req, res) => {
                 message: 'Sayfa seçimi zorunludur'
             });
         }
-
         const newMenu = new Menu({
             name: name.trim(),
             menuType,
@@ -318,7 +318,7 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // Validasyonlar (create ile aynı)
+        // Validasyonlar
         if (!name || !name.trim()) {
             return res.status(400).json({
                 success: false,
@@ -326,10 +326,40 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        // 'heading' eklendi
+        if (!menuType || !['link', 'category', 'page', 'heading'].includes(menuType)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Geçerli bir menü tipi seçmelisiniz'
+            });
+        }
+
         if (rowLevel === 2 && !parentId) {
             return res.status(400).json({
                 success: false,
                 message: 'Alt menü için ana menü seçmelisiniz'
+            });
+        }
+
+        // linkData validasyonu
+        if (menuType === 'link' && (!linkData.url || !linkData.url.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: 'Link URL adresi zorunludur'
+            });
+        }
+
+        if (menuType === 'category' && !linkData.categoryId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Kategori seçimi zorunludur'
+            });
+        }
+
+        if (menuType === 'page' && !linkData.pageId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Sayfa seçimi zorunludur'
             });
         }
 
