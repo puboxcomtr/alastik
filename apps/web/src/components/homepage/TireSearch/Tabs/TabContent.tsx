@@ -67,10 +67,6 @@ export default function TabContent({
                     value={mevsim}
                     onChange={(e) => setMevsim(e.target.value)}
                     required
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openModal("tireSize");
-                    }}
                   >
                     <option value="1">Tümü</option>
                     <option value="2">Yaz Lastiği</option>

@@ -8,6 +8,7 @@ import { api } from '@/src/lib/api';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 
+
 export default function RegisterView() {
     const router = useRouter();
     const { t } = useTranslations('form');

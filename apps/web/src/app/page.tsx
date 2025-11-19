@@ -156,22 +156,22 @@ export default function Home() {
         <DraggableBanner />
 
         {/* Product Showcase */}
-        <ProductShowCase />
+        {/* <ProductShowCase /> */}
 
         {/* Product Single Slider */}
-        <SingleShowCase />
+        {/* <SingleShowCase /> */}
 
         {/* Two Banner */}
         <Banner />
 
         {/* Product Showcase */}
-        <ProductShowCase />
+        {/* <ProductShowCase /> */}
 
         {/* Two Banner */}
         <Banner />
 
         {/* ProductShowcase */}
-        <ProductShowCase />
+        {/* <ProductShowCase /> */}
 
         {/* Customer Comments */}
         <Testimonials />

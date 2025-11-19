@@ -17,6 +17,10 @@ import Price from "@/src/components/category/Sidebar/Price";
 import Properties from "@/src/components/category/Sidebar/Properties";
 import Fuel from "@/src/components/category/Sidebar/Fuel";
 
+interface SidebarProps {
+    categorySlug?: string;
+    currentFilters?: { [key: string]: string };
+}
 export default function Sidebar() {
     return (
         <div>

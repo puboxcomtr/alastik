@@ -1,52 +1,10 @@
 import { useState, useEffect } from 'react'
 
+import type { ThemeSettings } from '@src/types/theme';
+import { useSettings } from '@src/context/SettingsContext';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082'
-
-export interface ThemeSettings {
-    logo?: string
-    footerLogo?: string
-    footerSslImage?: string
-    defaultCatalogImage?: string
-    brandDisplayType?: string
-    showcaseDisplayCount?: string
-    blogDisplayCount?: string
-    isActive?: boolean
-    isBrand?: boolean
-    isTax?: boolean
-    isFacebook?: boolean
-    isGoogle?: boolean
-    isLazyLoad?: boolean
-    footerMobile?: string
-    newsletterTitle?: string
-    newsletterContent?: string
-    seoTitle?: string
-    facebook?: string
-    instagram?: string
-    twitter?: string
-    youtube?: string
-    linkedin?: string
-    whatsapp?: string
-    trendyol?: string
-    hepsiburada?: string
-    pttavm?: string
-    pazarama?: string
-    n11?: string
-    idefix?: string
-    homepage?: boolean
-    sliderSelect?: string
-    mobileSelect?: string
-    autostart?: boolean
-    showcaseFirst?: string
-    showcasenameFirst?: string
-    showcasesubFirst?: string
-    showcaseSecond?: string
-    showcasenameSecond?: string
-    showcasesubSecond?: string
-    showcaseThird?: string
-    showcasenameThird?: string
-    showcasesubThird?: string
-}
 
 export const useThemeSettings = () => {
     const [settings, setSettings] = useState<ThemeSettings | null>(null)

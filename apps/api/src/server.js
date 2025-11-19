@@ -47,7 +47,7 @@ const WebCategory = require('./models/WebCategory');
 const WebBrand = require('./models/WebBrand');
 const WebTag = require('./models/WebTag');
 const Page = require('./models/Page');
-const Menu  = require('./models/Menu');
+const Menu = require('./models/Menu');
 
 
 // Legacy and internal models
@@ -354,6 +354,27 @@ app.use('/api/search', require('./routes/user/catalog/search'));
 
 /* Login */
 app.use('/api/auth', require('./routes/web/user/auth'));
+
+/* Web Settings */
+const webSettingsRoutes = require('./routes/web/other/settings');
+app.use('/api/settings', webSettingsRoutes);
+
+/* Theme Settings */
+const webDesignRoutes = require('./routes/web/other/theme');
+app.use('/api/theme', webDesignRoutes);
+
+/* Product Brand  */
+const webBrandsRoutes = require('./routes/web/catalog/brands');
+app.use('/api/brands', webBrandsRoutes);
+
+/* Kategori Detay & Filtreleme */
+const webCategoryRoutes = require('./routes/web/catalog/categories');
+app.use('/api/categories', webCategoryRoutes);
+
+const webProductsRoutes = require('./routes/web/catalog/products');
+app.use('/api/products', webProductsRoutes);
+
+/* Anasayfa Filtreleme */
 
 /* Header Menu */
 

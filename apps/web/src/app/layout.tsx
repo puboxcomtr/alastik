@@ -12,7 +12,6 @@ import "react-toastify/dist/ReactToastify.css";
 // Styles
 import "bootstrap/dist/css/bootstrap.min.css";
 import './globals.css';
-import "../styles/toast.css";
 import 'remixicon/fonts/remixicon.css';
 
 // Library
@@ -32,6 +31,10 @@ import { imageHostnameManager } from '../lib/imageHostnameManager';
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
 import Modal from '@components/ui/Modal';
 
+/* Theme Settings */
+import { getThemeSettings } from '@src/services/themeService';
+import { SettingsProvider } from '@src/context/SettingsContext';
+
 // Inter
 const inter = Inter({
   subsets: ["latin"],
@@ -45,22 +48,25 @@ export const metadata: Metadata = {
   description: "Kaliteli lastik çeşitleri ve uygun fiyatlarla ALastik.com'da!",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const themeSettings = await getThemeSettings();
   return (
     <html lang="tr">
       <MetaHead />
       <body className={inter.variable}>
-        <ThemeRegistry>
-          <Header />
-          {children}
-          <Footer />
-          <Modal />
-          <TireSearchClient />
-        </ThemeRegistry>
+        <SettingsProvider initialTheme={themeSettings}>
+          <ThemeRegistry>
+            <Header />
+            {children}
+            <Footer />
+            <Modal />
+            <TireSearchClient />
+          </ThemeRegistry>
+        </SettingsProvider>
 
         {/* Toast Container */}
         <ToastContainer

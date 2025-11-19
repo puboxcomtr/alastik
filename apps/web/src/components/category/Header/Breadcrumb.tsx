@@ -1,46 +1,58 @@
+// apps/web/src/components/category/Header/Breadcrumb.tsx
 "use client";
-
 import Link from "next/link";
+import { ROUTES } from '@/src/config/routes';
 
-interface BreadcrumbProps {
-  categorySlug?: string;
-}
+/* Type */
+import type { BreadcrumbProps } from '@/src/types/category';
 
-export default function Breadcrumb({ categorySlug }: BreadcrumbProps) {
-  // Fake JSON data
-  const categories = [
-    { slug: "lastikler", name: "Lastikler", parent: null },
-    { slug: "yaz-lastigi", name: "Yaz Lastiği", parent: "lastikler" },
-    { slug: "kis-lastigi", name: "Kış Lastiği", parent: "lastikler" },
-    { slug: "4-mevsim", name: "4 Mevsim Lastiği", parent: "lastikler" },
-  ];
+/* * Internal Imports  */
+import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 
-  const category = categories.find((c) => c.slug === categorySlug);
-  const parentCategory = category
-    ? categories.find((c) => c.slug === category.parent)
-    : null;
+export default function Breadcrumb({
+  categoryName,
+  categorySlug,
+  parentCategory,
+  sizeInfo
+}: BreadcrumbProps) {
+  const { t } = useTranslations('general');
 
   return (
-    <nav className="container pt-1 my-1 my-md-3" aria-label="breadcrumb">
+    <nav aria-label="breadcrumb">
       <ol className="breadcrumb">
+        {/* Ana Sayfa */}
         <li className="breadcrumb-item">
-          <Link href="/" className="text-decoration-none">
-            Anasayfa
+          <Link href={ROUTES.HOME} className="text-decoration-none">
+            {t('home')}
           </Link>
         </li>
+        {/* Parent Kategori (varsa) */}
         {parentCategory && (
           <li className="breadcrumb-item">
             <Link
-              href={`/category/${parentCategory.slug}`}
+              href={`${ROUTES.CATEGORY}/${parentCategory.slug}`}
               className="text-decoration-none"
             >
               {parentCategory.name}
             </Link>
           </li>
         )}
-        {category && (
+
+        {/* Mevcut Kategori */}
+        <li className={`breadcrumb-item ${!sizeInfo ? 'active' : ''}`} aria-current={!sizeInfo ? 'page' : undefined}>
+          {sizeInfo ? (
+            <Link href={`${ROUTES.CATEGORY}/${categorySlug}`} className="text-decoration-none">
+              {categoryName}
+            </Link>
+          ) : (
+            categoryName
+          )}
+        </li>
+
+        {/* Lastik Ebadı (varsa) */}
+        {sizeInfo && (
           <li className="breadcrumb-item active" aria-current="page">
-            {category.name}
+            {sizeInfo.formatted}
           </li>
         )}
       </ol>

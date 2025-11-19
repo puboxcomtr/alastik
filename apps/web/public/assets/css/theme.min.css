@@ -7807,9 +7807,19 @@ fieldset:disabled .btn {
 }
 
 .text-truncate {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap
+}
+
+.text-truncates {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    height: 38px;
+    overflow: hidden;
+
 }
 
 .vr {
@@ -17006,6 +17016,14 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
     margin: calc(var(--cz-card-cap-padding-y)*-1) calc(var(--cz-card-cap-padding-x)*-1)
 }
 
+.productImage {
+    width: 100%;
+    height: 250px;
+    object-fit: contain;
+    object-position: center;
+    background-color: #fff;
+}
+
 .product-card {
     position: relative;
     border: 1px solid #e5e9dd;
@@ -18746,7 +18764,7 @@ span.flatpickr-weekday {
 
 /* Banner */
 #main_tire_search {
-    background: url("../img/bg/bg_slider.webp");
+    background: url("../img/bg/bg_slider.jpg");
     background-repeat: no-repeat;
     height: 570px;
     margin-bottom: 4rem;
@@ -18763,7 +18781,8 @@ span.flatpickr-weekday {
 }
 
 /* Product Slider */
-.featured_products .swiper-horizontal>.swiper-pagination-bullets, .featured_products .swiper-pagination-bullets.swiper-pagination-horizontal{
+.featured_products .swiper-horizontal>.swiper-pagination-bullets,
+.featured_products .swiper-pagination-bullets.swiper-pagination-horizontal {
     bottom: 0 !important;
 }
 
@@ -18788,7 +18807,7 @@ span.flatpickr-weekday {
     color: #9b9b9b
 }
 
- .red_footer {
+.red_footer {
     background-color: var(--cz-primary);
     display: flex;
     flex-direction: column;
@@ -18797,36 +18816,36 @@ span.flatpickr-weekday {
     border-radius: 16px;
 }
 
- .red_footer a {
+.red_footer a {
     color: #FFF;
     text-decoration: none;
 }
 
- .red_footer p.footer__text {
+.red_footer p.footer__text {
     margin-top: 1rem;
 }
 
 
- #footer__social a {
+#footer__social a {
     background: #000;
     border-radius: 100%;
 }
 
- #footer__social a i {
+#footer__social a i {
     color: #FFF;
 }
 
- #footer__middle strong {
+#footer__middle strong {
     color: #FFF;
     font-size: .8rem;
 }
 
- #footer__middle span {
+#footer__middle span {
     color: #9b9b9b;
     font-size: .8rem;
 }
 
- .merchant a {
+.merchant a {
     padding: 12px 16px;
     border-radius: 4px;
     box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .03);

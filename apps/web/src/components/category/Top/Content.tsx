@@ -1,15 +1,23 @@
+// apps/web/src/components/category/Top/Content.tsx
+
 "use client";
 
 import { useState } from "react";
-/* Library */
 import { Offcanvas, Button } from "react-bootstrap";
-/* MUI */
-import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
+import { Grid, TextField, MenuItem, Typography, FormControl } from "@mui/material";
 
-export default function CategoryTop() {
-    /* Input Conts */
+interface CategoryTopProps {
+    productCount?: number;
+    categoryName?: string;
+}
+
+export default function CategoryTop({
+    productCount = 0,
+    categoryName = "Ürünler"
+}: CategoryTopProps) {
     const [order, setOrder] = useState("all");
     const [filter, setFilter] = useState("default");
+
     return (
         <div>
             <div className="offcanvas-lg offcanvas-start pe-lg-4" id="filterSidebar">
@@ -26,7 +34,7 @@ export default function CategoryTop() {
                 <Grid container className="border-bottom pb-4 mb-4">
                     <Grid size={6}>
                         <Typography className='fw-bold' sx={{ fontSize: "14px" }}>
-                            42996  eşleşen ürün bulundu
+                            {productCount.toLocaleString('tr-TR')} eşleşen ürün bulundu
                         </Typography>
                     </Grid>
                     <Grid size={6} className="d-flex justify-content-end">
@@ -71,14 +79,14 @@ export default function CategoryTop() {
                                 </TextField>
                             </FormControl>
                         </Grid>
-                        <Grid size={6} sx={{ml: '20px'}}>
+                        <Grid size={6} sx={{ ml: '20px' }}>
                             <FormControl fullWidth>
                                 <TextField
                                     select
                                     fullWidth
                                     label=""
                                     size="small"
-                                    defaultValue="all"
+                                    defaultValue="default"
                                     variant="outlined"
                                     value={filter}
                                     onChange={(e) => setFilter(e.target.value)}

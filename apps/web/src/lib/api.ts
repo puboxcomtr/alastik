@@ -32,19 +32,33 @@ class ApiClient {
 
     /* Wheel Size API */
     wheelSize = {
-        getMakes: () => this.get<any>('/wheelsize/makes'),
-        getModels: (make: string) => this.get<any>(`/wheelsize/makes/${make}/models`),
-        getYears: (make: string, model: string) => this.get<any>(`/wheelsize/makes/${make}/models/${model}/years`),
-        getGenerations: (make: string, model: string, year: number) => this.get<any>(`/wheelsize/makes/${make}/models/${model}/years/${year}/generations`),
+        getMakes: (region?: string) => {
+            const params = region ? `?region=${region}` : '';
+            return this.get<any>(`/wheelsize/makes${params}`);
+        },
+
+        getModels: (make: string, region?: string) => {
+            const params = region ? `&region=${region}` : '';
+            return this.get<any>(`/wheelsize/models?make=${encodeURIComponent(make)}${params}`);
+        },
+
+        getYears: (make: string, model: string) => {
+            return this.get<any>(`/wheelsize/years?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`);
+        },
+
+        getGenerations: (make: string, model: string, year: number) => {
+            return this.get<any>(`/wheelsize/generations?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&year=${year}`);
+        },
+
         getModifications: (make: string, model: string, year: number, generation?: string) => {
-            const url = generation
-                ? `/wheelsize/makes/${make}/models/${model}/years/${year}/modifications?generation=${generation}`
-                : `/wheelsize/makes/${make}/models/${model}/years/${year}/modifications`;
-            return this.get<any>(url);
+            const params = generation ? `&generation=${encodeURIComponent(generation)}` : '';
+            return this.get<any>(`/wheelsize/modifications?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&year=${year}${params}`);
+        },
+
+        getVehicleDetails: (make: string, model: string, year: number, modification: string) => {
+            return this.get<any>(`/wheelsize/vehicle-details?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&year=${year}&modification=${encodeURIComponent(modification)}`);
         }
     };
-
-    /* Vehicle API */
     vehicle = {
         getAll: async () => {
             const res = await fetch(`${this.baseUrl}/user/vehicles`, {
@@ -213,7 +227,7 @@ class ApiClient {
         const endpoint = category ? `/translations/category/${category}` : '/translations';
         return this.get<Record<string, string>>(endpoint);
     }
-    /* Header Menu */ 
+    /* Header Menu */
     menu = {
         getHeader: async () => {
             return this.get<any>('/menus/header');
