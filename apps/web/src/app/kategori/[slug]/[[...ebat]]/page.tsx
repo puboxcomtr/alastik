@@ -67,9 +67,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const { slug, ebat } = await params;
     const filters = await searchParams;
 
-    console.log('📄 searchParams:', filters); // 👈 Ekle
-    console.log('📄 filters.page:', filters.page); // 👈 Ekle
-
     const hasSize = ebat && ebat.length > 0;
     const category = hasSize
         ? await getCategoryWithSize(slug, ebat[0])
@@ -88,7 +85,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
     // Sayfa numarasını al
     const currentPage = parseInt(filters.page || '1');
-    console.log('📄 currentPage:', currentPage); // 👈 Ekle
 
     // Ürünleri filtrele (pagination ile)
     const productsData = await filterProducts({
@@ -99,7 +95,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         page: currentPage,
         limit: showcaseSettings.productsPerPage
     });
-    console.log('📦 productsData.pagination:', productsData?.pagination); // 👈 Ekle
 
     const displayProductCount = productsData?.pagination?.totalProducts ?? category.activeProductCount;
 

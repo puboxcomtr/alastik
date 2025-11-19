@@ -16,10 +16,20 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
 
         const url = `/products/filter?${queryParams.toString()}`;
         const result = await api.get<ProductFilterResponse>(url);
-
         return result.success && result.data ? result.data : null;
     } catch (error) {
-        console.error('❌ Ürün filtreleme hatası:', error);
         return null;
+    }
+}
+
+// Rastgele ürünler için yeni fonksiyon
+export async function getRandomProducts(limit: number = 10) {
+    try {
+        const url = `/products/filter?limit=${limit}`;
+        const result = await api.get<ProductFilterResponse>(url);
+
+        return result.success && result.data?.products ? result.data.products : [];
+    } catch (error) {
+        return [];
     }
 }

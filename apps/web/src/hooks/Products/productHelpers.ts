@@ -91,6 +91,31 @@ export const getProductStockCode = (product: Product): string => {
         '-';
 };
 /**
+ * Mevcut import'ların altına ekle 
+ * */
+export async function getRandomProducts(limit: number = 3) {
+    try {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/products/filter?limit=${limit}&random=true`,
+            {
+                cache: 'no-store',
+                next: { revalidate: 0 }
+            }
+        );
+
+        if (!response.ok) {
+            console.error('Random products fetch failed:', response.status);
+            return [];
+        }
+
+        const data = await response.json();
+        return data.success && data.data?.products ? data.data.products : [];
+    } catch (error) {
+        console.error('Random products error:', error);
+        return [];
+    }
+}
+/**
  * Ürün mevsim bilgisini getir
  */
 export const getProductSeason = (product: Product): { text: string; icon: string } | null => {

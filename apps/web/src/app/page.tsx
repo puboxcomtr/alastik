@@ -156,7 +156,7 @@ export default function Home() {
         <DraggableBanner />
 
         {/* Product Showcase */}
-        {/* <ProductShowCase /> */}
+        <ProductShowCase /> 
 
         {/* Product Single Slider */}
         {/* <SingleShowCase /> */}

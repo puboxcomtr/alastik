@@ -46,6 +46,7 @@ const WebProduct = require('./models/WebProduct');
 const WebCategory = require('./models/WebCategory');
 const WebBrand = require('./models/WebBrand');
 const WebTag = require('./models/WebTag');
+const WebSlider = require('./models/web/design/WebSlider');
 const Page = require('./models/Page');
 const Menu = require('./models/Menu');
 
@@ -371,6 +372,11 @@ app.use('/api/brands', webBrandsRoutes);
 const webCategoryRoutes = require('./routes/web/catalog/categories');
 app.use('/api/categories', webCategoryRoutes);
 
+/* Slider */
+const webSliderRoutes = require('./routes/web/design/slider');
+app.use('/api/design/slider', webSliderRoutes);
+
+/* Products */
 const webProductsRoutes = require('./routes/web/catalog/products');
 app.use('/api/products', webProductsRoutes);
 
