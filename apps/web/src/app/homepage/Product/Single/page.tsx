@@ -2,10 +2,14 @@
 import React from 'react';
 
 /* Components */
-import SingleShowcase from '@components/shop/Product/Showcase/Single'; 
+import SingleShowcase from '@components/shop/Product/Showcase/Single';
 
-export default function SingleProduct() {
+type Props = {
+  showcaseKey?: 'first' | 'second' | 'third' | 'fourth' | 'fifth';
+}
+
+export default function SingleProduct({ showcaseKey = 'third' }: Props) {
   return (
-    <SingleShowcase />
+    <SingleShowcase showcaseKey={showcaseKey} />
   );
 }

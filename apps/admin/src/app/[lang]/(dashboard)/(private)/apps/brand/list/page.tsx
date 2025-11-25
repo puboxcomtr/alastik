@@ -32,6 +32,8 @@ async function fetchBrands() {
       diaKey: brand.diaKey || '',
       webVisible: brand.webVisible !== false,
       webOrder: brand.webOrder || 0,
+      showOnHomepage: brand.showOnHomepage || false,
+      homepageOrder: brand.homepageOrder || 0,
       status: brand.status || 'Inactive',
       seoTitle: brand.seoTitle || brand.name || '',
       seoDescription: brand.seoDescription || `${brand.name} markası ürünleri`,

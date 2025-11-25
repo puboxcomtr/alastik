@@ -13,7 +13,6 @@ import { ProductCardProps } from '@src/types/products';
 import { useSettings } from '@src/context/SettingsContext';
 import { getBrandByName } from '@/src/services/brandService';
 import { getBrandDisplay } from '@/src/hooks/Products/brandHelpers';
-import SeasonIcon from '@/src/components/icons/SeasonIcon';
 import {
     getProductUrl,
     getProductPrice,
@@ -33,7 +32,6 @@ export default function ProductCard({ product }: ProductCardProps) {
     const { theme } = useSettings();
     const { t } = useTranslations('general');
 
-    // Marka bilgisini çek
     useEffect(() => {
         const fetchBrand = async () => {
             const response = await getBrandByName(product.diaData.marka);
@@ -49,7 +47,6 @@ export default function ProductCard({ product }: ProductCardProps) {
         setIsFavorite((prev) => !prev);
     };
 
-    // Helper'lardan verileri al
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
     const originalPrice = getProductOriginalPrice(product);

@@ -1,23 +1,47 @@
+// apps/web/src/components/layout/TireSearchClient.tsx
 "use client";
 
-import TireSearchModal from "@components/layout/Modals/TireSearch";
+import { useState } from 'react';
+import TireSearchModal from "@/src/components/layout/Modals/TireSearch";
 
 export default function TireSearchClient() {
-    const handleAracaGoreArama = (searchData: any) => {
-        console.log("[GLOBAL] Modal arama tamamlandı:", searchData);
-        // Kategori URL oluştur
-        const searchParams = new URLSearchParams({
+    const [open, setOpen] = useState(false);
+
+    const handleSearchComplete = (searchData: any) => {
+        console.log("[TIRE SEARCH CLIENT] Arama tamamlandı:", searchData);
+
+        const params = new URLSearchParams({
             tip: "arac",
             marka: searchData.marka,
             model: searchData.model,
             yil: searchData.yil,
-            ...(searchData.modifikasyon && { modifikasyon: searchData.modifikasyon }),
         });
 
-        const categoryUrl = `/category?${searchParams.toString()}`;
-        try { sessionStorage.setItem("force_category_url", categoryUrl); } catch { }
+        if (searchData.modifikasyon) {
+            params.append("modifikasyon", searchData.modifikasyon);
+        }
+
+        const categoryUrl = `/category?${params.toString()}`;
+
+        try {
+            sessionStorage.setItem("force_category_url", categoryUrl);
+        } catch (e) {
+            console.warn("SessionStorage yazma hatası:", e);
+        }
+
         window.location.replace(categoryUrl);
     };
 
-    return <TireSearchModal onSearchComplete={handleAracaGoreArama} />;
+    // Global event listener - butona tıklanınca modal'ı aç
+    if (typeof window !== 'undefined') {
+        window.addEventListener('openTireSearchModal', () => setOpen(true));
+    }
+
+    return (
+        <TireSearchModal
+            open={open}
+            onClose={() => setOpen(false)}
+            onSearchComplete={handleSearchComplete}
+        />
+    );
 }

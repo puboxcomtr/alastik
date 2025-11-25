@@ -1,25 +1,79 @@
 'use client';
-import React from 'react';
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, EffectFade, Autoplay } from 'swiper/modules';
+import { Pagination, EffectFade, Autoplay } from 'swiper/modules';
 
-/* Swiper CSS */
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-/* Components */
-import ProductCard from '@components/shop/Product/Slide/Card';
+import ProductSlideCard from '@components/shop/Product/Slide/Card';
 
-export default function SingleProduct() {
+type ShowcaseData = {
+    key: string
+    title: string
+    subtitle: string
+    itemsPerRow: number
+    products: any[]
+}
+
+type Props = {
+    showcaseKey?: 'first' | 'second' | 'third' | 'fourth' | 'fifth'
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+
+export default function SingleProduct({ showcaseKey = 'third' }: Props) {
+    const [showcase, setShowcase] = useState<ShowcaseData | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchShowcase();
+    }, [showcaseKey]);
+
+    const fetchShowcase = async () => {
+        try {
+            const res = await fetch(`${API_URL}/showcases/public/homepage`)
+            const result = await res.json()
+
+            if (result.success && result.data) {
+                const found = result.data.find((s: ShowcaseData) => s.key === showcaseKey)
+                setShowcase(found || null)
+            }
+        } catch (error) {
+            console.error('Vitrin yüklenemedi:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Loading durumu
+    if (loading) {
+        return (
+            <section className="container pb-5 pb-md-0">
+                <div className="text-center py-5">
+                    <div className="spinner-border" role="status">
+                        <span className="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    // Veri yoksa gösterme
+    if (!showcase || !showcase.products || showcase.products.length === 0) {
+        return null;
+    }
+
     return (
         <section className="container pb-5 pb-md-0">
             <div className="row-fluid">
                 <div className="text-center py-3 py-md-2 mt-lg-5">
-                    <span style={{ color: '#e2001a' }}>A Lastik'le Serin Sürüş</span>
-                    <h3>Performanslı Lastik Modelleri</h3>
+                    {showcase.subtitle && (
+                        <span style={{ color: '#e2001a' }}>{showcase.subtitle}</span>
+                    )}
+                    {showcase.title && <h3>{showcase.title}</h3>}
                 </div>
                 <div className="position-relative px-4 px-md-3 px-lg-4">
                     <div className="row position-relative z-2 justify-content-center">
@@ -28,7 +82,7 @@ export default function SingleProduct() {
                             <Swiper
                                 modules={[Pagination, Autoplay]}
                                 spaceBetween={24}
-                                loop={true}
+                                loop={showcase.products.length > 1}
                                 speed={400}
                                 autoplay={{
                                     delay: 2000,
@@ -37,12 +91,11 @@ export default function SingleProduct() {
                                 pagination={{ clickable: true }}
                                 style={{ maxWidth: '416px' }}
                             >
-                                <SwiperSlide>
-                                    <ProductCard />
-                                </SwiperSlide>
-                                <SwiperSlide>
-                                    <ProductCard />
-                                </SwiperSlide>
+                                {showcase.products.map((product: any) => (
+                                    <SwiperSlide key={product._key}>
+                                        <ProductSlideCard product={product} />
+                                    </SwiperSlide>
+                                ))}
                             </Swiper>
                         </div>
 
@@ -51,7 +104,7 @@ export default function SingleProduct() {
                             <Swiper
                                 modules={[EffectFade, Autoplay]}
                                 allowTouchMove={false}
-                                loop={true}
+                                loop={showcase.products.length > 1}
                                 effect="fade"
                                 fadeEffect={{ crossFade: true }}
                                 autoplay={{
@@ -60,62 +113,30 @@ export default function SingleProduct() {
                                 }}
                                 style={{ width: '100%' }}
                             >
-                                <SwiperSlide>
-                                    <div
-                                        className=" d-flex align-items-center justify-content-center"
-                                    >
-                                        <span className="swipe_slider_text">
-                                            <h2 className="text-center" style={{ color: '#FFF' }}>
-                                                Goodyear Eagle F1 Asymmetric 6, aracınıza uyum sağlar ve yol sesini azaltır. Böylece yola daha iyi odaklanırsınız.
-                                            </h2>
-                                        </span>
-                                    </div>
-                                </SwiperSlide>
-                                <SwiperSlide>
-                                    <div
-                                        className=" d-flex align-items-center justify-content-center"
-                                    >
-                                        <span className="swipe_slider_text">
-                                            <h2 className="text-center" style={{ color: '#FFF' }}>
-                                                Pirelli <strong>Run Flat</strong> teknolojisi, havası inmiş lastikle sürüşe güvenle devam etmenizi sağlar.
-                                            </h2>
-                                        </span>
-                                    </div>
-                                </SwiperSlide>
+                                {showcase.products.map((product: any) => (
+                                    <SwiperSlide key={`text-${product._key}`}>
+                                        <div className="d-flex align-items-center justify-content-center">
+                                            <span className="swipe_slider_text">
+                                                <h2 className="text-center" style={{ color: '#FFF' }}>
+                                                    {product.diaData?.aciklama || 'Ürün'}
+                                                </h2>
+                                            </span>
+                                        </div>
+                                    </SwiperSlide>
+                                ))}
                             </Swiper>
                         </div>
                     </div>
 
-                    {/* Background slider */}
+                    {/* Background */}
                     <div className="position-absolute top-0 start-0 w-100 h-100 user-select-none rounded-5">
-                        <Swiper
-                            modules={[EffectFade, Autoplay]}
-                            loop={true}
-                            effect="fade"
-                            fadeEffect={{ crossFade: true }}
-                            autoplay={{
-                                delay: 2000,
-                                disableOnInteraction: false,
+                        <span
+                            className="position-absolute top-0 start-0 w-100 h-100 rounded-5"
+                            style={{
+                                background: `url('/assets/img/bg/good-year-background.jpg')`,
+                                backgroundSize: 'cover',
                             }}
-                            style={{ width: '100%', height: '100%' }}
-                        >
-                            <SwiperSlide>
-                                <span
-                                    className="position-absolute top-0 start-0 w-100 h-100 rounded-5 d-none-dark"
-                                    style={{
-                                        background: `url('/assets/img/bg/good-year-background.jpg')`,
-                                        backgroundSize: 'cover',
-                                    }}
-                                ></span>
-                                <span
-                                    className="position-absolute top-0 start-0 w-100 h-100 rounded-5 d-none d-block-dark"
-                                    style={{
-                                        background: `url('/assets/img/bg/good-year-background.jpg')`,
-                                        backgroundSize: 'cover',
-                                    }}
-                                ></span>
-                            </SwiperSlide>
-                        </Swiper>
+                        ></span>
                     </div>
                 </div>
             </div>

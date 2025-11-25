@@ -21,16 +21,33 @@ class WheelSizeService {
             return response.data.data || response.data;
         } catch (error) {
             console.error('Wheel Size API Error:', error.message);
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Data:', error.response.data);
-            }
             throw error;
         }
     }
 
     async getMakes(params = {}) {
-        return this.request('/makes/', { region: this.defaultRegion, ...params });
+        const allMakes = await this.request('/makes/', {
+            region: 'eudm',
+            ...params
+        });
+
+        const EXCLUDED_KEYWORDS = [
+            'samsung', 'korea', 'trucks', 'commercial', 'alpina',
+            'amg', 'brabus', 'carlsson', 'russia', 'india', 'china'
+        ];
+
+        const filteredMakes = allMakes.filter(make => {
+            const name = make.name.toLowerCase();
+            const slug = make.slug.toLowerCase();
+
+            const shouldExclude = EXCLUDED_KEYWORDS.some(keyword =>
+                name.includes(keyword) || slug.includes(keyword)
+            );
+
+            return !shouldExclude;
+        });
+
+        return filteredMakes;
     }
 
     async getModels(make, params = {}) {
@@ -53,25 +70,20 @@ class WheelSizeService {
 
         modifications.forEach(mod => {
             const key = mod.trim?.toLowerCase().trim() || '';
-
             if (key && !uniqueMap.has(key)) {
                 uniqueMap.set(key, mod);
             }
         });
 
-        const uniqueModifications = Array.from(uniqueMap.values()).sort((a, b) => {
+        return Array.from(uniqueMap.values()).sort((a, b) => {
             const trimA = a.trim || '';
             const trimB = b.trim || '';
             return trimA.localeCompare(trimB);
         });
-
-        return uniqueModifications;
     }
 
     async getGenerationImage(make, model, year) {
         try {
-            console.log('[Fetching generation image]:', { make, model, year });
-
             const generations = await this.request('/generations/', {
                 make,
                 model,
@@ -79,31 +91,25 @@ class WheelSizeService {
                 region: this.defaultRegion
             });
 
-            console.log('[Generations API response count]:', generations.length);
-
             if (generations && generations.length > 0) {
-                // Yıla uygun generation'ı bul
                 const matchingGen = generations.find(gen =>
                     gen.years && gen.years.includes(year)
                 );
 
                 const targetGen = matchingGen || generations[0];
-                console.log('[Selected generation]:', targetGen.name, targetGen.start + '-' + targetGen.end);
 
-                // Bodies içinden ilk görseli al
                 if (targetGen.bodies && targetGen.bodies.length > 0 && targetGen.bodies[0].image) {
-                    console.log('[Using body image]:', targetGen.bodies[0].image);
                     return targetGen.bodies[0].image;
                 }
             }
 
-            console.log('[No image found in generations]');
             return null;
         } catch (error) {
             console.error('[Generation image fetch error]:', error.message);
             return null;
         }
     }
+
     async getVehicleDetails(make, model, year, modification) {
         return this.request('/search/by_model/', {
             make,

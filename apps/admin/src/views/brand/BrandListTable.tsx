@@ -1,9 +1,6 @@
 'use client'
 
-// React Imports
 import { useEffect, useMemo, useState } from 'react'
-
-// Type Imports
 import type { BrandType } from '@/types/apps/brandTypes'
 
 // MUI Imports
@@ -14,8 +11,10 @@ import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import Switch from '@mui/material/Switch'
 import type { TextFieldProps } from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
+import { toast } from 'react-toastify'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -52,8 +51,8 @@ declare module '@tanstack/table-core' {
 
 export type brandWithActionsType = BrandType & {
   actions?: string
+  showOnHomepage?: boolean
 }
-
 
 interface BrandListTableProps {
   brandData: any[]
@@ -61,6 +60,8 @@ interface BrandListTableProps {
   meta: any
   error: string | null
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   const itemRank = rankItem(row.getValue(columnId), value)
@@ -98,16 +99,15 @@ const DebouncedInput = ({
 const columnHelper = createColumnHelper<brandWithActionsType>()
 
 const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableProps) => {
-  const [selectedbrand, setSelectedbrand] = useState<brandType | null>(null)
+  const [selectedbrand, setSelectedbrand] = useState<any | null>(null)
   const [EditbrandOpen, setEditbrandOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
-  const [data, setData] = useState<brandType[]>([])
+  const [data, setData] = useState<any[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
 
-  // Props'tan gelen veriyi state'e aktar
   useEffect(() => {
     if (brandData && brandData.length > 0) {
-      const mappedData: brandType[] = brandData.map(brand => ({
+      const mappedData = brandData.map(brand => ({
         id: brand.id,
         name: brand.diaMarkaAck,
         description: brand.description || '',
@@ -120,6 +120,7 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
         status: brand.status,
         completenessScore: brand.completenessScore,
         totalStock: brand.totalStock,
+        showOnHomepage: brand.showOnHomepage || false,
         priceRange: {
           averageFormatted: brand.priceRange?.averageFormatted || '₺0'
         }
@@ -127,6 +128,36 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
       setData(mappedData)
     }
   }, [brandData])
+
+  // Anasayfa gösterim durumunu güncelle
+  const handleHomepageToggle = async (brandId: string, currentValue: boolean) => {
+    try {
+      const res = await fetch(`${API_URL}/brands/${brandId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ showOnHomepage: !currentValue })
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        setData(prev =>
+          prev.map(brand =>
+            brand.id === brandId
+              ? { ...brand, showOnHomepage: !currentValue }
+              : brand
+          )
+        )
+        toast.success(!currentValue ? 'Marka anasayfada gösterilecek' : 'Marka anasayfadan kaldırıldı')
+      } else {
+        toast.error('Güncelleme başarısız')
+      }
+    } catch (err) {
+      console.error('Homepage toggle error:', err)
+      toast.error('Bir hata oluştu')
+    }
+  }
 
   const columns = useMemo<ColumnDef<brandWithActionsType, any>[]>(
     () => [
@@ -154,22 +185,43 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
       },
       columnHelper.accessor('name', {
         header: 'Marka Adı',
-        cell: ({ row }) => (
-          <div className='flex items-center gap-3'>
-            <img
-              src={row.original.logo}
-              width={38}
-              height={38}
-              className='rounded bg-actionHover'
-            />
-            <div className='flex flex-col items-start'>
-              <Typography className='font-medium' color='text.primary'>
-                {row.original.name}
-              </Typography>
-              <Typography variant='body2'>{row.original.description}</Typography>
+        cell: ({ row }) => {
+          const brand = row.original;
+          const getImageUrl = (url: string | undefined | null) => {
+            if (!url) return '/images/urun/gorsel-bulunamadi.jpg';
+            if (url === '/images/urun/gorsel-bulunamadi.jpg') return url;
+            if (url.startsWith('http')) return url;
+            const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
+
+            if (url.startsWith('/')) return `${BASE_URL}${url}`;
+            return `${BASE_URL}/${url}`;
+          };
+          const logoSrc = getImageUrl(brand.logo);
+          return (
+            <div className='flex items-center gap-3'>
+              <img
+                src={logoSrc}
+                width={38}
+                height={38}
+                className='rounded bg-actionHover object-contain'
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/images/urun/gorsel-bulunamadi.jpg';
+                }}
+              />
+              <div className='flex flex-col items-start'>
+                <Typography className='font-medium' color='text.primary'>
+                  {brand.name}
+                </Typography>
+                {brand.description && (
+                  <Typography variant='body2' className='line-clamp-1 max-w-[200px]'>
+                    {brand.description}
+                  </Typography>
+                )}
+              </div>
             </div>
-          </div>
-        )
+          );
+        }
       }),
       columnHelper.accessor('productCount', {
         header: 'Ürün Sayısı',
@@ -178,6 +230,19 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
       columnHelper.accessor('webOrder', {
         header: 'Öncelik',
         cell: ({ row }) => <Typography>{row.original.webOrder}</Typography>
+      }),
+      columnHelper.accessor('showOnHomepage', {
+        header: 'Anasayfa',
+        cell: ({ row }) => (
+          <Tooltip title={row.original.showOnHomepage ? 'Anasayfadan Kaldır' : 'Anasayfada Göster'}>
+            <Switch
+              checked={row.original.showOnHomepage || false}
+              onChange={() => handleHomepageToggle(row.original.id, row.original.showOnHomepage || false)}
+              size='small'
+              color='success'
+            />
+          </Tooltip>
+        )
       }),
       columnHelper.accessor('actions', {
         header: 'İşlemler',

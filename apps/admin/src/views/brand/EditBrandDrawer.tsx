@@ -1,10 +1,7 @@
 'use client'
 
-// React Imports
 import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
-
-// Type import
 import type { BrandType } from '@/types/apps/brandTypes'
 
 // MUI Imports
@@ -15,21 +12,28 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import InputAdornment from '@mui/material/InputAdornment'
+import Box from '@mui/material/Box'
+import CircularProgress from '@mui/material/CircularProgress'
 
-// Toast import
 import { toast } from 'react-toastify'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082'
 
 type Props = {
+  open: boolean
   brandData: BrandType[]
   selectedbrand: BrandType | null
   setData: (data: BrandType[]) => void
+  handleClose: () => void
 }
 
 const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData }: Props) => {
   const [fileName, setFileName] = useState('')
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   const [formData, setFormData] = useState({
     description: '',
@@ -45,13 +49,20 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         description: selectedbrand.description || '',
         seoTitle: selectedbrand.seoTitle || selectedbrand.name || '',
         seoDescription: selectedbrand.seoDescription || `${selectedbrand.name} markası ürünleri`,
-        seoUrl: selectedbrand.seoUrl || selectedbrand.name.toLowerCase().replace(/\s+/g, '-'),
+        seoUrl: selectedbrand.seoUrl || selectedbrand.name?.toLowerCase().replace(/\s+/g, '-') || '',
         webOrder: selectedbrand.webOrder || 0
       })
+
+      // Logo preview ayarla
       if (selectedbrand.logo) {
-        const imgParts = selectedbrand.logo.split('/')
+        const logoUrl = typeof selectedbrand.logo === 'string'
+          ? selectedbrand.logo
+          : selectedbrand.logo.url || selectedbrand.logo
+        setLogoPreview(getImageUrl(logoUrl))
+        const imgParts = logoUrl.split('/')
         setFileName(imgParts[imgParts.length - 1] || '')
       } else {
+        setLogoPreview(null)
         setFileName('')
       }
     } else {
@@ -62,9 +73,117 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         seoUrl: '',
         webOrder: 0
       })
+      setLogoPreview(null)
       setFileName('')
     }
   }, [selectedbrand])
+
+  // URL helper
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return null
+    if (url.startsWith('http')) return url
+    if (url.startsWith('/')) return `${BASE_URL}${url}`
+    return `${BASE_URL}/${url}`
+  }
+
+  // Logo yükleme
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const { files } = event.target
+    if (!files || files.length === 0 || !selectedbrand) return
+
+    const file = files[0]
+    setFileName(file.name)
+    setIsUploading(true)
+
+    // Önizleme göster
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setLogoPreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // API'ye yükle
+    const formDataUpload = new FormData()
+    formDataUpload.append('logo', file)
+
+    try {
+      const res = await fetch(`${API_URL}/brands/${selectedbrand.id}/logo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formDataUpload
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        toast.success('Logo başarıyla yüklendi')
+
+        // Data'yı güncelle
+        const updatedBrandData = brandData.map(brand => {
+          if (brand.id === selectedbrand.id) {
+            return {
+              ...brand,
+              logo: result.data.url
+            }
+          }
+          return brand
+        })
+        setData(updatedBrandData)
+      } else {
+        toast.error(result.message || 'Logo yüklenemedi')
+        setLogoPreview(null)
+        setFileName('')
+      }
+    } catch (error) {
+      console.error('Logo upload error:', error)
+      toast.error('Logo yüklenirken hata oluştu')
+      setLogoPreview(null)
+      setFileName('')
+    } finally {
+      setIsUploading(false)
+      // Input'u temizle
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  // Logo silme
+  const handleDeleteLogo = async () => {
+    if (!selectedbrand) return
+
+    try {
+      const res = await fetch(`${API_URL}/brands/${selectedbrand.id}/logo`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        toast.success('Logo silindi')
+        setLogoPreview(null)
+        setFileName('')
+
+        // Data'yı güncelle
+        const updatedBrandData = brandData.map(brand => {
+          if (brand.id === selectedbrand.id) {
+            return {
+              ...brand,
+              logo: null
+            }
+          }
+          return brand
+        })
+        setData(updatedBrandData)
+      } else {
+        toast.error(result.message || 'Logo silinemedi')
+      }
+    } catch (error) {
+      console.error('Logo delete error:', error)
+      toast.error('Logo silinirken hata oluştu')
+    }
+  }
 
   const onSubmit = async () => {
     if (!selectedbrand || isLoading) return
@@ -72,12 +191,12 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     setIsLoading(true)
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-      const response = await fetch(`${baseUrl}/brands/${selectedbrand.id}`, {
+      const response = await fetch(`${API_URL}/brands/${selectedbrand.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           description: formData.description,
           seoTitle: formData.seoTitle,
@@ -104,44 +223,16 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         })
 
         setData(updatedBrandData)
-
-        toast.success(`${selectedbrand.name} markası başarıyla güncellendi!`, {
-          position: 'top-right',
-          autoClose: 4000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          style: {
-            zIndex: 9999,
-          }
-        })
-
+        toast.success(`${selectedbrand.name} markası başarıyla güncellendi!`)
         handleClose()
-
       } else {
-        toast.error(`Güncelleme Hatası: ${result.message || 'Marka güncellenirken hata oluştu'}`, {
-          position: 'top-right',
-          autoClose: 4000,
-          style: { zIndex: 9999 }
-        })
+        toast.error(result.message || 'Marka güncellenirken hata oluştu')
       }
     } catch (error) {
       console.error('API hatası:', error)
-      toast.error('Bağlantı Hatası: Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.', {
-        position: 'top-right',
-        autoClose: 4000,
-        style: { zIndex: 9999 }
-      })
+      toast.error('Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const { files } = event.target
-    if (files && files.length > 0) {
-      setFileName(files[0].name)
     }
   }
 
@@ -184,6 +275,66 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             }}
           />
 
+          {/* Logo Önizleme ve Yükleme */}
+          <Box>
+            <Typography variant='body2' className='mb-2 font-medium'>Marka Logosu</Typography>
+            <Box className='flex items-center gap-4'>
+              {/* Logo Önizleme */}
+              <Box
+                className='border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 relative overflow-hidden'
+                sx={{ width: 100, height: 100 }}
+              >
+                {isUploading ? (
+                  <CircularProgress size={24} />
+                ) : logoPreview ? (
+                  <img
+                    src={logoPreview}
+                    alt="Logo"
+                    className='w-full h-full object-contain p-2'
+                  />
+                ) : (
+                  <i className='ri-image-line text-3xl text-gray-400' />
+                )}
+              </Box>
+
+              {/* Yükleme Butonları */}
+              <Box className='flex flex-col gap-2'>
+                <Button
+                  component='label'
+                  variant='outlined'
+                  size='small'
+                  disabled={isLoading || isUploading}
+                  startIcon={<i className='ri-upload-2-line' />}
+                >
+                  {isUploading ? 'Yükleniyor...' : 'Logo Yükle'}
+                  <input
+                    hidden
+                    type='file'
+                    accept='image/*'
+                    onChange={handleFileUpload}
+                    ref={fileInputRef}
+                  />
+                </Button>
+                {logoPreview && (
+                  <Button
+                    variant='outlined'
+                    color='error'
+                    size='small'
+                    onClick={handleDeleteLogo}
+                    disabled={isLoading || isUploading}
+                    startIcon={<i className='ri-delete-bin-line' />}
+                  >
+                    Logoyu Sil
+                  </Button>
+                )}
+                {fileName && (
+                  <Typography variant='caption' color='text.secondary'>
+                    {fileName}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          </Box>
 
           <TextField
             fullWidth
@@ -213,7 +364,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             placeholder='SEO açıklama giriniz'
             disabled={isLoading}
           />
-
           <TextField
             fullWidth
             label='SEO URL'
@@ -222,7 +372,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             placeholder='SEO URL giriniz'
             disabled={isLoading}
           />
-
           <TextField
             fullWidth
             type='number'
@@ -233,40 +382,11 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             disabled={isLoading}
           />
 
-          <TextField
-            size='small'
-            placeholder='No file chosen'
-            variant='outlined'
-            value={fileName}
-            className='flex-auto'
-            InputProps={{
-              readOnly: true,
-              endAdornment: fileName ? (
-                <InputAdornment position='end'>
-                  <IconButton size='small' edge='end' onClick={() => setFileName('')}>
-                    <i className='ri-close-line' />
-                  </IconButton>
-                </InputAdornment>
-              ) : null
-            }}
-          />
-
-          <Button
-            component='label'
-            variant='outlined'
-            htmlFor='contained-button-file'
-            className='min-is-fit'
-            disabled={isLoading}
-          >
-            Dosya Seçiniz
-            <input hidden id='contained-button-file' type='file' onChange={handleFileUpload} ref={fileInputRef} />
-          </Button>
-
           <div className='flex items-center gap-4'>
             <Button
               variant='contained'
               type='submit'
-              disabled={isLoading}
+              disabled={isLoading || isUploading}
             >
               {isLoading ? 'Kaydediliyor...' : 'Kaydet'}
             </Button>
@@ -274,7 +394,7 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
               variant='outlined'
               color='error'
               onClick={handleDiscard}
-              disabled={isLoading}
+              disabled={isLoading || isUploading}
             >
               Vazgeç
             </Button>

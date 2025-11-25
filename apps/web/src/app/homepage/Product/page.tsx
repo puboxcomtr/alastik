@@ -4,8 +4,12 @@ import React from 'react';
 // Components
 import ShowCaseProduct from '@components/homepage/Showcase/Product';
 
-export default function ProductPage() {  
+type Props = {
+    showcaseKey?: 'first' | 'second' | 'third' | 'fourth' | 'fifth';
+}
+
+export default function ProductPage({ showcaseKey = 'second' }: Props) {
     return (
-        <ShowCaseProduct />
+        <ShowCaseProduct showcaseKey={showcaseKey} />
     );
 }

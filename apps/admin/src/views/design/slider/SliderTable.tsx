@@ -20,6 +20,22 @@ import tableStyles from '@core/styles/table.module.css'
 import { toast } from 'react-toastify'
 import { fetchSliders, deleteSlider, type SliderType } from '@/utils/api/sliders'
 
+// Helper: Görsel URL oluştur
+const getImageUrl = (url: string | undefined | null): string => {
+  if (!url) return '/images/slider/gorsel-bulunamadi.jpg'
+  if (url.startsWith('http')) return url
+
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082'
+  return url.startsWith('/') ? `${BASE_URL}${url}` : `${BASE_URL}/${url}`
+}
+
+// Helper: Key'i panoya kopyala
+const copyKeyToClipboard = (key: string) => {
+  const template = `{{slider:${key}}}`
+  navigator.clipboard.writeText(template)
+  toast.success(`Kopyalandı: ${template}`)
+}
+
 const columnHelper = createColumnHelper<SliderType>()
 
 const SliderTable = () => {
@@ -81,12 +97,12 @@ const SliderTable = () => {
     }),
     columnHelper.accessor('sliders', {
       id: 'image-preview',
-      header: 'Görsel Önizleme',
+      header: 'Önizleme',
       cell: ({ row }) => {
         const firstImage = row.original.sliders[0]?.image
         return firstImage ? (
           <img
-            src={`http://localhost:3082${firstImage}`}
+            src={getImageUrl(firstImage)}
             alt='Slider'
             className='w-20 h-12 object-cover rounded'
           />
@@ -101,12 +117,35 @@ const SliderTable = () => {
       header: 'Slider Adı',
       cell: ({ row }) => <Typography className='font-medium'>{row.original.name}</Typography>
     }),
+    columnHelper.accessor('key', {
+      header: 'Değişken (Key)',
+      cell: ({ row }) => {
+        const key = row.original.key
+        if (!key) {
+          return <Typography variant='body2' color='textSecondary'>-</Typography>
+        }
+        return (
+          <Tooltip title="Kopyala">
+            <Chip
+              label={key}
+              size='small'
+              variant='outlined'
+              color='primary'
+              onClick={() => copyKeyToClipboard(key)}
+              onDelete={() => copyKeyToClipboard(key)}
+              deleteIcon={<i className='ri-file-copy-line' style={{ fontSize: '14px' }} />}
+              sx={{ cursor: 'pointer', fontFamily: 'monospace' }}
+            />
+          </Tooltip>
+        )
+      }
+    }),
     columnHelper.accessor('sliders', {
       id: 'slider-count',
-      header: 'Slider Sayısı',
+      header: 'Görsel',
       cell: ({ row }) => (
         <Chip
-          label={`${row.original.sliders.length} Görsel`}
+          label={`${row.original.sliders.length}`}
           size='small'
           variant='outlined'
         />
@@ -127,14 +166,6 @@ const SliderTable = () => {
       cell: ({ row }) => (
         <Typography variant='body2'>
           {new Date(row.original.createdAt).toLocaleDateString('tr-TR')}
-        </Typography>
-      )
-    }),
-    columnHelper.accessor('updatedAt', {
-      header: 'Güncellenme',
-      cell: ({ row }) => (
-        <Typography variant='body2'>
-          {new Date(row.original.updatedAt).toLocaleDateString('tr-TR')}
         </Typography>
       )
     }),

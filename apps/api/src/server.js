@@ -38,6 +38,12 @@ const CacheManager = require('../../../packages/cache');
 // Use Redis cache in both production and development
 const redisCache = new CacheManager();
 
+
+// ============================================
+// MEDIA CONFIG - Merkezi Görsel Yönetimi
+// ============================================
+const { MEDIA_CONFIG, PUBLIC_DIR } = require('./config/media');
+
 // ============================================
 // DATA MODELS
 // ============================================
@@ -129,10 +135,11 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https:", "http://localhost:3082"],
     },
   },
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Rate limiting - Test süreçleri için yüksek limit
@@ -494,6 +501,10 @@ app.use('/api/admin/design/menu', menuRoutes);
 const bannerRoutes = require('./routes/admin/design/banners');
 app.use('/api/admin/design/banners', bannerRoutes);
 
+/* * Vitrin Ayarları * */
+const showcaseRoutes = require('./routes/admin/catalog/showcase');
+app.use('/api/showcases', showcaseRoutes);
+
 /**
   * Admin - Functions *
 */
@@ -540,7 +551,30 @@ app.use('/sliders', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'public/sliders')));
 
-/* Banners Upload */
+// Media kategorileri için static middleware
+Object.entries(MEDIA_CONFIG).forEach(([category, config]) => {
+  const staticPath = path.join(config.basePath, config.folder);
+  const fs = require('fs');
+  if (!fs.existsSync(staticPath)) {
+    fs.mkdirSync(staticPath, { recursive: true });
+    console.log(`Klasör oluşturuldu: ${staticPath}`);
+  }
+
+  app.use(config.urlPrefix, (req, res, next) => {
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  }, express.static(staticPath));
+
+  console.log(`Static path: ${config.urlPrefix} -> ${staticPath}`);
+});
 app.use('/banners', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');

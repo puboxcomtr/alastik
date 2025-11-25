@@ -3,11 +3,11 @@ const mongoose = require('mongoose');
 
 // Showcase Ürün Schema (Vitrin için)
 const showcaseProductSchema = new mongoose.Schema({
-    productKey: { type: String, required: true }, // WebProduct _key referansı
+    productKey: { type: String, required: true },
     order: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
     addedAt: { type: Date, default: Date.now },
-    addedBy: String // Admin kullanıcı adı
+    addedBy: String
 }, { _id: false });
 
 // Ana WebBrand Schema
@@ -26,8 +26,8 @@ const webBrandSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
-
-    // DIA Bağlantısı - DiaStock'tan gelen marka bilgileri
+    showOnHomepage: { type: Boolean, default: false },
+    homepageOrder: { type: Number, default: 0 },
     diaBrand: {
         type: String,
         required: true,

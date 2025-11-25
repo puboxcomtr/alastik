@@ -23,7 +23,6 @@ import { useSettings } from '@/src/context/SettingsContext';
 import type { Slider } from '@/src/types/slider';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
-
 export default function HomeSlider() {
     const [slider, setSlider] = useState<Slider | null>(null);
     const [loading, setLoading] = useState(true);
@@ -48,12 +47,9 @@ export default function HomeSlider() {
 
         fetchSlider();
     }, [theme?.sliderSelect]);
-
-    // Loading veya slider yoksa gösterme
     if (loading || !slider || slider.sliders.length === 0) {
         return null;
     }
-    // Settings'den değerleri al
     const settings = slider.settings || {};
     const width = parseInt(settings.width) || 1260;
     const height = parseInt(settings.height) || 500;
@@ -61,7 +57,6 @@ export default function HomeSlider() {
     const showDots = settings.showDots === true;
     const changeSpeed = parseInt(settings.changeSpeed) || 5000;
     const autoStart = settings.autoStart === true;
-    // Autoplay config
     const autoplayConfig = autoStart ? {
         delay: changeSpeed,
         disableOnInteraction: false,
@@ -76,7 +71,7 @@ export default function HomeSlider() {
             modules={modules}
             effect="fade"
             loop
-            autoplay={autoplayConfig} 
+            autoplay={autoplayConfig}
             pagination={showDots ? { clickable: true } : false}
             navigation={showNavButtons ? {
                 nextEl: ".slide_btn-next",

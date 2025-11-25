@@ -33,15 +33,16 @@ export default function TabContent({
             </a>
           </li>
           <li className="nav-item" role="presentation">
-            <a
-              href="#"
-              role="button"
+            <button
+              onClick={() => {
+                const event = new Event('openTireSearchModal');
+                window.dispatchEvent(event);
+              }}
               className="nav-link justify-content-center px-0"
-              data-bs-toggle="modal"
-              data-bs-target="#tireSearch">
+            >
               <span className="d-none d-lg-block">Araca Göre Lastik Arama</span>
               <span className="d-block d-lg-none">Araca Göre</span>
-            </a>
+            </button>
           </li>
         </ul>
         <div className="tab-content">

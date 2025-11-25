@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
@@ -123,9 +123,13 @@ const ThemeSettings = () => {
     const [sliderList, setSliderList] = useState<any[]>([])
     const [loadingSliders, setLoadingSliders] = useState(true)
 
+    const [showcaseList, setShowcaseList] = useState<any[]>([])
+    const [loadingShowcases, setLoadingShowcases] = useState(true)
+
     useEffect(() => {
         fetchSettings()
         fetchSliderList()
+        fetchShowcaseList()
     }, [])
 
     const fetchSettings = async () => {
@@ -155,6 +159,22 @@ const ThemeSettings = () => {
             console.error('Slider listesi yüklenemedi:', error)
         } finally {
             setLoadingSliders(false)
+        }
+    }
+    const fetchShowcaseList = async () => {
+        try {
+            setLoadingShowcases(true)
+            const res = await fetch(`${API_URL}/showcases?is_active=true`, {
+                credentials: 'include'
+            })
+            const data = await res.json()
+            if (data.success && data.data) {
+                setShowcaseList(data.data)
+            }
+        } catch (error) {
+            console.error('Vitrin listesi yüklenemedi:', error)
+        } finally {
+            setLoadingShowcases(false)
         }
     }
     const handleChange = (key: keyof ThemeSettingsType, value: any) => {
@@ -542,94 +562,70 @@ const ThemeSettings = () => {
                 )
 
             case 'tab5':
+                const vitrins = [
+                    { key: 'First', label: '1' },
+                    { key: 'Second', label: '2' },
+                    { key: 'Third', label: '3' },
+                    { key: 'Fourth', label: '4' },
+                    { key: 'Fifth', label: '5' }
+                ]
+
                 return (
                     <>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 1 Üst Başlık</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <TextField fullWidth value={settings.showcasenameFirst || ''} onChange={(e) => handleChange('showcasenameFirst', e.target.value)} />
+                        {vitrins.map((vitrin, index) => (
+                            <React.Fragment key={vitrin.key}>
+                                <FormControl fullWidth className='mb-4'>
+                                    <div className='flex justify-between items-center gap-4'>
+                                        <Typography variant='body2' className='text-base font-semibold'>
+                                            Vitrin {vitrin.label} Üst Başlık
+                                        </Typography>
+                                        <FormControl className='w-1/2 flex-shrink-0'>
+                                            <TextField
+                                                fullWidth
+                                                value={settings[`showcasename${vitrin.key}` as keyof typeof settings] || ''}
+                                                onChange={(e) => handleChange(`showcasename${vitrin.key}` as keyof typeof settings, e.target.value)}
+                                            />
+                                        </FormControl>
+                                    </div>
                                 </FormControl>
-                            </div>
-                        </FormControl>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 1 Alt Başlık</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <TextField fullWidth value={settings.showcasesubFirst || ''} onChange={(e) => handleChange('showcasesubFirst', e.target.value)} />
+                                <FormControl fullWidth className='mb-4'>
+                                    <div className='flex justify-between items-center gap-4'>
+                                        <Typography variant='body2' className='text-base font-semibold'>
+                                            Vitrin {vitrin.label} Alt Başlık
+                                        </Typography>
+                                        <FormControl className='w-1/2 flex-shrink-0'>
+                                            <TextField
+                                                fullWidth
+                                                value={settings[`showcasesub${vitrin.key}` as keyof typeof settings] || ''}
+                                                onChange={(e) => handleChange(`showcasesub${vitrin.key}` as keyof typeof settings, e.target.value)}
+                                            />
+                                        </FormControl>
+                                    </div>
                                 </FormControl>
-                            </div>
-                        </FormControl>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 1 Ürün Seçimi</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <Select value={settings.showcaseFirst || ''} onChange={(e) => handleChange('showcaseFirst', e.target.value)}>
-                                        <MenuItem value='1'>Anasayfa Vitrin1</MenuItem>
-                                        <MenuItem value='2'>Ürün Vitrin2</MenuItem>
-                                    </Select>
+                                <FormControl fullWidth className='mb-4'>
+                                    <div className='flex justify-between items-center gap-4'>
+                                        <Typography variant='body2' className='text-base font-semibold'>
+                                            Vitrin {vitrin.label} Ürün Seçimi
+                                        </Typography>
+                                        <FormControl className='w-1/2 flex-shrink-0'>
+                                            <Select
+                                                value={settings[`showcase${vitrin.key}` as keyof typeof settings] || ''}
+                                                onChange={(e) => handleChange(`showcase${vitrin.key}` as keyof typeof settings, e.target.value)}
+                                                disabled={loadingShowcases}
+                                            >
+                                                <MenuItem value=''>Seçiniz</MenuItem>
+                                                {showcaseList.map((showcase) => (
+                                                    <MenuItem key={showcase.id} value={showcase.id}>
+                                                        {showcase.title} ({showcase.productCount} ürün)
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </div>
                                 </FormControl>
-                            </div>
-                        </FormControl>
-                        <Divider className='mb-4' />
-
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 2 Üst Başlık</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <TextField fullWidth value={settings.showcasenameSecond || ''} onChange={(e) => handleChange('showcasenameSecond', e.target.value)} />
-                                </FormControl>
-                            </div>
-                        </FormControl>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 2 Alt Başlık</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <TextField fullWidth value={settings.showcasesubSecond || ''} onChange={(e) => handleChange('showcasesubSecond', e.target.value)} />
-                                </FormControl>
-                            </div>
-                        </FormControl>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 2 Ürün Seçimi</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <Select value={settings.showcaseSecond || ''} onChange={(e) => handleChange('showcaseSecond', e.target.value)}>
-                                        <MenuItem value='1'>Anasayfa Vitrin1</MenuItem>
-                                        <MenuItem value='2'>Ürün Vitrin2</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </div>
-                        </FormControl>
-                        <Divider className='mb-4' />
-
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 3 Üst Başlık</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <TextField fullWidth value={settings.showcasenameThird || ''} onChange={(e) => handleChange('showcasenameThird', e.target.value)} />
-                                </FormControl>
-                            </div>
-                        </FormControl>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 3 Alt Başlık</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <TextField fullWidth value={settings.showcasesubThird || ''} onChange={(e) => handleChange('showcasesubThird', e.target.value)} />
-                                </FormControl>
-                            </div>
-                        </FormControl>
-                        <FormControl fullWidth className='mb-4'>
-                            <div className='flex justify-between items-center gap-4'>
-                                <Typography variant='body2' className='text-base font-semibold'>Vitrin 3 Ürün Seçimi</Typography>
-                                <FormControl className='w-1/2 flex-shrink-0'>
-                                    <Select value={settings.showcaseThird || ''} onChange={(e) => handleChange('showcaseThird', e.target.value)}>
-                                        <MenuItem value='1'>Anasayfa Vitrin1</MenuItem>
-                                        <MenuItem value='2'>Ürün Vitrin2</MenuItem>
-                                        <MenuItem value='3'>Özel Vitrin2</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </div>
-                        </FormControl>
+                                {index < vitrins.length - 1 && <Divider className='mb-4 mt-2' />}
+                            </React.Fragment>
+                        ))}
                     </>
                 )
         }

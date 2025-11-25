@@ -56,7 +56,7 @@ export default function MainTireSearch() {
                   </div>
                 </Col>
                 <Col md={3}>
-                  {/* <TireProductSlider /> */}
+                  <TireProductSlider showcaseKey="first" />
                 </Col>
               </Row>
             </div>

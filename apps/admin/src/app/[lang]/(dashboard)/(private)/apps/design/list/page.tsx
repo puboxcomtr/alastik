@@ -48,7 +48,7 @@ const DesignSettings = () => {
             icon: 'ri-file-text-line',
             title: 'Vitrin Blokları',
             description: 'Vitrin bloklarını yönetin.',
-            href: '/tr/apps/design/showcase',
+            href: '/tr/apps/design/showcase/list',
             color: '#2e263db3'
         }
     ]

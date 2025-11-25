@@ -61,7 +61,6 @@ const EditLabelDrawer = ({ open, handleClose, categoryData, selectedCategory, se
     }
   })
 
-  // Seçili kategori değiştiğinde formu resetle (alanları doldur)
   useEffect(() => {
     if (selectedCategory) {
       reset({

@@ -153,29 +153,35 @@ export default function Home() {
         <Brand />
 
         {/* 4 Set Banner Draggable */}
-        <DraggableBanner />
+        <DraggableBanner
+          sliderKey="homepage_banner"
+          slidesPerView={4}
+          slidesPerViewMobile={2}
+          slidesPerViewTablet={2}
+          spaceBetween={20}
+        />
 
         {/* Product Showcase */}
-        <ProductShowCase /> 
+        <ProductShowCase showcaseKey="second" />
 
         {/* Product Single Slider */}
-        {/* <SingleShowCase /> */}
+        <SingleShowCase showcaseKey="third" />
 
         {/* Two Banner */}
         <Banner />
 
         {/* Product Showcase */}
-        {/* <ProductShowCase /> */}
+        <ProductShowCase showcaseKey="fourth" />
 
         {/* Two Banner */}
         <Banner />
 
         {/* ProductShowcase */}
-        {/* <ProductShowCase /> */}
+        <ProductShowCase showcaseKey="fifth" />
 
         {/* Customer Comments */}
         <Testimonials />
-        
+
         {/* Blog */}
         <HomeBlog />
       </main>

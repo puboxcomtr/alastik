@@ -2,6 +2,11 @@
 // DEPENDENCIES
 // ============================================
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const MediaService = require('../../../services/MediaService');
 
 // ============================================
 // MODELS
@@ -40,6 +45,40 @@ const DiaStockService = require('../../../services/DiaStockService');
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 
 // ============================================
+// MULTER CONFIG - Marka Logo Upload
+// ============================================
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '../../../../public/marka');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        // Benzersiz dosya adı: marka-slug-timestamp.ext
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `brand-${uniqueSuffix}${ext}`);
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Sadece resim dosyaları yüklenebilir (jpeg, jpg, png, gif, webp, svg)'));
+    }
+});
+
+// ============================================
 // ROUTER INITIALIZATION
 // ============================================
 const router = express.Router();
@@ -53,6 +92,9 @@ const router = express.Router();
 const maybeAuth = process.env.DISABLE_AUTH === 'true'
     ? (req, res, next) => next()
     : authenticateAdmin;
+// Multer uploader
+
+const uploadLogo = MediaService.createUploader('brand', 'logo');
 
 /**
  * Marka Listeleme - WebBrand Collection'dan
@@ -133,6 +175,8 @@ router.get('/', maybeAuth, async (req, res) => {
                 diaKey: 1,
                 webVisible: 1,
                 webOrder: 1,
+                showOnHomepage: 1,
+                homepageOrder: 1,
                 seoTitle: 1,
                 seoDescription: 1,
                 seoUrl: 1,
@@ -197,6 +241,10 @@ router.get('/', maybeAuth, async (req, res) => {
                 webOrder: brand.webOrder,
                 status: webStatus,
 
+                // Anasayfa Gösterimi
+                showOnHomepage: brand.showOnHomepage || false,
+                homepageOrder: brand.homepageOrder || 0,
+
                 // SEO
                 seoTitle: brand.seoTitle || brand.name,
                 seoDescription: brand.seoDescription || `${brand.name} markası ürünleri`,
@@ -207,15 +255,22 @@ router.get('/', maybeAuth, async (req, res) => {
                 description: brand.description || '',
 
                 // Görseller
-                logo: brand.logo?.url ||
-                    brand.bannerImage?.url ||
-                    brand.customImage?.url ||
-                    '/images/urun/gorsel-bulunamadi.jpg',
+                logo: (() => {
+                    const logoUrl = brand.logo?.url || brand.bannerImage?.url || brand.customImage?.url;
+                    if (!logoUrl) {
+                        return '/images/urun/gorsel-bulunamadi.jpg';
+                    }
+                    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+                        return logoUrl;
+                    }
+                    if (logoUrl.startsWith('/marka/')) {
+                        return logoUrl;
+                    }
+                    return `/marka/${logoUrl}`;
+                })(),
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,
                 bannerImage: brand.bannerImage?.url || null,
                 customImage: brand.customImage?.url || '/images/urun/gorsel-bulunamadi.jpg',
-
-                // Marka bilgileri
                 brandInfo: {
                     foundedYear: brand.brandInfo?.foundedYear || null,
                     country: brand.brandInfo?.country || null,
@@ -361,5 +416,180 @@ router.patch('/:id', maybeAuth, [
         })
     }
 })
+
+/**
+ * Marka Güncelleme - PUT
+ * PUT /api/brands/:id
+ */
+router.put('/:id', maybeAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        // İzin verilen alanlar
+        const allowedFields = [
+            'description',
+            'seoTitle',
+            'seoDescription',
+            'seoUrl',
+            'seoKeywords',
+            'webVisible',
+            'webOrder',
+            'showOnHomepage',
+            'homepageOrder',
+            'brandInfo'
+        ];
+
+        const filteredData = {};
+        allowedFields.forEach(field => {
+            if (updateData[field] !== undefined) {
+                filteredData[field] = updateData[field];
+            }
+        });
+
+        filteredData.updatedAt = new Date();
+
+        const brand = await WebBrand.findByIdAndUpdate(
+            id,
+            { $set: filteredData },
+            { new: true }
+        );
+
+        if (!brand) {
+            return res.status(404).json({
+                success: false,
+                message: 'Marka bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Marka güncellendi',
+            data: brand
+        });
+
+    } catch (error) {
+        console.error('Brand update error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Marka güncellenirken hata oluştu',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * Marka Logo Yükleme
+ * POST /api/brands/:id/logo
+ */
+router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dosya yuklenmedi'
+            });
+        }
+
+        const brand = await WebBrand.findById(id);
+        if (!brand) {
+            MediaService.deleteFile(`/marka/${req.file.filename}`);
+            return res.status(404).json({
+                success: false,
+                message: 'Marka bulunamadi'
+            });
+        }
+
+        // Eski logo varsa sil
+        if (brand.logo?.url) {
+            MediaService.deleteFile(brand.logo.url);
+        }
+
+        // Yeni logo URL
+        const logoUrl = MediaService.getFileUrl('brand', req.file.filename);
+
+        // Güncelle
+        const updatedBrand = await WebBrand.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    logo: {
+                        url: logoUrl,
+                        alt: `${brand.name} Logo`,
+                        uploadedAt: new Date()
+                    },
+                    updatedAt: new Date()
+                }
+            },
+            { new: true }
+        );
+
+        res.json({
+            success: true,
+            message: 'Logo basariyla yuklendi',
+            data: {
+                url: logoUrl,
+                brand: updatedBrand
+            }
+        });
+
+    } catch (error) {
+        console.error('Logo upload error:', error);
+
+        if (req.file) {
+            MediaService.deleteFile(`/marka/${req.file.filename}`);
+        }
+
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Logo yuklenirken hata olustu'
+        });
+    }
+});
+
+/**
+ * Marka Logo Silme
+ * DELETE /api/brands/:id/logo
+ */
+router.delete('/:id/logo', maybeAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const brand = await WebBrand.findById(id);
+        if (!brand) {
+            return res.status(404).json({
+                success: false,
+                message: 'Marka bulunamadi'
+            });
+        }
+
+        // Logo sil
+        if (brand.logo?.url) {
+            MediaService.deleteFile(brand.logo.url);
+        }
+
+        // DB güncelle
+        const updatedBrand = await WebBrand.findByIdAndUpdate(
+            id,
+            { $set: { logo: null, updatedAt: new Date() } },
+            { new: true }
+        );
+
+        res.json({
+            success: true,
+            message: 'Logo basariyla silindi',
+            data: updatedBrand
+        });
+
+    } catch (error) {
+        console.error('Logo delete error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Logo silinirken hata olustu'
+        });
+    }
+});
 
 module.exports = router;
