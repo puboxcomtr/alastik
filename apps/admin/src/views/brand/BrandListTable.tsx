@@ -191,10 +191,10 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
             if (!url) return '/images/urun/gorsel-bulunamadi.jpg';
             if (url === '/images/urun/gorsel-bulunamadi.jpg') return url;
             if (url.startsWith('http')) return url;
-            const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
+            const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
-            if (url.startsWith('/')) return `${BASE_URL}${url}`;
-            return `${BASE_URL}/${url}`;
+            if (url.startsWith('/')) return `${MEDIA_URL}${url}`;
+            return `${MEDIA_URL}/${url}`;
           };
           const logoSrc = getImageUrl(brand.logo);
           return (
