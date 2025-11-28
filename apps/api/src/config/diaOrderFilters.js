@@ -84,9 +84,7 @@ function getOrderFieldsCustom(customFields = null) {
  */
 function logOrderFilterConfig() {
     console.log('=== DIA SİPARİŞ FİLTRE KONFIGÜRASYONU ===');
-    console.log('Müşteri Filtreleri:', JSON.stringify(CUSTOMER_FILTERS, null, 2));
     console.log('Sipariş Fields:', ORDER_FIELDS.length, 'alan çekilecek');
-    console.log('NOT: TÜM siparişler çekilecek, backend\'de filtrelenecek');
 }
 
 module.exports = {

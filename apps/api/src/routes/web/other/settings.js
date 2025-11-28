@@ -1,7 +1,7 @@
 // apps/api/src/routes/web/other/settings.js
 const express = require('express');
 const router = express.Router();
-const Setting = require('../../../models/Setting');
+const Setting = require('../../../models/admin/settings/Setting');
 
 router.get('/:key', async (req, res) => {
     try {

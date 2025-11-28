@@ -1,10 +1,9 @@
 const cron = require('node-cron');
 const winston = require('winston');
 const DiaStockService = require('./DiaStockService');
-const CacheManager = require('../../../../packages/cache');
+const CacheManager = require('../../../../../../packages/cache');
 
-
-const { getBasicFilters, logFilterConfig } = require('../config/diaFilters');
+const { getBasicFilters, logFilterConfig } = require('../../../config/diaFilters');
 
 class DiaStockScheduler {
   constructor() {
@@ -76,8 +75,6 @@ class DiaStockScheduler {
         scheduled: true,
         timezone: 'Europe/Istanbul'
       });
-
-      this.logger.info('Scheduler başarıyla başlatıldı');
       this.updateSchedulerStatus();
 
     } catch (error) {

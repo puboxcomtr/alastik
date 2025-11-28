@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const WebSettings = require('../../../models/WebSettings');
+const WebSettings = require('../../../models/web/settings/WebSettings');
 
 // GET /api/admin/settings/general - Ayarları getir
 router.get('/', async (req, res) => {

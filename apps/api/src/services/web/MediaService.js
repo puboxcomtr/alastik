@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { MEDIA_CONFIG, getUploadDir, getUrlPrefix, getFullPath, getConfig, getCategoryFromUrl } = require('../config/media');
+const { MEDIA_CONFIG, getUploadDir, getUrlPrefix, getFullPath, getConfig, getCategoryFromUrl } = require('../../config/media');
 
 class MediaService {
     /**

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const SeoSettings = require('../../../models/SeoSettings');
+const SeoSettings = require('../../../models/admin/settings/SeoSettings');
 router.get('/', async (req, res) => {
     try {
         let settings = await SeoSettings.findOne();

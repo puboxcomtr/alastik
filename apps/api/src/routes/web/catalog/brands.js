@@ -1,7 +1,7 @@
 // apps/api/src/routes/web/catalog/brands.js
 const express = require('express');
 const router = express.Router();
-const WebBrand = require('../../../models/WebBrand');
+const WebBrand = require('../../../models/web/catalog/WebBrand');
 
 /**
  * GET /api/brands/homepage

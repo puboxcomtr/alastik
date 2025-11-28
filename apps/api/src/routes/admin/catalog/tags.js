@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const WebTag = require('../../../models/WebTag');
-const WebProduct = require('../../../models/WebProduct');
+const WebTag = require('../../../models/web/catalog/WebTag');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 /**
  * Etiket Listeleme -

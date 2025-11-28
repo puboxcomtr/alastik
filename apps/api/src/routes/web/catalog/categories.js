@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const WebCategory = require('../../../models/WebCategory');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
 
 router.get('/slug/:slug/size/:size', async (req, res) => {
     try {

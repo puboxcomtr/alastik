@@ -66,8 +66,32 @@ export interface WheelSizeGeneration {
 export interface WheelSizeModification {
     slug: string;
     name: string;
-    bodyType?: string;
-    enginePower?: string;
+    trim?: string;
+    trim_levels?: string[];
+    start_year?: number;
+    end_year?: number;
+    generation?: {
+        slug: string;
+        name: string;
+        start: number;
+        end: number | null;
+        bodies?: Array<{
+            slug: string;
+            name: string;
+            image?: string;
+        }>;
+    };
+    engine?: {
+        fuel?: string;
+        capacity?: string;
+        type?: string;
+        power?: {
+            kW?: number;
+            PS?: number;
+            hp?: number;
+        };
+        code?: string;
+    };
 }
 
 export interface VehicleFormData {

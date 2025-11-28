@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const WebTranslation = require('../../../models/WebTranslation');
-
-console.log('🔥 TRANSLATIONS ROUTE LOADED');
+const WebTranslation = require('../../../models/web/settings/WebTranslation');
 
 // GET /api/admin/settings/translations
 router.get('/', async (req, res) => {
@@ -32,9 +30,6 @@ router.get('/', async (req, res) => {
                 .limit(parseInt(limit)),
             WebTranslation.countDocuments(query)
         ]);
-        console.log('Found translations:', translations.length);
-        console.log('Total count:', total);
-        console.log('First translation:', translations[0]);
         const grouped = translations.reduce((acc, item) => {
             if (!acc[item.category]) {
                 acc[item.category] = [];

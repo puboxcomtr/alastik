@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const WebVehicle = require('../../../models/web/user/WebVehicle');
-const WheelSizeService = require('../../../services/WheelSizeService');
+const WheelSizeService = require('../../../services/plugins/wheelsize/WheelSizeService');
 const authMiddleware = require('../../../middleware/authMiddleware');
 
 // Kullanıcının tüm araçlarını getir

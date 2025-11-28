@@ -1,6 +1,6 @@
 const express = require('express');
-const Inventory = require('../models/Inventory');
-const Product = require('../models/Product');
+const Inventory = require('../models/admin/settings/Inventory');
+const Product = require('../models/admin/catalog/Product');
 const { authenticateAdmin } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 

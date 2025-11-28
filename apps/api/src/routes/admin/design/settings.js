@@ -1,7 +1,7 @@
 // apps/api/src/routes/admin/design/settings.js
 const express = require('express');
 const router = express.Router();
-const SiteSetting = require('../../../models/SiteSetting');
+const SiteSetting = require('../../../models/admin/settings/SiteSetting');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');

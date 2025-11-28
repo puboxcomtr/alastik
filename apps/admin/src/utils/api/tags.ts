@@ -1,4 +1,7 @@
+// apps/admin/src/utils/api/tags.ts
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+
 export interface TagType {
     _id: string;
     title: string;
@@ -24,8 +27,38 @@ export interface TagsResponse {
     };
 }
 
-export const fetchTags = async (): Promise<TagsResponse> => {
-    const response = await fetch(`${API_BASE_URL}/tags`);
+export interface FetchTagsParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    type?: string;
+}
+
+export const fetchTags = async (params: FetchTagsParams = {}): Promise<TagsResponse> => {
+    const {
+        page = 1,
+        limit = 1000,
+        search,
+        isActive,
+        sortBy = 'order',
+        sortOrder = 'asc',
+        type
+    } = params;
+
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('limit', limit.toString());
+    queryParams.append('sortBy', sortBy);
+    queryParams.append('sortOrder', sortOrder);
+
+    if (search) queryParams.append('search', search);
+    if (isActive !== undefined) queryParams.append('isActive', isActive.toString());
+    if (type) queryParams.append('type', type);
+
+    const response = await fetch(`${API_BASE_URL}/tags?${queryParams.toString()}`);
     if (!response.ok) throw new Error('Etiketler yüklenirken hata oluştu');
     return response.json();
 };
@@ -40,9 +73,7 @@ export const fetchTagById = async (id: string): Promise<TagType> => {
 export const updateTag = async (id: string, data: Partial<TagType>) => {
     const response = await fetch(`${API_BASE_URL}/tags/${id}`, {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
     if (!response.ok) {

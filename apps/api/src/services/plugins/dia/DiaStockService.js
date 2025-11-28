@@ -2,21 +2,22 @@ const axios = require('axios');
 const winston = require('winston');
 
 /* DİA Ürün Modeli  */
-const DiaStock = require('../models/DiaStock');
+const DiaStock = require('../../../models/plugins/DiaStock');
 
 /* WEB Ürün Modeli */
-const WebProduct = require('../models/WebProduct');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 /* Web kategori Modeli */
-const WebCategory = require('../models/WebCategory');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
 
 /* Web kategori Modeli */
-const WebBrand = require('../models/WebBrand');
+const WebBrand = require('../../../models/web/catalog/WebBrand');
 
-const CacheManager = require('../../../../packages/cache');
+const CacheManager = require('../../../../../../packages/cache/');
+
 
 /* Filter Config */
-const { getFiltersForSyncType, logFilterConfig, getBasicFilters, getDiaFields } = require('../config/diaFilters');
+const { getFiltersForSyncType, logFilterConfig, getBasicFilters, getDiaFields } = require('../../../config/diaFilters');
 
 
 class DiaStockService {
@@ -246,7 +247,6 @@ class DiaStockService {
         throw new Error('DIA login başarısız');
       }
 
-      // Sadece config'den gelen temel filtreleri kullan
       const configFilters = getBasicFilters();
 
       const defaultParams = {
@@ -555,18 +555,6 @@ class DiaStockService {
       if (kategori1?.includes('akü')) return 'aküler';
       return 'diger';
     };
-
-    const generateWebTags = (product) => {
-      const tags = [];
-      if (product.marka) tags.push(product.marka.toLowerCase());
-      if (product.ozelkod3kodu) tags.push(product.ozelkod3kodu.toLowerCase());
-      if (product.m_kategoriler && product.m_kategoriler[0]) {
-        const kat = product.m_kategoriler[0];
-        if (kat.kategori_aciklama_1) tags.push(kat.kategori_aciklama_1.toLowerCase());
-        if (kat.kategori_aciklama_2) tags.push(kat.kategori_aciklama_2.toLowerCase());
-      }
-      return [...new Set(tags)];
-    };
     const getFeaturedImage = (images) => {
       if (!images || images.length === 0) return null;
       return images[0].aws_url || null;
@@ -585,7 +573,7 @@ class DiaStockService {
       seoUrl: existingCustomData?.seoUrl || this.generateSeoUrl(diaProduct.aciklama || diaProduct.stokkartkodu),
       seoTitle: existingCustomData?.seoTitle || diaProduct.aciklama,
       seoDescription: existingCustomData?.seoDescription || this.generateSeoDescription(diaProduct),
-      seoKeywords: existingCustomData?.seoKeywords || generateWebTags(diaProduct),
+      seoKeywords: existingCustomData?.seoKeywords || this.generateWebTags(diaProduct),
 
       // Web görünüm - mevcut değerleri koru
       webOrder: existingCustomData?.webOrder || 0,
@@ -623,6 +611,18 @@ class DiaStockService {
 
     return smartCustomData;
   }
+  /* (Boşsa) Otomatik SEO Etiket Oluştur */
+  generateWebTags(product) {
+    const tags = [];
+    if (product.marka) tags.push(product.marka.toLowerCase());
+    if (product.ozelkod3kodu) tags.push(product.ozelkod3kodu.toLowerCase());
+    if (product.m_kategoriler && product.m_kategoriler[0]) {
+      const kat = product.m_kategoriler[0];
+      if (kat.kategori_aciklama_1) tags.push(kat.kategori_aciklama_1.toLowerCase());
+      if (kat.kategori_aciklama_2) tags.push(kat.kategori_aciklama_2.toLowerCase());
+    }
+    return [...new Set(tags)];
+  }
   /* (Boşsa) Otomatik SEO URL Oluştur */
   generateSeoUrl(text) {
     if (!text) return null;
@@ -635,7 +635,7 @@ class DiaStockService {
       .substring(0, 100);
   }
   /* (Boşsa) Otomatik SEO Description Oluştur */
-  generateSeoDescription = (product) => {
+  generateSeoDescription(product) {
     const parts = [];
     if (product.marka) parts.push(product.marka);
     if (product.aciklama) parts.push(product.aciklama);
@@ -822,7 +822,7 @@ class DiaStockService {
   }
   /* Web Product Kategori İçerisindeki Ürün Sayılarını Kaydet */
   async updateCategoryProductCounts() {
-    const WebCategory = require('../models/WebCategory');
+    const WebCategory = require('../../../models/web/catalog/WebCategory');
     const categories = await WebCategory.find({});
     for (const category of categories) {
       const productCount = await WebProduct.countDocuments({
@@ -936,6 +936,9 @@ class DiaStockService {
   }
   async createOrUpdateWebBrand(brandData) {
     try {
+      if (!brandData._id || brandData._id.trim() === '' || brandData._id === '#') {
+        return { skipped: true };
+      }
       const slug = this.generateBrandSlug(brandData._id);
       const seoUrl = this.generateSeoUrl(brandData._id);
 
@@ -1026,8 +1029,7 @@ class DiaStockService {
    */
   generateBrandSlug(brandName) {
     if (!brandName) return null;
-
-    return brandName
+    const slug = brandName
       .toLowerCase()
       .trim()
       .replace(/ç/g, 'c')
@@ -1040,6 +1042,10 @@ class DiaStockService {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
+    if (!slug || slug.length === 0) {
+      return 'marka-' + Date.now();
+    }
+    return slug;
   }
 
   /**
@@ -1071,8 +1077,8 @@ class DiaStockService {
     }
   }
   /**
- * DIA Verilerini
- * Özellik Listesini Senkronize Et (feature collection'da)
+   * DIA Verilerini
+   * Özellik Listesini Senkronize Et (feature collection'da)
   **/
   async syncFeaturesToWebFeature() {
     const operationId = `sync_features_${Date.now()}`;
@@ -1081,7 +1087,7 @@ class DiaStockService {
     try {
       this.logger.info('=== ÖZELLİK SENKRONİZASYONU BAŞLANGICI ===', { operationId });
 
-      const WebFeature = require('../models/WebFeature');
+      const WebFeature = require('../../../models/web/catalog/WebFeature');
 
       // WebProduct'lardan tüm özellikleri topla
       const featurePipeline = [
@@ -1320,8 +1326,8 @@ class DiaStockService {
           const newCustomData = {
             seoUrl: this.generateSeoUrl(item.aciklama || item.stokkartkodu),
             seoTitle: item.aciklama,
-            seoDescription: generateSeoDescription(item),
-            seoKeywords: generateWebTags(item),
+            seoDescription: this.generateSeoDescription(item),
+            seoKeywords: this.generateWebTags(item),
             webOrder: 0,
             webVisible: true,
             customDescription: null,
@@ -1460,7 +1466,6 @@ class DiaStockService {
 
     return cleaned;
   }
-
   /**
    * DIA'dan veri çek ve her batch'i hemen veritabanına yaz *
    */
@@ -1555,7 +1560,6 @@ class DiaStockService {
       throw error;
     }
   }
-
   /**
    * Tek batch veri çek *
    */
@@ -1578,9 +1582,7 @@ class DiaStockService {
    */
   async fullSync() {
     try {
-      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (Ürün, Kategori ve Marka) BAŞLANGICI ===');
       const startTime = Date.now();
-
       // 1. Sadece filtrelenmiş verileri getir ve veritabanına yaz
       const result = await this.fetchAndSyncIncrementally();
       const categoryResult = await this.syncCategoriesToWebCategory();
@@ -1596,7 +1598,6 @@ class DiaStockService {
         brands: brandResult,
         features: featureResult
       });
-
       return {
         ...result,
         duration,

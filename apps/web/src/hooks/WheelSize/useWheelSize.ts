@@ -44,10 +44,10 @@ export const useWheelSize = () => {
         }
     };
 
-    const getGenerations = async (make: string, model: string, year: number) => {
+    const getGenerations = async (make: string, model: string) => {
         try {
             setLoading(true);
-            const response = await api.get(`/wheelsize/generations?make=${make}&model=${model}&year=${year}`);
+            const response = await api.get(`/wheelsize/generations?make=${make}&model=${model}`);
             return response.success ? response.data : [];
         } catch (error) {
             console.error('Generations fetch error:', error);

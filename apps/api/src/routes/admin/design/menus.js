@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const Menu = require('../../../models/Menu');
-const WebCategory = require('../../../models/WebCategory');
-const Page = require('../../../models/Page');
+const Menu = require('../../../models/admin/design/Menu');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
+const Page = require('../../../models/admin/content/Page');
 
 // Kategorileri getir (dropdown için)
 router.get('/options/categories', async (req, res) => {
@@ -110,8 +110,8 @@ router.get('/', async (req, res) => {
             .lean();
 
         // Model import'larını ekleyin (dosyanın en üstünde olmalı)
-        const WebCategory = require('../../../models/WebCategory');
-        const Page = require('../../../models/Page');
+        const WebCategory = require('../../../models/web/catalog/WebCategory');
+        const Page = require('../../../models/admin/content/Page');
 
         // Her menü için kategori ve sayfa bilgilerini ekle
         const enrichedMenus = await Promise.all(menus.map(async (menu) => {

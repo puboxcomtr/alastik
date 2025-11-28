@@ -1,8 +1,8 @@
 // apps/api/src/routes/web/catalog/products.js
 const express = require('express');
 const router = express.Router();
-const WebProduct = require('../../../models/WebProduct');
-const WebCategory = require('../../../models/WebCategory');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
 
 router.get('/filter', async (req, res) => {
     try {

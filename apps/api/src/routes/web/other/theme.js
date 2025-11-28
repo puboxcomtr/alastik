@@ -1,7 +1,7 @@
 // apps/api/src/routes/web/other/theme.js (YENİ DOSYA)
 const express = require('express');
 const router = express.Router();
-const SiteSetting = require('../../../models/SiteSetting');
+const SiteSetting = require('../../../models/admin/settings/SiteSetting');
 
 router.get('/', async (req, res) => {
     try {

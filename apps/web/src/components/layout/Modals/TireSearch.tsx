@@ -15,7 +15,7 @@ import type { TireSearchState, SearchStep } from '@/src/types/tire-search';
 // Steps
 import MakeSelection from './steps/MakeSelection';
 import ModelSelection from './steps/ModelSelection';
-import YearSelection from './steps/YearSelection';
+import GenerationSelection from './steps/GenerationSelection';
 import ModificationSelection from './steps/ModificationSelection';
 import TireSizeSelection from './steps/TireSizeSelection';
 
@@ -131,72 +131,70 @@ export default function TireSearchModal({ open, onClose, onSearchComplete }: Tir
 
             {/* Body */}
             <DialogContent dividers sx={{ minHeight: '400px' }}>
-                <div className="container">
-                    <div className="row">
-                        <div className="col-md-8">
-                            {currentStep === 'make' && (
-                                <MakeSelection
-                                    selectedMake={searchState.make}
-                                    onSelect={(make, makeName) => {
-                                        updateSearchState({ make, makeName });
-                                        goToNextStep();
-                                    }}
-                                />
-                            )}
+                {currentStep === 'make' && (
+                    <MakeSelection
+                        selectedMake={searchState.make}
+                        onSelect={(make, makeName) => {
+                            updateSearchState({ make, makeName });
+                            goToNextStep();
+                        }}
+                    />
+                )}
 
-                            {currentStep === 'model' && (
-                                <ModelSelection
-                                    make={searchState.make}
-                                    selectedModel={searchState.model}
-                                    onSelect={(model, modelName) => {
-                                        updateSearchState({ model, modelName });
-                                        goToNextStep();
-                                    }}
-                                />
-                            )}
+                {currentStep === 'model' && (
+                    <ModelSelection
+                        make={searchState.make}
+                        makeName={searchState.makeName}
+                        selectedModel={searchState.model}
+                        onSelect={(model, modelName) => {
+                            updateSearchState({ model, modelName });
+                            goToNextStep();
+                        }}
+                    />
+                )}
 
-                            {currentStep === 'year' && (
-                                <YearSelection
-                                    make={searchState.make}
-                                    model={searchState.model}
-                                    selectedYear={searchState.year}
-                                    onSelect={(year, generation, vehicleImage) => {
-                                        updateSearchState({ year, generation, vehicleImage });
-                                        goToNextStep();
-                                    }}
-                                />
-                            )}
+                {currentStep === 'year' && (
+                    <GenerationSelection
+                        make={searchState.make}
+                        makeName={searchState.makeName}
+                        model={searchState.model}
+                        modelName={searchState.modelName}
+                        onSelect={(year, generation, vehicleImage) => {
+                            updateSearchState({ year, generation, vehicleImage });
+                            goToNextStep();
+                        }}
+                    />
+                )}
 
-                            {currentStep === 'modification' && (
-                                <ModificationSelection
-                                    make={searchState.make}
-                                    model={searchState.model}
-                                    year={searchState.year!}
-                                    selectedModification={searchState.modification}
-                                    vehicleImage={searchState.vehicleImage}
-                                    onSelect={(modification, modificationName) => {
-                                        updateSearchState({ modification, modificationName });
-                                        goToNextStep();
-                                    }}
-                                />
-                            )}
+                {currentStep === 'modification' && (
+                    <ModificationSelection
+                        make={searchState.make}
+                        makeName={searchState.makeName}
+                        model={searchState.model}
+                        modelName={searchState.modelName}
+                        year={searchState.year!}
+                        generation={searchState.generation}
+                        selectedModification={searchState.modification}
+                        vehicleImage={searchState.vehicleImage}
+                        onSelect={(modification, modificationName) => {
+                            updateSearchState({ modification, modificationName });
+                            goToNextStep();
+                        }}
+                    />
+                )}
 
-                            {currentStep === 'size' && (
-                                <TireSizeSelection
-                                    make={searchState.make}
-                                    model={searchState.model}
-                                    year={searchState.year!}
-                                    modification={searchState.modification!}
-                                    vehicleImage={searchState.vehicleImage}
-                                    onSelect={(tireSize) => {
-                                        updateSearchState({ selectedTireSize: tireSize });
-                                    }}
-                                />
-                            )}
-                        </div>
-                    </div>
-
-                </div>
+                {currentStep === 'size' && (
+                    <TireSizeSelection
+                        make={searchState.make}
+                        model={searchState.model}
+                        year={searchState.year!}
+                        modification={searchState.modification!}
+                        vehicleImage={searchState.vehicleImage}
+                        onSelect={(tireSize) => {
+                            updateSearchState({ selectedTireSize: tireSize });
+                        }}
+                    />
+                )}
             </DialogContent>
 
             {/* Footer */}
@@ -225,6 +223,6 @@ export default function TireSearchModal({ open, onClose, onSearchComplete }: Tir
                     </Button>
                 )}
             </DialogActions>
-        </Dialog>
+        </Dialog >
     );
 }

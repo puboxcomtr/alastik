@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const AdminUser = require('../models/AdminUser');
+const AdminUser = require('../models/admin/user/AdminUser');
 const { authenticateAdmin, loginAdmin, logoutAdmin } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 

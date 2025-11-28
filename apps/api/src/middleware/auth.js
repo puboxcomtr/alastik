@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
-const Admin = require('../models/Admin');
+const Admin = require('../models/admin/user/Admin');
 const Session = require('../models/Session');
 
 // JWT Secret

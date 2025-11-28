@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const FrondSearchTerm = require('../../../models/web/catalog/FrondSearchTerm');
-const WebProduct = require('../../../models/WebProduct');
-const WebCategory = require('../../../models/WebCategory');
-const WebBrand = require('../../../models/WebBrand');
-const WebTag = require('../../../models/WebTag');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
+const WebBrand = require('../../../models/web/catalog/WebBrand');
+const WebTag = require('../../../models/web/catalog/WebTag');
 
 // POST /api/search/autocomplete
 // POST /api/search/autocomplete

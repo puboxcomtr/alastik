@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Blog = require('../../../models/Blog');
+const Blog = require('../../../models/admin/content/Blog');
 
 // GET /api/admin/blogs
 router.get('/', async (req, res) => {

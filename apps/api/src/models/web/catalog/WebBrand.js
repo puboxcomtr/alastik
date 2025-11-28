@@ -261,7 +261,7 @@ webBrandSchema.statics.searchBrands = function (searchTerm, filter = {}) {
     });
 };
 webBrandSchema.statics.syncFromDiaStock = async function () {
-    const DiaStock = require('./DiaStock');
+    const DiaStock = require('../../plugins/DiaStock');
     const brands = await DiaStock.distinct('marka', {
         durum: 'A',
         marka: { $ne: null, $ne: '' }

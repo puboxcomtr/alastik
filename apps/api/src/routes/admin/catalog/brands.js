@@ -6,22 +6,22 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const MediaService = require('../../../services/MediaService');
+const MediaService = require('../../../services/web/MediaService');
 
 // ============================================
 // MODELS
 // ============================================
 // DIA ERP stock model (raw data from ERP system)
-const DiaStock = require('../../../models/DiaStock');
+const DiaStock = require('../../../models/plugins/DiaStock');
 
 // Web product model (for brand statistics)
-const WebProduct = require('../../../models/WebProduct');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 // Web category model (for brand-category relations)
-const WebCategory = require('../../../models/WebCategory');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
 
 // Web brand model (synced and enhanced version for frontend)
-const WebBrand = require('../../../models/WebBrand');
+const WebBrand = require('../../../models/web/catalog/WebBrand');
 
 // ============================================
 // MIDDLEWARE
@@ -36,7 +36,7 @@ const { body, validationResult } = require('express-validator');
 // SERVICES
 // ============================================
 // DIA ERP integration service
-const DiaStockService = require('../../../services/DiaStockService');
+const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
 // ============================================
 // CONFIGURATION

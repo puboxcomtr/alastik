@@ -48,28 +48,28 @@ const { MEDIA_CONFIG, PUBLIC_DIR } = require('./config/media');
 // DATA MODELS
 // ============================================
 // Web-facing models (synced from DIA)
-const WebProduct = require('./models/WebProduct');
-const WebCategory = require('./models/WebCategory');
-const WebBrand = require('./models/WebBrand');
-const WebTag = require('./models/WebTag');
+const WebProduct = require('./models/web/catalog/WebProduct');
+const WebCategory = require('./models/web/catalog/WebCategory');
+const WebBrand = require('./models/web/catalog/WebBrand');
+const WebTag = require('./models/web/catalog/WebTag');
 const WebSlider = require('./models/web/design/WebSlider');
-const Page = require('./models/Page');
-const Menu = require('./models/Menu');
+const Page = require('./models/admin/content/Page');
+const Menu = require('./models/admin/design/Menu');
 
 
 // Legacy and internal models
-const Inventory = require('./models/Inventory');
-const Category = require('./models/Category');
-const DiaStock = require('./models/DiaStock');
-const AdminUser = require('./models/AdminUser');
+const Inventory = require('./models/admin/settings/Inventory');
+const Category = require('./models/admin/catalog/Category');
+const DiaStock = require('./models/plugins/DiaStock');
+const AdminUser = require('./models/admin/user/AdminUser');
 
 
 // ============================================
 // SERVICES
 // ============================================
 // DIA ERP integration services
-const DiaStockService = require('./services/DiaStockService');
-const DiaStockScheduler = require('./services/DiaStockScheduler');
+const DiaStockService = require('./services/plugins/dia/DiaStockService');
+const DiaStockScheduler = require('./services/plugins/dia/DiaStockScheduler');
 const axios = require('axios');
 
 // ============================================
@@ -432,9 +432,6 @@ app.use('/api/admin/pages', pageRoutes);
 const blogRoutes = require('./routes/admin/content/blogs');
 app.use('/api/admin/blogs', blogRoutes);
 
-/* * Formlar * */
-const formRoutes = require('./routes/admin/content/forms');
-app.use('/api/admin/forms', formRoutes);
 
 /**
   * Ayarlar - Routes *
@@ -512,7 +509,6 @@ app.use('/api/showcases', showcaseRoutes);
 const mediaFolders = Object.keys(paths.mediaFolders);
 mediaFolders.forEach(folder => {
   const staticPath = paths.getStaticPath(folder);
-  console.log(`Static path for ${folder}: ${staticPath}`);
   app.use(`/${folder}`, (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -573,7 +569,6 @@ Object.entries(MEDIA_CONFIG).forEach(([category, config]) => {
     next();
   }, express.static(staticPath));
 
-  console.log(`Static path: ${config.urlPrefix} -> ${staticPath}`);
 });
 app.use('/banners', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -2239,7 +2234,7 @@ app.get('/api/lastik/ebat-arama', async (req, res) => {
     }
 
     // DiaStock modelini import et
-    const DiaStock = require('./models/DiaStock');
+    const DiaStock = require('./models/plugins/DiaStock');
 
     // Lastik ebat regex'i oluştur (225/45R17, 225/45ZR17, 225-45-17 gibi formatları destekler)
     const sizePattern = `${genislik}[/-]${yanak}[ZR/-]*${cap}`;
@@ -2497,7 +2492,7 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
     }
 
     // DiaStock modelini import et
-    const DiaStock = require('./models/DiaStock');
+    const DiaStock = require('./models/plugins/DiaStock');
 
     const enhancedProducts = [];
 
@@ -2655,7 +2650,7 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
     }
 
     // DiaStock modelini import et
-    const DiaStock = require('./models/DiaStock');
+    const DiaStock = require('./models/plugins/DiaStock');
 
     // Kategori bazlı filtreleme
     let query = {
@@ -2871,7 +2866,7 @@ function detectSeason(product) {
 
 // Dia stokta eşleşen ürünleri bul
 async function findDiaStockMatches(sizeInfo) {
-  const DiaStock = require('./models/DiaStock');
+  const DiaStock = require('./models/plugins/DiaStock');
 
   try {
     // 1. Ana arama: ozelkod3 ile (175/70R14 formatı)
@@ -3122,9 +3117,6 @@ process.on('SIGTERM', async () => {
 // Artık sadece günlük cron job ile saat 05:00'da çalışır
 async function checkAndRunStartupSync() {
   try {
-    logger.info('🚀 Startup DIA sync kontrolü - DEVRE DIŞI');
-    logger.info('💡 Stok senkronizasyonu günlük olarak gece saat 05:00\'da çalışacak');
-
     // Son sync bilgisini sadece log için kontrol et
     const lastSyncInfo = await activeCache.get('dia-sync:last-full-sync');
 
@@ -3154,17 +3146,13 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 3082;
 app.listen(PORT, async () => {
   logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-  console.log(`🚀 Alastik API Server started on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-
+  console.log(`Alastik API Server started on port ${PORT}`);
   // Start DIA Stock Scheduler
   try {
     diaStockScheduler.start();
-    logger.info('DIA Stock Scheduler başlatıldı');
   } catch (error) {
     logger.error('Failed to start DIA Stock Scheduler:', error);
   }
-
   // Startup sync kontrolü
   await checkAndRunStartupSync();
 });

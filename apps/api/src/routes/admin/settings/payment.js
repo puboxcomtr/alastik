@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const PaymentMethod = require('../../../models/PaymentMethod');
+const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
 const {
     getAllProviders,
     getProviderTemplate,

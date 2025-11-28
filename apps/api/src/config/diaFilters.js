@@ -124,11 +124,6 @@ function getFilterDescriptions() {
  * Filtre konfigürasyonunu loglar
  */
 function logFilterConfig() {
-    console.log('=== DIA FİLTRE KONFIGÜRASYONU ===');
-    console.log('Temel Filtreler:', JSON.stringify(MAIN_DIA_FILTERS, null, 2));
-    console.log('DIA Fields:', DIA_FIELDS.length, 'alan çekilecek');
-    console.log('Sync Tipleri:', Object.keys(SYNC_SPECIFIC_FILTERS));
-    console.log('NOT: Sadece durum kontrolleri uygulanıyor');
 }
 
 module.exports = {

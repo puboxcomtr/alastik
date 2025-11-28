@@ -5,16 +5,23 @@ import { useState, useEffect } from 'react';
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import type { WheelSizeModel } from '@/src/types/vehicle';
 
+/* MUI */
+import { Typography, Divider } from '@mui/material';
+
+/* Internal Imports */
+import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+
 interface ModelSelectionProps {
     make: string;
+    makeName: string;
     selectedModel: string;
     onSelect: (model: string, modelName: string) => void;
 }
-
-export default function ModelSelection({ make, selectedModel, onSelect }: ModelSelectionProps) {
+export default function ModelSelection({ make, makeName, selectedModel, onSelect }: ModelSelectionProps) {
     const { getModels, loading } = useWheelSize();
     const [models, setModels] = useState<WheelSizeModel[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const { t } = useTranslations('general');
 
     useEffect(() => {
         if (make) loadModels();
@@ -42,72 +49,67 @@ export default function ModelSelection({ make, selectedModel, onSelect }: ModelS
 
     return (
         <div className="model-selection">
-            {/* Arama */}
-            <div className="mb-4">
-                <div style={{ position: 'relative' }}>
-                    <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        placeholder="Aramak istediğiniz model"
-                        style={{
-                            borderRadius: '5px',
-                            border: '1px solid black',
-                            padding: '0.75rem',
-                            paddingRight: '2.5rem'
-                        }}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <i
-                        className="ri-search-line"
-                        style={{
-                            position: 'absolute',
-                            right: '1rem',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            pointerEvents: 'none',
-                            color: '#6c757d'
-                        }}
-                    ></i>
+            <div className="row">
+                <div className="col-md-2">
+                    <Typography variant="h6" sx={{ py: 1.5, color: 'black', }}>
+                        {t('garage_car')}
+                    </Typography>
+                    <Divider />
+                    <Typography variant="subtitle2" sx={{ py: 1.5, color: 'text.grey' }}>
+                        {makeName}
+                    </Typography>
+                </div>
+                <div className="col-md-10">
+                    {/* Arama */}
+                    <div className='mb-4' style={{ position: 'relative' }}>
+                        <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            placeholder="Aramak istediğiniz model"
+                            style={{
+                                borderRadius: '5px',
+                                border: '1px solid black',
+                                padding: '0.75rem',
+                                paddingRight: '2.5rem'
+                            }}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <i
+                            className="ri-search-line"
+                            style={{
+                                position: 'absolute',
+                                right: '1rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                pointerEvents: 'none',
+                                color: '#6c757d'
+                            }}
+                        ></i>
+                    </div>
+                    {/* Model Grid */}
+                    {filteredModels.length > 0 ? (
+                        <div className="row g-3">
+                            {filteredModels.map((model) => (
+                                <div key={model.slug} className="col-6 col-md-4 col-lg-3">
+                                    <div
+                                        className={`card h-100 text-center ${selectedModel === model.slug ? 'border-primary' : ''}`}
+                                        onClick={() => onSelect(model.slug, model.name)}
+                                        style={{ cursor: 'pointer', borderRadius: '3px', borderColor: '#767676', padding: '15px 0' }}
+                                    >
+                                        <small className="fw-semibold text-black">{model.name}</small>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-5">
+                            <i className="ri-search-line fs-1 text-muted"></i>
+                            <p className="text-muted mt-2">Sonuç bulunamadı</p>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Model Grid */}
-            {filteredModels.length > 0 ? (
-                <div className="row g-3">
-                    {filteredModels.map((model) => (
-                        <div key={model.slug} className="col-6 col-md-4 col-lg-3">
-                            <div
-                                className={`card h-100 text-center ${selectedModel === model.slug ? 'border-primary' : ''}`}
-                                onClick={() => onSelect(model.slug, model.name)}
-                                style={{ cursor: 'pointer', borderRadius: '3px', borderColor: '#767676', padding: '15px 0' }}
-                            >
-                                <small className="fw-semibold text-black">{model.name}</small>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-5">
-                    <i className="ri-search-line fs-1 text-muted"></i>
-                    <p className="text-muted mt-2">Sonuç bulunamadı</p>
-                </div>
-            )}
-
-            <style jsx>{`
-                .model-card {
-                    transition: all 0.2s ease;
-                    border: 2px solid #dee2e6;
-                    position: relative;
-                }
-                .model-card:hover {
-                    border-color: #dc3545;
-                    transform: translateY(-2px);
-                }
-                .model-card.border-primary {
-                    border-color: #dc3545 !important;
-                }
-            `}</style>
         </div>
     );
 }

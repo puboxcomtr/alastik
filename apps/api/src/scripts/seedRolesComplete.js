@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Role = require('../models/Role');
+const Role = require('../models/admin/user/Role');
 const { getAllModuleKeys } = require('../config/modules');
 
 const MONGODB_URI = process.env.MONGODB_URI;

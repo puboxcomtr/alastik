@@ -1,4 +1,4 @@
-const Setting = require('../../models/Setting');
+const Setting = require('../../models/admin/settings/Setting');
 
 class SettingsHelper {
     static async getSetting(group, key) {

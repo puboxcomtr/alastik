@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const Role = require('../../../models/Role');
-const Admin = require('../../../models/Admin');
-const ActivityLog = require('../../../models/ActivityLog');
+const Role = require('../../../models/admin/user/Role');
+const Admin = require('../../../models/admin/user/Admin');
+const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const { authenticateAdmin, authorize, getClientIP } = require('../../../middleware/auth');
 
 // Tüm route'lar admin authentication gerektirir

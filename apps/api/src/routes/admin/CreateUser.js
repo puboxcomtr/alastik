@@ -1,7 +1,7 @@
 // createAdmin.js
 
 const mongoose = require('mongoose');
-const AdminUser = require('../../models/AdminUser');
+const AdminUser = require('../../models/admin/user/AdminUser');
 require('dotenv').config({ path: __dirname + '/../../../.env' });
 
 async function createNewAdmin() {

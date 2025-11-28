@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 
 /* Model */
-const Order = require('../../../models/Order');
-const WebOrder = require('../../../models/WebOrder');
+const Order = require('../../../models/admin/catalog/Order');
+const WebOrder = require('../../../models/web/catalog/WebOrder');
 
 /* Service */
-const DiaOrderService = require('../../../services/DiaOrderService');
+const DiaOrderService = require('../../../services/plugins/dia/DiaOrderService');
 
 /**
  * GET /api/admin/orders/sync-from-dia

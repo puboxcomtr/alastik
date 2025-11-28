@@ -21,7 +21,7 @@ export default function GaragePage() {
     } finally { setLoading(false); }
   };
 
-  useEffect(()=>{ load(); }, []);
+  useEffect(() => { load(); }, []);
 
   const addCar = async () => {
     try {
@@ -47,7 +47,7 @@ export default function GaragePage() {
     finally { setLoading(false); }
   };
 
-  const toCategory = (car:any) => {
+  const toCategory = (car: any) => {
     const params = new URLSearchParams({ tip: 'arac', marka: car.marka, model: car.model, yil: String(car.yil) });
     if (car.modifikasyon) params.append('modifikasyon', car.modifikasyon);
     window.location.href = `/category?${params.toString()}`;
@@ -71,10 +71,10 @@ export default function GaragePage() {
             </div>
             <div className="card-body">
               <div className="row g-3">
-                {['marka','model','yil','modifikasyon','nickname'].map((k)=> (
+                {['marka', 'model', 'yil', 'modifikasyon', 'nickname'].map((k) => (
                   <div className="col-12" key={k}>
                     <label className="form-label text-capitalize"><i className="ci-edit me-2"></i>{k}</label>
-                    <input className="form-control" value={form[k]||''} onChange={(e)=>setForm((p:any)=>({...p,[k]:e.target.value}))} />
+                    <input className="form-control" value={form[k] || ''} onChange={(e) => setForm((p: any) => ({ ...p, [k]: e.target.value }))} />
                   </div>
                 ))}
               </div>
@@ -98,7 +98,7 @@ export default function GaragePage() {
                   <p>Garajınız boş. Araç ekleyerek hızlı lastik araması yapabilirsiniz.</p>
                 </div>
               ) : (
-                garage.map((g:any, i:number)=> (
+                garage.map((g: any, i: number) => (
                   <div className="border rounded p-3 mb-3" key={i}>
                     <div className="d-flex justify-content-between align-items-start">
                       <div>
@@ -106,8 +106,8 @@ export default function GaragePage() {
                         <div className="small text-muted">{g.marka} {g.model} • {g.yil} {g.modifikasyon ? `• ${g.modifikasyon}` : ''}</div>
                       </div>
                       <div className="d-flex gap-2">
-                        <button className="btn btn-sm btn-outline-primary" onClick={()=>toCategory(g)}><i className="ci-search me-1"></i>Uygun Lastikleri Gör</button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={()=>deleteCar(i)}><i className="ci-trash me-1"></i>Sil</button>
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => toCategory(g)}><i className="ci-search me-1"></i>Uygun Lastikleri Gör</button>
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => deleteCar(i)}><i className="ci-trash me-1"></i>Sil</button>
                       </div>
                     </div>
                   </div>

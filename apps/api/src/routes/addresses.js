@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Address = require('../models/Address');
+const Address = require('../models/admin/user/Address');
 const { authenticate: auth } = require('../middleware/auth');
 const winston = require('winston');
 

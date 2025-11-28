@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs').promises;
-const Slider = require('../../../models/Slider');
-const MediaService = require('../../../services/MediaService');
+const Slider = require('../../../models/admin/design/Slider');
+const MediaService = require('../../../services/web/MediaService');
 
 // Multer upload
 const uploadSlider = MediaService.createUploader('slider', 'images', 10);

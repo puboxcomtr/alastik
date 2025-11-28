@@ -1,5 +1,5 @@
 const express = require('express');
-const TiresCatalogService = require('../services/TiresCatalogService');
+const TiresCatalogService = require('../services/web/TiresCatalogService');
 const logger = require('../utils/logger');
 
 const router = express.Router();

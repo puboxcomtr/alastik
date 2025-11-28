@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const WebFeature = require('../../../models/WebFeature');
+const WebFeature = require('../../../models/web/catalog/WebFeature');
 
 /**
  * Özellik Listeleme

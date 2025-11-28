@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const WebShowcase = require('../../../models/WebShowcase');
-const WebProduct = require('../../../models/WebProduct');
+const WebShowcase = require('../../../models/web/settings/WebShowcase');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 // Yardımcı fonksiyon - ürünleri _key ile bul
 const getProductsByKeys = async (keys) => {
@@ -359,7 +359,7 @@ router.get('/public/active', async (req, res) => {
 // Anasayfa vitrinleri - sitesettings'den seçilen vitrinleri getir
 router.get('/public/homepage', async (req, res) => {
     try {
-        const SiteSetting = require('../../../models/SiteSetting');
+        const SiteSetting = require('../../../models/admin/settings/SiteSetting');
 
         const themeSetting = await SiteSetting.findOne({ key: 'theme' });
         const themeValue = themeSetting?.value || {};

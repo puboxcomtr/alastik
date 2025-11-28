@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ActivityLog = require('../../../models/ActivityLog');
+const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const { authenticateAdmin, getClientIP } = require('../../../middleware/auth');
 
 // Tüm route'lar admin authentication gerektirir

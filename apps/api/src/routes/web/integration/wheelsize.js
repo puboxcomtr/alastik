@@ -1,7 +1,7 @@
 // apps/api/src/routes/web/integration/wheelsize.js
 const express = require('express');
 const router = express.Router();
-const WheelSizeService = require('../../../services/WheelSizeService');
+const WheelSizeService = require('../../../services/plugins/wheelsize/WheelSizeService');
 
 // Markaları getir
 router.get('/makes', async (req, res) => {
@@ -82,16 +82,16 @@ router.get('/years', async (req, res) => {
 // Jenerasyonları getir
 router.get('/generations', async (req, res) => {
     try {
-        const { make, model, year } = req.query;
+        const { make, model } = req.query;
 
-        if (!make || !model || !year) {
+        if (!make || !model) {
             return res.status(400).json({
                 success: false,
-                message: 'Marka, model ve yıl parametreleri gerekli'
+                message: 'Marka ve model parametreleri gerekli'
             });
         }
 
-        const generations = await WheelSizeService.getGenerations(make, model, parseInt(year));
+        const generations = await WheelSizeService.getGenerations(make, model);
 
         res.json({
             success: true,

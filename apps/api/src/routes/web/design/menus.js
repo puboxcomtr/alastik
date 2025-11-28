@@ -3,9 +3,9 @@ const express = require('express');
 const router = express.Router();
 
 // Models
-const Menu = require('../../../models/Menu');
-const WebCategory = require('../../../models/WebCategory');
-const Page = require('../../../models/Page');
+const Menu = require('../../../models/admin/design/Menu');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
+const Page = require('../../../models/admin/content/Page');
 
 router.get('/header', async (req, res) => {
     try {

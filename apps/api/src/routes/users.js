@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
-const Cart = require('../models/Cart');
+const Cart = require('../models/admin/order/Cart');
 const Wishlist = require('../models/Wishlist');
 const { authenticate } = require('../middleware/auth');
 
@@ -598,7 +598,7 @@ router.get('/orders', authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     
-    const Order = require('../models/Order');
+    const Order = require('../models/admin/catalog/Order');
     const orders = await Order.getOrdersByUser(req.userId, {
       page: parseInt(page),
       limit: parseInt(limit),

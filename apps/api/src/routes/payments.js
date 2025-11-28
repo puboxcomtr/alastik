@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const Order = require('../models/Order');
+const Order = require('../models/admin/catalog/Order');
 const User = require('../models/User');
 const axios = require('axios');
 let logger;

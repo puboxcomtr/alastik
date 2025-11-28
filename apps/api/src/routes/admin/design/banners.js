@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
-const Banner = require('../../../models/Banner');
+const Banner = require('../../../models/admin/design/Banner');
 
 // Multer config
 const uploadsDir = path.join(__dirname, '../../../../public/banners');

@@ -2,16 +2,16 @@ const axios = require('axios');
 const winston = require('winston');
 
 /* Order Modeli */
-const Order = require('../models/Order');
+const Order = require('../../../models/admin/catalog/Order');
 
 /* WebOrder Modeli */
-const WebOrder = require('../models/WebOrder');
+const WebOrder = require('../../../models/web/catalog/WebOrder');
 
 /* Order Filter Config */
-const { getOrderFilters, getOrderFields } = require('../config/diaOrderFilters');
+const { getOrderFilters, getOrderFields } = require('../../../config/diaOrderFilters');
 
 /* Sync Service */
-const UserSyncService = require('./UserSyncService');
+const UserSyncService = require('../../web/UserSyncService');
 
 class DiaOrderService {
     constructor() {

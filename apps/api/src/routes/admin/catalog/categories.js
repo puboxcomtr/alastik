@@ -8,13 +8,13 @@ const express = require('express');
 // MODELS
 // ============================================
 // DIA ERP stock model (raw data from ERP system)
-const DiaStock = require('../../../models/DiaStock');
+const DiaStock = require('../../../models/plugins/DiaStock');
 
 // Web product model (for category statistics)
-const WebProduct = require('../../../models/WebProduct');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 // Web category model (synced and enhanced version for frontend)
-const WebCategory = require('../../../models/WebCategory');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
 
 // ============================================
 // MIDDLEWARE
@@ -29,7 +29,7 @@ const { body, validationResult } = require('express-validator');
 // SERVICES
 // ============================================
 // DIA ERP integration service
-const DiaStockService = require('../../../services/DiaStockService');
+const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
 // ============================================
 // CONFIGURATION

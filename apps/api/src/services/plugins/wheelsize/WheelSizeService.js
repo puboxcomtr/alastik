@@ -66,19 +66,26 @@ class WheelSizeService {
             region: this.defaultRegion
         });
 
+        // Slug'a göre unique yap
         const uniqueMap = new Map();
-
         modifications.forEach(mod => {
-            const key = mod.trim?.toLowerCase().trim() || '';
-            if (key && !uniqueMap.has(key)) {
-                uniqueMap.set(key, mod);
+            if (mod.slug && !uniqueMap.has(mod.slug)) {
+                uniqueMap.set(mod.slug, mod);
             }
         });
 
         return Array.from(uniqueMap.values()).sort((a, b) => {
-            const trimA = a.trim || '';
-            const trimB = b.trim || '';
-            return trimA.localeCompare(trimB);
+            const nameA = a.name || '';
+            const nameB = b.name || '';
+            return nameA.localeCompare(nameB);
+        });
+    }
+
+    async getGenerations(make, model) {
+        return this.request('/generations/', {
+            make,
+            model,
+            region: this.defaultRegion
         });
     }
 

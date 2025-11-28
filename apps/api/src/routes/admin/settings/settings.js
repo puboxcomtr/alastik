@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Setting = require('../../../models/Setting');
+const Setting = require('../../../models/admin/settings/Setting');
 
 // GET /api/admin/settings/:group - Grup bazlı ayarları getir
 router.get('/:group', async (req, res) => {

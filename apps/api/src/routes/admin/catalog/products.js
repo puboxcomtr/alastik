@@ -7,13 +7,13 @@ const express = require('express');
 // MODELS
 // ============================================
 // Legacy product model (deprecated - for backward compatibility)
-const Product = require('../../../models/Product');
+const Product = require('../../../models/admin/catalog/Product');
 
 // DIA ERP stock model (raw data from ERP system)
-const DiaStock = require('../../../models/DiaStock');
+const DiaStock = require('../../../models/plugins/DiaStock');
 
 // Web product model (synced and enhanced version for frontend)
-const WebProduct = require('../../../models/WebProduct');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 // ============================================
 // MIDDLEWARE
@@ -28,7 +28,7 @@ const { body, validationResult } = require('express-validator');
 // SERVICES
 // ============================================
 // DIA ERP integration service for stock synchronization
-const DiaStockService = require('../../../services/DiaStockService');
+const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
 // ============================================
 // CONFIGURATION

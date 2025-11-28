@@ -1,4 +1,4 @@
-// apps/web/src/hooks/Auth/useAuth.ts
+// apps/web/src/hooks/Theme/useAuth.ts
 import { useState, useEffect } from 'react';
 import type { User } from '@/src/types/user';
 

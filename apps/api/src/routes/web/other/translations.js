@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const WebTranslation = require('../../../models/WebTranslation');
+const WebTranslation = require('../../../models/web/settings/WebTranslation');
 
 // Tüm aktif çevirileri getir
 router.get('/', async (req, res) => {

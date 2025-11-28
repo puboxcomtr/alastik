@@ -1,13 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import type { WheelSizeModification } from '@/src/types/vehicle';
 
+/* MUI */
+import { Typography, Divider, Box, Alert } from '@mui/material';
+
+/* Internal Imports */
+import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+
 interface ModificationSelectionProps {
     make: string;
+    makeName: string;
     model: string;
+    modelName: string;
     year: number;
+    generation?: string;
     selectedModification?: string;
     vehicleImage?: string;
     onSelect: (modification: string, modificationName: string) => void;
@@ -15,15 +24,23 @@ interface ModificationSelectionProps {
 
 export default function ModificationSelection({
     make,
+    makeName,
     model,
+    modelName,
     year,
+    generation,
     selectedModification,
     vehicleImage,
     onSelect
 }: ModificationSelectionProps) {
     const { getModifications, loading } = useWheelSize();
     const [modifications, setModifications] = useState<WheelSizeModification[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const { t } = useTranslations('general');
+
+    // Filtreler
+    const [filterFuel, setFilterFuel] = useState<string>('');
+    const [filterPower, setFilterPower] = useState<string>('');
+    const [filterBody, setFilterBody] = useState<string>('');
 
     useEffect(() => {
         if (make && model && year) loadModifications();
@@ -34,9 +51,56 @@ export default function ModificationSelection({
         setModifications(data);
     };
 
-    const filteredModifications = modifications.filter(mod =>
-        (mod.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filtre seçeneklerini çıkar
+    const allFuelTypes = useMemo(() => {
+        const fuels = new Set<string>();
+        modifications.forEach(mod => {
+            if (mod.engine?.fuel) fuels.add(mod.engine.fuel);
+        });
+        return Array.from(fuels).sort();
+    }, [modifications]);
+
+    const allPowerOptions = useMemo(() => {
+        const powers = new Set<string>();
+        modifications.forEach(mod => {
+            if (mod.engine?.power?.hp) {
+                powers.add(`${mod.engine.power.hp} hp`);
+            }
+        });
+        return Array.from(powers).sort((a, b) => {
+            const numA = parseInt(a);
+            const numB = parseInt(b);
+            return numA - numB;
+        });
+    }, [modifications]);
+
+    const allBodyTypes = useMemo(() => {
+        const bodies = new Set<string>();
+        modifications.forEach(mod => {
+            if (mod.generation?.bodies) {
+                mod.generation.bodies.forEach(b => bodies.add(b.name));
+            }
+        });
+        return Array.from(bodies);
+    }, [modifications]);
+
+    // Filtrelenmiş sonuçlar
+    const filteredModifications = useMemo(() => {
+        return modifications.filter(mod => {
+            if (filterFuel && mod.engine?.fuel !== filterFuel) return false;
+            if (filterPower && `${mod.engine?.power?.hp} hp` !== filterPower) return false;
+            if (filterBody && !mod.generation?.bodies?.some(b => b.name === filterBody)) return false;
+            return true;
+        });
+    }, [modifications, filterFuel, filterPower, filterBody]);
+
+    const resetFilters = () => {
+        setFilterFuel('');
+        setFilterPower('');
+        setFilterBody('');
+    };
+
+    const hasActiveFilters = filterFuel || filterPower || filterBody;
 
     if (loading) {
         return (
@@ -51,71 +115,176 @@ export default function ModificationSelection({
 
     return (
         <div className="modification-selection">
-            <div className="text-center mb-4">
-                <p className="text-muted">
-                    <strong className="text-capitalize">{make} {model} ({year})</strong> için motor tipini seçin
-                </p>
-            </div>
+            <div className="row">
+                {/* Sol: Araç Bilgisi + Filtreler */}
+                <div className="col-md-3">
+                    <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
+                        {t('garage_car')}
+                    </Typography>
+                    <Divider />
 
-            <div className="mb-3">
-                <div className="input-group">
-                    <span className="input-group-text bg-white">
-                        <i className="ri-search-line"></i>
-                    </span>
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Motor ara... (örn: 1.5 TSI, 2.0 TDI)"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    {searchTerm && (
-                        <button
-                            className="btn btn-outline-secondary"
-                            onClick={() => setSearchTerm('')}
-                        >
-                            <i className="ri-close-line"></i>
-                        </button>
+                    {/* Araç Görseli */}
+                    <div className="text-center py-3">
+                        {vehicleImage ? (
+                            <img
+                                src={vehicleImage}
+                                alt={`${makeName} ${modelName}`}
+                                className="img-fluid"
+                                style={{ maxHeight: '120px', objectFit: 'contain' }}
+                            />
+                        ) : (
+                            <i className="ri-car-line" style={{ fontSize: '4rem', color: '#dee2e6' }}></i>
+                        )}
+                    </div>
+
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                        {makeName} {modelName} {year}
+                    </Typography>
+
+                    {/* Filtreler */}
+                    <Box sx={{ mt: 2 }} />
+                    <Divider />
+                    <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
+                        {t('filter')}
+                        {hasActiveFilters && (
+                            <button
+                                onClick={resetFilters}
+                                className="btn btn-sm btn-link pl-2 text-danger"
+                                style={{ fontSize: '12px' }}
+                            >
+                                {t('clear')}
+                            </button>
+                        )}
+                    </Typography>
+                    <Divider />
+
+                    <div className="py-2">
+                        {/* Yakıt Filtresi */}
+                        {allFuelTypes.length > 1 && (
+                            <div className="mb-3">
+                                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Yakıt</label>
+                                <select
+                                    className="form-select"
+                                    value={filterFuel}
+                                    onChange={(e) => setFilterFuel(e.target.value)}
+                                    style={{
+                                        borderRadius: '0.375rem',
+                                        border: '1px solid black',
+                                        padding: '0.75rem'
+                                    }}
+                                >
+                                    <option value="">Tümü</option>
+                                    {allFuelTypes.map((fuel, idx) => (
+                                        <option key={`fuel-${idx}`} value={fuel}>{fuel}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Motor Gücü Filtresi */}
+                        {allPowerOptions.length > 1 && (
+                            <div className="mb-3">
+                                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Motor Gücü</label>
+                                <select
+                                    className="form-select"
+                                    value={filterPower}
+                                    onChange={(e) => setFilterPower(e.target.value)}
+                                    style={{
+                                        borderRadius: '0.375rem',
+                                        border: '1px solid black',
+                                        padding: '0.75rem'
+                                    }}
+                                >
+                                    <option value="">Tümü</option>
+                                    {allPowerOptions.map((power, idx) => (
+                                        <option key={`power-${idx}`} value={power}>{power}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sağ: Motor Listesi */}
+                <div className="col-md-9">
+                    <Alert
+                        severity="info"
+                        className="mb-3"
+                        sx={{
+                            backgroundColor: '#f5f5f5',
+                            color: 'text.primary',
+                            '& .MuiAlert-icon': { color: 'text.secondary' }
+                        }}
+                    >
+                        <strong>Aracınızı bulamıyor musunuz?</strong> Kesin tanımlama için araç tescil belgenizi kullanın.
+                    </Alert>
+
+                    {/* Motor Tablosu */}
+                    {filteredModifications.length > 0 ? (
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
+                                <thead>
+                                    <tr className="text-muted" style={{ fontSize: '12px' }}>
+                                        <th>Tip</th>
+                                        <th>Üretim Yılı</th>
+                                        <th>Güç</th>
+                                        <th>Motor Hacmi</th>
+                                        <th>Yakıt</th>
+                                        <th>Kasa</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredModifications.map((mod) => (
+                                        <tr
+                                            key={mod.slug}
+                                            onClick={() => onSelect(mod.slug, mod.name)}
+                                            className={selectedModification === mod.slug ? 'table-active' : ''}
+                                            style={{
+                                                cursor: 'pointer',
+                                                borderLeft: selectedModification === mod.slug ? '3px solid #dc3545' : '3px solid transparent'
+                                            }}
+                                        >
+                                            <td><strong>{mod.name}</strong></td>
+                                            <td>
+                                                {mod.start_year && mod.end_year
+                                                    ? `${mod.start_year} - ${mod.end_year}`
+                                                    : mod.start_year
+                                                        ? `${mod.start_year} - bugüne`
+                                                        : '-'
+                                                }
+                                            </td>
+                                            <td>
+                                                {mod.engine?.power?.hp
+                                                    ? `${mod.engine.power.hp} hp / ${mod.engine.power.kW} kW`
+                                                    : '-'
+                                                }
+                                            </td>
+                                            <td>
+                                                {mod.engine?.capacity
+                                                    ? <span>{mod.engine.capacity} L</span>
+                                                    : '-'
+                                                }
+                                            </td>
+                                            <td>{mod.engine?.fuel || '-'}</td>
+                                            <td>{mod.generation?.bodies?.[0]?.name || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-5">
+                            <i className="ri-settings-3-line fs-1 text-muted"></i>
+                            <p className="text-muted mt-2">Sonuç bulunamadı</p>
+                            {hasActiveFilters && (
+                                <button onClick={resetFilters} className="btn btn-primary btn-sm">
+                                    Filtreleri Temizle
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
-
-            {filteredModifications.length > 0 ? (
-                <div className="list-group" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {filteredModifications.map((mod) => (
-                        <button
-                            key={mod.slug}
-                            onClick={() => onSelect(mod.slug, mod.name)}
-                            className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${selectedModification === mod.slug ? 'active' : ''}`}
-                        >
-                            <div className="d-flex align-items-center">
-                                <i className="ri-settings-3-line me-3"></i>
-                                <div className="text-start">
-                                    <div className="fw-semibold">{mod.name}</div>
-                                    {mod.enginePower && (
-                                        <small className="text-muted">{mod.enginePower}</small>
-                                    )}
-                                </div>
-                            </div>
-                            {selectedModification === mod.slug && (
-                                <i className="ri-check-line"></i>
-                            )}
-                        </button>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-5">
-                    <i className="ri-settings-3-line fs-1 text-muted"></i>
-                    <p className="text-muted mt-2">Sonuç bulunamadı</p>
-                </div>
-            )}
-
-            <style jsx>{`
-                .list-group-item.active {
-                    background-color: #dc3545;
-                    border-color: #dc3545;
-                }
-            `}</style>
         </div>
     );
 }
