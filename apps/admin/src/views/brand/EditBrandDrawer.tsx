@@ -18,7 +18,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { toast } from 'react-toastify'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082'
+const BASE_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
 
 type Props = {
   open: boolean
