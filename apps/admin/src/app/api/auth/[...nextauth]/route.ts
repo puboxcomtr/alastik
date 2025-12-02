@@ -2,6 +2,8 @@ import NextAuth from 'next-auth'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
@@ -53,6 +55,37 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: 'jwt',
         maxAge: 8 * 60 * 60 // 8 saat
+    },
+    cookies: {
+        sessionToken: {
+            name: 'next-auth.session-token',
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: isProduction,
+                domain: '.alastik.com'
+            }
+        },
+        callbackUrl: {
+            name: 'next-auth.callback-url',
+            options: {
+                sameSite: 'lax',
+                path: '/',
+                secure: isProduction,
+                domain: '.alastik.com'
+            }
+        },
+        csrfToken: {
+            name: 'next-auth.csrf-token',
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: isProduction,
+                domain: '.alastik.com'
+            }
+        }
     },
     callbacks: {
         async jwt({ token, user }) {

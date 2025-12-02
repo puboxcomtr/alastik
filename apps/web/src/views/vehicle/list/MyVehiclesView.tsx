@@ -17,7 +17,7 @@ import { ROUTES } from '@/src/config/routes';
 /* Components */
 import AccountSidebar from '@/src/views/account/sidebar/AccountSidebar';
 import VehicleList from '@/src/views/vehicle/VehicleList';
-import VehicleFormModal from '@/src/components/user/vehicle/VehicleFormModal';
+import TireSearchModal from '@/src/components/layout/Modals/TireSearch';
 
 export default function MyVehiclesView() {
     const router = useRouter();
@@ -83,22 +83,16 @@ export default function MyVehiclesView() {
                         )}
                     </div>
                 </div>
-                <div className="col-md-9">
-
-
-                </div>
             </div>
-
-            {showAddModal && (
-                <VehicleFormModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onSuccess={() => {
-                        setShowAddModal(false);
-                        refetch();
-                    }}
-                />
-            )}
+            <TireSearchModal
+                open={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                mode="addVehicle"
+                onVehicleSaved={() => {
+                    setShowAddModal(false);
+                    refetch();
+                }}
+            />
         </div>
     );
 }

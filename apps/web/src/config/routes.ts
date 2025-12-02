@@ -110,3 +110,39 @@ export const parseTireSize = (ebatSlug: string) => {
 export const buildTagUrl = (seoUrl: string): string => {
     return `${ROUTES.TAG}/${seoUrl}`;
 };
+/**
+ * Lastik ebat etiketi fallback URL'i
+ * Etiket bulunamadığında kullanılır
+ */
+export const buildTireSizeTagFallback = (width: number, aspectRatio: number, diameter: number): string => {
+    return `${width}-${aspectRatio}-r${diameter}-lastik-fiyatlari`;
+};
+
+/**
+ * Araç bilgisiyle etiket URL'i oluştur
+ */
+export interface VehicleParams {
+    make: string;
+    makeName: string;
+    model: string;
+    modelName: string;
+    year: number;
+    modification: string;
+    modificationName?: string;
+    vehicleImage?: string;
+}
+
+export const buildTagUrlWithVehicle = (seoUrl: string, vehicle: VehicleParams): string => {
+    const baseUrl = `${ROUTES.TAG}/${seoUrl}`;
+    const params = new URLSearchParams({
+        make: vehicle.make,
+        makeName: vehicle.makeName,
+        model: vehicle.model,
+        modelName: vehicle.modelName,
+        year: vehicle.year.toString(),
+        modification: vehicle.modification,
+        ...(vehicle.modificationName && { modificationName: vehicle.modificationName }),
+        ...(vehicle.vehicleImage && { vehicleImage: vehicle.vehicleImage })
+    });
+    return `${baseUrl}?${params.toString()}`;
+};

@@ -1,23 +1,28 @@
 'use client'
 
-// React Imports
-import { useEffect, useState, useRef } from 'react'
-import type { ChangeEvent } from 'react'
-
-// Type Imports
+import { useEffect, useState } from 'react'
 import type { CategoryType } from '@/types/apps/productTypes'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
-import InputAdornment from '@mui/material/InputAdornment'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
 
-// Toast import - sadece react-toastify
 import { toast } from 'react-toastify'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+
+type SliderOption = {
+  _id: string
+  name: string
+  key?: string
+}
 
 type Props = {
   open: boolean
@@ -28,8 +33,8 @@ type Props = {
 }
 
 const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory, setData }: Props) => {
-  const [fileName, setFileName] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [sliders, setSliders] = useState<SliderOption[]>([])
+  const [loadingSliders, setLoadingSliders] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -37,31 +42,62 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     seoTitle: '',
     seoDescription: '',
     seoUrl: '',
-    webOrder: 0
+    webOrder: 0,
+    sliderId: ''
   })
 
-  useEffect(() => {
-    if (selectedCategory) {
+  // Slider listesini yükle
+  const fetchSliders = async () => {
+    try {
+      setLoadingSliders(true)
+      const response = await fetch(`${API_URL}/categories/sliders/list`, {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      if (result.success && result.data) {
+        setSliders(result.data)
+      }
+    } catch (error) {
+      console.error('Slider listesi yüklenemedi:', error)
+    } finally {
+      setLoadingSliders(false)
+    }
+  }
 
+  // Drawer açıldığında slider listesini yükle ve form data'yı set et
+  useEffect(() => {
+    if (open) {
+      fetchSliders()
+    }
+  }, [open])
+
+  // selectedCategory değiştiğinde form data'yı güncelle
+  useEffect(() => {
+    if (selectedCategory && open) {
       setFormData({
         description: selectedCategory.description || '',
         seoTitle: selectedCategory.seoTitle || '',
         seoDescription: selectedCategory.seoDescription || '',
         seoUrl: selectedCategory.seoUrl || '',
-        webOrder: selectedCategory.webOrder || 0
+        webOrder: selectedCategory.webOrder || 0,
+        sliderId: (selectedCategory as any).sliderId ? String((selectedCategory as any).sliderId) : ''
       })
-      setFileName('')
-    } else {
+    }
+  }, [selectedCategory, open])
+
+  // Drawer kapandığında formu sıfırla
+  useEffect(() => {
+    if (!open) {
       setFormData({
         description: '',
         seoTitle: '',
         seoDescription: '',
         seoUrl: '',
-        webOrder: 0
+        webOrder: 0,
+        sliderId: ''
       })
-      setFileName('')
     }
-  }, [selectedCategory])
+  }, [open])
 
   const onSubmit = async () => {
     if (!selectedCategory || isLoading) return
@@ -69,18 +105,19 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     setIsLoading(true)
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-      const response = await fetch(`${baseUrl}/categories/${selectedCategory.id}`, {
+      const response = await fetch(`${API_URL}/categories/${selectedCategory.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           description: formData.description,
           seoTitle: formData.seoTitle,
           seoDescription: formData.seoDescription,
           seoUrl: formData.seoUrl,
-          webOrder: formData.webOrder
+          webOrder: formData.webOrder,
+          sliderId: formData.sliderId || null
         })
       })
 
@@ -95,6 +132,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
               seoDescription: result.data.seoDescription,
               seoUrl: result.data.seoUrl,
               webOrder: result.data.webOrder,
+              sliderId: result.data.sliderId,
               updatedAt: result.data.updatedAt
             }
           }
@@ -103,45 +141,17 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
 
         setData(updatedCategoryData)
 
-        toast.success(`${selectedCategory.name} kategorisi başarıyla güncellendi!`, {
-          position: 'top-right',
-          autoClose: 4000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          style: {
-            zIndex: 9999,
-          }
-        })
-
-        // Drawer'ı kapat
+        toast.success(`${selectedCategory.name} kategorisi başarıyla güncellendi!`)
         handleClose()
 
       } else {
-        // Hata durumu
-        toast.error(`Güncelleme Hatası: ${result.message || 'Kategori güncellenirken hata oluştu'}`, {
-          position: 'top-right',
-          autoClose: 4000,
-          style: { zIndex: 9999 }
-        })
+        toast.error(`Güncelleme Hatası: ${result.message || 'Kategori güncellenirken hata oluştu'}`)
       }
     } catch (error) {
       console.error('API hatası:', error)
-      toast.error('Bağlantı Hatası: Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.', {
-        position: 'top-right',
-        autoClose: 4000,
-        style: { zIndex: 9999 }
-      })
+      toast.error('Bağlantı Hatası: Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const { files } = event.target
-    if (files && files.length > 0) {
-      setFileName(files[0].name)
     }
   }
 
@@ -194,6 +204,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             placeholder='Kategori açıklaması giriniz'
             disabled={isLoading}
           />
+
           <TextField
             fullWidth
             label='SEO Başlık'
@@ -202,6 +213,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             placeholder='SEO başlık giriniz'
             disabled={isLoading}
           />
+
           <TextField
             fullWidth
             multiline
@@ -214,6 +226,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             inputProps={{ maxLength: 160 }}
             helperText={`${formData.seoDescription.length}/160 karakter`}
           />
+
           <TextField
             fullWidth
             label='SEO URL'
@@ -233,34 +246,21 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             disabled={isLoading}
           />
 
-          <TextField
-            size='small'
-            placeholder='No file chosen'
-            variant='outlined'
-            value={fileName}
-            className='flex-auto'
-            InputProps={{
-              readOnly: true,
-              endAdornment: fileName ? (
-                <InputAdornment position='end'>
-                  <IconButton size='small' edge='end' onClick={() => setFileName('')}>
-                    <i className='ri-close-line' />
-                  </IconButton>
-                </InputAdornment>
-              ) : null
-            }}
-          />
-
-          <Button
-            component='label'
-            variant='outlined'
-            htmlFor='contained-button-file'
-            className='min-is-fit'
-            disabled={isLoading}
-          >
-            Dosya Seçiniz
-            <input hidden id='contained-button-file' type='file' onChange={handleFileUpload} ref={fileInputRef} />
-          </Button>
+          <FormControl fullWidth>
+            <InputLabel>Kategori Slider</InputLabel>
+            <Select
+              value={formData.sliderId}
+              label='Kategori Slider'
+              onChange={(e) => setFormData({ ...formData, sliderId: e.target.value })}
+              disabled={isLoading || loadingSliders}
+            >
+              {sliders.map((slider) => (
+                <MenuItem key={slider._id} value={slider._id}>
+                  {slider.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <div className='flex items-center gap-4'>
             <Button
@@ -284,4 +284,5 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     </Drawer>
   )
 }
+
 export default EditCategoryDrawer

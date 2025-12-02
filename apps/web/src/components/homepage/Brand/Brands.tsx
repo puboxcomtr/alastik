@@ -70,7 +70,7 @@ export default function Brand() {
     }
 
     return (
-        <section id="brand_list" className="position-relative pt-md-4 pb-2">
+        <section id="brand_list" className="position-relative pt-md-5 pb-md-4 pb-2">
             <div className="container">
                 <div className="row-fluid">
                     <Swiper
@@ -90,7 +90,7 @@ export default function Brand() {
                                 slidesPerView: 4,
                             },
                             1000: {
-                                slidesPerView: 6,
+                                slidesPerView: 7,
                             },
                         }}
                         className="hover-effect-opacity"
@@ -99,7 +99,7 @@ export default function Brand() {
                             <SwiperSlide key={brand._id}>
                                 <Link
                                     href={buildBrandUrl(brand.seoUrl)}
-                                    className="btn btn-outline-secondary w-100 rounded-4 p-3 d-flex align-items-center justify-content-center"
+                                    className="p-0"
                                     title={brand.name}
                                     style={{ minHeight: 86 }}
                                 >
@@ -107,10 +107,10 @@ export default function Brand() {
                                         <Image
                                             src={getBrandImageUrl(brand.logo)}
                                             alt={brand.logoAlt}
-                                            width={194}
-                                            height={60}
-                                            className="img-fluid"
-                                            style={{ objectFit: 'contain', maxHeight: 60 }}
+                                            width={120}
+                                            height={57}
+                                            className="img-fluid rounded-2"
+                                            style={{ objectFit: 'contain'}}
                                             unoptimized
                                         />
                                     ) : (

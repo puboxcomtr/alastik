@@ -1,8 +1,7 @@
-// apps/web/src/components/shop/Product/Showcase/Card.tsx
 'use client';
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Tooltip from '@mui/material/Tooltip';
 import Rating from '@mui/material/Rating';
 import Dropdown from "react-bootstrap/Dropdown";
@@ -11,8 +10,7 @@ import Image from 'next/image';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { ProductCardProps } from '@src/types/products';
 import { useSettings } from '@src/context/SettingsContext';
-import { getBrandByName } from '@/src/services/brandService';
-import { getBrandDisplay } from '@/src/hooks/Products/brandHelpers';
+import { useBrands } from '@/src/context/BrandsContext';
 import {
     getProductUrl,
     getProductPrice,
@@ -28,20 +26,9 @@ export default function ProductCard({ product }: ProductCardProps) {
     const [value, setValue] = useState<number | null>(4);
     const [isFavorite, setIsFavorite] = useState(false);
     const season = getProductSeason(product);
-    const [brandInfo, setBrandInfo] = useState<{ name: string; logo: string | null } | null>(null);
     const { theme } = useSettings();
     const { t } = useTranslations('general');
-
-    useEffect(() => {
-        const fetchBrand = async () => {
-            const response = await getBrandByName(product.diaData.marka);
-            if (response.success && response.data) {
-                setBrandInfo(response.data);
-            }
-        };
-
-        fetchBrand();
-    }, [product.diaData.marka]);
+    const { getBrand } = useBrands();
 
     const toggleFavorite = () => {
         setIsFavorite((prev) => !prev);
@@ -55,13 +42,17 @@ export default function ProductCard({ product }: ProductCardProps) {
     const stockCode = getProductStockCode(product);
     const { ebat, yukEndeksi, hizEndeksi, uretimTarihi } = getProductFeatures(product);
 
-    // Marka gösterimi
-    const brandDisplay = getBrandDisplay(brandInfo, product.diaData.marka);
+    // Marka bilgisini context'ten al
+    const brandName = product.diaData.marka || '';
+    const brandInfo = getBrand(brandName);
+    const brandLogo = brandInfo?.logo && !brandInfo.logo.includes('gorsel-bulunamadi')
+        ? `https://api.alastik.com${brandInfo.logo}`
+        : null;
 
     return (
         <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
             <div className="position-relative">
-                {/* Favorite button - aynı */}
+                {/* Favorite button */}
                 <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-0 mt-3 me-3">
                     <div className="d-flex flex-column gap-2">
                         <button
@@ -79,7 +70,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
                 </div>
 
-                {/* Mobile dropdown - aynı */}
+                {/* Mobile dropdown */}
                 <div className="d-lg-none position-absolute top-0 end-0 z-2 mt-2 me-2">
                     <Dropdown align="end">
                         <Dropdown.Toggle
@@ -99,7 +90,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </Dropdown>
                 </div>
 
-                {/* Product Image - aynı */}
+                {/* Product Image */}
                 <Link className="d-block rounded-top overflow-hidden p-3 p-sm-4" href={productUrl}>
                     {season && (
                         <span
@@ -127,19 +118,19 @@ export default function ProductCard({ product }: ProductCardProps) {
             <div className="w-100 min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
                 <div className="d-flex justify-content-between gap-2 mb-2">
                     <div>
-                        {brandDisplay.hasLogo && brandDisplay.logo ? (
+                        {brandLogo ? (
                             <Image
-                                src={brandDisplay.logo}
-                                alt={brandDisplay.name || 'Marka'}
+                                src={brandLogo}
+                                alt={brandName || 'Marka'}
                                 width={60}
                                 height={30}
                                 style={{ objectFit: 'contain' }}
                             />
                         ) : (
-                            <span className="fw-medium fs-sm">{brandDisplay.display}</span>
+                            <span className="fw-medium fs-sm">{brandName || 'Marka Yok'}</span>
                         )}
                     </div>
-                    {/* Rating - aynı */}
+                    {/* Rating */}
                     <div className='d-flex align-items-center'>
                         <Rating
                             name={`product-rating-${product._key}`}
@@ -154,7 +145,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
                 </div>
 
-                {/* Geri kalan kısım aynı */}
                 <h3 className="pb-1 mb-2">
                     <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
                         {stockCode}
@@ -199,7 +189,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </Tooltip>
             </div>
 
-            {/* Product details hover - aynı */}
+            {/* Product details hover */}
             <div className="product-card-details position-absolute top-100 start-0 w-100 bg-body rounded-bottom shadow mt-n2 p-3 pt-1">
                 <span className="position-absolute top-0 start-0 w-100 bg-body mt-n2 py-2"></span>
                 <ul className="list-unstyled d-flex flex-column gap-2 m-0">

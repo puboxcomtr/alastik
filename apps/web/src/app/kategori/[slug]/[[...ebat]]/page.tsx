@@ -1,5 +1,4 @@
 // apps/web/src/app/kategori/[slug]/[[...ebat]]/page.tsx
-
 /* Library */
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
@@ -14,18 +13,16 @@ import { getShowcaseSettings } from '@/src/services/settingsService';
 /* Components */
 import Sidebar from "@/src/components/category/Sidebar/Content";
 import Breadcrumb from "@/src/components/category/Header/Breadcrumb";
-import ProductCard from '@components/shop/Product/Showcase/Card';
 import CategorySlider from '@components/category/Top/Slider';
 import CategoryTop from '@components/category/Top/Content';
 import CategoryTireSearch from '@components/category/Top/CategoryTireSearch';
 import Pagination from '@/src/components/category/Pagination/MainPagination';
-
+import ProductCard from '@components/shop/Product/Showcase/Card';
 /* Utils */
 import { parseTireSize } from '@/src/config/routes';
 
 /* Types */
 import type { Category } from '@/src/types/category';
-
 interface Props {
     params: Promise<{
         slug: string;
@@ -89,9 +86,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     // Ürünleri filtrele (pagination ile)
     const productsData = await filterProducts({
         category: slug,
-        genislik: sizeInfo?.genislik,
-        yukseklik: sizeInfo?.yukseklik,
-        cap: sizeInfo?.cap,
+        genislik: filters.genislik || sizeInfo?.genislik,
+        yukseklik: filters.yanak || sizeInfo?.yukseklik,
+        cap: filters.jant || sizeInfo?.cap,
+        arac: filters.arac,
+        marka: filters.marka,
+        oem: filters.oem,
         page: currentPage,
         limit: showcaseSettings.productsPerPage
     });
@@ -114,26 +114,16 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
                 <Row>
                     <Col lg={3}>
-                        <Sidebar />
+                        <Sidebar hideEbatFilters={false} categorySlug={slug} />
                     </Col>
 
                     <Col lg={9}>
                         <Row>
-                            {category.customImage && (
-                                <Col md={12} className="mb-3">
-                                    <img
-                                        src={category.customImage}
-                                        alt={category.name}
-                                        className="w-100"
-                                        style={{ maxHeight: '300px', objectFit: 'cover' }}
-                                    />
-                                </Col>
-                            )}
-
                             <Col md={12}>
-                                <CategorySlider />
+                                <Col md={12}>
+                                    <CategorySlider sliderId={category.sliderId} />
+                                </Col>
                             </Col>
-
                             <Col md={12}>
                                 <CategoryTireSearch />
                             </Col>
@@ -146,6 +136,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                             </Col>
                         </Row>
 
+                        {/* Ürün Listesi */}
                         <Row className="row-cols-2 row-cols-md-3 row-cols-lg-3">
                             {productsData?.products && productsData.products.length > 0 ? (
                                 productsData.products.map((product) => (

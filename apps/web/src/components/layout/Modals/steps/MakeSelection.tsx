@@ -1,24 +1,35 @@
-// apps/web/src/components/layout/Modals/steps/MakeSelection.tsx
 'use client';
-import { useState, useEffect, useMemo } from 'react';
-import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
-import type { WheelSizeMake } from '@/src/types/vehicle';
 
-/* MUI */
+// ============================================
+// React & Next.js
+// ============================================
+import { useState, useEffect, useMemo } from 'react';
+
+// ============================================
+// MUI 
+// ============================================
 import { Typography, Divider, Box, Tooltip, Link } from '@mui/material';
 
-/* Internal Imports */
+// ============================================
+// Hooks
+// ============================================
+import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@src/hooks/Theme/useAuth';
 
-/* Routes */
+// ============================================
+// Types
+// ============================================
+import type { WheelSizeMake } from '@/src/types/vehicle';
+
+// ============================================
+// Routes
+// ============================================
 import { ROUTES } from '@/src/config/routes';
 
-interface MakeSelectionProps {
-    selectedMake: string;
-    onSelect: (make: string, makeName: string) => void;
-}
-
+// ============================================
+// Variable
+// ============================================
 const POPULAR_MAKES = [
     'audi', 'bmw', 'mercedes-benz', 'volkswagen',
     'ford', 'renault', 'opel', 'peugeot',

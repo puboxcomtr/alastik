@@ -62,6 +62,9 @@ export type ProductType = {
   webTags?: string[]
   tag?: string
 
+  // Slider 
+  sliderId?: string 
+
   // Stok Yönetimi
   minOrderQuantity?: number
   maxOrderQuantity?: number | null

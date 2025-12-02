@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import Image from "next/image";
 
@@ -13,43 +13,27 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-// Services
-import { getSliderById } from '@/src/services/sliderService';
-
-// Context
-import { useSettings } from '@/src/context/SettingsContext';
-
 // Types
 import type { Slider } from '@/src/types/slider';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
-export default function HomeSlider() {
-    const [slider, setSlider] = useState<Slider | null>(null);
-    const [loading, setLoading] = useState(true);
-    const { theme } = useSettings();
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
-    useEffect(() => {
-        const fetchSlider = async () => {
-            if (!theme?.sliderSelect) {
-                setLoading(false);
-                return;
-            }
+// Helper fonksiyon
+const getImageUrl = (url: string | undefined | null): string => {
+    if (!url) return '/images/slider/gorsel-bulunamadi.jpg';
+    if (url.startsWith('http')) return url;
+    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
+};
 
-            try {
-                const sliderData = await getSliderById(theme.sliderSelect);
-                setSlider(sliderData);
-            } catch (error) {
-                console.error('Slider yüklenemedi:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+interface SliderComponentProps {
+    slider: Slider;
+}
 
-        fetchSlider();
-    }, [theme?.sliderSelect]);
-    if (loading || !slider || slider.sliders.length === 0) {
+export default function SliderComponent({ slider }: SliderComponentProps) {
+    if (!slider || slider.sliders.length === 0) {
         return null;
     }
+
     const settings = slider.settings || {};
     const width = parseInt(settings.width) || 1260;
     const height = parseInt(settings.height) || 500;
@@ -67,50 +51,54 @@ export default function HomeSlider() {
     if (autoStart) modules.push(Autoplay);
 
     return (
-        <Swiper
-            modules={modules}
-            effect="fade"
-            loop
-            autoplay={autoplayConfig}
-            pagination={showDots ? { clickable: true } : false}
-            navigation={showNavButtons ? {
-                nextEl: ".slide_btn-next",
-                prevEl: ".slide_btn-prev",
-            } : false}
-            className="hover-effect-opacity"
-        >
-            {slider.sliders.map((slide, index) => (
-                <SwiperSlide key={index} className="rounded">
-                    {slide.link ? (
-                        <Link
-                            className="w-100 d-flex align-items-center justify-content-center"
-                            href={slide.link}
-                            target={slide.openNewTab ? '_blank' : '_self'}
-                            rel={slide.openNewTab ? 'noopener noreferrer' : undefined}
-                        >
-                            <Image
-                                className="rounded"
-                                src={`${API_BASE_URL}${slide.image}`}
-                                alt={slide.description || `${slider.name} - Slider ${index + 1}`}
-                                width={width}
-                                height={height}
-                                priority={index === 0}
-                            />
-                        </Link>
-                    ) : (
-                        <div className="w-100 d-flex align-items-center justify-content-center">
-                            <Image
-                                className="rounded"
-                                src={`${API_BASE_URL}${slide.image}`}
-                                alt={slide.description || `${slider.name} - Slider ${index + 1}`}
-                                width={width}
-                                height={height}
-                                priority={index === 0}
-                            />
-                        </div>
-                    )}
-                </SwiperSlide>
-            ))}
-        </Swiper>
+        <section id="slider_list">
+            <div className="container">
+                <div className="row-fluid">
+
+                    <Swiper
+                        modules={modules}
+                        effect="fade"
+                        loop
+                        autoplay={autoplayConfig}
+                        pagination={showDots ? { clickable: true } : false}
+                        navigation={showNavButtons ? {
+                            nextEl: ".slide_btn-next",
+                            prevEl: ".slide_btn-prev",
+                        } : false}
+                        className="hover-effect-opacity"
+                    >
+                        {slider.sliders.map((slide, index) => (
+                            <SwiperSlide key={index} className="rounded">
+                                {slide.link ? (
+                                    <Link
+                                        href={slide.link}
+                                        target={slide.openNewTab ? '_blank' : '_self'}
+                                        rel={slide.openNewTab ? 'noopener noreferrer' : undefined}
+                                    >
+                                        <Image
+                                            className="w-100 rounded"
+                                            src={getImageUrl(slide.image)}
+                                            alt={slide.description || `${slider.name} - Slider ${index + 1}`}
+                                            width={width}
+                                            height={height}
+                                            priority={index === 0}
+                                        />
+                                    </Link>
+                                ) : (
+                                    <Image
+                                        className="w-100 rounded"
+                                        src={getImageUrl(slide.image)}
+                                        alt={slide.description || `${slider.name} - Slider ${index + 1}`}
+                                        width={width}
+                                        height={height}
+                                        priority={index === 0}
+                                    />
+                                )}
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                </div>
+            </div>
+        </section>
     );
 }

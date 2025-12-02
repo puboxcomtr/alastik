@@ -7,7 +7,7 @@ import type {
 } from '@/src/types/brand';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
 /**
  * Anasayfa markaları (showOnHomepage: true)
@@ -89,5 +89,5 @@ export async function getBrandDetail(seoUrl: string): Promise<BrandDetailRespons
 export function getBrandImageUrl(url: string | null | undefined): string {
     if (!url) return '/images/marka/gorsel-bulunamadi.jpg';
     if (url.startsWith('http')) return url;
-    return url.startsWith('/') ? `${BASE_URL}${url}` : `${BASE_URL}/${url}`;
+    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
 }

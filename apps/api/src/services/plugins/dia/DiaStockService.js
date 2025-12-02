@@ -649,10 +649,8 @@ class DiaStockService {
   async syncCategoriesToWebCategory() {
     const operationId = `sync_categories_${Date.now()}`;
     const startTime = Date.now();
-
     try {
       this.logger.info('=== KATEGORİ SENKRONİZASYONU BAŞLANGICI ===', { operationId });
-      // WebProduct'lardan kategorileri topla
       const categoryPipeline = [
         { $match: { 'syncInfo.diaStatus': 'synced' } },
         { $unwind: '$diaData.m_kategoriler' },
@@ -676,8 +674,6 @@ class DiaStockService {
 
       for (const cat of categories) {
         const { level1, level2, level3 } = cat._id;
-
-        // Level 1 işle
         if (level1) {
           const result = await this.createOrUpdateWebCategory({
             name: level1,
@@ -688,8 +684,6 @@ class DiaStockService {
           if (result.created) created++;
           if (result.updated) updated++;
         }
-
-        // Level 2 işle
         if (level1 && level2) {
           const parentCat = await WebCategory.findOne({
             level: 1,
@@ -709,8 +703,6 @@ class DiaStockService {
             if (result.updated) updated++;
           }
         }
-
-        // Level 3 işle
         if (level1 && level2 && level3) {
           const parentCat = await WebCategory.findOne({
             level: 2,
@@ -731,8 +723,6 @@ class DiaStockService {
           }
         }
       }
-
-      // Ürün sayılarını güncelle
       await this.updateCategoryProductCounts();
 
       const duration = Date.now() - startTime;
@@ -759,27 +749,31 @@ class DiaStockService {
   }
   async createOrUpdateWebCategory(categoryData) {
     const slug = this.generateCategorySlug(categoryData.name);
-    const existingCategory = await WebCategory.findOne({
-      level: categoryData.level,
-      diaCategory: categoryData.diaCategory,
-      diaLevel: categoryData.diaLevel
-    });
+    let existingCategory = await WebCategory.findOne({ slug: slug });
+    if (!existingCategory) {
+      existingCategory = await WebCategory.findOne({
+        level: categoryData.level,
+        diaCategory: categoryData.diaCategory,
+        diaLevel: categoryData.diaLevel
+      });
+    }
 
     if (existingCategory) {
       const updateData = {
         name: categoryData.name,
-        slug: slug,
         diaCategory: categoryData.diaCategory,
         diaLevel: categoryData.diaLevel,
         'syncInfo.lastSync': new Date(),
         'syncInfo.syncStatus': 'synced'
       };
+
       if (existingCategory.description === undefined) {
         updateData.description = null;
       }
       if (existingCategory.customImage === undefined) {
         updateData.customImage = null;
       }
+
       await WebCategory.updateOne(
         { _id: existingCategory._id },
         { $set: updateData }
@@ -1156,7 +1150,7 @@ class DiaStockService {
   }
   /* Özellik Listesini DB Kaydet */
   async createOrUpdateWebFeature(featureData) {
-    const WebFeature = require('../models/WebFeature');
+    const WebFeature = require('../../../models/web/catalog/WebFeature');
 
     const existingFeature = await WebFeature.findOne({
       featureName: featureData.featureName,
@@ -1583,33 +1577,73 @@ class DiaStockService {
   async fullSync() {
     try {
       const startTime = Date.now();
-      // 1. Sadece filtrelenmiş verileri getir ve veritabanına yaz
+      const syncStartTime = new Date(); // Sync başlangıç zamanını kaydet
+
+      // Ürünleri senkronize et
       const result = await this.fetchAndSyncIncrementally();
+
+      // Kategorileri senkronize et
       const categoryResult = await this.syncCategoriesToWebCategory();
+
+      // Markaları senkronize et
       const brandResult = await this.syncBrandsToWebBrand();
-      const featureResult = await this.syncFeaturesToWebFeature();
+
+      // DIA'da artık olmayan ürünleri arşivle
+      const archivedCount = await this.archiveStaleProducts(syncStartTime);
 
       const endTime = Date.now();
       const duration = endTime - startTime;
-      this.logger.info('=== FILTRELENMIŞ TAM SENKRONİZASYON (Ürün, Kategori ve Marka) TAMAMLANDI ===', {
+
+      this.logger.info('=== TAM SENKRONİZASYON TAMAMLANDI ===', {
         duration: `${duration}ms`,
         sync: result,
         categories: categoryResult,
         brands: brandResult,
-        features: featureResult
+        archived: archivedCount
       });
+
       return {
         ...result,
         duration,
         categories: categoryResult,
         brands: brandResult,
-        features: featureResult,
+        archived: archivedCount,
         timestamp: new Date()
       };
 
     } catch (error) {
-      this.logger.error('Filtrelenmiş tam senkronizasyon hatası', { error: error.message });
+      this.logger.error('Tam senkronizasyon hatası', { error: error.message });
       throw error;
+    }
+  }
+  /**
+ * Senkronizasyonda güncellenmeyen ürünleri arşivle
+ * (DIA'da artık E olmayan veya silinen ürünler)
+ */
+  async archiveStaleProducts(syncStartTime) {
+    try {
+      this.logger.info('=== ESKİ ÜRÜNLERİ ARŞİVLEME BAŞLANGICI ===');
+      const result = await WebProduct.updateMany(
+        {
+          'syncInfo.diaStatus': 'synced',
+          'syncInfo.lastDiaSync': { $lt: syncStartTime }
+        },
+        {
+          $set: {
+            'syncInfo.diaStatus': 'not_in_dia',
+            'syncInfo.archivedAt': new Date(),
+            'customData.webVisible': false
+          }
+        }
+      );
+      this.logger.info('=== ESKİ ÜRÜNLER ARŞİVLENDİ ===', {
+        archivedCount: result.modifiedCount
+      });
+
+      return result.modifiedCount;
+    } catch (error) {
+      this.logger.error('Arşivleme hatası:', { error: error.message });
+      return 0;
     }
   }
 

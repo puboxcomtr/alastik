@@ -24,7 +24,7 @@ export interface Category {
     activeProductCount: number;
     filteredProductCount?: number;
     totalStock: number;
-    customImage: string | null;
+    sliderId?: string | null;
     description: string | null;
     createdAt: string;
     updatedAt: string;

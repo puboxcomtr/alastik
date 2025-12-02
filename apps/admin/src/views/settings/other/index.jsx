@@ -228,8 +228,8 @@ const Connections = () => {
                         siteStatus: e.target.value
                       }))}
                     >
-                      <MenuItem value='0'>Aktif</MenuItem>
-                      <MenuItem value='1'>Yapım Aşamasında</MenuItem>
+                      <MenuItem value='0'>Yapım Aşamasında</MenuItem>
+                      <MenuItem value='1'>Aktif</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

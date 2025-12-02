@@ -126,6 +126,22 @@ function getFilterDescriptions() {
 function logFilterConfig() {
 }
 
+/**
+ * Araç Tipi Eşleştirmeleri
+ */
+const WEB_DISPLAY_LABELS = {
+    vehicleTypes: {
+        'otolastik': 'Otomobil',
+        'elektrikliaraclastigi': 'Elektrikli Araç',
+        '4x4lastik': '4x4 SUV',
+        'ticarilastik': 'Hafif Ticari',
+        'setlastikler': 'Set Lastik'
+    }
+};
+
+function getVehicleTypeLabel(code) {
+    return WEB_DISPLAY_LABELS.vehicleTypes[code] || code;
+}
 module.exports = {
     // Ana exports 
     MAIN_DIA_FILTERS,
@@ -134,6 +150,7 @@ module.exports = {
     SYNC_SPECIFIC_FILTERS,
     FILTER_DESCRIPTIONS,
     DIA_FIELDS,
+    WEB_DISPLAY_LABELS,
 
     // Fonksiyonlar
     getBasicFilters,
@@ -143,5 +160,6 @@ module.exports = {
     getFilterDescriptions,
     getDiaFields,
     getDiaFieldsCustom,
-    logFilterConfig
+    logFilterConfig,
+    getVehicleTypeLabel
 };

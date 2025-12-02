@@ -3,6 +3,27 @@ const express = require('express');
 const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
+const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+
+/**
+ * DIA filtrelerini MongoDB match formatına çevir
+ */
+function buildBaseFilter() {
+    const filter = {
+        'syncInfo.diaStatus': 'synced',
+        'customData.webVisible': true
+    };
+
+    // Merkezi DIA filtrelerini uygula
+    MAIN_DIA_FILTERS.forEach(f => {
+        const fieldPath = `diaData.${f.field}`;
+        if (f.operator === '=') {
+            filter[fieldPath] = f.value;
+        }
+    });
+
+    return filter;
+}
 
 router.get('/filter', async (req, res) => {
     try {
@@ -11,15 +32,15 @@ router.get('/filter', async (req, res) => {
             genislik,
             yukseklik,
             cap,
+            arac,
+            marka,
+            oem,
             limit
         } = req.query;
+
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
-        const filter = {
-            'syncInfo.diaStatus': 'synced',
-            'customData.webVisible': true,
-            'diaData.durum': 'A'
-        };
+        const filter = buildBaseFilter();
         if (category) {
             const webCategory = await WebCategory.findOne({
                 slug: category,
@@ -35,18 +56,78 @@ router.get('/filter', async (req, res) => {
                 };
             }
         }
-        if (genislik && yukseklik && cap) {
-            filter['diaData.m_urunOzellikleri'] = {
-                $all: [
-                    { $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: genislik } },
-                    { $elemMatch: { ozellikadi: 'Yanak', detayaciklama: yukseklik } },
-                    { $elemMatch: { ozellikadi: 'Jant Çapı', detayaciklama: `R${cap}` } }
-                ]
-            };
+        const andConditions = [];
+
+        if (genislik) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        ozellikadi: 'Genişlik',
+                        detayaciklama: genislik
+                    }
+                }
+            });
         }
+
+        if (yukseklik) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        ozellikadi: 'Yanak',
+                        detayaciklama: yukseklik
+                    }
+                }
+            });
+        }
+
+        if (cap) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        ozellikadi: 'Jant Çapı',
+                        detayaciklama: { $regex: new RegExp(`^R?${cap}C?$|^${cap}\\s*İnç$`, 'i') }
+                    }
+                }
+            });
+        }
+        if (arac && arac !== 'all') {
+            andConditions.push({
+                'diaData.ozelkod2kodu': arac
+            });
+        }
+        if (marka) {
+            const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
+            if (markaList.length > 0) {
+                andConditions.push({
+                    'diaData.marka': { $in: markaList }
+                });
+            }
+        }
+        if (oem) {
+            const oemList = oem.split(',').map(o => o.trim()).filter(Boolean);
+            if (oemList.length > 0) {
+                // Slug'ı eşleştir: "tesla" → "Tesla" veya "bmw" → "BMW (*)"
+                const oemRegexList = oemList.map(slug =>
+                    new RegExp(`^${slug.replace(/-/g, '[\\s-]*')}(?:\\s*\\(|$)`, 'i')
+                );
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            'ozellikadi': 'OEM',
+                            'detayaciklama': { $in: oemRegexList }
+                        }
+                    }
+                });
+            }
+        }
+        if (andConditions.length > 0) {
+            filter['$and'] = andConditions;
+        }
+
         const skip = (pageNum - 1) * limitNum;
         const totalProducts = await WebProduct.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limitNum);
+
         const products = await WebProduct.find(filter)
             .select('_key customData diaData')
             .skip(skip)
@@ -68,12 +149,12 @@ router.get('/filter', async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Product filter error:', error);
         res.status(500).json({
             success: false,
             error: error.message
         });
     }
 });
-
 
 module.exports = router;

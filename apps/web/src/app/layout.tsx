@@ -1,6 +1,6 @@
-
 // Types
 import type { Metadata } from "next";
+import { cookies } from 'next/headers';
 
 // Font
 import { Inter } from "next/font/google";
@@ -15,7 +15,6 @@ import './globals.css';
 import 'remixicon/fonts/remixicon.css';
 
 // Library
-import { ThemeProvider, CssBaseline } from '@mui/material';
 import ThemeRegistry from '@components/providers/ThemeRegistry';
 import Script from "next/script";
 
@@ -23,9 +22,8 @@ import Script from "next/script";
 import MetaHead from "@components/layout/MetaHead";
 import Header from "@components/layout/Header/Header";
 import Footer from "@components/layout/Footer/Footer";
+import { BrandsProvider } from '@/src/context/BrandsContext';
 
-// Hostnames
-import { imageHostnameManager } from '../lib/imageHostnameManager';
 
 /* Modal */
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
@@ -35,6 +33,10 @@ import Modal from '@components/ui/Modal';
 import { getThemeSettings } from '@src/services/themeService';
 import { SettingsProvider } from '@src/context/SettingsContext';
 
+/* Site Status */
+import { isSiteActive } from '@src/hooks/Theme/useGeneralSettings';
+import UnderConstruction from '@src/views/maintenance/UnderConstruction';
+
 // Inter
 const inter = Inter({
   subsets: ["latin"],
@@ -42,7 +44,6 @@ const inter = Inter({
 });
 
 /* Meta */
-// Default
 export const metadata: Metadata = {
   title: "Anasayfa - ALastik.com",
   description: "Kaliteli lastik çeşitleri ve uygun fiyatlarla ALastik.com'da!",
@@ -53,22 +54,59 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Site durumunu kontrol et
+  const siteActive = await isSiteActive();
+
+  // Admin token kontrolü - cookie'den
+  const cookieStore = await cookies();
+  const nextAuthToken = cookieStore.get('next-auth.session-token')?.value;
+  const adminToken = cookieStore.get('adminToken')?.value;
+  const isAdminLoggedIn = !!nextAuthToken || !!adminToken;
+
+  const allCookies = cookieStore.getAll();
+  if (!siteActive && !isAdminLoggedIn) {
+    return (
+      <html lang="tr">
+        <head />
+        <body className={inter.variable}>
+          <UnderConstruction />
+        </body>
+      </html>
+    );
+  }
   const themeSettings = await getThemeSettings();
+
   return (
     <html lang="tr">
       <MetaHead />
       <body className={inter.variable}>
         <SettingsProvider initialTheme={themeSettings}>
           <ThemeRegistry>
-            <Header />
-            {children}
-            <Footer />
-            <Modal />
-            <TireSearchClient />
+            <BrandsProvider>
+              {!siteActive && isAdminLoggedIn && (
+                <div
+                  style={{
+                    backgroundColor: '#ff9800',
+                    color: '#000',
+                    textAlign: 'center',
+                    padding: '10px',
+                    fontWeight: 'bold',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 9999
+                  }}
+                >
+                  Sadece Yönetici Görüntüleme Modu
+                </div>
+              )}
+              <Header />
+              {children}
+              <Footer />
+              <Modal />
+              <TireSearchClient />
+            </BrandsProvider>
           </ThemeRegistry>
         </SettingsProvider>
-
-        {/* Toast Container */}
         <ToastContainer
           position="top-right"
           autoClose={4000}
@@ -81,8 +119,6 @@ export default async function RootLayout({
           theme="light"
           limit={5}
         />
-
-        {/* Session validation: tüm sitede oturumu doğrula */}
         <Script id="global-session-validate" strategy="afterInteractive">
           {`
             (async function(){
@@ -90,7 +126,6 @@ export default async function RootLayout({
                 if (window && window.authService && window.authService.validateSession) {
                   const ok = await window.authService.validateSession();
                   if (!ok) {
-                    // Seçim: sadece header state'i güncelliyoruz. Zorunlu yönlendirme yok.
                     window.dispatchEvent(new CustomEvent('sessionInvalidated'));
                   }
                 }
@@ -99,7 +134,7 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* UI güvenlik temizliği: kalmış backdrop/overlay varsa tıklamayı engellemesin */}
+        {/* UI güvenlik temizliği */}
         <Script id="ui-safety-cleanup" strategy="afterInteractive">
           {`
             (function(){
@@ -116,7 +151,6 @@ export default async function RootLayout({
                   if (document.body && document.body.style) { document.body.style.removeProperty('paddingRight'); }
                 } catch(_){ }
               }
-              // İlk yükleme ve kısa aralıklarla tekrarla
               setTimeout(cleanupOverlays, 0);
               setTimeout(cleanupOverlays, 250);
               setTimeout(cleanupOverlays, 750);
@@ -155,6 +189,7 @@ export default async function RootLayout({
             }
           `}
         </Script>
+
         {/* Google API Script */}
         <Script
           src="https://apis.google.com/js/api.js"

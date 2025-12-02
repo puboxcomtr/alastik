@@ -2,6 +2,8 @@
 import { Product } from '@src/types/products';
 import { buildProductUrl } from '@src/config/routes';
 
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'https://api.alastik.com';
+
 /**
  * Ürün detay URL'ini oluştur
  */
@@ -47,14 +49,28 @@ export const hasProductDiscount = (product: Product): boolean => {
 };
 
 /**
+ * URL'i normalize et (çift prefix önle)
+ */
+const normalizeUrl = (url: string): string => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
+};
+/**
  * Ürün görselini al
  * @param product - Ürün
  * @param defaultImage - Context'ten gelen default görsel
  */
 export const getProductImage = (product: Product, defaultImage?: string): string => {
-    return product.customData?.featuredImage ||
-        defaultImage ||
-        '/assets/img/shop/default-product.jpg';
+    if (product.customData?.featuredImage) {
+        return normalizeUrl(product.customData.featuredImage);
+    }
+    
+    if (defaultImage) {
+        return normalizeUrl(defaultImage);
+    }
+    
+    return `${MEDIA_URL}/theme/katalog-gorseli.jpg`;
 };
 
 /**

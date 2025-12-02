@@ -266,7 +266,10 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
     ],
     [data]
   )
-
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10
+  })
   const table = useReactTable({
     data,
     columns,
@@ -275,8 +278,10 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
     },
     state: {
       rowSelection,
-      globalFilter
+      globalFilter,
+      pagination
     },
+    onPaginationChange: setPagination,
     initialState: {
       pagination: {
         pageSize: 10
@@ -379,16 +384,18 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
           </table>
         </div>
         <TablePagination
-          rowsPerPageOptions={[10, 15, 25]}
+          rowsPerPageOptions={[10, 15, 25, 50, 100]}
           component='div'
           className='border-bs'
           count={table.getFilteredRowModel().rows.length}
-          rowsPerPage={table.getState().pagination.pageSize}
-          page={table.getState().pagination.pageIndex}
+          rowsPerPage={pagination.pageSize}
+          page={pagination.pageIndex}
           onPageChange={(_, page) => {
-            table.setPageIndex(page)
+            setPagination(prev => ({ ...prev, pageIndex: page }))
           }}
-          onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
+          onRowsPerPageChange={e => {
+            setPagination(prev => ({ ...prev, pageSize: Number(e.target.value), pageIndex: 0 }))
+          }}
         />
       </Card>
 

@@ -5,7 +5,7 @@ const showcaseProductSchema = new mongoose.Schema({
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   addedAt: { type: Date, default: Date.now },
-  addedBy: String 
+  addedBy: String
 }, { _id: false });
 
 const webCategorySchema = new mongoose.Schema({
@@ -25,7 +25,7 @@ const webCategorySchema = new mongoose.Schema({
   level: {
     type: Number,
     required: true,
-    enum: [1, 2, 3], 
+    enum: [1, 2, 3],
     index: true
   },
   parent: {
@@ -36,12 +36,12 @@ const webCategorySchema = new mongoose.Schema({
   parentPath: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'WebCategory'
-  }], 
+  }],
 
   diaCategory: {
     type: String,
     required: true
-  }, 
+  },
   diaLevel: {
     type: String,
     required: true,
@@ -71,13 +71,12 @@ const webCategorySchema = new mongoose.Schema({
     unique: true
   },
   seoKeywords: [String],
-
-  customImage: {
-    url: String,
-    alt: String,
-    title: String
+  sliderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Slider',
+    default: null
   },
-  detail: String, 
+  detail: String,
   showcase: [showcaseProductSchema],
 
   productCount: {
@@ -88,7 +87,7 @@ const webCategorySchema = new mongoose.Schema({
   activeProductCount: {
     type: Number,
     default: 0
-  }, 
+  },
   totalStock: {
     type: Number,
     default: 0

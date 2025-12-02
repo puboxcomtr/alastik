@@ -42,7 +42,7 @@ export interface Product {
 // Component props
 export interface ProductCardProps {
     product: Product;
-    brandInfo?: {  
+    brandInfo?: {
         name: string;
         logo: string | null;
     } | null;
@@ -54,6 +54,9 @@ export interface ProductFilterParams {
     genislik?: string;
     yukseklik?: string;
     cap?: string;
+    arac?: string;
+    marka?: string;
+    oem?: string;
     page?: number;
     limit?: number;
 }

@@ -10,6 +10,35 @@ export interface BrandDisplayResult {
 }
 
 /**
+ * Marka adını formatla - ilk harf büyük, diğerleri küçük
+ */
+export const formatBrandName = (name: string): string => {
+    if (!name) return '';
+    return name
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
+/**
+ * Türkçe karakterleri normalize et (arama için)
+ */
+export const normalizeForSearch = (text: string): string => {
+    if (!text) return '';
+    return text
+        .toLowerCase()
+        .replace(/İ/g, 'i')
+        .replace(/I/g, 'ı')
+        .replace(/ı/gi, 'i')
+        .replace(/ş/gi, 's')
+        .replace(/ğ/gi, 'g')
+        .replace(/ü/gi, 'u')
+        .replace(/ö/gi, 'o')
+        .replace(/ç/gi, 'c');
+};
+
+/**
  * Marka logosunu veya ismini döndür
  */
 export const getBrandDisplay = (
@@ -19,18 +48,19 @@ export const getBrandDisplay = (
     if (!brand) {
         return {
             hasLogo: false,
-            display: fallbackName || 'Marka Bilgisi Yok',
+            display: fallbackName ? formatBrandName(fallbackName) : 'Marka Bilgisi Yok',
             logo: null,
-            name: fallbackName || ''
+            name: fallbackName ? formatBrandName(fallbackName) : ''
         };
     }
 
     const logoUrl = brand.logo ? getBrandImageUrl(brand.logo) : null;
+    const formattedName = formatBrandName(brand.name);
 
     return {
         hasLogo: !!brand.logo,
-        display: brand.name,
+        display: formattedName,
         logo: logoUrl,
-        name: brand.name
+        name: formattedName
     };
 };

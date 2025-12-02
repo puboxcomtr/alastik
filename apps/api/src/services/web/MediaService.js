@@ -70,14 +70,28 @@ class MediaService {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
 
+        // this.slugify'i disarida tanimla
+        const slugify = MediaService.slugify;
+
         return multer.diskStorage({
             destination: (req, file, cb) => {
                 cb(null, uploadDir);
             },
             filename: (req, file, cb) => {
-                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
                 const ext = path.extname(file.originalname).toLowerCase();
-                cb(null, `${category}-${uniqueSuffix}${ext}`);
+                const nameWithoutExt = path.basename(file.originalname, ext);
+                const slug = slugify(nameWithoutExt);
+
+                // Cakisma kontrolu
+                let finalName = `${slug}${ext}`;
+                let counter = 1;
+
+                while (fs.existsSync(path.join(uploadDir, finalName))) {
+                    finalName = `${slug}-${counter}${ext}`;
+                    counter++;
+                }
+
+                cb(null, finalName);
             }
         });
     }

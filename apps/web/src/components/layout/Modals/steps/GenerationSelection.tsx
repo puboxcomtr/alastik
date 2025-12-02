@@ -4,10 +4,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 
 /* MUI */
-import { Typography, Divider, Box, Link } from '@mui/material';
+import { Typography, Divider, Box } from '@mui/material';
 
 /* Internal Imports */
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+import { translateBodyType } from '@/src/utils/vehicleTranslations';
 
 interface GenerationSelectionProps {
     make: string;
@@ -98,6 +99,28 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
             </div>
         );
     }
+    if (!loading && generations.length === 0) {
+        return (
+            <div className="generation-selection">
+                <div className="row justify-content-center">
+                    <div className="col-md-8">
+                        <div className="text-center py-5">
+                            <i className="ri-error-warning-line" style={{ fontSize: '4rem', color: 'var(--cz-primary)' }}></i>
+                            <Typography variant="h6" sx={{ mt: 2, color: 'black' }}>
+                                Araç Bilgisi Bulunamadı
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                                <strong>{makeName} {modelName}</strong> için detaylı bilgi internet sitemizde bulunmuyor.
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                                Lastik ebadınızı aracınızın kapı etiketinden veya mevcut lastiklerinizden öğrenebilirsiniz.
+                            </Typography>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="generation-selection">
@@ -162,7 +185,7 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                                             onChange={() => setFilterBody(filterBody === body ? '' : body)}
                                         />
                                         <label className="form-check-label" style={{ fontSize: '13px' }} htmlFor={`body-${idx}`}>
-                                            {body}
+                                            {translateBodyType(body)}
                                         </label>
                                     </div>
                                 ))}
@@ -210,7 +233,7 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                                         <div className="card-body text-center p-2">
                                             <h6 className="mb-1" style={{ fontSize: '14px' }}>{gen.name}</h6>
                                             <small className="text-muted d-block">
-                                                {gen.bodies?.[0]?.name}
+                                                {gen.bodies?.[0]?.name ? translateBodyType(gen.bodies[0].name) : ''}
                                             </small>
                                             <small className="text-muted">
                                                 {gen.start} - {gen.end || 'günümüz'}

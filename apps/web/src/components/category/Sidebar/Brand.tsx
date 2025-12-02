@@ -1,6 +1,9 @@
+// apps/web/src/components/category/Sidebar/Brand.tsx
 "use client";
-import { useState } from "react";
-/* MUI */
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { formatBrandName, normalizeForSearch } from '@/src/hooks/Products/brandHelpers';
 import {
     Grid,
     Accordion,
@@ -10,59 +13,67 @@ import {
     FormControlLabel,
     TextField,
     Typography,
+    CircularProgress,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-const brandData = [
-    { id: 1, name: "Pirelli", order: 1, status: true, count: 120 },
-    { id: 2, name: "Hankook", order: 2, status: true, count: 95 },
-    { id: 3, name: "Michelin", order: 3, status: true, count: 180 },
-    { id: 4, name: "Goodyear", order: 4, status: true, count: 150 },
-    { id: 5, name: "Bridgestone", order: 5, status: true, count: 200 },
-    { id: 6, name: "Continental", order: 6, status: true, count: 175 },
-    { id: 7, name: "Dunlop", order: 7, status: true, count: 140 },
-    { id: 8, name: "Falken", order: 8, status: true, count: 80 },
-    { id: 9, name: "Toyo", order: 9, status: true, count: 60 },
-    { id: 10, name: "Nokian", order: 10, status: true, count: 45 },
-    { id: 11, name: "Kumho", order: 11, status: true, count: 75 },
-    { id: 12, name: "Yokohama", order: 12, status: true, count: 110 },
-    { id: 13, name: "Petlas", order: 13, status: true, count: 130 },
-    { id: 14, name: "Lassa", order: 14, status: true, count: 90 },
-    { id: 15, name: "Aptany", order: 15, status: true, count: 40 },
-    { id: 16, name: "Goodride", order: 16, status: true, count: 55 },
-    { id: 17, name: "Linglong", order: 17, status: true, count: 30 },
-    { id: 18, name: "Zetum", order: 18, status: true, count: 20 },
-    { id: 19, name: "GT Radial", order: 19, status: true, count: 35 },
-    { id: 20, name: "Marshal", order: 20, status: true, count: 25 },
-    { id: 21, name: "Sumitomo", order: 21, status: true, count: 50 },
-    { id: 22, name: "Sava", order: 22, status: true, count: 65 },
-    { id: 23, name: "Roadstone", order: 23, status: true, count: 70 },
-    { id: 24, name: "Apollo", order: 24, status: true, count: 85 },
-    { id: 25, name: "Ceat", order: 25, status: true, count: 15 },
-    { id: 26, name: "Westlake", order: 26, status: true, count: 22 },
-    { id: 27, name: "Vredestein", order: 27, status: true, count: 12 },
-    { id: 28, name: "Cooper", order: 28, status: true, count: 18 },
-    { id: 29, name: "Avon", order: 29, status: true, count: 10 },
-    { id: 30, name: "Firestone", order: 30, status: true, count: 44 }
-];
+interface BrandOption {
+    value: string;
+    label: string;
+    count: number;
+}
 
+interface BrandProps {
+    categorySlug?: string;
+    brands?: BrandOption[];
+}
 
-export default function Brand() {
-    const [selectedBrands, setSelectedBrands] = useState<number[]>([]);
+export default function Brand({ categorySlug, brands = [] }: BrandProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [search, setSearch] = useState("");
+    const selectedBrands = searchParams.get('marka')?.split(',').filter(Boolean) || [];
 
-    const handleToggle = (id: number) => {
-        setSelectedBrands((prev) =>
-            prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]
-        );
+    const handleToggle = (brandValue: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        let newSelected: string[];
+        if (selectedBrands.includes(brandValue)) {
+            newSelected = selectedBrands.filter(b => b !== brandValue);
+        } else {
+            newSelected = [...selectedBrands, brandValue];
+        }
+
+        if (newSelected.length > 0) {
+            params.set('marka', newSelected.join(','));
+        } else {
+            params.delete('marka');
+        }
+
+        params.delete('page');
+        const queryString = params.toString();
+        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
+        router.push(newURL);
     };
 
-    const filteredBrands = brandData
-        .filter((brand) => brand.status)
-        .sort((a, b) => a.order - b.order)
-        .filter((brand) =>
-            brand.name.toLowerCase().includes(search.toLowerCase())
-        );
+    const clearBrands = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('marka');
+        params.delete('page');
+        const queryString = params.toString();
+        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
+        router.push(newURL);
+    };
+
+    // Arama filtresi
+    const filteredBrands = brands.filter((brand) =>
+        normalizeForSearch(brand.label).includes(normalizeForSearch(search))
+    );
+
+    if (!brands || brands.length === 0) {
+        return null;
+    }
 
     return (
         <Grid sx={{ borderBottom: "1px solid #ddd", paddingBottom: "20px" }}>
@@ -76,13 +87,20 @@ export default function Brand() {
             >
                 <AccordionSummary
                     expandIcon={<ExpandMoreIcon />}
-                    sx={{
-                        borderBottom: "none",
-                        p: 0,
-                    }}
+                    sx={{ borderBottom: "none", p: 0 }}
                 >
                     <Typography variant="subtitle1" fontWeight="bold">
                         Marka
+                        {selectedBrands.length > 0 && (
+                            <span style={{
+                                marginLeft: 8,
+                                fontSize: '12px',
+                                color: 'var(--cz-primary)',
+                                fontWeight: 'normal'
+                            }}>
+                                ({selectedBrands.length} seçili)
+                            </span>
+                        )}
                     </Typography>
                 </AccordionSummary>
 
@@ -100,20 +118,18 @@ export default function Brand() {
                     <div style={{ maxHeight: 210, overflowY: "auto", display: "flex", flexDirection: "column" }}>
                         {filteredBrands.map((brand) => (
                             <FormControlLabel
-                                key={brand.id}
+                                key={brand.value}
                                 control={
                                     <Checkbox
-                                        checked={selectedBrands.includes(brand.id)}
-                                        onChange={() => handleToggle(brand.id)}
+                                        checked={selectedBrands.includes(brand.value)}
+                                        onChange={() => handleToggle(brand.value)}
                                         size="small"
                                         sx={{ p: "5px 10px" }}
                                     />
                                 }
                                 label={
                                     <>
-
-                                        <span style={{ color: "#000" }}>{brand.name}</span>{" "}
-                                        <span style={{ color: "#a4a4a4" }}>({brand.count})</span>
+                                        <span style={{ color: "#000" }}>{formatBrandName(brand.label)}</span>
                                     </>
                                 }
                                 sx={{
@@ -125,9 +141,26 @@ export default function Brand() {
                             />
                         ))}
                     </div>
+
+                    {selectedBrands.length > 0 && (
+                        <button
+                            onClick={clearBrands}
+                            style={{
+                                marginTop: '10px',
+                                padding: '6px 12px',
+                                backgroundColor: 'transparent',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                width: '100%'
+                            }}
+                        >
+                            Marka Filtresini Temizle
+                        </button>
+                    )}
                 </AccordionDetails>
             </Accordion>
         </Grid>
-
     );
 }

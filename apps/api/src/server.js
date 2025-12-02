@@ -7,6 +7,7 @@ const paths = require('./config/path');
 // Dynamically load the correct .env file based on NODE_ENV
 // - Development: loads .env.local
 // - Production: loads .env.production
+
 const envFile = process.env.NODE_ENV === 'production'
   ? '.env.production'
   : '.env.local';
@@ -142,29 +143,26 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting - Test süreçleri için yüksek limit
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute (dakikada 100 istek)
-  max: 100, // limit each IP to 100 requests per minute
+  windowMs: 1 * 60 * 1000,
+  max: 500,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Development'ta rate limiting'i gevşet
     return process.env.NODE_ENV === 'development';
   }
 });
 
 const searchLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // limit each IP to 100 search requests per minute (artırıldı)
+  windowMs: 1 * 60 * 1000, // 1 dakika
+  max: 300,
   message: 'Too many search requests, please try again later.',
   skip: (req) => {
     // Development'ta search rate limiting'i gevşet
     return process.env.NODE_ENV === 'development';
   }
 });
-
 app.use('/api/', limiter);
 app.use('/api/search', searchLimiter);
 // Attach session middleware early (if used globally)
@@ -257,121 +255,52 @@ mongoose.connect(process.env.MONGODB_URI, {
     process.exit(1);
   });
 
-// Health check endpoint
-app.get('/health', async (req, res) => {
-  try {
-    // Check database connection
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-
-    // Check cache connection
-    let cacheStatus = 'disconnected';
-    try {
-      await activeCache.ping();
-      cacheStatus = 'connected';
-    } catch (error) {
-      logger.error('Cache health check failed:', error);
-    }
-
-    res.status(200).json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: dbStatus,
-        cache: cacheStatus
-      },
-      version: process.env.npm_package_version || '1.0.0'
-    });
-  } catch (error) {
-    logger.error('Health check failed:', error);
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: error.message
-    });
-  }
-});
-
 /**
-  * Admin DİA Senkronize Routes *
+  * (PLUGIN) Wheelsize Senkronize Routes *
 */
-/* * Sadece Ürün Adı Güncelle * */
-app.post('/api/dia-stock/sync-names', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyNames();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync names hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece SKU Güncelle * */
-app.post('/api/dia-stock/sync-codes', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyCodes();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync codes hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece Fiyat Güncelle * */
-app.post('/api/dia-stock/sync-prices', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyPrices();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync prices hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece Görsel Güncelle * */
-app.post('/api/dia-stock/sync-images', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyImages();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync images hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-/**
-  * Wheelsize Senkronize Routes *
-*/
-// Kullanıcının araçlarını yönetmek için (CRUD işlemleri)
+/* Kullanıcının araçlarını yönetmek için (CRUD işlemleri) */
 const vehiclesRoutes = require('./routes/web/user/vehicles');
 app.use('/api/user/vehicles', vehiclesRoutes);
 
-// Wheel Size API'den marka/model/yıl bilgilerini getirmek için
+/* Wheel Size API'den marka/model/yıl bilgilerini getirmek i */
 const wheelsizeRoutes = require('./routes/web/integration/wheelsize');
 app.use('/api/wheelsize', wheelsizeRoutes);
-app.use('/api/user/vehicles', vehiclesRoutes);
+
+
+
 /**
-  * Website - Routes *
+  * THEME - Routes *
 */
-/* Translate */
-app.use('/api/translations', require('./routes/web/other/translations'));
+
+/* Genel Site Ayarları */
+const webGeneralSettingsRoutes = require('./routes/web/other/generalsettings');
+app.use('/api/general-settings', webGeneralSettingsRoutes);
+
+/* Çeviriler */
+const webTranslateRoutes = require('./routes/web/other/translations');
+app.use('/api/translations', webTranslateRoutes);
 
 /* * Menu * */
-app.use('/api/menus', require('./routes/web/design/menus'));
+const webMenuRoutes = require('./routes/web/design/menus');
+app.use('/api/menus', webMenuRoutes);
 
-/* * Header Search * */
-app.use('/api/search', require('./routes/user/catalog/search'));
+/* * Header Arama * */
+const webSearchRoutes = require('./routes/user/catalog/search');
+app.use('/api/search', webSearchRoutes);
 
-/* Login */
-app.use('/api/auth', require('./routes/web/user/auth'));
+/* Giriş Yap */
+const webAuthRoutes = require('./routes/web/user/auth');
+app.use('/api/auth', webAuthRoutes);
 
-/* Web Settings */
+/* Web Ayarları */
 const webSettingsRoutes = require('./routes/web/other/settings');
 app.use('/api/settings', webSettingsRoutes);
 
-/* Theme Settings */
+/* Tema Ayarları */
 const webDesignRoutes = require('./routes/web/other/theme');
 app.use('/api/theme', webDesignRoutes);
 
-/* Product Brand  */
+/* Ürün Marka  */
 const webBrandsRoutes = require('./routes/web/catalog/brands');
 app.use('/api/brands', webBrandsRoutes);
 
@@ -383,127 +312,132 @@ app.use('/api/categories', webCategoryRoutes);
 const webSliderRoutes = require('./routes/web/design/slider');
 app.use('/api/design/slider', webSliderRoutes);
 
-/* Products */
+/* Ürün Listeleme */
 const webProductsRoutes = require('./routes/web/catalog/products');
 app.use('/api/products', webProductsRoutes);
 
-/* Anasayfa Filtreleme */
+/* Etiket */
+const webTagsRoutes = require('./routes/web/catalog/tags');
+app.use('/api/tags', webTagsRoutes);
 
-/* Header Menu */
+/* Ürün Filtreleme */
+const webFiltersRoutes = require('./routes/web/catalog/filters');
+app.use('/api/filters', webFiltersRoutes);
+
 
 /**
-  * Admin - Routes *
+  * Dashboard - Routes *
 */
-/* * Ürün Listeleme * */
+/* * (Dashboard) Ürün Listeleme * */
 const productRoutes = require('./routes/admin/catalog/products');
 app.use('/api/products', productRoutes);
 
-/* Kategori Listeleme */
+/* (Dashboard) Kategori Listeleme */
 const categoryRoutes = require('./routes/admin/catalog/categories');
 app.use('/api/categories', categoryRoutes);
 
-/* Marka Listeleme */
+/* (Dashboard) Marka Listeleme */
 const brandRoutes = require('./routes/admin/catalog/brands');
 app.use('/api/brands', brandRoutes);
 
-/* Etiket Listeleme */
+/* (Dashboard) Etiket Listeleme */
 const tagRoutes = require('./routes/admin/catalog/tags');
 app.use('/api/tags', tagRoutes);
 
-/* Özellik Listeleme */
+/* (Dashboard) Özellik Listeleme */
 const featureRoutes = require('./routes/admin/catalog/features');
 app.use('/api/features', featureRoutes);
 
 /**
-  * Siparişler - Routes *
+  * (Dashboard) Siparişler - Routes *
 */
-/* * Sipariş Listeleme * */
+/* * (Dashboard) Sipariş Listeleme * */
 const orderRoutes = require('./routes/admin/orders/order');
 app.use('/api/admin/orders', orderRoutes);
 
 /**
-  * İçerikler - Routes *
+  * (Dashboard) İçerikler - Routes *
 */
-/* * Sayfalar Listeleme * */
+/* * (Dashboard) Sayfalar Listeleme * */
 const pageRoutes = require('./routes/admin/content/pages');
 app.use('/api/admin/pages', pageRoutes);
 
-/* * Blog Listeleme * */
+/* * (Dashboard) Blog Listeleme * */
 const blogRoutes = require('./routes/admin/content/blogs');
 app.use('/api/admin/blogs', blogRoutes);
 
 
 /**
-  * Ayarlar - Routes *
+  * (Dashboard) Ayarlar - Routes *
 */
 
-/* * Ödeme Yöntemleri Ayarları * */
+/* * (Dashboard) Ödeme Yöntemleri Ayarları * */
 const paymentRoutes = require('./routes/admin/settings/payment');
 app.use('/api/admin/settings/payment', paymentRoutes);
 
-/* * Çeviri Ayarları * */
+/* * (Dashboard) Çeviri Ayarları * */
 const translationsRoutes = require('./routes/admin/settings/translations');
 app.use('/api/admin/settings/translations', translationsRoutes);
 
-/* * Genel Tanımlamalar * */
+/* * (Dashboard) Genel Tanımlamalar * */
 const generalSettingsRoutes = require('./routes/admin/settings/general');
 app.use('/api/admin/settings/general', generalSettingsRoutes);
 
-/* * Genel Ayarlar * */
+/* * (Dashboard) Genel Ayarlar * */
 const settingRoutes = require('./routes/admin/settings/settings');
 app.use('/api/admin/settings', settingRoutes);
 
-/* * SEO Ayarları * */
+/* * (Dashboard) SEO Ayarları * */
 const seoRoutes = require('./routes/admin/settings/seo');
 app.use('/api/admin/settings/seo', seoRoutes);
 
 /**
- * Kullanıcı Ayarları *
+ * (Dashboard) Kullanıcı Ayarları *
 **/
 const authRoutes = require('./routes/admin/user/auth');
 app.use('/api/admin/user/auth', authRoutes);
 
-/* Admin Yönetimi */
+/* (Dashboard) Admin Yönetimi */
 const adminsRoutes = require('./routes/admin/user/admins');
 app.use('/api/admin/user/admins', adminsRoutes);
 
-/* Rol Yönetimi */
+/* (Dashboard) Rol Yönetimi */
 const rolesRoutes = require('./routes/admin/user/roles');
 app.use('/api/admin/user/roles', rolesRoutes);
 
-/* Engellenen IP'ler */
+/* (Dashboard) Engellenen IP'ler */
 const blockedIPsRoutes = require('./routes/admin/user/blocked-ips');
 app.use('/api/admin/user/blocked-ips', blockedIPsRoutes);
 
-/* İşlem Kayıtları */
+/* (Dashboard) İşlem Kayıtları */
 const activityLogsRoutes = require('./routes/admin/user/activity-logs');
 app.use('/api/admin/user/activity-logs', activityLogsRoutes);
 
 /**
-  * Tasarım Ayarları *
+  * (Dashboard) Tasarım Ayarları *
 */
-/* * Tema Ayarları * */
+/* * (Dashboard) Tema Ayarları * */
 const settingsRouter = require('./routes/admin/design/settings');
 app.use('/api/admin/design/settings', settingsRouter);
 
-/* * Slider Ayarları * */
+/* * (Dashboard) Slider Ayarları * */
 const sliderRoutes = require('./routes/admin/design/slider');
 app.use('/api/admin/design/slider', sliderRoutes);
 
-/* * Menü Ayarları * */
+/* * (Dashboard) Menü Ayarları * */
 const menuRoutes = require('./routes/admin/design/menus');
 app.use('/api/admin/design/menu', menuRoutes);
 
-/* * Banner Ayarları * */
+/* * (Dashboard) Banner Ayarları * */
 const bannerRoutes = require('./routes/admin/design/banners');
 app.use('/api/admin/design/banners', bannerRoutes);
 
-/* * Vitrin Ayarları * */
+/* * (Dashboard) Vitrin Ayarları * */
 const showcaseRoutes = require('./routes/admin/catalog/showcase');
 app.use('/api/showcases', showcaseRoutes);
 
 /**
-  * Admin - Functions *
+  * (Dashboard) Admin - Functions *
 */
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);
@@ -576,12 +510,6 @@ app.use('/banners', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'public/banners')));
 
-/* * Theme Upload * */
-app.use('/theme', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(__dirname, 'upload/public/theme')));
 
 /* * Theme Upload GET * */
 app.use('/uploads/theme', (req, res, next) => {
@@ -598,8 +526,6 @@ app.use('/uploads/theme', (req, res, next) => {
 /* Tema Blokları */
 const blocksRoutes = require('./routes/public/theme/block');
 app.use('/api/blocks', blocksRoutes);
-
-
 
 
 // API Routes
@@ -2799,6 +2725,53 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
         stack: error.stack
       } : undefined
     });
+  }
+});
+
+/**
+  * (PLUGIN) DİA Senkronize Routes *
+*/
+/* * Sadece Ürün Adı Güncelle * */
+app.post('/api/dia-stock/sync-names', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyNames();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync names hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* * Sadece SKU Güncelle * */
+app.post('/api/dia-stock/sync-codes', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyCodes();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync codes hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* * Sadece Fiyat Güncelle * */
+app.post('/api/dia-stock/sync-prices', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyPrices();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync prices hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* * Sadece Görsel Güncelle * */
+app.post('/api/dia-stock/sync-images', async (req, res) => {
+  try {
+    const result = await diaStockService.syncOnlyImages();
+    res.json(result);
+  } catch (error) {
+    console.error('Sync images hatası:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

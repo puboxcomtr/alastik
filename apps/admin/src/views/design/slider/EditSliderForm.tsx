@@ -16,6 +16,8 @@ import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
 import { getSliderById, updateSlider } from '@/utils/api/sliders'
 
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
+
 type SliderItemType = {
     id: number
     imageFile: File | null
@@ -61,7 +63,7 @@ const EditSliderForm = ({ sliderId }: { sliderId: string }) => {
             const formattedSliders = slider.sliders.map((s: any, idx: number) => ({
                 id: Date.now() + idx,
                 imageFile: null,
-                imagePreview: `http://localhost:3082${s.image}`,
+                imagePreview: s.image ? `${MEDIA_URL}${s.image.startsWith('/') ? s.image : '/' + s.image}` : null,
                 existingImage: s.image,
                 order: s.order,
                 description: s.description,

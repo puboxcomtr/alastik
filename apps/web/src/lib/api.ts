@@ -1,5 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
 interface ApiResponse<T = any> {
     success: boolean;
@@ -177,15 +177,12 @@ class ApiClient {
             };
         }
     }
-
     /* Sabit Fonksiyonlar */
     getImageUrl(path?: string): string {
         if (!path) return '';
         if (path.startsWith('http')) return path;
-        if (path.startsWith('/')) return `${BASE_URL}${path}`;
-        return `${BASE_URL}/${path}`;
+        return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`;
     }
-
     async getSiteName(): Promise<string> {
         try {
             const data = await this.get<any>('/admin/settings/general');

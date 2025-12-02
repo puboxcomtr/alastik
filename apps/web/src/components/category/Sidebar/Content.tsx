@@ -1,27 +1,39 @@
+// apps/web/src/components/category/Sidebar/Content.tsx
 "use client";
 
-import Link from "next/link";
-
-/* Library */
+import { useState, useEffect } from "react";
 import { Offcanvas, Button } from "react-bootstrap";
+import { Grid } from "@mui/material";
 
-/* MUI */
-import { Grid, TextField, MenuItem } from "@mui/material";
-
-/* @Import Page */
-import Category from "@/src/components/category/Sidebar/Category";
-import TireFilter from '@components/category/Filter/TireFilter'
+import TireFilter from '@components/category/Filter/TireFilter';
 import Brand from "@/src/components/category/Sidebar/Brand";
 import Oem from "@/src/components/category/Sidebar/Oem";
 import Price from "@/src/components/category/Sidebar/Price";
 import Properties from "@/src/components/category/Sidebar/Properties";
 import Fuel from "@/src/components/category/Sidebar/Fuel";
+import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
 
 interface SidebarProps {
+    hideEbatFilters?: boolean;
     categorySlug?: string;
-    currentFilters?: { [key: string]: string };
+    tagSlug?: string;
 }
-export default function Sidebar() {
+
+export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug }: SidebarProps) {
+    const [options, setOptions] = useState<TireFilterOptions | null>(null);
+
+    useEffect(() => {
+        const loadOptions = async () => {
+            console.log('Loading filter options:', { categorySlug, tagSlug });
+            const data = await getTireFilterOptions(categorySlug, tagSlug);
+            console.log('Filter options received:', data);
+            if (data) {
+                setOptions(data);
+            }
+        };
+        loadOptions();
+    }, [categorySlug, tagSlug]);
+
     return (
         <div>
             <div className="offcanvas-lg offcanvas-start pe-lg-4" id="filterSidebar">
@@ -36,13 +48,17 @@ export default function Sidebar() {
                     />
                 </div>
                 <Grid container className="offcanvas-body flex-column py-lg-0">
-                    <Grid size={12} className="pb-4 mb-4 border-bottom">
-                        <Category />
-                    </Grid>
                     <Grid>
-                        <TireFilter />
-                        <Brand />
-                        <Oem />
+                        <TireFilter
+                            hideEbatFilters={hideEbatFilters}
+                            categorySlug={categorySlug}
+                            tagSlug={tagSlug}
+                        />
+                        <Brand
+                            categorySlug={categorySlug}
+                            brands={options?.brands || []}
+                        />
+                        <Oem oemOptions={options?.oem || []} />
                         <Price />
                         <Properties />
                         <Fuel />

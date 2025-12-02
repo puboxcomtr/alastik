@@ -105,7 +105,15 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
   const [globalFilter, setGlobalFilter] = useState('')
 
   useEffect(() => {
-    setData(categoryData || [])
+    if (categoryData && categoryData.length > 0) {
+      const mappedData = categoryData.map(cat => ({
+        ...cat,
+        sliderId: (cat as any).sliderId || null
+      }))
+      setData(mappedData)
+    } else {
+      setData([])
+    }
   }, [categoryData])
 
   const columns = useMemo<ColumnDef<CategoryWithActionsType, any>[]>(

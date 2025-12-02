@@ -7,6 +7,18 @@ const webTagSchema = new mongoose.Schema({
         trim: true
     },
 
+    type: {
+        type: String,
+        enum: ['general', 'tire_size', 'brand', 'season', 'feature'],
+        default: 'general'
+    },
+
+    season: {
+        type: String,
+        enum: ['all', 'summer', 'winter', 'all_season'],
+        default: 'all'
+    },
+
     description: {
         type: String,
         trim: true
@@ -49,7 +61,7 @@ const webTagSchema = new mongoose.Schema({
 
     order: {
         type: Number,
-        default: 0
+        default: 999
     }
 
 }, {
@@ -58,7 +70,8 @@ const webTagSchema = new mongoose.Schema({
 });
 
 // Index'ler
-webTagSchema.index({ seoUrl: 1 }, { unique: true });
+webTagSchema.index({ seoUrl: 1 }, { unique: true, sparse: true });
+webTagSchema.index({ type: 1, isActive: 1 });
 webTagSchema.index({ isActive: 1, order: 1 });
 webTagSchema.index({ title: 'text', description: 'text' });
 
@@ -83,7 +96,7 @@ webTagSchema.pre('save', function (next) {
 
 // productCount güncelleme
 webTagSchema.pre('save', function (next) {
-    this.productCount = this.products.length;
+    this.productCount = this.products ? this.products.length : 0;
     next();
 });
 

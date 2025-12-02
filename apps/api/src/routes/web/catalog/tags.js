@@ -1,0 +1,236 @@
+// apps/api/src/routes/web/catalog/tags.js
+
+const express = require('express');
+const router = express.Router();
+
+const WebTag = require('../../../models/web/catalog/WebTag');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
+const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+
+/**
+ * GET /api/tags/tire-size
+ * Lastik ebatına göre etiket seoUrl'ini bul
+ */
+router.get('/tire-size', async (req, res) => {
+    try {
+        const { width, aspectRatio, diameter } = req.query;
+
+        if (!width || !aspectRatio || !diameter) {
+            return res.status(400).json({
+                success: false,
+                message: 'width, aspectRatio ve diameter parametreleri gerekli'
+            });
+        }
+
+        const seoUrl = `${width}-${aspectRatio}-r${diameter}-lastik-fiyatlari`.toLowerCase();
+
+        let tag = await WebTag.findOne({
+            seoUrl: seoUrl,
+            type: 'tire_size',
+            isActive: true
+        });
+
+        if (!tag) {
+            tag = await WebTag.findOne({
+                seoUrl: { $regex: new RegExp(`^${width}-${aspectRatio}-r${diameter}-`, 'i') },
+                type: 'tire_size',
+                isActive: true
+            });
+        }
+
+        if (!tag) {
+            return res.json({
+                success: true,
+                data: null,
+                message: 'Bu ebat için etiket bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                seoUrl: tag.seoUrl,
+                title: tag.title,
+                productCount: tag.productCount || 0
+            }
+        });
+
+    } catch (error) {
+        console.error('[Tags API] tire-size error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Etiket aranırken hata oluştu'
+        });
+    }
+});
+
+/**
+ * GET /api/tags/:slug
+ * Slug ile tag getir
+ */
+router.get('/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        const tag = await WebTag.findOne({
+            seoUrl: slug,
+            isActive: true
+        });
+
+        if (!tag) {
+            return res.status(404).json({
+                success: false,
+                message: 'Etiket bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: tag
+        });
+
+    } catch (error) {
+        console.error('[Tags API] getBySlug error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Etiket getirilirken hata oluştu'
+        });
+    }
+});
+
+/**
+ * GET /api/tags/:slug/products
+ * Tag'e ait ürünleri getir (filtreleme destekli)
+ */
+router.get('/:slug/products', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { page = 1, limit = 12, marka, arac, oem } = req.query;
+
+        // Tag'i bul
+        const tag = await WebTag.findOne({
+            seoUrl: slug,
+            isActive: true
+        });
+
+        if (!tag) {
+            return res.status(404).json({
+                success: false,
+                message: 'Etiket bulunamadı'
+            });
+        }
+
+        // Ürün key'leri yoksa boş dön
+        if (!tag.products || tag.products.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    products: [],
+                    pagination: {
+                        currentPage: 1,
+                        totalPages: 0,
+                        totalProducts: 0,
+                        limit: parseInt(limit)
+                    }
+                }
+            });
+        }
+
+        // Base filter
+        const filter = {
+            _key: { $in: tag.products },
+            'diaData.durum': 'A',
+            'syncInfo.diaStatus': 'synced',
+            'customData.webVisible': true
+        };
+
+        // Merkezi DIA filtrelerini uygula
+        MAIN_DIA_FILTERS.forEach(f => {
+            const fieldPath = `diaData.${f.field}`;
+            if (f.operator === '=') {
+                filter[fieldPath] = f.value;
+            }
+        });
+
+        // Ek filtreler için $and
+        const andConditions = [];
+
+        // Marka filtresi
+        if (marka) {
+            const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
+            if (markaList.length > 0) {
+                andConditions.push({
+                    'diaData.marka': { $in: markaList }
+                });
+            }
+        }
+        if (oem) {
+            const oemList = oem.split(',').map(o => o.trim()).filter(Boolean);
+            if (oemList.length > 0) {
+                const oemRegexList = oemList.map(slug =>
+                    new RegExp(`^${slug.replace(/-/g, '[\\s-]*')}(?:\\s*\\(|$)`, 'i')
+                );
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            'ozellikadi': 'OEM',
+                            'detayaciklama': { $in: oemRegexList }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Araç tipi 
+        if (arac && arac !== 'all') {
+            andConditions.push({
+                'diaData.ozelkod2kodu': arac
+            });
+        }
+
+        // $and koşullarını uygula
+        if (andConditions.length > 0) {
+            filter['$and'] = andConditions;
+        }
+
+        // Pagination hesapla
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        // Toplam filtrelenmiş ürün sayısı
+        const totalProducts = await WebProduct.countDocuments(filter);
+        const totalPages = Math.ceil(totalProducts / limitNum);
+
+        // Ürünleri getir
+        const products = await WebProduct.find(filter)
+            .select('_key customData diaData')
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        res.json({
+            success: true,
+            data: {
+                products,
+                pagination: {
+                    currentPage: pageNum,
+                    totalPages,
+                    totalProducts,
+                    limit: limitNum,
+                    hasNextPage: pageNum < totalPages,
+                    hasPrevPage: pageNum > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[Tags API] getProducts error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ürünler getirilirken hata oluştu'
+        });
+    }
+});
+
+module.exports = router;

@@ -55,7 +55,31 @@ const maybeAuth = process.env.DISABLE_AUTH === 'true'
 // ============================================
 // ROUTES
 // ============================================
+/**
+ * GET /api/categories/sliders
+ * Slider listesini getir (kategori düzenleme için)
+ */
+router.get('/sliders/list', maybeAuth, async (req, res) => {
+  try {
+    const Slider = require('../../../models/admin/design/Slider');
 
+    const sliders = await Slider.find({ 'settings.isActive': true })
+      .select('_id name key')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: sliders
+    });
+  } catch (error) {
+    console.error('Slider list error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Slider listesi alınamadı'
+    });
+  }
+});
 /**
  * GET /api/categories
  * Get all categories with filtering and statistics
@@ -133,7 +157,7 @@ router.get('/', maybeAuth, async (req, res) => {
         seoTitle: 1,
         seoDescription: 1,
         seoUrl: 1,
-        customImage: 1,
+        sliderId: 1,
         productCount: 1,
         activeProductCount: 1,
         totalStock: 1,
@@ -208,8 +232,8 @@ router.get('/', maybeAuth, async (req, res) => {
         seoDescription: cat.seoDescription || '',
         seoUrl: cat.seoUrl || cat.slug,
 
-        // Görsel
-        image: cat.customImage?.url || '/images/kategori/default-category.jpg',
+        // Slider
+        sliderId: cat.sliderId || null,
 
         // İstatistikler
         productCount: cat.productCount || 0,
@@ -260,11 +284,13 @@ router.patch('/:id', maybeAuth, [
   body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
   body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
   body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
-  body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır')
+  body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır'),
+  body('sliderId').optional()
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, seoTitle, seoDescription, seoUrl, webOrder } = req.body;
+    const { description, seoTitle, seoDescription, seoUrl, webOrder, sliderId } = req.body;
+
 
     const updateData = {};
     if (description !== undefined) updateData.description = description;
@@ -272,6 +298,7 @@ router.patch('/:id', maybeAuth, [
     if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim();
     if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase();
     if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0;
+    if (sliderId !== undefined) updateData.sliderId = sliderId || null;
 
     updateData.updatedAt = new Date();
 

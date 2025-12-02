@@ -1,7 +1,7 @@
 import type { Slider } from '@/src/types/slider';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082';
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
 /**
  * ID ile slider getir (mevcut - dropdown sistemi için)
@@ -63,5 +63,5 @@ export async function getSliderByKey(key: string): Promise<Slider | null> {
 export function getSliderImageUrl(url: string | null | undefined): string {
     if (!url) return '/images/slider/gorsel-bulunamadi.jpg';
     if (url.startsWith('http')) return url;
-    return url.startsWith('/') ? `${BASE_URL}${url}` : `${BASE_URL}/${url}`;
+    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
 }

@@ -501,11 +501,8 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
                 message: 'Marka bulunamadi'
             });
         }
-
-        // Eski logo varsa sil
-        if (brand.logo?.url) {
-            MediaService.deleteFile(brand.logo.url);
-        }
+        // Eski logo URL'ini sakla
+        const oldLogoUrl = brand.logo?.url;
 
         // Yeni logo URL
         const logoUrl = MediaService.getFileUrl('brand', req.file.filename);
@@ -526,6 +523,10 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
             { new: true }
         );
 
+        // Yukleme basarili, simdi eski logoyu sil
+        if (oldLogoUrl) {
+            MediaService.deleteFile(oldLogoUrl);
+        }
         res.json({
             success: true,
             message: 'Logo basariyla yuklendi',

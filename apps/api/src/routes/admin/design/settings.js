@@ -2,39 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const SiteSetting = require('../../../models/admin/settings/SiteSetting');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const MediaService = require('../../../services/web/MediaService');
 
-// Multer config
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../../../../public/theme');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    }
-});
-
-const upload = multer({
-    storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        cb(new Error('Sadece resim dosyaları yüklenebilir'));
-    }
-});
+// Upload middleware - theme kategorisi için (MediaService ile)
+const uploadThemeImage = MediaService.createUploader('theme', 'image');
 
 // GET ayar
 router.get('/:key', async (req, res) => {
@@ -106,8 +77,8 @@ router.put('/:key', async (req, res) => {
     }
 });
 
-// POST - Görsel upload
-router.post('/theme/upload', upload.single('image'), async (req, res) => {
+// POST - Görsel upload (MediaService ile)
+router.post('/theme/upload', uploadThemeImage, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -117,20 +88,28 @@ router.post('/theme/upload', upload.single('image'), async (req, res) => {
         }
 
         const { type } = req.body;
-        const imageUrl = `/uploads/theme/${req.file.filename}`;
 
-        const setting = await SiteSetting.findOne({ key: 'theme' });
-        const currentValue = setting?.value || {};
-
+        // Field mapping
         const fieldMap = {
             'logo': 'logo',
             'footer-logo': 'footerLogo',
             'ssl': 'footerSslImage',
             'default-catalog': 'defaultCatalogImage'
         };
-
         const fieldName = fieldMap[type] || type;
-        currentValue[fieldName] = imageUrl;
+
+        // Mevcut ayarları al
+        const setting = await SiteSetting.findOne({ key: 'theme' });
+        const currentValue = setting?.value || {};
+
+        // Eski görsel URL'ini sakla
+        const oldImageUrl = currentValue[fieldName];
+
+        // Yeni görsel URL'i oluştur (MediaService ile)
+        const newImageUrl = MediaService.getFileUrl('theme', req.file.filename);
+
+        // Ayarları güncelle
+        currentValue[fieldName] = newImageUrl;
 
         await SiteSetting.findOneAndUpdate(
             { key: 'theme' },
@@ -145,20 +124,78 @@ router.post('/theme/upload', upload.single('image'), async (req, res) => {
                 new: true
             }
         );
-
         res.json({
             success: true,
-            message: 'Görsel yüklendi',
+            message: 'Görsel başarıyla yüklendi',
             data: {
-                url: imageUrl,
-                type: type
+                url: newImageUrl,
+                type: type,
+                fieldName: fieldName
             }
         });
     } catch (error) {
         console.error('Upload hatası:', error);
+
+        // Hata durumunda yüklenen dosyayı sil
+        if (req.file) {
+            MediaService.deleteFile(`/theme/${req.file.filename}`);
+        }
+
         res.status(500).json({
             success: false,
             message: 'Görsel yüklenemedi',
+            error: error.message
+        });
+    }
+});
+
+// DELETE - Görsel silme
+router.delete('/theme/image/:type', async (req, res) => {
+    try {
+        const { type } = req.params;
+
+        const fieldMap = {
+            'logo': 'logo',
+            'footer-logo': 'footerLogo',
+            'ssl': 'footerSslImage',
+            'default-catalog': 'defaultCatalogImage'
+        };
+        const fieldName = fieldMap[type] || type;
+
+        const setting = await SiteSetting.findOne({ key: 'theme' });
+        if (!setting || !setting.value[fieldName]) {
+            return res.status(404).json({
+                success: false,
+                message: 'Silinecek görsel bulunamadı'
+            });
+        }
+
+        const imageUrl = setting.value[fieldName];
+
+        // Veritabanından kaldır
+        const currentValue = setting.value;
+        currentValue[fieldName] = null;
+
+        await SiteSetting.findOneAndUpdate(
+            { key: 'theme' },
+            {
+                value: currentValue,
+                updatedAt: new Date()
+            }
+        );
+
+        // Dosyayı sil
+        MediaService.deleteFile(imageUrl);
+
+        res.json({
+            success: true,
+            message: 'Görsel başarıyla silindi'
+        });
+    } catch (error) {
+        console.error('Silme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Görsel silinemedi',
             error: error.message
         });
     }

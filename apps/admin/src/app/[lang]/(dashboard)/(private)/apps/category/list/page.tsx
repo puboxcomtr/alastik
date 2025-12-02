@@ -39,6 +39,7 @@ async function fetchCategories() {
       seoUrl: category.seoUrl || category.slug || '',
       seoKeywords: category.seoKeywords || [],
       description: category.description || '',
+      sliderId: category.sliderId || null,
       productCount: category.productCount || 0,
       activeProductCount: category.activeProductCount || 0,
       totalStock: category.totalStock || 0,

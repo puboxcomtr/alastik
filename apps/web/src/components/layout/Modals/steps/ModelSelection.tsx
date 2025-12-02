@@ -1,15 +1,25 @@
-// apps/web/src/components/layout/Modals/steps/ModelSelection.tsx
 'use client';
 
+// ============================================
+// React
+// ============================================
 import { useState, useEffect } from 'react';
-import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
-import type { WheelSizeModel } from '@/src/types/vehicle';
 
-/* MUI */
+// ============================================
+// MUI
+// ============================================
 import { Typography, Divider } from '@mui/material';
 
-/* Internal Imports */
+// ============================================
+// Hooks
+// ============================================
+import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+
+// ============================================
+// Types
+// ============================================
+import type { WheelSizeModel } from '@/src/types/vehicle';
 
 interface ModelSelectionProps {
     make: string;

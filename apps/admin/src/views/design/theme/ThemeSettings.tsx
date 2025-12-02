@@ -24,15 +24,30 @@ const menuItems = [
 ]
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3082'
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
 
-const ImageUpload = ({ title, description, type, currentImage, onUpload }: any) => {
+const getImageUrl = (url: string | undefined | null): string | null => {
+    if (!url) return null
+    if (url.startsWith('http')) return url
+    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`
+}
+
+interface ImageUploadProps {
+    title: string
+    description?: string
+    type: string
+    currentImage?: string
+    onUpload: (url: string) => void
+}
+
+const ImageUpload = ({ title, description, type, currentImage, onUpload }: ImageUploadProps) => {
     const [uploading, setUploading] = useState(false)
     const [preview, setPreview] = useState(currentImage)
 
     useEffect(() => {
         setPreview(currentImage)
     }, [currentImage])
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -55,23 +70,14 @@ const ImageUpload = ({ title, description, type, currentImage, onUpload }: any) 
                 setPreview(data.data.url)
                 onUpload(data.data.url)
                 toast.success('Görsel yüklendi')
+            } else {
+                toast.error(data.message || 'Görsel yüklenemedi')
             }
         } catch (error) {
             toast.error('Görsel yüklenemedi')
         } finally {
             setUploading(false)
         }
-    }
-
-    const getImageUrl = (url: string | undefined) => {
-        if (!url) return null
-        if (url.startsWith('http')) return url
-        if (url.startsWith('/')) {
-            return `${BASE_URL}${url}`
-        }
-
-        // Yoksa başına / ekle
-        return `${BASE_URL}/${url}`
     }
 
     return (
@@ -89,13 +95,9 @@ const ImageUpload = ({ title, description, type, currentImage, onUpload }: any) 
                     <div className='w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 flex-shrink-0 relative overflow-hidden'>
                         {preview && (
                             <img
-                                src={getImageUrl(preview)}
+                                src={getImageUrl(preview) || ''}
                                 alt={title}
                                 className='w-full h-full object-cover'
-                                onError={(e) => {
-                                    console.error('Image load failed:', preview)
-                                    console.log('Trying URL:', getImageUrl(preview))
-                                }}
                             />
                         )}
                         <Button
@@ -114,11 +116,11 @@ const ImageUpload = ({ title, description, type, currentImage, onUpload }: any) 
         </>
     )
 }
+
 const ThemeSettings = () => {
     const [activeMenu, setActiveMenu] = useState('tab1')
     const [saving, setSaving] = useState(false)
     const [settings, setSettings] = useState<ThemeSettingsType>({})
-
 
     const [sliderList, setSliderList] = useState<any[]>([])
     const [loadingSliders, setLoadingSliders] = useState(true)
@@ -145,6 +147,7 @@ const ThemeSettings = () => {
             console.error('Settings fetch error:', error)
         }
     }
+
     const fetchSliderList = async () => {
         try {
             setLoadingSliders(true)
@@ -161,6 +164,7 @@ const ThemeSettings = () => {
             setLoadingSliders(false)
         }
     }
+
     const fetchShowcaseList = async () => {
         try {
             setLoadingShowcases(true)
@@ -177,6 +181,7 @@ const ThemeSettings = () => {
             setLoadingShowcases(false)
         }
     }
+
     const handleChange = (key: keyof ThemeSettingsType, value: any) => {
         setSettings((prev) => ({ ...prev, [key]: value }))
     }
@@ -628,6 +633,9 @@ const ThemeSettings = () => {
                         ))}
                     </>
                 )
+
+            default:
+                return null
         }
     }
 

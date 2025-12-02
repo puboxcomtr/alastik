@@ -1,39 +1,52 @@
-// apps/web/src/components/layout/Modals/steps/TireSizeSelection.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Typography, Divider, Box } from '@mui/material';
+import wheelSizeService, { GroupedTires, TireOption, VehicleDetailsResponse } from '@/src/services/wheelSizeService';
 import type { TireSize } from '@/src/types/tire-search';
 
 interface TireSizeSelectionProps {
     make: string;
+    makeName: string;
     model: string;
+    modelName: string;
     year: number;
     modification: string;
+    modificationName: string;
     vehicleImage?: string;
     onSelect: (tireSize: TireSize) => void;
 }
 
-interface CompatibleTire {
-    width: number;
-    aspectRatio: number;
-    diameter: number;
-    display: string;
-    isFront: boolean;
-    isRear: boolean;
+type PositionFilter = 'all' | 'front' | 'rear' | 'both';
+
+interface VehicleInfo {
+    name: string;
+    bodyType?: string;
+    engine?: {
+        fuel: string;
+        capacity: string;
+        type: string;
+        power: { hp: number; kW: number };
+    };
 }
 
 export default function TireSizeSelection({
     make,
+    makeName,
     model,
+    modelName,
     year,
     modification,
+    modificationName,
     vehicleImage,
     onSelect
 }: TireSizeSelectionProps) {
     const [loading, setLoading] = useState(true);
-    const [compatibleTires, setCompatibleTires] = useState<CompatibleTire[]>([]);
-    const [selectedFront, setSelectedFront] = useState<string>('');
-    const [selectedRear, setSelectedRear] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
+    const [groupedTires, setGroupedTires] = useState<GroupedTires>({ front: [], rear: [], both: [] });
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo | null>(null);
+    const [positionFilter, setPositionFilter] = useState<PositionFilter>('all');
 
     useEffect(() => {
         if (make && model && year && modification) {
@@ -43,38 +56,120 @@ export default function TireSizeSelection({
 
     const loadCompatibleSizes = async () => {
         setLoading(true);
+        setError(null);
+
         try {
-            // TODO: API'den uyumlu ebatları çek
-            // const response = await api.wheelSize.getVehicleDetails(make, model, year, modification);
+            const vehicleData = await wheelSizeService.getVehicleDetails(make, model, year, modification);
 
-            // Mock data
-            const mockTires: CompatibleTire[] = [
-                { width: 205, aspectRatio: 55, diameter: 16, display: '205/55 R16', isFront: true, isRear: true },
-                { width: 215, aspectRatio: 55, diameter: 16, display: '215/55 R16', isFront: true, isRear: true },
-                { width: 225, aspectRatio: 50, diameter: 17, display: '225/50 R17', isFront: true, isRear: true },
-            ];
+            if (vehicleData.length > 0) {
+                const data = vehicleData[0];
+                setVehicleInfo({
+                    name: data.name,
+                    bodyType: data.generation?.bodies?.[0]?.name,
+                    engine: data.engine ? {
+                        fuel: data.engine.fuel,
+                        capacity: data.engine.capacity,
+                        type: data.engine.type,
+                        power: { hp: data.engine.power.hp, kW: data.engine.power.kW }
+                    } : undefined
+                });
+            }
 
-            setCompatibleTires(mockTires);
-        } catch (error) {
-            console.error('Tire sizes fetch error:', error);
+            const grouped = wheelSizeService.parseGroupedTires(vehicleData);
+            setGroupedTires(grouped);
+
+            const total = grouped.front.length + grouped.rear.length + grouped.both.length;
+            if (total === 0) {
+                setError('Bu araç için uyumlu lastik ebatı bulunamadı.');
+            }
+        } catch (err) {
+            console.error('[TireSizeSelection] API Error:', err);
+            setError('Lastik ebatları yüklenirken bir hata oluştu.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleTireSelect = (tire: CompatibleTire) => {
-        setSelectedFront(tire.display);
-        setSelectedRear(tire.display);
+    const handleSelect = (tire: TireOption, position: 'front' | 'rear' | 'both') => {
+        setSelectedId(tire.id);
 
         const tireSize: TireSize = {
-            front: tire.display,
-            rear: tire.display,
+            front: position === 'rear' ? '' : tire.display,
+            rear: position === 'front' ? '' : tire.display,
             width: tire.width,
             aspectRatio: tire.aspectRatio,
             diameter: tire.diameter
         };
 
         onSelect(tireSize);
+    };
+
+    const getFuelLabel = (fuel: string): string => {
+        const map: Record<string, string> = {
+            'Petrol': 'Benzin', 'Diesel': 'Dizel', 'Hybrid': 'Hibrit',
+            'Electric': 'Elektrik', 'Natural gas': 'LPG'
+        };
+        return map[fuel] || fuel;
+    };
+
+    // Filtrelenmiş sayılar
+    const counts = useMemo(() => ({
+        all: groupedTires.front.length + groupedTires.rear.length + groupedTires.both.length,
+        front: groupedTires.front.length,
+        rear: groupedTires.rear.length,
+        both: groupedTires.both.length
+    }), [groupedTires]);
+
+    // Staggered var mı?
+    const hasStaggered = groupedTires.front.length > 0 || groupedTires.rear.length > 0;
+
+
+
+    const renderTireGroup = (title: string, tires: TireOption[], position: 'front' | 'rear' | 'both', badgeColor: string) => {
+        if (tires.length === 0) return null;
+
+        return (
+            <div className="mb-4">
+                <h4 className="mb-1" style={{ fontSize: '16px', fontWeight: 600 }}>{title}</h4>
+                <Divider sx={{ mb: 2 }} />
+
+                <div className="table-responsive">
+                    <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
+                        <thead>
+                            <tr className="text-muted" style={{ fontSize: '12px' }}>
+                                <th>Ebat</th>
+                                <th>Yük/Hız</th>
+                                <th className='text-end'>Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tires.map(tire => (
+                                <tr
+                                    key={tire.id}
+                                    onClick={() => handleSelect(tire, position)}
+                                    className={selectedId === tire.id ? 'table-active' : ''}
+                                    style={{
+                                        cursor: 'pointer',
+                                        borderLeft: selectedId === tire.id ? '3px solid var(--cz-primary)' : '3px solid transparent'
+                                    }}
+                                >
+                                    <td><strong>{tire.display}</strong></td>
+                                    <td>
+                                        {tire.loadIndex && tire.speedIndex
+                                            ? `${tire.loadIndex}${tire.speedIndex}`
+                                            : '-'
+                                        }
+                                    </td>
+                                    <td className='text-end'>
+                                        {tire.isStock && <span className="badge bg-success">Fabrika Çıkış Ebatı</span>}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
     };
 
     if (loading) {
@@ -88,75 +183,166 @@ export default function TireSizeSelection({
         );
     }
 
+    if (error) {
+        return (
+            <div className="text-center py-5">
+                <i className="ri-error-warning-line fs-1 text-danger"></i>
+                <p className="text-danger mt-2">{error}</p>
+                <button className="btn btn-outline-primary btn-sm mt-2" onClick={loadCompatibleSizes}>
+                    <i className="ri-refresh-line me-1"></i>Tekrar Dene
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="tire-size-selection">
-            <div className="text-center mb-4">
-                <p className="text-muted mb-3">
-                    <strong className="text-capitalize">{make} {model} ({year})</strong>
-                </p>
-                <small className="text-muted">
-                    <i className="ri-settings-3-line me-1"></i>
-                    {modification}
-                </small>
-            </div>
+            <div className="row">
+                {/* Sol Panel - Araç Bilgisi + Filtreler */}
+                <div className="col-md-3">
+                    <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
+                        Araç Bilgisi
+                    </Typography>
+                    <Divider />
 
-            {compatibleTires.length > 0 ? (
-                <div className="row g-3">
-                    {compatibleTires.map((tire) => (
-                        <div key={tire.display} className="col-md-4">
-                            <div
-                                className={`tire-card card h-100 text-center ${selectedFront === tire.display ? 'border-primary' : ''}`}
-                                onClick={() => handleTireSelect(tire)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div className="card-body">
-                                    <div className="tire-icon mb-2">
-                                        <i className="ri-dashboard-line fs-1 text-primary"></i>
-                                    </div>
-                                    <h5 className="mb-2">{tire.display}</h5>
-                                    <div className="tire-specs small text-muted">
-                                        <div>Genişlik: {tire.width} mm</div>
-                                        <div>Oran: {tire.aspectRatio}%</div>
-                                        <div>Jant: {tire.diameter}"</div>
-                                    </div>
-                                    {selectedFront === tire.display && (
-                                        <div className="mt-2">
-                                            <i className="ri-check-circle-fill text-primary fs-4"></i>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                    {/* Araç Görseli */}
+                    <div className="text-center py-3">
+                        {vehicleImage ? (
+                            <img
+                                src={vehicleImage}
+                                alt={`${makeName} ${modelName}`}
+                                className="img-fluid"
+                                style={{ maxHeight: '100px', objectFit: 'contain' }}
+                            />
+                        ) : (
+                            <i className="ri-car-line" style={{ fontSize: '3rem', color: '#dee2e6' }}></i>
+                        )}
+                    </div>
+
+                    {/* Araç Detayları */}
+                    <div className="small">
+                        <div className="d-flex justify-content-between py-1">
+                            <span className="text-muted">Araç:</span>
+                            <strong>{makeName} {modelName}</strong>
                         </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-5">
-                    <i className="ri-dashboard-line fs-1 text-muted"></i>
-                    <p className="text-muted mt-2">Uyumlu lastik ebatı bulunamadı</p>
-                </div>
-            )}
+                        {vehicleInfo?.bodyType && (
+                            <div className="d-flex justify-content-between py-1">
+                                <span className="text-muted">Kasa:</span>
+                                <strong>{vehicleInfo.bodyType}</strong>
+                            </div>
+                        )}
+                        <div className="d-flex justify-content-between py-1">
+                            <span className="text-muted">Yıl:</span>
+                            <strong>{year}</strong>
+                        </div>
+                        <div className="d-flex justify-content-between py-1">
+                            <span className="text-muted">Motor:</span>
+                            <strong>{vehicleInfo?.name || modificationName}</strong>
+                        </div>
+                        {vehicleInfo?.engine?.power && (
+                            <div className="d-flex justify-content-between py-1">
+                                <span className="text-muted">Güç:</span>
+                                <strong>{vehicleInfo.engine.power.hp} hp</strong>
+                            </div>
+                        )}
+                        {vehicleInfo?.engine?.fuel && (
+                            <div className="d-flex justify-content-between py-1">
+                                <span className="text-muted">Yakıt:</span>
+                                <strong>{getFuelLabel(vehicleInfo.engine.fuel)}</strong>
+                            </div>
+                        )}
+                    </div>
 
-            {selectedFront && (
-                <div className="alert alert-success mt-3" role="alert">
-                    <i className="ri-check-line me-2"></i>
-                    <strong>{selectedFront}</strong> ebatı seçildi
-                </div>
-            )}
+                    {/* Pozisyon Filtresi */}
+                    <Box sx={{ mt: 2 }} />
+                    <Divider />
+                    <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
+                        Pozisyon
+                    </Typography>
+                    <Divider />
 
-            <style jsx>{`
-                .tire-card {
-                    transition: all 0.2s ease;
-                    border: 2px solid #dee2e6;
-                }
-                .tire-card:hover {
-                    border-color: #dc3545;
-                    transform: translateY(-2px);
-                }
-                .tire-card.border-primary {
-                    border-color: #dc3545 !important;
-                    background-color: #fff5f5;
-                }
-            `}</style>
+                    <div className="py-2">
+                        <div className="form-check mb-2">
+                            <input
+                                type="radio"
+                                className="form-check-input"
+                                id="pos-all"
+                                name="position"
+                                checked={positionFilter === 'all'}
+                                onChange={() => setPositionFilter('all')}
+                            />
+                            <label className="form-check-label" htmlFor="pos-all">
+                                Tümü
+                            </label>
+                        </div>
+
+                        {counts.both > 0 && (
+                            <div className="form-check mb-2">
+                                <input
+                                    type="radio"
+                                    className="form-check-input"
+                                    id="pos-both"
+                                    name="position"
+                                    checked={positionFilter === 'both'}
+                                    onChange={() => setPositionFilter('both')}
+                                />
+                                <label className="form-check-label" htmlFor="pos-both">
+                                    Ön/Arka (Ortak)
+                                </label>
+                            </div>
+                        )}
+
+                        {counts.front > 0 && (
+                            <div className="form-check mb-2">
+                                <input
+                                    type="radio"
+                                    className="form-check-input"
+                                    id="pos-front"
+                                    name="position"
+                                    checked={positionFilter === 'front'}
+                                    onChange={() => setPositionFilter('front')}
+                                />
+                                <label className="form-check-label" htmlFor="pos-front">
+                                    Sadece Ön
+                                </label>
+                            </div>
+                        )}
+
+                        {counts.rear > 0 && (
+                            <div className="form-check mb-2">
+                                <input
+                                    type="radio"
+                                    className="form-check-input"
+                                    id="pos-rear"
+                                    name="position"
+                                    checked={positionFilter === 'rear'}
+                                    onChange={() => setPositionFilter('rear')}
+                                />
+                                <label className="form-check-label" htmlFor="pos-rear">
+                                    Sadece Arka
+                                </label>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sağ Panel - Lastik Grupları */}
+                <div className="col-md-9">
+                    <div className="tire-groups">
+                        {/* Ön/Arka Aynı Ebatlar */}
+                        {(positionFilter === 'all' || positionFilter === 'both') &&
+                            renderTireGroup('Ön ve Arka Lastik Ebatları', groupedTires.both, 'both', 'bg-success')}
+
+                        {/* Sadece Ön Ebatlar */}
+                        {(positionFilter === 'all' || positionFilter === 'front') &&
+                            renderTireGroup('Ön Lastik Ebatları', groupedTires.front, 'front', 'bg-primary')}
+
+                        {/* Sadece Arka Ebatlar */}
+                        {(positionFilter === 'all' || positionFilter === 'rear') &&
+                            renderTireGroup('Arka Lastik Ebatları', groupedTires.rear, 'rear', 'bg-warning text-dark')}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

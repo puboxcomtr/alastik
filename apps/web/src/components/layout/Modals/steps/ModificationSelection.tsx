@@ -9,6 +9,8 @@ import { Typography, Divider, Box, Alert } from '@mui/material';
 
 /* Internal Imports */
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
+import { translateFuelType, translateBodyType } from '@/src/utils/vehicleTranslations';
+
 
 interface ModificationSelectionProps {
     make: string;
@@ -83,8 +85,6 @@ export default function ModificationSelection({
         });
         return Array.from(bodies);
     }, [modifications]);
-
-    // Filtrelenmiş sonuçlar
     const filteredModifications = useMemo(() => {
         return modifications.filter(mod => {
             if (filterFuel && mod.engine?.fuel !== filterFuel) return false;
@@ -109,6 +109,25 @@ export default function ModificationSelection({
                     <span className="visually-hidden">Yükleniyor...</span>
                 </div>
                 <p className="mt-3 text-muted">Motor bilgileri yükleniyor...</p>
+            </div>
+        );
+    }
+    if (!loading && modifications.length === 0) {
+        return (
+            <div className="modification-selection">
+                <div className="row justify-content-center">
+                    <div className="col-md-8">
+                        <div className="text-center py-5">
+                            <i className="ri-error-warning-line" style={{ fontSize: '4rem', color: 'var(--cz-primary)' }}></i>
+                            <Typography variant="h6" sx={{ mt: 2, color: 'black' }}>
+                                Motor Bilgisi Bulunamadı
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                                <strong>{makeName} {modelName}</strong> için detaylı bilgi internet sitemizde bulunmuyor.
+                            </Typography>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -157,7 +176,6 @@ export default function ModificationSelection({
                         )}
                     </Typography>
                     <Divider />
-
                     <div className="py-2">
                         {/* Yakıt Filtresi */}
                         {allFuelTypes.length > 1 && (
@@ -175,12 +193,11 @@ export default function ModificationSelection({
                                 >
                                     <option value="">Tümü</option>
                                     {allFuelTypes.map((fuel, idx) => (
-                                        <option key={`fuel-${idx}`} value={fuel}>{fuel}</option>
+                                        <option key={`fuel-${idx}`} value={fuel}>{translateFuelType(fuel)}</option>
                                     ))}
                                 </select>
                             </div>
                         )}
-
                         {/* Motor Gücü Filtresi */}
                         {allPowerOptions.length > 1 && (
                             <div className="mb-3">
@@ -204,20 +221,8 @@ export default function ModificationSelection({
                         )}
                     </div>
                 </div>
-
                 {/* Sağ: Motor Listesi */}
                 <div className="col-md-9">
-                    <Alert
-                        severity="info"
-                        className="mb-3"
-                        sx={{
-                            backgroundColor: '#f5f5f5',
-                            color: 'text.primary',
-                            '& .MuiAlert-icon': { color: 'text.secondary' }
-                        }}
-                    >
-                        <strong>Aracınızı bulamıyor musunuz?</strong> Kesin tanımlama için araç tescil belgenizi kullanın.
-                    </Alert>
 
                     {/* Motor Tablosu */}
                     {filteredModifications.length > 0 ? (
@@ -265,8 +270,8 @@ export default function ModificationSelection({
                                                     : '-'
                                                 }
                                             </td>
-                                            <td>{mod.engine?.fuel || '-'}</td>
-                                            <td>{mod.generation?.bodies?.[0]?.name || '-'}</td>
+                                            <td>{mod.engine?.fuel ? translateFuelType(mod.engine.fuel) : '-'}</td>
+                                            <td>{mod.generation?.bodies?.[0]?.name ? translateBodyType(mod.generation.bodies[0].name) : '-'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
