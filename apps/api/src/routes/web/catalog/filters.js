@@ -32,8 +32,6 @@ router.get('/tire-options', async (req, res) => {
         const { category, tag } = req.query;
 
         const baseMatch = buildBaseMatch();
-
-        // Kategori filtresi
         if (category) {
             const webCategory = await WebCategory.findOne({
                 slug: category,
@@ -49,8 +47,6 @@ router.get('/tire-options', async (req, res) => {
                 };
             }
         }
-
-        // Tag filtresi (ebat bazlı)
         if (tag) {
             const webTag = await WebTag.findOne({
                 seoUrl: tag,
@@ -61,8 +57,6 @@ router.get('/tire-options', async (req, res) => {
                 baseMatch['_key'] = { $in: webTag.products };
             }
         }
-
-        // Genişlik değerleri
         const widthPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -76,8 +70,6 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
-
-        // Yanak değerleri
         const aspectPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -91,8 +83,6 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
-
-        // Jant Çapı değerleri
         const rimPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -106,8 +96,6 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
-
-        // Araç Tipi değerleri
         const vehicleTypePipeline = [
             { $match: baseMatch },
             {
@@ -120,8 +108,6 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { count: -1 } }
         ];
-
-        // Marka değerleri
         const brandPipeline = [
             { $match: baseMatch },
             {
@@ -133,7 +119,6 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { count: -1, _id: 1 } }
         ];
-        // OEM
         const oemPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -152,22 +137,123 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { count: -1, _id: 1 } }
         ];
-
-        // Paralel çalıştır
-        const [widths, aspects, rims, vehicleTypes, brands, oem] = await Promise.all([
+        const pricePipeline = [
+            { $match: baseMatch },
+            { $unwind: '$diaData.m_birimler' },
+            {
+                $match: {
+                    'diaData.m_birimler.fiyat4': { $gt: 0 }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    minPrice: { $min: '$diaData.m_birimler.fiyat4' },
+                    maxPrice: { $max: '$diaData.m_birimler.fiyat4' }
+                }
+            }
+        ];
+        const seasonPipeline = [
+            { $match: baseMatch },
+            {
+                $group: {
+                    _id: '$diaData.ozelkod1kodu',
+                    count: { $sum: 1 }
+                }
+            },
+            { $match: { _id: { $ne: null, $ne: '' } } },
+            { $sort: { count: -1 } }
+        ];
+        const propertiesPipeline = [
+            { $match: baseMatch },
+            { $unwind: '$diaData.m_urunOzellikleri' },
+            {
+                $match: {
+                    'diaData.m_urunOzellikleri.ozellikadi': { $in: ['XL', 'Seal', 'Run Flat'] },
+                    'diaData.m_urunOzellikleri.detayaciklama': 'Evet'
+                }
+            },
+            {
+                $group: {
+                    _id: '$diaData.m_urunOzellikleri.ozellikadi',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ];
+        const loadIndexPipeline = [
+            { $match: baseMatch },
+            { $unwind: '$diaData.m_urunOzellikleri' },
+            {
+                $match: {
+                    'diaData.m_urunOzellikleri.ozellikadi': 'Yük Endeksi',
+                    'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null, $ne: '-' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$diaData.m_urunOzellikleri.detayaciklama',
+                    count: { $sum: 1 }
+                }
+            },
+            { $match: { _id: { $ne: null, $ne: '' } } },
+            { $sort: { _id: 1 } }
+        ];
+        const speedIndexPipeline = [
+            { $match: baseMatch },
+            { $unwind: '$diaData.m_urunOzellikleri' },
+            {
+                $match: {
+                    'diaData.m_urunOzellikleri.ozellikadi': 'Hız Endeksi',
+                    'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null, $ne: '-' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$diaData.m_urunOzellikleri.detayaciklama',
+                    count: { $sum: 1 }
+                }
+            },
+            { $match: { _id: { $ne: null, $ne: '' } } },
+            { $sort: { _id: 1 } }
+        ];
+        const productionYearPipeline = [
+            { $match: baseMatch },
+            { $match: { 'diaData.ekalan5': { $ne: null, $ne: '' } } },
+            { $group: { _id: '$diaData.ekalan5', count: { $sum: 1 } } },
+            { $match: { _id: { $regex: /^\d{4}$/ } } },
+            { $sort: { _id: -1 } }
+        ];
+        const [widths, aspects, rims, vehicleTypes, brands, oem, priceRange, seasons, properties, loadIndex, speedIndex, productionYears] = await Promise.all([
             WebProduct.aggregate(widthPipeline),
             WebProduct.aggregate(aspectPipeline),
             WebProduct.aggregate(rimPipeline),
             WebProduct.aggregate(vehicleTypePipeline),
             WebProduct.aggregate(brandPipeline),
-            WebProduct.aggregate(oemPipeline)
+            WebProduct.aggregate(oemPipeline),
+            WebProduct.aggregate(pricePipeline),
+            WebProduct.aggregate(seasonPipeline),
+            WebProduct.aggregate(propertiesPipeline),
+            WebProduct.aggregate(loadIndexPipeline),
+            WebProduct.aggregate(speedIndexPipeline),
+            WebProduct.aggregate(productionYearPipeline)
         ]);
 
-        // Jant çapını düzenle
         const formatRim = (value) => {
             if (!value) return null;
             const match = value.match(/R?(\d+)C?/i);
             return match ? match[1] : value;
+        };
+        const formatSeasonLabel = (value) => {
+            if (!value) return value;
+            const turkishLower = value
+                .replace(/I/g, 'ı')
+                .replace(/İ/g, 'i')
+                .toLowerCase();
+
+            return turkishLower.split(' ').map(word =>
+                word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1)
+            ).join(' ');
         };
 
         res.json({
@@ -207,7 +293,36 @@ router.get('/tire-options', async (req, res) => {
                         label: o._id,
                         count: o.count
                     };
-                })
+                }),
+                priceRange: priceRange[0] ? {
+                    min: Math.floor(priceRange[0].minPrice),
+                    max: Math.ceil(priceRange[0].maxPrice)
+                } : { min: 0, max: 10000 },
+                seasons: seasons.map(s => ({
+                    value: s._id,
+                    label: formatSeasonLabel(s._id),
+                    count: s.count
+                })),
+                properties: properties.map(p => ({
+                    value: p._id,
+                    label: p._id,
+                    count: p.count
+                })),
+                loadIndex: loadIndex.map(l => ({
+                    value: l._id,
+                    label: l._id,
+                    count: l.count
+                })),
+                speedIndex: speedIndex.map(s => ({
+                    value: s._id,
+                    label: s._id,
+                    count: s.count
+                })),
+                productionYears: productionYears.map(p => ({
+                    value: p._id,
+                    label: p._id,
+                    count: p.count
+                }))
             }
         });
 

@@ -92,6 +92,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         arac: filters.arac,
         marka: filters.marka,
         oem: filters.oem,
+        mevsim: filters.mevsim,
+        ozellik: filters.ozellik,
+        yukEndeksi: filters.yukEndeksi,
+        hizEndeksi: filters.hizEndeksi,
+        uretim: filters.uretim,
+        fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
+        fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined,
         page: currentPage,
         limit: showcaseSettings.productsPerPage
     });

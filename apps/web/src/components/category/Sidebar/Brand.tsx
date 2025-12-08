@@ -19,7 +19,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 interface BrandOption {
     value: string;
-    label: string;
+    label?: string;
     count: number;
 }
 

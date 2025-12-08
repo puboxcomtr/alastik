@@ -35,6 +35,13 @@ router.get('/filter', async (req, res) => {
             arac,
             marka,
             oem,
+            mevsim,
+            ozellik,
+            yukEndeksi,
+            hizEndeksi,
+            uretim,
+            fiyatMin,
+            fiyatMax,
             limit
         } = req.query;
 
@@ -106,7 +113,6 @@ router.get('/filter', async (req, res) => {
         if (oem) {
             const oemList = oem.split(',').map(o => o.trim()).filter(Boolean);
             if (oemList.length > 0) {
-                // Slug'ı eşleştir: "tesla" → "Tesla" veya "bmw" → "BMW (*)"
                 const oemRegexList = oemList.map(slug =>
                     new RegExp(`^${slug.replace(/-/g, '[\\s-]*')}(?:\\s*\\(|$)`, 'i')
                 );
@@ -119,6 +125,69 @@ router.get('/filter', async (req, res) => {
                     }
                 });
             }
+        }
+        if (mevsim) {
+            const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
+            if (mevsimList.length > 0) {
+                andConditions.push({
+                    'diaData.ozelkod1kodu': { $in: mevsimList }
+                });
+            }
+        }
+        if (ozellik) {
+            const ozellikList = ozellik.split(',').map(o => o.trim()).filter(Boolean);
+            ozellikList.forEach(oz => {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            'ozellikadi': oz,
+                            'detayaciklama': 'Evet'
+                        }
+                    }
+                });
+            });
+        }
+        if (yukEndeksi) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        'ozellikadi': 'Yük Endeksi',
+                        'detayaciklama': yukEndeksi
+                    }
+                }
+            });
+        }
+        if (hizEndeksi) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        'ozellikadi': 'Hız Endeksi',
+                        'detayaciklama': hizEndeksi
+                    }
+                }
+            });
+        }
+        if (uretim) {
+            const uretimList = uretim.split(',').map(u => u.trim()).filter(Boolean);
+            if (uretimList.length > 0) {
+                andConditions.push({ 'diaData.ekalan5': { $in: uretimList } });
+            }
+        }
+        if (fiyatMin || fiyatMax) {
+            const priceCondition = {
+                'diaData.m_birimler': {
+                    $elemMatch: {
+                        'fiyat4': {}
+                    }
+                }
+            };
+            if (fiyatMin) {
+                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$gte = parseFloat(fiyatMin);
+            }
+            if (fiyatMax) {
+                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$lte = parseFloat(fiyatMax);
+            }
+            andConditions.push(priceCondition);
         }
         if (andConditions.length > 0) {
             filter['$and'] = andConditions;

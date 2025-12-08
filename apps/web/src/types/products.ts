@@ -57,6 +57,13 @@ export interface ProductFilterParams {
     arac?: string;
     marka?: string;
     oem?: string;
+    mevsim?: string;
+    ozellik?: string;
+    yukEndeksi?: string;
+    hizEndeksi?: string;
+    uretim?: string;
+    fiyatMin?: number;
+    fiyatMax?: number;
     page?: number;
     limit?: number;
 }

@@ -31,15 +31,11 @@ export default function Oem({ oemOptions = [] }: OemProps) {
         } else {
             params.set('oem', value);
         }
-
-        // Sayfa parametresini sıfırla
         params.delete('sayfa');
 
         const queryString = params.toString();
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
-
-    // OEM seçenekleri yoksa componenti gösterme
     if (!oemOptions || oemOptions.length === 0) {
         return null;
     }
@@ -59,7 +55,7 @@ export default function Oem({ oemOptions = [] }: OemProps) {
                     sx={{ borderBottom: "none", p: 0 }}
                 >
                     <Typography variant="subtitle1" fontWeight="bold">
-                        Orijinal Ekipman
+                        Orjinal Ekipman
                     </Typography>
                     <Tooltip
                         title={
@@ -85,10 +81,17 @@ export default function Oem({ oemOptions = [] }: OemProps) {
                         value={currentOem}
                         onChange={(e) => handleChange(e.target.value)}
                     >
-                        <MenuItem value="all">Tümü</MenuItem>
+                        <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>Tümü</MenuItem>
                         {oemOptions.map((oem, index) => (
-                            <MenuItem key={index} value={oem.value}>
-                                {oem.label || oem.value} ({oem.count})
+                            <MenuItem
+                                key={index}
+                                value={oem.value}
+                                sx={{
+                                    fontSize: '13px',
+                                    borderBottom: '1px solid #eee'
+                                }}
+                            >
+                                {oem.label || oem.value}
                             </MenuItem>
                         ))}
                     </TextField>

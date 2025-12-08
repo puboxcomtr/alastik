@@ -12,6 +12,15 @@ export interface TireFilterOptions {
     vehicleTypes: VehicleTypeOption[];
     brands: FilterOption[];
     oem: FilterOption[];
+    seasons: FilterOption[];
+    properties: FilterOption[];
+    loadIndex: FilterOption[];
+    speedIndex: FilterOption[];
+    productionYears: FilterOption[];
+    priceRange: {
+        min: number;
+        max: number;
+    };
 }
 export async function getTireFilterOptions(
     categorySlug?: string,

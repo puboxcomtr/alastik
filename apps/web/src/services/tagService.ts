@@ -34,6 +34,13 @@ export interface TagFilterParams {
     marka?: string;
     arac?: string;
     oem?: string;
+    mevsim?: string;
+    ozellik?: string;
+    yukEndeksi?: string;
+    hizEndeksi?: string;
+    uretim?: string;
+    fiyatMin?: number;
+    fiyatMax?: number;
 }
 
 /**
@@ -64,7 +71,7 @@ async function getTagProducts(
     slug: string,
     page: number = 1,
     limit: number = 12,
-    filters?: TagFilterParams  // <-- EKLENDİ
+    filters?: TagFilterParams
 ): Promise<TagProductsResponse | null> {
     try {
         // URL parametrelerini oluştur
@@ -76,6 +83,13 @@ async function getTagProducts(
         if (filters?.marka) params.append('marka', filters.marka);
         if (filters?.arac) params.append('arac', filters.arac);
         if (filters?.oem) params.append('oem', filters.oem);
+        if (filters?.mevsim) params.append('mevsim', filters.mevsim);
+        if (filters?.ozellik) params.append('ozellik', filters.ozellik);
+        if (filters?.yukEndeksi) params.append('yukEndeksi', filters.yukEndeksi);
+        if (filters?.hizEndeksi) params.append('hizEndeksi', filters.hizEndeksi);
+        if (filters?.uretim) params.append('uretim', filters.uretim);
+        if (filters?.fiyatMin) params.append('fiyatMin', filters.fiyatMin.toString());
+        if (filters?.fiyatMax) params.append('fiyatMax', filters.fiyatMax.toString());
 
         const response = await fetch(
             `${API_BASE_URL}/tags/${slug}/products?${params.toString()}`,

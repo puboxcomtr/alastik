@@ -1,25 +1,58 @@
+// apps/web/src/components/category/Sidebar/Properties.tsx
 "use client";
-import { useState } from "react";
 
-/* MUI */
 import {
-    Grid,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
-    Checkbox,
-    FormControlLabel,
-    Typography,
+    Grid, Accordion, AccordionSummary, AccordionDetails,
+    Checkbox, FormControlLabel, Typography, Box
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-export default function Properties() {
-    const [selectedProperties, setselectedProperties] = useState<number[]>([]);
-    const handleToggle = (id: number) => {
-        setselectedProperties((prev) =>
-            prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]
-        );
+interface PropertyOption {
+    value: string;
+    label?: string;
+    count: number;
+}
+
+interface PropertiesProps {
+    propertyOptions?: PropertyOption[];
+}
+
+export default function Properties({ propertyOptions = [] }: PropertiesProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    // URL'den mevcut seçimleri al
+    const currentProperties = searchParams.get('ozellik')?.split(',').filter(Boolean) || [];
+
+    const handleToggle = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        let newProperties: string[];
+        if (currentProperties.includes(value)) {
+            newProperties = currentProperties.filter(p => p !== value);
+        } else {
+            newProperties = [...currentProperties, value];
+        }
+
+        if (newProperties.length > 0) {
+            params.set('ozellik', newProperties.join(','));
+        } else {
+            params.delete('ozellik');
+        }
+
+        params.delete('sayfa');
+
+        const queryString = params.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
+
+    // Seçenekler yoksa gösterme
+    if (!propertyOptions || propertyOptions.length === 0) {
+        return null;
+    }
+
     return (
         <Grid sx={{ borderBottom: "1px solid #ddd", paddingBottom: "20px" }}>
             <Accordion
@@ -32,10 +65,7 @@ export default function Properties() {
             >
                 <AccordionSummary
                     expandIcon={<ExpandMoreIcon />}
-                    sx={{
-                        borderBottom: "none",
-                        p: 0,
-                    }}
+                    sx={{ borderBottom: "none", p: 0 }}
                 >
                     <Typography variant="subtitle1" fontWeight="bold">
                         Özellikler
@@ -51,70 +81,26 @@ export default function Properties() {
                             flexDirection: "column",
                         }}
                     >
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={selectedProperties.includes(1)}
-                                    onChange={() => handleToggle(1)}
-                                    size="small"
-                                    sx={{ p: "5px 10px" }}
-                                />
-                            }
-                            label={
-                                <>
-                                    <span style={{ color: "#000" }}>Run Flat</span>{" "}
-                                    <span style={{ color: "#a4a4a4" }}>(120)</span>
-                                </>
-                            }
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={selectedProperties.includes(1)}
-                                    onChange={() => handleToggle(1)}
-                                    size="small"
-                                    sx={{ p: "5px 10px" }}
-                                />
-                            }
-                            label={
-                                <>
-                                    <span style={{ color: "#000" }}>M+S Sembol</span>{" "}
-                                    <span style={{ color: "#a4a4a4" }}>(48)</span>
-                                </>
-                            }
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={selectedProperties.includes(1)}
-                                    onChange={() => handleToggle(1)}
-                                    size="small"
-                                    sx={{ p: "5px 10px" }}
-                                />
-                            }
-                            label={
-                                <>
-                                    <span style={{ color: "#000" }}>Elektrikli Araçlar</span>{" "}
-                                    <span style={{ color: "#a4a4a4" }}>(35)</span>
-                                </>
-                            }
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={selectedProperties.includes(1)}
-                                    onChange={() => handleToggle(1)}
-                                    size="small"
-                                    sx={{ p: "5px 10px" }}
-                                />
-                            }
-                            label={
-                                <>
-                                    <span style={{ color: "#000" }}>Jant Koruma Şeridi</span>{" "}
-                                    <span style={{ color: "#a4a4a4" }}>(15)</span>
-                                </>
-                            }
-                        />
+                        {propertyOptions.map((item, index) => (
+                            <FormControlLabel
+                                key={index}
+                                control={
+                                    <Checkbox
+                                        checked={currentProperties.includes(item.value)}
+                                        onChange={() => handleToggle(item.value)}
+                                        size="small"
+                                        sx={{ p: "5px 10px" }}
+                                    />
+                                }
+                                label={
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <span style={{ fontSize: "0.9rem" }}>
+                                            {item.label || item.value}
+                                        </span>
+                                    </Box>
+                                }
+                            />
+                        ))}
                     </div>
                 </AccordionDetails>
             </Accordion>

@@ -10,7 +10,10 @@ import Brand from "@/src/components/category/Sidebar/Brand";
 import Oem from "@/src/components/category/Sidebar/Oem";
 import Price from "@/src/components/category/Sidebar/Price";
 import Properties from "@/src/components/category/Sidebar/Properties";
-import Fuel from "@/src/components/category/Sidebar/Fuel";
+import Season from "@/src/components/category/Sidebar/Season";
+import SpeedIndex from "@/src/components/category/Sidebar/SpeedIndex";
+import ProductionYear from "@/src/components/category/Sidebar/ProductionYear";
+
 import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
 
 interface SidebarProps {
@@ -49,19 +52,24 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                 </div>
                 <Grid container className="offcanvas-body flex-column py-lg-0">
                     <Grid>
+                        <Brand
+                            categorySlug={categorySlug}
+                            brands={options?.brands || []}
+                        />
+                        <Season seasonOptions={options?.seasons || []} />
+                        <Properties propertyOptions={options?.properties || []} />
+                        <Price priceRange={options?.priceRange} />
                         <TireFilter
                             hideEbatFilters={hideEbatFilters}
                             categorySlug={categorySlug}
                             tagSlug={tagSlug}
                         />
-                        <Brand
-                            categorySlug={categorySlug}
-                            brands={options?.brands || []}
+                        <SpeedIndex
+                            loadIndexOptions={options?.loadIndex || []}
+                            speedIndexOptions={options?.speedIndex || []}
                         />
                         <Oem oemOptions={options?.oem || []} />
-                        <Price />
-                        <Properties />
-                        <Fuel />
+                        <ProductionYear productionYears={options?.productionYears} />
                     </Grid>
                 </Grid>
             </div>

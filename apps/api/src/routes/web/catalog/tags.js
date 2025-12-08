@@ -105,7 +105,7 @@ router.get('/:slug', async (req, res) => {
 router.get('/:slug/products', async (req, res) => {
     try {
         const { slug } = req.params;
-        const { page = 1, limit = 12, marka, arac, oem } = req.query;
+        const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax } = req.query;
 
         // Tag'i bul
         const tag = await WebTag.findOne({
@@ -180,8 +180,71 @@ router.get('/:slug/products', async (req, res) => {
                 });
             }
         }
+        if (mevsim) {
+            const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
+            if (mevsimList.length > 0) {
+                andConditions.push({
+                    'diaData.ozelkod1kodu': { $in: mevsimList }
+                });
+            }
+        }
+        if (ozellik) {
+            const ozellikList = ozellik.split(',').map(o => o.trim()).filter(Boolean);
+            ozellikList.forEach(oz => {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            'ozellikadi': oz,
+                            'detayaciklama': 'Evet'
+                        }
+                    }
+                });
+            });
+        }
+        if (yukEndeksi) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        'ozellikadi': 'Yük Endeksi',
+                        'detayaciklama': yukEndeksi
+                    }
+                }
+            });
+        }
+        if (hizEndeksi) {
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        'ozellikadi': 'Hız Endeksi',
+                        'detayaciklama': hizEndeksi
+                    }
+                }
+            });
+        }
+        if (uretim) {
+            const uretimList = uretim.split(',').map(u => u.trim()).filter(Boolean);
+            if (uretimList.length > 0) {
+                andConditions.push({ 'diaData.ekalan5': { $in: uretimList } });
+            }
+        }
+        if (fiyatMin || fiyatMax) {
+            const priceCondition = {
+                'diaData.m_birimler': {
+                    $elemMatch: {
+                        'fiyat4': {}
+                    }
+                }
+            };
+            if (fiyatMin) {
+                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$gte = parseFloat(fiyatMin);
+            }
+            if (fiyatMax) {
+                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$lte = parseFloat(fiyatMax);
+            }
 
-        // Araç tipi 
+            andConditions.push(priceCondition);
+        }
+
         if (arac && arac !== 'all') {
             andConditions.push({
                 'diaData.ozelkod2kodu': arac

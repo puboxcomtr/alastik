@@ -63,7 +63,14 @@ export default async function TagPage({ params, searchParams }: Props) {
         {
             marka: filters.marka,
             arac: filters.arac,
-            oem: filters.oem
+            oem: filters.oem,
+            mevsim: filters.mevsim,
+            ozellik: filters.ozellik,
+            yukEndeksi: filters.yukEndeksi,
+            hizEndeksi: filters.hizEndeksi,
+            uretim: filters.uretim,
+            fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
+            fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined
         }
     );
     const displayProductCount = productsData?.pagination?.totalProducts ?? tag.productCount ?? 0;
