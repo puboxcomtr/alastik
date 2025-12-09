@@ -48,7 +48,11 @@ const webCategorySchema = new mongoose.Schema({
     enum: ['kategori_aciklama_1', 'kategori_aciklama_2', 'kategori_aciklama_3']
   },
   diaKey: String,
-
+  ozelkod7kodu: {
+    type: String,
+    enum: ['JANT', 'LASTİK'],
+    default: 'LASTİK'
+  },
   webVisible: {
     type: Boolean,
     default: true,

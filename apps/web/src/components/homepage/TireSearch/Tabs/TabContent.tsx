@@ -28,8 +28,8 @@ export default function TabContent({
               aria-controls="rims-tab-pane"
               aria-selected="true"
             >
-              <span className="d-none d-lg-block">Janta Göre Lastik Arama</span>
-              <span className="d-block d-lg-none">Janta Göre</span>
+              <span className="d-none d-lg-block">Ebata Göre Lastik Arama</span>
+              <span className="d-block d-lg-none">Ebata Göre Lastik</span>
             </a>
           </li>
           <li className="nav-item" role="presentation">
@@ -41,7 +41,7 @@ export default function TabContent({
               className="nav-link justify-content-center px-0"
             >
               <span className="d-none d-lg-block">Araca Göre Lastik Arama</span>
-              <span className="d-block d-lg-none">Araca Göre</span>
+              <span className="d-block d-lg-none">Araca Göre Lastik</span>
             </button>
           </li>
         </ul>
@@ -67,7 +67,6 @@ export default function TabContent({
                     name="rimby_season"
                     value={mevsim}
                     onChange={(e) => setMevsim(e.target.value)}
-                    required
                   >
                     <option value="1">Tümü</option>
                     <option value="2">Yaz Lastiği</option>
@@ -88,7 +87,6 @@ export default function TabContent({
                     name="rimby_width"
                     value={selectedGenislik}
                     onChange={(e) => setSelectedGenislik(e.target.value)}
-                    required
                   >
                     <option value="">Seçiniz</option>
                     {genislikler.map((g) => (
@@ -111,7 +109,6 @@ export default function TabContent({
                     name="rimby_height"
                     value={selectedYukseklik}
                     onChange={(e) => setSelectedYukseklik(e.target.value)}
-                    required
                   >
                     <option value="">Seçiniz</option>
                     {yanakOranlari.map((y) => (
@@ -133,7 +130,6 @@ export default function TabContent({
                     id="rimby_diameter"
                     value={selectedCap}
                     onChange={(e) => setSelectedCap(e.target.value)}
-                    required
                   >
                     <option value="">Seçiniz</option>
                     {jantCaplari.map((c) => (

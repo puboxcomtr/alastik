@@ -54,6 +54,8 @@ export interface ProductFilterParams {
     genislik?: string;
     yukseklik?: string;
     cap?: string;
+    jantCap?: string;
+    bijon?: string;
     arac?: string;
     marka?: string;
     oem?: string;

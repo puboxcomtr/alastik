@@ -18,6 +18,10 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
         if (params.yukEndeksi) queryParams.append('yukEndeksi', params.yukEndeksi);
         if (params.hizEndeksi) queryParams.append('hizEndeksi', params.hizEndeksi);
         if (params.uretim) queryParams.append('uretim', params.uretim);
+        // Jant parametreleri
+        if (params.jantCap) queryParams.append('jantCap', params.jantCap);
+        if (params.bijon) queryParams.append('bijon', params.bijon);
+        if (params.fiyatMin) queryParams.append('fiyatMin', params.fiyatMin.toString());
         if (params.fiyatMin) queryParams.append('fiyatMin', params.fiyatMin.toString());
         if (params.fiyatMax) queryParams.append('fiyatMax', params.fiyatMax.toString());
         if (params.page) queryParams.append('page', params.page.toString());

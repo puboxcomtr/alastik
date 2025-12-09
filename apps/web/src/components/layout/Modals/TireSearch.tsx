@@ -39,9 +39,10 @@ import ModelSelection from './steps/ModelSelection';
 import GenerationSelection from './steps/GenerationSelection';
 import ModificationSelection from './steps/ModificationSelection';
 import TireSizeSelection from './steps/TireSizeSelection';
+import RimSizeSelection from './steps/RimSizeSelection';
 import VehicleDetailsStep from './steps/VehicleDetailsStep';
 
-type ModalMode = 'search' | 'addVehicle';
+type ModalMode = 'search' | 'addVehicle' | 'rimSearch';
 
 interface TireSearchModalProps {
     open: boolean;
@@ -73,13 +74,30 @@ export default function TireSearchModal({
     const [isSaving, setIsSaving] = useState(false);
 
     // Mode'a göre adımlar
-    const stepOrder: SearchStep[] = mode === 'addVehicle'
-        ? ['make', 'model', 'year', 'modification', 'details']
-        : ['make', 'model', 'year', 'modification', 'size'];
+    const stepOrder: SearchStep[] = useMemo(() => {
+        switch (mode) {
+            case 'addVehicle':
+                return ['make', 'model', 'year', 'modification', 'details'];
+            case 'rimSearch':
+                return ['make', 'model', 'year', 'modification', 'rim'];
+            default:
+                return ['make', 'model', 'year', 'modification', 'size'];
+        }
+    }, [mode]);
 
     const currentStepIndex = stepOrder.indexOf(currentStep);
 
-    const modalTitle = mode === 'addVehicle' ? 'Araç Ekle' : 'Araca Göre Lastik Arama';
+    // Mode'a göre modal başlığı
+    const modalTitle = useMemo(() => {
+        switch (mode) {
+            case 'addVehicle':
+                return 'Araç Ekle';
+            case 'rimSearch':
+                return 'Araca Göre Jant Arama';
+            default:
+                return 'Araca Göre Lastik Arama';
+        }
+    }, [mode]);
 
     const canGoNext = useMemo(() => {
         switch (currentStep) {
@@ -88,6 +106,7 @@ export default function TireSearchModal({
             case 'year': return !!searchState.year;
             case 'modification': return !!searchState.modification;
             case 'size': return !!searchState.selectedTireSize;
+            case 'rim': return !!searchState.selectedRimSize;
             case 'details': return true;
             default: return false;
         }
@@ -172,6 +191,53 @@ export default function TireSearchModal({
         }
     };
 
+    // Jant Arama - Jantları Göster
+    const handleShowRims = async () => {
+        if (!searchState.selectedRimSize) return;
+
+        setIsRedirecting(true);
+
+        try {
+            const { diameter, pcd, centerBore } = searchState.selectedRimSize;
+
+            // Jant kategorisine yönlendir
+            const params = new URLSearchParams();
+            params.set('jantCap', diameter.toString());
+            if (pcd) params.set('bijon', pcd);
+
+            const rimUrl = `/kategori/jant?${params.toString()}`;
+
+            const vehicleData = {
+                make: searchState.make,
+                makeName: searchState.makeName,
+                model: searchState.model,
+                modelName: searchState.modelName,
+                year: searchState.year,
+                modification: searchState.modification,
+                modificationName: searchState.modificationName,
+                vehicleImage: searchState.vehicleImage,
+                selectedRim: searchState.selectedRimSize,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('selectedVehicleForRim', JSON.stringify(vehicleData));
+
+            handleClose();
+
+            if (onSearchComplete) {
+                onSearchComplete({
+                    ...vehicleData,
+                    rimSize: searchState.selectedRimSize,
+                    rimUrl
+                });
+            }
+
+            router.push(rimUrl);
+        } catch (error) {
+            console.error('[TireSearchModal] Rim redirect error:', error);
+            setIsRedirecting(false);
+        }
+    };
+
     // Araç Kaydetme
     const handleSaveVehicle = async (details: { plateNumber: string; mileage?: number; isPrimary: boolean }) => {
         setIsSaving(true);
@@ -213,8 +279,29 @@ export default function TireSearchModal({
         }
     };
 
-    // Son adımda footer butonu gösterme
+    // Son adımda footer butonu gösterme (details için)
     const showFooter = currentStep !== 'details';
+
+    // Son adım buton metni ve handler
+    const getActionButton = () => {
+        if (currentStep === 'size') {
+            return {
+                label: isRedirecting ? 'Yönlendiriliyor...' : 'Lastikleri Göster',
+                onClick: handleShowTires,
+                disabled: !searchState.selectedTireSize || isRedirecting
+            };
+        }
+        if (currentStep === 'rim') {
+            return {
+                label: isRedirecting ? 'Yönlendiriliyor...' : 'Jantları Göster',
+                onClick: handleShowRims,
+                disabled: !searchState.selectedRimSize || isRedirecting
+            };
+        }
+        return null;
+    };
+
+    const actionButton = getActionButton();
 
     return (
         <Dialog
@@ -306,6 +393,22 @@ export default function TireSearchModal({
                     />
                 )}
 
+                {currentStep === 'rim' && mode === 'rimSearch' && (
+                    <RimSizeSelection
+                        make={searchState.make}
+                        makeName={searchState.makeName}
+                        model={searchState.model}
+                        modelName={searchState.modelName}
+                        year={searchState.year!}
+                        modification={searchState.modification!}
+                        modificationName={searchState.modificationName || ''}
+                        vehicleImage={searchState.vehicleImage}
+                        onSelect={(rimSize) => {
+                            updateSearchState({ selectedRimSize: rimSize });
+                        }}
+                    />
+                )}
+
                 {currentStep === 'details' && mode === 'addVehicle' && (
                     <VehicleDetailsStep
                         makeName={searchState.makeName}
@@ -319,7 +422,7 @@ export default function TireSearchModal({
                 )}
             </DialogContent>
 
-            {/* Footer - details adımında gösterme */}
+            {/* Footer */}
             {showFooter && (
                 <DialogActions sx={{ justifyContent: 'space-between', p: 2 }}>
                     <Button
@@ -329,22 +432,22 @@ export default function TireSearchModal({
                         Geri
                     </Button>
 
-                    {currentStep !== 'size' ? (
+                    {actionButton ? (
+                        <Button
+                            onClick={actionButton.onClick}
+                            disabled={actionButton.disabled}
+                            variant="contained"
+                            color="error"
+                            startIcon={isRedirecting ? <CircularProgress size={16} color="inherit" /> : null}
+                        >
+                            {actionButton.label}
+                        </Button>
+                    ) : (
                         <Button
                             onClick={goToNextStep}
                             disabled={!canGoNext}
                         >
                             İleri
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={handleShowTires}
-                            disabled={!searchState.selectedTireSize || isRedirecting}
-                            variant="contained"
-                            color="error"
-                            startIcon={isRedirecting ? <CircularProgress size={16} color="inherit" /> : null}
-                        >
-                            {isRedirecting ? 'Yönlendiriliyor...' : 'Lastikleri Göster'}
                         </Button>
                     )}
                 </DialogActions>

@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Row, Col } from "react-bootstrap";
 
@@ -7,13 +7,18 @@ import { Container, Row, Col } from "react-bootstrap";
 import TireProductSlider from '@components/homepage/TireSearch/TireProductSlider';
 import TabHeader from '@components/homepage/TireSearch/Tabs/TabHeader';
 import TabContent from '@components/homepage/TireSearch/Tabs/TabContent';
+import RimTabContent from '@components/homepage/TireSearch/Tabs/RimTabContent';
 
 /* Hooks */
 import { useTireSearch } from "@src/hooks/WheelSize/useTireSearch";
+import { useRimSearch } from "@src/hooks/WheelSize/useRimSearch";
 
 
 export default function MainTireSearch() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'tire' | 'rim'>('tire');
+
+  // Lastik hook
   const {
     mevsim,
     setMevsim,
@@ -27,8 +32,19 @@ export default function MainTireSearch() {
     selectedCap,
     setSelectedCap,
     handleJantaGoreArama,
-    handleAracaGoreArama,
   } = useTireSearch();
+
+  // Jant hook
+  const {
+    jantCaplari: rimCaplari,
+    bijonAraliklari,
+    selectedCap: rimSelectedCap,
+    setSelectedCap: setRimSelectedCap,
+    selectedBijon,
+    setSelectedBijon,
+    handleJantArama,
+  } = useRimSearch();
+
   return (
     <>
       <section id="main_tire_search" className="container position-relative p-0 pb-5">
@@ -38,21 +54,36 @@ export default function MainTireSearch() {
               <Row className="row">
                 <Col md={9}>
                   <div className="search_box">
-                    <TabHeader />
-                    <TabContent
-                      mevsim={mevsim}
-                      setMevsim={setMevsim}
-                      selectedGenislik={selectedGenislik}
-                      setSelectedGenislik={setSelectedGenislik}
-                      selectedYukseklik={selectedYukseklik}
-                      setSelectedYukseklik={setSelectedYukseklik}
-                      selectedCap={selectedCap}
-                      setSelectedCap={setSelectedCap}
-                      genislikler={genislikler}
-                      yanakOranlari={yanakOranlari}
-                      jantCaplari={jantCaplari}
-                      handleJantaGoreArama={handleJantaGoreArama}
-                    />
+                    <TabHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+
+                    {activeTab === 'tire' && (
+                      <TabContent
+                        mevsim={mevsim}
+                        setMevsim={setMevsim}
+                        selectedGenislik={selectedGenislik}
+                        setSelectedGenislik={setSelectedGenislik}
+                        selectedYukseklik={selectedYukseklik}
+                        setSelectedYukseklik={setSelectedYukseklik}
+                        selectedCap={selectedCap}
+                        setSelectedCap={setSelectedCap}
+                        genislikler={genislikler}
+                        yanakOranlari={yanakOranlari}
+                        jantCaplari={jantCaplari}
+                        handleJantaGoreArama={handleJantaGoreArama}
+                      />
+                    )}
+
+                    {activeTab === 'rim' && (
+                      <RimTabContent
+                        selectedCap={rimSelectedCap}
+                        setSelectedCap={setRimSelectedCap}
+                        selectedBijon={selectedBijon}
+                        setSelectedBijon={setSelectedBijon}
+                        jantCaplari={rimCaplari}
+                        bijonAraliklari={bijonAraliklari}
+                        handleJantArama={handleJantArama}
+                      />
+                    )}
                   </div>
                 </Col>
                 <Col md={3}>

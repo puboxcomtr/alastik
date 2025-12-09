@@ -86,17 +86,22 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     // Ürünleri filtrele (pagination ile)
     const productsData = await filterProducts({
         category: slug,
+        // Lastik parametreleri
         genislik: filters.genislik || sizeInfo?.genislik,
         yukseklik: filters.yanak || sizeInfo?.yukseklik,
         cap: filters.jant || sizeInfo?.cap,
-        arac: filters.arac,
-        marka: filters.marka,
         oem: filters.oem,
         mevsim: filters.mevsim,
         ozellik: filters.ozellik,
         yukEndeksi: filters.yukEndeksi,
         hizEndeksi: filters.hizEndeksi,
         uretim: filters.uretim,
+        // Jant parametreleri
+        jantCap: filters.jantCap,
+        bijon: filters.bijon,
+        // Ortak parametreler
+        arac: filters.arac,
+        marka: filters.marka,
         fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
         fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined,
         page: currentPage,

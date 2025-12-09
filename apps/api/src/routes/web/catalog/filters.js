@@ -32,6 +32,8 @@ router.get('/tire-options', async (req, res) => {
         const { category, tag } = req.query;
 
         const baseMatch = buildBaseMatch();
+        let productType = 'LASTİK'; // varsayılan
+
         if (category) {
             const webCategory = await WebCategory.findOne({
                 slug: category,
@@ -45,8 +47,23 @@ router.get('/tire-options', async (req, res) => {
                         [diaLevel]: webCategory.diaCategory
                     }
                 };
+
+                // Kategorideki bir üründen productType al
+                const sampleProduct = await WebProduct.findOne({
+                    'diaData.m_kategoriler': {
+                        $elemMatch: {
+                            [diaLevel]: webCategory.diaCategory
+                        }
+                    },
+                    'diaData.ozelkod7kodu': { $exists: true, $ne: '' }
+                }).select('diaData.ozelkod7kodu').lean();
+
+                if (sampleProduct?.diaData?.ozelkod7kodu) {
+                    productType = sampleProduct.diaData.ozelkod7kodu;
+                }
             }
         }
+
         if (tag) {
             const webTag = await WebTag.findOne({
                 seoUrl: tag,
@@ -57,6 +74,126 @@ router.get('/tire-options', async (req, res) => {
                 baseMatch['_key'] = { $in: webTag.products };
             }
         }
+
+        // productType'a göre filtre uygula
+        baseMatch['diaData.ozelkod7kodu'] = productType;
+
+        // ==========================================
+        // ORTAK PİPELINE'LAR
+        // ==========================================
+        const brandPipeline = [
+            { $match: baseMatch },
+            {
+                $group: {
+                    _id: '$diaData.marka',
+                    count: { $sum: 1 }
+                }
+            },
+            { $match: { _id: { $ne: null, $ne: '' } } },
+            { $sort: { count: -1, _id: 1 } }
+        ];
+
+        const pricePipeline = [
+            { $match: baseMatch },
+            { $unwind: '$diaData.m_birimler' },
+            {
+                $match: {
+                    'diaData.m_birimler.fiyat4': { $gt: 0 }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    minPrice: { $min: '$diaData.m_birimler.fiyat4' },
+                    maxPrice: { $max: '$diaData.m_birimler.fiyat4' }
+                }
+            }
+        ];
+
+        const vehicleTypePipeline = [
+            { $match: baseMatch },
+            {
+                $group: {
+                    _id: '$diaData.ozelkod2kodu',
+                    label: { $first: '$diaData.ozelkod2' },
+                    count: { $sum: 1 }
+                }
+            },
+            { $match: { _id: { $ne: null, $ne: '' } } },
+            { $sort: { count: -1 } }
+        ];
+
+        // ==========================================
+        // JANT FİLTRELERİ
+        // ==========================================
+        if (productType === 'JANT') {
+            const jantCapPipeline = [
+                { $match: baseMatch },
+                {
+                    $group: {
+                        _id: '$diaData.ozelkod4kodu',
+                        count: { $sum: 1 }
+                    }
+                },
+                { $match: { _id: { $ne: null, $ne: '' } } },
+                { $sort: { _id: 1 } }
+            ];
+
+            const bijonPipeline = [
+                { $match: baseMatch },
+                {
+                    $group: {
+                        _id: '$diaData.ozelkod3kodu',
+                        count: { $sum: 1 }
+                    }
+                },
+                { $match: { _id: { $ne: null, $ne: '' } } },
+                { $sort: { _id: 1 } }
+            ];
+
+            const [brands, priceRange, vehicleTypes, jantCaplar, bijonlar] = await Promise.all([
+                WebProduct.aggregate(brandPipeline),
+                WebProduct.aggregate(pricePipeline),
+                WebProduct.aggregate(vehicleTypePipeline),
+                WebProduct.aggregate(jantCapPipeline),
+                WebProduct.aggregate(bijonPipeline)
+            ]);
+
+            return res.json({
+                success: true,
+                data: {
+                    productType: 'JANT',
+                    brands: brands.map(b => ({
+                        value: b._id,
+                        label: b._id,
+                        count: b.count
+                    })),
+                    priceRange: priceRange[0] ? {
+                        min: Math.floor(priceRange[0].minPrice),
+                        max: Math.ceil(priceRange[0].maxPrice)
+                    } : { min: 0, max: 10000 },
+                    vehicleTypes: vehicleTypes.map(v => ({
+                        value: v._id,
+                        label: getVehicleTypeLabel(v._id),
+                        count: v.count
+                    })),
+                    jantCaplar: jantCaplar.map(j => ({
+                        value: j._id,
+                        label: j._id + '"',
+                        count: j.count
+                    })).sort((a, b) => parseInt(a.value) - parseInt(b.value)),
+                    bijonlar: bijonlar.map(b => ({
+                        value: b._id,
+                        label: b._id,
+                        count: b.count
+                    }))
+                }
+            });
+        }
+
+        // ==========================================
+        // LASTİK FİLTRELERİ
+        // ==========================================
         const widthPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -70,6 +207,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
+
         const aspectPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -83,6 +221,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
+
         const rimPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -96,29 +235,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
-        const vehicleTypePipeline = [
-            { $match: baseMatch },
-            {
-                $group: {
-                    _id: '$diaData.ozelkod2kodu',
-                    label: { $first: '$diaData.ozelkod2' },
-                    count: { $sum: 1 }
-                }
-            },
-            { $match: { _id: { $ne: null, $ne: '' } } },
-            { $sort: { count: -1 } }
-        ];
-        const brandPipeline = [
-            { $match: baseMatch },
-            {
-                $group: {
-                    _id: '$diaData.marka',
-                    count: { $sum: 1 }
-                }
-            },
-            { $match: { _id: { $ne: null, $ne: '' } } },
-            { $sort: { count: -1, _id: 1 } }
-        ];
+
         const oemPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -137,22 +254,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { count: -1, _id: 1 } }
         ];
-        const pricePipeline = [
-            { $match: baseMatch },
-            { $unwind: '$diaData.m_birimler' },
-            {
-                $match: {
-                    'diaData.m_birimler.fiyat4': { $gt: 0 }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    minPrice: { $min: '$diaData.m_birimler.fiyat4' },
-                    maxPrice: { $max: '$diaData.m_birimler.fiyat4' }
-                }
-            }
-        ];
+
         const seasonPipeline = [
             { $match: baseMatch },
             {
@@ -164,6 +266,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { count: -1 } }
         ];
+
         const propertiesPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -181,6 +284,7 @@ router.get('/tire-options', async (req, res) => {
             },
             { $sort: { _id: 1 } }
         ];
+
         const loadIndexPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -199,6 +303,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
+
         const speedIndexPipeline = [
             { $match: baseMatch },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -217,6 +322,7 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $ne: null, $ne: '' } } },
             { $sort: { _id: 1 } }
         ];
+
         const productionYearPipeline = [
             { $match: baseMatch },
             { $match: { 'diaData.ekalan5': { $ne: null, $ne: '' } } },
@@ -224,11 +330,11 @@ router.get('/tire-options', async (req, res) => {
             { $match: { _id: { $regex: /^\d{4}$/ } } },
             { $sort: { _id: -1 } }
         ];
-        const [widths, aspects, rims, vehicleTypes, brands, oem, priceRange, seasons, properties, loadIndex, speedIndex, productionYears] = await Promise.all([
+
+        const [widths, aspects, rims, brands, oem, priceRange, seasons, properties, loadIndex, speedIndex, productionYears, vehicleTypes] = await Promise.all([
             WebProduct.aggregate(widthPipeline),
             WebProduct.aggregate(aspectPipeline),
             WebProduct.aggregate(rimPipeline),
-            WebProduct.aggregate(vehicleTypePipeline),
             WebProduct.aggregate(brandPipeline),
             WebProduct.aggregate(oemPipeline),
             WebProduct.aggregate(pricePipeline),
@@ -236,7 +342,8 @@ router.get('/tire-options', async (req, res) => {
             WebProduct.aggregate(propertiesPipeline),
             WebProduct.aggregate(loadIndexPipeline),
             WebProduct.aggregate(speedIndexPipeline),
-            WebProduct.aggregate(productionYearPipeline)
+            WebProduct.aggregate(productionYearPipeline),
+            WebProduct.aggregate(vehicleTypePipeline)
         ]);
 
         const formatRim = (value) => {
@@ -244,6 +351,7 @@ router.get('/tire-options', async (req, res) => {
             const match = value.match(/R?(\d+)C?/i);
             return match ? match[1] : value;
         };
+
         const formatSeasonLabel = (value) => {
             if (!value) return value;
             const turkishLower = value
@@ -259,6 +367,7 @@ router.get('/tire-options', async (req, res) => {
         res.json({
             success: true,
             data: {
+                productType: 'LASTİK',
                 widths: widths.map(w => ({
                     value: w._id,
                     label: w._id,

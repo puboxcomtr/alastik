@@ -29,17 +29,24 @@ router.get('/filter', async (req, res) => {
     try {
         const {
             category,
+            // Lastik parametreleri
             genislik,
             yukseklik,
+            yanak,
             cap,
-            arac,
-            marka,
+            jant,
             oem,
             mevsim,
             ozellik,
             yukEndeksi,
             hizEndeksi,
             uretim,
+            // Jant parametreleri
+            jantCap,
+            bijon,
+            // Ortak parametreler
+            arac,
+            marka,
             fiyatMin,
             fiyatMax,
             limit
@@ -48,6 +55,12 @@ router.get('/filter', async (req, res) => {
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
         const filter = buildBaseFilter();
+
+        // ==========================================
+        // ÜRÜN TİPİ TESPİTİ (kategorideki ürünlerden ozelkod7kodu)
+        // ==========================================
+        let productType = null;
+
         if (category) {
             const webCategory = await WebCategory.findOne({
                 slug: category,
@@ -56,52 +69,186 @@ router.get('/filter', async (req, res) => {
 
             if (webCategory && webCategory.diaCategory) {
                 const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
-                filter['diaData.m_kategoriler'] = {
-                    $elemMatch: {
-                        [diaLevel]: webCategory.diaCategory
-                    }
-                };
+
+                // Bu kategorideki bir ürünün ozelkod7kodu değerini al
+                const sampleProduct = await WebProduct.findOne({
+                    'diaData.m_kategoriler': {
+                        $elemMatch: {
+                            [diaLevel]: webCategory.diaCategory
+                        }
+                    },
+                    'diaData.ozelkod7kodu': { $exists: true, $ne: '' }
+                }).select('diaData.ozelkod7kodu').lean();
+
+                if (sampleProduct?.diaData?.ozelkod7kodu) {
+                    productType = sampleProduct.diaData.ozelkod7kodu;
+                }
             }
         }
+
+        // Jant parametreleri geldiyse JANT olarak zorla
+        if (jantCap || bijon) {
+            productType = 'JANT';
+        }
+
+        // productType bulunduysa filtre uygula
+        if (productType) {
+            filter['diaData.ozelkod7kodu'] = productType;
+        }
+
+        const isJantCategory = productType === 'JANT';
+
         const andConditions = [];
 
-        if (genislik) {
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: {
-                        ozellikadi: 'Genişlik',
-                        detayaciklama: genislik
+        // ==========================================
+        // LASTİK FİLTRELERİ
+        // ==========================================
+        if (!isJantCategory) {
+            // Genişlik filtresi
+            if (genislik) {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            ozellikadi: 'Genişlik',
+                            detayaciklama: genislik
+                        }
                     }
+                });
+            }
+
+            // Yanak filtresi
+            const yanakValue = yanak || yukseklik;
+            if (yanakValue) {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            ozellikadi: 'Yanak',
+                            detayaciklama: yanakValue
+                        }
+                    }
+                });
+            }
+
+            // Jant çapı filtresi
+            const jantValue = jant || cap;
+            if (jantValue) {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            ozellikadi: 'Jant Çapı',
+                            detayaciklama: { $regex: new RegExp(`^R?${jantValue}C?$|^${jantValue}\\s*İnç$`, 'i') }
+                        }
+                    }
+                });
+            }
+
+            // OEM filtresi
+            if (oem) {
+                const oemList = oem.split(',').map(o => o.trim()).filter(Boolean);
+                if (oemList.length > 0) {
+                    const oemRegexList = oemList.map(slug =>
+                        new RegExp(`^${slug.replace(/-/g, '[\\s-]*')}(?:\\s*\\(|$)`, 'i')
+                    );
+                    andConditions.push({
+                        'diaData.m_urunOzellikleri': {
+                            $elemMatch: {
+                                'ozellikadi': 'OEM',
+                                'detayaciklama': { $in: oemRegexList }
+                            }
+                        }
+                    });
                 }
-            });
+            }
+
+            // Mevsim filtresi
+            if (mevsim) {
+                const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
+                if (mevsimList.length > 0) {
+                    andConditions.push({
+                        'diaData.ozelkod1kodu': { $in: mevsimList }
+                    });
+                }
+            }
+
+            // Özellik filtresi (XL, Seal, Run Flat)
+            if (ozellik) {
+                const ozellikList = ozellik.split(',').map(o => o.trim()).filter(Boolean);
+                ozellikList.forEach(oz => {
+                    andConditions.push({
+                        'diaData.m_urunOzellikleri': {
+                            $elemMatch: {
+                                'ozellikadi': oz,
+                                'detayaciklama': 'Evet'
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Yük Endeksi filtresi
+            if (yukEndeksi) {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            'ozellikadi': 'Yük Endeksi',
+                            'detayaciklama': yukEndeksi
+                        }
+                    }
+                });
+            }
+
+            // Hız Endeksi filtresi
+            if (hizEndeksi) {
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            'ozellikadi': 'Hız Endeksi',
+                            'detayaciklama': hizEndeksi
+                        }
+                    }
+                });
+            }
+
+            // Üretim tarihi filtresi
+            if (uretim) {
+                const uretimList = uretim.split(',').map(u => u.trim()).filter(Boolean);
+                if (uretimList.length > 0) {
+                    andConditions.push({ 'diaData.ekalan5': { $in: uretimList } });
+                }
+            }
         }
 
-        if (yukseklik) {
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: {
-                        ozellikadi: 'Yanak',
-                        detayaciklama: yukseklik
-                    }
-                }
-            });
+        // ==========================================
+        // JANT FİLTRELERİ
+        // ==========================================
+        if (isJantCategory) {
+            // Jant çapı filtresi - ozelkod4kodu
+            const jantCapValue = jantCap || jant || cap;
+            if (jantCapValue) {
+                andConditions.push({
+                    'diaData.ozelkod4kodu': jantCapValue
+                });
+            }
+
+            // Bijon aralığı filtresi - ozelkod3kodu
+            if (bijon) {
+                andConditions.push({
+                    'diaData.ozelkod3kodu': bijon.toUpperCase()
+                });
+            }
         }
 
-        if (cap) {
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: {
-                        ozellikadi: 'Jant Çapı',
-                        detayaciklama: { $regex: new RegExp(`^R?${cap}C?$|^${cap}\\s*İnç$`, 'i') }
-                    }
-                }
-            });
-        }
+        // ==========================================
+        // ORTAK FİLTRELER
+        // ==========================================
+        // Araç tipi filtresi
         if (arac && arac !== 'all') {
             andConditions.push({
                 'diaData.ozelkod2kodu': arac
             });
         }
+
+        // Marka filtresi
         if (marka) {
             const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
             if (markaList.length > 0) {
@@ -110,69 +257,8 @@ router.get('/filter', async (req, res) => {
                 });
             }
         }
-        if (oem) {
-            const oemList = oem.split(',').map(o => o.trim()).filter(Boolean);
-            if (oemList.length > 0) {
-                const oemRegexList = oemList.map(slug =>
-                    new RegExp(`^${slug.replace(/-/g, '[\\s-]*')}(?:\\s*\\(|$)`, 'i')
-                );
-                andConditions.push({
-                    'diaData.m_urunOzellikleri': {
-                        $elemMatch: {
-                            'ozellikadi': 'OEM',
-                            'detayaciklama': { $in: oemRegexList }
-                        }
-                    }
-                });
-            }
-        }
-        if (mevsim) {
-            const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
-            if (mevsimList.length > 0) {
-                andConditions.push({
-                    'diaData.ozelkod1kodu': { $in: mevsimList }
-                });
-            }
-        }
-        if (ozellik) {
-            const ozellikList = ozellik.split(',').map(o => o.trim()).filter(Boolean);
-            ozellikList.forEach(oz => {
-                andConditions.push({
-                    'diaData.m_urunOzellikleri': {
-                        $elemMatch: {
-                            'ozellikadi': oz,
-                            'detayaciklama': 'Evet'
-                        }
-                    }
-                });
-            });
-        }
-        if (yukEndeksi) {
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: {
-                        'ozellikadi': 'Yük Endeksi',
-                        'detayaciklama': yukEndeksi
-                    }
-                }
-            });
-        }
-        if (hizEndeksi) {
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: {
-                        'ozellikadi': 'Hız Endeksi',
-                        'detayaciklama': hizEndeksi
-                    }
-                }
-            });
-        }
-        if (uretim) {
-            const uretimList = uretim.split(',').map(u => u.trim()).filter(Boolean);
-            if (uretimList.length > 0) {
-                andConditions.push({ 'diaData.ekalan5': { $in: uretimList } });
-            }
-        }
+
+        // Fiyat filtresi
         if (fiyatMin || fiyatMax) {
             const priceCondition = {
                 'diaData.m_birimler': {
@@ -189,6 +275,7 @@ router.get('/filter', async (req, res) => {
             }
             andConditions.push(priceCondition);
         }
+
         if (andConditions.length > 0) {
             filter['$and'] = andConditions;
         }

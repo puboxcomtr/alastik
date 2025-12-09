@@ -42,7 +42,7 @@ const theme = createTheme({
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     fontSize: 14,
     button: {
-      textTransform: 'none', // BUTONLAR CAPS LOCK olmasın
+      textTransform: 'none', 
       fontWeight: 500,
     },
   },

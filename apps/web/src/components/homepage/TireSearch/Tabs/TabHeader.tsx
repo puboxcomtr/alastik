@@ -1,32 +1,41 @@
+import React from 'react';
+interface TabHeaderProps {
+    activeTab: 'tire' | 'rim';
+    setActiveTab: (tab: 'tire' | 'rim') => void;
+}
 
-import React, { useRef } from 'react';
-import Link from 'next/link';
+export default function TabHeader({ activeTab, setActiveTab }: TabHeaderProps) {
+    const activeStyle = {
+        backgroundColor: 'var(--cz-primary)',
+        color: '#fff',
+    };
 
-export default function TabHeader() {
     return (
         <div className="search_tabheader">
-            <span className="search_icon">
+            <span
+                className="search_icon"
+                onClick={() => setActiveTab('tire')}
+                style={{ cursor: 'pointer', ...(activeTab === 'tire' ? activeStyle : {}) }}
+            >
                 <i className="ri-car-line"></i>
                 Araç Lastiği
             </span>
-            <Link className="d-none d-md-flex d-lg-flex" href="/category">
-                <span className="search_icon">
-                    <i className="ri-steering-2-fill"></i>
-                    Jant
-                </span>
-            </Link>
-            <Link className="d-none d-md-flex d-lg-flex" href="/category">
-                <span className="search_icon">
-                    <i className="ri-snowflake-line"></i>
-                    Kar Paleti ve Zincir
-                </span>
-            </Link>
-            <Link className="d-none d-md-flex d-lg-flex" href="/category">
-                <span className="search_icon">
-                    <i className="ri-box-3-fill"></i>
-                    Set Lastikler
-                </span>
-            </Link>
+            <span
+                className="search_icon"
+                onClick={() => setActiveTab('rim')}
+                style={{ cursor: 'pointer', ...(activeTab === 'rim' ? activeStyle : {}) }}
+            >
+                <i className="ri-steering-2-fill"></i>
+                Jant
+            </span>
+            <a className="d-none d-md-flex d-lg-flex search_icon" href="/kategori/kar-zinciri">
+                <i className="ri-snowflake-line"></i>
+                Kar Paleti ve Zincir
+            </a>
+            <a className="d-none d-md-flex d-lg-flex search_icon" href="/kategori/set-lastikler">
+                <i className="ri-box-3-fill"></i>
+                Set Lastikler
+            </a>
         </div>
     );
 }

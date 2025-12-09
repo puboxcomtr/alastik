@@ -62,15 +62,16 @@ export const buildTireSearchUrl = (
     cap: string,
     extraFilters?: Record<string, string>
 ): string => {
-    const sizeSlug = `${genislik}-${yukseklik}-r${cap}`;
-    const baseUrl = `${ROUTES.CATEGORY}/${categorySlug}/${sizeSlug}`;
+    const baseUrl = `${ROUTES.CATEGORY}/${categorySlug}`;
 
-    if (!extraFilters || Object.keys(extraFilters).length === 0) {
-        return baseUrl;
-    }
+    const params = new URLSearchParams({
+        genislik,
+        yanak: yukseklik,
+        jant: cap,
+        ...extraFilters
+    });
 
-    const queryString = new URLSearchParams(extraFilters).toString();
-    return `${baseUrl}?${queryString}`;
+    return `${baseUrl}?${params.toString()}`;
 };
 
 /**
