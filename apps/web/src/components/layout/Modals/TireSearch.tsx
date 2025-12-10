@@ -190,23 +190,32 @@ export default function TireSearchModal({
             setIsRedirecting(false);
         }
     };
-
-    // Jant Arama - Jantları Göster
+    // Jant Arama
     const handleShowRims = async () => {
         if (!searchState.selectedRimSize) return;
-
         setIsRedirecting(true);
-
         try {
-            const { diameter, pcd, centerBore } = searchState.selectedRimSize;
+            const { pcd } = searchState.selectedRimSize;
 
-            // Jant kategorisine yönlendir
-            const params = new URLSearchParams();
-            params.set('jantCap', diameter.toString());
-            if (pcd) params.set('bijon', pcd);
+            if (!pcd) {
+                console.error('PCD bilgisi eksik');
+                setIsRedirecting(false);
+                return;
+            }
+            const tagData = await tagService.getRimPcdTag(pcd);
 
-            const rimUrl = `/kategori/jant?${params.toString()}`;
-
+            if (!tagData?.seoUrl) {
+                console.warn(`Jant etiketi bulunamadı: ${pcd}, kategori sayfasına yönlendiriliyor`);
+                const { diameter } = searchState.selectedRimSize;
+                const params = new URLSearchParams();
+                params.set('jantCap', diameter.toString());
+                params.set('bijon', pcd);
+                const rimUrl = `/kategori/jant?${params.toString()}`;
+                router.push(rimUrl);
+                setIsRedirecting(false);
+                return;
+            }
+            const tagUrl = buildTagUrl(tagData.seoUrl);
             const vehicleData = {
                 make: searchState.make,
                 makeName: searchState.makeName,
@@ -220,24 +229,21 @@ export default function TireSearchModal({
                 timestamp: Date.now()
             };
             localStorage.setItem('selectedVehicleForRim', JSON.stringify(vehicleData));
-
             handleClose();
-
             if (onSearchComplete) {
                 onSearchComplete({
                     ...vehicleData,
                     rimSize: searchState.selectedRimSize,
-                    rimUrl
+                    rimUrl: tagUrl
                 });
             }
 
-            router.push(rimUrl);
+            router.push(tagUrl);
         } catch (error) {
             console.error('[TireSearchModal] Rim redirect error:', error);
             setIsRedirecting(false);
         }
     };
-
     // Araç Kaydetme
     const handleSaveVehicle = async (details: { plateNumber: string; mileage?: number; isPrimary: boolean }) => {
         setIsSaving(true);

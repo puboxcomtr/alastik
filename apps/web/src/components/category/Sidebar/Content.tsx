@@ -23,24 +23,29 @@ interface SidebarProps {
     hideEbatFilters?: boolean;
     categorySlug?: string;
     tagSlug?: string;
+    tagType?: string;
 }
 
-export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug }: SidebarProps) {
+export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType }: SidebarProps) {
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
     const [productType, setProductType] = useState<string>('LASTİK');
 
     useEffect(() => {
+        if (tagType) {
+            const type = tagType === 'rim_pcd' ? 'JANT' : 'LASTİK';
+            setProductType(type);
+        }
         const loadOptions = async () => {
-            console.log('Loading filter options:', { categorySlug, tagSlug });
             const data = await getTireFilterOptions(categorySlug, tagSlug);
-            console.log('Filter options received:', data);
             if (data) {
                 setOptions(data);
-                setProductType(data.productType || 'LASTİK');
+                if (!tagType) {
+                    setProductType(data.productType || 'LASTİK');
+                }
             }
         };
         loadOptions();
-    }, [categorySlug, tagSlug]);
+    }, [categorySlug, tagSlug, tagType]);
 
     const isJant = productType === 'JANT';
 

@@ -2,7 +2,7 @@
 
 import { Grid, TextField, MenuItem, Typography, FormControl, CircularProgress } from "@mui/material";
 import { Offcanvas } from "react-bootstrap";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
 
@@ -45,7 +45,32 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
         setBijon(searchParams.get('bijon') || 'all');
         setVehicleType(searchParams.get('arac') || 'all');
     }, [searchParams]);
+    const enhancedJantCaplar = useMemo(() => {
+        if (!options?.jantCaplar) return [];
+        const jantCaplar = [...options.jantCaplar];
+        if (jantCap !== 'all' && !jantCaplar.some(j => j.value === jantCap)) {
+            jantCaplar.unshift({ value: jantCap, label: jantCap + '"', count: 0 });
+        }
+        return jantCaplar;
+    }, [options?.jantCaplar, jantCap]);
 
+    const enhancedBijonlar = useMemo(() => {
+        if (!options?.bijonlar) return [];
+        const bijonlar = [...options.bijonlar];
+        if (bijon !== 'all' && !bijonlar.some(b => b.value === bijon)) {
+            bijonlar.unshift({ value: bijon, label: bijon, count: 0 });
+        }
+        return bijonlar;
+    }, [options?.bijonlar, bijon]);
+
+    const enhancedVehicleTypes = useMemo(() => {
+        if (!options?.vehicleTypes) return [];
+        const types = [...options.vehicleTypes];
+        if (vehicleType !== 'all' && !types.some(v => v.value === vehicleType)) {
+            types.unshift({ value: vehicleType, label: vehicleType, count: 0 });
+        }
+        return types;
+    }, [options?.vehicleTypes, vehicleType]);
     const updateURL = (key: string, value: string) => {
         const params = new URLSearchParams(searchParams.toString());
         if (value === 'all') {
@@ -104,7 +129,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     return (
         <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
             {/* Araç Tipi */}
-            {options.vehicleTypes && options.vehicleTypes.length > 0 && (
+            {enhancedVehicleTypes.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">Jant Tipi</Offcanvas.Title>
                     <FormControl fullWidth>
@@ -124,7 +149,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
                             <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
                                 Tümü
                             </MenuItem>
-                            {options.vehicleTypes.map((opt) => (
+                            {enhancedVehicleTypes.map((opt) => (
                                 <MenuItem
                                     key={opt.value}
                                     value={opt.value}
@@ -139,7 +164,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
             )}
 
             {/* Jant Çapı */}
-            {options.jantCaplar && options.jantCaplar.length > 0 && (
+            {enhancedJantCaplar.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">Jant Çapı</Offcanvas.Title>
                     <FormControl fullWidth>
@@ -159,7 +184,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
                             <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
                                 Tümü
                             </MenuItem>
-                            {options.jantCaplar.map((opt) => (
+                            {enhancedJantCaplar.map((opt) => (
                                 <MenuItem
                                     key={opt.value}
                                     value={opt.value}
@@ -174,7 +199,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
             )}
 
             {/* Bijon Aralığı */}
-            {options.bijonlar && options.bijonlar.length > 0 && (
+            {enhancedBijonlar.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">Bijon Aralığı (PCD)</Offcanvas.Title>
                     <FormControl fullWidth>
@@ -194,7 +219,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
                             <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
                                 Tümü
                             </MenuItem>
-                            {options.bijonlar.map((opt) => (
+                            {enhancedBijonlar.map((opt) => (
                                 <MenuItem
                                     key={opt.value}
                                     value={opt.value}

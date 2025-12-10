@@ -2,7 +2,7 @@
 
 import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl, CircularProgress } from "@mui/material";
 import { Offcanvas } from "react-bootstrap";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
 
@@ -25,13 +25,11 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
     const [rim, setRim] = useState(searchParams.get('jant') || 'all');
     const [vehicleType, setVehicleType] = useState(searchParams.get('arac') || 'all');
 
-    // Filtre seçeneklerini yükle
     useEffect(() => {
         const loadOptions = async () => {
             try {
                 setLoading(true);
                 const data = await getTireFilterOptions(categorySlug, tagSlug);
-
                 if (data) {
                     setOptions(data);
                 }
@@ -45,14 +43,48 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
     }, [categorySlug, tagSlug]);
 
     useEffect(() => {
-    }, [options]);
-
-    useEffect(() => {
         setWidth(searchParams.get('genislik') || 'all');
         setHeight(searchParams.get('yanak') || 'all');
         setRim(searchParams.get('jant') || 'all');
         setVehicleType(searchParams.get('arac') || 'all');
     }, [searchParams]);
+
+    // URL'deki değerleri options'a ekle (eğer yoksa)
+    const enhancedWidths = useMemo(() => {
+        if (!options?.widths) return [];
+        const widths = [...options.widths];
+        if (width !== 'all' && !widths.some(w => w.value === width)) {
+            widths.unshift({ value: width, label: width, count: 0 });
+        }
+        return widths;
+    }, [options?.widths, width]);
+
+    const enhancedAspects = useMemo(() => {
+        if (!options?.aspects) return [];
+        const aspects = [...options.aspects];
+        if (height !== 'all' && !aspects.some(a => a.value === height)) {
+            aspects.unshift({ value: height, label: height, count: 0 });
+        }
+        return aspects;
+    }, [options?.aspects, height]);
+
+    const enhancedRims = useMemo(() => {
+        if (!options?.rims) return [];
+        const rims = [...options.rims];
+        if (rim !== 'all' && !rims.some(r => r.value === rim)) {
+            rims.unshift({ value: rim, label: `R${rim}`, count: 0 });
+        }
+        return rims;
+    }, [options?.rims, rim]);
+
+    const enhancedVehicleTypes = useMemo(() => {
+        if (!options?.vehicleTypes) return [];
+        const types = [...options.vehicleTypes];
+        if (vehicleType !== 'all' && !types.some(v => v.value === vehicleType)) {
+            types.unshift({ value: vehicleType, label: vehicleType, count: 0 });
+        }
+        return types;
+    }, [options?.vehicleTypes, vehicleType]);
 
     const updateURL = (key: string, value: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -95,7 +127,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
         );
     }
 
-    // Options yoksa mesaj göster
     if (!options) {
         return (
             <Grid container sx={{ borderBottom: "1px solid #ddd", py: 2 }}>
@@ -109,7 +140,7 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
     return (
         <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
             {/* Araç Tipi */}
-            {options.vehicleTypes && options.vehicleTypes.length > 0 && (
+            {enhancedVehicleTypes.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">Araç Tipi</Offcanvas.Title>
                     <FormControl fullWidth>
@@ -126,14 +157,10 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                             }}
                             sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
                         >
-                            <MenuItem
-                                value="all"
-                                sx={{
-                                    fontSize: '13px',
-                                    borderBottom: '1px solid #eee'
-                                }}
-                            >Tümü</MenuItem>
-                            {options.vehicleTypes.map((opt) => (
+                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
+                                Tümü
+                            </MenuItem>
+                            {enhancedVehicleTypes.map((opt) => (
                                 <MenuItem key={opt.value} value={opt.value}
                                     sx={{
                                         fontSize: '13px',
@@ -149,7 +176,7 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
             )}
 
             {/* Taban Genişliği */}
-            {!hideEbatFilters && options.widths && options.widths.length > 0 && (
+            {!hideEbatFilters && enhancedWidths.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
                         Taban Genişliği
@@ -179,16 +206,10 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                             }}
                             sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
                         >
-                            <MenuItem
-                                value="all"
-                                sx={{
-                                    fontSize: '13px',
-                                    borderBottom: '1px solid #eee'
-                                }}
-                            >
+                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
                                 Tümü
                             </MenuItem>
-                            {options.widths.map((opt) => (
+                            {enhancedWidths.map((opt) => (
                                 <MenuItem
                                     key={opt.value}
                                     value={opt.value}
@@ -207,7 +228,7 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
             )}
 
             {/* Yanak Yüksekliği */}
-            {!hideEbatFilters && options.aspects && options.aspects.length > 0 && (
+            {!hideEbatFilters && enhancedAspects.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
                         Yanak Yüksekliği
@@ -237,15 +258,10 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                             }}
                             sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
                         >
-                            <MenuItem
-                                value="all"
-                                sx={{
-                                    fontSize: '13px',
-                                    borderBottom: '1px solid #eee'
-                                }}>
+                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
                                 Tümü
                             </MenuItem>
-                            {options.aspects.map((opt) => (
+                            {enhancedAspects.map((opt) => (
                                 <MenuItem
                                     key={opt.value}
                                     value={opt.value}
@@ -264,7 +280,7 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
             )}
 
             {/* Jant Çapı */}
-            {!hideEbatFilters && options.rims && options.rims.length > 0 && (
+            {!hideEbatFilters && enhancedRims.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
                         Jant Çapı
@@ -294,16 +310,10 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                             }}
                             sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
                         >
-                            <MenuItem
-                                value="all"
-                                sx={{
-                                    fontSize: '13px',
-                                    borderBottom: '1px solid #eee'
-                                }}
-                            >
+                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
                                 Tümü
                             </MenuItem>
-                            {options.rims.map((opt) => (
+                            {enhancedRims.map((opt) => (
                                 <MenuItem
                                     key={opt.value}
                                     value={opt.value}
@@ -313,7 +323,7 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                                         '&:last-child': { borderBottom: 'none' }
                                     }}
                                 >
-                                    R{opt.value}
+                                    {opt.label}
                                 </MenuItem>
                             ))}
                         </TextField>

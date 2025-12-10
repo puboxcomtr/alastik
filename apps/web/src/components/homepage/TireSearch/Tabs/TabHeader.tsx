@@ -32,10 +32,6 @@ export default function TabHeader({ activeTab, setActiveTab }: TabHeaderProps) {
                 <i className="ri-snowflake-line"></i>
                 Kar Paleti ve Zincir
             </a>
-            <a className="d-none d-md-flex d-lg-flex search_icon" href="/kategori/set-lastikler">
-                <i className="ri-box-3-fill"></i>
-                Set Lastikler
-            </a>
         </div>
     );
 }

@@ -90,9 +90,13 @@ export default async function TagPage({ params, searchParams }: Props) {
                 <Row>
                     <Col lg={3}>
                         {/* Araç Bilgisi (varsa) */}
-                        <VehicleInfo currentSize={currentSize} />
+                        <VehicleInfo currentSize={currentSize} tagType={tag.type} />
                         {/* Normal Sidebar */}
-                        <Sidebar hideEbatFilters={true} tagSlug={slug} />
+                        <Sidebar
+                            categorySlug={tag.type === 'rim_pcd' ? 'jant' : 'lastik'}
+                            hideEbatFilters={true}
+                            tagSlug={slug}
+                            tagType={tag.type} />
                     </Col>
 
                     <Col lg={9}>

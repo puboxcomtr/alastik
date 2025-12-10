@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import type { Vehicle } from '@/src/types/vehicle';
 import VehicleCard from './vehicleCard';
+import VehicleFormModal from '@/src/components/layout/Modals/VehicleForm';
 
 
 /* Config */

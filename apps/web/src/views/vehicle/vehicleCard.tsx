@@ -1,14 +1,25 @@
 'use client';
 
+/* React & Next.js */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Vehicle } from '@/src/types/vehicle';
-import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 import Image from 'next/image';
+
+/* Types */
+import type { Vehicle } from '@/src/types/vehicle';
+
+/* Hooks */
+import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
-import { toast } from 'react-toastify';
+
+/* Services */
 import wheelSizeService from '@/src/services/wheelSizeService';
+
+/* Utils & Config */
 import { buildTagUrl, buildTireSizeTagFallback } from '@/src/config/routes';
+
+/* External Libraries */
+import { toast } from 'react-toastify';
 
 interface VehicleCardProps {
     vehicle: Vehicle;
@@ -20,6 +31,7 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
     const router = useRouter();
     const { deleteVehicle, setPrimaryVehicle } = useVehicles();
     const [isNavigating, setIsNavigating] = useState(false);
+    const [navigationType, setNavigationType] = useState<'tire' | 'rim' | null>(null);
     const { t } = useTranslations();
 
     const handleDelete = async () => {
@@ -38,13 +50,13 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
         }
     };
 
-    const handleShowProducts = async () => {
+    const handleShowTires = async () => {
         setIsNavigating(true);
+        setNavigationType('tire');
 
         try {
             const { wheelSizeData } = vehicle;
 
-            // Araç için lastik ebatlarını çek
             const vehicleData = await wheelSizeService.getVehicleDetails(
                 wheelSizeData.make,
                 wheelSizeData.model,
@@ -58,14 +70,13 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
             if (allTires.length === 0) {
                 toast.error('Bu araç için uyumlu lastik ebatı bulunamadı.');
                 setIsNavigating(false);
+                setNavigationType(null);
                 return;
             }
 
-            // İlk ebatı al
             const firstTire = allTires[0];
             const seoUrl = buildTireSizeTagFallback(firstTire.width, firstTire.aspectRatio, firstTire.diameter);
 
-            // localStorage'a garaj aracı olarak kaydet
             const vehicleStorage = {
                 make: wheelSizeData.make,
                 makeName: wheelSizeData.makeName,
@@ -81,14 +92,72 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
             };
 
             localStorage.setItem('selectedVehicle', JSON.stringify(vehicleStorage));
-
-            // Etiket sayfasına yönlendir
             router.push(buildTagUrl(seoUrl));
 
         } catch (error) {
-            console.error('[VehicleCard] Show products error:', error);
+            console.error('[VehicleCard] Show tires error:', error);
             toast.error('Bir hata oluştu. Lütfen tekrar deneyin.');
             setIsNavigating(false);
+            setNavigationType(null);
+        }
+    };
+    const handleShowRims = async () => {
+        setIsNavigating(true);
+        setNavigationType('rim');
+        try {
+            const { wheelSizeData } = vehicle;
+
+            const vehicleData = await wheelSizeService.getVehicleDetails(
+                wheelSizeData.make,
+                wheelSizeData.model,
+                wheelSizeData.year,
+                wheelSizeData.modification
+            );
+
+            if (vehicleData.length === 0 || !vehicleData[0].technical) {
+                toast.error('Bu araç için jant bilgisi bulunamadı.');
+                setIsNavigating(false);
+                setNavigationType(null);
+                return;
+            }
+
+            const technical = vehicleData[0].technical;
+            const pcd = technical.stud_holes && technical.pcd
+                ? `${technical.stud_holes}X${technical.pcd}`
+                : null;
+
+            if (!pcd) {
+                toast.error('PCD bilgisi bulunamadı.');
+                setIsNavigating(false);
+                setNavigationType(null);
+                return;
+            }
+            const urlPcd = pcd.toLowerCase().replace('x', '-').replace('.', '');
+            const seoUrl = `${urlPcd}-jant-fiyatlari`;
+
+            const vehicleStorage = {
+                make: wheelSizeData.make,
+                makeName: wheelSizeData.makeName,
+                model: wheelSizeData.model,
+                modelName: wheelSizeData.modelName,
+                year: wheelSizeData.year,
+                modification: wheelSizeData.modification,
+                modificationName: vehicle.userInputs?.bodyType || '',
+                vehicleImage: vehicle.image?.url || '',
+                selectedSize: urlPcd,
+                timestamp: Date.now(),
+                source: 'garage'
+            };
+
+            localStorage.setItem('selectedVehicle', JSON.stringify(vehicleStorage));
+
+            router.push(buildTagUrl(seoUrl));
+
+        } catch (error) {
+            console.error('[VehicleCard] Show rims error:', error);
+            toast.error('Bir hata oluştu. Lütfen tekrar deneyin.');
+            setIsNavigating(false);
+            setNavigationType(null);
         }
     };
 
@@ -156,20 +225,43 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
                     </button>
                 </div>
 
-                <button
-                    onClick={handleShowProducts}
-                    className="btn btn-md btn-success w-100 d-block"
-                    disabled={isNavigating}
-                >
-                    {isNavigating ? (
-                        <>
-                            <span className="spinner-border spinner-border-sm me-2"></span>
-                            Yükleniyor...
-                        </>
-                    ) : (
-                        t('looks_car_products')
-                    )}
-                </button>
+                <div className="d-flex gap-2">
+                    <button
+                        onClick={handleShowTires}
+                        className="btn btn-md btn-success flex-fill"
+                        disabled={isNavigating}
+                    >
+                        {isNavigating && navigationType === 'tire' ? (
+                            <>
+                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                Yükleniyor...
+                            </>
+                        ) : (
+                            <>
+                                <i className="ri-steering-2-line me-1"></i>
+                                Lastik
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={handleShowRims}
+                        className="btn btn-md btn-primary flex-fill"
+                        disabled={isNavigating}
+                    >
+                        {isNavigating && navigationType === 'rim' ? (
+                            <>
+                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                Yükleniyor...
+                            </>
+                        ) : (
+                            <>
+                                <i className="ri-focus-3-line me-1"></i>
+                                Jant
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

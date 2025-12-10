@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Typography, Divider, Box } from '@mui/material';
+import { Typography, Divider, Box, Tooltip } from '@mui/material';
 import wheelSizeService, { GroupedTires, TireOption, VehicleDetailsResponse } from '@/src/services/wheelSizeService';
 import type { TireSize } from '@/src/types/tire-search';
 
@@ -47,6 +47,7 @@ export default function TireSizeSelection({
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo | null>(null);
     const [positionFilter, setPositionFilter] = useState<PositionFilter>('all');
+    const [vehiclePcd, setVehiclePcd] = useState<string>('');
 
     useEffect(() => {
         if (make && model && year && modification) {
@@ -73,6 +74,11 @@ export default function TireSizeSelection({
                         power: { hp: data.engine.power.hp, kW: data.engine.power.kW }
                     } : undefined
                 });
+
+                if (data.technical?.stud_holes && data.technical?.pcd) {
+                    const pcd = `${data.technical.stud_holes}X${data.technical.pcd}`;
+                    setVehiclePcd(pcd);
+                }
             }
 
             const grouped = wheelSizeService.parseGroupedTires(vehicleData);
@@ -139,6 +145,7 @@ export default function TireSizeSelection({
                             <tr className="text-muted" style={{ fontSize: '12px' }}>
                                 <th>Ebat</th>
                                 <th>Yük/Hız</th>
+                                <th>Uyumlu Jant</th>
                                 <th className='text-end'>Durum</th>
                             </tr>
                         </thead>
@@ -159,6 +166,19 @@ export default function TireSizeSelection({
                                             ? `${tire.loadIndex}${tire.speedIndex}`
                                             : '-'
                                         }
+                                    </td>
+                                    <td>
+                                        {vehiclePcd ? (
+                                            <Tooltip title="Ürünleri İncele">
+                                                <a
+                                                    href={`/kategori/jant?jantCap=${tire.diameter}&bijon=${vehiclePcd}`}
+                                                    className="text-primary text-decoration-none"
+                                                    style={{ fontSize: '13px' }}
+                                                >
+                                                    {tire.diameter}" / {vehiclePcd}
+                                                </a>
+                                            </Tooltip>
+                                        ) : '-'}
                                     </td>
                                     <td className='text-end'>
                                         {tire.isStock && <span className="badge bg-success">Fabrika Çıkış Ebatı</span>}

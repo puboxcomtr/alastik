@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 interface RimTabContentProps {
     selectedCap: string;
@@ -19,13 +19,14 @@ export default function RimTabContent({
     bijonAraliklari,
     handleJantArama,
 }: RimTabContentProps) {
+    const [imageError, setImageError] = useState(false);
+
     return (
         <div className="search_tabcontent">
             <div className="search_tabcontent_type">
                 <ul className="nav nav-tabs mb-4" role="tablist">
                     <li className="nav-item" role="presentation">
                         <a
-                            href="#rim-size-tab-pane"
                             className="nav-link active justify-content-center px-0"
                             id="rim-size-tab"
                             data-bs-toggle="tab"
@@ -111,13 +112,13 @@ export default function RimTabContent({
                                     </a>
                                 </div>
                                 <div className="col-md-5 position-relative d-none d-lg-block">
-                                    <img
-                                        src="/assets/img/home/wheel-search.png"
-                                        alt="Jant Arama"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = '/assets/img/home/tyre-search.png';
-                                        }}
-                                    />
+                                    {!imageError && (
+                                        <img
+                                            src="/assets/img/home/tyre-search.png"
+                                            alt="Jant Arama"
+                                            onError={() => setImageError(true)}
+                                        />
+                                    )}
                                 </div>
                                 <div className="col-12 col-md-3 position-relative pb-3">
                                     <button type="submit" className="btn btn-primary rounded-2 w-100">
@@ -127,8 +128,8 @@ export default function RimTabContent({
                             </div>
                         </form>
                     </div>
-                </div >
-            </div >
-        </div >
+                </div>
+            </div>
+        </div>
     );
 }

@@ -129,10 +129,32 @@ async function getTireSizeTag(width: number, aspectRatio: number, diameter: numb
     }
 }
 
+/**
+ * Jant ebatına göre tag seoUrl bul
+ */
+async function getRimPcdTag(pcd: string): Promise<{ seoUrl: string; title: string } | null> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/tags/rim-pcd?pcd=${pcd}`, {
+            next: { revalidate: 60 }
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const result = await response.json();
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error('getRimPcdTag error:', error);
+        return null;
+    }
+}
+
 const tagService = {
     getTagBySlug,
     getTagProducts,
-    getTireSizeTag
+    getTireSizeTag,
+    getRimPcdTag
 };
 
 export default tagService;

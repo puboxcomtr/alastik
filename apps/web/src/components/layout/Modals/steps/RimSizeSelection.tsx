@@ -77,7 +77,6 @@ export default function RimSizeSelection({
 
         try {
             const vehicleData = await wheelSizeService.getVehicleDetails(make, model, year, modification);
-
             if (vehicleData.length > 0) {
                 const data = vehicleData[0];
                 setVehicleInfo({
@@ -105,8 +104,6 @@ export default function RimSizeSelection({
             setLoading(false);
         }
     };
-
-    // WheelSize API'dan gelen veriyi parse et
     const parseGroupedRims = (vehicleData: any[]): GroupedRims => {
         const front: RimOption[] = [];
         const rear: RimOption[] = [];
@@ -114,81 +111,94 @@ export default function RimSizeSelection({
         const seenIds = new Set<string>();
 
         vehicleData.forEach(vehicle => {
-            if (!vehicle.wheels) return;
+            if (!vehicle.wheels || !vehicle.technical) return;
+            const pcdData = vehicle.technical.stud_holes && vehicle.technical.pcd
+                ? { bolts: vehicle.technical.stud_holes, diameter: vehicle.technical.pcd }
+                : null;
+            const pcdString = pcdData ? `${pcdData.bolts}X${pcdData.diameter}` : '';
+            const centerBore = vehicle.technical.centre_bore ? parseFloat(vehicle.technical.centre_bore) : 0;
 
             vehicle.wheels.forEach((wheel: any, idx: number) => {
-                const frontRim = wheel.front?.rim;
-                const rearRim = wheel.rear?.rim;
+                const frontRim = wheel.front;
+                const rearRim = wheel.rear;
                 const isStock = wheel.is_stock || false;
 
-                // PCD bilgisini al
-                const pcdData = frontRim?.bolt_pattern || rearRim?.bolt_pattern;
-                const pcdString = pcdData ? `${pcdData.bolts}X${pcdData.diameter}` : '';
+                if (frontRim?.rim_diameter && frontRim?.rim_width && frontRim?.rim_offset != null) {
+                    const hasRear = rearRim?.rim_diameter && rearRim?.rim_width && rearRim?.rim_offset != null;
 
-                // Ön ve arka aynı mı kontrol et
-                const frontKey = frontRim ? `${frontRim.diameter}-${frontRim.width}-${pcdString}-${frontRim.offset}` : '';
-                const rearKey = rearRim ? `${rearRim.diameter}-${rearRim.width}-${pcdString}-${rearRim.offset}` : '';
-
-                if (frontKey && rearKey && frontKey === rearKey) {
-                    // Ön/Arka aynı
-                    const id = `both-${frontKey}-${idx}`;
-                    if (!seenIds.has(id)) {
-                        seenIds.add(id);
-                        both.push({
-                            id,
-                            diameter: frontRim.diameter,
-                            width: frontRim.width,
-                            pcd: pcdString,
-                            pcdRaw: pcdData || { bolts: 0, diameter: 0 },
-                            offset: frontRim.offset,
-                            centerBore: frontRim.center_bore || 0,
-                            isStock,
-                            display: `${frontRim.width}x${frontRim.diameter} ET${frontRim.offset}`
-                        });
-                    }
-                } else {
-                    // Farklı ön/arka (staggered)
-                    if (frontRim) {
-                        const id = `front-${frontKey}-${idx}`;
+                    if (!hasRear) {
+                        const id = `both-${frontRim.rim_diameter}-${frontRim.rim_width}-${frontRim.rim_offset}-${idx}`;
                         if (!seenIds.has(id)) {
                             seenIds.add(id);
-                            front.push({
+                            both.push({
                                 id,
-                                diameter: frontRim.diameter,
-                                width: frontRim.width,
+                                diameter: frontRim.rim_diameter,
+                                width: frontRim.rim_width,
                                 pcd: pcdString,
                                 pcdRaw: pcdData || { bolts: 0, diameter: 0 },
-                                offset: frontRim.offset,
-                                centerBore: frontRim.center_bore || 0,
+                                offset: frontRim.rim_offset,
+                                centerBore,
                                 isStock,
-                                display: `${frontRim.width}x${frontRim.diameter} ET${frontRim.offset}`
+                                display: `${frontRim.rim_width}x${frontRim.rim_diameter} ET${frontRim.rim_offset}`
                             });
                         }
-                    }
-                    if (rearRim) {
-                        const rearPcd = rearRim.bolt_pattern || pcdData;
-                        const rearPcdString = rearPcd ? `${rearPcd.bolts}X${rearPcd.diameter}` : pcdString;
-                        const id = `rear-${rearKey}-${idx}`;
-                        if (!seenIds.has(id)) {
-                            seenIds.add(id);
-                            rear.push({
-                                id,
-                                diameter: rearRim.diameter,
-                                width: rearRim.width,
-                                pcd: rearPcdString,
-                                pcdRaw: rearPcd || { bolts: 0, diameter: 0 },
-                                offset: rearRim.offset,
-                                centerBore: rearRim.center_bore || 0,
-                                isStock,
-                                display: `${rearRim.width}x${rearRim.diameter} ET${rearRim.offset}`
-                            });
+                    } else {
+                        const frontKey = `${frontRim.rim_diameter}-${frontRim.rim_width}-${frontRim.rim_offset}`;
+                        const rearKey = `${rearRim.rim_diameter}-${rearRim.rim_width}-${rearRim.rim_offset}`;
+
+                        if (frontKey === rearKey) {
+                            const id = `both-${frontKey}-${idx}`;
+                            if (!seenIds.has(id)) {
+                                seenIds.add(id);
+                                both.push({
+                                    id,
+                                    diameter: frontRim.rim_diameter,
+                                    width: frontRim.rim_width,
+                                    pcd: pcdString,
+                                    pcdRaw: pcdData || { bolts: 0, diameter: 0 },
+                                    offset: frontRim.rim_offset,
+                                    centerBore,
+                                    isStock,
+                                    display: `${frontRim.rim_width}x${frontRim.rim_diameter} ET${frontRim.rim_offset}`
+                                });
+                            }
+                        } else {
+                            const frontId = `front-${frontKey}-${idx}`;
+                            if (!seenIds.has(frontId)) {
+                                seenIds.add(frontId);
+                                front.push({
+                                    id: frontId,
+                                    diameter: frontRim.rim_diameter,
+                                    width: frontRim.rim_width,
+                                    pcd: pcdString,
+                                    pcdRaw: pcdData || { bolts: 0, diameter: 0 },
+                                    offset: frontRim.rim_offset,
+                                    centerBore,
+                                    isStock,
+                                    display: `${frontRim.rim_width}x${frontRim.rim_diameter} ET${frontRim.rim_offset}`
+                                });
+                            }
+
+                            const rearId = `rear-${rearKey}-${idx}`;
+                            if (!seenIds.has(rearId)) {
+                                seenIds.add(rearId);
+                                rear.push({
+                                    id: rearId,
+                                    diameter: rearRim.rim_diameter,
+                                    width: rearRim.rim_width,
+                                    pcd: pcdString,
+                                    pcdRaw: pcdData || { bolts: 0, diameter: 0 },
+                                    offset: rearRim.rim_offset,
+                                    centerBore,
+                                    isStock,
+                                    display: `${rearRim.rim_width}x${rearRim.rim_diameter} ET${rearRim.rim_offset}`
+                                });
+                            }
                         }
                     }
                 }
             });
         });
-
-        // Sırala (stock önce, sonra diameter'a göre)
         const sortFn = (a: RimOption, b: RimOption) => {
             if (a.isStock !== b.isStock) return a.isStock ? -1 : 1;
             return a.diameter - b.diameter;
