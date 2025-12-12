@@ -1,7 +1,8 @@
 import React from 'react';
+
 interface TabHeaderProps {
-    activeTab: 'tire' | 'rim';
-    setActiveTab: (tab: 'tire' | 'rim') => void;
+    activeTab: 'tire' | 'rim' | 'chain';
+    setActiveTab: (tab: 'tire' | 'rim' | 'chain') => void;
 }
 
 export default function TabHeader({ activeTab, setActiveTab }: TabHeaderProps) {
@@ -28,10 +29,14 @@ export default function TabHeader({ activeTab, setActiveTab }: TabHeaderProps) {
                 <i className="ri-steering-2-fill"></i>
                 Jant
             </span>
-            <a className="d-none d-md-flex d-lg-flex search_icon" href="/kategori/kar-zinciri">
+            <span
+                className="search_icon"
+                onClick={() => setActiveTab('chain')}
+                style={{ cursor: 'pointer', ...(activeTab === 'chain' ? activeStyle : {}) }}
+            >
                 <i className="ri-snowflake-line"></i>
                 Kar Paleti ve Zincir
-            </a>
+            </span>
         </div>
     );
 }

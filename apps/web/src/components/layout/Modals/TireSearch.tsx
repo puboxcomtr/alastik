@@ -41,8 +41,9 @@ import ModificationSelection from './steps/ModificationSelection';
 import TireSizeSelection from './steps/TireSizeSelection';
 import RimSizeSelection from './steps/RimSizeSelection';
 import VehicleDetailsStep from './steps/VehicleDetailsStep';
+import ChainSizeSelection from './steps/ChainSizeSelection';
 
-type ModalMode = 'search' | 'addVehicle' | 'rimSearch';
+type ModalMode = 'search' | 'addVehicle' | 'rimSearch' | 'chainSearch';
 
 interface TireSearchModalProps {
     open: boolean;
@@ -73,13 +74,14 @@ export default function TireSearchModal({
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Mode'a göre adımlar
     const stepOrder: SearchStep[] = useMemo(() => {
         switch (mode) {
             case 'addVehicle':
                 return ['make', 'model', 'year', 'modification', 'details'];
             case 'rimSearch':
                 return ['make', 'model', 'year', 'modification', 'rim'];
+            case 'chainSearch':
+                return ['make', 'model', 'year', 'modification', 'chain'];
             default:
                 return ['make', 'model', 'year', 'modification', 'size'];
         }
@@ -94,6 +96,8 @@ export default function TireSearchModal({
                 return 'Araç Ekle';
             case 'rimSearch':
                 return 'Araca Göre Jant Arama';
+            case 'chainSearch':
+                return 'Araca Göre Kar Paleti Arama';
             default:
                 return 'Araca Göre Lastik Arama';
         }
@@ -107,6 +111,7 @@ export default function TireSearchModal({
             case 'modification': return !!searchState.modification;
             case 'size': return !!searchState.selectedTireSize;
             case 'rim': return !!searchState.selectedRimSize;
+            case 'chain': return !!searchState.selectedChainSize;
             case 'details': return true;
             default: return false;
         }
@@ -148,7 +153,6 @@ export default function TireSearchModal({
         onClose();
     };
 
-    // Lastik Arama - Lastikleri Göster
     const handleShowTires = async () => {
         if (!searchState.selectedTireSize) return;
 
@@ -244,6 +248,52 @@ export default function TireSearchModal({
             setIsRedirecting(false);
         }
     };
+    // Kar Paleti
+    const handleShowChains = async () => {
+        if (!searchState.selectedChainSize) return;
+        setIsRedirecting(true);
+
+        try {
+            const { width, aspectRatio, diameter } = searchState.selectedChainSize;
+
+            const params = new URLSearchParams();
+            params.set('genislik', width.toString());
+            params.set('yanak', aspectRatio.toString());
+            params.set('jant', diameter.toString());
+
+            const chainUrl = `/kategori/kar-paleti-ve-zinciri?${params.toString()}`;
+
+            const vehicleData = {
+                make: searchState.make,
+                makeName: searchState.makeName,
+                model: searchState.model,
+                modelName: searchState.modelName,
+                year: searchState.year,
+                modification: searchState.modification,
+                modificationName: searchState.modificationName,
+                vehicleImage: searchState.vehicleImage,
+                selectedChain: searchState.selectedChainSize,
+                timestamp: Date.now()
+            };
+
+            localStorage.setItem('selectedVehicleForChain', JSON.stringify(vehicleData));
+
+            handleClose();
+
+            if (onSearchComplete) {
+                onSearchComplete({
+                    ...vehicleData,
+                    chainSize: searchState.selectedChainSize,
+                    chainUrl
+                });
+            }
+
+            router.push(chainUrl);
+        } catch (error) {
+            console.error('[TireSearchModal] Chain redirect error:', error);
+            setIsRedirecting(false);
+        }
+    };
     // Araç Kaydetme
     const handleSaveVehicle = async (details: { plateNumber: string; mileage?: number; isPrimary: boolean }) => {
         setIsSaving(true);
@@ -302,6 +352,13 @@ export default function TireSearchModal({
                 label: isRedirecting ? 'Yönlendiriliyor...' : 'Jantları Göster',
                 onClick: handleShowRims,
                 disabled: !searchState.selectedRimSize || isRedirecting
+            };
+        }
+        if (currentStep === 'chain') {
+            return {
+                label: isRedirecting ? 'Yönlendiriliyor...' : 'Kar Paletlerini Göster',
+                onClick: handleShowChains,
+                disabled: !searchState.selectedChainSize || isRedirecting
             };
         }
         return null;
@@ -415,6 +472,21 @@ export default function TireSearchModal({
                     />
                 )}
 
+                {currentStep === 'chain' && mode === 'chainSearch' && (
+                    <ChainSizeSelection
+                        make={searchState.make}
+                        makeName={searchState.makeName}
+                        model={searchState.model}
+                        modelName={searchState.modelName}
+                        year={searchState.year!}
+                        modification={searchState.modification!}
+                        modificationName={searchState.modificationName || ''}
+                        vehicleImage={searchState.vehicleImage}
+                        onSelect={(chainSize) => {
+                            updateSearchState({ selectedChainSize: chainSize });
+                        }}
+                    />
+                )}
                 {currentStep === 'details' && mode === 'addVehicle' && (
                     <VehicleDetailsStep
                         makeName={searchState.makeName}

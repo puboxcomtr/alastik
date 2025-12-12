@@ -1,6 +1,6 @@
 // apps/web/src/types/tire-search.ts
 
-export type SearchStep = 'make' | 'model' | 'year' | 'modification' | 'size' | 'rim' | 'details';
+export type SearchStep = 'make' | 'model' | 'year' | 'modification' | 'size' | 'rim' | 'chain' | 'details';
 
 export interface TireSize {
     front: string;
@@ -13,12 +13,17 @@ export interface TireSize {
 export interface RimSize {
     diameter: number;
     width: number;
-    pcd: string;          
-    offset: number;        
-    centerBore: number;   
-    display: string;       
+    pcd: string;
+    offset: number;
+    centerBore: number;
+    display: string;
 }
-
+export interface ChainSize {
+    width: number;
+    aspectRatio: number;
+    diameter: number;
+    display: string;
+}
 export interface TireSearchState {
     make: string;
     makeName: string;
@@ -31,6 +36,7 @@ export interface TireSearchState {
     vehicleImage?: string;
     selectedTireSize?: TireSize;
     selectedRimSize?: RimSize;
+    selectedChainSize?: ChainSize;
 }
 
 export interface TireSearchResult {

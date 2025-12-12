@@ -3,22 +3,20 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Row, Col } from "react-bootstrap";
 
-// Component
 import TireProductSlider from '@components/homepage/TireSearch/TireProductSlider';
 import TabHeader from '@components/homepage/TireSearch/Tabs/TabHeader';
 import TabContent from '@components/homepage/TireSearch/Tabs/TabContent';
 import RimTabContent from '@components/homepage/TireSearch/Tabs/RimTabContent';
+import ChainTabContent from '@components/homepage/TireSearch/Tabs/ChainTabContent';
 
-/* Hooks */
 import { useTireSearch } from "@src/hooks/WheelSize/useTireSearch";
 import { useRimSearch } from "@src/hooks/WheelSize/useRimSearch";
-
+import { useChainSearch } from "@src/hooks/WheelSize/useChainSearch";
 
 export default function MainTireSearch() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'tire' | 'rim'>('tire');
+  const [activeTab, setActiveTab] = useState<'tire' | 'rim' | 'chain'>('tire');
 
-  // Lastik hook
   const {
     mevsim,
     setMevsim,
@@ -34,7 +32,6 @@ export default function MainTireSearch() {
     handleJantaGoreArama,
   } = useTireSearch();
 
-  // Jant hook
   const {
     jantCaplari: rimCaplari,
     bijonAraliklari,
@@ -44,6 +41,19 @@ export default function MainTireSearch() {
     setSelectedBijon,
     handleJantArama,
   } = useRimSearch();
+
+  const {
+    genislikler: chainGenislikler,
+    yanakOranlari: chainYanakOranlari,
+    jantCaplari: chainJantCaplari,
+    selectedGenislik: chainSelectedGenislik,
+    setSelectedGenislik: setChainSelectedGenislik,
+    selectedYukseklik: chainSelectedYukseklik,
+    setSelectedYukseklik: setChainSelectedYukseklik,
+    selectedCap: chainSelectedCap,
+    setSelectedCap: setChainSelectedCap,
+    handleKarPaletiArama,
+  } = useChainSearch();
 
   return (
     <>
@@ -82,6 +92,21 @@ export default function MainTireSearch() {
                         jantCaplari={rimCaplari}
                         bijonAraliklari={bijonAraliklari}
                         handleJantArama={handleJantArama}
+                      />
+                    )}
+
+                    {activeTab === 'chain' && (
+                      <ChainTabContent
+                        selectedGenislik={chainSelectedGenislik}
+                        setSelectedGenislik={setChainSelectedGenislik}
+                        selectedYukseklik={chainSelectedYukseklik}
+                        setSelectedYukseklik={setChainSelectedYukseklik}
+                        selectedCap={chainSelectedCap}
+                        setSelectedCap={setChainSelectedCap}
+                        genislikler={chainGenislikler}
+                        yanakOranlari={chainYanakOranlari}
+                        jantCaplari={chainJantCaplari}
+                        handleKarPaletiArama={handleKarPaletiArama}
                       />
                     )}
                   </div>

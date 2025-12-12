@@ -65,6 +65,58 @@ router.get('/tire-size', async (req, res) => {
 });
 
 /**
+ * GET /api/tags/rim-pcd?pcd=5X112
+ * PCD ile jant etiketi getir
+ */
+router.get('/rim-pcd', async (req, res) => {
+    try {
+        const { pcd } = req.query;
+
+        if (!pcd) {
+            return res.status(400).json({
+                success: false,
+                message: 'PCD parametresi gerekli'
+            });
+        }
+
+        // URL formatına çevir: 5X114.3 -> 5-1143-jant-fiyatlari
+        const urlPcd = pcd.toLowerCase().replace('x', '-').replace('.', '');
+        const seoUrl = `${urlPcd}-jant-fiyatlari`;
+
+        const tag = await WebTag.findOne({
+            seoUrl: seoUrl,
+            type: 'rim_pcd',
+            isActive: true
+        }).lean();
+
+        if (!tag) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jant etiketi bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                seoUrl: tag.seoUrl,
+                title: tag.title,
+                type: tag.type,
+                pcd: tag.pcd,
+                productCount: tag.productCount
+            }
+        });
+
+    } catch (error) {
+        console.error('[Tags API] rim-pcd error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Etiket alınırken hata oluştu'
+        });
+    }
+});
+
+/**
  * GET /api/tags/:slug
  * Slug ile tag getir
  */

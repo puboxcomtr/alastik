@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import TireSearchModal from "@/src/components/layout/Modals/TireSearch";
 
-type ModalMode = 'search' | 'addVehicle' | 'rimSearch';
+type ModalMode = 'search' | 'addVehicle' | 'rimSearch' | 'chainSearch';
 
 export default function TireSearchClient() {
     const [open, setOpen] = useState(false);
@@ -23,7 +23,13 @@ export default function TireSearchClient() {
             setOpen(true);
         };
 
-        // Araç ekleme (garaj için)
+        // Kar paleti arama
+        const handleOpenChainSearch = () => {
+            setMode('chainSearch');
+            setOpen(true);
+        };
+
+        // Araç ekleme
         const handleOpenAddVehicle = () => {
             setMode('addVehicle');
             setOpen(true);
@@ -31,11 +37,13 @@ export default function TireSearchClient() {
 
         window.addEventListener('openTireSearchModal', handleOpenTireSearch);
         window.addEventListener('openRimSearchModal', handleOpenRimSearch);
+        window.addEventListener('openChainSearchModal', handleOpenChainSearch); // EKLE
         window.addEventListener('openAddVehicleModal', handleOpenAddVehicle);
 
         return () => {
             window.removeEventListener('openTireSearchModal', handleOpenTireSearch);
             window.removeEventListener('openRimSearchModal', handleOpenRimSearch);
+            window.removeEventListener('openChainSearchModal', handleOpenChainSearch); // EKLE
             window.removeEventListener('openAddVehicleModal', handleOpenAddVehicle);
         };
     }, []);

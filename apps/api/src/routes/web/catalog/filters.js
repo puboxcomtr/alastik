@@ -444,4 +444,88 @@ router.get('/tire-options', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/filters/chain-options
+ */
+router.get('/chain-options', async (req, res) => {
+    try {
+        const { genislik, yanak } = req.query;
+
+        const baseMatch = {
+            'syncInfo.diaStatus': 'synced',
+            'customData.webVisible': true,
+            'diaData.durum': 'A',
+            'diaData.ozelkod7kodu': 'ZİNCİR'
+        };
+
+        MAIN_DIA_FILTERS.forEach(filter => {
+            const fieldPath = `diaData.${filter.field}`;
+            if (filter.operator === '=') {
+                baseMatch[fieldPath] = filter.value;
+            }
+        });
+
+        if (genislik && yanak) {
+            const rims = await WebProduct.distinct('diaData.m_urunOzellikleri', {
+                ...baseMatch,
+                'diaData.m_urunOzellikleri': {
+                    $all: [
+                        { $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: genislik } },
+                        { $elemMatch: { ozellikadi: 'Yanak', detayaciklama: yanak } }
+                    ]
+                }
+            });
+
+            const rimValues = rims
+                .flat()
+                .filter(oz => oz.ozellikadi === 'Jant Çapı')
+                .map(oz => oz.detayaciklama)
+                .filter((v, i, a) => v && a.indexOf(v) === i)
+                .sort((a, b) => {
+                    const numA = parseInt(a.replace(/\D/g, ''));
+                    const numB = parseInt(b.replace(/\D/g, ''));
+                    return numA - numB;
+                })
+                .map(value => ({ value, label: value }));
+
+            return res.json({ success: true, rims: rimValues });
+        }
+
+        if (genislik) {
+            const aspects = await WebProduct.distinct('diaData.m_urunOzellikleri', {
+                ...baseMatch,
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: genislik }
+                }
+            });
+
+            const aspectValues = aspects
+                .flat()
+                .filter(oz => oz.ozellikadi === 'Yanak')
+                .map(oz => oz.detayaciklama)
+                .filter((v, i, a) => v && a.indexOf(v) === i)
+                .sort((a, b) => parseInt(a) - parseInt(b))
+                .map(value => ({ value, label: value }));
+
+            return res.json({ success: true, aspects: aspectValues });
+        }
+
+        const widths = await WebProduct.distinct('diaData.m_urunOzellikleri', baseMatch);
+
+        const widthValues = widths
+            .flat()
+            .filter(oz => oz.ozellikadi === 'Genişlik')
+            .map(oz => oz.detayaciklama)
+            .filter((v, i, a) => v && a.indexOf(v) === i)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(value => ({ value, label: value }));
+
+        res.json({ success: true, widths: widthValues });
+
+    } catch (error) {
+        console.error('Kar paleti seçenekleri hatası:', error);
+        res.status(500).json({ success: false, message: 'Seçenekler yüklenirken hata oluştu' });
+    }
+});
+
 module.exports = router;

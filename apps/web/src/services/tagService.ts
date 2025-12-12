@@ -149,12 +149,32 @@ async function getRimPcdTag(pcd: string): Promise<{ seoUrl: string; title: strin
         return null;
     }
 }
+/**
+ * Kar paleti ebatına göre tag seoUrl bul
+ */
+async function getChainSizeTag(width: number, aspectRatio: number, diameter: number): Promise<{ seoUrl: string; title: string } | null> {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/tags/chain-size?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
+        );
 
+        if (!response.ok) {
+            return null;
+        }
+
+        const result = await response.json();
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error('[tagService] getChainSizeTag error:', error);
+        return null;
+    }
+}
 const tagService = {
     getTagBySlug,
     getTagProducts,
     getTireSizeTag,
-    getRimPcdTag
+    getRimPcdTag,
+    getChainSizeTag
 };
 
 export default tagService;
