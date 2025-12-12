@@ -44,3 +44,16 @@ export async function getRandomProducts(limit: number = 10) {
         return [];
     }
 }
+
+/**
+ * Ürün detayı - slug ile getir
+ */
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+    try {
+        const result = await api.get<{ success: boolean; data: Product | null }>(`/products/${encodeURIComponent(slug)}`);
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error('Ürün yükleme hatası:', error);
+        return null;
+    }
+}

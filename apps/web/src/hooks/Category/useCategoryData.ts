@@ -4,9 +4,6 @@
 /* Next JS */
 import { useState, useEffect, useCallback } from "react";
 
-/* API */
-import { backendApi } from "@/src/lib/backend-api";
-
 /* Cart */
 import cartService from "@/src/lib/cartService";
 import { cartUtils } from "@/src/components/cart/ShoppingCart";

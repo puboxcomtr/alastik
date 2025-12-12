@@ -1,4 +1,4 @@
-// apps/web/src/types/product.ts
+// apps/web/src/types/products.ts
 
 // Birim bilgileri
 export interface ProductBirim {
@@ -13,30 +13,85 @@ export interface ProductOzellik {
     detayaciklama: string;
 }
 
-// Ana Product interface
-export interface Product {
+// Ürün görselleri (DIA)
+export interface ProductResim {
     _key: string;
-    customData: {
-        seoUrl?: string;
-        seoTitle?: string;
-        webPrice?: number;
-        originalPrice?: number;
-        featuredImage?: string;
-        webVisible?: boolean;
-    };
-    diaData: {
-        aciklama: string;
-        marka?: string;
-        gercek_stok: number;
-        anabarkod?: string;
-        stokkartkodu?: string;
-        m_birimler?: ProductBirim[];
-        m_urunOzellikleri?: ProductOzellik[];
-    };
-    brandInfo?: {
-        name: string;
-        logo: string | null;
-    };
+    aws_url: string;
+    order_id?: string;
+    content_type?: string;
+}
+
+// Kategori bilgileri (DIA)
+export interface ProductKategori {
+    kategori_aciklama_1?: string;
+    kategori_aciklama_2?: string;
+    kategori_aciklama_3?: string;
+}
+
+// Custom Data
+export interface CustomData {
+    seoUrl?: string;
+    seoTitle?: string;
+    seoDescription?: string;
+    seoKeywords?: string[];
+    webPrice?: number;
+    originalPrice?: number;
+    featuredImage?: string;
+    webVisible?: boolean;
+    webOrder?: number;
+    delivery?: string;
+    customDescription?: string;
+    shortDescription?: string;
+    webTags?: string[];
+    webCategory?: string;
+    webSubCategory?: string;
+    customImages?: Array<{
+        order: number;
+        url: string;
+        alt?: string;
+        title?: string;
+    }>;
+    webDiscount?: number;
+    discountType?: string;
+    minOrderQuantity?: number;
+    maxOrderQuantity?: number;
+    stockAlert?: number;
+    isNew?: boolean;
+    isBestSeller?: boolean;
+    isFeatured?: boolean;
+}
+
+// DIA Data
+export interface DiaData {
+    aciklama?: string;
+    marka?: string;
+    stokkartkodu?: string;
+    anabarkod?: string;
+    durum?: string;
+    gercek_stok?: number;
+    ozelkod7kodu?: string;
+    m_birimler?: ProductBirim[];
+    m_urunOzellikleri?: ProductOzellik[];
+    m_resimler?: ProductResim[];
+    m_kategoriler?: ProductKategori[];
+}
+
+// Sync Info
+export interface SyncInfo {
+    diaStatus?: string;
+    webStatus?: string;
+    lastDiaSync?: string;
+}
+
+// Ana Product Interface
+export interface Product {
+    _id?: string;
+    _key: string;
+    customData?: CustomData;
+    diaData?: DiaData;
+    syncInfo?: SyncInfo;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 // Component props
@@ -69,7 +124,6 @@ export interface ProductFilterParams {
     page?: number;
     limit?: number;
 }
-
 // Pagination bilgileri
 export interface PaginationInfo {
     currentPage: number;
@@ -79,7 +133,6 @@ export interface PaginationInfo {
     hasNextPage: boolean;
     hasPrevPage: boolean;
 }
-
 // API Response
 export interface ProductFilterResponse {
     products: Product[];

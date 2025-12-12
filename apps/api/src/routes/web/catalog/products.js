@@ -312,5 +312,39 @@ router.get('/filter', async (req, res) => {
         });
     }
 });
+router.get('/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        const product = await WebProduct.findOne({
+            $or: [
+                { 'customData.seoUrl': slug },
+                { '_key': slug }
+            ],
+            'syncInfo.diaStatus': 'synced',
+            'customData.webVisible': true,
+            'diaData.durum': 'A'
+        }).lean();
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ürün bulunamadı'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: product
+        });
+
+    } catch (error) {
+        console.error('Ürün detay hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ürün yüklenirken hata oluştu'
+        });
+    }
+});
 
 module.exports = router;

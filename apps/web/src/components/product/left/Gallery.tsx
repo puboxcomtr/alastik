@@ -8,7 +8,7 @@ import { Navigation } from "swiper/modules";
 import Lightbox from "yet-another-react-lightbox";
 
 /* Resize Image */
-import { resizeImage, resizeMultipleImages, ResizeError } from "@lib/resize";
+import { resizeMultipleImages, ResizeError } from "@lib/resize";
 
 /* MUI */
 import { Typography } from '@mui/material';
@@ -18,73 +18,67 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "yet-another-react-lightbox/styles.css";
 
-export default function ProductGallery() {
-    const originalImages = [
-        "/assets/img/shop/product1.jpg",
-        "/assets/img/shop/product2.jpg",
-        "/assets/img/shop/product2.jpg",
-        "/assets/img/shop/product2.jpg",
-        "/assets/img/shop/product2.jpg",
-        "/assets/img/shop/product1.jpg",
-    ];
+/* Helpers */
+import { getProductImages } from '@src/hooks/Products/productHelpers';
+import type { Product } from '@src/types/products';
+
+interface GalleryProps {
+    product: Product;
+}
+
+export default function ProductGallery({ product }: GalleryProps) {
+    // Ürün görsellerini al
+    const productImages = getProductImages(product);
+    const originalImages = productImages.map(img => img.url);
+    const imageAlts = productImages.map(img => img.alt);
 
     const [activeIndex, setActiveIndex] = useState<number>(0);
     const [open, setOpen] = useState<boolean>(false);
 
     // Resize edilmiş görseller için state'ler
-    const [mainImages, setMainImages] = useState<string[]>([]);
-    const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
-    const [mainLoading, setMainLoading] = useState<boolean>(true);
-    const [thumbLoading, setThumbLoading] = useState<boolean>(true);
+    const [mainImages, setMainImages] = useState<string[]>(originalImages);
+    const [thumbnailImages, setThumbnailImages] = useState<string[]>(originalImages);
+    const [loading, setLoading] = useState<boolean>(false);
 
-    // Component mount olduğunda görselleri resize et
+    // Component mount olduğunda görselleri resize et (opsiyonel)
     useEffect(() => {
         const resizeAllImages = async (): Promise<void> => {
+            setLoading(true);
             try {
                 // Ana görsel için 350x350 resize
-                setMainLoading(true);
                 const resizedMainImages = await resizeMultipleImages(originalImages, 350, 350);
                 setMainImages(resizedMainImages);
 
                 // Thumbnail'ler için 111x111 resize
-                setThumbLoading(true);
                 const resizedThumbnails = await resizeMultipleImages(originalImages, 111, 111);
                 setThumbnailImages(resizedThumbnails);
 
             } catch (error) {
-                console.error('Görsel resize hatası:', error as ResizeError);
-                // Hata durumunda orijinal görselleri kullan
-                setMainImages(originalImages);
-                setThumbnailImages(originalImages);
+                console.warn('Görsel resize edilemedi, orijinal görseller kullanılıyor:', error);
+                // Hata durumunda orijinal görselleri kullan (zaten set edildi)
             } finally {
-                setMainLoading(false);
-                setThumbLoading(false);
+                setLoading(false);
             }
         };
 
         if (originalImages.length > 0) {
             resizeAllImages();
         }
-    }, []);
+    }, [product._key]);
 
     return (
         <div>
             <div className="mainProductGallery">
-                {mainLoading ? (
-                    <div className="MainProductLoading">
-                        Görsel Yükleniyor...
-                    </div>
-                ) : (
-                    <img
-                        src={mainImages[activeIndex] || originalImages[activeIndex]}
-                        alt="Ürün görseli"
-                        style={{
-                            width: "350px",
-                            height: "350px",
-                        }}
-                        onClick={() => setOpen(true)}
-                    />
-                )}
+                <img
+                    src={mainImages[activeIndex]}
+                    alt={imageAlts[activeIndex]}
+                    style={{
+                        width: "350px",
+                        height: "350px",
+                        objectFit: "cover"
+                    }}
+                    onClick={() => setOpen(true)}
+                />
                 <div className='position-absolute bottom-0 end-0'>
                     <i className="ri-zoom-in-line fs-5"></i>
                 </div>
@@ -94,7 +88,7 @@ export default function ProductGallery() {
                 modules={[Navigation]}
                 slidesPerView={3}
                 spaceBetween={50}
-                loop={true}
+                loop={originalImages.length > 3}
                 allowTouchMove={true}
                 navigation={{
                     nextEl: '.swiper-button-next',
@@ -117,37 +111,42 @@ export default function ProductGallery() {
                             cursor: "pointer",
                             flexShrink: 0
                         }}>
-                            {thumbLoading ? (
-                                <span style={{ fontSize: "10px", color: "#666" }}>...</span>
-                            ) : (
-                                <img
-                                    src={thumbnailImages[i] || img}
-                                    alt={`Thumbnail ${i + 1}`}
-                                    style={{
-                                        width: "90px",
-                                        height: "90px",
-                                    }}
-                                    onClick={() => setActiveIndex(i)}
-                                />
-                            )}
+                            <img
+                                src={thumbnailImages[i]}
+                                alt={imageAlts[i]}
+                                style={{
+                                    width: "90px",
+                                    height: "90px",
+                                    objectFit: "cover"
+                                }}
+                                onClick={() => setActiveIndex(i)}
+                            />
                         </div>
                     </SwiperSlide>
                 ))}
 
-                <div className="swiper-button-prev custom-button-prev"></div>
-                <div className="swiper-button-next custom-button-next"></div>
+                {originalImages.length > 3 && (
+                    <>
+                        <div className="swiper-button-prev custom-button-prev"></div>
+                        <div className="swiper-button-next custom-button-next"></div>
+                    </>
+                )}
             </Swiper>
-            <Typography
-                className='text-muted fs-xs mt-3'>
+
+            <Typography className='text-muted fs-xs mt-3'>
                 Ürün görselleri örnek niteliğindedir ve teslim edilen ürünlerle farklılık gösterebilir. Gösterilen jantlar teslimat kapsamına dahil değildir.
             </Typography>
+
             {open && (
                 <Lightbox
                     open={open}
                     close={() => setOpen(false)}
-                    slides={originalImages.map((src) => ({ src }))}
+                    slides={originalImages.map((src, i) => ({
+                        src,
+                        alt: imageAlts[i]
+                    }))}
                     index={activeIndex}
-                    carousel={{ finite: true }}
+                    carousel={{ finite: originalImages.length <= 3 }}
                     on={{
                         view: ({ index }: { index: number }) => setActiveIndex(index)
                     }}

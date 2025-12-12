@@ -63,3 +63,24 @@ export async function getParentCategory(parentId: string): Promise<ParentCategor
         return null;
     }
 }
+
+/**
+ * İsme göre kategori slug'ı getir (Breadcrumb için)
+ */
+export async function getCategorySlugByName(name: string | null | undefined): Promise<string | undefined> {
+    if (!name) return undefined;
+
+    try {
+        const response = await fetch(`${API_URL}/categories/search/by-name?name=${encodeURIComponent(name)}`, {
+            cache: 'no-store'
+        });
+
+        if (!response.ok) return undefined;
+
+        const data = await response.json();
+        return data.success && data.data ? data.data.slug : undefined;
+    } catch (error) {
+        console.error('Kategori slug fetch hatası:', error);
+        return undefined;
+    }
+}

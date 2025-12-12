@@ -5267,6 +5267,7 @@ fieldset:disabled .btn {
     font-size: var(--cz-breadcrumb-font-size);
     list-style: none;
     margin-bottom: var(--cz-breadcrumb-margin-bottom);
+    font-size: 11px;
     padding: var(--cz-breadcrumb-padding-y) var(--cz-breadcrumb-padding-x)
 }
 
@@ -5329,11 +5330,12 @@ fieldset:disabled .btn {
     }
 }
 
-.page-link:hover {
+.breadcrumb-item>a:hover {
     background-color: var(--cz-pagination-hover-bg);
     border-color: var(--cz-pagination-hover-border-color);
     color: var(--cz-pagination-hover-color);
-    z-index: 2
+    z-index: 2;
+    text-decoration: underline;
 }
 
 .page-link:focus {
@@ -17223,12 +17225,14 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 .breadcrumb-item>a {
     color: var(--cz-breadcrumb-color);
     text-decoration: none;
+    font-size: 11px;
     transition: color .2s ease-in-out
 }
 
 .breadcrumb-item>a:focus-visible,
 .breadcrumb-item>a:hover {
-    color: var(--cz-breadcrumb-hover-color)
+    color: var(--cz-breadcrumb-hover-color);
+    text-decoration: underline;
 }
 
 .breadcrumb-item+.breadcrumb-item:before {
@@ -18872,4 +18876,12 @@ span.flatpickr-weekday {
 .tire-card.selected {
     border-left: 3px solid #dc3545;
     background-color: rgba(220, 53, 69, 0.05);
+}
+
+.mainProductGallery {
+    position: relative
+}
+
+.mainProductGallery:hover {
+    cursor: pointer;
 }

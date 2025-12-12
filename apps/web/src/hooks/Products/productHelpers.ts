@@ -56,6 +56,7 @@ const normalizeUrl = (url: string): string => {
     if (url.startsWith('http')) return url;
     return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
 };
+
 /**
  * Ürün görselini al
  * @param product - Ürün
@@ -65,12 +66,21 @@ export const getProductImage = (product: Product, defaultImage?: string): string
     if (product.customData?.featuredImage) {
         return normalizeUrl(product.customData.featuredImage);
     }
-    
+
     if (defaultImage) {
         return normalizeUrl(defaultImage);
     }
-    
+
     return `${MEDIA_URL}/theme/katalog-gorseli.jpg`;
+};
+
+/**
+ * Ürün görsel URL'ini al (direkt URL için)
+ */
+export const getProductImageUrl = (url: string | null | undefined): string => {
+    if (!url) return `${MEDIA_URL}/theme/katalog-gorseli.jpg`;
+    if (url.startsWith('http')) return url;
+    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
 };
 
 /**
@@ -94,6 +104,7 @@ export const getProductFeatures = (product: Product) => {
         yukEndeksi: getProductFeature(product, 'Yük Endeksi'),
         hizEndeksi: getProductFeature(product, 'Hız Endeksi'),
         uretimTarihi: getProductFeature(product, 'Üretim Tarihi'),
+        mevsim: getProductFeature(product, 'Mevsim'),
         ebat: getProductSize(product)
     };
 };
@@ -106,9 +117,10 @@ export const getProductStockCode = (product: Product): string => {
         product.diaData?.stokkartkodu ||
         '-';
 };
+
 /**
- * Mevcut import'ların altına ekle 
- * */
+ * Rastgele ürünler getir
+ */
 export async function getRandomProducts(limit: number = 3) {
     try {
         const response = await fetch(
@@ -131,6 +143,7 @@ export async function getRandomProducts(limit: number = 3) {
         return [];
     }
 }
+
 /**
  * Ürün mevsim bilgisini getir
  */
@@ -161,4 +174,48 @@ export const getProductSeason = (product: Product): { text: string; icon: string
     };
 
     return seasonMap[season] || null;
+};
+/**
+ * Ürün görsellerini al (customImages + featuredImage + m_resimler)
+ */
+export const getProductImages = (product: Product): Array<{ url: string; alt: string; order: number }> => {
+    const images: Array<{ url: string; alt: string; order: number }> = [];
+    const productName = product.customData?.seoTitle || product.diaData?.aciklama || 'Ürün';
+    if (product.customData?.customImages && product.customData.customImages.length > 0) {
+        product.customData.customImages.forEach((img) => {
+            images.push({
+                url: getProductImageUrl(img.url),
+                alt: img.alt || productName,
+                order: img.order
+            });
+        });
+        return images.sort((a, b) => a.order - b.order);
+    }
+    if (product.customData?.featuredImage) {
+        images.push({
+            url: getProductImageUrl(product.customData.featuredImage),
+            alt: productName,
+            order: 0
+        });
+    }
+    if (product.diaData?.m_resimler && product.diaData.m_resimler.length > 0) {
+        product.diaData.m_resimler.forEach((img, index) => {
+            if (img.aws_url !== product.customData?.featuredImage) {
+                images.push({
+                    url: getProductImageUrl(img.aws_url),
+                    alt: productName,
+                    order: parseInt(img.order_id || '999') || (index + 1)
+                });
+            }
+        });
+    }
+    if (images.length === 0) {
+        images.push({
+            url: getProductImageUrl(null),
+            alt: productName,
+            order: 0
+        });
+    }
+
+    return images.sort((a, b) => a.order - b.order);
 };
