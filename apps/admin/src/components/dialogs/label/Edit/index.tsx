@@ -23,7 +23,7 @@ import Seo from './Seo'
 import Submit from './Submit'
 
 // Styled Component Imports
-import StepperWrapper from '@/@core/styles/stepper'
+import StepperWrapper from '@core/styles/stepper'
 
 type CreateAppProps = {
   open: boolean

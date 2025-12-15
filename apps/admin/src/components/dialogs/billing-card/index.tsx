@@ -17,7 +17,7 @@ import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 
 // Type Imports
-import type { ThemeColor } from '@/@core/types'
+import type { ThemeColor } from '@core/types'
 
 type BillingCardData = {
   cardNumber?: string

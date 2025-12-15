@@ -12,10 +12,10 @@ import classnames from 'classnames'
 import type { CardStatsHorizontalProps } from '@/types/pages/widgetTypes'
 
 // Components Imports
-import CustomAvatar from '@/@core/components/mui/Avatar'
+import CustomAvatar from '@core/components/mui/Avatar'
 
 // Hooks Imports
-import { useSettings } from '@/@core/hooks/useSettings'
+import { useSettings } from '@core/hooks/useSettings'
 
 const CardStatHorizontal = (props: CardStatsHorizontalProps) => {
   // Props

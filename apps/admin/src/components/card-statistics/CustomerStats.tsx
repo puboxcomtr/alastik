@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography'
 import type { CardStatsCustomerStatsProps } from '@/types/pages/widgetTypes'
 
 // Component Imports
-import CustomAvatar from '@/@core/components/mui/Avatar'
+import CustomAvatar from '@core/components/mui/Avatar'
 
 const CustomerStats = (props: CardStatsCustomerStatsProps) => {
   // Props

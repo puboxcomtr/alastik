@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import type { CardStatsHorizontalWithAvatarProps } from '@/types/pages/widgetTypes'
 
 // Components Imports
-import CustomAvatar from '@/@core/components/mui/Avatar'
+import CustomAvatar from '@core/components/mui/Avatar'
 
 const HorizontalWithAvatar = (props: CardStatsHorizontalWithAvatarProps) => {
   // Props

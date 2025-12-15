@@ -18,10 +18,10 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 
 // Type Imports
-import type { CustomInputHorizontalData } from '@/@core1/components1/custom-inputs/types'
+import type { CustomInputHorizontalData } from '@core/components/custom-inputs/types'
 
 // Component Imports
-import CustomInputHorizontal from '@/@core/components/custom-inputs/Horizontal'
+import CustomInputHorizontal from '@core/components/custom-inputs/Horizontal'
 import DirectionalIcon from '@components/DirectionalIcon'
 
 type TwoFactorAuthProps = {

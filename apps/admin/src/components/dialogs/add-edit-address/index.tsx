@@ -24,10 +24,10 @@ import { styled } from '@mui/material/styles'
 import type { TypographyProps } from '@mui/material/Typography'
 
 // Type Imports
-import type { CustomInputHorizontalData } from '@/@core1/components1/custom-inputs/types'
+import type { CustomInputHorizontalData } from '@core/components/custom-inputs/types'
 
 // Component Imports
-import CustomInputHorizontal from '@/@core/components/custom-inputs/Horizontal'
+import CustomInputHorizontal from '@core/components/custom-inputs/Horizontal'
 
 type AddEditAddressData = {
   firstName?: string
