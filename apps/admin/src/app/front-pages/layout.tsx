@@ -6,7 +6,7 @@ import InitColorSchemeScript from '@mui/material/InitColorSchemeScript'
 import 'react-perfect-scrollbar/dist/css/styles.css'
 
 // Type Imports
-import type { ChildrenType } from '@core/types'
+import type { ChildrenType } from '@/@core/types'
 
 // Context Imports
 import { IntersectionProvider } from '@/contexts/intersectionContext'
@@ -15,10 +15,10 @@ import { IntersectionProvider } from '@/contexts/intersectionContext'
 import Providers from '@components/Providers'
 import BlankLayout from '@layouts/BlankLayout'
 import FrontLayout from '@components/layout/front-pages'
-import ScrollToTop from '@core/components/scroll-to-top'
+import ScrollToTop from '@/@core/components/scroll-to-top'
 
 // Util Imports
-import { getSystemMode } from '@core/utils/serverHelpers'
+import { getSystemMode } from '@/@core/utils/serverHelpers'
 
 // Style Imports
 import '@/app/globals.css'

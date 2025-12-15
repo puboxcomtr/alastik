@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 
 // Type Imports
-import type { ChildrenType } from '@core/types'
+import type { ChildrenType } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Config Imports

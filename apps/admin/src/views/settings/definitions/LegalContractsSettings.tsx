@@ -10,7 +10,7 @@ import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
 import type { Editor } from '@tiptap/core'
 import classnames from 'classnames'
-import CustomIconButton from '@core/components/mui/IconButton'
+import CustomIconButton from '@/@core/components/mui/IconButton'
 import '@/libs/styles/tiptapEditor.css'
 import { useEffect } from 'react'
 

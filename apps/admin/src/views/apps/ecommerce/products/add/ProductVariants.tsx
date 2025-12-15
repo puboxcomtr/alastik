@@ -17,7 +17,7 @@ import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 
 // Components Imports
-import CustomIconButton from '@core/components/mui/IconButton'
+import CustomIconButton from '@/@core/components/mui/IconButton'
 
 const ProductVariants = () => {
   // States

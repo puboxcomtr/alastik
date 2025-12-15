@@ -27,7 +27,7 @@ import { TextAlign } from '@tiptap/extension-text-align'
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
 // Components Imports
-import CustomIconButton from '@core/components/mui/IconButton'
+import CustomIconButton from '@/@core/components/mui/IconButton'
 
 // Style Imports
 import '@/libs/styles/tiptapEditor.css'

@@ -14,7 +14,7 @@ import type { Theme } from '@mui/material/styles'
 import classnames from 'classnames'
 
 // Component Imports
-import CustomAvatar from '@core/components/mui/Avatar'
+import CustomAvatar from '@/@core/components/mui/Avatar'
 
 type DataType = {
   title: string

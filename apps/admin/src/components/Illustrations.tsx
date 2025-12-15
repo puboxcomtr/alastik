@@ -8,10 +8,10 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { styled, useTheme } from '@mui/material/styles'
 
 // Type Imports
-import type { Mode } from '@core/types'
+import type { Mode } from '@/@core/types'
 
 // Hook Imports
-import { useImageVariant } from '@core/hooks/useImageVariant'
+import { useImageVariant } from '@/@core/hooks/useImageVariant'
 
 type ImageObj = {
   src: string

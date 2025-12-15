@@ -4,7 +4,7 @@
 import type { ToastPosition } from 'react-toastify'
 
 // Type Imports
-import type { Mode, Skin, Layout, LayoutComponentPosition, LayoutComponentWidth } from '@core/types'
+import type { Mode, Skin, Layout, LayoutComponentPosition, LayoutComponentWidth } from '@/@core/types'
 
 type Navbar = {
   type: LayoutComponentPosition

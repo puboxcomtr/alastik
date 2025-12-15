@@ -30,7 +30,7 @@ import { useTheme } from '@mui/material/styles'
 
 // Component Imports
 import Link from '@components/Link'
-import CustomTabList from '@core/components/mui/TabList'
+import CustomTabList from '@/@core/components/mui/TabList'
 
 // Styled Component Imports
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'

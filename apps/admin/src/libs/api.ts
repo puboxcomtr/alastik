@@ -1,4 +1,6 @@
 // src/lib/api.ts
+import { getSession } from 'next-auth/react'
+
 
 // API Base URL
 const getBaseUrl = () => {
@@ -27,9 +29,16 @@ export const API_ENDPOINTS = {
 }
 
 export async function fetchAPI(url: string, options?: RequestInit) {
+    let token: string | undefined
+    if (typeof window !== 'undefined') {
+        const session = await getSession()
+        token = session?.user?.accessToken
+    }
+
     const response = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
             ...options?.headers,
         },
         ...options,

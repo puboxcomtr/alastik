@@ -2,7 +2,7 @@
 import Button from '@mui/material/Button'
 
 // Type Imports
-import type { ChildrenType } from '@core/types'
+import type { ChildrenType } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Layout Imports
@@ -14,7 +14,7 @@ import Providers from '@components/Providers'
 import Navigation from '@components/layout/vertical/Navigation'
 import Navbar from '@components/layout/vertical/Navbar'
 import VerticalFooter from '@components/layout/vertical/Footer'
-import ScrollToTop from '@core/components/scroll-to-top'
+import ScrollToTop from '@/@core/components/scroll-to-top'
 import AuthGuard from '@/hocs/AuthGuard'
 
 // Config Imports
@@ -22,7 +22,7 @@ import { i18n } from '@configs/i18n'
 
 // Util Imports
 import { getDictionary } from '@/utils/getDictionary'
-import { getMode, getSystemMode } from '@core/utils/serverHelpers'
+import { getMode, getSystemMode } from '@/@core/utils/serverHelpers'
 
 const Layout = async (props: ChildrenType & { params: Promise<{ lang: Locale }> }) => {
   const params = await props.params

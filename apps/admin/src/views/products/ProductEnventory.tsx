@@ -24,7 +24,7 @@ import { useTheme } from '@mui/material/styles'
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
 // Component Imports
-import CustomTabList from '@core/components/mui/TabList'
+import CustomTabList from '@/@core/components/mui/TabList'
 
 // Types
 import type { ProductType } from '@/types/apps/productTypes'

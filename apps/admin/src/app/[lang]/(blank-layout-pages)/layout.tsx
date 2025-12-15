@@ -1,5 +1,5 @@
 // Type Imports
-import type { ChildrenType } from '@core/types'
+import type { ChildrenType } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Component Imports
@@ -10,7 +10,7 @@ import BlankLayout from '@layouts/BlankLayout'
 import { i18n } from '@configs/i18n'
 
 // Util Imports
-import { getSystemMode } from '@core/utils/serverHelpers'
+import { getSystemMode } from '@/@core/utils/serverHelpers'
 
 type Props = ChildrenType & {
   params: Promise<{ lang: Locale }>

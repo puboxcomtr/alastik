@@ -9,14 +9,14 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 
 // Type Imports
-import type { Mode } from '@core/types'
+import type { Mode } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Component Imports
 import Illustrations from '@components/Illustrations'
 
 // Hook Imports
-import { useImageVariant } from '@core/hooks/useImageVariant'
+import { useImageVariant } from '@/@core/hooks/useImageVariant'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'

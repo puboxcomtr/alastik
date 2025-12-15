@@ -21,8 +21,8 @@ import InputAdornment from '@mui/material/InputAdornment'
 import classnames from 'classnames'
 
 // Component Imports
-import CustomAvatar from '@core/components/mui/Avatar'
-import CustomIconButton from '@core/components/mui/IconButton'
+import CustomAvatar from '@/@core/components/mui/Avatar'
+import CustomIconButton from '@/@core/components/mui/IconButton'
 
 // Config Imports
 import themeConfig from '@configs/themeConfig'

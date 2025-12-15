@@ -8,11 +8,11 @@ import { styled } from '@mui/material/styles'
 import type { CardProps } from '@mui/material/Card'
 
 // Types Imports
-import type { ThemeColor } from '@core/types'
+import type { ThemeColor } from '@/@core/types'
 import type { CardStatsHorizontalWithBorderProps } from '@/types/pages/widgetTypes'
 
 //Component Imports
-import CustomAvatar from '@core/components/mui/Avatar'
+import CustomAvatar from '@/@core/components/mui/Avatar'
 
 type Props = CardProps & {
   color: ThemeColor

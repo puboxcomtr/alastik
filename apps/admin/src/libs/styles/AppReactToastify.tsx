@@ -13,7 +13,7 @@ import { ToastContainer } from 'react-toastify'
 import type { ToastContainerProps, ToastPosition } from 'react-toastify'
 
 // Type Imports
-import type { Direction } from '@core/types'
+import type { Direction } from '@/@core/types'
 
 // Config Imports
 import themeConfig from '@configs/themeConfig'

@@ -45,7 +45,7 @@ import { toast } from 'react-toastify'
 import { createBlog, updateBlog, type BlogType } from '@/utils/api/blogs'
 
 /* Components */
-import CustomIconButton from '@core/components/mui/IconButton'
+import CustomIconButton from '@/@core/components/mui/IconButton'
 
 /* Styles */
 import '@/libs/styles/tiptapEditor.css'

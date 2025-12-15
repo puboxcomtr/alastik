@@ -8,7 +8,7 @@ import InitColorSchemeScript from '@mui/material/InitColorSchemeScript'
 import 'react-perfect-scrollbar/dist/css/styles.css'
 
 // Type Imports
-import type { ChildrenType } from '@core/types'
+import type { ChildrenType } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Component Imports
@@ -20,7 +20,7 @@ import TranslationWrapper from '@/hocs/TranslationWrapper'
 import { i18n } from '@configs/i18n'
 
 // Util Imports
-import { getSystemMode } from '@core/utils/serverHelpers'
+import { getSystemMode } from '@/@core/utils/serverHelpers'
 
 // Style Imports
 import '@/app/globals.css'

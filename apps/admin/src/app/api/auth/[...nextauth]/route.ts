@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
                 }
                 try {
                     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-                    const response = await fetch(`${API_URL}/admin/login`, {
+                    const response = await fetch(`${API_URL}/admin/user/auth/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -28,17 +28,17 @@ export const authOptions: NextAuthOptions = {
                     })
 
                     const data = await response.json()
-
-                    if (response.ok && data.id) {
+                    if (response.ok && data.success && data.data?.admin) {
+                        const admin = data.data.admin
                         return {
-                            id: data.id,
-                            email: data.email,
-                            name: data.name,
-                            role: data.role,
-                            accessToken: data.token || 'dummy-token'
+                            id: admin._id,
+                            email: admin.email,
+                            name: admin.name || 'Admin',
+                            role: admin.role,
+                            accessToken: data.data.token
                         }
                     } else {
-                        const errorMsg = data.message ? data.message[0] : 'Giriş başarısız'
+                        const errorMsg = data.message || 'Giriş başarısız'
                         throw new Error(errorMsg)
                     }
                 } catch (error: any) {

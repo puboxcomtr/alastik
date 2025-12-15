@@ -20,7 +20,7 @@ import { useDropzone } from 'react-dropzone'
 
 // Component Imports
 import Link from '@components/Link'
-import CustomAvatar from '@core/components/mui/Avatar'
+import CustomAvatar from '@/@core/components/mui/Avatar'
 
 // Styled Component Imports
 import AppReactDropzone from '@/libs/styles/AppReactDropzone'

@@ -15,13 +15,13 @@ import type { Locale } from '@configs/i18n'
 import { getLocalizedUrl } from '@/utils/i18n'
 
 // Type Imports
-import type { Mode } from '@core/types'
+import type { Mode } from '@/@core/types'
 
 // Component Imports
 import Illustrations from '@components/Illustrations'
 
 // Hook Imports
-import { useImageVariant } from '@core/hooks/useImageVariant'
+import { useImageVariant } from '@/@core/hooks/useImageVariant'
 
 const NotAuthorized = ({ mode }: { mode: Mode }) => {
   // Vars

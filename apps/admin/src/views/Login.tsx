@@ -22,7 +22,7 @@ import type { SubmitHandler } from 'react-hook-form'
 import type { InferInput } from 'valibot'
 
 // Type Imports
-import type { Mode } from '@core/types'
+import type { Mode } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Component Imports
@@ -33,8 +33,8 @@ import Illustrations from '@components/Illustrations'
 import themeConfig from '@configs/themeConfig'
 
 // Hook Imports
-import { useImageVariant } from '@core/hooks/useImageVariant'
-import { useSettings } from '@core/hooks/useSettings'
+import { useImageVariant } from '@/@core/hooks/useImageVariant'
+import { useSettings } from '@/@core/hooks/useSettings'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'

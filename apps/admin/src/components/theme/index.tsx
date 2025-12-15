@@ -16,7 +16,7 @@ import { useMedia } from 'react-use'
 import stylisRTLPlugin from 'stylis-plugin-rtl'
 
 // Type Imports
-import type { ChildrenType, Direction, SystemMode } from '@core/types'
+import type { ChildrenType, Direction, SystemMode } from '@/@core/types'
 
 // Component Imports
 import ModeChanger from './ModeChanger'
@@ -25,10 +25,10 @@ import ModeChanger from './ModeChanger'
 import themeConfig from '@configs/themeConfig'
 
 // Hook Imports
-import { useSettings } from '@core/hooks/useSettings'
+import { useSettings } from '@/@core/hooks/useSettings'
 
 // Core Theme Imports
-import defaultCoreTheme from '@core/theme'
+import defaultCoreTheme from '@/@core/theme'
 
 type Props = ChildrenType & {
   direction: Direction

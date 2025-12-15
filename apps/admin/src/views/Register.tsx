@@ -21,7 +21,7 @@ import Divider from '@mui/material/Divider'
 import classnames from 'classnames'
 
 // Type Imports
-import type { Mode } from '@core/types'
+import type { Mode } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
 // Component Imports
@@ -29,8 +29,8 @@ import Logo from '@components/layout/shared/Logo'
 import Illustrations from '@components/Illustrations'
 
 // Hook Imports
-import { useImageVariant } from '@core/hooks/useImageVariant'
-import { useSettings } from '@core/hooks/useSettings'
+import { useImageVariant } from '@/@core/hooks/useImageVariant'
+import { useSettings } from '@/@core/hooks/useSettings'
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
