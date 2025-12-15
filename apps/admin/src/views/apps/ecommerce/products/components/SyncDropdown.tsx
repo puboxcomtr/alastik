@@ -8,6 +8,8 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 
+import { API_ENDPOINTS } from '@libs/api'
+
 const SyncDropdown = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
     const [loading, setLoading] = useState(false)
@@ -37,39 +39,40 @@ const SyncDropdown = () => {
         setProgress(0)
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-            let endpoint = `${baseUrl}/dia-stock/sync`;
+            let endpoint = API_ENDPOINTS.diaSync.all()
+
             if (syncType === 'names') {
-                endpoint = `${baseUrl}/dia-stock/sync-names`;
+                endpoint = API_ENDPOINTS.diaSync.names()
             } else if (syncType === 'codes') {
-                endpoint = `${baseUrl}/dia-stock/sync-codes`;
+                endpoint = API_ENDPOINTS.diaSync.codes()
             } else if (syncType === 'prices') {
-                endpoint = `${baseUrl}/dia-stock/sync-prices`;
+                endpoint = API_ENDPOINTS.diaSync.prices()
             } else if (syncType === 'images') {
-                endpoint = `${baseUrl}/dia-stock/sync-images`;
+                endpoint = API_ENDPOINTS.diaSync.images()
             }
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: syncType })
-            });
+            })
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
             }
 
-            const result = await response.json();
+            const result = await response.json()
 
-            setProgress(100);
-            setCurrentProduct(`Tamamlandı: ${result.message}`);
+            setProgress(100)
+            setCurrentProduct(`Tamamlandı: ${result.message}`)
 
             setTimeout(() => {
-                setLoading(false);
-                setCurrentProduct('');
-                setProgress(0);
-            }, 3000);
+                setLoading(false)
+                setCurrentProduct('')
+                setProgress(0)
+            }, 3000)
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Sync hatası:', error)
             setLoading(false)
             setProgress(0)

@@ -18,12 +18,12 @@ import ProductBrand from '@/views/products/ProductBrand'
 // Context Import
 import { ProductUpdateProvider } from '@/contexts/ProductUpdateContext'
 
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 async function fetchProduct(id: string): Promise<ProductType | null> {
-  const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
   try {
-    const res = await fetch(`${baseUrl}/products/${id}`, { cache: 'no-store' })
-    if (!res.ok) return null
-    const data = await res.json()
+    const data = await fetchAPI(API_ENDPOINTS.products.detail(id), {
+      cache: 'no-store',
+    })
     return (data && (data.data || data.veri)) ?? null
   } catch {
     return null
@@ -37,7 +37,6 @@ interface PageProps {
   }
 }
 
-// Context'i başlatan client component
 function ProductEditContent({ product }: { product: ProductType }) {
   return (
     <Grid container spacing={6}>
@@ -77,14 +76,14 @@ function ProductEditContent({ product }: { product: ProductType }) {
 export default async function eCommerceProductsEdit({ params }: PageProps) {
   const id = (await params).id
   const product = await fetchProduct(id)
-  
+
   if (!product) {
     return (
-      <Box 
-        display="flex" 
-        flexDirection="column" 
-        alignItems="center" 
-        justifyContent="center" 
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
         minHeight="400px"
         textAlign="center"
         bgcolor="#fafafa"

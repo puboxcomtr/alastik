@@ -256,6 +256,13 @@ mongoose.connect(process.env.MONGODB_URI, {
   });
 
 /**
+  * (MAIN) Dashboard - Route *
+*/
+const adminRoutes = require('./routes/admin/Index');
+app.use('/api/admin', adminRoutes);
+
+
+/**
   * (PLUGIN) Wheelsize Senkronize Routes *
 */
 /* Kullanıcının araçlarını yönetmek için (CRUD işlemleri) */
@@ -325,116 +332,116 @@ const webFiltersRoutes = require('./routes/web/catalog/filters');
 app.use('/api/filters', webFiltersRoutes);
 
 
-/**
-  * Dashboard - Routes *
-*/
-/* * (Dashboard) Ürün Listeleme * */
-const productRoutes = require('./routes/admin/catalog/products');
-app.use('/api/products', productRoutes);
-
-/* (Dashboard) Kategori Listeleme */
-const categoryRoutes = require('./routes/admin/catalog/categories');
-app.use('/api/categories', categoryRoutes);
-
-/* (Dashboard) Marka Listeleme */
-const brandRoutes = require('./routes/admin/catalog/brands');
-app.use('/api/brands', brandRoutes);
-
-/* (Dashboard) Etiket Listeleme */
-const tagRoutes = require('./routes/admin/catalog/tags');
-app.use('/api/tags', tagRoutes);
-
-/* (Dashboard) Özellik Listeleme */
-const featureRoutes = require('./routes/admin/catalog/features');
-app.use('/api/features', featureRoutes);
-
-/**
-  * (Dashboard) Siparişler - Routes *
-*/
-/* * (Dashboard) Sipariş Listeleme * */
-const orderRoutes = require('./routes/admin/orders/order');
-app.use('/api/admin/orders', orderRoutes);
-
-/**
-  * (Dashboard) İçerikler - Routes *
-*/
-/* * (Dashboard) Sayfalar Listeleme * */
-const pageRoutes = require('./routes/admin/content/pages');
-app.use('/api/admin/pages', pageRoutes);
-
-/* * (Dashboard) Blog Listeleme * */
-const blogRoutes = require('./routes/admin/content/blogs');
-app.use('/api/admin/blogs', blogRoutes);
 
 
-/**
-  * (Dashboard) Ayarlar - Routes *
-*/
 
-/* * (Dashboard) Ödeme Yöntemleri Ayarları * */
-const paymentRoutes = require('./routes/admin/settings/payment');
-app.use('/api/admin/settings/payment', paymentRoutes);
 
-/* * (Dashboard) Çeviri Ayarları * */
-const translationsRoutes = require('./routes/admin/settings/translations');
-app.use('/api/admin/settings/translations', translationsRoutes);
+// const productRoutes = require('./routes/admin/catalog/products');
+// app.use('/api/products', productRoutes);
 
-/* * (Dashboard) Genel Tanımlamalar * */
-const generalSettingsRoutes = require('./routes/admin/settings/general');
-app.use('/api/admin/settings/general', generalSettingsRoutes);
+// /* (Dashboard) Kategori Listeleme */
+// const categoryRoutes = require('./routes/admin/catalog/categories');
+// app.use('/api/categories', categoryRoutes);
 
-/* * (Dashboard) Genel Ayarlar * */
-const settingRoutes = require('./routes/admin/settings/settings');
-app.use('/api/admin/settings', settingRoutes);
+// /* (Dashboard) Marka Listeleme */
+// const brandRoutes = require('./routes/admin/catalog/brands');
+// app.use('/api/brands', brandRoutes);
 
-/* * (Dashboard) SEO Ayarları * */
-const seoRoutes = require('./routes/admin/settings/seo');
-app.use('/api/admin/settings/seo', seoRoutes);
+// /* (Dashboard) Etiket Listeleme */
+// const tagRoutes = require('./routes/admin/catalog/tags');
+// app.use('/api/tags', tagRoutes);
 
-/**
- * (Dashboard) Kullanıcı Ayarları *
-**/
-const authRoutes = require('./routes/admin/user/auth');
-app.use('/api/admin/user/auth', authRoutes);
+// /* (Dashboard) Özellik Listeleme */
+// const featureRoutes = require('./routes/admin/catalog/features');
+// app.use('/api/features', featureRoutes);
 
-/* (Dashboard) Admin Yönetimi */
-const adminsRoutes = require('./routes/admin/user/admins');
-app.use('/api/admin/user/admins', adminsRoutes);
+// /**
+//   * (Dashboard) Siparişler - Routes *
+// */
+// /* * (Dashboard) Sipariş Listeleme * */
+// const orderRoutes = require('./routes/admin/orders/order');
+// app.use('/api/admin/orders', orderRoutes);
 
-/* (Dashboard) Rol Yönetimi */
-const rolesRoutes = require('./routes/admin/user/roles');
-app.use('/api/admin/user/roles', rolesRoutes);
+// /**
+//   * (Dashboard) İçerikler - Routes *
+// */
+// /* * (Dashboard) Sayfalar Listeleme * */
+// const pageRoutes = require('./routes/admin/content/pages');
+// app.use('/api/admin/pages', pageRoutes);
 
-/* (Dashboard) Engellenen IP'ler */
-const blockedIPsRoutes = require('./routes/admin/user/blocked-ips');
-app.use('/api/admin/user/blocked-ips', blockedIPsRoutes);
+// /* * (Dashboard) Blog Listeleme * */
+// const blogRoutes = require('./routes/admin/content/blogs');
+// app.use('/api/admin/blogs', blogRoutes);
 
-/* (Dashboard) İşlem Kayıtları */
-const activityLogsRoutes = require('./routes/admin/user/activity-logs');
-app.use('/api/admin/user/activity-logs', activityLogsRoutes);
 
-/**
-  * (Dashboard) Tasarım Ayarları *
-*/
-/* * (Dashboard) Tema Ayarları * */
-const settingsRouter = require('./routes/admin/design/settings');
-app.use('/api/admin/design/settings', settingsRouter);
+// /**
+//   * (Dashboard) Ayarlar - Routes *
+// */
 
-/* * (Dashboard) Slider Ayarları * */
-const sliderRoutes = require('./routes/admin/design/slider');
-app.use('/api/admin/design/slider', sliderRoutes);
+// /* * (Dashboard) Ödeme Yöntemleri Ayarları * */
+// const paymentRoutes = require('./routes/admin/settings/payment');
+// app.use('/api/admin/settings/payment', paymentRoutes);
 
-/* * (Dashboard) Menü Ayarları * */
-const menuRoutes = require('./routes/admin/design/menus');
-app.use('/api/admin/design/menu', menuRoutes);
+// /* * (Dashboard) Çeviri Ayarları * */
+// const translationsRoutes = require('./routes/admin/settings/translations');
+// app.use('/api/admin/settings/translations', translationsRoutes);
 
-/* * (Dashboard) Banner Ayarları * */
-const bannerRoutes = require('./routes/admin/design/banners');
-app.use('/api/admin/design/banners', bannerRoutes);
+// /* * (Dashboard) Genel Tanımlamalar * */
+// const generalSettingsRoutes = require('./routes/admin/settings/general');
+// app.use('/api/admin/settings/general', generalSettingsRoutes);
 
-/* * (Dashboard) Vitrin Ayarları * */
-const showcaseRoutes = require('./routes/admin/catalog/showcase');
-app.use('/api/showcases', showcaseRoutes);
+// /* * (Dashboard) Genel Ayarlar * */
+// const settingRoutes = require('./routes/admin/settings/settings');
+// app.use('/api/admin/settings', settingRoutes);
+
+// /* * (Dashboard) SEO Ayarları * */
+// const seoRoutes = require('./routes/admin/settings/seo');
+// app.use('/api/admin/settings/seo', seoRoutes);
+
+// /**
+//  * (Dashboard) Kullanıcı Ayarları *
+// **/
+// const authRoutes = require('./routes/admin/user/auth');
+// app.use('/api/admin/user/auth', authRoutes);
+
+// /* (Dashboard) Admin Yönetimi */
+// const adminsRoutes = require('./routes/admin/user/admins');
+// app.use('/api/admin/user/admins', adminsRoutes);
+
+// /* (Dashboard) Rol Yönetimi */
+// const rolesRoutes = require('./routes/admin/user/roles');
+// app.use('/api/admin/user/roles', rolesRoutes);
+
+// /* (Dashboard) Engellenen IP'ler */
+// const blockedIPsRoutes = require('./routes/admin/user/blocked-ips');
+// app.use('/api/admin/user/blocked-ips', blockedIPsRoutes);
+
+// /* (Dashboard) İşlem Kayıtları */
+// const activityLogsRoutes = require('./routes/admin/user/activity-logs');
+// app.use('/api/admin/user/activity-logs', activityLogsRoutes);
+
+// /**
+//   * (Dashboard) Tasarım Ayarları *
+// */
+// /* * (Dashboard) Tema Ayarları * */
+// const settingsRouter = require('./routes/admin/design/settings');
+// app.use('/api/admin/design/settings', settingsRouter);
+
+// /* * (Dashboard) Slider Ayarları * */
+// const sliderRoutes = require('./routes/admin/design/slider');
+// app.use('/api/admin/design/slider', sliderRoutes);
+
+// /* * (Dashboard) Menü Ayarları * */
+// const menuRoutes = require('./routes/admin/design/menus');
+// app.use('/api/admin/design/menu', menuRoutes);
+
+// /* * (Dashboard) Banner Ayarları * */
+// const bannerRoutes = require('./routes/admin/design/banners');
+// app.use('/api/admin/design/banners', bannerRoutes);
+
+// /* * (Dashboard) Vitrin Ayarları * */
+// const showcaseRoutes = require('./routes/admin/catalog/showcase');
+// app.use('/api/showcases', showcaseRoutes);
 
 /**
   * (Dashboard) Admin - Functions *
@@ -529,15 +536,6 @@ app.use('/api/blocks', blocksRoutes);
 
 
 // API Routes
-// Auth routes
-
-// Admin routes
-const adminRoutes = require('./routes/admin');
-app.use('/api/admin', adminRoutes);
-
-// Categories routes
-
-
 // Inventory routes
 const inventoryRoutes = require('./routes/inventory');
 app.use('/api/inventory', inventoryRoutes);

@@ -15,6 +15,9 @@ const DiaStock = require('../../../models/plugins/DiaStock');
 // Web product model (synced and enhanced version for frontend)
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
+// Web category model
+const WebCategory = require('../../../models/web/catalog/WebCategory');
+
 // ============================================
 // MIDDLEWARE
 // ============================================
@@ -56,9 +59,12 @@ const maybeAuth = process.env.DISABLE_AUTH === 'true'
 **/
 router.get('/', maybeAuth, async (req, res) => {
   try {
-    const { search, sku, web_status, main_category, sub_category, brand } = req.query;
+    const {
+      search, sku, web_status, main_category, sub_category, brand,
+      page = 1,
+      limit = 100
+    } = req.query;
     const webFilter = {};
-
     // Temel WebProduct filtreleri - aktif ve senkronize ürünler
     webFilter['syncInfo.diaStatus'] = 'synced';
     webFilter['diaData.durum'] = 'A';
@@ -104,7 +110,8 @@ router.get('/', maybeAuth, async (req, res) => {
     if (brand && brand !== '') {
       webFilter['diaData.marka'] = brand;
     }
-
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const totalCount = await WebProduct.countDocuments(webFilter);
     const products = await WebProduct.find(webFilter)
       .select({
         _key: 1,
@@ -130,17 +137,16 @@ router.get('/', maybeAuth, async (req, res) => {
         updatedAt: 1
       })
       .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
       .lean();
 
     res.json({
       success: true,
       data: products.map(p => {
-        // DIA Data'dan gerekli alanları al
         const diaData = p.diaData || {};
         const customData = p.customData || {};
         const syncInfo = p.syncInfo || {};
-
-        // Görseller - önce custom images, sonra DIA images
         let images = [];
 
         // Custom images varsa onları kullan
@@ -205,6 +211,7 @@ router.get('/', maybeAuth, async (req, res) => {
           // Kategori bilgileri
           category: (diaData.m_kategoriler && diaData.m_kategoriler[0] &&
             diaData.m_kategoriler[0].kategori_aciklama_1) || 'Genel',
+          categorySeoUrl: customData.webCategory || null,
           m_kategoriler: diaData.m_kategoriler,
 
           // Diğer bilgiler
@@ -212,7 +219,7 @@ router.get('/', maybeAuth, async (req, res) => {
           originCountry: diaData.menseiulkeadi || '',
 
           // Fiyat detayları
-          price1: pricing.fiyat1 || 0, // Liste Fiyatı (Üstü Çizili)
+          price1: pricing.fiyat1 || 0, // Liste Fiyatı
           price2: pricing.fiyat2 || 0,
           price3: pricing.fiyat3 || 0,
           price4: pricing.fiyat4 || 0, // Satış Fiyatı
@@ -232,7 +239,13 @@ router.get('/', maybeAuth, async (req, res) => {
           updatedAt: p.updatedAt,
           lastDiaSync: syncInfo.lastDiaSync
         };
-      })
+      }),
+      meta: {                                    
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / parseInt(limit))
+      }
     });
   } catch (error) {
     console.error('WebProducts get error:', error);
@@ -345,6 +358,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
 
       // Kategori
       category: customData.webCategory || mainCategory,
+      categorySeoUrl: customData.webCategory || null,
       subcategory: customData.webSubCategory || null,
 
       // Stok ve durum

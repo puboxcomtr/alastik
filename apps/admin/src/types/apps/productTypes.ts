@@ -42,10 +42,10 @@ export type ProductType = {
   }>
 
   // SEO Bilgileri
-  seo_title?: string
-  seo_description?: string
-  seo_url?: string | null
-  seo_keywords?: string[]
+  seoTitle?: string
+  seoDescription?: string
+  seoUrl?: string | null
+  seoKeywords?: string[]
 
   // İçerik ve Açıklamalar
   delivery?: string

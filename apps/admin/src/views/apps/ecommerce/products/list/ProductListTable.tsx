@@ -1,10 +1,11 @@
 'use client'
-
 // React Imports
 import { useEffect, useMemo, useState } from 'react'
 
 // Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
+
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 // Next Imports
 import Link from 'next/link'
@@ -56,18 +57,65 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   return itemRank.passed
 }
 const columnHelper = createColumnHelper<ProductType>()
-const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
-  // State Tanıtımı
+const ProductListTable = () => {
   const [rowSelection, setRowSelection] = useState({})
-  
-  const [data, setData] = useState(() => productData || [])
-  const [filteredData, setFilteredData] = useState(() => productData || [])
+
+  const [data, setData] = useState<ProductType[]>([])
+  const [filteredData, setFilteredData] = useState<ProductType[]>([])
 
   const [globalFilter, setGlobalFilter] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(100)
+  const [totalCount, setTotalCount] = useState(0)
 
   // Hooks
   const { lang: locale } = useParams()
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true)
+      try {
+        const response = await fetchAPI(
+          `${API_ENDPOINTS.products.list()}?page=${page}&limit=${limit}`,
+          { cache: 'no-store' }
+        )
+
+        const products = (response.data || []).map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          price1: product.price1,
+          price2: product.price2,
+          price3: product.price3,
+          price4: product.price4,
+          price10: product.price10,
+          qty: product.qty,
+          stock: product.qty > 0,
+          status: product.status,
+          image: product.image,
+          category: product.category,
+          categorySeoUrl: product.categorySeoUrl,
+          brand: product.brand,
+          m_kategoriler: product.m_kategoriler,
+          seoUrl: product.seoUrl
+        }))
+
+        setData(products)
+        setFilteredData(products)
+        setTotalCount(response.meta?.total || 0)
+      } catch (error) {
+        console.error('Products fetch error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [page, limit])
   const columns = useMemo<ColumnDef<ProductType, any>[]>(
     () => [
       {
@@ -99,7 +147,14 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
             <img src={row.original.image} width={38} height={38} className='rounded bg-actionHover' />
             <div className='flex flex-col'>
               <Tooltip title="Ürün Ziyaret Et">
-                <Link href={`/${locale}/apps/products/edit/${row.original.id}`}>
+                <Link
+                  href={row.original.seoUrl
+                    ? `https://alastik.com/urun/${row.original.seoUrl}`
+                    : `/${locale}/apps/products/edit/${row.original.id}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Typography variant='body2' fontWeight='bold' >{row.original.sku}</Typography>
                   <Typography variant='body2'>
                     {row.original.name}
@@ -116,26 +171,17 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
         cell: ({ row }) => {
           return (
             <div className='flex flex-col'>
-              <Tooltip title="Kategoriyi Ziyaret Et">
-                <Link href={`/${locale}/apps/products/edit/${row.original.id}`}>
-                  <Typography fontWeight='bold' color='text.primary'>
-                    {row.original.category}
-                  </Typography>
-                </Link>
-              </Tooltip>
-
-              <Tooltip title="Alt Kategoriyi Ziyaret Et">
-                <Link href={`/${locale}/apps/products/edit/${row.original.id}`}>
-                  <Typography variant='body2' color='text.secondary'>
-                    {[
-                      (row.original as any).m_kategoriler?.[0]?.kategori_aciklama_2,
-                      (row.original as any).m_kategoriler?.[0]?.kategori_aciklama_3
-                    ]
-                      .filter(Boolean)
-                      .join(' > ')}
-                  </Typography>
-                </Link>
-              </Tooltip>
+              <Typography fontWeight='bold' color='text.primary'>
+                {row.original.category}
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                {[
+                  (row.original as any).m_kategoriler?.[0]?.kategori_aciklama_2,
+                  (row.original as any).m_kategoriler?.[0]?.kategori_aciklama_3
+                ]
+                  .filter(Boolean)
+                  .join(' > ')}
+              </Typography>
             </div>
           )
         }
@@ -195,11 +241,8 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
       rowSelection,
       globalFilter
     },
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    },
+    pageCount: Math.ceil(totalCount / limit),
+    manualPagination: true,
     enableRowSelection: true,
     globalFilterFn: fuzzyFilter,
     onRowSelectionChange: setRowSelection,
@@ -207,7 +250,6 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues()
@@ -217,7 +259,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
     <>
       <Card>
         <CardHeader title='Ürün Filtreleme' className='pbe-4' />
-        {/* <TableFilters setData={setFilteredData} productData={data} setLoading={setLoading} /> DAHA SONRA AÇ*/} 
+        {/* <TableFilters setData={setFilteredData} productData={data} setLoading={setLoading} /> DAHA SONRA AÇ*/}
         <Divider />
         <div style={{ position: 'relative' }}>
           {loading && (
@@ -282,7 +324,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
                 <tbody>
                   {table
                     .getRowModel()
-                    .rows.slice(0, table.getState().pagination.pageSize)
+                    .rows
                     .map(row => {
                       return (
                         <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
@@ -299,16 +341,19 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
         </div>
 
         <TablePagination
-          rowsPerPageOptions={[10, 100, 200]}
+          rowsPerPageOptions={[50, 100, 200, 500]}
           component='div'
           className='border-bs'
-          count={table.getFilteredRowModel().rows.length}
-          rowsPerPage={table.getState().pagination.pageSize}
-          page={table.getState().pagination.pageIndex}
-          onPageChange={(_, page) => {
-            table.setPageIndex(page)
+          count={totalCount}
+          rowsPerPage={limit}
+          page={page - 1}  
+          onPageChange={(_, newPage) => {
+            setPage(newPage + 1)
           }}
-          onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
+          onRowsPerPageChange={e => {
+            setLimit(Number(e.target.value))
+            setPage(1)
+          }}
         />
       </Card>
     </>
