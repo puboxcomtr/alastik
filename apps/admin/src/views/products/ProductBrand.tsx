@@ -44,9 +44,9 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
 
   return (
     <Card>
-      <CardHeader title='Ürün Seçim Bilgileri' />
+      <CardHeader title='Marka ve Durum Bilgileri' />
       <CardContent>
-        <form onSubmit={e => e.preventDefault()} className='flex flex-col gap-5'>
+        <div className='flex flex-col gap-5'>
           <FormControl fullWidth>
             <InputLabel>Ürün Durumu</InputLabel>
             <Select
@@ -59,29 +59,16 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
             </Select>
           </FormControl>
 
-          <FormControl fullWidth>
-            <TextField
-              fullWidth
-              label='Marka'
-              value={product.brand || 'Marka Bulunamadı'}
-              disabled
-              InputProps={{
-                readOnly: true,
-              }}
-            />
-          </FormControl>
-
           <TextField
             fullWidth
-            label='Etiketler'
-            value={product.tag || ''}
-            placeholder="Ürün etiketleri"
+            label='Marka'
+            value={product.brand || 'Marka Bulunamadı'}
             disabled
             InputProps={{
               readOnly: true,
             }}
           />
-        </form>
+        </div>
       </CardContent>
     </Card>
   )

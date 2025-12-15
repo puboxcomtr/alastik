@@ -16,8 +16,17 @@ export const API_ENDPOINTS = {
     products: {
         list: () => `${getBaseUrl()}/admin/products`,
         detail: (id: string) => `${getBaseUrl()}/admin/products/${id}`,
+        update: (id: string) => `${getBaseUrl()}/admin/products/${id}`,
         features: () => `${getBaseUrl()}/admin/products/features/all`,
         sync: (id: string) => `${getBaseUrl()}/admin/products/${id}/synchronization`,
+    },
+    brands: {
+        list: () => `${getBaseUrl()}/admin/brands`,
+        detail: (id: string) => `${getBaseUrl()}/admin/brands/${id}`,
+    },
+    categories: {
+        list: () => `${getBaseUrl()}/admin/categories`,
+        detail: (id: string) => `${getBaseUrl()}/admin/categories/${id}`,
     },
     diaSync: {
         all: () => `${getBaseUrl()}/dia-stock/sync`,

@@ -382,10 +382,10 @@ router.get('/:id', maybeAuth, async (req, res) => {
       price10: pricing.fiyat10 || 0,
 
       // SEO bilgileri
-      seo_title: customData.seoTitle || diaData.aciklama || '',
-      seo_description: customData.seoDescription || diaData.aciklama || '',
-      seo_url: customData.seoUrl || null,
-      seo_keywords: customData.seoKeywords || [],
+      seoTitle: customData.seoTitle || diaData.aciklama || '',
+      seoDescription: customData.seoDescription || diaData.aciklama || '',
+      seoUrl: customData.seoUrl || null,
+      seoKeywords: customData.seoKeywords || [],
 
       // Görseller
       image: featuredImage,

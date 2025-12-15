@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import type { ProductType } from '@/types/apps/productTypes'
+import { API_ENDPOINTS, fetchAPI } from '@/libs/api'
 
 // Update edilecek alanları tanımla
 interface ProductUpdateData {
@@ -53,10 +54,8 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
     const [isLoading, setIsLoading] = useState(false)
     const [toast, setToast] = useState<ToastMessage | null>(null)
 
-    // Değişiklik kontrolü
     const hasChanges = Object.keys(updateData).length > 0
 
-    // Alan güncelleme
     const updateField = useCallback((field: keyof ProductUpdateData, value: any) => {
         setUpdateData(prev => {
             const newData = { ...prev }
@@ -68,19 +67,14 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
             return newData
         })
     }, [originalProduct])
-
-    // Değişiklikleri sıfırla
     const resetChanges = useCallback(() => {
         setUpdateData({})
     }, [])
-
-    // Toast göster
     const showToast = useCallback((toastMessage: ToastMessage) => {
         setToast(toastMessage)
         setTimeout(() => setToast(null), 5000)
     }, [])
 
-    // Değişiklikleri kaydet
     const saveChanges = useCallback(async (): Promise<boolean> => {
         if (!hasChanges || !productId) {
             showToast({
@@ -94,45 +88,12 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
         setIsLoading(true)
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082'
-            const apiUrl = `${baseUrl}/products/${productId}`
-
-            const response = await fetch(apiUrl, {
+            const result = await fetchAPI(API_ENDPOINTS.products.update(productId), {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(updateData)
             })
 
-            const responseText = await response.text()
-
-            // Content type kontrol et
-            const contentType = response.headers.get('content-type')
-            if (!contentType || !contentType.includes('application/json')) {
-                showToast({
-                    type: 'error',
-                    title: 'API Hatası',
-                    message: 'Sunucudan geçersiz response alındı'
-                })
-                return false
-            }
-
-            // JSON parse et
-            let result
-            try {
-                result = JSON.parse(responseText)
-            } catch (parseError) {
-                showToast({
-                    type: 'error',
-                    title: 'Parse Hatası',
-                    message: 'Sunucu response\'u işlenemedi'
-                })
-                return false
-            }
-
             if (result.success) {
-                // Başarı toast'ı göster
                 if (result.toast) {
                     showToast(result.toast)
                 } else {
@@ -142,7 +103,9 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
                         message: result.message || 'Ürün başarıyla güncellendi'
                     })
                 }
+
                 setUpdateData({})
+
                 if (result.data && originalProduct) {
                     setOriginalProduct({
                         ...originalProduct,
@@ -152,7 +115,6 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
 
                 return true
             } else {
-                // Hata toast'ı göster
                 if (result.toast) {
                     showToast(result.toast)
                 } else {
@@ -166,6 +128,7 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
                 return false
             }
         } catch (error) {
+            console.error('Update error:', error)
             showToast({
                 type: 'error',
                 title: 'Bağlantı Hatası',

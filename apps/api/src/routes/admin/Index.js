@@ -1,16 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-// Test route
-router.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Admin API çalışıyor!',
-        version: '1.0.0',
-        timestamp: new Date().toISOString()
-    });
-});
-
 // ============================================
 // CATALOG ROUTES
 // ============================================

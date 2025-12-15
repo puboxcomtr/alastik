@@ -1,9 +1,7 @@
 'use client'
-// React Import
-import React, { useEffect } from 'react'
 
-// Type Imports
-import type { ProductType } from '@/types/apps/productTypes'
+// React Imports
+import React, { useEffect } from 'react'
 
 // MUI Imports
 import Divider from '@mui/material/Divider'
@@ -14,7 +12,7 @@ import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
-/* Editor Imports */
+// Third-party Imports
 import classnames from 'classnames'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
@@ -23,20 +21,33 @@ import { Underline } from '@tiptap/extension-underline'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
 
-// Context
+// Context Imports
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
-// Components Imports
+// Component Imports
 import CustomIconButton from '@/@core/components/mui/IconButton'
 
 // Style Imports
 import '@/libs/styles/tiptapEditor.css'
 
-export interface ProductInformationProps {
+// Type Imports
+import type { ProductType } from '@/types/apps/productTypes'
+
+// ============================================
+// TYPES
+// ============================================
+interface ProductInformationProps {
   product: ProductType
 }
 
-const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
+interface EditorToolbarProps {
+  editor: Editor | null
+}
+
+// ============================================
+// EDITOR TOOLBAR COMPONENT
+// ============================================
+const EditorToolbar = ({ editor }: EditorToolbarProps) => {
   if (!editor) {
     return null
   }
@@ -63,6 +74,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className={classnames('ri-h-3', { 'text-textSecondary': !editor.isActive('heading', { level: 3 }) })} />
       </CustomIconButton>
 
+      {/* Bold */}
       <CustomIconButton
         {...(editor.isActive('bold') && { color: 'primary' })}
         variant='outlined'
@@ -72,6 +84,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className={classnames('ri-bold', { 'text-textSecondary': !editor.isActive('bold') })} />
       </CustomIconButton>
 
+      {/* Underline */}
       <CustomIconButton
         {...(editor.isActive('underline') && { color: 'primary' })}
         variant='outlined'
@@ -81,6 +94,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className={classnames('ri-underline', { 'text-textSecondary': !editor.isActive('underline') })} />
       </CustomIconButton>
 
+      {/* Italic */}
       <CustomIconButton
         {...(editor.isActive('italic') && { color: 'primary' })}
         variant='outlined'
@@ -90,6 +104,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className={classnames('ri-italic', { 'text-textSecondary': !editor.isActive('italic') })} />
       </CustomIconButton>
 
+      {/* Strike */}
       <CustomIconButton
         {...(editor.isActive('strike') && { color: 'primary' })}
         variant='outlined'
@@ -139,6 +154,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className={classnames('ri-double-quotes-l', { 'text-textSecondary': !editor.isActive('blockquote') })} />
       </CustomIconButton>
 
+      {/* Align Left */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'left' }) && { color: 'primary' })}
         variant='outlined'
@@ -148,6 +164,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className={classnames('ri-align-left', { 'text-textSecondary': !editor.isActive({ textAlign: 'left' }) })} />
       </CustomIconButton>
 
+      {/* Align Center */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'center' }) && { color: 'primary' })}
         variant='outlined'
@@ -161,6 +178,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         />
       </CustomIconButton>
 
+      {/* Align Right */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'right' }) && { color: 'primary' })}
         variant='outlined'
@@ -173,6 +191,8 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
           })}
         />
       </CustomIconButton>
+
+      {/* Align Justify */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'justify' }) && { color: 'primary' })}
         variant='outlined'
@@ -185,6 +205,8 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
           })}
         />
       </CustomIconButton>
+
+      {/* Link */}
       <CustomIconButton
         {...(editor.isActive('link') && { color: 'primary' })}
         variant='outlined'
@@ -198,6 +220,8 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
       >
         <i className={classnames('ri-link', { 'text-textSecondary': !editor.isActive('link') })} />
       </CustomIconButton>
+
+      {/* Image */}
       <CustomIconButton
         variant='outlined'
         size='small'
@@ -211,6 +235,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className='ri-image-line' />
       </CustomIconButton>
 
+      {/* Horizontal Rule */}
       <CustomIconButton
         variant='outlined'
         size='small'
@@ -219,6 +244,7 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
         <i className='ri-separator' />
       </CustomIconButton>
 
+      {/* Unlink */}
       <CustomIconButton
         variant='outlined'
         size='small'
@@ -230,10 +256,14 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
   )
 }
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const ProductInformation = ({ product }: ProductInformationProps) => {
-  // Context hook
+  // Context
   const { updateField } = useProductUpdate()
 
+  // Editor initialization
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -248,7 +278,6 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
     immediatelyRender: false,
     content: product?.description || product?.customDescription || '',
     onUpdate: ({ editor }) => {
-      // Her değişiklikte context'e gönder
       const htmlContent = editor.getHTML()
       updateField('customDescription', htmlContent)
     }
@@ -258,9 +287,8 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
   useEffect(() => {
     if (editor && product) {
       const currentContent = product.description || product.customDescription || ''
-      // HTML string'i temizle ve doğru formata çevir
+
       if (currentContent && currentContent !== '<p></p>' && currentContent !== '') {
-        // Eğer content zaten HTML ise, editor'a HTML olarak set et
         editor.commands.setContent(currentContent, false)
       }
     }
@@ -318,12 +346,17 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
             </Grid>
           )}
         </Grid>
+
         <Typography className='mb-1'>Ürün Açıklaması</Typography>
         <Card className='p-0 border shadow-none'>
           <CardContent className='p-0'>
             <EditorToolbar editor={editor} />
             <Divider className='mli-5' />
-            <EditorContent editor={editor} className='overflow-y-auto flex' style={{ minHeight: '400px', maxHeight: '400px' }} />
+            <EditorContent
+              editor={editor}
+              className='overflow-y-auto flex'
+              style={{ minHeight: '400px', maxHeight: '400px' }}
+            />
           </CardContent>
         </Card>
       </CardContent>

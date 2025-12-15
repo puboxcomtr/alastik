@@ -63,7 +63,7 @@ export type ProductType = {
   tag?: string
 
   // Slider 
-  sliderId?: string 
+  sliderId?: string
 
   // Stok Yönetimi
   minOrderQuantity?: number
@@ -138,8 +138,8 @@ export type CategoryType = {
   totalStock: number
   syncInfo: CategorySyncInfo
   showcase: any[]
-  description?: string 
-  customImage?: {     
+  description?: string
+  customImage?: {
     url: string
     alt?: string
     title?: string
@@ -193,4 +193,21 @@ export type WebCategoryType = {
   lastSync: string | null
   lastProductSync: string | null
   syncStatus: string
+}
+
+// Product Component Props
+export interface ProductImageProps {
+  product?: ProductType
+}
+
+export interface ProductInformationProps {
+  product: ProductType
+}
+
+export interface ProductEnventoryProps {
+  product: ProductType
+}
+
+export interface ProductFeaturesProps {
+  product?: ProductType
 }

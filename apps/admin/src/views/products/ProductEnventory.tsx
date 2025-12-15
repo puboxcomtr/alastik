@@ -1,4 +1,5 @@
 'use client'
+
 // React Imports
 import { useState, useEffect } from 'react'
 import type { SyntheticEvent } from 'react'
@@ -18,46 +19,44 @@ import Tab from '@mui/material/Tab'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 import TextField from '@mui/material/TextField'
-import { useTheme } from '@mui/material/styles'
 
-// Context
+// Context Imports
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
 // Component Imports
 import CustomTabList from '@/@core/components/mui/TabList'
 
-// Types
-import type { ProductType } from '@/types/apps/productTypes'
+// Type Imports
+import type { ProductEnventoryProps } from '@/types/apps/productTypes'
 
-export interface ProductEnventoryProps {
-  product: ProductType
-}
-
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const ProductEnventory = ({ product }: ProductEnventoryProps) => {
-  // Context hook
+  // Context
   const { updateField } = useProductUpdate()
 
   // States
   const [seoTitle, setSeoTitle] = useState('')
   const [seoDescription, setSeoDescription] = useState('')
   const [seoUrl, setSeoUrl] = useState('')
-  const [delivery, setDelivery] = useState('next_week')
+  const [delivery, setDelivery] = useState('same_day')
   const [activeTab, setActiveTab] = useState('seo')
 
-  // Hooks
-  const theme = useTheme()
-
-  // Initialize values
+  // Initialize values from product
   useEffect(() => {
-    setSeoTitle(product.seo_title || '')
-    setSeoDescription(product.seo_description || '')
-    setSeoUrl(product.seo_url || '')
-    console.log('Product data:', product.delivery);
+    setSeoTitle(product.seoTitle || '')
+    setSeoDescription(product.seoDescription || '')
+    setSeoUrl(product.seoUrl || '')
     setDelivery(product.delivery || 'same_day')
   }, [product])
 
+  // ============================================
+  // HANDLERS
+  // ============================================
+
   // Tab değişikliği
-  const handleChange = (event: SyntheticEvent, value: string) => {
+  const handleTabChange = (event: SyntheticEvent, value: string) => {
     setActiveTab(value)
   }
 
@@ -67,6 +66,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
     updateField('seoTitle', value)
   }
 
+  // SEO Description değişiklik handler
   const handleSeoDescriptionChange = (value: string) => {
     setSeoDescription(value)
     updateField('seoDescription', value)
@@ -84,18 +84,23 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
     setSeoUrl(cleanUrl)
     updateField('seoUrl', cleanUrl)
   }
+
+  // Delivery değişiklik handler
   const handleDeliveryChange = (value: string) => {
     setDelivery(value)
     updateField('delivery', value)
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <Card>
       <CardHeader title='Ek Alanlar' />
       <CardContent>
         <TabContext value={activeTab}>
           <div className='flex flex-col gap-6'>
-            <CustomTabList onChange={handleChange} pill='true'>
+            <CustomTabList onChange={handleTabChange} pill='true'>
               <Tab value='seo' label='SEO Bilgileri' icon={<i className='ri-seo-line' />} iconPosition='start' />
               <Tab
                 value='price'
@@ -106,10 +111,11 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
               <Tab value='advanced' label='Diğer Özellikler' icon={<i className='ri-link-m' />} iconPosition='start' />
             </CustomTabList>
 
+            {/* SEO Bilgileri Tab */}
             <TabPanel value='seo'>
               <FormGroup className='flex flex-col gap-4'>
                 <Grid container spacing={10}>
-                  <Grid size={{ xs: 12, sm: 12, md: 12 }}>
+                  <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
@@ -132,7 +138,8 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                       />
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 12 }}>
+
+                  <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
@@ -157,7 +164,8 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                       />
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 12 }}>
+
+                  <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
@@ -178,11 +186,10 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                               }}
                               position='start'
                             >
-                              https://siteadi.com/urun/
+                              {process.env.NEXT_PUBLIC_SITE_URL || 'https://alastik.com'}/urun/
                             </InputAdornment>
                           )
                         }}
-                        helperText="URL sadece küçük harf, sayı ve tire (-) içermelidir"
                       />
                     </FormControl>
                   </Grid>
@@ -190,10 +197,11 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
               </FormGroup>
             </TabPanel>
 
+            {/* Fiyat ve Kargo Tab */}
             <TabPanel value='price'>
               <FormGroup className='flex flex-col gap-4'>
                 <Grid container spacing={5}>
-                  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+                  <Grid size={{ xs: 12, sm: 4 }}>
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
@@ -205,7 +213,8 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                       />
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+
+                  <Grid size={{ xs: 12, sm: 4 }}>
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
@@ -217,7 +226,8 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                       />
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+
+                  <Grid size={{ xs: 12, sm: 4 }}>
                     <FormControl fullWidth>
                       <TextField
                         fullWidth
@@ -232,15 +242,16 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
               </FormGroup>
             </TabPanel>
 
+            {/* Diğer Özellikler Tab */}
             <TabPanel value='advanced'>
               <Grid container spacing={5}>
-                <Grid size={{ xs: 12, sm: 12, md: 12 }}>
+                <Grid size={{ xs: 12 }}>
                   <FormControl fullWidth>
-                    <InputLabel id='select-label'>Kargolanma Süresi</InputLabel>
+                    <InputLabel id='delivery-label'>Kargolanma Süresi</InputLabel>
                     <Select
-                      labelId='select-label'
+                      labelId='delivery-label'
                       value={delivery}
-                      label='Lütfen Seçim Yapınız'
+                      label='Kargolanma Süresi'
                       onChange={e => handleDeliveryChange(e.target.value)}
                     >
                       <MenuItem value='same_day'>Aynı Gün</MenuItem>

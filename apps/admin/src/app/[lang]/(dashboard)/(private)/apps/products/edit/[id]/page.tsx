@@ -1,5 +1,6 @@
-import { Suspense, useEffect } from 'react'
-// MUI Imports
+'use client'
+
+import { useState, useEffect } from 'react'
 import Grid from '@mui/material/Grid2'
 import { CircularProgress, Box } from '@mui/material'
 
@@ -19,22 +20,12 @@ import ProductBrand from '@/views/products/ProductBrand'
 import { ProductUpdateProvider } from '@/contexts/ProductUpdateContext'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
-async function fetchProduct(id: string): Promise<ProductType | null> {
-  try {
-    const data = await fetchAPI(API_ENDPOINTS.products.detail(id), {
-      cache: 'no-store',
-    })
-    return (data && (data.data || data.veri)) ?? null
-  } catch {
-    return null
-  }
-}
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string
     lang: string
-  }
+  }>
 }
 
 function ProductEditContent({ product }: { product: ProductType }) {
@@ -73,11 +64,50 @@ function ProductEditContent({ product }: { product: ProductType }) {
   )
 }
 
-export default async function eCommerceProductsEdit({ params }: PageProps) {
-  const id = (await params).id
-  const product = await fetchProduct(id)
+export default function ProductEdit({ params }: PageProps) {
+  const [product, setProduct] = useState<ProductType | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [productId, setProductId] = useState<string>('')
 
-  if (!product) {
+  useEffect(() => {
+    async function loadProduct() {
+      try {
+        const resolvedParams = await params
+        const id = resolvedParams.id
+        setProductId(id)
+
+        const data = await fetchAPI(API_ENDPOINTS.products.detail(id), {
+          cache: 'no-store',
+        })
+
+        const productData = (data && (data.data || data.veri)) ?? null
+
+        if (productData) {
+          setProduct(productData)
+        } else {
+          setError(true)
+        }
+      } catch (err) {
+        console.error('Product fetch error:', err)
+        setError(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProduct()
+  }, [params])
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (error || !product) {
     return (
       <Box
         display="flex"
@@ -91,20 +121,14 @@ export default async function eCommerceProductsEdit({ params }: PageProps) {
         p={4}
       >
         <h2>Ürün Bulunamadı</h2>
-        <p>ID: {id} ile eşleşen ürün bulunamadı.</p>
+        <p>ID: {productId} ile eşleşen ürün bulunamadı.</p>
       </Box>
     )
   }
 
   return (
-    <ProductUpdateProvider productId={id}>
-      <Suspense fallback={
-        <Box display="flex" justifyContent="center" p={4}>
-          <CircularProgress />
-        </Box>
-      }>
-        <ProductEditContent product={product} />
-      </Suspense>
+    <ProductUpdateProvider productId={productId}>
+      <ProductEditContent product={product} />
     </ProductUpdateProvider>
   )
 }

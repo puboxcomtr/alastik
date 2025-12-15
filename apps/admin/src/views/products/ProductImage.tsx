@@ -1,5 +1,9 @@
 'use client'
+
+// React Imports
 import { useState, useEffect } from 'react'
+
+// MUI Imports
 import {
   Card,
   CardHeader,
@@ -9,28 +13,30 @@ import {
   Typography,
   Box
 } from '@mui/material'
+
+// Third-party Imports
 import { toast } from 'react-toastify'
+
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
+// Component Imports
 import MediaLibrary from '@/components/MediaLibrary/MediaLibrary'
-import type { ProductType } from '@/types/apps/productTypes'
 
-interface ProductImageProps {
-  product?: ProductType
-}
+// Type Imports
+import type { ProductImageProps } from '@/types/apps/productTypes'
+import type { MediaFile } from '@/types/apps/mediaTypes'
 
-interface MediaFile {
-  id: string
-  filename: string
-  url: string
-  size: number
-  uploadDate: string
-  folder: string
-}
-
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const ProductImage = ({ product }: ProductImageProps) => {
+  // States
   const [diaImages, setDiaImages] = useState<string[]>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
 
+  // Initialize images from product
   useEffect(() => {
     if (product?.images && product.images.length > 0) {
       setDiaImages(product.images)
@@ -39,37 +45,37 @@ const ProductImage = ({ product }: ProductImageProps) => {
     }
   }, [product])
 
+  // ============================================
+  // HANDLERS
+  // ============================================
+
   // Media Library'den seçilen görselleri işle
   const handleMediaSelect = (selectedFiles: MediaFile[]) => {
     const selectedUrls = selectedFiles.map(file => file.url)
     setDiaImages(prev => [...prev, ...selectedUrls])
 
     toast.success(`${selectedFiles.length} görsel eklendi`)
-
     updateProductSynchronization('N')
   }
 
+  // Ürün senkronizasyonunu güncelle
   const updateProductSynchronization = async (syncValue: 'Y' | 'N') => {
-    if (!product?._key) return
+    if (!product?.id) return
 
     try {
-      const response = await fetch(`http://localhost:3082/api/products/${product._key}/synchronization`, {
+      await fetchAPI(API_ENDPOINTS.products.sync(product.id), {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ synchronization: syncValue })
       })
 
-      if (response.ok) {
-        console.log(`Synchronization updated to ${syncValue}`)
-      }
+      console.log(`Synchronization updated to ${syncValue}`)
     } catch (error) {
       console.error('Synchronization update error:', error)
+      toast.error('Senkronizasyon güncellenemedi')
     }
   }
 
-  // Sıralama için Drag & Drop
+  // Drag & Drop Handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = 'move'
@@ -110,6 +116,9 @@ const ProductImage = ({ product }: ProductImageProps) => {
     updateProductSynchronization('N')
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <>
       <Card>
@@ -199,7 +208,7 @@ const ProductImage = ({ product }: ProductImageProps) => {
                         handleRemoveImage(imageUrl, index)
                       }}
                     >
-                      <i className='ri-close-line'  />
+                      <i className='ri-close-line' />
                     </IconButton>
                   </Box>
                 ))}
@@ -227,7 +236,7 @@ const ProductImage = ({ product }: ProductImageProps) => {
         multiple={true}
         folder="urun"
         title="Ürün Görseli Seç"
-        maxFileSize={10 * 1024 * 1024} // 10MB
+        maxFileSize={10 * 1024 * 1024}
       />
     </>
   )

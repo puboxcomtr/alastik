@@ -13,15 +13,18 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 
-// Types
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
+// Type Imports
+import type { ProductType } from '@/types/apps/productTypes'
+
+// ============================================
+// TYPES
+// ============================================
 interface ProductOrganizeProps {
-  product?: {
-    id: string | number
-    category?: string
-    properties?: Record<string, string>
-    brand?: string
-    readOnly?: boolean
-  }
+  product?: ProductType
+  readOnly?: boolean
 }
 
 interface CategoryVariant {
@@ -29,51 +32,65 @@ interface CategoryVariant {
   value: string
 }
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => {
+  // States
   const [variants, setVariants] = useState<CategoryVariant[]>([])
   const [categories, setCategories] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
 
+  // Kategorileri yükle
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082'
-        const apiUrl = baseUrl.endsWith('/api') ? `${baseUrl}/categories` : `${baseUrl}/api/categories`
-        const response = await fetch(apiUrl)
+        setLoading(true)
+        const result = await fetchAPI(API_ENDPOINTS.categories.list())
 
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            const categoriesMap: Record<string, string[]> = {}
-            result.data.forEach((category: any) => {
-              categoriesMap[category._id] = category.subCategories || []
-            })
-            setCategories(categoriesMap)
-          } else {
-            throw new Error('API response format hatası')
-          }
+        if (result.success && result.data) {
+          const categoriesMap: Record<string, string[]> = {}
+          const mainCategories = result.data.filter((cat: any) => cat.level === 1)
+          mainCategories.forEach((mainCat: any) => {
+            const subCategories = result.data
+              .filter((cat: any) => {
+                const parentId = typeof cat.parent === 'object' && cat.parent !== null
+                  ? cat.parent.id || cat.parent._id
+                  : cat.parent
+
+                return parentId === mainCat.id && cat.level === 2
+              })
+              .map((cat: any) => cat.name)
+
+            categoriesMap[mainCat.name] = subCategories
+          })
+          setCategories(categoriesMap)
         } else {
-          throw new Error(`API hatası: ${response.status}`)
+          throw new Error('API response format hatası')
         }
       } catch (error) {
+        console.error('Categories fetch error:', error)
         setCategories({
-          'Lastik': ['Set Lastikler', 'Ticari Lastik', 'Yaz Lastikleri', 'Oto Lastik', '4x4 Lastik'],
+          'Lastik': ['Yaz Lastikleri', 'Kış Lastikleri', '4 Mevsim Lastikleri', 'Oto Lastik', '4x4 Lastik'],
           'Jant': ['Oto Jant', '4x4 Jant', 'Ticari Jant'],
-          'Akü': ['Oto Akü']
+          'Akü': ['Oto Akü', 'Motosiklet Akü']
         })
       } finally {
         setLoading(false)
       }
     }
+
     fetchCategories()
   }, [])
 
+  // Product kategorilerini variant'lara dönüştür
   useEffect(() => {
     if (product && !loading && Object.keys(categories).length > 0) {
       let newVariants: CategoryVariant[] = []
 
+      // m_kategoriler varsa oradan al
       if (product.properties?.m_kategoriler && Array.isArray(product.properties.m_kategoriler)) {
-        product.properties.m_kategoriler.forEach((kategori: any, index: number) => {
+        product.properties.m_kategoriler.forEach((kategori: any) => {
           if (kategori.kategori_aciklama_1) {
             const mainCategory = kategori.kategori_aciklama_1
             const subCategory = kategori.kategori_aciklama_2 || kategori.kategori_aciklama_3 || ''
@@ -98,7 +115,7 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
           }
         })
       }
-
+      // product.category varsa
       else if (product.category) {
         const existingCategory = product.category
         const mainCategories = Object.keys(categories)
@@ -129,16 +146,42 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
           })
         }
       }
+
       if (newVariants.length === 0) {
         newVariants.push({ group: '', value: '' })
       }
+
       setVariants(newVariants)
     } else if (!loading && variants.length === 0) {
       setVariants([{ group: '', value: '' }])
     }
   }, [product, categories, loading])
 
+  // ============================================
+  // HANDLERS
+  // ============================================
+  const handleGroupChange = (index: number, value: string) => {
+    if (readOnly) return
 
+    const newVariants = [...variants]
+    newVariants[index] = {
+      group: value,
+      value: '' // Ana kategori değişince alt kategoriyi sıfırla
+    }
+    setVariants(newVariants)
+  }
+
+  const handleValueChange = (index: number, value: string) => {
+    if (readOnly) return
+
+    const newVariants = [...variants]
+    newVariants[index].value = value
+    setVariants(newVariants)
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <Card>
       <CardHeader title='Ürün Kategori Bilgileri' />
@@ -164,24 +207,23 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
                     </Select>
                   </FormControl>
                 </Grid>
+
                 <Grid size={{ xs: 12, sm: 8 }}>
-                  <div className='flex items-center gap-5'>
-                    <FormControl fullWidth>
-                      <InputLabel>Alt Kategori</InputLabel>
-                      <Select
-                        value={variant.value}
-                        label='Alt Kategori'
-                        onChange={e => handleValueChange(index, e.target.value)}
-                        disabled={readOnly || !variant.group}
-                      >
-                        {variant.group && categories[variant.group]?.map(subCategory => (
-                          <MenuItem key={subCategory} value={subCategory}>
-                            {subCategory}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </div>
+                  <FormControl fullWidth>
+                    <InputLabel>Alt Kategori</InputLabel>
+                    <Select
+                      value={variant.value}
+                      label='Alt Kategori'
+                      onChange={e => handleValueChange(index, e.target.value)}
+                      disabled={readOnly || !variant.group}
+                    >
+                      {variant.group && categories[variant.group]?.map(subCategory => (
+                        <MenuItem key={subCategory} value={subCategory}>
+                          {subCategory}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Grid>
