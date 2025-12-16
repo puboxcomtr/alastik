@@ -1623,11 +1623,34 @@ class DiaStockService {
   async archiveStaleProducts(syncStartTime) {
     try {
       this.logger.info('=== ESKİ ÜRÜNLERİ ARŞİVLEME BAŞLANGICI ===');
+
+      // ✅ SADECE DIA'DA OLMAYAN ÜRÜNLER
+      // Yani: DIA'da durum='P' veya ozelkod11kodu!='E' olan ürünler
+
+      // WebProduct'taki tüm _key'leri al
+      const webProductKeys = await WebProduct.distinct('_key', {
+        'syncInfo.diaStatus': 'synced'
+      });
+
+      // DIA'da aktif olan ürünlerin _key'lerini al
+      const activeInDiaKeys = await DiaStock.distinct('_key', {
+        durum: 'A',
+        ozelkod11kodu: 'E'
+      });
+
+      // Fark: WebProduct'ta var ama DIA'da aktif değil
+      const keysToArchive = webProductKeys.filter(
+        key => !activeInDiaKeys.includes(key)
+      );
+
+      if (keysToArchive.length === 0) {
+        this.logger.info('Arşivlenecek ürün yok');
+        return 0;
+      }
+
+      // Sadece gerçekten DIA'da olmayan ürünleri arşivle
       const result = await WebProduct.updateMany(
-        {
-          'syncInfo.diaStatus': 'synced',
-          'syncInfo.lastDiaSync': { $lt: syncStartTime }
-        },
+        { _key: { $in: keysToArchive } },
         {
           $set: {
             'syncInfo.diaStatus': 'not_in_dia',
@@ -1636,11 +1659,14 @@ class DiaStockService {
           }
         }
       );
+
       this.logger.info('=== ESKİ ÜRÜNLER ARŞİVLENDİ ===', {
-        archivedCount: result.modifiedCount
+        archivedCount: result.modifiedCount,
+        totalChecked: webProductKeys.length
       });
 
       return result.modifiedCount;
+
     } catch (error) {
       this.logger.error('Arşivleme hatası:', { error: error.message });
       return 0;
@@ -2193,6 +2219,114 @@ class DiaStockService {
       return result.modifiedCount > 0;
     } catch (error) {
       this.logger.error(`WebProduct görsel güncelleme hatası: ${product._key}`, { error: error.message });
+      return false;
+    }
+  }
+  /* * Sadece Stok Güncelle * */
+  async syncOnlyStocks() {
+    const operationId = `sync_stocks_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info(`=== SADECE STOK GÜNCELLEMESİ BAŞLANGICI ===`, { operationId });
+
+      let totalProcessed = 0;
+      let totalUpdated = 0;
+      let webUpdated = 0;
+      let offset = 0;
+      let hasMore = true;
+      let batchCount = 0;
+
+      while (hasMore) {
+        batchCount++;
+
+        const params = {
+          limit: 500,
+          offset: offset,
+          filters: getFiltersForSyncType('stocks')
+        };
+
+        const batchData = await this.fetchStockFromDia(params);
+
+        if (!batchData || batchData.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const product of batchData) {
+          // 1. DiaStock güncelle
+          const diaUpdated = await this.updateOnlyProductStocks(product);
+          if (diaUpdated) totalUpdated++;
+
+          // 2. WebProduct güncelle
+          const webUpdateResult = await this.updateOnlyWebProductStocks(product);
+          if (webUpdateResult) webUpdated++;
+
+          totalProcessed++;
+        }
+
+        offset += 500;
+        await this.sleep(100);
+
+        this.logger.info(`Stocks Batch ${batchCount} tamamlandı`, {
+          operationId,
+          processed: totalProcessed,
+          updated: totalUpdated,
+          webUpdated: webUpdated
+        });
+      }
+
+      const duration = Date.now() - startTime;
+      return {
+        success: true,
+        processed: totalProcessed,
+        updated: totalUpdated,
+        webUpdated: webUpdated,
+        type: 'stocks_only',
+        duration: `${duration}ms`,
+        message: `${totalUpdated} DiaStock + ${webUpdated} WebProduct stoğu güncellendi`
+      };
+
+    } catch (error) {
+      this.logger.error(`Stok sync hatası:`, { error: error.message, operationId });
+      throw error;
+    }
+  }
+  async updateOnlyProductStocks(product) {
+    if (!product._key) return false;
+
+    const filter = { _key: product._key };
+    const updateData = {
+      fiili_stok: parseFloat(product.fiili_stok) || parseFloat(product.gercek_stok) || 0,
+      gercek_stok: parseFloat(product.gercek_stok) || parseFloat(product.fiili_stok) || 0,
+      'syncInfo.lastSyncDate': new Date(),
+      'syncInfo.syncStatus': 'synced',
+      'syncInfo.syncType': 'stocks_only'
+    };
+
+    try {
+      const result = await DiaStock.updateOne(filter, { $set: updateData }, { upsert: false });
+      return result.modifiedCount > 0;
+    } catch (error) {
+      this.logger.error(`Stok güncelleme hatası: ${product._key}`, { error: error.message });
+      return false;
+    }
+  }
+  async updateOnlyWebProductStocks(product) {
+    if (!product._key) return false;
+
+    const filter = { _key: product._key };
+    const updateData = {
+      'diaData.gercek_stok': parseFloat(product.gercek_stok) || parseFloat(product.fiili_stok) || 0,
+      'syncInfo.lastDiaSync': new Date(),
+      'syncInfo.diaStatus': 'synced'
+    };
+
+    try {
+      const result = await WebProduct.updateOne(filter, { $set: updateData }, { upsert: false });
+      return result.modifiedCount > 0;
+    } catch (error) {
+      this.logger.error(`WebProduct stok güncelleme hatası: ${product._key}`, { error: error.message });
       return false;
     }
   }

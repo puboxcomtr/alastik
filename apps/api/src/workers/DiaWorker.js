@@ -60,35 +60,25 @@ class DiaWorker {
      * Queue processor'larını ayarla
      */
     setupProcessors() {
-        console.log('🔧 setupProcessors() ÇAĞRILDI!');
-
+        console.log('setupProcessors() ÇAĞRILDI!');
         // Full Sync - Scheduled job processor
         this.queues.fullSync.process('scheduled-full-sync', (job) => {
-            console.log('✅ SCHEDULED FULL SYNC PROCESSOR ÇALIŞTI!', job.id);
             return this.processFullSync(job);
         });
-
         // Full Sync - Manual job processor
         this.queues.fullSync.process('manual-full-sync', (job) => {
-            console.log('✅ MANUAL FULL SYNC PROCESSOR ÇALIŞTI!', job.id);
             return this.processFullSync(job);
         });
-
         // Light Sync - Scheduled job processor
         this.queues.lightSync.process('scheduled-light-sync', (job) => {
-            console.log('✅ SCHEDULED LIGHT SYNC PROCESSOR ÇALIŞTI!', job.id);
             return this.processLightSync(job);
         });
-
         // Light Sync - Manual job processor
         this.queues.lightSync.process('manual-light-sync', (job) => {
-            console.log('✅ MANUAL LIGHT SYNC PROCESSOR ÇALIŞTI!', job.id);
             return this.processLightSync(job);
         });
-
-        console.log('✅ Processor kayıtları TAMAMLANDI!');
+        console.log('Processor kayıtları TAMAMLANDI!');
     }
-
     /**
      * Event listener'ları ayarla
      */

@@ -70,7 +70,6 @@ const AdminUser = require('./models/admin/user/AdminUser');
 // ============================================
 // DIA ERP integration services
 const DiaStockService = require('./services/plugins/dia/DiaStockService');
-const DiaStockScheduler = require('./services/plugins/dia/DiaStockScheduler');
 const axios = require('axios');
 
 // ============================================
@@ -82,16 +81,6 @@ const app = express();
 // This ensures correct IP addresses in request logs and rate limiting
 app.set('trust proxy', 1);
 
-// ============================================
-// CORS CONFIGURATION
-// ============================================
-// Allow all origins with credentials
-// TODO: Restrict origins in production for better security
-// app.use(cors({
-//   origin: '*',
-//   credentials: true
-// }));
-
 // Cache is already imported from utils/cache
 // Use redisCache in production, simple cache in development
 
@@ -100,9 +89,6 @@ const activeCache = redisCache;
 
 // Initialize DIA Stock Service
 const diaStockService = new DiaStockService();
-
-// Initialize DIA Stock Scheduler
-const diaStockScheduler = new DiaStockScheduler();
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -231,7 +217,7 @@ app.use((req, res, next) => {
 
 // MongoDB connection with improved settings
 mongoose.connect(process.env.MONGODB_URI, {
-  maxPoolSize: 10,
+  maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE) || 15,
   serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
   family: 4,
@@ -254,13 +240,11 @@ mongoose.connect(process.env.MONGODB_URI, {
     logger.error('MongoDB connection error:', error);
     process.exit(1);
   });
-
 /**
   * (MAIN) Dashboard - Route *
 */
 const adminRoutes = require('./routes/admin/Index');
 app.use('/api/admin', adminRoutes);
-
 
 /**
   * (PLUGIN) Wheelsize Senkronize Routes *
@@ -273,7 +257,12 @@ app.use('/api/user/vehicles', vehiclesRoutes);
 const wheelsizeRoutes = require('./routes/web/integration/wheelsize');
 app.use('/api/wheelsize', wheelsizeRoutes);
 
-
+// ============================================
+// DIA PLUGIN ROUTES (YENİ - Worker Queue API)
+// ============================================
+const diaRoutes = require('./routes/plugins/dia');
+app.use('/api/dia', diaRoutes);
+logger.info('✅ DIA Plugin Routes yüklendi');
 
 /**
   * THEME - Routes *
@@ -331,118 +320,8 @@ app.use('/api/tags', webTagsRoutes);
 const webFiltersRoutes = require('./routes/web/catalog/filters');
 app.use('/api/filters', webFiltersRoutes);
 
-
-
-
-
-
-// const productRoutes = require('./routes/admin/catalog/products');
-// app.use('/api/products', productRoutes);
-
-// /* (Dashboard) Kategori Listeleme */
-// const categoryRoutes = require('./routes/admin/catalog/categories');
-// app.use('/api/categories', categoryRoutes);
-
-// /* (Dashboard) Marka Listeleme */
-// const brandRoutes = require('./routes/admin/catalog/brands');
-// app.use('/api/brands', brandRoutes);
-
-// /* (Dashboard) Etiket Listeleme */
-// const tagRoutes = require('./routes/admin/catalog/tags');
-// app.use('/api/tags', tagRoutes);
-
-// /* (Dashboard) Özellik Listeleme */
-// const featureRoutes = require('./routes/admin/catalog/features');
-// app.use('/api/features', featureRoutes);
-
-// /**
-//   * (Dashboard) Siparişler - Routes *
-// */
-// /* * (Dashboard) Sipariş Listeleme * */
-// const orderRoutes = require('./routes/admin/orders/order');
-// app.use('/api/admin/orders', orderRoutes);
-
-// /**
-//   * (Dashboard) İçerikler - Routes *
-// */
-// /* * (Dashboard) Sayfalar Listeleme * */
-// const pageRoutes = require('./routes/admin/content/pages');
-// app.use('/api/admin/pages', pageRoutes);
-
-// /* * (Dashboard) Blog Listeleme * */
-// const blogRoutes = require('./routes/admin/content/blogs');
-// app.use('/api/admin/blogs', blogRoutes);
-
-
-// /**
-//   * (Dashboard) Ayarlar - Routes *
-// */
-
-// /* * (Dashboard) Ödeme Yöntemleri Ayarları * */
-// const paymentRoutes = require('./routes/admin/settings/payment');
-// app.use('/api/admin/settings/payment', paymentRoutes);
-
-// /* * (Dashboard) Çeviri Ayarları * */
-// const translationsRoutes = require('./routes/admin/settings/translations');
-// app.use('/api/admin/settings/translations', translationsRoutes);
-
-// /* * (Dashboard) Genel Tanımlamalar * */
-// const generalSettingsRoutes = require('./routes/admin/settings/general');
-// app.use('/api/admin/settings/general', generalSettingsRoutes);
-
-// /* * (Dashboard) Genel Ayarlar * */
-// const settingRoutes = require('./routes/admin/settings/settings');
-// app.use('/api/admin/settings', settingRoutes);
-
-// /* * (Dashboard) SEO Ayarları * */
-// const seoRoutes = require('./routes/admin/settings/seo');
-// app.use('/api/admin/settings/seo', seoRoutes);
-
-// /**
-//  * (Dashboard) Kullanıcı Ayarları *
-// **/
-// const authRoutes = require('./routes/admin/user/auth');
-// app.use('/api/admin/user/auth', authRoutes);
-
-// /* (Dashboard) Admin Yönetimi */
-// const adminsRoutes = require('./routes/admin/user/admins');
-// app.use('/api/admin/user/admins', adminsRoutes);
-
-// /* (Dashboard) Rol Yönetimi */
-// const rolesRoutes = require('./routes/admin/user/roles');
-// app.use('/api/admin/user/roles', rolesRoutes);
-
-// /* (Dashboard) Engellenen IP'ler */
-// const blockedIPsRoutes = require('./routes/admin/user/blocked-ips');
-// app.use('/api/admin/user/blocked-ips', blockedIPsRoutes);
-
-// /* (Dashboard) İşlem Kayıtları */
-// const activityLogsRoutes = require('./routes/admin/user/activity-logs');
-// app.use('/api/admin/user/activity-logs', activityLogsRoutes);
-
-// /**
-//   * (Dashboard) Tasarım Ayarları *
-// */
-// /* * (Dashboard) Tema Ayarları * */
-// const settingsRouter = require('./routes/admin/design/settings');
-// app.use('/api/admin/design/settings', settingsRouter);
-
-// /* * (Dashboard) Slider Ayarları * */
-// const sliderRoutes = require('./routes/admin/design/slider');
-// app.use('/api/admin/design/slider', sliderRoutes);
-
-// /* * (Dashboard) Menü Ayarları * */
-// const menuRoutes = require('./routes/admin/design/menus');
-// app.use('/api/admin/design/menu', menuRoutes);
-
-// /* * (Dashboard) Banner Ayarları * */
-// const bannerRoutes = require('./routes/admin/design/banners');
-// app.use('/api/admin/design/banners', bannerRoutes);
-
-// /* * (Dashboard) Vitrin Ayarları * */
-// const showcaseRoutes = require('./routes/admin/catalog/showcase');
-// app.use('/api/showcases', showcaseRoutes);
-
+const showcaseRoutes = require('./routes/admin/catalog/showcase');
+app.use('/api/showcases', showcaseRoutes);
 /**
   * (Dashboard) Admin - Functions *
 */
@@ -998,133 +877,6 @@ app.get('/api/dia-stock/brands', async (req, res) => {
   }
 });
 
-// Get DIA stock categories
-app.get('/api/dia-stock/categories', async (req, res) => {
-  try {
-    // Check cache first
-    const cacheKey = 'dia-stock:categories';
-    const cachedCategories = await activeCache.get(cacheKey);
-
-    if (cachedCategories) {
-      return res.json(JSON.parse(cachedCategories));
-    }
-
-    const categories = await DiaStock.aggregate([
-      { $match: { durum: 'A' } },
-      { $unwind: '$m_kategoriler' },
-      { $match: { 'm_kategoriler.kategori_aciklama_1': { $ne: null, $ne: '' } } },
-      { $group: { _id: '$m_kategoriler.kategori_aciklama_1', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $project: { category: '$_id', count: 1, _id: 0 } }
-    ]);
-
-    // Cache categories for 1 hour
-    await activeCache.set(cacheKey, JSON.stringify(categories), 3600);
-
-    res.json(categories);
-  } catch (error) {
-    logger.error('DIA stock categories error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Scheduler control endpoints
-// Get scheduler status
-app.get('/api/dia-stock/scheduler/status', async (req, res) => {
-  try {
-    const status = diaStockScheduler.getSchedulerStatus();
-    res.json(status);
-  } catch (error) {
-    logger.error('Scheduler status error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Manual sync trigger
-app.post('/api/dia-stock/scheduler/trigger', async (req, res) => {
-  try {
-    const { type = 'incremental' } = req.body;
-
-    const result = await diaStockScheduler.triggerManualSync(type);
-    res.json(result);
-  } catch (error) {
-    logger.error('Manual sync trigger error:', error);
-
-    if (error.message.includes('zaten çalışıyor')) {
-      return res.status(409).json({ error: error.message });
-    }
-
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Start/Stop scheduler
-app.post('/api/dia-stock/scheduler/control', async (req, res) => {
-  try {
-    const { action } = req.body;
-
-    if (action === 'start') {
-      diaStockScheduler.start();
-      res.json({ success: true, message: 'Scheduler started' });
-    } else if (action === 'stop') {
-      diaStockScheduler.stop();
-      res.json({ success: true, message: 'Scheduler stopped' });
-    } else {
-      res.status(400).json({ error: 'Invalid action. Use "start" or "stop"' });
-    }
-  } catch (error) {
-    logger.error('Scheduler control error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Add custom schedule
-app.post('/api/dia-stock/scheduler/custom', async (req, res) => {
-  try {
-    const { name, cronExpression, type = 'incremental' } = req.body;
-
-    if (!name || !cronExpression) {
-      return res.status(400).json({ error: 'Name and cronExpression are required' });
-    }
-
-    const callback = async () => {
-      try {
-        await diaStockScheduler.triggerManualSync(type);
-      } catch (error) {
-        logger.error(`Custom schedule "${name}" error:`, error);
-      }
-    };
-
-    const success = diaStockScheduler.addCustomSchedule(name, cronExpression, callback);
-
-    if (success) {
-      res.json({ success: true, message: `Custom schedule "${name}" added` });
-    } else {
-      res.status(400).json({ error: 'Failed to add custom schedule' });
-    }
-  } catch (error) {
-    logger.error('Add custom schedule error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Remove custom schedule
-app.delete('/api/dia-stock/scheduler/custom/:name', async (req, res) => {
-  try {
-    const { name } = req.params;
-
-    const success = diaStockScheduler.removeCustomSchedule(name);
-
-    if (success) {
-      res.json({ success: true, message: `Custom schedule "${name}" removed` });
-    } else {
-      res.status(404).json({ error: 'Custom schedule not found' });
-    }
-  } catch (error) {
-    logger.error('Remove custom schedule error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // Wheel Size API Proxy Endpoints
 const WHEEL_SIZE_API_BASE = process.env.WHEEL_SIZE_API_URL || 'http://217.195.202.170:5000/api';
@@ -3053,7 +2805,6 @@ process.on('SIGINT', async () => {
 
   try {
     // Stop scheduler first
-    diaStockScheduler.stop();
     logger.info('DIA Stock Scheduler stopped');
 
     await mongoose.connection.close();
@@ -3070,9 +2821,6 @@ process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully...');
 
   try {
-    // Stop scheduler first
-    diaStockScheduler.stop();
-    logger.info('DIA Stock Scheduler stopped');
 
     await mongoose.connection.close();
     await activeCache.disconnect();
@@ -3120,7 +2868,6 @@ app.listen(PORT, async () => {
   console.log(`Alastik API Server started on port ${PORT}`);
   // Start DIA Stock Scheduler
   try {
-    diaStockScheduler.start();
   } catch (error) {
     logger.error('Failed to start DIA Stock Scheduler:', error);
   }
