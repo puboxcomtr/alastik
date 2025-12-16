@@ -240,9 +240,10 @@ mongoose.connect(process.env.MONGODB_URI, {
     logger.error('MongoDB connection error:', error);
     process.exit(1);
   });
-/**
-  * (MAIN) Dashboard - Route *
-*/
+
+// ============================================
+// DASHBOARD ROUTES
+// ============================================
 const adminRoutes = require('./routes/admin/Index');
 app.use('/api/admin', adminRoutes);
 
@@ -258,15 +259,16 @@ const wheelsizeRoutes = require('./routes/web/integration/wheelsize');
 app.use('/api/wheelsize', wheelsizeRoutes);
 
 // ============================================
-// DIA PLUGIN ROUTES (YENİ - Worker Queue API)
+// DIA PLUGIN ROUTES (Workers)
 // ============================================
 const diaRoutes = require('./routes/plugins/dia');
 app.use('/api/dia', diaRoutes);
 logger.info('✅ DIA Plugin Routes yüklendi');
 
-/**
-  * THEME - Routes *
-*/
+
+// ============================================
+// THEME ROUTES
+// ============================================
 
 /* Genel Site Ayarları */
 const webGeneralSettingsRoutes = require('./routes/web/other/generalsettings');
@@ -322,9 +324,8 @@ app.use('/api/filters', webFiltersRoutes);
 
 const showcaseRoutes = require('./routes/admin/catalog/showcase');
 app.use('/api/showcases', showcaseRoutes);
-/**
-  * (Dashboard) Admin - Functions *
-*/
+
+
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);
 mediaFolders.forEach(folder => {
@@ -404,17 +405,10 @@ app.use('/uploads/theme', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'public/uploads/theme')));
 
-
-/**
-  * Tema - Routes *
-*/
-
 /* Tema Blokları */
 const blocksRoutes = require('./routes/public/theme/block');
 app.use('/api/blocks', blocksRoutes);
 
-
-// API Routes
 // Inventory routes
 const inventoryRoutes = require('./routes/inventory');
 app.use('/api/inventory', inventoryRoutes);
@@ -437,446 +431,60 @@ try {
   console.warn('External payments routes not loaded:', e?.message);
 }
 
-// Netahsilat routes removed
 
 
 
-// Search endpoint
-app.get('/api/search', async (req, res) => {
+// ============================================
+// (PLUGIN) - DIA ROUTES
+// ============================================
+
+/* * Sadece Ürün Adı Güncelle * */
+app.post('/api/dia-stock/sync-names', async (req, res) => {
   try {
-    const { q, page = 1, limit = 20 } = req.query;
-
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
-    }
-
-    // Check cache first
-    const cacheKey = `search:${q}:${page}:${limit}`;
-    const cachedResults = await activeCache.get(cacheKey);
-
-    if (cachedResults) {
-      return res.json(JSON.parse(cachedResults));
-    }
-
-    // Perform text search
-    const products = await Product.find(
-      {
-        $text: { $search: q },
-        isActive: true
-      },
-      {
-        score: { $meta: 'textScore' }
-      }
-    )
-      .sort({ score: { $meta: 'textScore' } })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .select('-__v')
-      .lean();
-
-    const total = await Product.countDocuments({
-      $text: { $search: q },
-      isActive: true
-    });
-
-    const result = {
-      products,
-      query: q,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    };
-
-    // Cache search results for 5 minutes
-    await activeCache.set(cacheKey, JSON.stringify(result), 300);
-
+    const result = await diaStockService.syncOnlyNames();
     res.json(result);
   } catch (error) {
-    logger.error('Search error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Sync names hatası:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Inventory endpoint
-app.get('/api/inventory/:productId', async (req, res) => {
+/* * Sadece SKU Güncelle * */
+app.post('/api/dia-stock/sync-codes', async (req, res) => {
   try {
-    const { productId } = req.params;
-
-    const inventory = await Inventory.findOne({ productId })
-      .populate('productId', 'name sku brand')
-      .select('-__v');
-
-    if (!inventory) {
-      return res.status(404).json({ error: 'Inventory not found' });
-    }
-
-    res.json(inventory);
-  } catch (error) {
-    logger.error('Inventory fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// DIA Stock endpoints
-// Get DIA stock list with filters and pagination
-app.get('/api/dia-stock', async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      marka,
-      durum = 'A',
-      b2c_gonder = 'E',
-      stok_durumu,
-      kategori,
-      search,
-      sort = 'updatedAt'
-    } = req.query;
-
-    // Build query
-    const query = {};
-    if (durum) query.durum = durum;
-    if (b2c_gonder) query.b2c_gonder = b2c_gonder;
-    if (marka) query.marka = { $regex: marka, $options: 'i' };
-    if (kategori) query['m_kategoriler.kategori_aciklama_1'] = { $regex: kategori, $options: 'i' };
-
-    // Stok durumu filtresi
-    if (stok_durumu === 'in_stock') {
-      query.fiili_stok = { $gt: 0 };
-    } else if (stok_durumu === 'out_of_stock') {
-      query.fiili_stok = { $lte: 0 };
-    }
-
-    // Search filter
-    if (search) {
-      query.$or = [
-        { aciklama: { $regex: search, $options: 'i' } },
-        { stokkartkodu: { $regex: search, $options: 'i' } },
-        { marka: { $regex: search, $options: 'i' } },
-        { ekalan1: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    // Check cache first
-    const cacheKey = `dia-stock:${JSON.stringify(query)}:${page}:${limit}:${sort}`;
-    const cachedResults = await activeCache.get(cacheKey);
-
-    if (cachedResults) {
-      return res.json(JSON.parse(cachedResults));
-    }
-
-    // Build sort object
-    const sortObj = {};
-    if (sort === 'marka') sortObj.marka = 1;
-    else if (sort === 'stok_desc') sortObj.fiili_stok = -1;
-    else if (sort === 'stok_asc') sortObj.fiili_stok = 1;
-    else if (sort === 'fiyat_desc') sortObj.fiyat1 = -1;
-    else if (sort === 'fiyat_asc') sortObj.fiyat1 = 1;
-    else if (sort === 'updatedAt') sortObj.updatedAt = -1;
-    else sortObj.updatedAt = -1;
-
-    // Execute query
-    const stocks = await DiaStock.find(query)
-      .sort(sortObj)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .select('_key aciklama marka stokkartkodu fiili_stok fiyat1 primaryCategory primaryImage durum b2c_gonder updatedAt')
-      .lean();
-
-    const total = await DiaStock.countDocuments(query);
-
-    const result = {
-      stocks,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      },
-      filters: {
-        marka,
-        durum,
-        b2c_gonder,
-        stok_durumu,
-        kategori,
-        search
-      }
-    };
-
-    // Cache result for 5 minutes
-    await activeCache.set(cacheKey, JSON.stringify(result), 300);
-
+    const result = await diaStockService.syncOnlyCodes();
     res.json(result);
   } catch (error) {
-    logger.error('DIA stock fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Sync codes hatası:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get single DIA stock by _key
-app.get('/api/dia-stock/:_key', async (req, res) => {
+/* * Sadece Fiyat Güncelle * */
+app.post('/api/dia-stock/sync-prices', async (req, res) => {
   try {
-    const { _key } = req.params;
-
-    // Check cache first
-    const cacheKey = `dia-stock:${_key}`;
-    const cachedStock = await activeCache.get(cacheKey);
-
-    if (cachedStock) {
-      return res.json(JSON.parse(cachedStock));
-    }
-
-    const stock = await DiaStock.findOne({ _key })
-      .select('-__v')
-      .lean();
-
-    if (!stock) {
-      return res.status(404).json({ error: 'Stock not found' });
-    }
-
-    // Cache stock for 30 minutes
-    await activeCache.set(cacheKey, JSON.stringify(stock), 1800);
-
-    res.json(stock);
-  } catch (error) {
-    logger.error('DIA stock fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Add manual DIA stock
-app.post('/api/dia-stock', async (req, res) => {
-  try {
-    const stockData = req.body;
-
-    if (!stockData._key) {
-      return res.status(400).json({ error: '_key field is required' });
-    }
-
-    const result = await diaStockService.addManualStock(stockData);
-
-    res.status(201).json(result);
-  } catch (error) {
-    logger.error('Manual stock add error:', error);
-
-    if (error.message.includes('zaten mevcut')) {
-      return res.status(409).json({ error: error.message });
-    }
-
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Update DIA stock
-app.put('/api/dia-stock/:_key', async (req, res) => {
-  try {
-    const { _key } = req.params;
-    const updateData = req.body;
-
-    const stock = await DiaStock.findOne({ _key });
-    if (!stock) {
-      return res.status(404).json({ error: 'Stock not found' });
-    }
-
-    // Update fields
-    Object.keys(updateData).forEach(key => {
-      if (key !== '_key' && key !== 'createdAt' && key !== 'updatedAt') {
-        stock[key] = updateData[key];
-      }
-    });
-
-    // Update sync info
-    stock.syncInfo.lastSyncDate = new Date();
-    stock.syncInfo.syncSource = 'manual';
-    stock.syncInfo.syncStatus = 'synced';
-
-    await stock.save();
-
-    // Invalidate cache
-    await activeCache.del(`dia-stock:${_key}`);
-    await activeCache.invalidateSearchCache();
-
-    res.json({ success: true, _key });
-  } catch (error) {
-    logger.error('DIA stock update error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Trigger DIA stock synchronization
-app.post('/api/dia-stock/sync', async (req, res) => {
-  try {
-    const { type = 'full', _key } = req.body;
-
-    let result;
-
-    if (type === 'single' && _key) {
-      result = await diaStockService.syncSingleStock(_key);
-    } else if (type === 'incremental') {
-      const lastSyncDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // Son 24 saat
-      result = await diaStockService.incrementalSync(lastSyncDate);
-    } else {
-      // Background'da çalıştır - tam sync uzun sürebilir
-      diaStockService.fullSync().catch(error => {
-        logger.error('Background sync error:', error);
-      });
-
-      result = {
-        success: true,
-        message: 'Full synchronization started in background',
-        type: 'full'
-      };
-    }
-
+    const result = await diaStockService.syncOnlyPrices();
     res.json(result);
   } catch (error) {
-    logger.error('DIA stock sync error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Sync prices hatası:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get DIA stock synchronization statistics
-app.get('/api/dia-stock/stats', async (req, res) => {
+/* * Sadece Görsel Güncelle * */
+app.post('/api/dia-stock/sync-images', async (req, res) => {
   try {
-    // Check cache first
-    const cacheKey = 'dia-stock:stats';
-    const cachedStats = await activeCache.get(cacheKey);
-
-    if (cachedStats) {
-      return res.json(JSON.parse(cachedStats));
-    }
-
-    const stats = await diaStockService.getSyncStats();
-
-    // Cache stats for 10 minutes
-    await activeCache.set(cacheKey, JSON.stringify(stats), 600);
-
-    res.json(stats);
-  } catch (error) {
-    logger.error('DIA stock stats error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get DIA stock synchronization status
-app.get('/api/dia-stock/sync-status', async (req, res) => {
-  try {
-    const pendingSync = await DiaStock.countDocuments({ 'syncInfo.syncStatus': 'pending' });
-    const errorSync = await DiaStock.countDocuments({ 'syncInfo.syncStatus': 'error' });
-    const lastSyncDate = await DiaStock.findOne(
-      { 'syncInfo.syncStatus': 'synced' },
-      { 'syncInfo.lastSyncDate': 1 }
-    ).sort({ 'syncInfo.lastSyncDate': -1 });
-
-    const syncErrors = await DiaStock.find(
-      { 'syncInfo.syncStatus': 'error' },
-      { _key: 1, stokkartkodu: 1, 'syncInfo.errorMessage': 1, 'syncInfo.lastSyncDate': 1 }
-    ).limit(10).sort({ 'syncInfo.lastSyncDate': -1 });
-
-    res.json({
-      pendingCount: pendingSync,
-      errorCount: errorSync,
-      lastSyncDate: lastSyncDate?.syncInfo?.lastSyncDate || null,
-      recentErrors: syncErrors
-    });
-  } catch (error) {
-    logger.error('DIA stock sync status error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Search DIA stocks with text search
-app.get('/api/dia-stock/search', async (req, res) => {
-  try {
-    const { q, page = 1, limit = 20 } = req.query;
-
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
-    }
-
-    // Check cache first
-    const cacheKey = `dia-stock:search:${q}:${page}:${limit}`;
-    const cachedResults = await activeCache.get(cacheKey);
-
-    if (cachedResults) {
-      return res.json(JSON.parse(cachedResults));
-    }
-
-    // Perform text search
-    const stocks = await DiaStock.find(
-      {
-        $text: { $search: q },
-        durum: 'A',
-        b2c_gonder: 'E'
-      },
-      {
-        score: { $meta: 'textScore' }
-      }
-    )
-      .sort({ score: { $meta: 'textScore' } })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .select('_key aciklama marka stokkartkodu fiili_stok fiyat1 primaryCategory primaryImage')
-      .lean();
-
-    const total = await DiaStock.countDocuments({
-      $text: { $search: q },
-      durum: 'A',
-      b2c_gonder: 'E'
-    });
-
-    const result = {
-      stocks,
-      query: q,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    };
-
-    // Cache search results for 5 minutes
-    await activeCache.set(cacheKey, JSON.stringify(result), 300);
-
+    const result = await diaStockService.syncOnlyImages();
     res.json(result);
   } catch (error) {
-    logger.error('DIA stock search error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Sync images hatası:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Get DIA stock brands
-app.get('/api/dia-stock/brands', async (req, res) => {
-  try {
-    // Check cache first
-    const cacheKey = 'dia-stock:brands';
-    const cachedBrands = await activeCache.get(cacheKey);
-
-    if (cachedBrands) {
-      return res.json(JSON.parse(cachedBrands));
-    }
-
-    const brands = await DiaStock.aggregate([
-      { $match: { durum: 'A', marka: { $ne: null, $ne: '' } } },
-      { $group: { _id: '$marka', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $project: { brand: '$_id', count: 1, _id: 0 } }
-    ]);
-
-    // Cache brands for 1 hour
-    await activeCache.set(cacheKey, JSON.stringify(brands), 3600);
-
-    res.json(brands);
-  } catch (error) {
-    logger.error('DIA stock brands error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
+// ============================================
+// (PLUGIN) - WHEELSIZE ROUTES
+// ============================================
 
 // Wheel Size API Proxy Endpoints
 const WHEEL_SIZE_API_BASE = process.env.WHEEL_SIZE_API_URL || 'http://217.195.202.170:5000/api';
@@ -906,480 +514,6 @@ async function tryWheelSize(path, cfg = {}) {
   }
   throw lastError;
 }
-
-// Araç API'leri
-app.get('/api/arac/markalar', async (req, res) => {
-  const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== ARAÇ MARKALAR API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/arac/markalar',
-    query: req.query,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    timestamp: new Date().toISOString()
-  });
-
-  try {
-    const params = { ...(req.query || {}) };
-    // Sadece eudm bölgesini iste
-    params.bolgeler = 'eudm';
-    const response = await tryWheelSize(`/arac/markalar`, { params });
-
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
-
-    logger.info('=== ARAÇ MARKALAR API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      success: responseData.basarili,
-      totalRecords: responseData.toplamKayit,
-      sampleData: responseData.veri ? responseData.veri.slice(0, 3) : null,
-      timestamp: new Date().toISOString()
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== ARAÇ MARKALAR API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      stack: error.stack,
-      response: error.response?.data,
-      statusCode: error.response?.status,
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(500).json({
-      basarili: false,
-      hata: 'Marka bilgileri alınırken hata oluştu',
-      requestId
-    });
-  }
-});
-
-app.get('/api/arac/modeller', async (req, res) => {
-  const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== ARAÇ MODELLER API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/arac/modeller',
-    query: req.query,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    timestamp: new Date().toISOString()
-  });
-
-  try {
-    const params = { ...(req.query || {}) };
-    params.bolgeler = 'eudm';
-    const response = await tryWheelSize(`/arac/modeller`, { params });
-
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
-
-    logger.info('=== ARAÇ MODELLER API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      success: responseData.basarili,
-      totalRecords: responseData.toplamKayit,
-      sampleData: responseData.veri ? responseData.veri.slice(0, 3) : null,
-      timestamp: new Date().toISOString()
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== ARAÇ MODELLER API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      stack: error.stack,
-      response: error.response?.data,
-      statusCode: error.response?.status,
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(500).json({
-      basarili: false,
-      hata: 'Model bilgileri alınırken hata oluştu',
-      requestId
-    });
-  }
-});
-
-app.get('/api/arac/yillar', async (req, res) => {
-  const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== ARAÇ YILLAR API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/arac/yillar',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
-
-  try {
-    const params = { ...(req.query || {}) };
-    params.bolgeler = 'eudm';
-    const response = await tryWheelSize(`/arac/yillar`, { params });
-
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
-
-    logger.info('=== ARAÇ YILLAR API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      success: responseData.basarili,
-      sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
-      timestamp: new Date().toISOString()
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== ARAÇ YILLAR API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(500).json({
-      basarili: false,
-      hata: 'Yıl bilgileri alınırken hata oluştu',
-      requestId
-    });
-  }
-});
-
-app.get('/api/arac/jenerasyonlar', async (req, res) => {
-  const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== ARAÇ JENERASYONLAR API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/arac/jenerasyonlar',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
-
-  try {
-    const response = await tryWheelSize(`/arac/jenerasyonlar`, { params: req.query });
-
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
-
-    logger.info('=== ARAÇ JENERASYONLAR API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      success: responseData.basarili,
-      timestamp: new Date().toISOString()
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== ARAÇ JENERASYONLAR API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(500).json({
-      basarili: false,
-      hata: 'Jenerasyon bilgileri alınırken hata oluştu',
-      requestId
-    });
-  }
-});
-
-app.get('/api/arac/modifikasyonlar', async (req, res) => {
-  const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== ARAÇ MODİFİKASYONLAR API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/arac/modifikasyonlar',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
-
-  try {
-    const params = { ...(req.query || {}) };
-    // Bölgeyi varsayılan olarak eudm ile sınırla (çoğalmayı azaltır)
-    if (!params.bolgeler && !params.bolge) params.bolgeler = 'eudm';
-    const response = await tryWheelSize(`/arac/modifikasyonlar`, { params, timeout: 30000 });
-
-    const duration = Date.now() - startTime;
-    const responseData = response.data || {};
-
-    // Gelen listeyi bölgeye göre filtrele ve olası tekrarları sadeleştir
-    const rawList = Array.isArray(responseData.veri) ? responseData.veri : [];
-    const onlyEudm = rawList.filter(m => {
-      const regs = m?.regions || m?.bolgeler || [];
-      return regs.length === 0 || regs.includes('eudm');
-    });
-
-    // Aynı jenerasyon + trim (veya name) tekrarlarını kaldır
-    const seen = new Set();
-    const deduped = [];
-    for (const m of onlyEudm) {
-      const gen = m?.generation?.slug || m?.generation || '';
-      const key = `${gen}__${m?.trim || m?.name || m?.slug}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      deduped.push(m);
-    }
-
-    // İstatistiksel log (neden birden fazla?)
-    const regionBuckets = {};
-    for (const m of rawList) {
-      const regs = (m?.regions || []).length ? m.regions : ['(yok)'];
-      regs.forEach(r => { regionBuckets[r] = (regionBuckets[r] || 0) + 1; });
-    }
-
-    const trimBuckets = {};
-    for (const m of rawList) {
-      const k = m?.trim || m?.name || '(yok)';
-      trimBuckets[k] = (trimBuckets[k] || 0) + 1;
-    }
-
-    logger.info('=== ARAÇ MODİFİKASYONLAR API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      dataLength: rawList.length,
-      filteredToEudm: onlyEudm.length,
-      dedupedCount: deduped.length,
-      regionBuckets,
-      topSamples: deduped.slice(0, 3).map(m => ({ slug: m.slug, name: m.name, trim: m.trim, regions: m.regions, engine: m.engine?.code })),
-      success: responseData.basarili,
-      sampleData: rawList.slice(0, 3),
-      timestamp: new Date().toISOString()
-    });
-
-    res.json({ ...responseData, veri: deduped });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== ARAÇ MODİFİKASYONLAR API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      stack: error.stack,
-      response: error.response?.data,
-      statusCode: error.response?.status,
-      timestamp: new Date().toISOString()
-    });
-
-    // Wheel Size API'den gelen hata mesajını kullan
-    const errorMessage = error.response?.data?.hata || error.response?.data?.mesaj || error.message;
-
-    res.status(500).json({
-      basarili: false,
-      hata: errorMessage || 'Modifikasyon bilgileri alınırken hata oluştu',
-      mesaj: errorMessage || 'Modifikasyon bilgileri alınırken hata oluştu',
-      requestId
-    });
-  }
-});
-
-app.get('/api/arac/model-arama', async (req, res) => {
-  const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== ARAÇ MODEL ARAMA API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/arac/model-arama',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
-
-  try {
-    const params = { ...(req.query || {}) };
-    params.bolgeler = 'eudm';
-    const response = await tryWheelSize(`/arac/model-arama`, { params, timeout: 30000 });
-
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
-
-    // Wheels array'ini lastikler/jantlar ve ön-arka kombinasyonlarına dönüştür
-    if (responseData.basarili && responseData.veri && Array.isArray(responseData.veri)) {
-      responseData.veri.forEach(modifikasyon => {
-        if (modifikasyon.wheels && Array.isArray(modifikasyon.wheels)) {
-          // 1) Frontend'in beklediği lastik listesi (tek ebat listesi)
-          modifikasyon.lastikler = modifikasyon.wheels.map(wheel => {
-            return {
-              // Frontend'in beklediği alanlar
-              kesitGenisligi: wheel.front.tire_width,
-              yanakOrani: wheel.front.tire_aspect_ratio,
-              jantCapi: wheel.front.rim_diameter,
-              marka: 'Çeşitli Markalar',
-              model: wheel.front.tire,
-              fiyat: Math.floor(Math.random() * 500) + 200,
-              stok: wheel.is_stock,
-              mevsim: wheel.is_recommended_for_winter ? 'kis' : 'yaz',
-              yukEndeksi: wheel.front.load_index?.toString(),
-              hizEndeksi: wheel.front.speed_index,
-
-              // Ek bilgiler
-              id: `${modifikasyon.slug}_${wheel.front.tire}`,
-              ebat: wheel.front.tire,
-              basincOn: wheel.front.tire_pressure?.bar,
-              basincArka: wheel.rear?.tire_pressure?.bar || wheel.front.tire_pressure?.bar,
-              kisLastigiUygun: wheel.is_recommended_for_winter,
-              runFlat: wheel.is_runflat_tires,
-              agirlik: wheel.front.tire_weight_kg,
-              resim: null,
-              aciklama: `${wheel.front.tire} ebadında lastik`
-            };
-          });
-
-          // 2) Jant bilgilerini de ekle
-          modifikasyon.jantlar = modifikasyon.wheels.map(wheel => {
-            return {
-              id: `${modifikasyon.slug}_jant_${wheel.front.rim}`,
-              ebat: wheel.front.rim,
-              genislik: wheel.front.rim_width,
-              cap: wheel.front.rim_diameter,
-              offset: wheel.front.rim_offset,
-              pcd: modifikasyon.technical?.pcd,
-              merkezDeligi: modifikasyon.technical?.centre_bore,
-              cividaSayisi: modifikasyon.technical?.stud_holes,
-              stok: wheel.is_stock,
-              fiyat: Math.floor(Math.random() * 800) + 300, // Geçici fiyat
-              marka: 'OEM',
-              model: wheel.front.rim,
-              resim: null,
-              aciklama: `${wheel.front.rim} ebadında jant`
-            };
-          });
-
-          // 3) Ön/Arka kombinasyonları
-          modifikasyon.kombinasyonlar = modifikasyon.wheels.map((wheel, idx) => {
-            const on = wheel.front ? {
-              rim: wheel.front.rim,
-              rim_diameter: wheel.front.rim_diameter,
-              rim_width: wheel.front.rim_width,
-              rim_offset: wheel.front.rim_offset,
-              tire_full: wheel.front.tire_full || `${wheel.front.tire} ${wheel.front.load_index || ''}${wheel.front.speed_index || ''}`.trim(),
-              tire: wheel.front.tire,
-              load_index: wheel.front.load_index,
-              speed_index: wheel.front.speed_index,
-              pressure: wheel.front.tire_pressure || null,
-              tire_width: wheel.front.tire_width,
-              tire_aspect_ratio: wheel.front.tire_aspect_ratio,
-              tire_diameter_mm: wheel.front.tire_diameter_mm,
-              tire_weight_kg: wheel.front.tire_weight_kg
-            } : null;
-
-            const arka = wheel.rear ? {
-              rim: wheel.rear.rim,
-              rim_diameter: wheel.rear.rim_diameter,
-              rim_width: wheel.rear.rim_width,
-              rim_offset: wheel.rear.rim_offset,
-              tire_full: wheel.rear.tire_full || `${wheel.rear.tire} ${wheel.rear.load_index || ''}${wheel.rear.speed_index || ''}`.trim(),
-              tire: wheel.rear.tire,
-              load_index: wheel.rear.load_index,
-              speed_index: wheel.rear.speed_index,
-              pressure: wheel.rear.tire_pressure || null,
-              tire_width: wheel.rear.tire_width,
-              tire_aspect_ratio: wheel.rear.tire_aspect_ratio,
-              tire_diameter_mm: wheel.rear.tire_diameter_mm,
-              tire_weight_kg: wheel.rear.tire_weight_kg
-            } : null;
-
-            return {
-              sira: idx + 1,
-              stokta: !!wheel.is_stock,
-              kisUygun: !!wheel.is_recommended_for_winter,
-              runflat: !!wheel.is_runflat_tires,
-              on,
-              arka
-            };
-          });
-
-          // Örnek log
-          logger.info('=== ARAÇ LASTİK KOMBİNASYONLARI ===', {
-            requestId,
-            modification: modifikasyon.slug || modifikasyon.name,
-            count: modifikasyon.kombinasyonlar.length,
-            sample: modifikasyon.kombinasyonlar.slice(0, 2)
-          });
-        }
-      });
-    }
-
-    logger.info('=== ARAÇ MODEL ARAMA API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      success: responseData.basarili,
-      hasLastikler: responseData.veri?.[0]?.lastikler ? responseData.veri[0].lastikler.length : 0,
-      hasJantlar: responseData.veri?.[0]?.jantlar ? responseData.veri[0].jantlar.length : 0,
-      sampleLastikler: responseData.veri?.[0]?.lastikler ? responseData.veri[0].lastikler.slice(0, 3) : null,
-      timestamp: new Date().toISOString()
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== ARAÇ MODEL ARAMA API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      stack: error.stack,
-      response: error.response?.data,
-      statusCode: error.response?.status,
-      timestamp: new Date().toISOString()
-    });
-
-    // Wheel Size API'den gelen hata mesajını kullan
-    const errorMessage = error.response?.data?.hata || error.response?.data?.mesaj || error.message;
-
-    res.status(500).json({
-      basarili: false,
-      hata: errorMessage || 'Model arama sırasında hata oluştu',
-      mesaj: errorMessage || 'Model arama sırasında hata oluştu',
-      requestId
-    });
-  }
-});
-
-app.get('/api/arac/bolgeler', async (req, res) => {
-  try {
-    const response = await tryWheelSize(`/arac/bolgeler`, { params: req.query });
-    res.json(response.data);
-  } catch (error) {
-    logger.error('Wheel Size API - Bölgeler error:', error);
-    res.status(500).json({
-      basarili: false,
-      hata: 'Bölge bilgileri alınırken hata oluştu'
-    });
-  }
-});
 
 // Jant API'leri
 app.get('/api/jant/caplar', async (req, res) => {
@@ -1500,7 +634,6 @@ app.get('/api/lastik/genislikler', async (req, res) => {
   }
 });
 
-// Frontend'in beklediği endpoint'ler
 app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -2478,53 +1611,6 @@ app.get('/api/lastik/kategori/:kategori', async (req, res) => {
   }
 });
 
-/**
-  * (PLUGIN) DİA Senkronize Routes *
-*/
-/* * Sadece Ürün Adı Güncelle * */
-app.post('/api/dia-stock/sync-names', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyNames();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync names hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece SKU Güncelle * */
-app.post('/api/dia-stock/sync-codes', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyCodes();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync codes hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece Fiyat Güncelle * */
-app.post('/api/dia-stock/sync-prices', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyPrices();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync prices hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece Görsel Güncelle * */
-app.post('/api/dia-stock/sync-images', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyImages();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync images hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Wheelsize ürün bilgisini parse et
 function parseWheelsizeProduct(product) {
   try {
@@ -2704,29 +1790,6 @@ function detectSeasonFromDiaProduct(diaProduct) {
   }
 }
 
-// Cache istatistikleri API'si
-app.get('/api/cache/stats', async (req, res) => {
-  try {
-    const stats = await activeCache.getStats();
-
-    res.json({
-      basarili: true,
-      veri: {
-        ...stats,
-        type: 'redis',
-        environment: process.env.NODE_ENV || 'development'
-      },
-      mesaj: 'Cache istatistikleri başarıyla alındı'
-    });
-  } catch (error) {
-    logger.error('Cache stats error:', error);
-    res.status(500).json({
-      basarili: false,
-      hata: 'Cache istatistikleri alınırken hata oluştu'
-    });
-  }
-});
-
 // Cache temizleme API'si
 app.post('/api/cache/clear', async (req, res) => {
   try {
@@ -2751,33 +1814,6 @@ app.post('/api/cache/clear', async (req, res) => {
     res.status(500).json({
       basarili: false,
       hata: 'Cache temizlenirken hata oluştu'
-    });
-  }
-});
-
-// Genel API'ler
-app.get('/api/genel/bilgiler', async (req, res) => {
-  try {
-    const response = await tryWheelSize(`/genel/bilgiler`, { params: req.query });
-    res.json(response.data);
-  } catch (error) {
-    logger.error('Wheel Size API - Genel bilgiler error:', error);
-    res.status(500).json({
-      basarili: false,
-      hata: 'Genel bilgiler alınırken hata oluştu'
-    });
-  }
-});
-
-app.get('/api/genel/istatistikler', async (req, res) => {
-  try {
-    const response = await tryWheelSize(`/genel/istatistikler`, { params: req.query });
-    res.json(response.data);
-  } catch (error) {
-    logger.error('Wheel Size API - İstatistikler error:', error);
-    res.status(500).json({
-      basarili: false,
-      hata: 'İstatistik bilgileri alınırken hata oluştu'
     });
   }
 });
@@ -2832,8 +1868,6 @@ process.on('SIGTERM', async () => {
   }
 });
 
-// Startup'ta otomatik sync kontrolü - DEVRE DIŞI
-// Artık sadece günlük cron job ile saat 05:00'da çalışır
 async function checkAndRunStartupSync() {
   try {
     // Son sync bilgisini sadece log için kontrol et

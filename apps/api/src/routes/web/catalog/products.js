@@ -60,9 +60,10 @@ router.get('/filter', async (req, res) => {
         // ÜRÜN TİPİ TESPİTİ (kategorideki ürünlerden ozelkod7kodu)
         // ==========================================
         let productType = null;
+        let webCategory = null;
 
         if (category) {
-            const webCategory = await WebCategory.findOne({
+            webCategory = await WebCategory.findOne({
                 slug: category,
                 webVisible: true
             }).lean();
@@ -99,7 +100,16 @@ router.get('/filter', async (req, res) => {
         const isJantCategory = productType === 'JANT';
 
         const andConditions = [];
-
+        if (webCategory?.diaCategory) {
+            const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
+            andConditions.push({
+                'diaData.m_kategoriler': {
+                    $elemMatch: {
+                        [diaLevel]: webCategory.diaCategory
+                    }
+                }
+            });
+        }
         // ==========================================
         // LASTİK FİLTRELERİ
         // ==========================================

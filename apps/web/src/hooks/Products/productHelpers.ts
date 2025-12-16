@@ -12,6 +12,12 @@ export const getProductUrl = (product: Product): string => {
         ? buildProductUrl(product.customData.seoUrl)
         : buildProductUrl(product._key);
 };
+/**
+ * Ürün ana kategorisini getir
+ */
+export const getCategory = (product: Product): string => {
+    return product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-';
+};
 
 /**
  * Ürün özelliğini getir
@@ -218,4 +224,154 @@ export const getProductImages = (product: Product): Array<{ url: string; alt: st
     }
 
     return images.sort((a, b) => a.order - b.order);
+};
+
+/**
+ * Ürün Tipi (ozelkod7kodu bazlı)
+ */
+export type ProductType = 'LASTIK' | 'JANT' | 'ZINCIR' | 'AKSESUAR' | 'GENEL';
+
+/**
+ * Ürün tipini belirle (Backend ile aynı mantık)
+ * DİKKAT: Türkçe karakterler! LASTİK, ZİNCİR (Büyük İ)
+ */
+export const getProductType = (product: Product): ProductType => {
+    const ozelkod7 = product?.diaData?.ozelkod7kodu;
+
+    if (!ozelkod7) return 'GENEL';
+
+    // Türkçe karakterlere dikkat! Büyük İ var
+    switch (ozelkod7.toUpperCase()) {
+        case 'LASTİK':
+            return 'LASTIK';
+        case 'JANT':
+            return 'JANT';
+        case 'ZİNCİR':
+        case 'KAR ZİNCİRİ':
+        case 'PALET':
+            return 'ZINCIR';
+        case 'AKSESUAR':
+            return 'AKSESUAR';
+        default:
+            return 'GENEL';
+    }
+};
+
+/**
+ * Ürün tipi kontrol fonksiyonları
+ */
+export const isLastik = (product: Product): boolean => {
+    return getProductType(product) === 'LASTIK';
+};
+
+export const isJant = (product: Product): boolean => {
+    return getProductType(product) === 'JANT';
+};
+
+export const isZincir = (product: Product): boolean => {
+    return getProductType(product) === 'ZINCIR';
+};
+
+export const isAksesuar = (product: Product): boolean => {
+    return getProductType(product) === 'AKSESUAR';
+};
+
+/**
+ * Ürün özelliklerini tip bazlı getir
+ */
+export interface ProductFeatureItem {
+    label: string;
+    value: string | number;
+}
+
+export const getProductDetailFeatures = (product: Product): ProductFeatureItem[] => {
+    const type = getProductType(product);
+
+    switch (type) {
+        case 'LASTIK':
+            return getLastikDetailFeatures(product);
+        case 'JANT':
+            return getJantDetailFeatures(product);
+        case 'ZINCIR':
+            return getZincirDetailFeatures(product);
+        case 'AKSESUAR':
+            return getAksesuarDetailFeatures(product);
+        default:
+            return getGenericFeatures(product);
+    }
+};
+
+/**
+ * Lastik özellikleri
+ */
+const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
+    return [
+        { label: 'Marka', value: product.diaData?.marka || '-' },
+        { label: 'Kesit Genişliği', value: getProductFeature(product, 'Genişlik') },
+        { label: 'Yanak Oranı', value: getProductFeature(product, 'Yanak') },
+        { label: 'Jant Çapı', value: getProductFeature(product, 'Jant Çapı') },
+        { label: 'Yük Endeksi', value: getProductFeature(product, 'Yük Endeksi') },
+        { label: 'Hız Endeksi', value: getProductFeature(product, 'Hız Endeksi') },
+        { label: 'Mevsim', value: getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-' },
+        { label: 'Run Flat', value: getProductFeature(product, 'Run Flat') },
+        { label: 'XL', value: getProductFeature(product, 'XL') },
+        { label: 'OEM', value: getProductFeature(product, 'OEM') },
+        { label: 'Üretim Yılı', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') },
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+    ].filter(f => f.value && f.value !== '-' && f.value !== 'Hayır');
+};
+
+/**
+ * Jant özellikleri
+ */
+const getJantDetailFeatures = (product: Product): ProductFeatureItem[] => {
+    return [
+        { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
+        { label: 'Marka', value: product.diaData?.marka || '-' },
+        { label: 'Jant Genişliği', value: getProductFeature(product, 'Jant Genişliği') },
+        { label: 'Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
+        { label: 'Bijon Sayısı', value: getProductFeature(product, 'Bijon Sayısı') },
+        { label: 'Bijon Aralığı (PCD)', value: getProductFeature(product, 'Bijon Aralığı') || product.diaData?.ozelkod3kodu || '-' },
+        { label: 'Göbek Çapı', value: getProductFeature(product, 'Göbek Çapı') },
+        { label: 'Offset (ET)', value: getProductFeature(product, 'ET') },
+        { label: 'Renk', value: getProductFeature(product, 'Renk') },
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+    ].filter(f => f.value && f.value !== '-');
+};
+
+/**
+ * Kar zinciri/palet özellikleri
+ */
+const getZincirDetailFeatures = (product: Product): ProductFeatureItem[] => {
+    return [
+        { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
+        { label: 'Marka', value: product.diaData?.marka || '-' },
+        { label: 'Uyumlu Lastik Genişliği', value: getProductFeature(product, 'Genişlik') || product.diaData?.ozelkod3kodu || '-' },
+        { label: 'Uyumlu Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
+        { label: 'Tip', value: product.diaData?.ekalan2 || '-' },
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+    ].filter(f => f.value && f.value !== '-');
+};
+
+/**
+ * Aksesuar özellikleri
+ */
+const getAksesuarDetailFeatures = (product: Product): ProductFeatureItem[] => {
+    return [
+        { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
+        { label: 'Marka', value: product.diaData?.marka || '-' },
+        { label: 'Tip', value: product.diaData?.ekalan1 || '-' },
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+    ].filter(f => f.value && f.value !== '-');
+};
+
+/**
+ * Generic özellikler (tip belirlenemezse)
+ */
+const getGenericFeatures = (product: Product): ProductFeatureItem[] => {
+    return [
+        { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
+        { label: 'Marka', value: product.diaData?.marka || '-' },
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+    ].filter(f => f.value && f.value !== '-');
 };

@@ -50,13 +50,13 @@ export default async function ProductDetailPage(
                         <Gallery product={product} />
                     </Grid>
                 </Grid>
-                <Grid size={6}>
+                <Grid size={5}>
                     <Middle
                         product={product}
                         productName={product.diaData?.aciklama || ''}
                     />
                 </Grid>
-                <Grid size={2}>
+                <Grid size={3}>
                     Sepete Ekle
                 </Grid>
             </Grid>
