@@ -453,6 +453,34 @@ try {
 // (PLUGIN) - DIA ROUTES
 // ============================================
 
+/* * Tümünü Güncelle (Full Sync) * */
+app.post('/api/dia-stock/sync', async (req, res) => {
+  try {
+    // Hemen response dön
+    res.json({
+      success: true,
+      message: 'Full sync başlatıldı, arka planda çalışıyor'
+    });
+
+    // Arka planda sync çalıştır
+    setTimeout(async () => {
+      try {
+        const result = await diaStockService.fullSync();
+        console.log('Full sync tamamlandı:', result);
+      } catch (error) {
+        console.error('Full sync hatası:', error);
+      }
+    }, 100);
+
+  } catch (error) {
+    console.error('Full sync hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 /* * Sadece Ürün Adı Güncelle * */
 app.post('/api/dia-stock/sync-names', async (req, res) => {
   try {
