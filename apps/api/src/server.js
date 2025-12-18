@@ -16,6 +16,7 @@ require('dotenv').config({
   path: path.resolve(__dirname, `../${envFile}`)
 });
 
+
 // ============================================
 // CORE DEPENDENCIES
 // ============================================
@@ -107,7 +108,22 @@ const logger = winston.createLogger({
         winston.format.colorize(),
         winston.format.simple(),
         winston.format.printf(({ level, message, timestamp, service, ...meta }) => {
-          const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+          let metaStr = '';
+          try {
+            const safeMeta = {};
+            for (const [key, value] of Object.entries(meta)) {
+              if (value && typeof value === 'object' && !Array.isArray(value)) {
+                if (value.toString && value.toString !== Object.prototype.toString) {
+                  safeMeta[key] = value.toString();
+                }
+              } else {
+                safeMeta[key] = value;
+              }
+            }
+            metaStr = Object.keys(safeMeta).length ? JSON.stringify(safeMeta) : '';
+          } catch (err) {
+            metaStr = '[Circular]';
+          }
           return `${timestamp} [${service}] ${level}: ${message} ${metaStr}`;
         })
       )
@@ -202,13 +218,13 @@ app.use((req, res, next) => {
 
   res.on('finish', () => {
     const duration = Date.now() - start;
-    logger.info({
+    logger.info('HTTP Request', {
       method: req.method,
       url: req.url,
       status: res.statusCode,
       duration: `${duration}ms`,
       ip: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get('User-Agent') || 'Unknown'
     });
   });
 
@@ -263,7 +279,6 @@ app.use('/api/wheelsize', wheelsizeRoutes);
 // ============================================
 const diaRoutes = require('./routes/plugins/dia');
 app.use('/api/dia', diaRoutes);
-logger.info('✅ DIA Plugin Routes yüklendi');
 
 
 // ============================================
@@ -486,7 +501,6 @@ app.post('/api/dia-stock/sync-images', async (req, res) => {
 // (PLUGIN) - WHEELSIZE ROUTES
 // ============================================
 
-// Wheel Size API Proxy Endpoints
 const WHEEL_SIZE_API_BASE = process.env.WHEEL_SIZE_API_URL || 'http://217.195.202.170:5000/api';
 
 async function tryWheelSize(path, cfg = {}) {
@@ -496,7 +510,8 @@ async function tryWheelSize(path, cfg = {}) {
   const alt = hasApi ? base.replace(/\/api$/i, '') : `${base}/api`;
   const swapProtocol = (u) => u.startsWith('http://') ? u.replace('http://', 'https://') : (u.startsWith('https://') ? u.replace('https://', 'http://') : u);
 
-  [base, alt, swapProtocol(base), swapProtocol(alt), 'http://localhost:5058/api', 'http://localhost:5058']
+  // ✅ localhost:5058 kaldırıldı
+  [base, alt, swapProtocol(base), swapProtocol(alt)]
     .filter(Boolean)
     .map(u => u.replace(/\/$/, ''))
     .forEach(u => bases.add(u));
@@ -517,31 +532,69 @@ async function tryWheelSize(path, cfg = {}) {
 
 // Jant API'leri
 app.get('/api/jant/caplar', async (req, res) => {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const cacheKey = 'jant:caplar:eudm';
+
   try {
-    const response = await tryWheelSize(`/jant/caplar`, { params: req.query });
-    res.json(response.data);
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const data = await WheelSizeService.getRimDiameters({ region: 'eudm' });
+
+    const response = {
+      basarili: true,
+      veri: Array.isArray(data) ? data : [],
+      toplamKayit: Array.isArray(data) ? data.length : 0,
+      requestId
+    };
+
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+    res.json(response);
+
   } catch (error) {
-    logger.error('Wheel Size API - Jant çapları error:', error);
+    logger.error('Jant çapları hatası:', error);
     res.status(500).json({
       basarili: false,
-      hata: 'Jant çap bilgileri alınırken hata oluştu'
+      hata: 'Jant çap bilgileri alınırken hata oluştu',
+      requestId
     });
   }
 });
-
 app.get('/api/jant/genislikler', async (req, res) => {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const cacheKey = 'jant:genislikler:eudm';
+
   try {
-    const response = await tryWheelSize(`/jant/genislikler`, { params: req.query });
-    res.json(response.data);
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const data = await WheelSizeService.getRimWidths({ region: 'eudm' });
+
+    const response = {
+      basarili: true,
+      veri: Array.isArray(data) ? data : [],
+      toplamKayit: Array.isArray(data) ? data.length : 0,
+      requestId
+    };
+
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+    res.json(response);
+
   } catch (error) {
-    logger.error('Wheel Size API - Jant genişlikleri error:', error);
+    logger.error('Jant genişlikleri hatası:', error);
     res.status(500).json({
       basarili: false,
-      hata: 'Jant genişlik bilgileri alınırken hata oluştu'
+      hata: 'Jant genişlik bilgileri alınırken hata oluştu',
+      requestId
     });
   }
 });
-
 app.get('/api/jant/offsetler', async (req, res) => {
   try {
     const response = await tryWheelSize(`/jant/offsetler`, { params: req.query });
@@ -554,7 +607,6 @@ app.get('/api/jant/offsetler', async (req, res) => {
     });
   }
 });
-
 app.get('/api/jant/merkez-delikler', async (req, res) => {
   try {
     const response = await tryWheelSize(`/jant/merkez-delikler`, { params: req.query });
@@ -567,20 +619,38 @@ app.get('/api/jant/merkez-delikler', async (req, res) => {
     });
   }
 });
-
 app.get('/api/jant/vida-sablonlari', async (req, res) => {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const cacheKey = 'jant:vida-sablonlari:eudm';
+
   try {
-    const response = await tryWheelSize(`/jant/vida-sablonlari`, { params: req.query });
-    res.json(response.data);
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const data = await WheelSizeService.getRimBoltPatterns({ region: 'eudm' });
+
+    const response = {
+      basarili: true,
+      veri: Array.isArray(data) ? data : [],
+      toplamKayit: Array.isArray(data) ? data.length : 0,
+      requestId
+    };
+
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+    res.json(response);
+
   } catch (error) {
-    logger.error('Wheel Size API - Vida şablonları error:', error);
+    logger.error('Jant vida şablonları hatası:', error);
     res.status(500).json({
       basarili: false,
-      hata: 'Vida şablon bilgileri alınırken hata oluştu'
+      hata: 'Vida şablon bilgileri alınırken hata oluştu',
+      requestId
     });
   }
 });
-
 app.get('/api/jant/arama', async (req, res) => {
   try {
     const response = await tryWheelSize(`/jant/arama`, { params: req.query });
@@ -606,7 +676,6 @@ app.get('/api/jant/modifikasyon-arama', async (req, res) => {
     });
   }
 });
-
 // Lastik API'leri
 app.get('/api/lastik/caplar', async (req, res) => {
   try {
@@ -633,48 +702,31 @@ app.get('/api/lastik/genislikler', async (req, res) => {
     });
   }
 });
-
 app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
-  const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== LASTİK KESİT GENİŞLİKLERİ API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/lastik/kesit-genislikleri',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
+  const cacheKey = 'lastik:kesit-genislikleri:eudm';
 
   try {
-    const params = { ...(req.query || {}) };
-    params.regions = 'eudm';
-    const response = await tryWheelSize(`/lastik/kesit-genislikleri`, { params });
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
 
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const data = await WheelSizeService.getTireSectionWidths({ region: 'eudm' });
 
-    logger.info('=== LASTİK KESİT GENİŞLİKLERİ API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      success: responseData.basarili,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
-      timestamp: new Date().toISOString()
-    });
+    const response = {
+      basarili: true,
+      veri: Array.isArray(data) ? data : [],
+      toplamKayit: Array.isArray(data) ? data.length : 0,
+      requestId
+    };
 
-    res.json(responseData);
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+    res.json(response);
+
   } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== LASTİK KESİT GENİŞLİKLERİ API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-
+    logger.error('Kesit genişlikleri hatası:', error);
     res.status(500).json({
       basarili: false,
       hata: 'Kesit genişlik bilgileri alınırken hata oluştu',
@@ -682,48 +734,31 @@ app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
     });
   }
 });
-
 app.get('/api/lastik/yanak-oranlari', async (req, res) => {
-  const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== LASTİK YANAK ORANLARI API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/lastik/yanak-oranlari',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
+  const cacheKey = 'lastik:yanak-oranlari:eudm';
 
   try {
-    const params = { ...(req.query || {}) };
-    params.regions = 'eudm';
-    const response = await tryWheelSize(`/lastik/yanak-oranlari`, { params });
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
 
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const data = await WheelSizeService.getTireAspectRatios({ region: 'eudm' });
 
-    logger.info('=== LASTİK YANAK ORANLARI API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      success: responseData.basarili,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
-      timestamp: new Date().toISOString()
-    });
+    const response = {
+      basarili: true,
+      veri: Array.isArray(data) ? data : [],
+      toplamKayit: Array.isArray(data) ? data.length : 0,
+      requestId
+    };
 
-    res.json(responseData);
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+    res.json(response);
+
   } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== LASTİK YANAK ORANLARI API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-
+    logger.error('Yanak oranları hatası:', error);
     res.status(500).json({
       basarili: false,
       hata: 'Yanak oranı bilgileri alınırken hata oluştu',
@@ -731,48 +766,31 @@ app.get('/api/lastik/yanak-oranlari', async (req, res) => {
     });
   }
 });
-
 app.get('/api/lastik/jant-caplari', async (req, res) => {
-  const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  logger.info('=== LASTİK JANT ÇAPLARI API İSTEĞİ ===', {
-    requestId,
-    endpoint: '/api/lastik/jant-caplari',
-    query: req.query,
-    ip: req.ip,
-    timestamp: new Date().toISOString()
-  });
+  const cacheKey = 'lastik:jant-caplari:eudm';
 
   try {
-    const params = { ...(req.query || {}) };
-    params.regions = 'eudm';
-    const response = await tryWheelSize(`/lastik/jant-caplari`, { params });
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
 
-    const duration = Date.now() - startTime;
-    const responseData = response.data;
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const data = await WheelSizeService.getTireRimDiameters({ region: 'eudm' });
 
-    logger.info('=== LASTİK JANT ÇAPLARI API YANITI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      statusCode: response.status,
-      success: responseData.basarili,
-      dataLength: responseData.veri ? responseData.veri.length : 0,
-      sampleData: responseData.veri ? responseData.veri.slice(0, 5) : null,
-      timestamp: new Date().toISOString()
-    });
+    const response = {
+      basarili: true,
+      veri: Array.isArray(data) ? data : [],
+      toplamKayit: Array.isArray(data) ? data.length : 0,
+      requestId
+    };
 
-    res.json(responseData);
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+    res.json(response);
+
   } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logger.error('=== LASTİK JANT ÇAPLARI API HATASI ===', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-
+    logger.error('Jant çapları hatası:', error);
     res.status(500).json({
       basarili: false,
       hata: 'Jant çapı bilgileri alınırken hata oluştu',
@@ -780,7 +798,6 @@ app.get('/api/lastik/jant-caplari', async (req, res) => {
     });
   }
 });
-
 app.get('/api/lastik/yanakOranlari', async (req, res) => {
   try {
     const response = await tryWheelSize(`/lastik/yanakOranlari`, { params: req.query });
@@ -793,7 +810,6 @@ app.get('/api/lastik/yanakOranlari', async (req, res) => {
     });
   }
 });
-
 app.get('/api/lastik/arama', async (req, res) => {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -846,7 +862,6 @@ app.get('/api/lastik/arama', async (req, res) => {
     });
   }
 });
-
 app.get('/api/lastik/modifikasyon-arama', async (req, res) => {
   try {
     const response = await tryWheelSize(`/lastik/modifikasyon-arama`, { params: req.query });

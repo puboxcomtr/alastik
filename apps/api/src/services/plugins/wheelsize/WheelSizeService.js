@@ -3,8 +3,8 @@ const axios = require('axios');
 
 class WheelSizeService {
     constructor() {
+        this.userKey = process.env.WHEEL_SIZE_USER_KEY || 'd53fc3695c85571775540c1c9a3ac8c5';
         this.baseURL = 'https://api.wheel-size.com/v2';
-        this.userKey = process.env.WHEEL_SIZE_USER_KEY;
         this.defaultRegion = 'eudm';
     }
 
@@ -125,6 +125,113 @@ class WheelSizeService {
             modification,
             region: this.defaultRegion
         });
+    }
+    async getTireSectionWidths(params = {}) {
+        try {
+            return await this.request('/tire/list_section_widths/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Tire section widths error:', error.message);
+            return [
+                { value: 145 }, { value: 155 }, { value: 165 }, { value: 175 },
+                { value: 185 }, { value: 195 }, { value: 205 }, { value: 215 },
+                { value: 225 }, { value: 235 }, { value: 245 }, { value: 255 },
+                { value: 265 }, { value: 275 }, { value: 285 }, { value: 295 },
+                { value: 305 }, { value: 315 }, { value: 325 }
+            ];
+        }
+    }
+    async getTireAspectRatios(params = {}) {
+        try {
+            return await this.request('/tire/list_aspect_ratios/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Tire aspect ratios error:', error.message);
+            return [
+                { value: 25 }, { value: 30 }, { value: 35 }, { value: 40 },
+                { value: 45 }, { value: 50 }, { value: 55 }, { value: 60 },
+                { value: 65 }, { value: 70 }, { value: 75 }, { value: 80 }
+            ];
+        }
+    }
+    async getTireRimDiameters(params = {}) {
+        try {
+            return await this.request('/tire/list_rim_diameters/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Tire rim diameters error:', error.message);
+            return [
+                { value: 13 }, { value: 14 }, { value: 15 }, { value: 16 },
+                { value: 17 }, { value: 18 }, { value: 19 }, { value: 20 },
+                { value: 21 }, { value: 22 }, { value: 23 }, { value: 24 }
+            ];
+        }
+    }
+    async getRimDiameters(params = {}) {
+        try {
+            return await this.request('/rim/list_diameters/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Rim diameters error:', error.message);
+            return [
+                { value: 13 }, { value: 14 }, { value: 15 }, { value: 16 },
+                { value: 17 }, { value: 18 }, { value: 19 }, { value: 20 },
+                { value: 21 }, { value: 22 }, { value: 23 }, { value: 24 }
+            ];
+        }
+    }
+    async getRimWidths(params = {}) {
+        try {
+            return await this.request('/rim/list_widths/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Rim widths error:', error.message);
+            return [
+                { value: 5.0 }, { value: 5.5 }, { value: 6.0 }, { value: 6.5 },
+                { value: 7.0 }, { value: 7.5 }, { value: 8.0 }, { value: 8.5 },
+                { value: 9.0 }, { value: 9.5 }, { value: 10.0 }, { value: 10.5 }
+            ];
+        }
+    }
+    async getRimOffsets(params = {}) {
+        try {
+            return await this.request('/rim/list_offsets/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Rim offsets error:', error.message);
+            return [
+                { value: -15 }, { value: -10 }, { value: -5 }, { value: 0 },
+                { value: 5 }, { value: 10 }, { value: 15 }, { value: 20 },
+                { value: 25 }, { value: 30 }, { value: 35 }, { value: 40 }
+            ];
+        }
+    }
+    async getRimBoltPatterns(params = {}) {
+        try {
+            return await this.request('/rim/list_bolt_patterns/', {
+                region: this.defaultRegion,
+                ...params
+            });
+        } catch (error) {
+            console.error('Rim bolt patterns error:', error.message);
+            return [
+                { value: '4x100' }, { value: '4x108' }, { value: '5x100' },
+                { value: '5x108' }, { value: '5x112' }, { value: '5x114.3' },
+                { value: '5x120' }, { value: '6x139.7' }
+            ];
+        }
     }
 }
 

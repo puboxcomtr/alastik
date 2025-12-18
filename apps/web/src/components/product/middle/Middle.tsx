@@ -1,11 +1,30 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-/* MUI */
-import { Tooltip } from '@mui/material';
-import { Grid, Typography, Rating, Link, Divider } from '@mui/material';
-import { getProductDetailFeatures, getProductType, getProductSeason, getCategory } from '@/src/hooks/Products/productHelpers';
+/* ========================================
+   MUI Components
+   ======================================== */
+// Dialog Components
+import { Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
 
+// UI Components
+import { Grid, Typography, Rating, Link, Divider, Tooltip } from '@mui/material';
+
+/* ========================================
+   Custom Hooks & Helpers
+   ======================================== */
+import {
+    getProductDetailFeatures,
+    getProductSeason,
+    getCategory,
+    isLastik,
+    getProductUrl
+} from '@/src/hooks/Products/productHelpers';
+
+/* ========================================
+   Layout Components
+   ======================================== */
+import AlternativeSizesModal from '@/src/components/layout/Modals/AlternativeSizesModal';
 
 /* @import Page */
 interface MiddleProps {
@@ -17,8 +36,11 @@ export default function Middle({ product, productName }: MiddleProps) {
     const features = getProductDetailFeatures(product);
     const [rating, setRating] = useState<number>(4.50);
     const [reviewCount, setReviewCount] = useState<number>(2);
+    const [ebatDialogOpen, setEbatDialogOpen] = useState(false);
     const season = getProductSeason(product);
     const categoryName = getCategory(product);
+
+    const handleEbatClick = () => setEbatDialogOpen(true);
     return (
         <>
             <Grid container>
@@ -81,32 +103,59 @@ export default function Middle({ product, productName }: MiddleProps) {
                         </Grid>
                         <Grid size={10}>
                             <ul className="p-0 m-0">
-                                <li className="d-flex">
-                                    <p className="fw-semibold mb-1 w-50">
-                                        <Tooltip title="Lastiğin kullanım mevsimi" arrow placement="top">
-                                            <span>Kategori</span>
-                                        </Tooltip>
-                                    </p >
-                                    <p className="mb-1">
-                                        <span className='d-flex align-items-center gap-1'>
-                                            {season && (
-                                                <img
-                                                    src={season.icon}
-                                                    alt={season.text}
-                                                    width={15}
-                                                    height={15}
-                                                />
-                                            )}
-                                            <span>
-                                                {categoryName}
+                                {isLastik(product) && (
+                                    <li className="d-flex">
+                                        <p className="fw-semibold mb-1 w-50">
+                                            <Tooltip title="Lastiğin kullanım mevsimi" arrow placement="top">
+                                                <span>Kategori</span>
+                                            </Tooltip>
+                                        </p>
+                                        <p className="mb-1">
+                                            <span className='d-flex align-items-center gap-1'>
+                                                {season && (
+                                                    <img
+                                                        src={season.icon}
+                                                        alt={season.text}
+                                                        width={15}
+                                                        height={15}
+                                                    />
+                                                )}
+                                                <span>
+                                                    {categoryName}
+                                                </span>
                                             </span>
-                                        </span>
-                                    </p>
-                                </li>
+                                        </p>
+                                    </li>
+                                )}
                                 {features.map((feature, index) => (
                                     <li key={index} className="d-flex">
-                                        <p className="fw-semibold mb-1 w-50">{feature.label}</p>
-                                        <p className="mb-1">{feature.value}</p>
+                                        <p className="fw-semibold mb-1 w-50">
+                                            {feature.tooltip ? (
+                                                <Tooltip title={feature.tooltip} arrow placement="top">
+                                                    <span>
+                                                        {feature.label}
+                                                        <i className="ri-information-line ms-1 text-muted" style={{ fontSize: '14px' }}></i>
+                                                    </span>
+                                                </Tooltip>
+                                            ) : (
+                                                feature.label
+                                            )}
+                                        </p>
+                                        <p className="mb-1">
+                                            {feature.isClickable ? (
+                                                <Link
+                                                    component="button"
+                                                    onClick={handleEbatClick}
+                                                    className="text-decoration-none fw-semibold cursor-pointer"
+                                                    sx={{ cursor: 'pointer' }}
+                                                >
+                                                    {feature.value}
+                                                    <i className="ri-pencil-line ms-1"></i>
+                                                </Link>
+                                            ) : (
+                                                feature.value
+                                            )}
+                                        </p>
                                     </li>
                                 ))}
                             </ul>
@@ -114,6 +163,12 @@ export default function Middle({ product, productName }: MiddleProps) {
                     </Grid>
                 </Grid>
             </Grid>
+            <AlternativeSizesModal
+                open={ebatDialogOpen}
+                onClose={() => setEbatDialogOpen(false)}
+                product={product}
+                productName={productName}
+            />
         </>
     );
 }

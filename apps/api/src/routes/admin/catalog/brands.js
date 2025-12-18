@@ -321,12 +321,12 @@ router.get('/', maybeAuth, async (req, res) => {
         function calculateBrandCompleteness(brand) {
             let score = 0;
             const checks = [
-                !!(brand.logo?.url),           // Logo var mı? +20
-                !!(brand.description),         // Açıklama var mı? +20  
-                !!(brand.brandInfo?.about),    // Hakkında var mı? +20
-                !!(brand.brandInfo?.website),  // Website var mı? +15
-                !!(brand.seoDescription),      // SEO açıklama var mı? +15
-                brand.productCount > 0         // Ürün var mı? +10
+                !!(brand.logo?.url),          
+                !!(brand.description),         
+                !!(brand.brandInfo?.about),    
+                !!(brand.brandInfo?.website),  
+                !!(brand.seoDescription),      
+                brand.productCount > 0         
             ];
 
             const weights = [20, 20, 20, 15, 15, 10];

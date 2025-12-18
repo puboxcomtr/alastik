@@ -110,6 +110,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                             src={imageUrl}
                             alt={product.diaData.aciklama}
                             className="productImage"
+                            width={60}
+                            height={29}
                         />
                     </div>
                 </Link>

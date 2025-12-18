@@ -1,21 +1,21 @@
-// apps/api/src/routes/web/integration/wheelsize.js
 const express = require('express');
 const router = express.Router();
 const WheelSizeService = require('../../../services/plugins/wheelsize/WheelSizeService');
 
-// Markaları getir
+// GET /api/wheelsize/makes - Marka Listesi
 router.get('/makes', async (req, res) => {
     try {
         const { region } = req.query;
-        const makes = await WheelSizeService.getMakes({ region });
+        const response = await WheelSizeService.getMakes({ region });
 
-        res.json({
+        return res.json({
             success: true,
-            data: makes
+            data: response || [],
+            total: response?.length || 0
         });
     } catch (error) {
         console.error('Marka listesi hatası:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Markalar getirilirken hata oluştu',
             error: error.message
@@ -23,7 +23,6 @@ router.get('/makes', async (req, res) => {
     }
 });
 
-// Modelleri getir
 router.get('/models', async (req, res) => {
     try {
         const { make, region } = req.query;
@@ -31,19 +30,18 @@ router.get('/models', async (req, res) => {
         if (!make) {
             return res.status(400).json({
                 success: false,
-                message: 'Marka parametresi gerekli'
+                message: 'Make parametresi gereklidir'
             });
         }
-
-        const models = await WheelSizeService.getModels(make, { region });
-
-        res.json({
+        const response = await WheelSizeService.getModels(make, { region });
+        return res.json({
             success: true,
-            data: models
+            data: response || [],
+            total: response?.length || 0
         });
     } catch (error) {
         console.error('Model listesi hatası:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Modeller getirilirken hata oluştu',
             error: error.message
@@ -51,27 +49,28 @@ router.get('/models', async (req, res) => {
     }
 });
 
-// Yılları getir
+// GET /api/wheelsize/years - Yıl Listesi
 router.get('/years', async (req, res) => {
     try {
-        const { make, model } = req.query;
+        const { make, model, region } = req.query;
 
         if (!make || !model) {
             return res.status(400).json({
                 success: false,
-                message: 'Marka ve model parametreleri gerekli'
+                message: 'Make ve model parametreleri gereklidir'
             });
         }
 
-        const years = await WheelSizeService.getYears(make, model);
+        const response = await WheelSizeService.getYears(make, model, { region });
 
-        res.json({
+        return res.json({
             success: true,
-            data: years
+            data: response || [],
+            total: response?.length || 0
         });
     } catch (error) {
         console.error('Yıl listesi hatası:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Yıllar getirilirken hata oluştu',
             error: error.message
@@ -79,60 +78,57 @@ router.get('/years', async (req, res) => {
     }
 });
 
-// Jenerasyonları getir
+// GET /api/wheelsize/generations - Nesil Listesi
 router.get('/generations', async (req, res) => {
     try {
         const { make, model } = req.query;
 
-        if (!make || !model) {
+       if (!make || !model) { 
             return res.status(400).json({
                 success: false,
-                message: 'Marka ve model parametreleri gerekli'
+                message: 'Make ve model parametreleri gereklidir'
             });
         }
+        const response = await WheelSizeService.getGenerations(make, model);
 
-        const generations = await WheelSizeService.getGenerations(make, model);
 
-        res.json({
+        return res.json({
             success: true,
-            data: generations
+            data: response || [],
+            total: response?.length || 0
         });
     } catch (error) {
-        console.error('Jenerasyon listesi hatası:', error);
-        res.status(500).json({
+        console.error('Generation listesi hatası:', error);
+        return res.status(500).json({
             success: false,
-            message: 'Jenerasyonlar getirilirken hata oluştu',
+            message: 'Nesiller getirilirken hata oluştu',
             error: error.message
         });
     }
 });
 
-// Modifikasyonları getir
+// GET /api/wheelsize/modifications - Modifikasyon Listesi (trims yerine)
 router.get('/modifications', async (req, res) => {
     try {
-        const { make, model, year, generation } = req.query;
+        const { make, model, year, generation, region } = req.query;
 
         if (!make || !model || !year) {
             return res.status(400).json({
                 success: false,
-                message: 'Marka, model ve yıl parametreleri gerekli'
+                message: 'Make, model ve year parametreleri gereklidir'
             });
         }
 
-        const modifications = await WheelSizeService.getModifications(
-            make,
-            model,
-            parseInt(year),
-            generation
-        );
+        const response = await WheelSizeService.getModifications(make, model, year);
 
-        res.json({
+        return res.json({
             success: true,
-            data: modifications
+            data: response || [],
+            total: response?.length || 0
         });
     } catch (error) {
         console.error('Modifikasyon listesi hatası:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Modifikasyonlar getirilirken hata oluştu',
             error: error.message
@@ -140,32 +136,28 @@ router.get('/modifications', async (req, res) => {
     }
 });
 
-// Araç detaylarını getir
+// GET /api/wheelsize/vehicle-details - Araç Detayları
 router.get('/vehicle-details', async (req, res) => {
     try {
-        const { make, model, year, modification } = req.query;
+        const { make, model, year, modification, region } = req.query;
 
-        if (!make || !model || !year || !modification) {
+        if (!make || !model || !year) {
             return res.status(400).json({
                 success: false,
-                message: 'Tüm parametreler gerekli'
+                message: 'Make, model ve year parametreleri gereklidir'
             });
         }
 
-        const details = await WheelSizeService.getVehicleDetails(
-            make,
-            model,
-            parseInt(year),
-            modification
-        );
+        const response = await WheelSizeService.getVehicleDetails(make, model, year, modification);
 
-        res.json({
+        return res.json({
             success: true,
-            data: details
+            data: response || {},
+            message: 'Araç detayları başarıyla getirildi'
         });
     } catch (error) {
-        console.error('Araç detay hatası:', error);
-        res.status(500).json({
+        console.error('Araç detayları hatası:', error);
+        return res.status(500).json({
             success: false,
             message: 'Araç detayları getirilirken hata oluştu',
             error: error.message

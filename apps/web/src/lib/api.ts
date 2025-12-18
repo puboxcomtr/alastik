@@ -62,6 +62,7 @@ class ApiClient {
     vehicle = {
         getAll: async () => {
             const res = await fetch(`${this.baseUrl}/user/vehicles`, {
+                credentials: 'include',
                 headers: this.getAuthHeaders()
             });
             return await res.json();
@@ -69,6 +70,7 @@ class ApiClient {
 
         getById: async (id: string) => {
             const res = await fetch(`${this.baseUrl}/user/vehicles/${id}`, {
+                credentials: 'include',
                 headers: this.getAuthHeaders()
             });
             return await res.json();
@@ -76,6 +78,7 @@ class ApiClient {
 
         create: async (data: any) => {
             const res = await fetch(`${this.baseUrl}/user/vehicles`, {
+                credentials: 'include',
                 method: 'POST',
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify(data)
@@ -85,6 +88,7 @@ class ApiClient {
 
         update: async (id: string, data: any) => {
             const res = await fetch(`${this.baseUrl}/user/vehicles/${id}`, {
+                credentials: 'include',
                 method: 'PUT',
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify(data)
@@ -94,6 +98,7 @@ class ApiClient {
 
         delete: async (id: string) => {
             const res = await fetch(`${this.baseUrl}/user/vehicles/${id}`, {
+                credentials: 'include',
                 method: 'DELETE',
                 headers: this.getAuthHeaders()
             });
@@ -102,6 +107,7 @@ class ApiClient {
 
         setPrimary: async (id: string) => {
             const res = await fetch(`${this.baseUrl}/user/vehicles/${id}/set-primary`, {
+                credentials: 'include',
                 method: 'PATCH',
                 headers: this.getAuthHeaders()
             });

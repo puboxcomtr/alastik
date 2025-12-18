@@ -75,7 +75,7 @@ export default function Brand() {
                 <div className="row-fluid">
                     <Swiper
                         modules={[Navigation]}
-                        loop={brands.length > 6}
+                        loop={brands.length > 10}
                         slidesPerView={2}
                         spaceBetween={20}
                         navigation={{
@@ -108,9 +108,13 @@ export default function Brand() {
                                             src={getBrandImageUrl(brand.logo)}
                                             alt={brand.logoAlt}
                                             width={120}
-                                            height={57}
+                                            height={0}
                                             className="img-fluid rounded-2"
-                                            style={{ objectFit: 'contain'}}
+                                            style={{
+                                                objectFit: 'contain',
+                                                width: '120px',
+                                                height: 'auto'
+                                            }}
                                             unoptimized
                                         />
                                     ) : (

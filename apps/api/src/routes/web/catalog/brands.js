@@ -4,9 +4,128 @@ const router = express.Router();
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 
 /**
+ * GET /api/brands
+ * TÜM MARKALARI LİSTELE - Frontend için (Public)
+ */
+router.get('/', async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 500,
+            search,
+            visible_only = 'true',
+            sort_by = 'name',
+            sort_order = 'asc',
+            has_logo,
+            min_products
+        } = req.query;
+
+        // Filtre oluştur
+        const filter = {};
+
+        // Sadece görünür markalar
+        if (visible_only === 'true' || visible_only === '1') {
+            filter.webVisible = true;
+        }
+
+        // Arama
+        if (search && search.trim() !== '') {
+            const searchTerm = search.trim();
+            filter.$or = [
+                { name: { $regex: searchTerm, $options: 'i' } },
+                { diaBrand: { $regex: searchTerm, $options: 'i' } },
+                { diaMarkaAck: { $regex: searchTerm, $options: 'i' } }
+            ];
+        }
+
+        // Logo varlığı
+        if (has_logo === 'true') {
+            filter['logo.url'] = { $exists: true, $ne: null, $ne: '' };
+        }
+
+        // Minimum ürün sayısı
+        if (min_products && !isNaN(min_products)) {
+            filter.productCount = { $gte: parseInt(min_products) };
+        }
+
+        // Sıralama
+        const sortOptions = {};
+        const validSortFields = ['name', 'productCount', 'totalStock', 'webOrder'];
+        const sortField = validSortFields.includes(sort_by) ? sort_by : 'name';
+        sortOptions[sortField] = sort_order === 'desc' ? -1 : 1;
+
+        // Sayfalama
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Markaları getir
+        const [brands, total] = await Promise.all([
+            WebBrand.find(filter)
+                .select('name slug diaBrand diaMarkaAck seoUrl seoTitle logo productCount activeProductCount totalStock webVisible webOrder')
+                .sort(sortOptions)
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            WebBrand.countDocuments(filter)
+        ]);
+
+        // Frontend formatına dönüştür
+        const formattedBrands = brands.map(brand => {
+            const logoUrl = brand.logo?.url;
+            let formattedLogoUrl = '/images/urun/gorsel-bulunamadi.jpg';
+
+            if (logoUrl) {
+                if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+                    formattedLogoUrl = logoUrl;
+                } else if (logoUrl.startsWith('/marka/')) {
+                    formattedLogoUrl = logoUrl;
+                } else if (logoUrl.startsWith('/')) {
+                    formattedLogoUrl = logoUrl;
+                } else {
+                    formattedLogoUrl = `/marka/${logoUrl}`;
+                }
+            }
+
+            return {
+                name: brand.diaBrand || brand.diaMarkaAck || brand.name,
+                slug: brand.seoUrl || brand.slug || (brand.name || '').toLowerCase().replace(/\s+/g, '-'),
+                logo: formattedLogoUrl,
+                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                productCount: brand.productCount || 0,
+                activeProductCount: brand.activeProductCount || 0,
+                totalStock: brand.totalStock || 0,
+                visible: brand.webVisible !== false,
+                seoTitle: brand.seoTitle || brand.name,
+                webOrder: brand.webOrder || 0
+            };
+        });
+
+        res.json({
+            success: true,
+            data: formattedBrands,
+            brands: formattedBrands, 
+            meta: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit)),
+                hasNextPage: skip + brands.length < total,
+                hasPrevPage: parseInt(page) > 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Marka listesi hatası:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Markalar yüklenirken bir hata oluştu',
+            message: error.message
+        });
+    }
+});
+
+/**
  * GET /api/brands/homepage
  * Anasayfada gösterilecek markaları getirir
- * ÖNEMLİ: Bu route /:brandName'den ÖNCE olmalı
  */
 router.get('/homepage', async (req, res) => {
     try {
@@ -14,19 +133,33 @@ router.get('/homepage', async (req, res) => {
             webVisible: true,
             showOnHomepage: true
         })
-            .select('name slug seoUrl logo.url logo.alt productCount')
+            .select('name diaBrand diaMarkaAck slug seoUrl logo productCount homepageOrder')
             .sort({ homepageOrder: 1, name: 1 })
             .lean();
 
-        const formattedBrands = brands.map(brand => ({
-            _id: brand._id,
-            name: brand.name,
-            slug: brand.slug,
-            seoUrl: brand.seoUrl || brand.slug,
-            logo: brand.logo?.url || null,
-            logoAlt: brand.logo?.alt || `${brand.name} Logo`,
-            productCount: brand.productCount || 0
-        }));
+        const formattedBrands = brands.map(brand => {
+            const logoUrl = brand.logo?.url;
+            let formattedLogoUrl = null;
+
+            if (logoUrl) {
+                if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+                    formattedLogoUrl = logoUrl;
+                } else if (logoUrl.startsWith('/marka/')) {
+                    formattedLogoUrl = logoUrl;
+                } else {
+                    formattedLogoUrl = `/marka/${logoUrl}`;
+                }
+            }
+
+            return {
+                _id: brand._id,
+                name: brand.diaBrand || brand.diaMarkaAck || brand.name,
+                slug: brand.seoUrl || brand.slug,
+                logo: formattedLogoUrl,
+                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                productCount: brand.productCount || 0
+            };
+        });
 
         res.json({
             success: true,
@@ -44,40 +177,74 @@ router.get('/homepage', async (req, res) => {
     }
 });
 
-router.get('/:brandName', async (req, res) => {
+/**
+ * GET /api/brands/:slug
+ * Tekil marka detayı - Frontend için
+ */
+router.get('/:slug', async (req, res) => {
     try {
-        const { brandName } = req.params;
+        const { slug } = req.params;
 
         const brand = await WebBrand.findOne({
             $or: [
-                { diaBrand: brandName },
-                { diaMarkaAck: brandName },
-                { name: brandName }
+                { seoUrl: slug },
+                { slug: slug },
+                { diaBrand: { $regex: new RegExp(`^${slug}$`, 'i') } },
+                { diaMarkaAck: { $regex: new RegExp(`^${slug}$`, 'i') } },
+                { name: { $regex: new RegExp(`^${slug}$`, 'i') } }
             ],
             webVisible: true
         })
-            .select('name diaMarkaAck logo')
+            .select('name diaBrand diaMarkaAck seoUrl seoTitle seoDescription description logo productCount activeProductCount totalStock priceRange categoryDistribution brandInfo')
             .lean();
 
         if (!brand) {
-            return res.json({
-                success: true,
-                data: null
+            return res.status(404).json({
+                success: false,
+                error: 'Marka bulunamadı'
             });
+        }
+
+        // Logo URL düzenleme
+        const logoUrl = brand.logo?.url;
+        let formattedLogoUrl = null;
+
+        if (logoUrl) {
+            if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+                formattedLogoUrl = logoUrl;
+            } else if (logoUrl.startsWith('/marka/')) {
+                formattedLogoUrl = logoUrl;
+            } else {
+                formattedLogoUrl = `/marka/${logoUrl}`;
+            }
         }
 
         res.json({
             success: true,
             data: {
-                name: brand.diaMarkaAck || brand.name,
-                logo: brand.logo?.url || null
+                name: brand.diaBrand || brand.diaMarkaAck || brand.name,
+                slug: brand.seoUrl || brand.slug,
+                logo: formattedLogoUrl,
+                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                description: brand.description,
+                seoTitle: brand.seoTitle,
+                seoDescription: brand.seoDescription,
+                productCount: brand.productCount || 0,
+                activeProductCount: brand.activeProductCount || 0,
+                totalStock: brand.totalStock || 0,
+                priceRange: brand.priceRange,
+                categoryDistribution: brand.categoryDistribution,
+                brandInfo: brand.brandInfo,
+                visible: brand.webVisible !== false
             }
         });
+
     } catch (error) {
-        console.error('Brand fetch error:', error);
+        console.error('Marka detay hatası:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: 'Marka detayı yüklenirken bir hata oluştu',
+            message: error.message
         });
     }
 });

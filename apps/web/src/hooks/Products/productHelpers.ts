@@ -282,8 +282,20 @@ export const isAksesuar = (product: Product): boolean => {
 export interface ProductFeatureItem {
     label: string;
     value: string | number;
+    isClickable?: boolean;
+    tooltip?: string;
 }
+const getLastikEbat = (product: Product): string => {
+    const genislik = getProductFeature(product, 'Genişlik');
+    const yanak = getProductFeature(product, 'Yanak');
+    const cap = getProductFeature(product, 'Jant Çapı');
+    const yukEndeksi = getProductFeature(product, 'Yük Endeksi');
+    const hizEndeksi = getProductFeature(product, 'Hız Endeksi');
 
+    if (genislik === '-' || yanak === '-' || cap === '-') return '-';
+
+    return `${genislik}/${yanak} ${cap} ${yukEndeksi}${hizEndeksi}`;
+};
 export const getProductDetailFeatures = (product: Product): ProductFeatureItem[] => {
     const type = getProductType(product);
 
@@ -300,18 +312,85 @@ export const getProductDetailFeatures = (product: Product): ProductFeatureItem[]
             return getGenericFeatures(product);
     }
 };
+/**
+ * Aynı desenin diğer ebatlarını getir
+ */
+export const fetchAlternativeSizes = async (product: Product, productName: string): Promise<Product[]> => {
+    if (!product.diaData?.marka) return [];
 
+    try {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/products/filter?marka=${product.diaData.marka}&limit=50`
+        );
+        const data = await response.json();
+
+        if (data.success && data.data?.products) {
+            const currentName = productName.split(' ').slice(0, 2).join(' ');
+            return data.data.products.filter((p: Product) => {
+                const pName = (p.customData?.seoTitle || p.diaData?.aciklama || '')
+                    .split(' ').slice(0, 2).join(' ');
+                return pName === currentName && p._key !== product._key;
+            });
+        }
+        return [];
+    } catch (error) {
+        console.error('Alternatif ebatlar yüklenemedi:', error);
+        return [];
+    }
+};
+/**
+ * Hız endeksi ve maksimum hız bilgisini formatla
+ */
+export const getSpeedIndexDisplay = (speedIndex: string): string => {
+    if (speedIndex === '-') return '-';
+
+    const speedMap: Record<string, string> = {
+        'L': '120 km/h',
+        'M': '130 km/h',
+        'N': '140 km/h',
+        'Q': '160 km/h',
+        'R': '170 km/h',
+        'S': '180 km/h',
+        'T': '190 km/h',
+        'U': '200 km/h',
+        'H': '210 km/h',
+        'V': '240 km/h',
+        'W': '270 km/h',
+        'Y': '300 km/h',
+        'ZR (Y)': '> 300 km/h',
+        'ZR': '> 240 km/h'
+    };
+
+    const speed = speedMap[speedIndex.toUpperCase()];
+    return speed ? `${speedIndex} (max. ${speed})` : speedIndex;
+};
 /**
  * Lastik özellikleri
  */
 const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
+    const genislik = getProductFeature(product, 'Genişlik');
+    const yanak = getProductFeature(product, 'Yanak');
+    const cap = getProductFeature(product, 'Jant Çapı');
+    const yukEndeksi = getProductFeature(product, 'Yük Endeksi');
+    const hizEndeksi = getProductFeature(product, 'Hız Endeksi');
+
+    const ebat = (genislik !== '-' && yanak !== '-' && cap !== '-')
+        ? `${genislik}/${yanak} ${cap} ${yukEndeksi}${hizEndeksi}`
+        : '-';
+
     return [
-        { label: 'Marka', value: product.diaData?.marka || '-' },
-        { label: 'Kesit Genişliği', value: getProductFeature(product, 'Genişlik') },
-        { label: 'Yanak Oranı', value: getProductFeature(product, 'Yanak') },
-        { label: 'Jant Çapı', value: getProductFeature(product, 'Jant Çapı') },
-        { label: 'Yük Endeksi', value: getProductFeature(product, 'Yük Endeksi') },
-        { label: 'Hız Endeksi', value: getProductFeature(product, 'Hız Endeksi') },
+        {
+            label: 'Ebat',
+            value: ebat,
+            isClickable: true,
+            tooltip: 'Lastik ebatı ve endeksleri. Tıklayarak bu desene ait diğer ebatları görebilirsiniz.'
+        },
+        {
+            label: 'Hız Endeksi',
+            value: getSpeedIndexDisplay(hizEndeksi),
+            isClickable: false,
+            tooltip: 'Lastiğin güvenli şekilde ulaşabileceği maksimum hızı gösterir.'
+        },
         { label: 'Mevsim', value: getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-' },
         { label: 'Run Flat', value: getProductFeature(product, 'Run Flat') },
         { label: 'XL', value: getProductFeature(product, 'XL') },
@@ -327,7 +406,6 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
 const getJantDetailFeatures = (product: Product): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
-        { label: 'Marka', value: product.diaData?.marka || '-' },
         { label: 'Jant Genişliği', value: getProductFeature(product, 'Jant Genişliği') },
         { label: 'Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
         { label: 'Bijon Sayısı', value: getProductFeature(product, 'Bijon Sayısı') },
@@ -345,7 +423,6 @@ const getJantDetailFeatures = (product: Product): ProductFeatureItem[] => {
 const getZincirDetailFeatures = (product: Product): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
-        { label: 'Marka', value: product.diaData?.marka || '-' },
         { label: 'Uyumlu Lastik Genişliği', value: getProductFeature(product, 'Genişlik') || product.diaData?.ozelkod3kodu || '-' },
         { label: 'Uyumlu Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
         { label: 'Tip', value: product.diaData?.ekalan2 || '-' },

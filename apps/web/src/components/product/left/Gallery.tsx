@@ -55,7 +55,6 @@ export default function ProductGallery({ product }: GalleryProps) {
 
             } catch (error) {
                 console.warn('Görsel resize edilemedi, orijinal görseller kullanılıyor:', error);
-                // Hata durumunda orijinal görselleri kullan (zaten set edildi)
             } finally {
                 setLoading(false);
             }
@@ -80,7 +79,7 @@ export default function ProductGallery({ product }: GalleryProps) {
                     onClick={() => setOpen(true)}
                 />
                 <div className='position-absolute bottom-0 end-0'>
-                    <i className="ri-zoom-in-line fs-5"></i>
+                    <i className="ri-zoom-in-line fs-5" onClick={() => setOpen(true)}></i>
                 </div>
             </div>
 
