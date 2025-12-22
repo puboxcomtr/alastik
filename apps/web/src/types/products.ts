@@ -69,7 +69,10 @@ export interface DiaData {
     anabarkod?: string;
     durum?: string;
     gercek_stok?: number;
+    ozelkod5kodu?: string;
     ozelkod7kodu?: string;
+    ekalan5?: string;
+    ozelkod1?: string;
     m_birimler?: ProductBirim[];
     m_urunOzellikleri?: ProductOzellik[];
     m_resimler?: ProductResim[];

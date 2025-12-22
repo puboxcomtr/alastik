@@ -315,22 +315,20 @@ export const getProductDetailFeatures = (product: Product): ProductFeatureItem[]
 /**
  * Aynı desenin diğer ebatlarını getir
  */
-export const fetchAlternativeSizes = async (product: Product, productName: string): Promise<Product[]> => {
-    if (!product.diaData?.marka) return [];
+export const fetchAlternativeSizes = async (product: Product): Promise<Product[]> => {
+    const marka = product.diaData?.marka;
+    const ozelkod5 = product.diaData?.ozelkod5kodu;
+
+    if (!marka || !ozelkod5) return [];
 
     try {
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/products/filter?marka=${product.diaData.marka}&limit=50`
+            `${process.env.NEXT_PUBLIC_API_URL}/products/filter?marka=${encodeURIComponent(marka)}&ozelkod5=${encodeURIComponent(ozelkod5)}&limit=50`
         );
         const data = await response.json();
 
         if (data.success && data.data?.products) {
-            const currentName = productName.split(' ').slice(0, 2).join(' ');
-            return data.data.products.filter((p: Product) => {
-                const pName = (p.customData?.seoTitle || p.diaData?.aciklama || '')
-                    .split(' ').slice(0, 2).join(' ');
-                return pName === currentName && p._key !== product._key;
-            });
+            return data.data.products.filter((p: Product) => p._key !== product._key);
         }
         return [];
     } catch (error) {
@@ -382,8 +380,8 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
         {
             label: 'Ebat',
             value: ebat,
-            isClickable: true,
-            tooltip: 'Lastik ebatı ve endeksleri. Tıklayarak bu desene ait diğer ebatları görebilirsiniz.'
+            isClickable: false,
+            tooltip: 'Lastik ebatı ve endeksleri'
         },
         {
             label: 'Hız Endeksi',
@@ -391,12 +389,18 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
             isClickable: false,
             tooltip: 'Lastiğin güvenli şekilde ulaşabileceği maksimum hızı gösterir.'
         },
+        {
+            label: 'Yük Endeksi',
+            value: getSpeedIndexDisplay(yukEndeksi),
+            isClickable: false,
+            tooltip: 'Lastiğin güvenli bir şekilde taşıyabileceği maksimum ağırlığı gösteren sayısal bir değerdir'
+        },
         { label: 'Mevsim', value: getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-' },
-        { label: 'Run Flat', value: getProductFeature(product, 'Run Flat') },
-        { label: 'XL', value: getProductFeature(product, 'XL') },
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
+        { label: 'Özel Özellikler', value: getProductFeature(product, 'Run Flat') },
+        { label: 'Özel Özellikler', value: getProductFeature(product, 'XL') },
         { label: 'OEM', value: getProductFeature(product, 'OEM') },
-        { label: 'Üretim Yılı', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') },
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+        { label: 'Üretim Yılı', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') }
     ].filter(f => f.value && f.value !== '-' && f.value !== 'Hayır');
 };
 
@@ -451,4 +455,39 @@ const getGenericFeatures = (product: Product): ProductFeatureItem[] => {
         { label: 'Marka', value: product.diaData?.marka || '-' },
         { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
     ].filter(f => f.value && f.value !== '-');
+};
+
+/**
+ * Modal Helper
+ */
+
+/**
+ * Lastik ebatını formatla (modal için)
+ */
+export const getLastikEbatDisplay = (product: Product): string => {
+    const genislik = getProductFeature(product, 'Genişlik');
+    const yanak = getProductFeature(product, 'Yanak');
+    const cap = getProductFeature(product, 'Jant Çapı');
+    const yukEndeksi = getProductFeature(product, 'Yük Endeksi');
+    const hizEndeksi = getProductFeature(product, 'Hız Endeksi');
+
+    if (genislik === '-' || yanak === '-' || cap === '-') return '-';
+
+    return `${genislik}/${yanak} ${cap} ${yukEndeksi}${hizEndeksi}`;
+};
+
+/**
+ * Marka + Model (ozelkod5kodu)
+ */
+export const getBrandModel = (product: Product): string => {
+    const marka = product.diaData?.marka || '';
+    const model = product.diaData?.ozelkod5kodu || '';
+    return `${marka} ${model}`.trim();
+};
+
+/**
+ * Fiyat2 (orijinal fiyat)
+ */
+export const getProductPrice2 = (product: Product): number | null => {
+    return product.diaData?.m_birimler?.[0]?.fiyat2 || null;
 };

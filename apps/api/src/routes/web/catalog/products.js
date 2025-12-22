@@ -41,6 +41,7 @@ router.get('/filter', async (req, res) => {
             yukEndeksi,
             hizEndeksi,
             uretim,
+            ozelkod5,
             // Jant parametreleri
             jantCap,
             bijon,
@@ -266,6 +267,11 @@ router.get('/filter', async (req, res) => {
                     'diaData.marka': { $in: markaList }
                 });
             }
+        }
+        if (ozelkod5) {
+            andConditions.push({
+                'diaData.ozelkod5kodu': ozelkod5
+            });
         }
 
         // Fiyat filtresi

@@ -4,9 +4,6 @@ import React, { useState, useEffect } from "react";
 /* ========================================
    MUI Components
    ======================================== */
-// Dialog Components
-import { Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
-
 // UI Components
 import { Grid, Typography, Rating, Link, Divider, Tooltip } from '@mui/material';
 
@@ -18,7 +15,8 @@ import {
     getProductSeason,
     getCategory,
     isLastik,
-    getProductUrl
+    getProductUrl,
+    fetchAlternativeSizes
 } from '@/src/hooks/Products/productHelpers';
 
 /* ========================================
@@ -37,9 +35,23 @@ export default function Middle({ product, productName }: MiddleProps) {
     const [rating, setRating] = useState<number>(4.50);
     const [reviewCount, setReviewCount] = useState<number>(2);
     const [ebatDialogOpen, setEbatDialogOpen] = useState(false);
+    const [showAlternativeLink, setShowAlternativeLink] = useState(false);
     const season = getProductSeason(product);
     const categoryName = getCategory(product);
+    useEffect(() => {
+        const checkAlternatives = async () => {
+            const ozelkod5 = product.diaData?.ozelkod5kodu;
+            if (!ozelkod5) {
+                setShowAlternativeLink(false);
+                return;
+            }
 
+            const alternatives = await fetchAlternativeSizes(product);
+            setShowAlternativeLink(alternatives.length > 3);
+        };
+
+        checkAlternatives();
+    }, [product]);
     const handleEbatClick = () => setEbatDialogOpen(true);
     return (
         <>
@@ -103,30 +115,6 @@ export default function Middle({ product, productName }: MiddleProps) {
                         </Grid>
                         <Grid size={10}>
                             <ul className="p-0 m-0">
-                                {isLastik(product) && (
-                                    <li className="d-flex">
-                                        <p className="fw-semibold mb-1 w-50">
-                                            <Tooltip title="Lastiğin kullanım mevsimi" arrow placement="top">
-                                                <span>Kategori</span>
-                                            </Tooltip>
-                                        </p>
-                                        <p className="mb-1">
-                                            <span className='d-flex align-items-center gap-1'>
-                                                {season && (
-                                                    <img
-                                                        src={season.icon}
-                                                        alt={season.text}
-                                                        width={15}
-                                                        height={15}
-                                                    />
-                                                )}
-                                                <span>
-                                                    {categoryName}
-                                                </span>
-                                            </span>
-                                        </p>
-                                    </li>
-                                )}
                                 {features.map((feature, index) => (
                                     <li key={index} className="d-flex">
                                         <p className="fw-semibold mb-1 w-50">
@@ -142,7 +130,7 @@ export default function Middle({ product, productName }: MiddleProps) {
                                             )}
                                         </p>
                                         <p className="mb-1">
-                                            {feature.isClickable ? (
+                                            {feature.label === 'Ebat' && showAlternativeLink ? (  
                                                 <Link
                                                     component="button"
                                                     onClick={handleEbatClick}
@@ -167,7 +155,6 @@ export default function Middle({ product, productName }: MiddleProps) {
                 open={ebatDialogOpen}
                 onClose={() => setEbatDialogOpen(false)}
                 product={product}
-                productName={productName}
             />
         </>
     );
