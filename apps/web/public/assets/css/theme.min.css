@@ -15691,7 +15691,7 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 }
 
 .btn-icon {
-    --cz-btn-size: 2.5rem;
+    --cz-btn-size: 2rem;
     flex-shrink: 0;
     height: var(--cz-btn-size);
     padding: 0;
@@ -18885,3 +18885,10 @@ span.flatpickr-weekday {
 .mainProductGallery:hover {
     cursor: pointer;
 }
+.productshipping_info
+{
+    display:block;
+    margin:10px 0;
+    font-size:.7rem;
+}
+.text-black

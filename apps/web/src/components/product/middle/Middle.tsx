@@ -15,6 +15,7 @@ import {
     getProductSeason,
     getCategory,
     isLastik,
+    getProductFeature,
     getProductUrl,
     fetchAlternativeSizes
 } from '@/src/hooks/Products/productHelpers';
@@ -114,7 +115,81 @@ export default function Middle({ product, productName }: MiddleProps) {
                             <Divider sx={{ my: 2 }} />
                         </Grid>
                         <Grid size={10}>
-                            <ul className="p-0 m-0">
+
+                            {isLastik(product) && (
+                                <div className="d-flex gap-3">
+                                    <p>
+                                        <Tooltip title='Yakıt Verimliliği' arrow placement="top">
+                                            <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
+                                                <i className="ri-gas-station-fill" style={{ fontSize: '18px', color: '#000' }}></i>
+                                                <span
+                                                    style={{
+                                                        textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
+                                                        fontSize: '14px',
+                                                        color: '#FFF'
+                                                    }}>
+                                                    {getProductFeature(product, 'Yakıt Verimliliği') || '-'}
+                                                </span>
+                                            </span>
+                                        </Tooltip>
+                                    </p>
+                                    <p>
+                                        <Tooltip title='Islak Zeminde Frenleme' arrow placement="top">
+                                            <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
+                                                <i className="ri-showers-fill" style={{ fontSize: '18px', color: '#000' }}></i>
+                                                <span
+                                                    style={{
+                                                        textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
+                                                        fontSize: '14px',
+                                                        color: '#FFF'
+                                                    }}>
+                                                    {getProductFeature(product, 'Islak Zeminde Frenleme') || '-'}
+                                                </span>
+                                            </span>
+                                        </Tooltip>
+                                    </p>
+                                    <p>
+                                        <Tooltip title='Gürültü Seviyesi' arrow placement="top">
+                                            <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
+                                                <i className="ri-volume-up-fill" style={{ fontSize: '18px', color: '#000' }}></i>
+                                                <span
+                                                    style={{
+                                                        textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
+                                                        fontSize: '14px',
+                                                        color: '#FFF'
+                                                    }}>
+                                                    {getProductFeature(product, 'Gürültü Seviyesi') || '-'}
+                                                </span>
+                                            </span>
+                                        </Tooltip>
+                                    </p>
+                                </div>
+                            )}
+                            <ul className="p-0 m-0 gap-3">
+                                {isLastik(product) && (
+                                    <li className="d-flex">
+                                        <p className="fw-semibold mb-1 w-50">
+                                            <Tooltip title="Lastiğin kullanım mevsimi" arrow placement="top">
+                                                <span>Mevsim</span>
+                                            </Tooltip>
+                                        </p>
+                                        <p className="mb-1">
+                                            <span className='d-flex align-items-center gap-1'>
+                                                {season && (
+                                                    <img
+                                                        src={season.icon}
+                                                        alt={season.text}
+                                                        width={15}
+                                                        height={15}
+                                                    />
+                                                )}
+                                                <span>
+                                                    {getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-'}
+                                                </span>
+                                            </span>
+                                        </p>
+                                    </li>
+                                )}
                                 {features.map((feature, index) => (
                                     <li key={index} className="d-flex">
                                         <p className="fw-semibold mb-1 w-50">
@@ -129,8 +204,21 @@ export default function Middle({ product, productName }: MiddleProps) {
                                                 feature.label
                                             )}
                                         </p>
-                                        <p className="mb-1">
-                                            {feature.label === 'Ebat' && showAlternativeLink ? (  
+                                        <p className="mb-1" style={feature.color ? { color: feature.color } : {}}>
+                                            {Array.isArray(feature.value) ? (
+                                                <span className="d-flex align-items-center gap-2 flex-wrap">
+                                                    {feature.value.map((item, idx) => (
+                                                        <Tooltip key={idx} title={item.tooltip} arrow placement="top">
+                                                            <span className="badge" style={{
+                                                                backgroundColor: feature.color || '#000',
+                                                                cursor: 'help'
+                                                            }}>
+                                                                {item.text}
+                                                            </span>
+                                                        </Tooltip>
+                                                    ))}
+                                                </span>
+                                            ) : feature.isClickable ? (
                                                 <Link
                                                     component="button"
                                                     onClick={handleEbatClick}
@@ -150,7 +238,7 @@ export default function Middle({ product, productName }: MiddleProps) {
                         </Grid>
                     </Grid>
                 </Grid>
-            </Grid>
+            </Grid >
             <AlternativeSizesModal
                 open={ebatDialogOpen}
                 onClose={() => setEbatDialogOpen(false)}

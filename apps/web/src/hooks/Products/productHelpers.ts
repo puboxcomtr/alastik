@@ -281,7 +281,7 @@ export const isAksesuar = (product: Product): boolean => {
  */
 export interface ProductFeatureItem {
     label: string;
-    value: string | number;
+    value: string | number | Array<{ text: string; tooltip: string }>;
     isClickable?: boolean;
     tooltip?: string;
 }
@@ -362,6 +362,31 @@ export const getSpeedIndexDisplay = (speedIndex: string): string => {
     const speed = speedMap[speedIndex.toUpperCase()];
     return speed ? `${speedIndex} (max. ${speed})` : speedIndex;
 };
+
+/**
+ * Yük endeksi ve maksimum ağırlık bilgisini formatla
+ */
+export const getLoadIndexDisplay = (loadIndex: string): string => {
+    if (loadIndex === '-') return '-';
+
+    const loadMap: Record<string, string> = {
+        '70': '335 kg', '71': '345 kg', '72': '355 kg', '73': '365 kg', '74': '375 kg',
+        '75': '387 kg', '76': '400 kg', '77': '412 kg', '78': '425 kg', '79': '437 kg',
+        '80': '450 kg', '81': '462 kg', '82': '475 kg', '83': '487 kg', '84': '500 kg',
+        '85': '515 kg', '86': '530 kg', '87': '545 kg', '88': '560 kg', '89': '580 kg',
+        '90': '600 kg', '91': '615 kg', '92': '630 kg', '93': '650 kg', '94': '670 kg',
+        '95': '690 kg', '96': '710 kg', '97': '730 kg', '98': '750 kg', '99': '775 kg',
+        '100': '800 kg', '101': '825 kg', '102': '850 kg', '103': '875 kg', '104': '900 kg',
+        '105': '925 kg', '106': '950 kg', '107': '975 kg', '108': '1000 kg', '109': '1030 kg',
+        '110': '1060 kg', '111': '1090 kg', '112': '1120 kg', '113': '1150 kg', '114': '1180 kg',
+        '115': '1215 kg', '116': '1250 kg', '117': '1285 kg', '118': '1320 kg', '119': '1360 kg',
+        '120': '1400 kg'
+    };
+
+    const load = loadMap[loadIndex];
+    return load ? `${loadIndex} (${load})` : loadIndex;
+};
+
 /**
  * Lastik özellikleri
  */
@@ -376,32 +401,64 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
         ? `${genislik}/${yanak} ${cap} ${yukEndeksi}${hizEndeksi}`
         : '-';
 
+    const ozelOzellikler: Array<{ text: string; tooltip: string }> = [];
+    if (getProductFeature(product, 'Run Flat').toLowerCase() === 'evet') {
+        ozelOzellikler.push({
+            text: 'RFT',
+            tooltip: 'Run Flat Technology - Patlamaya karşı güvenli lastik teknolojisi'
+        });
+    }
+    if (getProductFeature(product, 'XL').toLowerCase() === 'evet') {
+        ozelOzellikler.push({
+            text: 'XL',
+            tooltip: 'Extra Load - Yüksek yük taşıma kapasitesi'
+        });
+    }
+    if (getProductFeature(product, 'Seal').toLowerCase() === 'evet') {
+        ozelOzellikler.push({
+            text: 'Seal',
+            tooltip: 'Self-Sealing - Kendi kendini onarma teknolojisi'
+        });
+    }
+
+    const oem = getProductFeature(product, 'OEM');
+    if (oem !== '-' && oem.toLowerCase() !== 'hayır') {
+        ozelOzellikler.push({
+            text: oem,
+            tooltip: 'Orijinal Ekipman Üreticisi onaylı lastik'
+        });
+    }
+
     return [
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
         {
             label: 'Ebat',
             value: ebat,
-            isClickable: false,
-            tooltip: 'Lastik ebatı ve endeksleri'
+            isClickable: true,
+            tooltip: 'Taban Genişliği - Yanak Yüksekliği - Jant Çapı'
         },
         {
             label: 'Hız Endeksi',
             value: getSpeedIndexDisplay(hizEndeksi),
             isClickable: false,
-            tooltip: 'Lastiğin güvenli şekilde ulaşabileceği maksimum hızı gösterir.'
+            tooltip: 'Lastiğin güvenli şekilde ulaşabileceği maksimum hızı gösterir'
         },
         {
             label: 'Yük Endeksi',
-            value: getSpeedIndexDisplay(yukEndeksi),
+            value: getLoadIndexDisplay(yukEndeksi),
             isClickable: false,
-            tooltip: 'Lastiğin güvenli bir şekilde taşıyabileceği maksimum ağırlığı gösteren sayısal bir değerdir'
+            tooltip: 'Lastiğin güvenli bir şekilde taşıyabileceği maksimum ağırlığı gösterir'
         },
-        { label: 'Mevsim', value: getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-' },
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
-        { label: 'Özel Özellikler', value: getProductFeature(product, 'Run Flat') },
-        { label: 'Özel Özellikler', value: getProductFeature(product, 'XL') },
-        { label: 'OEM', value: getProductFeature(product, 'OEM') },
-        { label: 'Üretim Yılı', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') }
-    ].filter(f => f.value && f.value !== '-' && f.value !== 'Hayır');
+        {
+            label: 'Ekstra Özellikler',
+            value: ozelOzellikler,
+            color: '#f2223b'
+        },
+        { label: 'Üretim Tarihi (DOT)', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') }
+    ].filter(f => {
+        if (Array.isArray(f.value)) return f.value.length > 0;
+        return f.value && f.value !== '-' && f.value !== 'Hayır';
+    });
 };
 
 /**
@@ -490,4 +547,49 @@ export const getBrandModel = (product: Product): string => {
  */
 export const getProductPrice2 = (product: Product): number | null => {
     return product.diaData?.m_birimler?.[0]?.fiyat2 || null;
+};
+
+/**
+ * Teslimat tarih aralığını hesapla
+ */
+export const getDeliveryDateRange = (product: Product): {
+    startDate: string;
+    endDate: string
+} | null => {
+    const delivery = product.customData?.delivery;
+    if (!delivery) return null;
+
+    const today = new Date();
+
+    const formatDate = (date: Date): string => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        return `${day}.${month}`;
+    };
+
+    const addDays = (date: Date, days: number): Date => {
+        const result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return result;
+    };
+
+    switch (delivery) {
+        case 'same_day':
+            return {
+                startDate: formatDate(today),
+                endDate: formatDate(addDays(today, 1))
+            };
+        case 'next_day':
+            return {
+                startDate: formatDate(addDays(today, 1)),
+                endDate: formatDate(addDays(today, 2))
+            };
+        case 'next_week':
+            return {
+                startDate: formatDate(addDays(today, 6)),
+                endDate: formatDate(addDays(today, 7))
+            };
+        default:
+            return null;
+    }
 };

@@ -6,9 +6,9 @@ import { notFound } from 'next/navigation';
 
 /* @Import Page */
 import ProductBreadcrumb from "@components/product/top/Breadcrumb";
-import Garage from '@components/product/top/Garage';
 import Gallery from '@components/product/left/Gallery';
 import Middle from '@components/product/middle/Middle';
+import AddCart from '@/src/components/product/right/AddCart';
 
 /* Services */
 import { getProductBySlug } from '@src/services/productService';
@@ -40,9 +40,6 @@ export default async function ProductDetailPage(
                         categorySlug={categorySlug}
                     />
                 </Grid>
-                {/* <Grid size={12}>
-                    <Garage />
-                </Grid> */}
             </Grid>
             <Grid className="row-fluid" container>
                 <Grid size={4}>
@@ -56,8 +53,8 @@ export default async function ProductDetailPage(
                         productName={product.diaData?.aciklama || ''}
                     />
                 </Grid>
-                <Grid size={3}>
-                    Sepete Ekle
+                <Grid size={3} sx={{ pl: 3 }}>
+                    <AddCart product={product} />
                 </Grid>
             </Grid>
         </Container>
