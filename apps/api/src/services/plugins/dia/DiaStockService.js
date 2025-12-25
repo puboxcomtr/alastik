@@ -67,6 +67,10 @@ class DiaStockService {
     this.maxConcurrentRequests = 2;
     this.connectionPoolSize = parseInt(process.env.DIA_CONNECTION_POOL_SIZE) || 10;
 
+    this.fullSyncBatchSize = parseInt(process.env.DIA_FULLSYNC_BATCH_SIZE) || 200;
+    this.fullSyncDelay = parseInt(process.env.DIA_FULLSYNC_DELAY) || 3000;
+    this.fullSyncMaxBatches = parseInt(process.env.DIA_FULLSYNC_MAX_BATCHES) || 100;
+
     // Timeout ayarları
     this.timeouts = {
       login: parseInt(process.env.DIA_LOGIN_TIMEOUT) || 600000, // 10 dakika
@@ -269,7 +273,9 @@ class DiaStockService {
           ...defaultParams,
           ...params,
           filters: configFilters.concat(params.filters || []),
-          fields: getDiaFields()
+          fields: getDiaFields(),
+          _cache_bypass: Date.now(),
+          nocache: true
         }
       };
 
@@ -1263,6 +1269,30 @@ class DiaStockService {
 
     for (const item of batch) {
       try {
+        /* EMİR TEST */
+        if (item.stokkartkodu === '2153800-25') {
+          this.logger.info('🔍 [DIA RAW DATA - PIRELLI]', {
+            stokkartkodu: item.stokkartkodu,
+            aciklama: item.aciklama,
+            ozelkod5: item.ozelkod5,
+            ozelkod5kodu: item.ozelkod5kodu
+          });
+        }
+        if (item.stokkartkodu === 'FLK-357258-25' || item.stokkartkodu === 'PTLS-26520-SET-1') {
+          this.logger.info('🔍 [DIA RAW DATA]', {
+            stokkartkodu: item.stokkartkodu,
+            anabarkod: item.anabarkod,
+            marka: item.marka,
+            ozelkod5: item.ozelkod5,
+            ozelkod5kodu: item.ozelkod5kodu,
+            ozelkod7: item.ozelkod7,
+            ozelkod7kodu: item.ozelkod7kodu,
+            aciklama: item.aciklama,
+            durum: item.durum,
+            ozelkod11kodu: item.ozelkod11kodu
+          });
+        }
+        /* EMİR TEST BİTİŞ */
         if (!item._key) {
           errors.push({
             item: item.stokkartkodu || 'Unknown',
@@ -1577,37 +1607,40 @@ class DiaStockService {
   async fullSync() {
     try {
       const startTime = Date.now();
-      const syncStartTime = new Date(); // Sync başlangıç zamanını kaydet
 
-      // Ürünleri senkronize et
-      const result = await this.fetchAndSyncIncrementally();
+      // 1. DiaStock'a TÜM ürünleri yaz (E, H, P hepsi)
+      const diaStockResult = await this.syncAllToDiaStock();
 
-      // Kategorileri senkronize et
+      // 2. WebProduct'a SADECE E olanları yaz
+      const webProductResult = await this.fetchAndSyncIncrementally();
+
+      // 3. Kategorileri senkronize et
       const categoryResult = await this.syncCategoriesToWebCategory();
 
-      // Markaları senkronize et
+      // 4. Markaları senkronize et
       const brandResult = await this.syncBrandsToWebBrand();
 
-      // DIA'da artık olmayan ürünleri arşivle
-      const archivedCount = await this.archiveStaleProducts(syncStartTime);
+      // 5. H/P olanları SİL (artık DiaStock'ta H'ler var)
+      const deletedCount = await this.archiveStaleProducts();
 
       const endTime = Date.now();
-      const duration = endTime - startTime;
 
       this.logger.info('=== TAM SENKRONİZASYON TAMAMLANDI ===', {
-        duration: `${duration}ms`,
-        sync: result,
+        duration: `${endTime - startTime}ms`,
+        diaStock: diaStockResult,
+        webProduct: webProductResult,
         categories: categoryResult,
         brands: brandResult,
-        archived: archivedCount
+        deleted: deletedCount
       });
 
       return {
-        ...result,
-        duration,
+        duration: endTime - startTime,
+        diaStock: diaStockResult,
+        webProduct: webProductResult,
         categories: categoryResult,
         brands: brandResult,
-        archived: archivedCount,
+        deleted: deletedCount,
         timestamp: new Date()
       };
 
@@ -1617,58 +1650,124 @@ class DiaStockService {
     }
   }
   /**
- * Senkronizasyonda güncellenmeyen ürünleri arşivle
- * (DIA'da artık E olmayan veya silinen ürünler)
- */
-  async archiveStaleProducts(syncStartTime) {
+   * DiaStock'a TÜM ürünleri yaz (sadece durum=A)
+   */
+  async syncAllToDiaStock() {
+    const startTime = Date.now();
+
     try {
-      this.logger.info('=== ESKİ ÜRÜNLERİ ARŞİVLEME BAŞLANGICI ===');
+      this.logger.info('=== DIASTOCK FULL SYNC (TÜM ÜRÜNLER: E, H, P) ===');
 
-      // ✅ SADECE DIA'DA OLMAYAN ÜRÜNLER
-      // Yani: DIA'da durum='P' veya ozelkod11kodu!='E' olan ürünler
+      let totalProcessed = 0;
+      let offset = 0;
+      let batchCount = 0;
 
-      // WebProduct'taki tüm _key'leri al
-      const webProductKeys = await WebProduct.distinct('_key', {
-        'syncInfo.diaStatus': 'synced'
-      });
+      while (batchCount < this.fullSyncMaxBatches) {
+        batchCount++;
 
-      // DIA'da aktif olan ürünlerin _key'lerini al
-      const activeInDiaKeys = await DiaStock.distinct('_key', {
-        durum: 'A',
-        ozelkod11kodu: 'E'
-      });
+        const batchData = await this.fetchStockFromDia({
+          limit: this.fullSyncBatchSize,
+          offset: offset,
+          filters: [{ field: 'durum', operator: '=', value: 'A' }]
+        });
 
-      // Fark: WebProduct'ta var ama DIA'da aktif değil
-      const keysToArchive = webProductKeys.filter(
-        key => !activeInDiaKeys.includes(key)
-      );
+        if (!batchData || batchData.length === 0) {
+          this.logger.info(`Batch ${batchCount}: Veri bitti`);
+          break;
+        }
 
-      if (keysToArchive.length === 0) {
-        this.logger.info('Arşivlenecek ürün yok');
-        return 0;
+        const operations = [];
+        for (const item of batchData) {
+          if (!item._key) continue;
+
+          operations.push({
+            updateOne: {
+              filter: { _key: item._key },
+              update: {
+                $set: {
+                  ...this.cleanDiaData(item),
+                  'syncInfo.lastSyncDate': new Date(),
+                  'syncInfo.syncStatus': 'synced'
+                }
+              },
+              upsert: true
+            }
+          });
+        }
+
+        if (operations.length > 0) {
+          await DiaStock.bulkWrite(operations);
+          totalProcessed += operations.length;
+
+          this.logger.info(`DiaStock Batch ${batchCount}: ${operations.length} ürün`);
+        }
+
+        offset += this.fullSyncBatchSize;
+        await this.sleep(this.fullSyncDelay);
       }
 
-      // Sadece gerçekten DIA'da olmayan ürünleri arşivle
-      const result = await WebProduct.updateMany(
-        { _key: { $in: keysToArchive } },
-        {
-          $set: {
-            'syncInfo.diaStatus': 'not_in_dia',
-            'syncInfo.archivedAt': new Date(),
-            'customData.webVisible': false
-          }
-        }
-      );
+      const duration = Date.now() - startTime;
 
-      this.logger.info('=== ESKİ ÜRÜNLER ARŞİVLENDİ ===', {
-        archivedCount: result.modifiedCount,
-        totalChecked: webProductKeys.length
+      this.logger.info('=== DIASTOCK SYNC TAMAMLANDI ===', {
+        processed: totalProcessed,
+        batches: batchCount,
+        duration: `${duration}ms`
       });
 
-      return result.modifiedCount;
+      return { processed: totalProcessed, duration: `${duration}ms` };
 
     } catch (error) {
-      this.logger.error('Arşivleme hatası:', { error: error.message });
+      this.logger.error('DiaStock sync hatası:', { error: error.message });
+      throw error;
+    }
+  }
+  /**
+   * Senkronizasyonda güncellenmeyen ürünleri arşivle
+   */
+  async archiveStaleProducts(syncStartTime) {
+    try {
+      this.logger.info('=== WEBPRODUCTS TEMİZLEME BAŞLANGICI ===');
+      const hpDeleteResult = await WebProduct.deleteMany({
+        'diaData.ozelkod11kodu': { $in: ['H', 'P'] }
+      });
+      this.logger.info('=== H/P ÜRÜNLER SİLİNDİ ===', {
+        deletedCount: hpDeleteResult.deletedCount,
+        reason: 'ozelkod11kodu = H veya P'
+      });
+      const webProductKeys = await WebProduct.distinct('_key');
+      const activeInDiaKeys = await DiaStock.distinct('_key', {
+        'syncInfo.syncStatus': 'synced'
+      });
+
+      const activeInDiaSet = new Set(activeInDiaKeys);
+      const keysToDelete = webProductKeys.filter(
+        key => !activeInDiaSet.has(key)
+      );
+
+      let orphanDeleteCount = 0;
+      if (keysToDelete.length > 0) {
+        const deleteResult = await WebProduct.deleteMany({
+          _key: { $in: keysToDelete }
+        });
+        orphanDeleteCount = deleteResult.deletedCount;
+
+        this.logger.info('=== DIA\'DA OLMAYAN ÜRÜNLER SİLİNDİ ===', {
+          deletedCount: orphanDeleteCount
+        });
+      }
+
+      const totalDeleted = hpDeleteResult.deletedCount + orphanDeleteCount;
+
+      this.logger.info('=== TEMİZLEME TAMAMLANDI ===', {
+        totalDeleted: totalDeleted,
+        hpDeleted: hpDeleteResult.deletedCount,
+        orphanDeleted: orphanDeleteCount
+      });
+
+      return totalDeleted;
+
+    } catch (error) {
+      this.logger.error('WebProducts temizleme hatası:', { error: error.message });
       return 0;
     }
   }
@@ -1716,7 +1815,6 @@ class DiaStockService {
       this.performanceMetrics.slowRequests++;
     }
   }
-
   /**
    * DIA Verilerini
    * Ürün Listesi Üzerinden Manuel Senkronize Etme

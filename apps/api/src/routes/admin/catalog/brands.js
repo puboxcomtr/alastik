@@ -39,12 +39,6 @@ const { body, validationResult } = require('express-validator');
 const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
 // ============================================
-// CONFIGURATION
-// ============================================
-// DIA filter configurations
-const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
-
-// ============================================
 // MULTER CONFIG - Marka Logo Upload
 // ============================================
 const storage = multer.diskStorage({

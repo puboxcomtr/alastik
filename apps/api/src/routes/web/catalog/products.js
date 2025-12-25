@@ -3,27 +3,8 @@ const express = require('express');
 const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
-const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+const { getProductListFilters } = require('../../../config/diaFilters');
 
-/**
- * DIA filtrelerini MongoDB match formatına çevir
- */
-function buildBaseFilter() {
-    const filter = {
-        'syncInfo.diaStatus': 'synced',
-        'customData.webVisible': true
-    };
-
-    // Merkezi DIA filtrelerini uygula
-    MAIN_DIA_FILTERS.forEach(f => {
-        const fieldPath = `diaData.${f.field}`;
-        if (f.operator === '=') {
-            filter[fieldPath] = f.value;
-        }
-    });
-
-    return filter;
-}
 
 router.get('/filter', async (req, res) => {
     try {
@@ -55,7 +36,7 @@ router.get('/filter', async (req, res) => {
 
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
-        const filter = buildBaseFilter();
+        const filter = getProductListFilters();
 
         // ==========================================
         // ÜRÜN TİPİ TESPİTİ (kategorideki ürünlerden ozelkod7kodu)
@@ -337,9 +318,7 @@ router.get('/:slug', async (req, res) => {
                 { 'customData.seoUrl': slug },
                 { '_key': slug }
             ],
-            'syncInfo.diaStatus': 'synced',
-            'customData.webVisible': true,
-            'diaData.durum': 'A'
+            ...getProductListFilters()
         }).lean();
 
         if (!product) {

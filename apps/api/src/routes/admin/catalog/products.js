@@ -37,7 +37,7 @@ const DiaStockService = require('../../../services/plugins/dia/DiaStockService')
 // CONFIGURATION
 // ============================================
 // DIA filter configurations for stock queries
-const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+const { getProductListFilters } = require('../../../config/diaFilters');
 
 // ============================================
 // ROUTER INITIALIZATION
@@ -64,10 +64,7 @@ router.get('/', maybeAuth, async (req, res) => {
       page = 1,
       limit = 100
     } = req.query;
-    const webFilter = {};
-    // Temel WebProduct filtreleri - aktif ve senkronize ürünler
-    webFilter['syncInfo.diaStatus'] = 'synced';
-    webFilter['diaData.durum'] = 'A';
+    const webFilter = getProductListFilters();
 
     if (sku && sku.trim() !== '') {
       webFilter['diaData.stokkartkodu'] = sku.trim();
@@ -86,7 +83,6 @@ router.get('/', maybeAuth, async (req, res) => {
       webFilter.$and = searchConditions;
     }
 
-    // Web status filtreleme - customData ve syncInfo'dan
     if (web_status && web_status.trim() !== '') {
       if (web_status.trim() === 'Published') {
         webFilter['syncInfo.webStatus'] = 'active';
@@ -240,7 +236,7 @@ router.get('/', maybeAuth, async (req, res) => {
           lastDiaSync: syncInfo.lastDiaSync
         };
       }),
-      meta: {                                    
+      meta: {
         page: parseInt(page),
         limit: parseInt(limit),
         total: totalCount,
@@ -261,8 +257,6 @@ router.get('/', maybeAuth, async (req, res) => {
 router.get('/:id', maybeAuth, async (req, res) => {
   try {
     const id = String(req.params.id);
-
-    // WebProduct'tan veri çek
     const webProduct = await WebProduct.findOne({ _key: id })
       .select({
         _key: 1,
@@ -291,7 +285,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
         updatedAt: 1
       })
       .lean();
-
     if (!webProduct) {
       return res.status(404).json({
         success: false,
@@ -300,12 +293,9 @@ router.get('/:id', maybeAuth, async (req, res) => {
     }
 
     const { diaData = {}, customData = {}, syncInfo = {} } = webProduct;
-
-    // Görseller - Önce customImages, sonra DIA images
     let images = [];
 
     if (customData.customImages && customData.customImages.length > 0) {
-      // Custom görseller varsa onları kullan
       images = customData.customImages
         .sort((a, b) => a.order - b.order)
         .map(img => img.url)
@@ -375,7 +365,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
       discountType: customData.discountType || 'percentage',
 
       // Tüm fiyat seviyeleri
-      price1: pricing.fiyat1 || 0, // Liste Fiyatı (Üstü Çizili)
+      price1: pricing.fiyat1 || 0, // Liste Fiyatı 
       price2: pricing.fiyat2 || 0,
       price3: pricing.fiyat3 || 0,
       price4: pricing.fiyat4 || 0, // Satış Fiyatı

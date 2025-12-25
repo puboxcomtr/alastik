@@ -1,6 +1,5 @@
 /**
  * TÜM DIA SYNC İŞLEMLERİ İÇİN MERKEZI FİLTRELER
- * SADECE TEMEL DURUM FİLTRELERİ - Kategori filtreleri kaldırıldı
  */
 
 const MAIN_DIA_FILTERS = [
@@ -39,6 +38,8 @@ const DIA_FIELDS = [
     'fiili_stok',
     'gercek_stok',
     'durum',
+    'ozelkod5',
+    'ozelkod5kodu',
     'ozelkod11',
     'ozelkod11kodu',
     'm_kategoriler',
@@ -84,11 +85,6 @@ function getDiaFields() {
 function getDiaFieldsCustom(customFields = null) {
     return customFields ? customFields : getDiaFields();
 }
-
-/**
- * Tüm filtreleri döndürür - artık sadece temel filtreler
- */
-
 
 /**
  * Sync türüne göre filtreler
@@ -139,6 +135,18 @@ const WEB_DISPLAY_LABELS = {
     }
 };
 
+/**
+ * Tüm ürün listelemeleri için ORTAK filtre
+ * Admin & Web'de aynı kurallar geçerli
+ */
+function getProductListFilters() {
+    return {
+        'syncInfo.diaStatus': 'synced',
+        'diaData.durum': 'A',
+        'diaData.ozelkod11': 'E (E)'
+    };
+}
+
 function getVehicleTypeLabel(code) {
     return WEB_DISPLAY_LABELS.vehicleTypes[code] || code;
 }
@@ -153,6 +161,7 @@ module.exports = {
     WEB_DISPLAY_LABELS,
 
     // Fonksiyonlar
+    getProductListFilters,
     getBasicFilters,
     getFiltersForSyncType,
     getCategoryFilter,

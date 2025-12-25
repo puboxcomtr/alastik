@@ -62,7 +62,7 @@ export default function AlternativeSizesModal({ open, onClose, product }: Altern
             }}>
             <DialogTitle sx={{ pb: 1 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6">Bu Desene Ait Diğer Ebatlar</Typography>
+                    <Typography variant="h6">Laufenn I FIT+ Modeline Ait Diğer Ebatlar</Typography>
                     <IconButton
                         onClick={onClose}
                         sx={{ position: 'absolute', right: 8, top: 8 }}
@@ -88,7 +88,7 @@ export default function AlternativeSizesModal({ open, onClose, product }: Altern
                                     <th style={{ width: '40px' }}></th>
                                     <th style={{ width: '150px' }}>Ebat</th>
                                     <th>Ürün Adı</th>
-                                    <th style={{ width: '180px' }}>Stok</th>
+                                    <th style={{ width: '180px' }}>Teslimat</th>
                                     <th style={{ width: '120px', textAlign: 'right' }}>Fiyat</th>
                                 </tr>
                             </thead>
@@ -166,9 +166,9 @@ export default function AlternativeSizesModal({ open, onClose, product }: Altern
                                                         }}
                                                     />
                                                     <Typography variant="body2" sx={{ fontSize: '13px', color: 'success.main' }}>
-                                                        {delivery === 'in_stock' ? 'Stokta Mevcut' :
-                                                            delivery === 'next_week' ? 'Stokta Mevcut' :
-                                                                'Tedarik edilecek'}
+                                                        {delivery === 'same_day' ? 'Aynı Gün Kargo' :
+                                                            delivery === 'next_day' ? '1-2 Gün' :
+                                                                '6-7 Gün'}
                                                     </Typography>
                                                 </Box>
                                             </td>

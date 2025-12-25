@@ -7,7 +7,6 @@ class WheelSizeService {
         this.baseURL = 'https://api.wheel-size.com/v2';
         this.defaultRegion = 'eudm';
     }
-
     async request(endpoint, params = {}) {
         try {
             const response = await axios.get(`${this.baseURL}${endpoint}`, {
@@ -24,7 +23,6 @@ class WheelSizeService {
             throw error;
         }
     }
-
     async getMakes(params = {}) {
         const allMakes = await this.request('/makes/', {
             region: 'eudm',
@@ -49,15 +47,12 @@ class WheelSizeService {
 
         return filteredMakes;
     }
-
     async getModels(make, params = {}) {
         return this.request('/models/', { make, region: this.defaultRegion, ...params });
     }
-
     async getYears(make, model, params = {}) {
         return this.request('/years/', { make, model, ...params });
     }
-
     async getModifications(make, model, year) {
         const modifications = await this.request('/modifications/', {
             make,
@@ -80,7 +75,6 @@ class WheelSizeService {
             return nameA.localeCompare(nameB);
         });
     }
-
     async getGenerations(make, model) {
         return this.request('/generations/', {
             make,
@@ -88,7 +82,6 @@ class WheelSizeService {
             region: this.defaultRegion
         });
     }
-
     async getGenerationImage(make, model, year) {
         try {
             const generations = await this.request('/generations/', {
@@ -116,7 +109,6 @@ class WheelSizeService {
             return null;
         }
     }
-
     async getVehicleDetails(make, model, year, modification) {
         return this.request('/search/by_model/', {
             make,
