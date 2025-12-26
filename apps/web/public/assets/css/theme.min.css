@@ -18891,3 +18891,8 @@ span.flatpickr-weekday {
     margin:10px 0;
     font-size:.7rem;
 }
+/* Product Detail */
+#description
+{
+    margin:20px 0;
+}

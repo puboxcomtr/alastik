@@ -1,19 +1,22 @@
 // apps/api/src/services/plugins/wheelsize/WheelSizeTireService.js
 const axios = require('axios');
+const cheerio = require('cheerio');
 const WebProduct = require('../../../../models/web/catalog/WebProduct');
 const WebWheelSize = require('../../../../models/web/catalog/WebWheelSize');
-
+const Blog = require('../../../../models/admin/content/Blog');
 const TranslateService = require('../../translate/TranslateService');
 
 /**
  * WheelSize TiresVote Entegrasyon Servisi
- * 
- * Fonksiyon Akışı:
- * 1. matchPatterns() → WebProduct'ları WheelSize desenleriyle eşleştirir
- * 2. syncMatchedPatterns() → Eşleşen pattern'leri WebWheelSize collection'a kaydeder
- * 3. syncAllPatternRatings() → Tüm pending pattern'ların rating verilerini sırayla çeker
- * 4. syncPatternRatings() → Tek pattern için rating verisini DB'ye kaydeder
- * 5. fetchPatternRatings() → WheelSize API'den pattern detaylarını çeker
+ * matchPatterns() → WebProduct'ları WheelSize desenleriyle eşleştirir
+ * syncMatchedPatterns() → Eşleşen pattern'leri WebWheelSize collection'a kaydeder
+ * syncAllPatternRatings() → Tüm pending pattern'ların rating verilerini sırayla çeker
+ * syncPatternRatings() → Tek pattern için rating verisini DB'ye kaydeder
+ * fetchPatternRatings() → WheelSize API'den pattern detaylarını çeker
+ * fetchPatternBuyNotBuy() → Pattern buy/not buy verilerini API'den getirir
+ * fetchPatternMaterials() → Pattern materials (videolar ve article'lar) API'den getirir
+ * saveMaterialsToBlogs() → Article/benchmark içeriklerini scrape edip blogs collection'a kaydeder
+ * fetchArticleContent() → Article sayfasından içeriği web scraping ile çeker ve temizler
  */
 class WheelSizeTireService {
     constructor() {
@@ -242,14 +245,182 @@ class WheelSizeTireService {
             }));
         }
 
+        let weThink = null;
+        if (data.data.tags && data.data.tags.length > 0) {
+            const translations = await this.translator.translateBatch(data.data.tags);
+
+            weThink = data.data.tags.map((tag, index) => ({
+                slug: tag.toLowerCase().replace(/\s+/g, '-'),
+                display: translations[index]
+                    .toLowerCase()
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')
+            }));
+        }
+
+        let buyNotBuy = null;
+        try {
+            const bnbData = await this.fetchPatternBuyNotBuy(brandSlug, patternSlug);
+
+            if (bnbData.data) {
+                const buyTexts = bnbData.data.buy ? bnbData.data.buy.map(item => item.text) : [];
+                const notBuyTexts = bnbData.data.not_buy ? bnbData.data.not_buy.map(item => item.text) : [];
+
+                const buyTranslations = buyTexts.length > 0 ? await this.translator.translateBatch(buyTexts) : [];
+                const notBuyTranslations = notBuyTexts.length > 0 ? await this.translator.translateBatch(notBuyTexts) : [];
+
+                buyNotBuy = {
+                    buy: bnbData.data.buy ? bnbData.data.buy.map((item, index) => ({
+                        text: buyTranslations[index],
+                        upvotes: item.upvotes
+                    })) : [],
+                    notBuy: bnbData.data.not_buy ? bnbData.data.not_buy.map((item, index) => ({
+                        text: notBuyTranslations[index],
+                        upvotes: item.upvotes
+                    })) : []
+                };
+            }
+        } catch (error) { }
+
+        let materials = null;
+        try {
+            const materialsData = await this.fetchPatternMaterials(brandSlug, patternSlug);
+            if (materialsData.data && materialsData.data.length > 0) {
+                await this.saveMaterialsToBlogs(materialsData.data, patternSlug);
+
+                const videos = materialsData.data.filter(item => item.type === 'video');
+
+                if (videos.length > 0) {
+                    const titles = videos.map(v => v.title);
+                    const translatedTitles = await this.translator.translateBatch(titles);
+
+                    materials = videos.map((video, index) => ({
+                        title: translatedTitles[index],
+                        url: video.video_url,
+                        publishedAt: video.publication_date
+                    }));
+                }
+            }
+        } catch (error) { }
+
         await WebWheelSize.findOneAndUpdate(
             { patternSlug },
             {
-                'wheelsizeData.ratings': rating,
+                'wheelsizeData.ratings': { ...rating, weThink },
+                'wheelsizeData.buyNotBuy': buyNotBuy,
+                'wheelsizeData.year': data.data.year || null,
+                'wheelsizeData.materials': materials,
                 syncStatus: 'synced',
                 lastSync: new Date()
             }
         );
+    }
+    /**
+     * Pattern buy/not buy verilerini API'den getirir
+     */
+    async fetchPatternBuyNotBuy(brandSlug, patternSlug) {
+        const response = await axios.get(
+            `${this.baseURL}/tires/catalog/${brandSlug}/${patternSlug}/bnb/`,
+            {
+                params: { user_key: this.apiKey },
+                timeout: 30000
+            }
+        );
+        return response.data;
+    }
+    /**
+     * Pattern materials (videolar) API'den getirir
+     */
+    async fetchPatternMaterials(brandSlug, patternSlug) {
+        const response = await axios.get(
+            `${this.baseURL}/tires/catalog/${brandSlug}/${patternSlug}/materials/`,
+            {
+                params: { user_key: this.apiKey },
+                timeout: 30000
+            }
+        );
+        return response.data;
+    }
+    /**
+     * Wheelsize Lastik Test Sonuçları Blogs'a kaydeder
+     */
+    async saveMaterialsToBlogs(materialsData, patternSlug) {
+        if (!materialsData || !materialsData.length) return;
+        const articles = materialsData.filter(item => item.type === 'article');
+
+        console.log(`${articles.length} article bulundu`);
+
+        for (const article of articles) {
+            try {
+                const title = await this.translator.translateText(article.title);
+                let content;
+                const scrapedContent = await this.fetchArticleContent(article.canonical_link);
+                if (scrapedContent) {
+                    content = await this.translator.translateText(scrapedContent);
+                } else {
+                    const description = article.lead || '';
+                    content = `<p>${await this.translator.translateText(description)}</p>`;
+                }
+
+                const slug = (title + '-' + article.publication_date)
+                    .toLowerCase()
+                    .replace(/ğ/g, 'g')
+                    .replace(/ü/g, 'u')
+                    .replace(/ş/g, 's')
+                    .replace(/ı/g, 'i')
+                    .replace(/ö/g, 'o')
+                    .replace(/ç/g, 'c')
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-')
+                    .trim();
+
+                console.log('Blog oluşturuluyor:', title);
+
+                await Blog.create({
+                    title,
+                    slug,
+                    content,
+                    excerpt: content.replace(/<[^>]*>/g, '').substring(0, 150),
+                    wheelSizePattern: patternSlug,
+                    publishedAt: new Date(article.publication_date),
+                    createdAt: new Date(article.publication_date),
+                    status: 'published'
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error('Blog kayıt hatası:', error.message);
+            }
+        }
+    }
+    async fetchArticleContent(articleUrl) {
+        try {
+            const response = await axios.get(articleUrl, { timeout: 30000 });
+            const $ = cheerio.load(response.data);
+            let content = $('[itemprop="description"]').html();
+
+            if (!content) {
+                console.log('İçerik bulunamadı:', articleUrl);
+                return null;
+            }
+            const allowedTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'a', 'ul', 'li', 'ol', 'br'];
+            const $content = cheerio.load(content);
+
+            $content('*').each(function () {
+                const tagName = this.tagName;
+                if (!allowedTags.includes(tagName)) {
+                    $content(this).replaceWith($content(this).html() || '');
+                }
+            });
+            $content('script, style, section, div, span').remove();
+
+            return $content.html().trim();
+        } catch (error) {
+            console.error('Article scrape hatası:', error.message);
+            return null;
+        }
     }
 }
 

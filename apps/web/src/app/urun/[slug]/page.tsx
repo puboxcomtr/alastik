@@ -9,6 +9,7 @@ import ProductBreadcrumb from "@components/product/top/Breadcrumb";
 import Gallery from '@components/product/left/Gallery';
 import Middle from '@components/product/middle/Middle';
 import AddCart from '@/src/components/product/right/AddCart';
+import Description from '@/src/components/product/bottom/Description';
 
 /* Services */
 import { getProductBySlug } from '@src/services/productService';
@@ -55,6 +56,12 @@ export default async function ProductDetailPage(
                 </Grid>
                 <Grid size={3} sx={{ pl: 3 }}>
                     <AddCart product={product} />
+                </Grid>
+            </Grid>
+            
+            <Grid className="row-fluid" container>
+                <Grid size={12}>
+                    <Description />
                 </Grid>
             </Grid>
         </Container>

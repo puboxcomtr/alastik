@@ -57,6 +57,15 @@ const blogSchema = new mongoose.Schema({
     viewCount: {
         type: Number,
         default: 0
+    },
+    wheelSizePattern: {
+        type: String,
+        default: null,
+        index: true
+    },
+    author: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, {
     timestamps: true
