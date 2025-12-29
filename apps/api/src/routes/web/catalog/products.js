@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
+const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const { getProductListFilters } = require('../../../config/diaFilters');
 
 
@@ -309,6 +310,48 @@ router.get('/filter', async (req, res) => {
         });
     }
 });
+
+router.get('/:slug/wheelsize', async (req, res) => {
+    try {
+        const product = await WebProduct.findOne({
+            $or: [
+                { 'customData.seoUrl': req.params.slug },
+                { '_key': req.params.slug }
+            ]
+        }).select('_key');
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
+        }
+
+        const wheelSizeDoc = await WebWheelSize.findOne({
+            productKeys: product._key
+        }).lean();
+
+        if (!wheelSizeDoc) {
+            return res.json({ success: true, data: null });
+        }
+
+        const wheelSize = {
+            patternSlug: wheelSizeDoc.patternSlug,
+            patternName: wheelSizeDoc.patternName,
+            brandSlug: wheelSizeDoc.brandSlug,
+            weThink: wheelSizeDoc.wheelsizeData?.ratings?.weThink || [],
+            ratings: {
+                score: wheelSizeDoc.wheelsizeData?.ratings?.score || null,
+                popularity: wheelSizeDoc.wheelsizeData?.ratings?.popularity || null,
+                tags: wheelSizeDoc.wheelsizeData?.ratings?.tags || []
+            },
+            buyNotBuy: wheelSizeDoc.wheelsizeData?.buyNotBuy || null,
+            materials: wheelSizeDoc.wheelsizeData?.materials || [] // EKLE
+        };
+
+        res.json({ success: true, data: wheelSize });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -341,5 +384,4 @@ router.get('/:slug', async (req, res) => {
         });
     }
 });
-
 module.exports = router;

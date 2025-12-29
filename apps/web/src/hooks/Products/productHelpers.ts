@@ -232,6 +232,13 @@ export const getProductImages = (product: Product): Array<{ url: string; alt: st
 export type ProductType = 'LASTIK' | 'JANT' | 'ZINCIR' | 'AKSESUAR' | 'GENEL';
 
 /**
+ * Metni capitalize et (Baş harf büyük, geri kalanı küçük)
+ */
+export const capitalizeText = (text: string): string => {
+    if (!text || text === '-') return text;
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+};
+/**
  * Ürün tipini belirle (Backend ile aynı mantık)
  * DİKKAT: Türkçe karakterler! LASTİK, ZİNCİR (Büyük İ)
  */
@@ -385,6 +392,90 @@ export const getLoadIndexDisplay = (loadIndex: string): string => {
 
     const load = loadMap[loadIndex];
     return load ? `${loadIndex} (${load})` : loadIndex;
+};
+/**
+ * Ürün kartı hover detayları için özellikleri getir (Lastik/Jant)
+ */
+export const getCardHoverFeatures = (product: Product): Array<{ label: string; value: string }> => {
+    const type = getProductType(product);
+
+    if (type === 'JANT') {
+        return [
+            { label: 'Bijon Sayısı', value: getProductFeature(product, 'Bijon Sayısı') },
+            { label: 'Bijon Aralığı', value: getProductFeature(product, 'Bijon Aralığı') || product.diaData?.ozelkod3kodu || '-' },
+            { label: 'Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' }
+        ].filter(f => f.value && f.value !== '-');
+    }
+
+    // Lastik (varsayılan)
+    const { ebat, yukEndeksi, hizEndeksi, uretimTarihi } = getProductFeatures(product);
+    return [
+        { label: 'Ebat', value: ebat },
+        { label: 'Yük Endeksi', value: yukEndeksi },
+        { label: 'Hız Endeksi', value: hizEndeksi },
+        { label: 'Üretim Tarihi', value: uretimTarihi }
+    ].filter(f => f.value && f.value !== '-');
+};
+/**
+ * Tüm lastik özelliklerini detaylı getir (Description için)
+ */
+export const getAllLastikFeatures = (product: Product): Array<{ label: string; value: string }> => {
+    const genislik = getProductFeature(product, 'Genişlik');
+    const yanak = getProductFeature(product, 'Yanak');
+    const cap = getProductFeature(product, 'Jant Çapı');
+    const yukEndeksi = getProductFeature(product, 'Yük Endeksi');
+    const hizEndeksi = getProductFeature(product, 'Hız Endeksi');
+    const ebat = (genislik !== '-' && yanak !== '-' && cap !== '-')
+        ? `${genislik}/${yanak} ${cap}`
+        : '-';
+
+    const xl = getProductFeature(product, 'XL');
+    const runFlat = getProductFeature(product, 'Run Flat');
+    const seal = getProductFeature(product, 'Seal');
+    const oem = getProductFeature(product, 'OEM');
+
+    const ekstraOzellikler: string[] = [];
+    if (xl.toLowerCase() === 'evet') ekstraOzellikler.push('XL');
+    if (runFlat.toLowerCase() === 'evet') ekstraOzellikler.push('Run Flat');
+    if (seal.toLowerCase() === 'evet') ekstraOzellikler.push('Seal');
+    if (oem !== '-' && oem.toLowerCase() !== 'hayır') ekstraOzellikler.push(`OEM: ${oem}`);
+
+    return [
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
+        { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
+        { label: 'Araç Tipi', value: getProductFeature(product, 'Araç Tipi') },
+        { label: 'Marka', value: capitalizeText(product.diaData?.marka || '-') },
+        { label: 'Model', value: product.diaData?.ozelkod5 || product.diaData?.ozelkod5kodu || '-' },
+        { label: 'Mevsim', value: getProductFeature(product, 'Mevsim') },
+        { label: 'Ebat', value: ebat },
+        { label: 'Yük Endeksi', value: getLoadIndexDisplay(yukEndeksi) },
+        { label: 'Hız Endeksi', value: getSpeedIndexDisplay(hizEndeksi) },
+        { label: 'Ekstra Özellikler', value: ekstraOzellikler.length > 0 ? ekstraOzellikler.join(', ') : '-' },
+        { label: 'Üretim Tarihi (DOT)', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') },
+        { label: 'Garanti Süresi', value: product.customData?.warranty || '2 Yıl' },
+        { label: 'Yakıt Verimliliği', value: getProductFeature(product, 'Yakıt Verimliliği') },
+        { label: 'Islak Zeminde Frenleme', value: getProductFeature(product, 'Islak Zeminde Frenleme') },
+        { label: 'Gürültü Seviyesi', value: `${getProductFeature(product, 'Gürültü Seviyesi')} dB` }
+    ].filter(f => f.value && f.value !== '-');
+};
+
+/**
+ * Tüm jant özelliklerini detaylı getir (Description için)
+ */
+export const getAllJantFeatures = (product: Product): Array<{ label: string; value: string }> => {
+    return [
+        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
+        { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
+        { label: 'Marka', value: capitalizeText(product.diaData?.marka || '-') },
+        { label: 'Model', value: product.diaData?.ozelkod5 || product.diaData?.ozelkod5kodu || '-' },
+        { label: 'Jant Genişliği', value: getProductFeature(product, 'Jant Genişliği') },
+        { label: 'Bijon Sayısı', value: getProductFeature(product, 'Bijon Sayısı') },
+        { label: 'Bijon Aralığı (PCD)', value: getProductFeature(product, 'Bijon Aralığı') || product.diaData?.ozelkod3kodu || '-' },
+        { label: 'Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
+        { label: 'Göbek Çapı', value: getProductFeature(product, 'Göbek Çapı') },
+        { label: 'ET (Offset)', value: getProductFeature(product, 'ET') },
+        { label: 'Renk', value: getProductFeature(product, 'Renk') }
+    ].filter(f => f.value && f.value !== '-');
 };
 
 /**

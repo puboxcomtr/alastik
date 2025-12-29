@@ -57,3 +57,19 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
         return null;
     }
 }
+/**
+ * Ürün detayı - Wheelsize Verileri
+ */
+export async function getProductWheelSize(slug: string) {
+    try {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/products/${slug}/wheelsize`,
+            { cache: 'no-store' }
+        );
+        const data = await response.json();
+        return data.success ? data.data : null;
+    } catch (error) {
+        console.error('WheelSize fetch error:', error);
+        return null;
+    }
+}

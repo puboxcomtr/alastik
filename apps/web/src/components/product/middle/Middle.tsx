@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 /* ========================================
    MUI Components
    ======================================== */
-// UI Components
 import { Grid, Typography, Rating, Link, Divider, Tooltip } from '@mui/material';
 
 /* ========================================
@@ -29,9 +28,12 @@ import AlternativeSizesModal from '@/src/components/layout/Modals/AlternativeSiz
 interface MiddleProps {
     product: Product;
     productName: string;
+    wheelSize?: any;
 }
 
-export default function Middle({ product, productName }: MiddleProps) {
+export default function Middle({ product, productName, wheelSize }: MiddleProps) {
+    console.log('WheelSize Data:', wheelSize);
+    console.log('Product Key:', product._key);
     const features = getProductDetailFeatures(product);
     const [rating, setRating] = useState<number>(4.50);
     const [reviewCount, setReviewCount] = useState<number>(2);
@@ -91,7 +93,7 @@ export default function Middle({ product, productName }: MiddleProps) {
                                 {/* Test Sonuçları */}
                                 <div className='d-flex gap-1'>
                                     <Link
-                                        href="#reviews"
+                                        href="#tire_test"
                                         className='fw-semibold text-decoration-none fs-sm d-flex gap-1'
                                         color='primary'>
                                         <span>{reviewCount} Lastik Test Sonucu</span>
@@ -102,13 +104,40 @@ export default function Middle({ product, productName }: MiddleProps) {
                         </Grid>
                         <Grid size={12}>
                             <div className="d-flex align-items-end gap-4">
-                                <Typography
-                                    className="fw-semibold d-block lh-sm"
-                                    variant="body1"
-                                    gutterBottom
-                                >
-                                    Ürün Özellikleri
-                                </Typography>
+                                {isLastik(product) ? (
+                                    <div>
+                                        <p className="fw-semibold mb-2">Öne Çıkan Özellikler</p>
+                                        <div className="d-flex gap-2 flex-wrap">
+                                            {wheelSize?.weThink && wheelSize.weThink.length > 0 ? (
+                                                wheelSize.weThink.map((item: any, idx: number) => (
+                                                    <span key={idx} className="badge text-body-emphasis border cursor-pointer">
+                                                        {item.display}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <>
+                                                    <span className="badge text-body-emphasis border cursor-pointer">
+                                                        Sürüş ve Konfor
+                                                    </span>
+                                                    <span className="badge text-body-emphasis border cursor-pointer">
+                                                        Yakıt Verimliliği
+                                                    </span>
+                                                    <span className="badge text-body-emphasis border cursor-pointer">
+                                                        Fiyat Performans
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Typography
+                                        className="fw-semibold d-block lh-sm"
+                                        variant="body1"
+                                        gutterBottom
+                                    >
+                                        Ürün Özellikleri
+                                    </Typography>
+                                )}
                             </div>
                         </Grid>
                         <Grid size={12}>
@@ -235,6 +264,7 @@ export default function Middle({ product, productName }: MiddleProps) {
                                     </li>
                                 ))}
                             </ul>
+                            
                         </Grid>
                     </Grid>
                 </Grid>

@@ -62,7 +62,7 @@ export default function AlternativeSizesModal({ open, onClose, product }: Altern
             }}>
             <DialogTitle sx={{ pb: 1 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6">Laufenn I FIT+ Modeline Ait Diğer Ebatlar</Typography>
+                    <Typography variant="h6">{getBrandModel(product)} Modeline Ait Diğer Ebatlar</Typography>
                     <IconButton
                         onClick={onClose}
                         sx={{ position: 'absolute', right: 8, top: 8 }}

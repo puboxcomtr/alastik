@@ -2144,11 +2144,18 @@ progress {
 }
 
 .table>:not(caption)>*>* {
-    background-color: var(--cz-table-bg);
     border-bottom-width: var(--cz-border-width);
     box-shadow: inset 0 0 0 9999px var(--cz-table-bg-state, var(--cz-table-bg-type, var(--cz-table-accent-bg)));
     color: var(--cz-table-color-state, var(--cz-table-color-type, var(--cz-table-color)));
-    padding: .75rem
+    padding: .5rem
+}
+
+.custom-striped tbody tr:nth-child(odd) td {
+    background-color: #ffff !important;
+}
+
+.custom-striped tbody tr:nth-child(even) td {
+    background-color: #e9e9e9 !important;
 }
 
 .table>tbody {
@@ -8091,6 +8098,10 @@ fieldset:disabled .btn {
     top: 50% !important
 }
 
+.top-1 {
+    top: 10% !important
+}
+
 .top-3 {
     top: 30% !important
 }
@@ -9037,6 +9048,30 @@ fieldset:disabled .btn {
     padding-right: 3rem !important
 }
 
+.pr-0 {
+    padding-right: 0 !important
+}
+
+.pr-1 {
+    padding-right: .25rem !important
+}
+
+.pr-2 {
+    padding-right: .5rem !important
+}
+
+.pr-3 {
+    padding-right: 1rem !important
+}
+
+.pr-4 {
+    padding-right: 1.5rem !important
+}
+
+.pr-5 {
+    padding-right: 3rem !important
+}
+
 .pb-0 {
     padding-bottom: 0 !important
 }
@@ -9189,6 +9224,10 @@ fieldset:disabled .btn {
 
 .fs-6 {
     font-size: 1rem !important
+}
+
+.fs-7 {
+    font-size: .9rem !important
 }
 
 .fs-xl {
@@ -18885,14 +18924,18 @@ span.flatpickr-weekday {
 .mainProductGallery:hover {
     cursor: pointer;
 }
-.productshipping_info
-{
-    display:block;
-    margin:10px 0;
-    font-size:.7rem;
+
+.productshipping_info {
+    display: block;
+    margin: 10px 0;
+    font-size: .7rem;
 }
-/* Product Detail */
-#description
-{
-    margin:20px 0;
+
+.product__description section {
+    border-bottom: 1px solid #e3e3e3;
+    margin-bottom: 45px;
+}
+
+.product__control li.active span {
+    color: #f2223b
 }

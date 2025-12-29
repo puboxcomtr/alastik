@@ -19,7 +19,9 @@ import {
     getProductImage,
     getProductStockCode,
     getProductFeatures,
-    getProductSeason
+    getProductSeason,
+    isJant,
+    getProductFeature
 } from '@src/hooks/Products/productHelpers';
 
 export default function ProductCard({ product }: ProductCardProps) {
@@ -40,8 +42,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
     const stockCode = getProductStockCode(product);
+    // Lastik özellikleri
     const { ebat, yukEndeksi, hizEndeksi, uretimTarihi } = getProductFeatures(product);
 
+    // Jant özellikleri
+    const bijonSayisi = getProductFeature(product, 'Bijon Sayısı');
+    const bijonAraligi = getProductFeature(product, 'Bijon Aralığı') || product.diaData?.ozelkod3kodu || '-';
+    const jantCapi = getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-';
     // Marka bilgisini context'ten al
     const brandName = product.diaData.marka || '';
     const brandInfo = getBrand(brandName);
@@ -195,34 +202,48 @@ export default function ProductCard({ product }: ProductCardProps) {
             <div className="product-card-details position-absolute top-100 start-0 w-100 bg-body rounded-bottom shadow mt-n2 p-3 pt-1">
                 <span className="position-absolute top-0 start-0 w-100 bg-body mt-n2 py-2"></span>
                 <ul className="list-unstyled d-flex flex-column gap-2 m-0">
-                    <li className="d-flex align-items-center">
-                        <span className="fs-xs">Ebat:</span>
-                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                        <span className="text-dark-emphasis fs-xs fw-medium text-end">
-                            {ebat}
-                        </span>
-                    </li>
-                    <li className="d-flex align-items-center">
-                        <span className="fs-xs">Yük Endeksi:</span>
-                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                        <span className="text-dark-emphasis fs-xs fw-medium text-end">
-                            {yukEndeksi}
-                        </span>
-                    </li>
-                    <li className="d-flex align-items-center">
-                        <span className="fs-xs">Hız Endeksi:</span>
-                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                        <span className="text-dark-emphasis fs-xs fw-medium text-end">
-                            {hizEndeksi}
-                        </span>
-                    </li>
-                    <li className="d-flex align-items-center">
-                        <span className="fs-xs">Üretim Tarihi:</span>
-                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                        <span className="text-dark-emphasis fs-xs fw-medium text-end">
-                            {uretimTarihi}
-                        </span>
-                    </li>
+                    {isJant(product) ? (
+                        <>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Bijon Sayısı:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonSayisi}</span>
+                            </li>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Bijon Aralığı:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonAraligi}</span>
+                            </li>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Jant Çapı:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{jantCapi}</span>
+                            </li>
+                        </>
+                    ) : (
+                        <>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Ebat:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{ebat}</span>
+                            </li>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Yük Endeksi:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{yukEndeksi}</span>
+                            </li>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Hız Endeksi:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{hizEndeksi}</span>
+                            </li>
+                            <li className="d-flex align-items-center">
+                                <span className="fs-xs">Üretim Tarihi:</span>
+                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{uretimTarihi}</span>
+                            </li>
+                        </>
+                    )}
                 </ul>
             </div>
         </div>
