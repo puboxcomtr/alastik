@@ -5423,7 +5423,7 @@ fieldset:disabled .btn {
     --cz-alert-bg: transparent;
     --cz-alert-padding-x: 1rem;
     --cz-alert-padding-y: 1rem;
-    --cz-alert-margin-bottom: 1.25rem;
+    --cz-alert-margin-bottom: 0;
     --cz-alert-color: inherit;
     --cz-alert-border-color: transparent;
     --cz-alert-border: var(--cz-border-width) solid var(--cz-alert-border-color);
@@ -9357,7 +9357,7 @@ fieldset:disabled .btn {
 
 .text-primary {
     --cz-text-opacity: 1;
-    color: rgba(var(--cz-primary-rgb), var(--cz-text-opacity)) !important
+    color: #e2001a!important
 }
 
 .text-secondary {
@@ -9398,6 +9398,10 @@ fieldset:disabled .btn {
 .text-black {
     --cz-text-opacity: 1;
     color: rgba(var(--cz-black-rgb), var(--cz-text-opacity)) !important
+}
+.text-black {
+    --cz-text-opacity: 1;
+    color: #343434;    
 }
 
 .text-white {

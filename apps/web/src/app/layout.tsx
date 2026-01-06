@@ -22,7 +22,10 @@ import Script from "next/script";
 import MetaHead from "@components/layout/MetaHead";
 import Header from "@components/layout/Header/Header";
 import Footer from "@components/layout/Footer/Footer";
+
+// Context
 import { BrandsProvider } from '@/src/context/BrandsContext';
+import { CartProvider } from '@/src/context/CartContext';
 
 
 /* Modal */
@@ -83,32 +86,34 @@ export default async function RootLayout({
         <SettingsProvider initialTheme={themeSettings}>
           <ThemeRegistry>
             <BrandsProvider>
-              {!siteActive && isAdminLoggedIn && (
-                <div
-                  style={{
-                    backgroundColor: '#ff9800',
-                    color: '#000',
-                    textAlign: 'center',
-                    padding: '10px',
-                    fontWeight: 'bold',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 9999
-                  }}
-                >
-                  Sadece Yönetici Görüntüleme Modu
-                </div>
-              )}
-              <Header />
-              {children}
-              <Footer />
-              <Modal />
-              <TireSearchClient />
+              <CartProvider>
+                {!siteActive && isAdminLoggedIn && (
+                  <div
+                    style={{
+                      backgroundColor: '#ff9800',
+                      color: '#000',
+                      textAlign: 'center',
+                      padding: '10px',
+                      fontWeight: 'bold',
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 9999
+                    }}
+                  >
+                    Sadece Yönetici Görüntüleme Modu
+                  </div>
+                )}
+                <Header />
+                {children}
+                <Footer />
+                <Modal />
+                <TireSearchClient />
+              </CartProvider>
             </BrandsProvider>
           </ThemeRegistry>
         </SettingsProvider>
         <ToastContainer
-          position="top-right"
+          position="bottom-right"
           autoClose={4000}
           hideProgressBar={false}
           newestOnTop

@@ -1,0 +1,49 @@
+[TAILING] Tailing last 10 lines for [alastik-api] process (change the value with --lines option)
+/root/.pm2/logs/alastik-api-error-7.log last 10 lines:
+7|alastik- | Wheel Size API Error: Request failed with status code 400
+7|alastik- | searchByTire error: Request failed with status code 400
+7|alastik- | Wheel Size API Error: Request failed with status code 404
+7|alastik- | Rim diameters error: Request failed with status code 404
+7|alastik- | Wheel Size API Error: Request failed with status code 404
+7|alastik- | Tire aspect ratios error: Request failed with status code 404
+7|alastik- | (node:126615) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+7|alastik- | (Use `node --trace-warnings ...` to show where the warning was created)
+7|alastik- | (node:126881) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+7|alastik- | (Use `node --trace-warnings ...` to show where the warning was created)
+
+/root/.pm2/logs/alastik-api-error-8.log last 10 lines:
+8|alastik- | Wheel Size API Error: Request failed with status code 404
+8|alastik- | Tire section widths error: Request failed with status code 404
+8|alastik- | Wheel Size API Error: Request failed with status code 404
+8|alastik- | Tire rim diameters error: Request failed with status code 404
+8|alastik- | Wheel Size API Error: Request failed with status code 404
+8|alastik- | Rim bolt patterns error: Request failed with status code 404
+8|alastik- | (node:126634) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+8|alastik- | (Use `node --trace-warnings ...` to show where the warning was created)
+8|alastik- | (node:126899) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+8|alastik- | (Use `node --trace-warnings ...` to show where the warning was created)
+
+/root/.pm2/logs/alastik-api-out-8.log last 10 lines:
+8|alastik- | 2026-01-05T08:30:10.230Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/gislaved.jpg","status":200,"duration":"1ms","ip":"217.195.202.170","userAgent":"node"}
+8|alastik- | 2026-01-05T08:30:10.256Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/filter?marka=G%C4%B0SLAVED&ozelkod5=Euro*Frost%206&limit=50","status":304,"duration":"9ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+8|alastik- | 2026-01-05T08:30:26.896Z [alastik-api] [32minfo[39m: Received SIGINT, shutting down gracefully... 
+8|alastik- | 2026-01-05T08:30:26.897Z [alastik-api] [32minfo[39m: DIA Stock Scheduler stopped 
+8|alastik- | 2026-01-05T08:30:26.905Z [alastik-api] [32minfo[39m: Database and cache connections closed 
+8|alastik- | 2026-01-05T08:30:27.980Z [alastik-api] [32minfo[39m: Server running on port 3082 in production mode 
+8|alastik- | Alastik API Server started on port 3082
+8|alastik- | Redis connected successfully
+8|alastik- | 2026-01-05T08:30:28.034Z [alastik-api] [32minfo[39m: Connected to MongoDB 
+8|alastik- | 2026-01-05T08:30:28.044Z [alastik-api] [32minfo[39m: Henüz sync yapılmamış - İlk sync gece saat 05:00'da otomatik çalışacak 
+
+/root/.pm2/logs/alastik-api-out-7.log last 10 lines:
+7|alastik- | 2026-01-05T08:30:10.217Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/filter?marka=G%C4%B0SLAVED&ozelkod5=Euro*Frost%206&limit=50","status":304,"duration":"6ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+7|alastik- | 2026-01-05T08:30:10.231Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/category/general","status":304,"duration":"2ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+7|alastik- | 2026-01-05T08:30:26.758Z [alastik-api] [32minfo[39m: Received SIGINT, shutting down gracefully... 
+7|alastik- | 2026-01-05T08:30:26.758Z [alastik-api] [32minfo[39m: DIA Stock Scheduler stopped 
+7|alastik- | 2026-01-05T08:30:27.679Z [alastik-api] [32minfo[39m: Server running on port 3082 in production mode 
+7|alastik- | Alastik API Server started on port 3082
+7|alastik- | Redis connected successfully
+7|alastik- | 2026-01-05T08:30:27.727Z [alastik-api] [32minfo[39m: Connected to MongoDB 
+7|alastik- | 2026-01-05T08:30:27.734Z [alastik-api] [32minfo[39m: Henüz sync yapılmamış - İlk sync gece saat 05:00'da otomatik çalışacak 
+7|alastik- | 2026-01-05T08:30:30.234Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/api/wheelsize/by-tire?width=205&aspect_ratio=55&rim_diameter=16","status":200,"duration":"5ms","ip":"::ffff:127.0.0.1","userAgent":"curl/7.81.0"}
+

@@ -333,12 +333,30 @@ app.use('/api/products', webProductsRoutes);
 const webTagsRoutes = require('./routes/web/catalog/tags');
 app.use('/api/tags', webTagsRoutes);
 
+/* Tanımlamalar */
+const definitionRouter = require('./routes/web/other/definition');
+app.use('/api/definition', definitionRouter);
+
+/* Blog */
+const webBlogRoutes = require('./routes/web/content/blog');
+app.use('/api/blogs', webBlogRoutes);
+
+/* Ürün Yorumları */
+const webReviewsRoutes = require('./routes/web/user/reviews');
+app.use('/api/reviews', webReviewsRoutes);
+
 /* Ürün Filtreleme */
 const webFiltersRoutes = require('./routes/web/catalog/filters');
 app.use('/api/filters', webFiltersRoutes);
 
 const showcaseRoutes = require('./routes/admin/catalog/showcase');
 app.use('/api/showcases', showcaseRoutes);
+
+// ============================================
+// THEME CART & PAYMENT ROUTES
+// ============================================
+const webCartRoutes = require('./routes/web/cart/cart');
+app.use('/api/cart', webCartRoutes);
 
 
 /* Görsel Listeleme */
@@ -445,9 +463,6 @@ try {
 } catch (e) {
   console.warn('External payments routes not loaded:', e?.message);
 }
-
-
-
 
 // ============================================
 // (PLUGIN) - DIA ROUTES
@@ -902,7 +917,6 @@ app.get('/api/lastik/modifikasyon-arama', async (req, res) => {
     });
   }
 });
-
 // Genel lastik arama API'si (test ürünleri için)
 app.get('/api/lastik/genel-arama', async (req, res) => {
   const startTime = Date.now();
@@ -1457,7 +1471,44 @@ app.post('/api/lastik/dia-stok-kontrol', async (req, res) => {
     });
   }
 });
+// Wheelsize Lastik ebadına göre uyumlu araçlar
+app.get('/api/wheelsize/by-tire', async (req, res) => {
+  const cacheKey = `wheelsize:by-tire:${req.query.width}-${req.query.aspect_ratio}-${req.query.rim_diameter}`;
 
+  try {
+    // Cache kontrol
+    const cached = await activeCache.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    const { width, aspect_ratio, rim_diameter } = req.query;
+
+    if (!width || !aspect_ratio || !rim_diameter) {
+      return res.status(400).json({
+        success: false,
+        message: 'width, aspect_ratio, rim_diameter parametreleri gerekli'
+      });
+    }
+
+    const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
+    const result = await WheelSizeService.searchByTire(
+      parseInt(width),
+      parseInt(aspect_ratio),
+      parseInt(rim_diameter)
+    );
+
+    const response = { success: true, data: result };
+
+    // 1 saat cache
+    await activeCache.set(cacheKey, JSON.stringify(response), 3600);
+
+    res.json(response);
+  } catch (error) {
+    logger.error('by-tire error:', error);
+    res.status(500).json({ success: false, message: 'Uyumlu araclar getirilemedi' });
+  }
+});
 // Navbar kategorilerine göre lastik filtreleme API'si
 app.get('/api/lastik/kategori/:kategori', async (req, res) => {
   const startTime = Date.now();

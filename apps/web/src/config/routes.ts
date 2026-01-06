@@ -17,6 +17,7 @@ export const ROUTES = {
     SUPPORT_TICKET: '/destek/talep-olustur',
     PRODUCT: '/urun',
     BRAND: '/marka',
+    BLOG: '/blog',
     CATEGORY: '/kategori',
     TAG: '/etiket',
     CART: '/sepet',
@@ -133,6 +134,12 @@ export interface VehicleParams {
     vehicleImage?: string;
 }
 
+/**
+ * Blog detay URL'i
+ */
+export const buildBlogUrl = (slug: string): string => {
+    return `${ROUTES.BLOG}/${slug}`;
+};
 export const buildTagUrlWithVehicle = (seoUrl: string, vehicle: VehicleParams): string => {
     const baseUrl = `${ROUTES.TAG}/${seoUrl}`;
     const params = new URLSearchParams({

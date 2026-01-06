@@ -73,3 +73,41 @@ export async function getProductWheelSize(slug: string) {
         return null;
     }
 }
+
+/**
+ * Lastik ebadına göre uyumlu araçları getir
+ */
+export async function getCompatibleVehicles(width: number, aspectRatio: number, rimDiameter: number) {
+    try {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/wheelsize/by-tire?width=${width}&aspect_ratio=${aspectRatio}&rim_diameter=${rimDiameter}`,
+            { next: { revalidate: 3600 } }
+        );
+        const data = await response.json();
+        return data.success ? data.data : null;
+    } catch (error) {
+        console.error('Compatible vehicles error:', error);
+        return null;
+    }
+}
+/**
+ * Lastik modeline göre uyumlu blog yazılarını getir.
+ */
+export async function getRelatedBlogs(pattern: string): Promise<any[]> {
+    if (!pattern) return [];
+
+    try {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/blogs/by-pattern/${encodeURIComponent(pattern)}`,
+            { cache: 'no-store' }
+        );
+
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        return data.success ? data.data : [];
+    } catch (error) {
+        console.error('Related blogs fetch error:', error);
+        return [];
+    }
+}

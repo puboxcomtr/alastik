@@ -20,16 +20,19 @@ import SearchIcon from '@mui/icons-material/Search';
 // Hooks
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
+import { useCart } from '@/src/context/CartContext';
 
 // Routes
 import { ROUTES } from '@/src/config/routes';
 
 interface ActionButtonsProps {
     setCartOpen: (open: boolean) => void;
-    cartItemCount: number;
 }
 
-export default function ActionButtons({ setCartOpen, cartItemCount }: ActionButtonsProps) {
+export default function ActionButtons({ setCartOpen }: ActionButtonsProps) {
+    const { totals } = useCart();
+    const cartItemCount = totals.itemCount;
+
     const router = useRouter();
     const { t } = useTranslations();
     const { isLoggedIn, user, clearAuth } = useAuth();
@@ -153,7 +156,7 @@ export default function ActionButtons({ setCartOpen, cartItemCount }: ActionButt
                     <button
                         type="button"
                         className="btn btn-icon btn-lg fs-xl btn-outline-secondary position-relative border-0 rounded-circle animate-scale flex flex-column gap-1"
-                        onClick={() => setCartOpen(true)}
+                        onClick={() => router.push(ROUTES.CART)}
                         aria-label="Shopping cart"
                     >
                         <i className="ri-shopping-cart-2-line animate-target"></i>

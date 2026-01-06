@@ -225,6 +225,69 @@ class WheelSizeService {
             ];
         }
     }
+    async searchByTire(width, aspectRatio, rimDiameter) {
+        try {
+            const vehicles = await this.request('/by_tire/search/', {
+                section_width: width,
+                aspect_ratio: aspectRatio,
+                rim_diameter: rimDiameter,
+                region: this.defaultRegion
+            });
+
+            if (!vehicles || !Array.isArray(vehicles)) {
+                return { total: 0, makes: [] };
+            }
+
+            // Marka > Model > Yıl grupla
+            const grouped = {};
+
+            vehicles.forEach(v => {
+                const makeSlug = v.make?.slug || 'other';
+                const makeName = v.make?.name || 'Diger';
+                const modelSlug = v.slug || 'model';
+                const modelName = v.name || 'Model';
+
+                if (!grouped[makeSlug]) {
+                    grouped[makeSlug] = { name: makeName, slug: makeSlug, models: {} };
+                }
+
+                if (!grouped[makeSlug].models[modelSlug]) {
+                    grouped[makeSlug].models[modelSlug] = {
+                        name: modelName,
+                        slug: modelSlug,
+                        years: new Set(),
+                        image: null
+                    };
+                }
+
+                // year_ranges array'ini parse et
+                if (v.year_ranges && Array.isArray(v.year_ranges)) {
+                    v.year_ranges.forEach(range => {
+                        const parts = range.split('-');
+                        if (parts[0]) grouped[makeSlug].models[modelSlug].years.add(parseInt(parts[0]));
+                        if (parts[1]) grouped[makeSlug].models[modelSlug].years.add(parseInt(parts[1]));
+                    });
+                }
+            });
+
+            // Set -> Array, sırala
+            const makes = Object.values(grouped)
+                .map(make => ({
+                    ...make,
+                    models: Object.values(make.models).map(m => ({
+                        ...m,
+                        years: Array.from(m.years).filter(y => !isNaN(y)).sort((a, b) => a - b)
+                    })),
+                    modelCount: Object.keys(make.models).length
+                }))
+                .sort((a, b) => b.modelCount - a.modelCount);
+
+            return { total: vehicles.length, makes };
+        } catch (error) {
+            console.error('searchByTire error:', error.message);
+            return { total: 0, makes: [] };
+        }
+    }
 }
 
 module.exports = new WheelSizeService();

@@ -649,6 +649,35 @@ class DiaStockService {
     return parts.join(' - ').substring(0, 160);
   };
   /**
+ * Unique SEO URL oluştur
+ */
+  async generateUniqueSeoUrl(text, productKey) {
+    let seoUrl = this.generateSeoUrl(text);
+
+    // Unique slug kontrolü
+    const existingProduct = await WebProduct.findOne({
+      'customData.seoUrl': seoUrl,
+      '_key': { $ne: productKey }
+    });
+
+    if (existingProduct) {
+      let counter = 1;
+      let newSeoUrl = `${seoUrl}-${counter}`;
+
+      while (await WebProduct.findOne({
+        'customData.seoUrl': newSeoUrl,
+        '_key': { $ne: productKey }
+      })) {
+        counter++;
+        newSeoUrl = `${seoUrl}-${counter}`;
+      }
+
+      seoUrl = newSeoUrl;
+    }
+
+    return seoUrl;
+  }
+  /**
    * DIA Verilerini
    * Kategori Listesini Senkronize Et (categories collection'da)
   */
@@ -1346,9 +1375,8 @@ class DiaStockService {
             }
           });
         } else {
-          // Yeni ürün - tam veri oluştur
           const newCustomData = {
-            seoUrl: this.generateSeoUrl(item.aciklama || item.stokkartkodu),
+            seoUrl: await this.generateUniqueSeoUrl(item.aciklama || item.stokkartkodu, item._key),
             seoTitle: item.aciklama,
             seoDescription: this.generateSeoDescription(item),
             seoKeywords: this.generateWebTags(item),
@@ -1401,7 +1429,6 @@ class DiaStockService {
         });
       }
     }
-    // Bulk operations çalıştır
     let diaResult = { upsertedCount: 0, modifiedCount: 0 };
     let webResult = { upsertedCount: 0, modifiedCount: 0 };
 
@@ -1467,8 +1494,6 @@ class DiaStockService {
         cleaned[field] = isNaN(num) ? null : num;
       }
     });
-
-    // String alanlarını temizle
     const stringFields = [
       'aciklama', 'marka', 'markaack', 'stokkartkodu', 'firmaadi',
       'ekalan1', 'ekalan2', 'ekalan3', 'ekalan4', 'ekalan5'
@@ -1480,7 +1505,6 @@ class DiaStockService {
       }
     });
 
-    // Boolean alanlarını dönüştür
     const booleanFields = ['kilitli'];
     booleanFields.forEach(field => {
       if (cleaned[field] !== undefined) {
@@ -1517,7 +1541,6 @@ class DiaStockService {
         batchCount++;
 
         try {
-          // 1. Tek batch veri çek
           const batchData = await this.fetchSingleBatch(offset, this.apiBatchSize, batchCount);
 
           if (!batchData || batchData.length === 0) {
@@ -1526,7 +1549,6 @@ class DiaStockService {
             break;
           }
 
-          // 2. Hemen veritabanına yaz
           const syncResult = await this.syncStockToDatabase(batchData);
 
           totalProcessed += syncResult.processed;
@@ -1536,7 +1558,6 @@ class DiaStockService {
 
           offset += this.apiBatchSize;
 
-          // Rate limiting
           if (batchCount < maxBatches) {
             await new Promise(resolve => setTimeout(resolve, this.requestDelay));
           }
@@ -1554,7 +1575,6 @@ class DiaStockService {
             error: batchError.message
           });
 
-          // Batch hatası durumunda devam et
           offset += this.apiBatchSize;
         }
       }

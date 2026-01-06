@@ -14,8 +14,10 @@ import AddCart from '@/src/components/product/right/AddCart';
 import Description from '@/src/components/product/bottom/Description';
 
 /* Services */
-import { getProductBySlug, getProductWheelSize } from '@src/services/productService';
+import { getProductBySlug, getProductWheelSize, getCompatibleVehicles, getRelatedBlogs } from '@src/services/productService';
 import { getCategorySlugByName } from '@src/services/categoryService';
+import { getDefinition } from '@src/services/definitionService';
+import { getProductReviews } from '@src/services/reviewService';
 
 export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
@@ -40,17 +42,38 @@ export default async function ProductDetailPage(
 ) {
     const { slug } = await params;
     const product = await getProductBySlug(slug);
-
     if (!product) {
         notFound();
     }
-    // WheelSize verisi
-    const wheelSize = await getProductWheelSize(slug);
+    const parseRimDiameter = (cap: string): number => {
+        const match = cap?.match(/\d+/);
+        return match ? parseInt(match[0]) : 0;
+    };
 
-    // DIA'dan sadece ana kategori al
+    const genislik = product.diaData?.m_urunOzellikleri?.find((f: any) => f.ozellikadi === 'Genişlik')?.detayaciklama;
+    const yanak = product.diaData?.m_urunOzellikleri?.find((f: any) => f.ozellikadi === 'Yanak')?.detayaciklama;
+    const capRaw = product.diaData?.m_urunOzellikleri?.find((f: any) => f.ozellikadi === 'Jant Çapı')?.detayaciklama;
+    const cap = parseRimDiameter(capRaw);
+
+    const isLastikProduct = product.diaData?.ozelkod7kodu?.toUpperCase() === 'LASTİK';
+
+    const ozelkod5 = product.diaData?.ozelkod5 || '';
+    const patternMatch = ozelkod5.match(/^([a-z0-9-]+)/i);
+    const blogPattern = patternMatch ? patternMatch[1].toLowerCase() : null;
+
+    const [wheelSize, definition, reviews, compatibleVehicles, relatedBlogs] = await Promise.all([
+        getProductWheelSize(slug),
+        getDefinition(),
+        getProductReviews(product._key),
+        (isLastikProduct && genislik && yanak && cap)
+            ? getCompatibleVehicles(parseInt(genislik), parseInt(yanak), cap)
+            : null,
+        (isLastikProduct && blogPattern)
+            ? getRelatedBlogs(blogPattern)
+            : []
+    ]);
+
     const mainCategory = product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1;
-
-    // Ana kategori slug'ını getir
     const categorySlug = await getCategorySlugByName(mainCategory);
 
     return (
@@ -75,6 +98,7 @@ export default async function ProductDetailPage(
                         product={product}
                         productName={product.diaData?.aciklama || ''}
                         wheelSize={wheelSize}
+                        reviews={reviews}
                     />
                 </Grid>
                 <Grid size={3} sx={{ pl: 3 }}>
@@ -84,7 +108,14 @@ export default async function ProductDetailPage(
 
             <Grid className="row-fluid" container>
                 <Grid size={12}>
-                    <Description product={product} wheelSize={wheelSize} />
+                    <Description
+                        product={product}
+                        wheelSize={wheelSize}
+                        definition={definition}
+                        reviews={reviews}
+                        compatibleVehicles={compatibleVehicles}
+                        relatedBlogs={relatedBlogs}
+                    />
                 </Grid>
             </Grid>
         </Container>

@@ -11,6 +11,8 @@ import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { ProductCardProps } from '@src/types/products';
 import { useSettings } from '@src/context/SettingsContext';
 import { useBrands } from '@/src/context/BrandsContext';
+import { useCart } from '@/src/context/CartContext';
+
 import {
     getProductUrl,
     getProductPrice,
@@ -27,6 +29,15 @@ import {
 export default function ProductCard({ product }: ProductCardProps) {
     const [value, setValue] = useState<number | null>(4);
     const [isFavorite, setIsFavorite] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const { addToCart } = useCart();
+
+    const handleAddToCart = async () => {
+        if (adding) return;
+        setAdding(true);
+        await addToCart(product._key, 1);
+        setAdding(false);
+    };
     const season = getProductSeason(product);
     const { theme } = useSettings();
     const { t } = useTranslations('general');
@@ -192,8 +203,10 @@ export default function ProductCard({ product }: ProductCardProps) {
                         type="button"
                         className="product-card-button btn btn-icon btn-primary animate-slide-end w-100 mt-3"
                         aria-label="Sepete Ekle"
+                        onClick={handleAddToCart}
+                        disabled={adding}
                     >
-                        {t('addToCart')}
+                        {adding ? 'Ekleniyor...' : t('addToCart')}
                     </button>
                 </Tooltip>
             </div>

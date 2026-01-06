@@ -69,10 +69,16 @@ const normalizeUrl = (url: string): string => {
  * @param defaultImage - Context'ten gelen default görsel
  */
 export const getProductImage = (product: Product, defaultImage?: string): string => {
+    if (product.diaData?.m_resimler && product.diaData.m_resimler.length > 0) {
+        const firstImage = product.diaData.m_resimler
+            .sort((a, b) => parseInt(a.order_id || '999') - parseInt(b.order_id || '999'))[0];
+        if (firstImage?.aws_url) {
+            return normalizeUrl(firstImage.aws_url);
+        }
+    }
     if (product.customData?.featuredImage) {
         return normalizeUrl(product.customData.featuredImage);
     }
-
     if (defaultImage) {
         return normalizeUrl(defaultImage);
     }

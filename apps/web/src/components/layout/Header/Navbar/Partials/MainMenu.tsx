@@ -31,7 +31,6 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
 
         children.forEach((child) => {
             if (child.menuType === 'heading') {
-                // Yeni başlık geldi, yeni grup başlat
                 if (currentGroup) {
                     groups.push(currentGroup);
                 }
@@ -40,11 +39,9 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                     items: []
                 };
             } else {
-                // Başlık değilse, mevcut gruba ekle
                 if (currentGroup) {
                     currentGroup.items.push(child);
                 } else {
-                    // Henüz başlık yoksa, başlıksız grup oluştur
                     currentGroup = {
                         heading: '',
                         items: [child]
@@ -52,8 +49,6 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                 }
             }
         });
-
-        // Son grubu ekle
         if (currentGroup) {
             groups.push(currentGroup);
         }
@@ -64,7 +59,6 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
     return (
         <Nav as="ul" className="navbar-nav align-items-baseline align-items-lg-center position-relative">
             {menus.map((menu) => {
-                // Alt menüsü yoksa direkt link
                 if (!menu.children || menu.children.length === 0) {
                     return (
                         <Nav.Item as="li" className="nav-item" key={menu._id}>
@@ -79,26 +73,20 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                         </Nav.Item>
                     );
                 }
-
-                // Alt menüleri başlıklara göre grupla
                 const groupedChildren = groupChildrenByHeading(menu.children);
-
-                // Alt menüsü varsa MegaMenu
                 return (
                     <MegaItem
                         key={menu._id}
                         id={menu._id}
                         title={menu.name}
+                        href={getMenuUrl(menu)}
                     >
                         <div className="p-4 d-flex flex-column flex-lg-row gap-4">
                             {groupedChildren.map((group, groupIndex) => (
                                 <div style={{ minWidth: '190px' }} key={`group-${groupIndex}`}>
-                                    {/* Başlık varsa göster */}
                                     {group.heading && (
                                         <div className="h6 mb-2">{group.heading}</div>
                                     )}
-
-                                    {/* Başlık altındaki linkler */}
                                     {group.items.length > 0 && (
                                         <ul className="nav flex-column gap-2 mt-0">
                                             {group.items.map((item) => (

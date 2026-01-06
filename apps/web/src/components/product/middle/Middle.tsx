@@ -29,14 +29,13 @@ interface MiddleProps {
     product: Product;
     productName: string;
     wheelSize?: any;
+    reviews?: any;
 }
 
-export default function Middle({ product, productName, wheelSize }: MiddleProps) {
-    console.log('WheelSize Data:', wheelSize);
-    console.log('Product Key:', product._key);
+export default function Middle({ product, productName, wheelSize, reviews }: MiddleProps) {
     const features = getProductDetailFeatures(product);
-    const [rating, setRating] = useState<number>(4.50);
-    const [reviewCount, setReviewCount] = useState<number>(2);
+    const rating = reviews?.stats?.averageOverall || 0;
+    const reviewCount = reviews?.stats?.total || 0;
     const [ebatDialogOpen, setEbatDialogOpen] = useState(false);
     const [showAlternativeLink, setShowAlternativeLink] = useState(false);
     const season = getProductSeason(product);
@@ -74,22 +73,32 @@ export default function Middle({ product, productName, wheelSize }: MiddleProps)
                         <Grid size={12}>
                             <div className="d-flex align-items-end gap-4 mb-4">
                                 {/* Rating Component */}
-                                <div className="d-flex gap-1">
-                                    <Rating
-                                        name="product-rating"
-                                        value={rating}
-                                        precision={0.5}
-                                        readOnly
-                                        size="small"
-                                    />
+                                {reviewCount > 0 ? (
+                                    <div className="d-flex gap-1">
+                                        <Rating
+                                            name="product-rating"
+                                            value={rating}
+                                            precision={0.5}
+                                            readOnly
+                                            size="small"
+                                        />
+                                        <Typography
+                                            variant="body2"
+                                            className="fs-xs text-muted"
+                                            component="span"
+                                        >
+                                            {rating.toFixed(2)} ({reviewCount} yorum)
+                                        </Typography>
+                                    </div>
+                                ) : (
                                     <Typography
                                         variant="body2"
                                         className="fs-xs text-muted"
                                         component="span"
                                     >
-                                        {rating.toFixed(2)} ({reviewCount})
+                                        Henuz yorum yok
                                     </Typography>
-                                </div>
+                                )}
                                 {/* Test Sonuçları */}
                                 <div className='d-flex gap-1'>
                                     <Link
@@ -264,7 +273,7 @@ export default function Middle({ product, productName, wheelSize }: MiddleProps)
                                     </li>
                                 ))}
                             </ul>
-                            
+
                         </Grid>
                     </Grid>
                 </Grid>

@@ -59,7 +59,6 @@ router.get('/site-status', async (req, res) => {
     try {
         const setting = await Setting.findOne({ key: 'siteStatus' }).lean();
 
-        // "1" = site aktif, "0" = yapım aşamasında
         const isActive = setting?.value === '1' || setting?.value === 1;
 
         res.json({
@@ -70,7 +69,7 @@ router.get('/site-status', async (req, res) => {
         console.error('Site status fetch error:', error);
         res.json({
             success: true,
-            isActive: true // Hata durumunda aktif kabul et
+            isActive: true
         });
     }
 });

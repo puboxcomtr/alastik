@@ -3,9 +3,14 @@
 import React, { useState } from "react";
 import { Grid, Divider, Tooltip } from "@mui/material";
 import Image from 'next/image';
+
 import { Product } from '@/src/types/products';
+
 import { useBrands } from '@/src/context/BrandsContext';
+import { useCart } from '@/src/context/CartContext';
+
 import { getProductPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
+
 
 interface CartProps {
     product: Product;
@@ -16,6 +21,14 @@ export default function Cart({ product }: CartProps) {
     const { getBrand } = useBrands();
     const price = getProductPrice(product);
     const [quantity, setQuantity] = useState(1);
+    const [adding, setAdding] = useState(false);
+    const { addToCart } = useCart();
+    const handleAddToCart = async () => {
+        if (adding) return;
+        setAdding(true);
+        await addToCart(product._key, quantity);
+        setAdding(false);
+    };
     const handleDecrease = () => {
         if (quantity > 1) setQuantity(quantity - 1);
     };
@@ -144,7 +157,14 @@ export default function Cart({ product }: CartProps) {
                             {/* Sepete Ekle */}
                             <div className='d-flex'>
                                 <Tooltip title="Sepete Ekle">
-                                    <button type="button" className="btn btn-primary btn-md w-75">Sepete Ekle</button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-md w-75"
+                                        onClick={handleAddToCart}
+                                        disabled={adding}
+                                    >
+                                        {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
+                                    </button>
                                 </Tooltip>
                                 <Tooltip title="Favorilere Ekle">
                                     <button type="button" className="btn btn-md animate-shake">
