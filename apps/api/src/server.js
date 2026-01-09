@@ -358,6 +358,14 @@ app.use('/api/showcases', showcaseRoutes);
 const webCartRoutes = require('./routes/web/cart/cart');
 app.use('/api/cart', webCartRoutes);
 
+// ============================================
+// ACCOUNT 
+// ============================================
+
+/* İl İlçe ve Mahalle Json Çekme */
+const locationRoutes = require('./routes/web/adress/location');
+app.use('/api/location', locationRoutes);
+
 
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);
