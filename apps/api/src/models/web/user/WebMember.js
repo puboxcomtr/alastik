@@ -56,26 +56,7 @@ const webMemberSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    lockedUntil: Date,
-
-    // Adres Bilgileri (sonra eklenecek)
-    addresses: [{
-        title: String,
-        address: String,
-        city: String,
-        district: String,
-        zipCode: String,
-        isDefault: Boolean
-    }],
-
-    // Garaj Bilgileri (sonra eklenecek)
-    garage: [{
-        plate: String,
-        brand: String,
-        model: String,
-        year: Number,
-        isDefault: Boolean
-    }]
+    lockedUntil: Date
 
 }, {
     timestamps: true,

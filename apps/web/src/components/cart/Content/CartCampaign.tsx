@@ -29,7 +29,7 @@ export default function CartContent() {
 
     return (
         <div className="card border-0 shadow-sm">
-            <div className="card-body p-3">
+            <div className="card-body pt-0 p-3">
                 <div className="alert alert-danger">
                     <span className="fs-7">
                         4 Al, Lastik Kaskosu Kazan kampanyasından faydalanmak için, kampanya kapsamındaki ürünlerden sepetinize 3 adet daha eklemelisiniz.

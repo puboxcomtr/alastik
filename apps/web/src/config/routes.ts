@@ -21,7 +21,8 @@ export const ROUTES = {
     CATEGORY: '/kategori',
     TAG: '/etiket',
     CART: '/sepet',
-    CHECKOUT: '/odeme'
+    CHECKOUT: '/teslimat',
+    PAYMENT: '/odeme',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

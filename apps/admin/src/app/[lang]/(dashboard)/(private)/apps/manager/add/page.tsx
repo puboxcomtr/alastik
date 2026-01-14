@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { toast } from 'react-toastify'
+import { API_ENDPOINTS } from '@libs/api'
 
 // Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
@@ -8,8 +9,6 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 // Component Imports
 import AdminForm from '@/views/manager/add/AddAdmin'
 
-// API
-import { fetchRoles } from '@/utils/api/roles'
 
 const AdminAddPage = async () => {
     const session = await getServerSession(authOptions)
@@ -30,8 +29,7 @@ const AdminAddPage = async () => {
     }
 
     try {
-        // Rolleri çek
-        const rolesRes = await fetch(`${process.env.API_URL}/admin/user/roles`, {
+        const rolesRes = await fetch(API_ENDPOINTS.roles.list(), {
             cache: 'no-store',
             headers: {
                 'Content-Type': 'application/json',

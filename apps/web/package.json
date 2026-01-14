@@ -12,6 +12,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@google-cloud/local-auth": "^3.0.1",
+    "@hookform/resolvers": "^5.2.2",
     "@mui/icons-material": "^7.3.1",
     "@mui/material": "^7.3.1",
     "bootstrap": "^5.3.7",
@@ -20,11 +21,13 @@
     "react": "^19.1.0",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.1.0",
+    "react-hook-form": "^7.71.0",
     "react-hot-toast": "^2.6.0",
     "react-toastify": "^11.0.5",
     "remixicon": "^4.6.0",
     "sweetalert2": "^11.23.0",
-    "yet-another-react-lightbox": "^3.25.0"
+    "yet-another-react-lightbox": "^3.25.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",

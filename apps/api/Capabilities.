@@ -1,1 +1,596 @@
-{"success":true,"message":"Full sync (Ürün + Kategori + Marka) başlatıldı","data":{"jobId":"69","type":"full","status":"queued"}}
+[TAILING] Tailing last 10 lines for [alastik-api] process (change the value with --lines option)
+/root/.pm2/logs/alastik-api-error-12.log last 10 lines:
+12|alastik |     at Layer.handle [as handle_request] (/var/www/alastik/node_modules/express/lib/router/layer.js:95:5)
+12|alastik |     at next (/var/www/alastik/node_modules/express/lib/router/route.js:149:13)
+12|alastik |     at Route.dispatch (/var/www/alastik/node_modules/express/lib/router/route.js:119:3)
+12|alastik |     at Layer.handle [as handle_request] (/var/www/alastik/node_modules/express/lib/router/layer.js:95:5)
+12|alastik |     at /var/www/alastik/node_modules/express/lib/router/index.js:284:15
+12|alastik |     at Function.process_params (/var/www/alastik/node_modules/express/lib/router/index.js:346:12)
+12|alastik | Wheel Size API Error: Request failed with status code 404
+12|alastik | Tire aspect ratios error: Request failed with status code 404
+12|alastik | Wheel Size API Error: Request failed with status code 404
+12|alastik | Rim diameters error: Request failed with status code 404
+
+/root/.pm2/logs/alastik-api-error-11.log last 10 lines:
+11|alastik | Wheel Size API Error: Request failed with status code 404
+11|alastik | Rim diameters error: Request failed with status code 404
+11|alastik | Wheel Size API Error: Request failed with status code 404
+11|alastik | Rim bolt patterns error: Request failed with status code 404
+11|alastik | Wheel Size API Error: Request failed with status code 404
+11|alastik | Tire rim diameters error: Request failed with status code 404
+11|alastik | Wheel Size API Error: Request failed with status code 404
+11|alastik | Tire section widths error: Request failed with status code 404
+11|alastik | Wheel Size API Error: Request failed with status code 404
+11|alastik | Rim bolt patterns error: Request failed with status code 404
+
+/root/.pm2/logs/alastik-api-out-11.log last 10 lines:
+11|alastik |  AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:47:29.720Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/theme","status":200,"duration":"9ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:47:30.145Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":304,"duration":"10ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:47:30.200Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/theme","status":304,"duration":"6ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:47:30.209Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":304,"duration":"12ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:47:30.252Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":404,"duration":"1ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:47:30.288Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/?limit=500","status":304,"duration":"5ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+11|alastik | 2026-01-14T12:51:55.778Z [alastik-api] [32minfo[39m: Received SIGINT, shutting down gracefully... 
+11|alastik | 2026-01-14T12:51:55.779Z [alastik-api] [32minfo[39m: DIA Stock Scheduler stopped 
+11|alastik | 2026-01-14T12:51:55.792Z [alastik-api] [32minfo[39m: Database and cache connections closed 
+
+/root/.pm2/logs/alastik-api-out-12.log last 10 lines:
+12|alastik | 026-01-14T12:47:05.678Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":200,"duration":"6ms","ip":"217.195.202.170","userAgent":"node"}
+12|alastik | 2026-01-14T12:47:29.730Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/topbar","status":304,"duration":"8ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+12|alastik | 2026-01-14T12:47:30.152Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/header","status":304,"duration":"19ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+12|alastik | 2026-01-14T12:47:30.203Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":304,"duration":"12ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+12|alastik | 2026-01-14T12:47:30.207Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/logo-3.jpg","status":304,"duration":"11ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+12|alastik | 2026-01-14T12:47:30.288Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":304,"duration":"4ms","ip":"85.99.112.19","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+12|alastik | 2026-01-14T12:49:56.892Z [alastik-api] [32minfo[39m: HTTP Request {"method":"GET","url":"/","status":404,"duration":"1ms","ip":"::ffff:127.0.0.1","userAgent":"curl/7.81.0"}
+12|alastik | 2026-01-14T12:51:55.933Z [alastik-api] [32minfo[39m: Received SIGINT, shutting down gracefully... 
+12|alastik | 2026-01-14T12:51:55.934Z [alastik-api] [32minfo[39m: DIA Stock Scheduler stopped 
+12|alastik | 2026-01-14T12:51:55.946Z [alastik-api] [32minfo[39m: Database and cache connections closed 
+
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | Error: Cannot find module './routes/web/address/address'
+11|alastik-api  | Require stack:
+11|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+11|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+11|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+11|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+11|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+11|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+11|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+11|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+11|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+11|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+11|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+12|alastik-api  | Error: Cannot find module './routes/web/address/address'
+12|alastik-api  | Require stack:
+12|alastik-api  | - /var/www/alastik/apps/api/src/server.js
+12|alastik-api  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+12|alastik-api  |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+12|alastik-api  |     at require (node:internal/modules/helpers:182:18)
+12|alastik-api  |     at Object.<anonymous> (/var/www/alastik/apps/api/src/server.js:370:26)
+12|alastik-api  |     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+12|alastik-api  |     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+12|alastik-api  |     at Module.load (node:internal/modules/cjs/loader:1275:32)
+12|alastik-api  |     at Module._load (node:internal/modules/cjs/loader:1096:12)
+12|alastik-api  |     at /usr/local/lib/node_modules/pm2/lib/ProcessContainer.js:304:25
+12|alastik-api  |     at wrapper (/usr/local/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+11|alastik-api  | (node:277497) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+11|alastik-api  | (Use `node --trace-warnings ...` to show where the warning was created)
+11|alastik-api  | 2026-01-14T12:54:37.424Z [alastik-api] [32minfo[39m: Server running on port 3082 in production mode 
+11|alastik-api  | Alastik API Server started on port 3082
+11|alastik-api  | Redis connected successfully
+11|alastik-api  | 2026-01-14T12:54:37.467Z [alastik-api] [32minfo[39m: Connected to MongoDB 
+11|alastik-api  | 2026-01-14T12:54:37.483Z [alastik-api] [32minfo[39m: Henüz sync yapılmamış - İlk sync gece saat 05:00'da otomatik çalışacak 
+12|alastik-api  | (node:277514) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+12|alastik-api  | (Use `node --trace-warnings ...` to show where the warning was created)
+12|alastik-api  | 2026-01-14T12:54:38.174Z [alastik-api] [32minfo[39m: Server running on port 3082 in production mode 
+12|alastik-api  | Alastik API Server started on port 3082
+12|alastik-api  | Redis connected successfully
+12|alastik-api  | 2026-01-14T12:54:38.236Z [alastik-api] [32minfo[39m: Connected to MongoDB 
+12|alastik-api  | 2026-01-14T12:54:38.243Z [alastik-api] [32minfo[39m: Henüz sync yapılmamış - İlk sync gece saat 05:00'da otomatik çalışacak 

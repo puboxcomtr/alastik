@@ -22,7 +22,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 
 // API
-import { createAdmin } from '@/utils/api/admins'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 type RoleType = {
     _id: string
@@ -106,7 +106,10 @@ const AdminForm = ({ roles }: AdminFormProps) => {
         try {
             const { confirmPassword, ...dataToSend } = formData
 
-            await createAdmin(dataToSend)
+            await fetchAPI(API_ENDPOINTS.admins.create(), {
+                method: 'POST',
+                body: JSON.stringify(dataToSend)
+            })
 
             toast.success('Yönetici başarıyla oluşturuldu')
             setTimeout(() => {

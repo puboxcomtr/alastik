@@ -363,9 +363,12 @@ app.use('/api/cart', webCartRoutes);
 // ============================================
 
 /* İl İlçe ve Mahalle Json Çekme */
-const locationRoutes = require('./routes/web/adress/location');
-app.use('/api/location', locationRoutes);
+const webLocationRoutes = require('./routes/web/adress/location');
+app.use('/api/location', webLocationRoutes);
 
+/* Hesabım Adresler */
+const webAddressRoutes = require('./routes/web/adress/address');
+app.use('/api/address', webAddressRoutes);
 
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);

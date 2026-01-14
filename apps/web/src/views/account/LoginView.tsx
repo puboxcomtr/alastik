@@ -1,10 +1,10 @@
 'use client';
 
 /* * React Core * */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /* * Next.js * */
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 /* * Third Party Libraries */
@@ -14,9 +14,13 @@ import { toast } from 'react-toastify';
 import { api } from '@lib/api';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
+import { useCart } from '@/src/context/CartContext';
 
 /* Routes */
 import { ROUTES } from '@/src/config/routes';
+
+/* Helpers */
+import { getSetting } from '@/src/hooks/Theme/useGeneralSettings';
 
 export default function LoginView() {
     const router = useRouter();
@@ -28,6 +32,24 @@ export default function LoginView() {
         password: ''
     });
     const [showPassword, setShowPassword] = useState(false);
+    const [guestCheckoutEnabled, setGuestCheckoutEnabled] = useState(false);
+    const searchParams = useSearchParams();
+    const { items, loading: cartLoading } = useCart();
+    const isFromCheckout = searchParams.get('from') === 'checkout' && items.length > 0;
+    useEffect(() => {
+        if (cartLoading) return;
+        if (searchParams.get('from') === 'checkout' && items.length === 0) {
+            router.replace(ROUTES.LOGIN);
+        }
+    }, [items, searchParams, router, cartLoading]);
+
+    useEffect(() => {
+        const checkGuestCheckout = async () => {
+            const value = await getSetting('guestCheckout');
+            setGuestCheckoutEnabled(String(value) === 'true');
+        };
+        checkGuestCheckout();
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -52,7 +74,7 @@ export default function LoginView() {
                 if (result.data?.token && result.data?.member) {
                     setAuth(result.data.token, result.data.member);
                     document.cookie = `authToken=${result.data.token}; path=/; max-age=${30 * 24 * 60 * 60}`;
-                    window.location.href = ROUTES.ACCOUNT;
+                    window.location.href = isFromCheckout ? ROUTES.CHECKOUT : ROUTES.ACCOUNT;
                 }
             } else {
                 toast.error(result.message || 'Giriş başarısız');
@@ -174,6 +196,24 @@ export default function LoginView() {
                                     </div>
                                 </div>
                             </div>
+                            {isFromCheckout && guestCheckoutEnabled && (
+                                <div className="col-12 p-4 border-top">
+                                    <div className="text-center">
+                                        <p className="text-muted mb-3">Üye olmadan da alışveriş yapabilirsiniz</p>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-dark px-5"
+                                            onClick={() => {
+                                                const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                                                sessionStorage.setItem('guestCheckoutId', guestId);
+                                                router.push(ROUTES.CHECKOUT);
+                                            }}
+                                        >
+                                            Üyeliksiz Alışveriş
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                         </div>
                     </div>

@@ -34,6 +34,20 @@ export const API_ENDPOINTS = {
         codes: () => `${getBaseUrl()}/dia-stock/sync-codes`,
         prices: () => `${getBaseUrl()}/dia-stock/sync-prices`,
         images: () => `${getBaseUrl()}/dia-stock/sync-images`,
+    },
+    admins: {
+        list: () => `${getBaseUrl()}/admin/user/admins`,
+        create: () => `${getBaseUrl()}/admin/user/admins`,
+        detail: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
+        update: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
+        delete: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
+    },
+    roles: {
+        list: () => `${getBaseUrl()}/admin/user/roles`,
+        create: () => `${getBaseUrl()}/admin/user/roles`,
+        detail: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
+        update: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
+        delete: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
     }
 }
 

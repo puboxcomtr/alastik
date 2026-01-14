@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Tooltip } from "@mui/material";
 import { ROUTES } from '@/src/config/routes';
+import { isLogged } from '@/src/hooks/Theme/useAuth';
 
 interface CartSidebarProps {
     totals: {
@@ -20,7 +22,14 @@ export default function CartSidebar({
     showCheckoutButton = true,
     showContinueButton = true
 }: CartSidebarProps) {
-
+    const router = useRouter();
+    const handleCheckout = () => {
+        if (isLogged()) {
+            router.push(ROUTES.CHECKOUT);
+        } else {
+            router.push(`${ROUTES.LOGIN}?from=checkout`);
+        }
+    };
     const formatPrice = (price: number) => {
         return price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
@@ -29,9 +38,10 @@ export default function CartSidebar({
 
     return (
         <>
-            <div className="card bg-white rounded mt-3" style={{ boxShadow: '0 0 24px 0 rgba(0, 0, 0, .2)' }}>
+            <div className="card bg-white rounded">
                 <div className="card-body">
                     <h5 className="card-title">Sepet Özeti</h5>
+                    <hr />
                     <div className="d-flex justify-content-between mb-2">
                         <span className="fw-semibold text-black fs-sm">Ürünler Toplamı</span>
                         <span>{formatPrice(totals.subtotal)} TL</span>
@@ -46,7 +56,10 @@ export default function CartSidebar({
                         <span className="fw-bold text-primary">{formatPrice(totals.subtotal)} TL</span>
                     </div>
                     {showCheckoutButton && (
-                        <button className="btn btn-primary w-100 mb-2 fw-semibold fs-6 py-3">
+                        <button
+                            className="btn btn-primary w-100 mb-2 fw-semibold fs-6 py-3"
+                            onClick={handleCheckout}
+                        >
                             Siparişi Tamamla
                         </button>
                     )}

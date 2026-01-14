@@ -2309,7 +2309,7 @@ progress {
     background-color: #fff;
     border: var(--cz-border-width) solid #cad0d9;
     box-shadow: var(--cz-box-shadow-inset);
-    color: #000;
+    color: #838383;
     display: block;
     font-size: .875rem;
     font-weight: 400;
@@ -2468,7 +2468,6 @@ progress {
 
 .form-control-lg {
     border-radius: var(--cz-border-radius);
-    font-size: 1rem;
     min-height: calc(1.5em + 1.37rem + var(--cz-border-width)*2);
     padding: .685rem 1.125rem
 }
@@ -2587,7 +2586,6 @@ textarea.form-control-lg {
 
 .form-select-lg {
     border-radius: var(--cz-border-radius);
-    font-size: 1rem;
     padding-bottom: .685rem;
     padding-left: 1.125rem;
     padding-top: .685rem
@@ -15200,7 +15198,7 @@ h6 a {
 .form-control,
 .form-select {
     --cz-form-control-bg: #fff;
-    --cz-form-control-border-color: #e3e3e3;
+    --cz-form-control-border-color: #cad0d9;
     ;
     --cz-form-control-focus-bg: #fff;
     --cz-form-control-focus-border-color: #e0e5eb;

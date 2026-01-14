@@ -45,7 +45,7 @@ const webAddressSchema = new mongoose.Schema({
 
 }, {
     timestamps: true,
-    collection: 'addresses'
+    collection: 'webaddresses'
 });
 
 webAddressSchema.index({ userId: 1, isDefault: 1 });
