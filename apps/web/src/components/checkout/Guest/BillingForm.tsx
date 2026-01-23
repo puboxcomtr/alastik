@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { locationService, City, District, Neighborhood } from '@/src/services/locationService';
+import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
+
 
 // Zod Schema
 const billingSchema = z.object({
@@ -16,7 +18,7 @@ const billingSchema = z.object({
     taxNo: z.string().regex(/^\d{10}$/, 'Vergi No 10 haneli olmalıdır').optional().or(z.literal('')),
     authorizedPerson: z.string().optional(),
     email: z.string().email('Geçerli bir e-posta giriniz'),
-    phone: z.string().min(10, 'Geçerli bir telefon numarası giriniz').regex(/^(\+90|0)/, 'Telefon +90 veya 0 ile başlamalı'),
+    phone: z.string().regex(/^\+90\d{10}$/, 'Geçerli bir telefon numarası giriniz'),
     cityId: z.string().min(1, 'İl seçiniz'),
     cityName: z.string(),
     districtId: z.string().min(1, 'İlçe seçiniz'),
@@ -28,18 +30,48 @@ const billingSchema = z.object({
     floor: z.string().optional(),
     apartmentNo: z.string().optional(),
     addressNote: z.string().optional()
-}).refine((data) => {
+}).superRefine((data, ctx) => {
     if (data.invoiceType === 'individual') {
-        return !!data.fullName;
-    }
-    return true;
-}, { message: 'İsim Soyisim zorunludur', path: ['fullName'] })
-    .refine((data) => {
-        if (data.invoiceType === 'corporate') {
-            return !!data.companyName && !!data.taxOffice && !!data.taxNo && !!data.authorizedPerson;
+        if (!data.fullName) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'İsim Soyisim zorunludur',
+                path: ['fullName']
+            });
         }
-        return true;
-    }, { message: 'Kurumsal bilgiler zorunludur', path: ['companyName'] });
+    }
+
+    if (data.invoiceType === 'corporate') {
+        if (!data.companyName) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Ticari Ünvan zorunludur',
+                path: ['companyName']
+            });
+        }
+        if (!data.taxOffice) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Vergi Dairesi zorunludur',
+                path: ['taxOffice']
+            });
+        }
+        if (!data.taxNo) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Vergi No zorunludur',
+                path: ['taxNo']
+            });
+        }
+        if (!data.authorizedPerson) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Yetkili Kişi zorunludur',
+                path: ['authorizedPerson']
+            });
+        }
+    }
+});
 
 export type BillingData = z.infer<typeof billingSchema>;
 
@@ -69,7 +101,17 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
     const cityId = watch('cityId');
     const districtId = watch('districtId');
     const watchAll = watch();
-
+    useEffect(() => {
+        if (invoiceType === 'individual') {
+            setValue('companyName', '');
+            setValue('taxOffice', '');
+            setValue('taxNo', '');
+            setValue('authorizedPerson', '');
+        } else if (invoiceType === 'corporate') {
+            setValue('fullName', '');
+            setValue('tcNo', '');
+        }
+    }, [invoiceType, setValue]);
     useEffect(() => {
         const subscription = watch((value) => {
             onChange(value as BillingData);
@@ -157,7 +199,7 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
             {/* Ortak İçerik */}
             <div className="card border-0">
                 <div className="card-body py-0">
-                    <h5>Kişisel Bilgileri</h5>
+                    <h5>Kişisel Bilgiler</h5>
                     <div className="row">
                         <div className="col-md-6 mb-3">
                             <label className="form-label">E-Posta <span className="text-danger">*</span></label>
@@ -170,13 +212,20 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
                         </div>
                         <div className="col-md-6 mb-3">
                             <label className="form-label">Cep Telefonu <span className="text-danger">*</span></label>
-                            <input
-                                type="tel"
-                                className={`form-control form-control-lg ${errors.phone ? 'is-invalid' : watchAll.phone ? 'is-valid' : ''}`}
-                                placeholder="+90 5XX XXX XX XX"
-                                {...register('phone')}
-                            />
-                            {errors.phone && <div className="invalid-feedback">{errors.phone.message}</div>}
+                            <div className="input-group">
+                                <span className="input-group-text">+90</span>
+                                <input
+                                    type="tel"
+                                    className={`form-control form-control-lg ${errors.phone ? 'is-invalid' : watchAll.phone ? 'is-valid' : ''}`}
+                                    placeholder="5XX XXX XX XX"
+                                    value={displayPhoneNumber(watchAll.phone || '')}
+                                    onChange={(e) => {
+                                        const formatted = formatPhoneNumber(e.target.value);
+                                        setValue('phone', parsePhoneNumber(formatted), { shouldValidate: true });
+                                    }}
+                                />
+                            </div>
+                            {errors.phone && <div className="invalid-feedback d-block">{errors.phone.message}</div>}
                         </div>
                     </div>
 

@@ -29,7 +29,7 @@ interface CartContextType {
     addToCart: (productKey: string, quantity?: number) => Promise<boolean>;
     updateQuantity: (productKey: string, quantity: number) => Promise<void>;
     removeItem: (productKey: string) => Promise<void>;
-    clearCart: () => Promise<void>;
+    clearCart: (silent?: boolean) => Promise<void>;
     refreshCart: () => Promise<void>;
 }
 
@@ -105,16 +105,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const clearCart = async () => {
+    const clearCart = async (silent: boolean = false) => {
         try {
             const result = await cartService.clearCart();
             if (result.success) {
                 setItems([]);
                 setTotals({ subtotal: 0, kdv: 0, total: 0, itemCount: 0 });
-                toast.success('Sepetiniz temizlendi');
+                if (!silent) {
+                    toast.success('Sepetiniz temizlendi');
+                }
             }
         } catch (error) {
-            toast.error('Bir hata oluştu');
+            if (!silent) {
+                toast.error('Bir hata oluştu');
+            }
         }
     };
 

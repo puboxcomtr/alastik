@@ -7,7 +7,6 @@ import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/layout/Header/Middle/Main';
 import Navbar from '@components/layout/Header/Navbar/Main';
 import AuthModal from '@components/auth/AuthModal';
-import ShoppingCart from '@components/cart/ShoppingCart';
 
 /* Api Connection */
 import { api } from '@src/lib/api';

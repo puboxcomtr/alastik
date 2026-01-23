@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Grid } from "@mui/material";
-import type { Metadata } from 'next';
 import { useCart } from '@/src/context/CartContext';
 import CartEmpty from '@/src/components/cart/Empty/CartEmpty';
 import CartTitle from '@/src/components/cart/Content/CartTitle';

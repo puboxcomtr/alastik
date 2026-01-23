@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-/* MUI */
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
+// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -20,9 +23,10 @@ import Tooltip from '@mui/material/Tooltip'
 
 const AddLabelPage = () => {
     const router = useRouter()
+    const { lang: locale } = useParams()
     const [selectedProducts, setSelectedProducts] = useState<string[]>([])
     const [searchQuery, setSearchQuery] = useState('')
-    const [searchResults, setSearchResults] = useState([])
+    const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
     const [searchPerformed, setSearchPerformed] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -35,6 +39,7 @@ const AddLabelPage = () => {
         isActive: true,
         order: 0
     })
+
     const handleProductSearch = async () => {
         if (!searchQuery.trim()) {
             toast.error('Lütfen arama yapmak için bir terim girin')
@@ -45,16 +50,12 @@ const AddLabelPage = () => {
         setSearchPerformed(true)
 
         try {
-            const response = await fetch(`http://localhost:3082/api/products?search=${encodeURIComponent(searchQuery)}`)
+            const response = await fetchAPI(
+                `${API_ENDPOINTS.products.list()}?search=${encodeURIComponent(searchQuery)}`
+            )
+            setSearchResults(response.data || [])
 
-            if (!response.ok) {
-                throw new Error('Ürünler yüklenirken hata oluştu')
-            }
-
-            const result = await response.json()
-            setSearchResults(result.data || [])
-
-            if (result.data.length === 0) {
+            if ((response.data || []).length === 0) {
                 toast.info('Arama sonucu bulunamadı')
             }
         } catch (error) {
@@ -83,30 +84,39 @@ const AddLabelPage = () => {
             setSelectedProducts([])
         }
     }
+
     const handleChange = (field: string) => (e: any) => {
         setFormData({
             ...formData,
             [field]: e.target.value
         })
     }
+
+    const generateSlug = (text: string): string => {
+        const turkishMap: Record<string, string> = {
+            'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G',
+            'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O',
+            'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U'
+        }
+
+        return text
+            .split('')
+            .map(char => turkishMap[char] || char)
+            .join('')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+    }
+
     const handleAutoGenerateSeoUrl = () => {
         if (!formData.title || formData.title.trim() === '') {
             toast.error('Lütfen önce başlık alanını doldurun')
             return
         }
 
-        const generatedUrl = formData.title
-            .toLowerCase()
-            .replace(/ş/g, 's')
-            .replace(/ğ/g, 'g')
-            .replace(/ü/g, 'u')
-            .replace(/ı/g, 'i')
-            .replace(/ö/g, 'o')
-            .replace(/ç/g, 'c')
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim('-')
+        const generatedUrl = generateSlug(formData.title)
 
         setFormData({
             ...formData,
@@ -115,31 +125,32 @@ const AddLabelPage = () => {
 
         toast.success('SEO URL otomatik oluşturuldu')
     }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
+
         try {
-            const response = await fetch('http://localhost:3082/api/tags', {
+            const response = await fetch(API_ENDPOINTS.labels.list(), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     ...formData,
                     products: selectedProducts
-                }),
+                })
             })
 
-            if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.message || 'Etiket oluşturulurken hata oluştu')
-            }
-
             const result = await response.json()
-            toast.success(`Etiket başarıyla oluşturuldu.`)
-            router.push('/tr/apps/label/list')
+
+            if (result.success) {
+                toast.success('Etiket başarıyla oluşturuldu')
+                router.push(`/${locale}/apps/label/list`)
+            } else {
+                toast.error(result.message || 'Etiket oluşturulurken hata oluştu')
+            }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Etiket oluşturulurken hata oluştu')
+            toast.error('Sunucuya bağlanılamadı')
         } finally {
             setLoading(false)
         }
@@ -176,8 +187,11 @@ const AddLabelPage = () => {
                         </div>
                     </div>
                 </Grid>
+
+                {/* Sol Kolon */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={6}>
+                        {/* Genel Bilgiler */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -210,14 +224,15 @@ const AddLabelPage = () => {
                                 </CardContent>
                             </Card>
                         </Grid>
+
                         {/* Ürün Seçimi */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
                                     <Typography variant='h6' className='mb-4'>
-                                        Ürün Seçimi
+                                        Ürün Seçimi ({selectedProducts.length} ürün seçili)
                                     </Typography>
-                                    {/* Arama Alanı */}
+
                                     {/* Arama Alanı */}
                                     <Grid container spacing={3}>
                                         <Grid size={{ xs: 12, md: 8 }}>
@@ -229,6 +244,7 @@ const AddLabelPage = () => {
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 onKeyPress={(e) => {
                                                     if (e.key === 'Enter') {
+                                                        e.preventDefault()
                                                         handleProductSearch()
                                                     }
                                                 }}
@@ -253,6 +269,7 @@ const AddLabelPage = () => {
                                             </Button>
                                         </Grid>
                                     </Grid>
+
                                     {/* Ürün Listesi Tablosu */}
                                     <div className='overflow-x-auto mt-4' style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -335,6 +352,8 @@ const AddLabelPage = () => {
                         </Grid>
                     </Grid>
                 </Grid>
+
+                {/* Sağ Kolon */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Grid container spacing={6}>
                         <Grid size={{ xs: 12 }}>
@@ -358,6 +377,7 @@ const AddLabelPage = () => {
                                 </CardContent>
                             </Card>
                         </Grid>
+
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -442,10 +462,10 @@ const AddLabelPage = () => {
                                                                 paddingX: 1,
                                                                 marginRight: 1,
                                                                 color: 'text.secondary',
-                                                                fontSize: '0.9rem'
+                                                                fontSize: '0.85rem'
                                                             }}
                                                         >
-                                                            https://alastik.com/etiket/
+                                                            /etiket/
                                                         </InputAdornment>
                                                     ),
                                                     endAdornment: (

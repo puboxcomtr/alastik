@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const WebAddress = require('../../../models/web/address/WebAddress');
 
+
 // GET - Kullanıcı adresleri
 router.get('/user/:userId', async (req, res) => {
     try {
@@ -59,6 +60,19 @@ router.put('/:id', async (req, res) => {
             );
         }
 
+        res.json({ success: true, data: address });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET - Tek adres getir
+router.get('/:id', async (req, res) => {
+    try {
+        const address = await WebAddress.findById(req.params.id);
+        if (!address) {
+            return res.status(404).json({ success: false, message: 'Adres bulunamadı' });
+        }
         res.json({ success: true, data: address });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

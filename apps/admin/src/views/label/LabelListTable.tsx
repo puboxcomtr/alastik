@@ -1,35 +1,34 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import classnames from 'classnames'
 
-/* Route */
-import { fetchTags, deleteTag, type TagType } from '@/utils/api/tags'
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-/* MUI */
+// MUI Imports
 import type { TextFieldProps } from '@mui/material/TextField'
 import Card from '@mui/material/Card'
+import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
+import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Tooltip from '@mui/material/Tooltip'
 import CircularProgress from '@mui/material/CircularProgress'
-
-/* MUI Dialog */
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
-/* Tanstack */
+// Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
   createColumnHelper,
@@ -45,7 +44,8 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
-import OptionMenu from '@/@core/components/option-menu'
+
+// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -55,6 +55,15 @@ declare module '@tanstack/table-core' {
   interface FilterMeta {
     itemRank: RankingInfo
   }
+}
+
+type TagType = {
+  _id: string
+  title: string
+  seoUrl: string
+  order: number
+  isActive: boolean
+  productCount: number
 }
 
 type TagWithActionsType = TagType & {
@@ -99,24 +108,60 @@ const LabelListTable = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [tagToDelete, setTagToDelete] = useState<TagType | null>(null)
   const router = useRouter()
+  const { lang: locale } = useParams()
   const [rowSelection, setRowSelection] = useState({})
   const [data, setData] = useState<TagType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(50)
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
     loadTags()
-  }, [])
+  }, [page, limit])
+
+  const loadTags = async () => {
+    setLoading(true)
+    try {
+      const response = await fetchAPI(
+        `${API_ENDPOINTS.labels.list()}?page=${page}&limit=${limit}`,
+        { cache: 'no-store' }
+      )
+
+      const tags = (response.data || []).map((tag: any) => ({
+        _id: tag._id || tag.id,
+        title: tag.title || '',
+        seoUrl: tag.seoUrl || '',
+        order: tag.order || 0,
+        isActive: tag.isActive !== false,
+        productCount: tag.productCount || 0
+      }))
+
+      setData(tags)
+      setTotalCount(response.meta?.total || tags.length)
+    } catch (error) {
+      console.error('Tags fetch error:', error)
+      toast.error('Etiketler yüklenirken hata oluştu')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleDeleteClick = (tag: TagType) => {
     setTagToDelete(tag)
     setDeleteConfirmOpen(true)
   }
+
   const handleDeleteConfirm = async () => {
     if (!tagToDelete) return
 
     try {
-      await deleteTag(tagToDelete._id)
+      await fetchAPI(API_ENDPOINTS.labels.detail(tagToDelete._id), {
+        method: 'DELETE'
+      })
       toast.success(`"${tagToDelete.title}" etiketi silindi`)
       setDeleteConfirmOpen(false)
       setTagToDelete(null)
@@ -130,18 +175,7 @@ const LabelListTable = () => {
     setDeleteConfirmOpen(false)
     setTagToDelete(null)
   }
-  const loadTags = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetchTags()
-      setData(response.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Etiketler yüklenirken hata oluştu')
-    } finally {
-      setLoading(false)
-    }
-  }
+
   const columns = useMemo<ColumnDef<TagWithActionsType, any>[]>(
     () => [
       {
@@ -185,7 +219,7 @@ const LabelListTable = () => {
         header: 'SEO URL',
         cell: ({ row }) => (
           <Typography variant='body2' color='text.secondary'>
-            /{row.original.seoUrl}
+            /etiket/{row.original.seoUrl}
           </Typography>
         )
       }),
@@ -208,7 +242,7 @@ const LabelListTable = () => {
             <Tooltip title="Düzenle">
               <IconButton
                 size='small'
-                onClick={() => router.push(`/tr/apps/label/edit/${row.original._id}`)}
+                onClick={() => router.push(`/${locale}/apps/label/edit/${row.original._id}`)}
               >
                 <i className='ri-edit-box-line text-[22px] text-textSecondary' />
               </IconButton>
@@ -226,7 +260,7 @@ const LabelListTable = () => {
         enableSorting: false
       })
     ],
-    []
+    [locale]
   )
 
   const table = useReactTable({
@@ -234,7 +268,8 @@ const LabelListTable = () => {
     columns,
     filterFns: { fuzzy: fuzzyFilter },
     state: { rowSelection, globalFilter },
-    initialState: { pagination: { pageSize: 10 } },
+    pageCount: Math.ceil(totalCount / limit),
+    manualPagination: true,
     enableRowSelection: true,
     globalFilterFn: fuzzyFilter,
     onRowSelectionChange: setRowSelection,
@@ -242,42 +277,28 @@ const LabelListTable = () => {
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues()
   })
 
-  if (loading) {
-    return (
-      <Card>
-        <div className='flex justify-center items-center p-10'>
-          <CircularProgress />
-        </div>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <div className='p-5 text-center'>
-          <Typography color='error'>Hata: {error}</Typography>
-          <Button onClick={loadTags} sx={{ mt: 2 }}>Tekrar Dene</Button>
-        </div>
-      </Card>
-    )
-  }
   return (
     <>
       <Card>
+        <CardHeader title='Etiket Listesi' className='pbe-4' />
+        <Divider />
         <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
-          <DebouncedInput
-            value={globalFilter ?? ''}
-            onChange={value => setGlobalFilter(String(value))}
-            placeholder='Etiket adı ile arama'
-            className='max-sm:is-full'
-          />
+          <div className='flex flex-col gap-2'>
+            <DebouncedInput
+              value={globalFilter ?? ''}
+              onChange={value => setGlobalFilter(String(value))}
+              placeholder='Etiket adı ile arama'
+              className='max-sm:is-full'
+            />
+            <Typography variant='body2' color='text.secondary'>
+              Toplam <strong>{totalCount} Etiket</strong> bulundu
+            </Typography>
+          </div>
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
             <Button
               color='primary'
@@ -285,75 +306,105 @@ const LabelListTable = () => {
               variant='contained'
               className='max-sm:is-full is-auto'
               startIcon={<i className='ri-add-line' />}
-              onClick={() => router.push('/tr/apps/label/add')}
+              onClick={() => router.push(`/${locale}/apps/label/add`)}
             >
               Yeni Etiket Ekle
             </Button>
           </div>
         </div>
-        <div className='overflow-x-auto'>
-          <table className={tableStyles.table}>
-            <thead>
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th key={header.id}>
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={classnames({
-                            'flex items-center': header.column.getIsSorted(),
-                            'cursor-pointer select-none': header.column.getCanSort()
-                          })}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {{
-                            asc: <i className='ri-arrow-up-s-line text-xl' />,
-                            desc: <i className='ri-arrow-down-s-line text-xl' />
-                          }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            {table.getFilteredRowModel().rows.length === 0 ? (
-              <tbody>
-                <tr>
-                  <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    Etiket Bulunamadı.
-                  </td>
-                </tr>
-              </tbody>
-            ) : (
-              <tbody>
-                {table.getRowModel().rows.slice(0, table.getState().pagination.pageSize).map(row => (
-                  <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
-                    {row.getVisibleCells().map(cell => (
-                      <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+
+        <div style={{ position: 'relative' }}>
+          {loading && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              minHeight: '200px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CircularProgress size={24} />
+                <Typography>Etiketler yükleniyor...</Typography>
+              </div>
+            </div>
+          )}
+
+          <div className='overflow-x-auto'>
+            <table className={tableStyles.table}>
+              <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map(header => (
+                      <th key={header.id}>
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={classnames({
+                              'flex items-center': header.column.getIsSorted(),
+                              'cursor-pointer select-none': header.column.getCanSort()
+                            })}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {{
+                              asc: <i className='ri-arrow-up-s-line text-xl' />,
+                              desc: <i className='ri-arrow-down-s-line text-xl' />
+                            }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                          </div>
+                        )}
+                      </th>
                     ))}
                   </tr>
                 ))}
-              </tbody>
-            )}
-          </table>
+              </thead>
+              {table.getFilteredRowModel().rows.length === 0 ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
+                      <Typography variant='body1' color='text.secondary'>
+                        {globalFilter ? 'Arama kriterlerinize uygun etiket bulunamadı' : 'Etiket bulunamadı'}
+                      </Typography>
+                    </td>
+                  </tr>
+                </tbody>
+              ) : (
+                <tbody>
+                  {table.getRowModel().rows.map(row => (
+                    <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
+                      {row.getVisibleCells().map(cell => (
+                        <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              )}
+            </table>
+          </div>
         </div>
+
         <TablePagination
-          rowsPerPageOptions={[10, 15, 25]}
+          rowsPerPageOptions={[25, 50, 100, 200]}
           component='div'
           className='border-bs'
-          count={table.getFilteredRowModel().rows.length}
-          rowsPerPage={table.getState().pagination.pageSize}
-          page={table.getState().pagination.pageIndex}
-          onPageChange={(_, page) => table.setPageIndex(page)}
-          onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
+          count={totalCount}
+          rowsPerPage={limit}
+          page={page - 1}
+          onPageChange={(_, newPage) => {
+            setPage(newPage + 1)
+          }}
+          onRowsPerPageChange={e => {
+            setLimit(Number(e.target.value))
+            setPage(1)
+          }}
         />
       </Card>
-      <Dialog
-        open={deleteConfirmOpen}
-        onClose={handleDeleteCancel}
-      >
+
+      <Dialog open={deleteConfirmOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Etiketi Sil</DialogTitle>
         <DialogContent>
           <DialogContentText>

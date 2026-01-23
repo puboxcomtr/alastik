@@ -82,6 +82,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
         menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
       >
 
+        <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
         <MenuItem
           href={`/${locale}/apps/ecommerce`}
           exactMatch={false}

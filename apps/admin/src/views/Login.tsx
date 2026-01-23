@@ -17,7 +17,6 @@ import { signIn } from 'next-auth/react'
 import { Controller, useForm } from 'react-hook-form'
 import { valibotResolver } from '@hookform/resolvers/valibot'
 import { object, minLength, string, email, pipe, nonEmpty } from 'valibot'
-import classnames from 'classnames'
 import type { SubmitHandler } from 'react-hook-form'
 import type { InferInput } from 'valibot'
 
@@ -27,13 +26,11 @@ import type { Locale } from '@configs/i18n'
 
 // Component Imports
 import Logo from '@components/layout/shared/Logo'
-import Illustrations from '@components/Illustrations'
 
 // Config Imports
 import themeConfig from '@configs/themeConfig'
 
 // Hook Imports
-import { useImageVariant } from '@/@core/hooks/useImageVariant'
 import { useSettings } from '@/@core/hooks/useSettings'
 
 // Util Imports
@@ -58,14 +55,6 @@ const Login = ({ mode }: { mode: Mode }) => {
   const [isPasswordShown, setIsPasswordShown] = useState(false)
   const [errorState, setErrorState] = useState<ErrorType | null>(null)
 
-  // Image paths
-  const darkImg = '/images/pages/auth-v2-mask-dark.png'
-  const lightImg = '/images/pages/auth-v2-mask-light.png'
-  const darkIllustration = '/images/illustrations/auth/v2-login-dark.png'
-  const lightIllustration = '/images/illustrations/auth/v2-login-light.png'
-  const borderedDarkIllustration = '/images/illustrations/auth/v2-login-dark-border.png'
-  const borderedLightIllustration = '/images/illustrations/auth/v2-login-light-border.png'
-
   // Hooks
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -79,16 +68,6 @@ const Login = ({ mode }: { mode: Mode }) => {
       password: ''
     }
   })
-
-  const authBackground = useImageVariant(mode, lightImg, darkImg)
-  const characterIllustration = useImageVariant(
-    mode,
-    lightIllustration,
-    darkIllustration,
-    borderedLightIllustration,
-    borderedDarkIllustration
-  )
-
   const handleClickShowPassword = () => setIsPasswordShown(show => !show)
 
   const onSubmit: SubmitHandler<FormData> = async (data: FormData) => {
@@ -112,27 +91,14 @@ const Login = ({ mode }: { mode: Mode }) => {
     <div className={`flex bs-full justify-center ${styles.loginContainer}`}>
       {/* Sol taraf - Illustration */}
       <div
-        className={classnames(
-          'flex bs-full items-center justify-center flex-1 min-bs-[100dvh] relative p-6 max-md:hidden',
-          {
-            'border-ie': settings.skin === 'bordered'
-          }
-        )}
-      >
-        <div className='plb-12 pis-12'>
-          <img
-            src={characterIllustration}
-            alt='character-illustration'
-            className='max-bs-[500px] max-is-full bs-auto'
-          />
-        </div>
-        <Illustrations
-          image1={{ src: '/images/illustrations/objects/tree-2.png' }}
-          image2={null}
-          maskImg={{ src: authBackground }}
-        />
-      </div>
-
+        className='flex bs-full items-center justify-center flex-1 min-bs-[100dvh] relative max-md:hidden'
+        style={{
+          backgroundImage: 'url(https://api.alastik.com/theme/login-background.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      />
       {/* Sağ taraf - Login Form */}
       <div className='flex justify-center items-center bs-full bg-backgroundPaper p-6 md:p-12 md:is-[480px]'>
         <div className='absolute block-start-5 sm:block-start-[33px] inline-start-6 sm:inline-start-[38px]'>
@@ -206,14 +172,19 @@ const Login = ({ mode }: { mode: Mode }) => {
                 />
               )}
             />
-
-            <Button fullWidth variant='contained' type='submit'>
+            <Button
+              fullWidth
+              variant='contained'
+              type='submit'
+              sx={{
+                backgroundColor: '#e3001b',
+                '&:hover': { backgroundColor: '#cc0018' }
+              }}
+            >
               Giriş Yap
             </Button>
           </form>
-
           <Divider className='gap-3'>veya</Divider>
-
           <Button
             color='secondary'
             className='self-center text-textPrimary'

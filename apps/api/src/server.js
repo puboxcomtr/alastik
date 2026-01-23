@@ -355,8 +355,13 @@ app.use('/api/showcases', showcaseRoutes);
 // ============================================
 // THEME CART & PAYMENT ROUTES
 // ============================================
+/* Sepet Sistemi */
 const webCartRoutes = require('./routes/web/cart/cart');
 app.use('/api/cart', webCartRoutes);
+
+/* Banka Havalesi */
+const webPaymentMethodsRoutes = require('./routes/web/payment/paymentMethods');
+app.use('/api/payment-methods', webPaymentMethodsRoutes);
 
 // ============================================
 // ACCOUNT 
@@ -369,6 +374,11 @@ app.use('/api/location', webLocationRoutes);
 /* Hesabım Adresler */
 const webAddressRoutes = require('./routes/web/adress/address');
 app.use('/api/address', webAddressRoutes);
+
+/* Siparişler */
+const webOrderRoutes = require('./routes/web/order/order');
+app.use('/api/order', webOrderRoutes);
+
 
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);

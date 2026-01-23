@@ -4,6 +4,9 @@ import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 import type { BrandType } from '@/types/apps/brandTypes'
 
+// API Imports
+import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
+
 // MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -14,11 +17,11 @@ import Divider from '@mui/material/Divider'
 import InputAdornment from '@mui/material/InputAdornment'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
+import Tooltip from '@mui/material/Tooltip'
 
 import { toast } from 'react-toastify'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-const BASE_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
 
 type Props = {
   open: boolean
@@ -49,7 +52,7 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         description: selectedbrand.description || '',
         seoTitle: selectedbrand.seoTitle || selectedbrand.name || '',
         seoDescription: selectedbrand.seoDescription || `${selectedbrand.name} markası ürünleri`,
-        seoUrl: selectedbrand.seoUrl || selectedbrand.name?.toLowerCase().replace(/\s+/g, '-') || '',
+        seoUrl: selectedbrand.seoUrl || '',
         webOrder: selectedbrand.webOrder || 0
       })
 
@@ -78,12 +81,39 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     }
   }, [selectedbrand])
 
-  // URL helper
-  const getImageUrl = (url: string | undefined) => {
-    if (!url) return null
-    if (url.startsWith('http')) return url
-    if (url.startsWith('/')) return `${BASE_URL}${url}`
-    return `${BASE_URL}/${url}`
+  // Slug oluşturucu
+  const generateSlug = (text: string): string => {
+    const turkishMap: Record<string, string> = {
+      'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G',
+      'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O',
+      'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U'
+    }
+
+    return text
+      .split('')
+      .map(char => turkishMap[char] || char)
+      .join('')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+  }
+
+  const handleAutoGenerateSeoUrl = () => {
+    if (!selectedbrand?.name || selectedbrand.name.trim() === '') {
+      toast.error('Marka adı bulunamadı')
+      return
+    }
+
+    const generatedUrl = generateSlug(selectedbrand.name)
+
+    setFormData(prev => ({
+      ...prev,
+      seoUrl: generatedUrl
+    }))
+
+    toast.success('SEO URL otomatik oluşturuldu')
   }
 
   // Logo yükleme
@@ -107,7 +137,7 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     formDataUpload.append('logo', file)
 
     try {
-      const res = await fetch(`${API_URL}/brands/${selectedbrand.id}/logo`, {
+      const res = await fetch(`${API_URL}/admin/brands/${selectedbrand.id}/logo`, {
         method: 'POST',
         credentials: 'include',
         body: formDataUpload
@@ -141,7 +171,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
       setFileName('')
     } finally {
       setIsUploading(false)
-      // Input'u temizle
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -153,19 +182,15 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     if (!selectedbrand) return
 
     try {
-      const res = await fetch(`${API_URL}/brands/${selectedbrand.id}/logo`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const result = await fetchAPI(API_ENDPOINTS.brands.detail(selectedbrand.id) + '/logo', {
+        method: 'DELETE'
       })
-
-      const result = await res.json()
 
       if (result.success) {
         toast.success('Logo silindi')
         setLogoPreview(null)
         setFileName('')
 
-        // Data'yı güncelle
         const updatedBrandData = brandData.map(brand => {
           if (brand.id === selectedbrand.id) {
             return {
@@ -191,12 +216,8 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/brands/${selectedbrand.id}`, {
+      const result = await fetchAPI(API_ENDPOINTS.brands.detail(selectedbrand.id), {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           description: formData.description,
           seoTitle: formData.seoTitle,
@@ -206,7 +227,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         })
       })
 
-      const result = await response.json()
       if (result.success && result.data) {
         const updatedBrandData = brandData.map(brand => {
           if (brand.id === selectedbrand.id) {
@@ -279,7 +299,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
           <Box>
             <Typography variant='body2' className='mb-2 font-medium'>Marka Logosu</Typography>
             <Box className='flex items-center gap-4'>
-              {/* Logo Önizleme */}
               <Box
                 className='border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 relative overflow-hidden'
                 sx={{ width: 100, height: 100 }}
@@ -297,7 +316,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
                 )}
               </Box>
 
-              {/* Yükleme Butonları */}
               <Box className='flex flex-col gap-2'>
                 <Button
                   component='label'
@@ -346,6 +364,7 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             placeholder='Marka açıklaması giriniz'
             disabled={isLoading}
           />
+
           <TextField
             fullWidth
             label='SEO Başlık'
@@ -354,6 +373,7 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             placeholder='SEO başlık giriniz'
             disabled={isLoading}
           />
+
           <TextField
             fullWidth
             multiline
@@ -363,7 +383,10 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             onChange={(e) => setFormData({ ...formData, seoDescription: e.target.value })}
             placeholder='SEO açıklama giriniz'
             disabled={isLoading}
+            inputProps={{ maxLength: 160 }}
+            helperText={`${formData.seoDescription.length}/160 karakter`}
           />
+
           <TextField
             fullWidth
             label='SEO URL'
@@ -371,7 +394,39 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             onChange={(e) => setFormData({ ...formData, seoUrl: e.target.value })}
             placeholder='SEO URL giriniz'
             disabled={isLoading}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment
+                  position='start'
+                  sx={{
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: '4px',
+                    paddingX: 1,
+                    marginRight: 1,
+                    color: 'text.secondary',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  /marka/
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position='end'>
+                  <Tooltip title='Marka adından otomatik URL oluştur'>
+                    <IconButton
+                      size='small'
+                      onClick={handleAutoGenerateSeoUrl}
+                      edge='end'
+                      disabled={isLoading}
+                    >
+                      <i className='ri-sparkling-line' />
+                    </IconButton>
+                  </Tooltip>
+                </InputAdornment>
+              )
+            }}
           />
+
           <TextField
             fullWidth
             type='number'

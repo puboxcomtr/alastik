@@ -3,20 +3,23 @@
 import { useEffect, useState } from 'react'
 import type { CategoryType } from '@/types/apps/productTypes'
 
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
+import InputAdornment from '@mui/material/InputAdornment'
+import Tooltip from '@mui/material/Tooltip'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 
 import { toast } from 'react-toastify'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 type SliderOption = {
   _id: string
@@ -50,21 +53,18 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
   const fetchSliders = async () => {
     try {
       setLoadingSliders(true)
-      const response = await fetch(`${API_URL}/categories/sliders/list`, {
-        credentials: 'include'
-      })
-      const result = await response.json()
+      const result = await fetchAPI(`${API_ENDPOINTS.categories.list()}/sliders/list`)
       if (result.success && result.data) {
         setSliders(result.data)
       }
     } catch (error) {
-      console.error('Slider listesi yüklenemedi:', error)
+      console.error('Slider listesi yuklenemedi:', error)
     } finally {
       setLoadingSliders(false)
     }
   }
 
-  // Drawer açıldığında slider listesini yükle ve form data'yı set et
+  // Drawer açıldığında slider listesini yükle
   useEffect(() => {
     if (open) {
       fetchSliders()
@@ -105,12 +105,8 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/categories/${selectedCategory.id}`, {
+      const result = await fetchAPI(API_ENDPOINTS.categories.detail(selectedCategory.id), {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           description: formData.description,
           seoTitle: formData.seoTitle,
@@ -121,7 +117,6 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
         })
       })
 
-      const result = await response.json()
       if (result.success && result.data) {
         const updatedCategoryData = categoryData.map(cat => {
           if (cat.id === selectedCategory.id) {
@@ -140,16 +135,14 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
         })
 
         setData(updatedCategoryData)
-
-        toast.success(`${selectedCategory.name} kategorisi başarıyla güncellendi!`)
+        toast.success(`${selectedCategory.name} kategorisi basariyla guncellendi!`)
         handleClose()
-
       } else {
-        toast.error(`Güncelleme Hatası: ${result.message || 'Kategori güncellenirken hata oluştu'}`)
+        toast.error(`Guncelleme Hatasi: ${result.message || 'Kategori guncellenirken hata olustu'}`)
       }
     } catch (error) {
-      console.error('API hatası:', error)
-      toast.error('Bağlantı Hatası: Sunucuya ulaşılamıyor. Lütfen tekrar deneyin.')
+      console.error('API hatasi:', error)
+      toast.error('Baglanti Hatasi: Sunucuya ulasilamiyor. Lutfen tekrar deneyin.')
     } finally {
       setIsLoading(false)
     }
@@ -157,6 +150,39 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
 
   const handleDiscard = () => {
     handleClose()
+  }
+  const generateSlug = (text: string): string => {
+    const turkishMap: Record<string, string> = {
+      'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G',
+      'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O',
+      'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U'
+    }
+
+    return text
+      .split('')
+      .map(char => turkishMap[char] || char)
+      .join('')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+  }
+
+  const handleAutoGenerateSeoUrl = () => {
+    if (!selectedCategory?.name || selectedCategory.name.trim() === '') {
+      toast.error('Kategori adi bulunamadi')
+      return
+    }
+
+    const generatedUrl = generateSlug(selectedCategory.name)
+
+    setFormData(prev => ({
+      ...prev,
+      seoUrl: generatedUrl
+    }))
+
+    toast.success('SEO URL otomatik olusturuldu')
   }
 
   return (
@@ -174,7 +200,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
       }}
     >
       <div className='flex items-center justify-between pli-5 plb-4'>
-        <Typography variant='h5'>Kategori Düzenle</Typography>
+        <Typography variant='h5'>Kategori Duzenle</Typography>
         <IconButton size='small' onClick={handleDiscard}>
           <i className='ri-close-line text-2xl' />
         </IconButton>
@@ -201,16 +227,16 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             label='Kategori Açıklama'
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder='Kategori açıklaması giriniz'
+            placeholder='Kategori Açıklaması Giriniz'
             disabled={isLoading}
           />
 
           <TextField
             fullWidth
-            label='SEO Başlık'
+            label='SEO Baslik'
             value={formData.seoTitle}
             onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
-            placeholder='SEO başlık giriniz'
+            placeholder='SEO Başlık Giriniz'
             disabled={isLoading}
           />
 
@@ -221,7 +247,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             label='SEO Açıklama'
             value={formData.seoDescription}
             onChange={(e) => setFormData({ ...formData, seoDescription: e.target.value })}
-            placeholder='SEO açıklaması giriniz (Meta Description)'
+            placeholder='SEO Açıklaması Giriniz'
             disabled={isLoading}
             inputProps={{ maxLength: 160 }}
             helperText={`${formData.seoDescription.length}/160 karakter`}
@@ -232,8 +258,39 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             label='SEO URL'
             value={formData.seoUrl}
             onChange={(e) => setFormData({ ...formData, seoUrl: e.target.value })}
-            placeholder='SEO URL giriniz'
+            placeholder='SEO URL Giriniz'
             disabled={isLoading}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment
+                  position='start'
+                  sx={{
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: '4px',
+                    paddingX: 1,
+                    marginRight: 1,
+                    color: 'text.secondary',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  /kategori/
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position='end'>
+                  <Tooltip title='Kategori adından otomatik URL oluştur'>
+                    <IconButton
+                      size='small'
+                      onClick={handleAutoGenerateSeoUrl}
+                      edge='end'
+                      disabled={isLoading}
+                    >
+                      <i className='ri-sparkling-line' />
+                    </IconButton>
+                  </Tooltip>
+                </InputAdornment>
+              )
+            }}
           />
 
           <TextField
@@ -242,7 +299,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
             label='Öncelik'
             value={formData.webOrder}
             onChange={(e) => setFormData({ ...formData, webOrder: Number(e.target.value) })}
-            placeholder='Kategori sıralamasını belirleyiniz'
+            placeholder='Kategori Sıralamasını Belirleyiniz'
             disabled={isLoading}
           />
 
@@ -276,7 +333,7 @@ const EditCategoryDrawer = ({ open, handleClose, categoryData, selectedCategory,
               onClick={handleDiscard}
               disabled={isLoading}
             >
-              Vazgeç
+              Vazgec
             </Button>
           </div>
         </form>

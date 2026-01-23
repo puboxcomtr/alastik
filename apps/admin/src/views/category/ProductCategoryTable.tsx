@@ -6,15 +6,20 @@ import { useEffect, useMemo, useState } from 'react'
 // Types Imports
 import type { CategoryType } from '@/types/apps/productTypes'
 
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
 // MUI Imports
 import Card from '@mui/material/Card'
+import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
+import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
 
 import type { TextFieldProps } from '@mui/material/TextField'
@@ -56,12 +61,6 @@ type CategoryWithActionsType = CategoryType & {
   actions?: string
 }
 
-interface ProductCategoryTableProps {
-  categoryData: CategoryType[]
-  totalCategories: number
-  error?: string | null
-}
-
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   const itemRank = rankItem(row.getValue(columnId), value)
   addMeta({ itemRank })
@@ -97,24 +96,65 @@ const DebouncedInput = ({
 
 const columnHelper = createColumnHelper<CategoryWithActionsType>()
 
-const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductCategoryTableProps) => {
+const ProductCategoryTable = () => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null)
   const [EditCategoryOpen, setEditCategoryOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
   const [data, setData] = useState<CategoryType[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(50)
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
-    if (categoryData && categoryData.length > 0) {
-      const mappedData = categoryData.map(cat => ({
-        ...cat,
-        sliderId: (cat as any).sliderId || null
-      }))
-      setData(mappedData)
-    } else {
-      setData([])
+    const fetchCategories = async () => {
+      setLoading(true)
+      try {
+        const response = await fetchAPI(
+          `${API_ENDPOINTS.categories.list()}?page=${page}&limit=${limit}`,
+          { cache: 'no-store' }
+        )
+
+        const categories = (response.data || []).map((category: any) => ({
+          id: category._id || category.id,
+          name: category.name || '',
+          slug: category.slug || '',
+          level: category.level || 1,
+          parent: category.parent || null,
+          parentPath: category.parentPath || [],
+          diaCategory: category.diaCategory || '',
+          diaLevel: category.diaLevel || '',
+          webVisible: category.webVisible !== false,
+          webOrder: category.webOrder || 0,
+          seoTitle: category.seoTitle || category.name || '',
+          seoDescription: category.seoDescription || '',
+          seoUrl: category.seoUrl || category.slug || '',
+          seoKeywords: category.seoKeywords || [],
+          description: category.description || '',
+          sliderId: category.sliderId || null,
+          productCount: category.productCount || 0,
+          activeProductCount: category.activeProductCount || 0,
+          totalStock: category.totalStock || 0,
+          syncInfo: category.syncInfo || {},
+          showcase: category.showcase || [],
+          createdAt: category.createdAt,
+          updatedAt: category.updatedAt
+        }))
+
+        setData(categories)
+        setTotalCount(response.meta?.total || categories.length)
+      } catch (error) {
+        console.error('Categories fetch error:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [categoryData])
+
+    fetchCategories()
+  }, [page, limit])
 
   const columns = useMemo<ColumnDef<CategoryWithActionsType, any>[]>(
     () => [
@@ -184,10 +224,7 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
           return (
             <div className='flex items-center gap-3'>
               <div className='flex flex-col items-start'>
-                <Typography
-                  className='font-medium'
-                  color='text.primary'
-                >
+                <Typography className='font-medium' color='text.primary'>
                   {displayName}
                 </Typography>
                 <Typography variant='body2' color='text.disabled'>
@@ -210,7 +247,6 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
         header: 'İşlemler',
         cell: ({ row }) => (
           <div className='flex items-center'>
-
             <Tooltip title="Kategori Düzenle">
               <IconButton
                 size='small'
@@ -240,11 +276,8 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
       rowSelection,
       globalFilter
     },
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    },
+    pageCount: Math.ceil(totalCount / limit),
+    manualPagination: true,
     enableRowSelection: true,
     globalFilterFn: fuzzyFilter,
     onRowSelectionChange: setRowSelection,
@@ -252,7 +285,6 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues()
@@ -260,13 +292,9 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
 
   return (
     <>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Kategori verileri yüklenirken hata oluştu: {error}
-        </Alert>
-      )}
-
       <Card>
+        <CardHeader title='Kategori Listesi' className='pbe-4' />
+        <Divider />
         <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
           <div className='flex flex-col gap-2'>
             <DebouncedInput
@@ -276,7 +304,7 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
               className='max-sm:is-full'
             />
             <Typography variant='body2' color='text.secondary'>
-              Toplam <strong>{data.length} Kategori</strong> bulundu
+              Toplam <strong>{totalCount} Kategori</strong> bulundu
             </Typography>
           </div>
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
@@ -287,74 +315,99 @@ const ProductCategoryTable = ({ categoryData, totalCategories, error }: ProductC
               className='max-sm:is-full is-auto'
               startIcon={<i className='ri-upload-2-line' />}
             >
-              Dışarı Aktar
+              Disari Aktar
             </Button>
           </div>
         </div>
-        <div className='overflow-x-auto'>
-          <table className={tableStyles.table}>
-            <thead>
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th key={header.id}>
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={classnames({
-                            'flex items-center': header.column.getIsSorted(),
-                            'cursor-pointer select-none': header.column.getCanSort()
-                          })}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {{
-                            asc: <i className='ri-arrow-up-s-line text-xl' />,
-                            desc: <i className='ri-arrow-down-s-line text-xl' />
-                          }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            {table.getFilteredRowModel().rows.length === 0 ? (
-              <tbody>
-                <tr>
-                  <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
-                    <Typography variant='body1' color='text.secondary'>
-                      {globalFilter ? 'Arama kriterlerinize uygun kategori bulunamadı' : 'Kategori bulunamadı'}
-                    </Typography>
-                  </td>
-                </tr>
-              </tbody>
-            ) : (
-              <tbody>
-                {table
-                  .getRowModel()
-                  .rows.slice(0, table.getState().pagination.pageSize)
-                  .map(row => (
+
+        <div style={{ position: 'relative' }}>
+          {loading && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              minHeight: '200px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CircularProgress size={24} />
+                <Typography>Kategoriler yukleniyor...</Typography>
+              </div>
+            </div>
+          )}
+
+          <div className='overflow-x-auto'>
+            <table className={tableStyles.table}>
+              <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map(header => (
+                      <th key={header.id}>
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={classnames({
+                              'flex items-center': header.column.getIsSorted(),
+                              'cursor-pointer select-none': header.column.getCanSort()
+                            })}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {{
+                              asc: <i className='ri-arrow-up-s-line text-xl' />,
+                              desc: <i className='ri-arrow-down-s-line text-xl' />
+                            }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                          </div>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              {table.getFilteredRowModel().rows.length === 0 ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
+                      <Typography variant='body1' color='text.secondary'>
+                        {globalFilter ? 'Arama kriterlerinize uygun kategori bulunamadi' : 'Kategori bulunamadi'}
+                      </Typography>
+                    </td>
+                  </tr>
+                </tbody>
+              ) : (
+                <tbody>
+                  {table.getRowModel().rows.map(row => (
                     <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
                       {row.getVisibleCells().map(cell => (
                         <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
                       ))}
                     </tr>
                   ))}
-              </tbody>
-            )}
-          </table>
+                </tbody>
+              )}
+            </table>
+          </div>
         </div>
+
         <TablePagination
-          rowsPerPageOptions={[10, 15, 25, 50]}
+          rowsPerPageOptions={[25, 50, 100, 200]}
           component='div'
           className='border-bs'
-          count={table.getFilteredRowModel().rows.length}
-          rowsPerPage={table.getState().pagination.pageSize}
-          page={table.getState().pagination.pageIndex}
-          onPageChange={(_, page) => {
-            table.setPageIndex(page)
+          count={totalCount}
+          rowsPerPage={limit}
+          page={page - 1}
+          onPageChange={(_, newPage) => {
+            setPage(newPage + 1)
           }}
-          onRowsPerPageChange={e => table.setPageSize(Number(e.target.value))}
+          onRowsPerPageChange={e => {
+            setLimit(Number(e.target.value))
+            setPage(1)
+          }}
         />
       </Card>
 

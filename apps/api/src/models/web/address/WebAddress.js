@@ -41,7 +41,18 @@ const webAddressSchema = new mongoose.Schema({
     // Flags
     isDefault: { type: Boolean, default: false },
     isBilling: { type: Boolean, default: true },
-    isShipping: { type: Boolean, default: true }
+    isShipping: { type: Boolean, default: true },
+
+    // Adres Teslimat İlişkilendirilmesi
+    linkedShippingAddressId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'WebAddress',
+        default: null
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    }
 
 }, {
     timestamps: true,

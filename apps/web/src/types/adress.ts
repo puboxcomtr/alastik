@@ -1,5 +1,6 @@
 export interface Address {
     _id: string;
+    linkedShippingAddressId?: string | null;
     userId?: string;
     sessionId?: string;
 
@@ -41,6 +42,7 @@ export interface Address {
     isDefault: boolean;
     isBilling: boolean;
     isShipping: boolean;
+    isActive?: boolean;
 
     createdAt: string;
     updatedAt: string;

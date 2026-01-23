@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react'
 
-/* MUI */
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
+// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -15,11 +18,9 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Chip from '@mui/material/Chip'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
 type FeatureValueType = {
@@ -65,7 +66,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
                 isActive: selectedFeature.isActive !== undefined ? selectedFeature.isActive : true
             })
 
-            // Değerleri yükle
             loadFeatureValues(selectedFeature.name)
         }
     }, [selectedFeature, open])
@@ -73,16 +73,12 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
     const loadFeatureValues = async (featureName: string) => {
         try {
             setLoadingValues(true)
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-            const response = await fetch(`${baseUrl}/features/${encodeURIComponent(featureName)}`)
+            const response = await fetchAPI(
+                `${API_ENDPOINTS.features.list()}/${encodeURIComponent(featureName)}`
+            )
 
-            if (!response.ok) throw new Error('Değerler yüklenemedi')
-
-            const result = await response.json()
-
-            if (result.success && result.data.values) {
-                // Değerleri sırala
-                const sortedValues = result.data.values.sort((a: FeatureValueType, b: FeatureValueType) => {
+            if (response.success && response.data.values) {
+                const sortedValues = response.data.values.sort((a: FeatureValueType, b: FeatureValueType) => {
                     return a.featureValueOrder - b.featureValueOrder
                 })
                 setFeatureValues(sortedValues)
@@ -108,24 +104,34 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
         setIsLoading(true)
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-
             // 1. Grup ayarlarını güncelle
-            const groupResponse = await fetch(`${baseUrl}/features/${encodeURIComponent(selectedFeature.name)}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            })
+            const groupResponse = await fetch(
+                `${API_ENDPOINTS.features.list()}/${encodeURIComponent(selectedFeature.name)}`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                }
+            )
 
-            if (!groupResponse.ok) throw new Error('Grup güncellenemedi')
+            const groupResult = await groupResponse.json()
+
+            if (!groupResult.success) {
+                throw new Error(groupResult.message || 'Grup güncellenemedi')
+            }
 
             // 2. Her değerin sıralamasını güncelle
             const valueUpdatePromises = featureValues.map(value =>
-                fetch(`${baseUrl}/features/${encodeURIComponent(selectedFeature.name)}/value/${value._id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ featureValueOrder: value.featureValueOrder })
-                })
+                fetch(
+                    `${API_ENDPOINTS.features.list()}/${encodeURIComponent(selectedFeature.name)}/value/${value._id}`,
+                    {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ featureValueOrder: value.featureValueOrder })
+                    }
+                )
             )
 
             await Promise.all(valueUpdatePromises)
@@ -134,7 +140,7 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
             onUpdate()
             handleClose()
         } catch (error) {
-            toast.error('Güncelleme başarısız')
+            toast.error(error instanceof Error ? error.message : 'Güncelleme başarısız')
         } finally {
             setIsLoading(false)
         }

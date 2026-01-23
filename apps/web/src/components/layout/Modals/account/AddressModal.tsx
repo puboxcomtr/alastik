@@ -9,19 +9,21 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import { addressService } from '@/src/services/addressService';
 import { locationService, City, District, Neighborhood } from '@/src/services/locationService';
+import { Address } from '@/src/types/adress';
+import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
 
 // Zod Schema
 const addressSchema = z.object({
     addressName: z.string().min(1, 'Adres adı zorunludur'),
     invoiceType: z.enum(['individual', 'corporate']),
     fullName: z.string().optional(),
-    tcNo: z.string().regex(/^\d{11}$/, 'TC Kimlik No 11 haneli olmalıdır').optional().or(z.literal('')),
+    tcNo: z.string().optional(),
     companyName: z.string().optional(),
     taxOffice: z.string().optional(),
-    taxNo: z.string().regex(/^\d{10}$/, 'Vergi No 10 haneli olmalıdır').optional().or(z.literal('')),
+    taxNo: z.string().optional(),
     authorizedPerson: z.string().optional(),
-    email: z.string().email('Geçerli bir e-posta giriniz'),
-    phone: z.string().min(10, 'Geçerli bir telefon numarası giriniz'),
+    email: z.string().optional(),
+    phone: z.string().optional(),
     cityId: z.string().min(1, 'İl seçiniz'),
     cityName: z.string(),
     districtId: z.string().min(1, 'İlçe seçiniz'),
@@ -40,12 +42,41 @@ const addressSchema = z.object({
     }
     return true;
 }, { message: 'İsim Soyisim zorunludur', path: ['fullName'] })
-    .refine((data) => {
-        if (data.invoiceType === 'corporate') {
-            return !!data.companyName && !!data.taxOffice && !!data.taxNo;
+    .superRefine((data, ctx) => {
+        if (data.invoiceType === 'individual') {
+            if (!data.fullName) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'İsim Soyisim zorunludur',
+                    path: ['fullName']
+                });
+            }
         }
-        return true;
-    }, { message: 'Kurumsal bilgiler zorunludur', path: ['companyName'] });
+
+        if (data.invoiceType === 'corporate') {
+            if (!data.companyName) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Ticari Ünvan zorunludur',
+                    path: ['companyName']
+                });
+            }
+            if (!data.taxOffice) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Vergi Dairesi zorunludur',
+                    path: ['taxOffice']
+                });
+            }
+            if (!data.taxNo) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Vergi No zorunludur',
+                    path: ['taxNo']
+                });
+            }
+        }
+    });
 
 const shippingSchema = z.object({
     differentShipping: z.boolean().optional(),
@@ -62,15 +93,59 @@ const shippingSchema = z.object({
     shippingFloor: z.string().optional(),
     shippingApartmentNo: z.string().optional(),
     shippingAddressNote: z.string().optional()
-}).refine((data) => {
-    if (data.differentShipping) {
-        return !!data.shippingFullName && !!data.shippingPhone &&
-            !!data.shippingCityId && !!data.shippingDistrictId &&
-            !!data.shippingNeighborhoodId && !!data.shippingStreet &&
-            !!data.shippingBuildingNo;
+}).superRefine((data, ctx) => {
+    if (!data.differentShipping) return;
+
+    if (!data.shippingFullName) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Teslim edilecek kişi zorunludur',
+            path: ['shippingFullName']
+        });
     }
-    return true;
-}, { message: 'Teslimat adresi alanları zorunludur', path: ['shippingFullName'] });
+    if (!data.shippingPhone) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Cep telefonu zorunludur',
+            path: ['shippingPhone']
+        });
+    }
+    if (!data.shippingCityId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'İl seçiniz',
+            path: ['shippingCityId']
+        });
+    }
+    if (!data.shippingDistrictId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'İlçe seçiniz',
+            path: ['shippingDistrictId']
+        });
+    }
+    if (!data.shippingNeighborhoodId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Mahalle seçiniz',
+            path: ['shippingNeighborhoodId']
+        });
+    }
+    if (!data.shippingStreet) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Sokak/Cadde zorunludur',
+            path: ['shippingStreet']
+        });
+    }
+    if (!data.shippingBuildingNo) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Bina No zorunludur',
+            path: ['shippingBuildingNo']
+        });
+    }
+});
 
 const combinedSchema = addressSchema.and(shippingSchema);
 
@@ -80,6 +155,7 @@ interface AddressModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    address?: Address | null;
 }
 
 const modalStyle = {
@@ -96,47 +172,46 @@ const modalStyle = {
     overflow: 'auto'
 };
 
-const defaultValues: AddressFormData = {
-    addressName: '',
-    invoiceType: 'individual',
-    fullName: '',
-    tcNo: '',
-    companyName: '',
-    taxOffice: '',
-    taxNo: '',
-    authorizedPerson: '',
-    email: '',
-    phone: '',
-    cityId: '',
-    cityName: '',
-    districtId: '',
-    districtName: '',
-    neighborhoodId: '',
-    neighborhoodName: '',
-    street: '',
-    buildingNo: '',
-    floor: '',
-    apartmentNo: '',
-    addressNote: '',
-    isDefault: false,
-    differentShipping: false,
-    // Teslimat Adresi Farklı ise
-    shippingFullName: '',
-    shippingPhone: '',
-    shippingCityId: '',
-    shippingCityName: '',
-    shippingDistrictId: '',
-    shippingDistrictName: '',
-    shippingNeighborhoodId: '',
-    shippingNeighborhoodName: '',
-    shippingStreet: '',
-    shippingBuildingNo: '',
-    shippingFloor: '',
-    shippingApartmentNo: '',
-    shippingAddressNote: ''
-};
+const getDefaultValues = (address?: Address | null, shippingAddress?: Address | null): AddressFormData => ({
+    addressName: address?.addressName || '',
+    invoiceType: address?.invoiceType || 'individual',
+    fullName: address?.fullName || '',
+    tcNo: address?.tcNo || '',
+    companyName: address?.companyName || '',
+    taxOffice: address?.taxOffice || '',
+    taxNo: address?.taxNo || '',
+    authorizedPerson: address?.authorizedPerson || '',
+    email: address?.email || '',
+    phone: address?.phone || '',
+    cityId: address?.cityId || '',
+    cityName: address?.cityName || '',
+    districtId: address?.districtId || '',
+    districtName: address?.districtName || '',
+    neighborhoodId: address?.neighborhoodId || '',
+    neighborhoodName: address?.neighborhoodName || '',
+    street: address?.street || '',
+    buildingNo: address?.buildingNo || '',
+    floor: address?.floor || '',
+    apartmentNo: address?.apartmentNo || '',
+    addressNote: address?.addressNote || '',
+    isDefault: address?.isDefault ?? true,
+    differentShipping: !!shippingAddress,
+    shippingFullName: shippingAddress?.fullName || '',
+    shippingPhone: shippingAddress?.phone || '',
+    shippingCityId: shippingAddress?.cityId || '',
+    shippingCityName: shippingAddress?.cityName || '',
+    shippingDistrictId: shippingAddress?.districtId || '',
+    shippingDistrictName: shippingAddress?.districtName || '',
+    shippingNeighborhoodId: shippingAddress?.neighborhoodId || '',
+    shippingNeighborhoodName: shippingAddress?.neighborhoodName || '',
+    shippingStreet: shippingAddress?.street || '',
+    shippingBuildingNo: shippingAddress?.buildingNo || '',
+    shippingFloor: shippingAddress?.floor || '',
+    shippingApartmentNo: shippingAddress?.apartmentNo || '',
+    shippingAddressNote: shippingAddress?.addressNote || ''
+});
 
-export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModalProps) {
+export default function AddressModal({ isOpen, onClose, onSuccess, address }: AddressModalProps) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [cities, setCities] = useState<City[]>([]);
@@ -146,6 +221,11 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
     const [shippingDistricts, setShippingDistricts] = useState<District[]>([]);
     const [shippingNeighborhoods, setShippingNeighborhoods] = useState<Neighborhood[]>([]);
     const [shippingLocationLoading, setShippingLocationLoading] = useState({ districts: false, neighborhoods: false });
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
+    const [shippingInitialLoadDone, setShippingInitialLoadDone] = useState(false);
+    const [linkedShippingAddress, setLinkedShippingAddress] = useState<Address | null>(null);
+
+    const isEditMode = !!address;
 
     const {
         register,
@@ -156,7 +236,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
         formState: { errors }
     } = useForm<AddressFormData>({
         resolver: zodResolver(combinedSchema),
-        defaultValues,
+        defaultValues: getDefaultValues(address),
         mode: 'onChange'
     });
 
@@ -168,27 +248,90 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
     const shippingDistrictId = watch('shippingDistrictId');
     const watchAll = watch();
 
+    // Modal açıldığında
     useEffect(() => {
         if (isOpen) {
+            setInitialLoadDone(false);
+            setShippingInitialLoadDone(false);
+            setLinkedShippingAddress(null);
             loadCities();
-        }
-    }, [isOpen]);
 
+            // Edit modda linked shipping address'i yükle
+            if (isEditMode && address?.linkedShippingAddressId) {
+                loadLinkedShippingAddress(address.linkedShippingAddressId);
+            } else {
+                reset(getDefaultValues(address, null));
+            }
+        }
+    }, [isOpen, address]);
+
+    // Linked shipping address yüklendiğinde form'u güncelle
     useEffect(() => {
-        if (cityId) loadDistricts(cityId);
+        if (isOpen && address) {
+            reset(getDefaultValues(address, linkedShippingAddress));
+        }
+    }, [linkedShippingAddress]);
+
+    // Edit modda fatura adresi il/ilçe/mahalle yükle
+    useEffect(() => {
+        const loadEditModeLocations = async () => {
+            if (isOpen && isEditMode && cities.length > 0 && !initialLoadDone) {
+                if (address?.cityId) {
+                    await loadDistricts(address.cityId, true);
+                }
+            }
+        };
+        loadEditModeLocations();
+    }, [isOpen, isEditMode, cities, address, initialLoadDone]);
+
+    // Edit modda teslimat adresi il/ilçe/mahalle yükle
+    useEffect(() => {
+        const loadShippingEditModeLocations = async () => {
+            if (isOpen && linkedShippingAddress && cities.length > 0 && !shippingInitialLoadDone) {
+                if (linkedShippingAddress.cityId) {
+                    await loadShippingDistricts(linkedShippingAddress.cityId, true);
+                }
+            }
+        };
+        loadShippingEditModeLocations();
+    }, [isOpen, linkedShippingAddress, cities, shippingInitialLoadDone]);
+
+    // Normal mod: şehir değişince ilçeleri yükle
+    useEffect(() => {
+        if (cityId && (initialLoadDone || !isEditMode)) {
+            loadDistricts(cityId);
+        }
     }, [cityId]);
 
     useEffect(() => {
-        if (districtId) loadNeighborhoods(districtId);
+        if (districtId && (initialLoadDone || !isEditMode)) {
+            loadNeighborhoods(districtId);
+        }
     }, [districtId]);
 
+    // Shipping normal mod
     useEffect(() => {
-        if (shippingCityId) loadShippingDistricts(shippingCityId);
+        if (shippingCityId && (shippingInitialLoadDone || !isEditMode || !linkedShippingAddress)) {
+            loadShippingDistricts(shippingCityId);
+        }
     }, [shippingCityId]);
 
     useEffect(() => {
-        if (shippingDistrictId) loadShippingNeighborhoods(shippingDistrictId);
+        if (shippingDistrictId && (shippingInitialLoadDone || !isEditMode || !linkedShippingAddress)) {
+            loadShippingNeighborhoods(shippingDistrictId);
+        }
     }, [shippingDistrictId]);
+
+    const loadLinkedShippingAddress = async (shippingId: string) => {
+        try {
+            const shippingAddr = await addressService.getAddress(shippingId);
+            if (shippingAddr && shippingAddr.isActive) {
+                setLinkedShippingAddress(shippingAddr);
+            }
+        } catch (error) {
+            console.error('Teslimat adresi yüklenemedi:', error);
+        }
+    };
 
     const loadCities = async () => {
         setLocationLoading(prev => ({ ...prev, cities: true }));
@@ -197,21 +340,33 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
         setLocationLoading(prev => ({ ...prev, cities: false }));
     };
 
-    const loadDistricts = async (cityId: string) => {
+    const loadDistricts = async (cityId: string, isInitialLoad = false) => {
         setLocationLoading(prev => ({ ...prev, districts: true }));
-        setDistricts([]);
-        setNeighborhoods([]);
+        if (!isInitialLoad) {
+            setDistricts([]);
+            setNeighborhoods([]);
+        }
         const result = await locationService.getDistricts(cityId);
         setDistricts(result);
         setLocationLoading(prev => ({ ...prev, districts: false }));
+
+        if (isInitialLoad && address?.districtId) {
+            await loadNeighborhoods(address.districtId, true);
+        }
     };
 
-    const loadNeighborhoods = async (districtId: string) => {
+    const loadNeighborhoods = async (districtId: string, isInitialLoad = false) => {
         setLocationLoading(prev => ({ ...prev, neighborhoods: true }));
-        setNeighborhoods([]);
+        if (!isInitialLoad) {
+            setNeighborhoods([]);
+        }
         const result = await locationService.getNeighborhoods(districtId);
         setNeighborhoods(result);
         setLocationLoading(prev => ({ ...prev, neighborhoods: false }));
+
+        if (isInitialLoad) {
+            setInitialLoadDone(true);
+        }
     };
 
     const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -238,24 +393,38 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
         setValue('neighborhoodName', neighborhood?.neighborhoodName || '');
     };
 
-    const loadShippingDistricts = async (cityId: string) => {
+    const loadShippingDistricts = async (cityId: string, isInitialLoad = false) => {
+        console.log('loadShippingDistricts called:', cityId);
         setShippingLocationLoading(prev => ({ ...prev, districts: true }));
-        setShippingDistricts([]);
-        setShippingNeighborhoods([]);
+        if (!isInitialLoad) {
+            setShippingDistricts([]);
+            setShippingNeighborhoods([]);
+        }
         const result = await locationService.getDistricts(cityId);
         setShippingDistricts(result);
         setShippingLocationLoading(prev => ({ ...prev, districts: false }));
+
+        if (isInitialLoad && linkedShippingAddress?.districtId) {
+            await loadShippingNeighborhoods(linkedShippingAddress.districtId, true);
+        }
     };
 
-    const loadShippingNeighborhoods = async (districtId: string) => {
+    const loadShippingNeighborhoods = async (districtId: string, isInitialLoad = false) => {
         setShippingLocationLoading(prev => ({ ...prev, neighborhoods: true }));
-        setShippingNeighborhoods([]);
+        if (!isInitialLoad) {
+            setShippingNeighborhoods([]);
+        }
         const result = await locationService.getNeighborhoods(districtId);
         setShippingNeighborhoods(result);
         setShippingLocationLoading(prev => ({ ...prev, neighborhoods: false }));
+
+        if (isInitialLoad) {
+            setShippingInitialLoadDone(true);
+        }
     };
 
     const handleShippingCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        console.log('Shipping city changed:', e.target.value);
         const city = cities.find(c => c.cityId === e.target.value);
         setValue('shippingCityId', e.target.value);
         setValue('shippingCityName', city?.cityName || '');
@@ -284,8 +453,8 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
 
         setLoading(true);
         try {
-            // Fatura adresi kaydet
-            const billingAddress = {
+            // Fatura adresi verisi
+            const billingData = {
                 addressName: data.addressName,
                 invoiceType: data.invoiceType,
                 fullName: data.fullName,
@@ -294,8 +463,8 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                 taxOffice: data.taxOffice,
                 taxNo: data.taxNo,
                 authorizedPerson: data.authorizedPerson,
-                email: data.email,
-                phone: data.phone,
+                email: user?.email || '',
+                phone: user?.phone || '',
                 cityId: data.cityId,
                 cityName: data.cityName,
                 districtId: data.districtId,
@@ -309,45 +478,103 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                 addressNote: data.addressNote,
                 isDefault: data.isDefault,
                 isBilling: true,
-                isShipping: !data.differentShipping
+                isShipping: !data.differentShipping,
+                isActive: true
             };
 
-            const billingResult = await addressService.createAddress(user.id, billingAddress);
+            // Teslimat adresi verisi
+            const shippingData = {
+                addressName: `${data.addressName} - Teslimat`,
+                invoiceType: 'individual' as const,
+                fullName: data.shippingFullName,
+                email: user?.email || '',
+                phone: data.shippingPhone,
+                cityId: data.shippingCityId,
+                cityName: data.shippingCityName,
+                districtId: data.shippingDistrictId,
+                districtName: data.shippingDistrictName,
+                neighborhoodId: data.shippingNeighborhoodId,
+                neighborhoodName: data.shippingNeighborhoodName,
+                street: data.shippingStreet,
+                buildingNo: data.shippingBuildingNo,
+                floor: data.shippingFloor,
+                apartmentNo: data.shippingApartmentNo,
+                addressNote: data.shippingAddressNote,
+                isDefault: false,
+                isBilling: false,
+                isShipping: true,
+                isActive: true
+            };
 
-            // Farklı teslimat adresi varsa onu da kaydet
-            if (data.differentShipping) {
-                const shippingAddress = {
-                    addressName: `${data.addressName} - Teslimat`,
-                    invoiceType: 'individual' as const,
-                    fullName: data.shippingFullName,
-                    email: data.email,
-                    phone: data.shippingPhone,
-                    cityId: data.shippingCityId,
-                    cityName: data.shippingCityName,
-                    districtId: data.shippingDistrictId,
-                    districtName: data.shippingDistrictName,
-                    neighborhoodId: data.shippingNeighborhoodId,
-                    neighborhoodName: data.shippingNeighborhoodName,
-                    street: data.shippingStreet,
-                    buildingNo: data.shippingBuildingNo,
-                    floor: data.shippingFloor,
-                    apartmentNo: data.shippingApartmentNo,
-                    addressNote: data.shippingAddressNote,
-                    isDefault: false,
-                    isBilling: false,
-                    isShipping: true
-                };
+            if (isEditMode && address?._id) {
+                // GÜNCELLEME MODU
 
-                await addressService.createAddress(user.id, shippingAddress);
-            }
+                // 1. Fatura adresini güncelle
+                const billingResult = await addressService.updateAddress(address._id, billingData);
 
-            if (billingResult) {
-                toast.success(data.differentShipping ? 'Adresler başarıyla eklendi' : 'Adres başarıyla eklendi');
-                onSuccess();
-                handleClose();
+                if (data.differentShipping) {
+                    // Farklı teslimat adresi istiyor
+                    if (linkedShippingAddress?._id) {
+                        // Mevcut teslimat adresini güncelle
+                        await addressService.updateAddress(linkedShippingAddress._id, shippingData);
+                    } else {
+                        // Yeni teslimat adresi oluştur ve bağla
+                        const newShipping = await addressService.createAddress(user.id, shippingData);
+                        if (newShipping?._id) {
+                            await addressService.updateAddress(address._id, {
+                                ...billingData,
+                                linkedShippingAddressId: newShipping._id
+                            });
+                        }
+                    }
+                } else {
+                    // Farklı teslimat adresi istemiyor
+                    if (linkedShippingAddress?._id) {
+                        // Mevcut teslimat adresini pasife al
+                        await addressService.updateAddress(linkedShippingAddress._id, {
+                            isActive: false
+                        });
+                        // Bağlantıyı kaldır
+                        await addressService.updateAddress(address._id, {
+                            ...billingData,
+                            linkedShippingAddressId: null
+                        });
+                    }
+                }
+
+                if (billingResult) {
+                    toast.success('Adres başarıyla güncellendi');
+                } else {
+                    toast.error('Adres güncellenemedi');
+                }
+
             } else {
-                toast.error('Adres eklenemedi');
+                // EKLEME MODU
+
+                // 1. Fatura adresini kaydet
+                const billingResult = await addressService.createAddress(user.id, billingData);
+
+                if (billingResult && data.differentShipping) {
+                    // 2. Teslimat adresini kaydet
+                    const shippingResult = await addressService.createAddress(user.id, shippingData);
+
+                    // 3. Fatura adresine teslimat adresini bağla
+                    if (shippingResult?._id) {
+                        await addressService.updateAddress(billingResult._id, {
+                            linkedShippingAddressId: shippingResult._id
+                        });
+                    }
+                    toast.success('Adresler başarıyla eklendi');
+                } else if (billingResult) {
+                    toast.success('Adres başarıyla eklendi');
+                } else {
+                    toast.error('Adres eklenemedi');
+                }
             }
+
+            onSuccess();
+            handleClose();
+
         } catch (error) {
             toast.error('Bir hata oluştu');
         } finally {
@@ -360,7 +587,10 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
     };
 
     const handleClose = () => {
-        reset(defaultValues);
+        reset(getDefaultValues(null, null));
+        setInitialLoadDone(false);
+        setShippingInitialLoadDone(false);
+        setLinkedShippingAddress(null);
         onClose();
     };
 
@@ -369,7 +599,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
             <Box sx={modalStyle}>
                 {/* Header */}
                 <div className="d-flex justify-content-between align-items-center p-3 border-bottom">
-                    <h5 className="mb-0">Yeni Adres Ekle</h5>
+                    <h5 className="mb-0">{isEditMode ? 'Adresi Düzenle' : 'Yeni Adres Ekle'}</h5>
                     <button type="button" className="btn-close" onClick={handleClose}></button>
                 </div>
 
@@ -388,30 +618,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                             {errors.addressName && <div className="invalid-feedback">{errors.addressName.message}</div>}
                         </div>
                     </div>
-
-                    {/* İletişim */}
-                    <div className="row mb-3">
-                        <div className="col-md-6">
-                            <label className="form-label">E-Posta <span className="text-danger">*</span></label>
-                            <input
-                                type="email"
-                                className={`form-control ${errors.email ? 'is-invalid' : watchAll.email ? 'is-valid' : ''}`}
-                                {...register('email')}
-                            />
-                            {errors.email && <div className="invalid-feedback">{errors.email.message}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label">Telefon <span className="text-danger">*</span></label>
-                            <input
-                                type="tel"
-                                className={`form-control ${errors.phone ? 'is-invalid' : watchAll.phone ? 'is-valid' : ''}`}
-                                placeholder="+90 5XX XXX XX XX"
-                                {...register('phone')}
-                            />
-                            {errors.phone && <div className="invalid-feedback">{errors.phone.message}</div>}
-                        </div>
-                    </div>
-
                     {/* Konum */}
                     <div className="row mb-3">
                         <div className="col-md-4">
@@ -610,7 +816,10 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                             Varsayılan adres olarak ayarla
                         </label>
                     </div>
+
                     <hr />
+
+                    {/* Farklı Teslimat Adresi */}
                     <div className="form-check mb-3">
                         <input
                             type="checkbox"
@@ -622,6 +831,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                             Ürünlerim farklı bir <strong>teslimat adresine</strong> gönderilsin.
                         </label>
                     </div>
+
                     {differentShipping && (
                         <div className="border rounded p-3 bg-light">
                             <h6 className="mb-3">Teslimat Adresi</h6>
@@ -639,13 +849,20 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                                 </div>
                                 <div className="col-md-6">
                                     <label className="form-label">Cep Telefonu <span className="text-danger">*</span></label>
-                                    <input
-                                        type="tel"
-                                        className={`form-control ${errors.shippingPhone ? 'is-invalid' : watchAll.shippingPhone ? 'is-valid' : ''}`}
-                                        placeholder="+90 5XX XXX XX XX"
-                                        {...register('shippingPhone')}
-                                    />
-                                    {errors.shippingPhone && <div className="invalid-feedback">{errors.shippingPhone.message}</div>}
+                                    <div className="input-group">
+                                        <span className="input-group-text">+90</span>
+                                        <input
+                                            type="tel"
+                                            className={`form-control ${errors.shippingPhone ? 'is-invalid' : watchAll.shippingPhone ? 'is-valid' : ''}`}
+                                            placeholder="5XX XXX XX XX"
+                                            value={displayPhoneNumber(watchAll.shippingPhone || '')}
+                                            onChange={(e) => {
+                                                const formatted = formatPhoneNumber(e.target.value);
+                                                setValue('shippingPhone', parsePhoneNumber(formatted), { shouldValidate: true });
+                                            }}
+                                        />
+                                    </div>
+                                    {errors.shippingPhone && <div className="invalid-feedback d-block">{errors.shippingPhone.message}</div>}
                                 </div>
                             </div>
 
@@ -762,7 +979,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
                         onClick={handleSubmit(onSubmit, onError)}
                         disabled={loading}
                     >
-                        {loading ? 'Kaydediliyor...' : 'Kaydet'}
+                        {loading ? 'Kaydediliyor...' : (isEditMode ? 'Güncelle' : 'Kaydet')}
                     </button>
                 </div>
             </Box>

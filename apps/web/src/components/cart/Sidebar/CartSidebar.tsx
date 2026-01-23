@@ -5,23 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Tooltip } from "@mui/material";
 import { ROUTES } from '@/src/config/routes';
 import { isLogged } from '@/src/hooks/Theme/useAuth';
-
-interface CartSidebarProps {
-    totals: {
-        subtotal: number;
-        kdv: number;
-        total: number;
-        itemCount: number;
-    };
-    showCheckoutButton?: boolean;
-    showContinueButton?: boolean;
-}
+import { CartSidebarProps } from '@/src/types/cart';
 
 export default function CartSidebar({
     totals,
     showCheckoutButton = true,
     showContinueButton = true
 }: CartSidebarProps) {
+    
     const router = useRouter();
     const handleCheckout = () => {
         if (isLogged()) {

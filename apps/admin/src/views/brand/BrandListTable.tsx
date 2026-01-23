@@ -3,17 +3,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { BrandType } from '@/types/apps/brandTypes'
 
+// API Imports
+import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
+
 // MUI Imports
 import Card from '@mui/material/Card'
+import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
+import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Switch from '@mui/material/Switch'
-import type { TextFieldProps } from '@mui/material/TextField'
+import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
+import type { TextFieldProps } from '@mui/material/TextField'
 import { toast } from 'react-toastify'
 
 // Third-party Imports
@@ -54,15 +60,6 @@ export type brandWithActionsType = BrandType & {
   showOnHomepage?: boolean
 }
 
-interface BrandListTableProps {
-  brandData: any[]
-  totalBrands: number
-  meta: any
-  error: string | null
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   const itemRank = rankItem(row.getValue(columnId), value)
   addMeta({ itemRank })
@@ -98,48 +95,67 @@ const DebouncedInput = ({
 
 const columnHelper = createColumnHelper<brandWithActionsType>()
 
-const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableProps) => {
+const BrandListTable = () => {
   const [selectedbrand, setSelectedbrand] = useState<any | null>(null)
   const [EditbrandOpen, setEditbrandOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
   const [data, setData] = useState<any[]>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(50)
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
-    if (brandData && brandData.length > 0) {
-      const mappedData = brandData.map(brand => ({
-        id: brand.id,
-        name: brand.diaMarkaAck,
-        description: brand.description || '',
-        seoTitle: brand.seoTitle || brand.name || '',
-        seoDescription: brand.seoDescription || '',
-        seoUrl: brand.seoUrl || '',
-        productCount: brand.productCount,
-        webOrder: brand.webOrder,
-        logo: brand.logo,
-        status: brand.status,
-        completenessScore: brand.completenessScore,
-        totalStock: brand.totalStock,
-        showOnHomepage: brand.showOnHomepage || false,
-        priceRange: {
-          averageFormatted: brand.priceRange?.averageFormatted || '₺0'
-        }
-      }))
-      setData(mappedData)
+    const fetchBrands = async () => {
+      setLoading(true)
+      try {
+        const response = await fetchAPI(
+          `${API_ENDPOINTS.brands.list()}?page=${page}&limit=${limit}`,
+          { cache: 'no-store' }
+        )
+
+        const brands = (response.data || []).map((brand: any) => ({
+          id: brand._id || brand.id,
+          name: brand.diaMarkaAck || brand.name || '',
+          description: brand.description || '',
+          seoTitle: brand.seoTitle || brand.name || '',
+          seoDescription: brand.seoDescription || '',
+          seoUrl: brand.seoUrl || '',
+          productCount: brand.productCount || 0,
+          webOrder: brand.webOrder || 0,
+          logo: brand.logo || null,
+          status: brand.status || 'Inactive',
+          completenessScore: brand.completenessScore || 0,
+          totalStock: brand.totalStock || 0,
+          showOnHomepage: brand.showOnHomepage || false,
+          priceRange: {
+            averageFormatted: brand.priceRange?.averageFormatted || '₺0'
+          }
+        }))
+
+        setData(brands)
+        setTotalCount(response.meta?.total || brands.length)
+      } catch (error) {
+        console.error('Brands fetch error:', error)
+        toast.error('Markalar Yüklenirken Hata Oluştu')
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [brandData])
+
+    fetchBrands()
+  }, [page, limit])
 
   // Anasayfa gösterim durumunu güncelle
   const handleHomepageToggle = async (brandId: string, currentValue: boolean) => {
     try {
-      const res = await fetch(`${API_URL}/brands/${brandId}`, {
+      const result = await fetchAPI(API_ENDPOINTS.brands.detail(brandId), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ showOnHomepage: !currentValue })
       })
-
-      const result = await res.json()
 
       if (result.success) {
         setData(prev =>
@@ -149,13 +165,13 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
               : brand
           )
         )
-        toast.success(!currentValue ? 'Marka anasayfada gösterilecek' : 'Marka anasayfadan kaldırıldı')
+        toast.success(!currentValue ? 'Marka Anasayfada Gösterilecek' : 'Marka Anasayfadan Kaldırıldı')
       } else {
-        toast.error('Güncelleme başarısız')
+        toast.error('Güncelleme Başarısız')
       }
     } catch (err) {
       console.error('Homepage toggle error:', err)
-      toast.error('Bir hata oluştu')
+      toast.error('Bir hata olustu')
     }
   }
 
@@ -186,17 +202,10 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
       columnHelper.accessor('name', {
         header: 'Marka Adı',
         cell: ({ row }) => {
-          const brand = row.original;
-          const getImageUrl = (url: string | undefined | null) => {
-            if (!url) return '/images/urun/gorsel-bulunamadi.jpg';
-            if (url === '/images/urun/gorsel-bulunamadi.jpg') return url;
-            if (url.startsWith('http')) return url;
-            const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
+          const brand = row.original
+          const defaultImage = 'https://api.alastik.com/theme/katalog-gorseli.jpg'
+          const logoSrc = brand.logo ? getImageUrl(brand.logo) : defaultImage
 
-            if (url.startsWith('/')) return `${MEDIA_URL}${url}`;
-            return `${MEDIA_URL}/${url}`;
-          };
-          const logoSrc = getImageUrl(brand.logo);
           return (
             <div className='flex items-center gap-3'>
               <img
@@ -205,8 +214,8 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
                 height={38}
                 className='rounded bg-actionHover object-contain'
                 onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/images/urun/gorsel-bulunamadi.jpg';
+                  const target = e.target as HTMLImageElement
+                  target.src = defaultImage
                 }}
               />
               <div className='flex flex-col items-start'>
@@ -220,7 +229,7 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
                 )}
               </div>
             </div>
-          );
+          )
         }
       }),
       columnHelper.accessor('productCount', {
@@ -266,10 +275,7 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
     ],
     [data]
   )
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10
-  })
+
   const table = useReactTable({
     data,
     columns,
@@ -278,15 +284,10 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
     },
     state: {
       rowSelection,
-      globalFilter,
-      pagination
+      globalFilter
     },
-    onPaginationChange: setPagination,
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    },
+    pageCount: Math.ceil(totalCount / limit),
+    manualPagination: true,
     enableRowSelection: true,
     globalFilterFn: fuzzyFilter,
     onRowSelectionChange: setRowSelection,
@@ -294,32 +295,28 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues()
   })
 
-  if (error) {
-    return (
-      <Card>
-        <div className='p-5 text-center'>
-          <Typography color='error'>Hata: {error}</Typography>
-        </div>
-      </Card>
-    )
-  }
-
   return (
     <>
       <Card>
+        <CardHeader title='Marka Listesi' className='pbe-4' />
+        <Divider />
         <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
-          <DebouncedInput
-            value={globalFilter ?? ''}
-            onChange={value => setGlobalFilter(String(value))}
-            placeholder='Marka adı ile arama'
-            className='max-sm:is-full'
-          />
+          <div className='flex flex-col gap-2'>
+            <DebouncedInput
+              value={globalFilter ?? ''}
+              onChange={value => setGlobalFilter(String(value))}
+              placeholder='Marka adi ile arama'
+              className='max-sm:is-full'
+            />
+            <Typography variant='body2' color='text.secondary'>
+              Toplam <strong>{totalCount} Marka</strong> bulundu
+            </Typography>
+          </div>
           <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
             <Button
               color='secondary'
@@ -332,69 +329,94 @@ const BrandListTable = ({ brandData, totalBrands, meta, error }: BrandListTableP
             </Button>
           </div>
         </div>
-        <div className='overflow-x-auto'>
-          <table className={tableStyles.table}>
-            <thead>
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th key={header.id}>
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={classnames({
-                            'flex items-center': header.column.getIsSorted(),
-                            'cursor-pointer select-none': header.column.getCanSort()
-                          })}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {{
-                            asc: <i className='ri-arrow-up-s-line text-xl' />,
-                            desc: <i className='ri-arrow-down-s-line text-xl' />
-                          }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            {table.getFilteredRowModel().rows.length === 0 ? (
-              <tbody>
-                <tr>
-                  <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    Veri bulunamadı
-                  </td>
-                </tr>
-              </tbody>
-            ) : (
-              <tbody>
-                {table
-                  .getRowModel()
-                  .rows.slice(0, table.getState().pagination.pageSize)
-                  .map(row => (
+
+        <div style={{ position: 'relative' }}>
+          {loading && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              minHeight: '200px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CircularProgress size={24} />
+                <Typography>Markalar Yükleniyor...</Typography>
+              </div>
+            </div>
+          )}
+
+          <div className='overflow-x-auto'>
+            <table className={tableStyles.table}>
+              <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map(header => (
+                      <th key={header.id}>
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={classnames({
+                              'flex items-center': header.column.getIsSorted(),
+                              'cursor-pointer select-none': header.column.getCanSort()
+                            })}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {{
+                              asc: <i className='ri-arrow-up-s-line text-xl' />,
+                              desc: <i className='ri-arrow-down-s-line text-xl' />
+                            }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                          </div>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              {table.getFilteredRowModel().rows.length === 0 ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
+                      <Typography variant='body1' color='text.secondary'>
+                        {globalFilter ? 'Arama kriterlerinize uygun marka bulunamadi' : 'Marka bulunamadi'}
+                      </Typography>
+                    </td>
+                  </tr>
+                </tbody>
+              ) : (
+                <tbody>
+                  {table.getRowModel().rows.map(row => (
                     <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
                       {row.getVisibleCells().map(cell => (
                         <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
                       ))}
                     </tr>
                   ))}
-              </tbody>
-            )}
-          </table>
+                </tbody>
+              )}
+            </table>
+          </div>
         </div>
+
         <TablePagination
-          rowsPerPageOptions={[10, 15, 25, 50, 100]}
+          rowsPerPageOptions={[25, 50, 100, 200]}
           component='div'
           className='border-bs'
-          count={table.getFilteredRowModel().rows.length}
-          rowsPerPage={pagination.pageSize}
-          page={pagination.pageIndex}
-          onPageChange={(_, page) => {
-            setPagination(prev => ({ ...prev, pageIndex: page }))
+          count={totalCount}
+          rowsPerPage={limit}
+          page={page - 1}
+          onPageChange={(_, newPage) => {
+            setPage(newPage + 1)
           }}
           onRowsPerPageChange={e => {
-            setPagination(prev => ({ ...prev, pageSize: Number(e.target.value), pageIndex: 0 }))
+            setLimit(Number(e.target.value))
+            setPage(1)
           }}
         />
       </Card>

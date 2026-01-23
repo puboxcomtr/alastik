@@ -1,6 +1,9 @@
 // src/lib/api.ts
 import { getSession } from 'next-auth/react'
 
+// MEDIA
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
+
 
 // API Base URL
 const getBaseUrl = () => {
@@ -11,7 +14,6 @@ const getBaseUrl = () => {
     // Client-side
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 }
-
 export const API_ENDPOINTS = {
     products: {
         list: () => `${getBaseUrl()}/admin/products`,
@@ -27,6 +29,20 @@ export const API_ENDPOINTS = {
     categories: {
         list: () => `${getBaseUrl()}/admin/categories`,
         detail: (id: string) => `${getBaseUrl()}/admin/categories/${id}`,
+    },
+    labels: {
+        list: () => `${getBaseUrl()}/admin/tags`,
+        detail: (id: string) => `${getBaseUrl()}/admin/tags/${id}`,
+    },
+    features: {
+        list: () => `${getBaseUrl()}/admin/features`,
+        detail: (id: string) => `${getBaseUrl()}/admin/features/${id}`,
+    },
+    orders: {
+        list: () => `${getBaseUrl()}/admin/orders`,
+        detail: (id: string) => `${getBaseUrl()}/admin/orders/${id}`,
+        updateStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/status`,
+        updatePaymentStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/payment-status`,
     },
     diaSync: {
         all: () => `${getBaseUrl()}/dia-stock/sync`,
@@ -50,7 +66,6 @@ export const API_ENDPOINTS = {
         delete: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
     }
 }
-
 export async function fetchAPI(url: string, options?: RequestInit) {
     let token: string | undefined
     if (typeof window !== 'undefined') {
@@ -72,4 +87,27 @@ export async function fetchAPI(url: string, options?: RequestInit) {
     }
 
     return response.json()
+}
+
+/* Helper - Image URL */
+export function getImageUrl(path?: string): string {
+    if (!path) return ''
+    if (path.startsWith('http')) return path
+    return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`
+}
+export async function getThemeSettings() {
+    try {
+        const response = await fetchAPI(`${getBaseUrl()}/admin/design/settings/theme`)
+        return response
+    } catch {
+        return null
+    }
+}
+export async function getSiteName(): Promise<string> {
+    try {
+        const response = await fetchAPI(`${getBaseUrl()}/admin/settings/general`)
+        return response?.data?.companyInfo?.name || 'A Lastik'
+    } catch {
+        return 'A Lastik'
+    }
 }

@@ -2,10 +2,7 @@ const axios = require('axios');
 const winston = require('winston');
 
 /* Order Modeli */
-const Order = require('../../../models/admin/catalog/Order');
-
-/* WebOrder Modeli */
-const WebOrder = require('../../../models/web/catalog/WebOrder');
+const WebOrder = require('../../../models/web/order/WebOrder');
 
 /* Order Filter Config */
 const { getOrderFilters, getOrderFields } = require('../../../config/diaOrderFilters');

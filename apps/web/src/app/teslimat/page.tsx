@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 // UI Libraries
-import { Grid } from '@mui/material';
+import { Container, Row, Col } from 'react-bootstrap'
 import { toast } from 'react-toastify';
 
 // Config & Context
@@ -32,6 +32,7 @@ export default function CheckoutPage() {
     const [differentShipping, setDifferentShipping] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string>('');
+    const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string>('');
 
     useEffect(() => {
         if (cartLoading) return;
@@ -85,10 +86,12 @@ export default function CheckoutPage() {
             return;
         }
         setLoading(true);
+        const isSameAddress = !selectedShippingAddressId || selectedBillingAddressId === selectedShippingAddressId;
+
         const checkoutData = {
             billingAddressId: selectedBillingAddressId,
-            shippingAddressId: selectedBillingAddressId,
-            useSameAddress: true,
+            shippingAddressId: selectedShippingAddressId || selectedBillingAddressId,
+            useSameAddress: isSameAddress,
             isGuest: false,
             memberId: user?.id
         };
@@ -111,52 +114,57 @@ export default function CheckoutPage() {
     }
 
     return (
-        <Grid className="row-fluid" container>
-            <Grid size={12}>
-                <DeliveryTitle />
-            </Grid>
-            <Grid size={8} sx={{ minHeight: '600px' }}>
-                {isLoggedIn ? (
-                    <Grid size={12}>
-                        <MemberCheckout
-                            onAddressSelect={setSelectedBillingAddressId}
-                            loading={loading}
-                        />
-                    </Grid>
-                ) : (
-                    <>
-                        <Grid size={12}>
-                            <BillingForm data={billingData} onChange={setBillingData} />
-                        </Grid>
-                        <div className="card border-0 mt-4">
-                            <div className="card-body py-0">
-                                <div className="form-check">
-                                    <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        id="differentShipping"
-                                        checked={differentShipping}
-                                        onChange={(e) => setDifferentShipping(e.target.checked)}
-                                    />
-                                    <label className="form-check-label cursor-pointer" htmlFor="differentShipping">
-                                        Ürünlerim farklı bir <strong>teslimat adresine </strong>gönderilsin.
-                                    </label>
+        <Container className='p-0'>
+            <Row className='row-fluid px-0 py-lg-3'>
+                <Col lg="12" className='px-0'>
+                    <DeliveryTitle />
+                </Col>
+                <Col lg="8">
+                    {isLoggedIn ? (
+                        <Col size={12} className='px-0'>
+                            <MemberCheckout
+                                onAddressSelect={(billingId, shippingId) => {
+                                    setSelectedBillingAddressId(billingId);
+                                    setSelectedShippingAddressId(shippingId || billingId);
+                                }}
+                                loading={loading}
+                            />
+                        </Col>
+                    ) : (
+                        <>
+                            <Col lg={12} className='px-0'>
+                                <BillingForm data={billingData} onChange={setBillingData} />
+                            </Col>
+                            <div className="card border-0 mt-4">
+                                <div className="card-body py-0">
+                                    <div className="form-check">
+                                        <input
+                                            type="checkbox"
+                                            className="form-check-input"
+                                            id="differentShipping"
+                                            checked={differentShipping}
+                                            onChange={(e) => setDifferentShipping(e.target.checked)}
+                                        />
+                                        <label className="form-check-label cursor-pointer" htmlFor="differentShipping">
+                                            Ürünlerim farklı bir <strong>teslimat adresine </strong>gönderilsin.
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        {differentShipping && (
-                            <ShippingForm data={shippingData} onChange={setShippingData} />
-                        )}
-                    </>
-                )}
-            </Grid>
-            <Grid size={3} className="offset-xl-1">
-                <CheckoutSummary
-                    onSubmit={isLoggedIn ? handleMemberSubmit : handleGuestSubmit}
-                    loading={loading}
-                    showButton={true}
-                />
-            </Grid>
-        </Grid>
+                            {differentShipping && (
+                                <ShippingForm data={shippingData} onChange={setShippingData} />
+                            )}
+                        </>
+                    )}
+                </Col>
+                <Col lg="3" className="offset-xl-1">
+                    <CheckoutSummary
+                        onSubmit={isLoggedIn ? handleMemberSubmit : handleGuestSubmit}
+                        loading={loading}
+                        showButton={true}
+                    />
+                </Col>
+            </Row>
+        </Container>
     );
 }

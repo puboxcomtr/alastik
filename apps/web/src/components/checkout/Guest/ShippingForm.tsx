@@ -5,11 +5,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { locationService, City, District, Neighborhood } from '@/src/services/locationService';
+import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
 
 // Zod Schema
 const shippingSchema = z.object({
   recipientName: z.string().min(1, 'Teslim edilecek kişi zorunludur'),
-  phone: z.string().min(10, 'Geçerli bir telefon numarası giriniz').regex(/^(\+90|0)/, 'Telefon +90 veya 0 ile başlamalı'),
+  phone: z.string().regex(/^\+90\d{10}$/, 'Geçerli bir telefon numarası giriniz'),
   cityId: z.string().min(1, 'İl seçiniz'),
   cityName: z.string(),
   districtId: z.string().min(1, 'İlçe seçiniz'),
@@ -121,18 +122,6 @@ export default function ShippingForm({ data, onChange }: ShippingFormProps) {
     setValue('neighborhoodName', neighborhood?.neighborhoodName || '');
   };
 
-  const getAddressPreview = () => {
-    const parts = [
-      watchAll.neighborhoodName,
-      watchAll.street,
-      watchAll.buildingNo && `No: ${watchAll.buildingNo}`,
-      watchAll.apartmentNo && `D: ${watchAll.apartmentNo}`,
-      watchAll.districtName,
-      watchAll.cityName
-    ].filter(Boolean);
-    return parts.join(', ');
-  };
-
   return (
     <div className="card border-0">
       <div className="card-body py-0">
@@ -150,13 +139,20 @@ export default function ShippingForm({ data, onChange }: ShippingFormProps) {
           </div>
           <div className="col-md-6 mb-3">
             <label className="form-label">Cep Telefonu <span className="text-danger">*</span></label>
-            <input
-              type="tel"
-              className={`form-control form-control-lg ${errors.phone ? 'is-invalid' : watchAll.phone ? 'is-valid' : ''}`}
-              placeholder="+90 5XX XXX XX XX"
-              {...register('phone')}
-            />
-            {errors.phone && <div className="invalid-feedback">{errors.phone.message}</div>}
+            <div className="input-group">
+              <span className="input-group-text">+90</span>
+              <input
+                type="tel"
+                className={`form-control form-control-lg ${errors.phone ? 'is-invalid' : watchAll.phone ? 'is-valid' : ''}`}
+                placeholder="5XX XXX XX XX"
+                value={displayPhoneNumber(watchAll.phone || '')}
+                onChange={(e) => {
+                  const formatted = formatPhoneNumber(e.target.value);
+                  setValue('phone', parsePhoneNumber(formatted), { shouldValidate: true });
+                }}
+              />
+            </div>
+            {errors.phone && <div className="invalid-feedback d-block">{errors.phone.message}</div>}
           </div>
         </div>
 
@@ -253,7 +249,7 @@ export default function ShippingForm({ data, onChange }: ShippingFormProps) {
             {...register('addressNote')}
           />
         </div>
-        
+
       </div>
     </div>
   );

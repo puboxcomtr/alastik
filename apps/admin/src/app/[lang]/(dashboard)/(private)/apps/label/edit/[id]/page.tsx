@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-/* MUI */
+// API Imports
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
+// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -18,22 +21,19 @@ import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Checkbox from '@mui/material/Checkbox'
-import Chip from '@mui/material/Chip'
-
-/* API */
-import { fetchTagById, updateTag } from '@/utils/api/tags'
 
 const EditLabelPage = () => {
     const router = useRouter()
     const params = useParams()
     const tagId = params.id as string
+    const locale = params.lang as string
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [selectedProducts, setSelectedProducts] = useState<string[]>([])
     const [currentProducts, setCurrentProducts] = useState<any[]>([])
     const [searchQuery, setSearchQuery] = useState('')
-    const [searchResults, setSearchResults] = useState([])
+    const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
     const [searchPerformed, setSearchPerformed] = useState(false)
     const [formData, setFormData] = useState({
@@ -53,7 +53,9 @@ const EditLabelPage = () => {
     const loadTag = async () => {
         try {
             setLoading(true)
-            const tag = await fetchTagById(tagId)
+            const response = await fetchAPI(API_ENDPOINTS.labels.detail(tagId))
+            const tag = response.data || response
+
             setFormData({
                 title: tag.title || '',
                 description: tag.description || '',
@@ -64,20 +66,18 @@ const EditLabelPage = () => {
                 order: tag.order || 0
             })
 
-            // Ürünleri ayır
             if (tag.products && Array.isArray(tag.products)) {
-                const productIds = tag.products.map(p =>
+                const productIds = tag.products.map((p: any) =>
                     typeof p === 'object' && p.id ? p.id : p
                 )
-
-                const productObjects = tag.products.filter(p => typeof p === 'object' && p.id)
+                const productObjects = tag.products.filter((p: any) => typeof p === 'object' && p.id)
 
                 setSelectedProducts(productIds)
                 setCurrentProducts(productObjects)
             }
         } catch (error) {
             toast.error('Etiket yüklenirken hata oluştu')
-            router.push('/tr/apps/label/list')
+            router.push(`/${locale}/apps/label/list`)
         } finally {
             setLoading(false)
         }
@@ -99,16 +99,12 @@ const EditLabelPage = () => {
         setSearchPerformed(true)
 
         try {
-            const response = await fetch(`http://localhost:3082/api/products?search=${encodeURIComponent(searchQuery)}`)
+            const response = await fetchAPI(
+                `${API_ENDPOINTS.products.list()}?search=${encodeURIComponent(searchQuery)}`
+            )
+            setSearchResults(response.data || [])
 
-            if (!response.ok) {
-                throw new Error('Ürünler yüklenirken hata oluştu')
-            }
-
-            const result = await response.json()
-            setSearchResults(result.data || [])
-
-            if (result.data.length === 0) {
+            if ((response.data || []).length === 0) {
                 toast.info('Arama sonucu bulunamadı')
             }
         } catch (error) {
@@ -128,7 +124,6 @@ const EditLabelPage = () => {
             }
         })
 
-        // Seçilen ürünü currentProducts'a da ekle
         const product = searchResults.find(p => p.id === productId)
         if (product && !currentProducts.find(p => p.id === productId)) {
             setCurrentProducts(prev => [...prev, product])
@@ -142,7 +137,6 @@ const EditLabelPage = () => {
             const allProductIds = searchResults.map(p => p.id)
             setSelectedProducts(prev => [...new Set([...prev, ...allProductIds])])
 
-            // Tüm yeni ürünleri bir seferde ekle
             const newProducts = searchResults.filter(
                 product => !currentProducts.find(p => p.id === product.id)
             )
@@ -161,24 +155,31 @@ const EditLabelPage = () => {
         })
     }
 
+    const generateSlug = (text: string): string => {
+        const turkishMap: Record<string, string> = {
+            'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G',
+            'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O',
+            'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U'
+        }
+
+        return text
+            .split('')
+            .map(char => turkishMap[char] || char)
+            .join('')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+    }
+
     const handleAutoGenerateSeoUrl = () => {
         if (!formData.title || formData.title.trim() === '') {
             toast.error('Lütfen önce başlık alanını doldurun')
             return
         }
 
-        const generatedUrl = formData.title
-            .toLowerCase()
-            .replace(/ş/g, 's')
-            .replace(/ğ/g, 'g')
-            .replace(/ü/g, 'u')
-            .replace(/ı/g, 'i')
-            .replace(/ö/g, 'o')
-            .replace(/ç/g, 'c')
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim('-')
+        const generatedUrl = generateSlug(formData.title)
 
         setFormData({
             ...formData,
@@ -193,12 +194,15 @@ const EditLabelPage = () => {
         setSaving(true)
 
         try {
-            await updateTag(tagId, {
-                ...formData,
-                products: selectedProducts
+            await fetchAPI(API_ENDPOINTS.labels.detail(tagId), {
+                method: 'PUT',
+                body: JSON.stringify({
+                    ...formData,
+                    products: selectedProducts
+                })
             })
             toast.success('Etiket başarıyla güncellendi')
-            router.push('/tr/apps/label/list')
+            router.push(`/${locale}/apps/label/list`)
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Etiket güncellenirken hata oluştu')
         } finally {
@@ -360,6 +364,7 @@ const EditLabelPage = () => {
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 onKeyPress={(e) => {
                                                     if (e.key === 'Enter') {
+                                                        e.preventDefault()
                                                         handleProductSearch()
                                                     }
                                                 }}
@@ -468,7 +473,7 @@ const EditLabelPage = () => {
                     </Grid>
                 </Grid>
 
-                {/* Sağ Kolon - SEO, Durum, Sıralama */}
+                {/* Sağ Kolon */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Grid container spacing={6}>
                         <Grid size={{ xs: 12 }}>
@@ -577,10 +582,10 @@ const EditLabelPage = () => {
                                                                 paddingX: 1,
                                                                 marginRight: 1,
                                                                 color: 'text.secondary',
-                                                                fontSize: '0.9rem'
+                                                                fontSize: '0.85rem'
                                                             }}
                                                         >
-                                                            https://alastik.com/etiket/
+                                                            /etiket/
                                                         </InputAdornment>
                                                     ),
                                                     endAdornment: (
