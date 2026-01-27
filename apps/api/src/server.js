@@ -280,6 +280,12 @@ app.use('/api/wheelsize', wheelsizeRoutes);
 const diaRoutes = require('./routes/plugins/dia');
 app.use('/api/dia', diaRoutes);
 
+// ============================================
+// PAYMENT ROUTES
+// ============================================
+const netahsilatRouter = require('./routes/web/payment/netahsilat');
+app.use('/api/web/payments/netahsilat', netahsilatRouter);
+
 
 // ============================================
 // THEME ROUTES

@@ -60,7 +60,7 @@ const pricingSchema = new mongoose.Schema({
 const paymentSchema = new mongoose.Schema({
     method: {
         type: String,
-        enum: ['credit_card', 'bank_transfer', 'cash_on_delivery'],
+        enum: ['credit_card', 'credit_card_3d', 'bank_transfer', 'cash_on_delivery', 'netahsilat_installment'],
         required: true
     },
     status: {
@@ -68,6 +68,15 @@ const paymentSchema = new mongoose.Schema({
         enum: ['pending', 'paid', 'failed', 'refunded', 'cancelled'],
         default: 'pending'
     },
+    // Gateway bilgileri
+    gateway: String,
+    installment: { type: Number, default: 1 },
+    referenceCode: String,
+    transactionId: String,
+    authCode: String,
+    paymentGuid: String,
+    errorMessage: String,
+    errorCode: String,
     // Kredi kartı bilgileri
     cardInfo: {
         lastFourDigits: String,
@@ -85,8 +94,6 @@ const paymentSchema = new mongoose.Schema({
         approvedAt: Date,
         approvedBy: String
     },
-    // İşlem bilgileri
-    transactionId: String,
     paidAt: Date
 }, { _id: false });
 
@@ -177,7 +184,7 @@ const webOrderSchema = new mongoose.Schema({
     // Sipariş Durumu
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+        enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned', 'payment_failed'],
         default: 'pending'
     },
 
