@@ -1,12 +1,14 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination, EffectFade, Autoplay } from 'swiper/modules';
+import { EffectFade, Autoplay } from 'swiper/modules';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
+
+import { API_ENDPOINTS } from '@/src/config/api';
 
 import ProductSlideCard from '@components/shop/Product/Slide/Card';
 
@@ -22,11 +24,8 @@ type Props = {
     showcaseKey?: 'first' | 'second' | 'third' | 'fourth' | 'fifth'
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-
 export default function SingleProduct({ showcaseKey = 'third' }: Props) {
     const [showcase, setShowcase] = useState<ShowcaseData | null>(null);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchShowcase();
@@ -34,7 +33,7 @@ export default function SingleProduct({ showcaseKey = 'third' }: Props) {
 
     const fetchShowcase = async () => {
         try {
-            const res = await fetch(`${API_URL}/showcases/public/homepage`)
+            const res = await fetch(API_ENDPOINTS.showcases.homepage())
             const result = await res.json()
 
             if (result.success && result.data) {
@@ -43,25 +42,9 @@ export default function SingleProduct({ showcaseKey = 'third' }: Props) {
             }
         } catch (error) {
             console.error('Vitrin yüklenemedi:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
-    // Loading durumu
-    if (loading) {
-        return (
-            <section className="container pb-5 pb-md-0">
-                <div className="text-center py-5">
-                    <div className="spinner-border" role="status">
-                        <span className="visually-hidden">Yükleniyor...</span>
-                    </div>
-                </div>
-            </section>
-        );
-    }
-
-    // Veri yoksa gösterme
     if (!showcase || !showcase.products || showcase.products.length === 0) {
         return null;
     }
@@ -80,7 +63,7 @@ export default function SingleProduct({ showcaseKey = 'third' }: Props) {
                         {/* Sağdaki küçük ürün kart slider */}
                         <div className="col-md-3 col-xl-3 order-md-2 d-flex justify-content-center justify-content-md-end py-4 py-md-3 py-lg-4">
                             <Swiper
-                                modules={[Pagination, Autoplay]}
+                                modules={[Autoplay]}
                                 spaceBetween={24}
                                 loop={showcase.products.length > 1}
                                 speed={400}
@@ -88,7 +71,6 @@ export default function SingleProduct({ showcaseKey = 'third' }: Props) {
                                     delay: 2000,
                                     disableOnInteraction: false,
                                 }}
-                                pagination={{ clickable: true }}
                                 style={{ maxWidth: '416px' }}
                             >
                                 {showcase.products.map((product: any) => (

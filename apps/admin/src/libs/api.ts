@@ -34,6 +34,12 @@ export const API_ENDPOINTS = {
         list: () => `${getBaseUrl()}/admin/tags`,
         detail: (id: string) => `${getBaseUrl()}/admin/tags/${id}`,
     },
+    championships: {
+        list: () => `${getBaseUrl()}/admin/championships`,
+        product: (productKey: string) => `${getBaseUrl()}/admin/championships/product/${productKey}`,
+        assign: (id: string) => `${getBaseUrl()}/admin/championships/${id}/assign`,
+        unassign: (id: string) => `${getBaseUrl()}/admin/championships/${id}/unassign`,
+    },
     features: {
         list: () => `${getBaseUrl()}/admin/features`,
         detail: (id: string) => `${getBaseUrl()}/admin/features/${id}`,
@@ -44,12 +50,19 @@ export const API_ENDPOINTS = {
         updateStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/status`,
         updatePaymentStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/payment-status`,
     },
-    diaSync: {
-        all: () => `${getBaseUrl()}/dia-stock/sync`,
-        names: () => `${getBaseUrl()}/dia-stock/sync-names`,
-        codes: () => `${getBaseUrl()}/dia-stock/sync-codes`,
-        prices: () => `${getBaseUrl()}/dia-stock/sync-prices`,
-        images: () => `${getBaseUrl()}/dia-stock/sync-images`,
+    webxml: {
+        list: () => `${getBaseUrl()}/admin/integration/xml`,
+        detail: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}`,
+        update: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}`,
+        updateStatus: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/status`,
+        startSync: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/sync`,
+        updateRules: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/rules`,
+        getFilterOptions: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/filter-options`,
+        getDiaFields: () => `${getBaseUrl()}/admin/integration/xml/dia-fields`,
+        syncToDia: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/sync-to-dia`,
+        xmlProducts: (source: string) => `${getBaseUrl()}/admin/integration/xml/products?source=${source}`,
+        exportExcel: () => `${getBaseUrl()}/admin/integration/xml/export-excel`,
+        downloadExcel: (fileName: string) => `${getBaseUrl()}/admin/integration/xml/export-excel/download/${fileName}`,
     },
     admins: {
         list: () => `${getBaseUrl()}/admin/user/admins`,
@@ -58,12 +71,29 @@ export const API_ENDPOINTS = {
         update: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
         delete: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
     },
+    showcases: {
+        list: () => `${getBaseUrl()}/admin/showcases`,
+        detail: (id: string) => `${getBaseUrl()}/admin/showcases/${id}`,
+    },
     roles: {
         list: () => `${getBaseUrl()}/admin/user/roles`,
         create: () => `${getBaseUrl()}/admin/user/roles`,
         detail: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
         update: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
         delete: (id: string) => `${getBaseUrl()}/admin/user/roles/${id}`,
+    },
+    diaSync: {
+        fullSync: () => `${getBaseUrl()}/dia/full-sync`,
+        lightSync: () => `${getBaseUrl()}/dia/sync/prices-and-stocks`,
+        syncStatus: () => `${getBaseUrl()}/dia/sync/status`,
+        syncStats: () => `${getBaseUrl()}/dia/sync/stats`,
+        jobProgress: (jobId: string, type: string) => `${getBaseUrl()}/dia/sync/job/${jobId}/progress?type=${type}`,
+    },
+    diaSettings: {
+        get: () => `${getBaseUrl()}/admin/modules/dia/settings`,
+        update: () => `${getBaseUrl()}/admin/modules/dia/settings`,
+        testConnection: () => `${getBaseUrl()}/admin/modules/dia/test-connection`,
+        fullSync: () => `${getBaseUrl()}/dia/full-sync`,
     }
 }
 export async function fetchAPI(url: string, options?: RequestInit) {

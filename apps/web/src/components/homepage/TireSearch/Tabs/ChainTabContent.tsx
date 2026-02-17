@@ -72,9 +72,13 @@ export default function ChainTabContent({
                                         Genişlik
                                     </label>
                                     <select
-                                        className="form-select"
+                                        className="form-select cursor-pointer"
                                         id="chain_width"
                                         value={selectedGenislik}
+                                        style={{
+                                            borderRadius: '0.375rem',
+                                            border: '1px solid black'
+                                        }}
                                         onChange={(e) => setSelectedGenislik(e.target.value)}
                                         required
                                     >
@@ -91,9 +95,13 @@ export default function ChainTabContent({
                                         Yanak
                                     </label>
                                     <select
-                                        className="form-select"
+                                        className="form-select cursor-pointer"
                                         id="chain_aspect"
                                         value={selectedYukseklik}
+                                        style={{
+                                            borderRadius: '0.375rem',
+                                            border: '1px solid black'
+                                        }}
                                         onChange={(e) => setSelectedYukseklik(e.target.value)}
                                         disabled={!selectedGenislik}
                                         required
@@ -111,9 +119,13 @@ export default function ChainTabContent({
                                         Jant Çapı
                                     </label>
                                     <select
-                                        className="form-select"
+                                        className="form-select cursor-pointer"
                                         id="chain_rim"
                                         value={selectedCap}
+                                        style={{
+                                            borderRadius: '0.375rem',
+                                            border: '1px solid black'
+                                        }}
                                         onChange={(e) => setSelectedCap(e.target.value)}
                                         disabled={!selectedYukseklik}
                                         required
@@ -129,24 +141,18 @@ export default function ChainTabContent({
                             </div>
                             <div className="row align-items-end">
                                 <div className="col-md-4 position-relative ps-0 pb-3">
-                                    <a
-                                        href="#"
-                                        className="nav-link fs-xs d-flex text-decoration-underline text-muted justify-content-center justify-content-lg-start"
-                                        role="button"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#rimSize"
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const event = new Event('openTireSizeModal');
+                                            window.dispatchEvent(event);
+                                        }}
+                                        className="nav-link fs-xs d-flex text-decoration-underline text-muted justify-content-center justify-content-lg-start bg-transparent border-0 p-0"
                                     >
                                         Lastik ebatımı nasıl öğrenebilirim?
-                                    </a>
+                                    </button>
                                 </div>
                                 <div className="col-md-5 position-relative d-none d-lg-block">
-                                    {!imageError && (
-                                        <img
-                                            src="/assets/img/home/tyre-search.png"
-                                            alt="Jant Arama"
-                                            onError={() => setImageError(true)}
-                                        />
-                                    )}
                                 </div>
                                 <div className="col-12 col-md-3 position-relative pb-3">
                                     <button type="submit" className="btn btn-primary rounded-2 w-100">

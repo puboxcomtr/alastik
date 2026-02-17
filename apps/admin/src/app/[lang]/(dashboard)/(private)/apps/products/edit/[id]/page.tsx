@@ -15,6 +15,8 @@ import ProductFeatures from '@views/products/ProductFeatures'
 import ProductEnventory from '@/views/products/ProductEnventory'
 import ProductOrganize from '@/views/products/ProductOrganize'
 import ProductBrand from '@/views/products/ProductBrand'
+import ProductChampionship from '@/views/products/ProductChampionship'
+
 
 // Context Import
 import { ProductUpdateProvider } from '@/contexts/ProductUpdateContext'
@@ -57,6 +59,9 @@ function ProductEditContent({ product }: { product: ProductType }) {
           </Grid>
           <Grid size={{ xs: 12 }}>
             <ProductBrand product={product} />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <ProductChampionship product={product} />
           </Grid>
         </Grid>
       </Grid>

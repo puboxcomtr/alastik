@@ -1,5 +1,4 @@
 'use client';
-
 interface User {
   id: string;
   email: string;
@@ -24,7 +23,7 @@ interface AuthResponse {
 }
 
 interface LoginCredentials {
-  identifier: string; // email veya telefon
+  identifier: string;
   password: string;
 }
 
@@ -44,9 +43,11 @@ class AuthService {
   private user: User | null = null;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-    
-    // Client-side'da token'ları localStorage'dan yükle
+    if (typeof window === 'undefined') {
+      this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+    } else {
+      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+    }
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       this.refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
@@ -79,7 +80,7 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const start = Date.now();
-      const reqId = `auth_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
+      const reqId = `auth_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
       console.log('🟦 [AUTH][LOGIN][REQUEST]', { reqId, identifier: credentials.identifier.includes('@') ? credentials.identifier.toLowerCase() : '***masked_phone***' });
       const response = await fetch(`${this.baseUrl}/users/login`, {
         method: 'POST',
@@ -99,7 +100,7 @@ class AuthService {
       if (data.success && token && user) {
         this.setTokens(token, refreshToken);
         this.setUser(user);
-        
+
         return {
           success: true,
           message: 'Giriş başarılı',
@@ -133,7 +134,7 @@ class AuthService {
   async register(userData: RegisterData): Promise<AuthResponse> {
     try {
       const start = Date.now();
-      const reqId = `auth_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
+      const reqId = `auth_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
       console.log('🟦 [AUTH][REGISTER][REQUEST]', { reqId, username: userData.username, email: userData.email || undefined, phone: userData.phone ? '***masked***' : undefined });
       const response = await fetch(`${this.baseUrl}/users/register`, {
         method: 'POST',
@@ -153,7 +154,7 @@ class AuthService {
       if (data.success && token && user) {
         this.setTokens(token, refreshToken);
         this.setUser(user);
-        
+
         return {
           success: true,
           message: 'Kayıt başarılı',

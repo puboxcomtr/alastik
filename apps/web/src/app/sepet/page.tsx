@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Grid } from "@mui/material";
 import { useCart } from '@/src/context/CartContext';
 import CartEmpty from '@/src/components/cart/Empty/CartEmpty';
@@ -10,17 +10,11 @@ import CartCampaign from '@/src/components/cart/Content/CartCampaign';
 import CartSidebar from '@/src/components/cart/Sidebar/CartSidebar';
 
 export default function CartPage() {
-    const { items, totals, loading, updateQuantity, removeItem, clearCart } = useCart();
+    const { items, totals, updateQuantity, removeItem, clearCart, refreshCart } = useCart();
 
-    if (loading) {
-        return (
-            <div className="container py-5 text-center">
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Yükleniyor...</span>
-                </div>
-            </div>
-        );
-    }
+    useEffect(() => {
+        refreshCart();
+    }, [refreshCart]);
 
     if (items.length === 0) {
         return <CartEmpty />;

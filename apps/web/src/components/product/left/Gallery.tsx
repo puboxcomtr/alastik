@@ -27,7 +27,6 @@ interface GalleryProps {
 }
 
 export default function ProductGallery({ product }: GalleryProps) {
-    // Ürün görsellerini al
     const productImages = getProductImages(product);
     const originalImages = productImages.map(img => img.url);
     const imageAlts = productImages.map(img => img.alt);
@@ -35,28 +34,19 @@ export default function ProductGallery({ product }: GalleryProps) {
     const [activeIndex, setActiveIndex] = useState<number>(0);
     const [open, setOpen] = useState<boolean>(false);
 
-    // Resize edilmiş görseller için state'ler
     const [mainImages, setMainImages] = useState<string[]>(originalImages);
     const [thumbnailImages, setThumbnailImages] = useState<string[]>(originalImages);
-    const [loading, setLoading] = useState<boolean>(false);
 
-    // Component mount olduğunda görselleri resize et (opsiyonel)
     useEffect(() => {
         const resizeAllImages = async (): Promise<void> => {
-            setLoading(true);
             try {
-                // Ana görsel için 350x350 resize
                 const resizedMainImages = await resizeMultipleImages(originalImages, 350, 350);
                 setMainImages(resizedMainImages);
-
-                // Thumbnail'ler için 111x111 resize
                 const resizedThumbnails = await resizeMultipleImages(originalImages, 111, 111);
                 setThumbnailImages(resizedThumbnails);
 
             } catch (error) {
                 console.warn('Görsel resize edilemedi, orijinal görseller kullanılıyor:', error);
-            } finally {
-                setLoading(false);
             }
         };
 

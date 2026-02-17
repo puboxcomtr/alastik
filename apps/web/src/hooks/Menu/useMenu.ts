@@ -35,8 +35,6 @@ export const useMenu = () => {
             }
         } catch (error) {
             console.error('Menu fetch error:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -53,5 +51,5 @@ export const useMenu = () => {
         }
     };
 
-    return { menus, loading, getMenuUrl };
+    return { menus, getMenuUrl };
 };

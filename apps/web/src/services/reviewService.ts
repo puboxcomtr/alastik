@@ -1,19 +1,19 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+
+// apps/web/src/services/reviewService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export async function getProductReviews(productKey: string) {
     try {
-        const res = await fetch(`${API_URL}/reviews/${productKey}`, {
+        const res = await fetch(API_ENDPOINTS.reviews.byProduct(productKey), {
             cache: 'no-store'
         });
 
-        if (!res.ok) {
-            throw new Error('Yorumlar yüklenemedi');
-        }
+        if (!res.ok) return null;
 
         const data = await res.json();
         return data.success ? data.data : null;
     } catch (error) {
-        console.error('Reviews fetch error:', error);
+        console.error('[reviewService] getProductReviews error:', error);
         return null;
     }
 }

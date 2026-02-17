@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+
 
 export default function TabContent({
   mevsim,
@@ -14,6 +15,12 @@ export default function TabContent({
   jantCaplari,
   handleJantaGoreArama,
 }) {
+
+  const [hoveredTooltip, setHoveredTooltip] = useState(null);
+  const TireWidth = '/assets/img/alastik-lastik-genisligi.png';
+  const TireHeight = '/assets/img/alastik-lastik-yanak-genisligi.png';
+  const TireRim = '/assets/img/alastik-lastik-jant-capi.png';
+
   return (
     <div className="search_tabcontent">
       <div className="search_tabcontent_type">
@@ -62,10 +69,14 @@ export default function TabContent({
                     Mevsim
                   </label>
                   <select
-                    className="form-select"
+                    className="form-select cursor-pointer"
                     id="rimsby_season"
                     name="rimby_season"
                     value={mevsim}
+                    style={{
+                      borderRadius: '0.375rem',
+                      border: '1px solid black'
+                    }}
                     onChange={(e) => setMevsim(e.target.value)}
                   >
                     <option value="1">Tümü</option>
@@ -73,19 +84,46 @@ export default function TabContent({
                     <option value="3">Kış Lastiği</option>
                     <option value="4">4 Mevsim Lastiği</option>
                   </select>
-                </div>
-                <div className="col-4 col-md-2 position-relative mb-4">
+                </div><div
+                  className="col-4 col-md-2 position-relative mb-4"
+                  onMouseEnter={() => setHoveredTooltip('genislik')}
+                  onMouseLeave={() => setHoveredTooltip(null)}
+                >
                   <label
                     htmlFor="rimby_width"
-                    className="form-label text-muted fs-xs"
+                    className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
                     Genişlik
+                    <span style={{ cursor: 'pointer' }}>
+                      <i className="ci-info fs-sm text-muted"></i>
+                    </span>
                   </label>
+                  {hoveredTooltip === 'genislik' && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 9999,
+                      background: '#fff',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                      padding: '12px',
+                      minWidth: '300px',
+                      marginBottom: '4px'
+                    }}>
+                      <img src={TireWidth} alt="Lastik Genişlik" style={{ width: '298px', height: 'auto', display: 'block' }} />
+                    </span>
+                  )}
                   <select
-                    className="form-select"
+                    className="form-select cursor-pointer"
                     id="rimby_width"
                     name="rimby_width"
                     value={selectedGenislik}
+                    style={{
+                      borderRadius: '0.375rem',
+                      border: '1px solid black'
+                    }}
                     onChange={(e) => setSelectedGenislik(e.target.value)}
                   >
                     <option value="">Seçiniz</option>
@@ -96,18 +134,46 @@ export default function TabContent({
                     ))}
                   </select>
                 </div>
-                <div className="col-4 col-md-2 position-relative mb-4">
+                <div
+                  className="col-4 col-md-2 position-relative mb-4"
+                  onMouseEnter={() => setHoveredTooltip('yukseklik')}
+                  onMouseLeave={() => setHoveredTooltip(null)}
+                >
                   <label
                     htmlFor="rimby_height"
-                    className="form-label text-muted fs-xs"
+                    className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
-                    Yükseklik
+                    Yanak
+                    <span style={{ cursor: 'pointer' }}>
+                      <i className="ci-info fs-sm text-muted"></i>
+                    </span>
                   </label>
+                  {hoveredTooltip === 'yukseklik' && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 9999,
+                      background: '#fff',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                      padding: '12px',
+                      minWidth: '300px',
+                      marginBottom: '4px'
+                    }}>
+                      <img src={TireHeight} alt="Lastik Yükseklik" style={{ width: '298px', height: 'auto', display: 'block' }} />
+                    </span>
+                  )}
                   <select
-                    className="form-select"
+                    className="form-select cursor-pointer"
                     id="rimby_height"
                     name="rimby_height"
                     value={selectedYukseklik}
+                    style={{
+                      borderRadius: '0.375rem',
+                      border: '1px solid black'
+                    }}
                     onChange={(e) => setSelectedYukseklik(e.target.value)}
                   >
                     <option value="">Seçiniz</option>
@@ -117,18 +183,46 @@ export default function TabContent({
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="col-4 col-md-3 position-relative mb-4">
+                </div><div
+                  className="col-4 col-md-3 position-relative mb-4"
+                  onMouseEnter={() => setHoveredTooltip('cap')}
+                  onMouseLeave={() => setHoveredTooltip(null)}
+                >
+
                   <label
                     htmlFor="rimby_diameter"
-                    className="form-label text-muted fs-xs"
+                    className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
                     Çap
+                    <span style={{ cursor: 'pointer' }}>
+                      <i className="ci-info fs-sm text-muted"></i>
+                    </span>
                   </label>
+                  {hoveredTooltip === 'cap' && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 9999,
+                      background: '#fff',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                      padding: '12px',
+                      minWidth: '300px',
+                      marginBottom: '4px'
+                    }}>
+                      <img src={TireRim} alt="Lastik Çapı" style={{ width: '298px', height: 'auto', display: 'block' }} />
+                    </span>
+                  )}
                   <select
-                    className="form-select"
+                    className="form-select cursor-pointer"
                     id="rimby_diameter"
                     value={selectedCap}
+                    style={{
+                      borderRadius: '0.375rem',
+                      border: '1px solid black'
+                    }}
                     onChange={(e) => setSelectedCap(e.target.value)}
                   >
                     <option value="">Seçiniz</option>
@@ -142,21 +236,18 @@ export default function TabContent({
               </div>
               <div className="row align-items-end">
                 <div className="col-md-4 position-relative ps-0 pb-3">
-                  <a
-                    className="nav-link fs-xs d-flex text-decoration-underline text-muted justify-content-center justify-content-lg-start"
-                    href="#"
-                    role="button"
-                    data-bs-toggle="modal"
-                    data-bs-target="#tireSize"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const event = new Event('openTireSizeModal');
+                      window.dispatchEvent(event);
+                    }}
+                    className="nav-link fs-xs d-flex text-decoration-underline text-muted justify-content-center justify-content-lg-start bg-transparent border-0 p-0"
                   >
                     Lastik ebatımı nasıl öğrenebilirim?
-                  </a>
+                  </button>
                 </div>
                 <div className="col-md-5 position-relative d-none d-lg-block">
-                  <img
-                    src="/assets/img/home/tyre-search.png"
-                    alt="Site Adı - Resim Adı"
-                  />
                 </div>
                 <div className="col-12 col-md-3 position-relative pb-3">
                   <button

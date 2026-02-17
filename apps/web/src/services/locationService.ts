@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+// apps/web/src/services/locationService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface City {
     _id: string;
@@ -23,20 +24,35 @@ export interface Neighborhood {
 
 export const locationService = {
     async getCities(): Promise<City[]> {
-        const res = await fetch(`${API_URL}/location/cities`);
-        const data = await res.json();
-        return data.success ? data.data : [];
+        try {
+            const res = await fetch(API_ENDPOINTS.location.cities());
+            const data = await res.json();
+            return data.success ? data.data : [];
+        } catch (error) {
+            console.error('[locationService] getCities error:', error);
+            return [];
+        }
     },
 
     async getDistricts(cityId: string): Promise<District[]> {
-        const res = await fetch(`${API_URL}/location/districts/${cityId}`);
-        const data = await res.json();
-        return data.success ? data.data : [];
+        try {
+            const res = await fetch(API_ENDPOINTS.location.districts(cityId));
+            const data = await res.json();
+            return data.success ? data.data : [];
+        } catch (error) {
+            console.error('[locationService] getDistricts error:', error);
+            return [];
+        }
     },
 
     async getNeighborhoods(districtId: string): Promise<Neighborhood[]> {
-        const res = await fetch(`${API_URL}/location/neighborhoods/${districtId}`);
-        const data = await res.json();
-        return data.success ? data.data : [];
+        try {
+            const res = await fetch(API_ENDPOINTS.location.neighborhoods(districtId));
+            const data = await res.json();
+            return data.success ? data.data : [];
+        } catch (error) {
+            console.error('[locationService] getNeighborhoods error:', error);
+            return [];
+        }
     }
 };

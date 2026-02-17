@@ -53,7 +53,7 @@ router.get('/key/:key', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const slider = await Slider.findById(id);
+        const slider = await Slider.findById(id).lean();
 
         if (!slider) {
             return res.status(404).json({
@@ -61,7 +61,11 @@ router.get('/:id', async (req, res) => {
                 message: 'Slider bulunamadı'
             });
         }
-
+        if (slider.sliders && slider.sliders.length > 0) {
+            slider.sliders = slider.sliders
+                .filter(s => s.isActive !== false)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
         res.json({
             success: true,
             data: slider

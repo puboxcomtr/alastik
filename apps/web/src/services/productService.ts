@@ -1,5 +1,5 @@
 // apps/web/src/services/productService.ts
-import { api } from '@lib/api';
+import { API_ENDPOINTS } from '@/src/config/api';
 import type { ProductFilterParams, ProductFilterResponse } from '@src/types/products';
 
 export async function filterProducts(params: ProductFilterParams): Promise<ProductFilterResponse | null> {
@@ -18,96 +18,106 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
         if (params.yukEndeksi) queryParams.append('yukEndeksi', params.yukEndeksi);
         if (params.hizEndeksi) queryParams.append('hizEndeksi', params.hizEndeksi);
         if (params.uretim) queryParams.append('uretim', params.uretim);
-        // Jant parametreleri
         if (params.jantCap) queryParams.append('jantCap', params.jantCap);
         if (params.bijon) queryParams.append('bijon', params.bijon);
-        if (params.fiyatMin) queryParams.append('fiyatMin', params.fiyatMin.toString());
         if (params.fiyatMin) queryParams.append('fiyatMin', params.fiyatMin.toString());
         if (params.fiyatMax) queryParams.append('fiyatMax', params.fiyatMax.toString());
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
 
-        const url = `/products/filter?${queryParams.toString()}`;
-        const result = await api.get<ProductFilterResponse>(url);
-        return result.success && result.data ? result.data : null;
+        const res = await fetch(`${API_ENDPOINTS.products.filter()}?${queryParams.toString()}`, {
+            cache: 'no-store'
+        });
+
+        if (!res.ok) return null;
+
+        const result = await res.json();
+        return result.success ? result.data : null;
     } catch (error) {
+        console.error('[productService] filterProducts error:', error);
         return null;
     }
 }
 
 export async function getRandomProducts(limit: number = 10) {
     try {
-        const url = `/products/filter?limit=${limit}`;
-        const result = await api.get<ProductFilterResponse>(url);
+        const res = await fetch(`${API_ENDPOINTS.products.filter()}?limit=${limit}`, {
+            cache: 'no-store'
+        });
+
+        if (!res.ok) return [];
+
+        const result = await res.json();
         return result.success && result.data?.products ? result.data.products : [];
     } catch (error) {
+        console.error('[productService] getRandomProducts error:', error);
         return [];
     }
 }
 
-/**
- * Ürün detayı - slug ile getir
- */
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(slug: string) {
     try {
-        const result = await api.get<{ success: boolean; data: Product | null }>(`/products/${encodeURIComponent(slug)}`);
+        const res = await fetch(API_ENDPOINTS.products.detail(slug), {
+            cache: 'no-store'
+        });
+
+        if (!res.ok) return null;
+
+        const result = await res.json();
         return result.success ? result.data : null;
     } catch (error) {
-        console.error('Ürün yükleme hatası:', error);
-        return null;
-    }
-}
-/**
- * Ürün detayı - Wheelsize Verileri
- */
-export async function getProductWheelSize(slug: string) {
-    try {
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/products/${slug}/wheelsize`,
-            { cache: 'no-store' }
-        );
-        const data = await response.json();
-        return data.success ? data.data : null;
-    } catch (error) {
-        console.error('WheelSize fetch error:', error);
+        console.error('[productService] getProductBySlug error:', error);
         return null;
     }
 }
 
-/**
- * Lastik ebadına göre uyumlu araçları getir
- */
-export async function getCompatibleVehicles(width: number, aspectRatio: number, rimDiameter: number) {
+export async function getProductWheelSize(slug: string) {
     try {
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/wheelsize/by-tire?width=${width}&aspect_ratio=${aspectRatio}&rim_diameter=${rimDiameter}`,
-            { next: { revalidate: 3600 } }
-        );
-        const data = await response.json();
-        return data.success ? data.data : null;
+        const res = await fetch(API_ENDPOINTS.products.wheelSize(slug), {
+            cache: 'no-store'
+        });
+
+        if (!res.ok) return null;
+
+        const result = await res.json();
+        return result.success ? result.data : null;
     } catch (error) {
-        console.error('Compatible vehicles error:', error);
+        console.error('[productService] getProductWheelSize error:', error);
         return null;
     }
 }
-/**
- * Lastik modeline göre uyumlu blog yazılarını getir.
- */
+
+export async function getCompatibleVehicles(width: number, aspectRatio: number, rimDiameter: number) {
+    try {
+        const res = await fetch(
+            `${API_ENDPOINTS.wheelsize.byTire()}?width=${width}&aspect_ratio=${aspectRatio}&rim_diameter=${rimDiameter}`,
+            { next: { revalidate: 3600 } }
+        );
+
+        if (!res.ok) return null;
+
+        const result = await res.json();
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error('[productService] getCompatibleVehicles error:', error);
+        return null;
+    }
+}
+
 export async function getRelatedBlogs(pattern: string): Promise<any[]> {
     if (!pattern) return [];
 
     try {
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/blogs/by-pattern/${encodeURIComponent(pattern)}`,
-            { cache: 'no-store' }
-        );
+        const res = await fetch(API_ENDPOINTS.blogs.byPattern(pattern), {
+            cache: 'no-store'
+        });
 
-        if (!response.ok) return [];
+        if (!res.ok) return [];
 
-        const data = await response.json();
-        return data.success ? data.data : [];
+        const result = await res.json();
+        return result.success ? result.data : [];
     } catch (error) {
-        console.error('Related blogs fetch error:', error);
+        console.error('[productService] getRelatedBlogs error:', error);
         return [];
     }
 }

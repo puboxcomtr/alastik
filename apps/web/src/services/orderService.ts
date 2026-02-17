@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+// apps/web/src/services/orderService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface OrderItem {
     productId?: string;
@@ -34,7 +35,7 @@ export interface CreateOrderData {
 export const orderService = {
     async createOrder(data: CreateOrderData) {
         try {
-            const res = await fetch(`${API_URL}/order`, {
+            const res = await fetch(API_ENDPOINTS.order.create(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -42,40 +43,40 @@ export const orderService = {
             const result = await res.json();
             return result.success ? result.data : null;
         } catch (error) {
-            console.error('Sipariş oluşturma hatası:', error);
+            console.error('[orderService] createOrder error:', error);
             return null;
         }
     },
 
     async getUserOrders(userId: string) {
         try {
-            const res = await fetch(`${API_URL}/order/user/${userId}`);
+            const res = await fetch(API_ENDPOINTS.order.userOrders(userId));
             const result = await res.json();
             return result.success ? result.data : [];
         } catch (error) {
-            console.error('Siparişler yükleme hatası:', error);
+            console.error('[orderService] getUserOrders error:', error);
             return [];
         }
     },
 
     async getOrder(orderId: string) {
         try {
-            const res = await fetch(`${API_URL}/order/${orderId}`);
+            const res = await fetch(API_ENDPOINTS.order.detail(orderId));
             const result = await res.json();
             return result.success ? result.data : null;
         } catch (error) {
-            console.error('Sipariş detay hatası:', error);
+            console.error('[orderService] getOrder error:', error);
             return null;
         }
     },
 
     async getOrderByNumber(orderNumber: string) {
         try {
-            const res = await fetch(`${API_URL}/order/number/${orderNumber}`);
+            const res = await fetch(API_ENDPOINTS.order.byNumber(orderNumber));
             const result = await res.json();
             return result.success ? result.data : null;
         } catch (error) {
-            console.error('Sipariş sorgulama hatası:', error);
+            console.error('[orderService] getOrderByNumber error:', error);
             return null;
         }
     }

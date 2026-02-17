@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -38,8 +40,6 @@ type ShowcaseDataType = {
 type Props = {
     showcaseData: ShowcaseDataType | null
 }
-
-const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 const EditShowcaseForm = ({ showcaseData }: Props) => {
     const router = useRouter()
@@ -92,11 +92,11 @@ const EditShowcaseForm = ({ showcaseData }: Props) => {
         setSearchPerformed(true)
 
         try {
-            const response = await fetch(`${baseUrl}/products?search=${encodeURIComponent(searchQuery)}`)
+            const result = await fetchAPI(
+                `${API_ENDPOINTS.products.list()}?search=${encodeURIComponent(searchQuery)}`,
+                { cache: 'no-store' }
+            )
 
-            if (!response.ok) throw new Error('Ürünler yüklenirken hata oluştu')
-
-            const result = await response.json()
             const products = (result.data || []).map((p: any) => ({
                 id: p.id,
                 name: p.name,
@@ -159,19 +159,13 @@ const EditShowcaseForm = ({ showcaseData }: Props) => {
         setLoading(true)
 
         try {
-            const response = await fetch(`${baseUrl}/showcases/${showcaseData.id}`, {
+            await fetchAPI(API_ENDPOINTS.showcases.detail(showcaseData.id), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
                     products: selectedProducts.map(p => p.id)
                 })
             })
-
-            if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.message || 'Vitrin güncellenirken hata oluştu')
-            }
 
             toast.success('Vitrin başarıyla güncellendi')
             router.push('/tr/apps/design/showcase/list')

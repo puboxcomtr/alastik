@@ -567,13 +567,14 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                 const newBlog = await createBlog(blogData)
                 savedBlogId = newBlog._id || newBlog.data?._id
                 toast.success('Blog oluşturuldu')
+                if (savedBlogId) {
+                    router.replace(`/tr/apps/blogs/edit/${savedBlogId}`)
+                }
             }
 
             if (savedBlogId) {
                 localStorage.setItem(`blog-editor-mode-${savedBlogId}`, isHtmlMode ? 'html' : 'editor')
             }
-
-            router.push('/tr/apps/blogs/list')
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message)

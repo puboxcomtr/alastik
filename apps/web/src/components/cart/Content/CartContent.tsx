@@ -5,26 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Tooltip } from "@mui/material";
 
+import { getImageUrl } from '@/src/config/api';
+import { buildProductUrl } from '@/src/config/routes';
+
 // Context
 import { useBrands } from '@/src/context/BrandsContext';
 
-interface CartItem {
-    productKey: string;
-    productName: string;
-    productImage: string | null;
-    productSlug: string;
-    brandName: string;
-    quantity: number;
-    unitPrice: number;
-    originalPrice?: number;
-    kdvRate: number;
-}
-
-interface CartContentProps {
-    items: CartItem[];
-    onUpdateQuantity: (productKey: string, quantity: number) => void;
-    onRemoveItem: (productKey: string) => void;
-}
+import { CartItem, CartContentProps } from '@/src/types/cart';
 
 export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: CartContentProps) {
 
@@ -41,7 +28,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                             <div className="row align-items-center">
                                 {/* Resim */}
                                 <div className="col-3 col-md-2">
-                                    <Link href={`/urun/${item.productSlug}`}>
+                                    <Link href={buildProductUrl(item.productSlug)}>
                                         {item.productImage ? (
                                             <Image
                                                 src={item.productImage}
@@ -79,7 +66,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         if (logoUrl && !logoUrl.includes('gorsel-bulunamadi')) {
                                             return (
                                                 <Image
-                                                    src={`https://api.alastik.com${logoUrl}`}
+                                                    src={getImageUrl(logoUrl)}
                                                     alt={item.brandName}
                                                     width={80}
                                                     height={30}

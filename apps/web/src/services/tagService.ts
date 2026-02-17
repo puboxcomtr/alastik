@@ -1,6 +1,5 @@
 // apps/web/src/services/tagService.ts
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.alastik.com/api';
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface WebTag {
     _id: string;
@@ -29,7 +28,6 @@ export interface TagProductsResponse {
     };
 }
 
-// Filtre parametreleri için interface
 export interface TagFilterParams {
     marka?: string;
     arac?: string;
@@ -43,18 +41,13 @@ export interface TagFilterParams {
     fiyatMax?: number;
 }
 
-/**
- * Slug ile tag getir
- */
 async function getTagBySlug(slug: string): Promise<WebTag | null> {
     try {
-        const response = await fetch(`${API_BASE_URL}/tags/${slug}`, {
+        const response = await fetch(API_ENDPOINTS.tags.detail(slug), {
             next: { revalidate: 60 }
         });
 
-        if (!response.ok) {
-            return null;
-        }
+        if (!response.ok) return null;
 
         const result = await response.json();
         return result.success ? result.data : null;
@@ -64,9 +57,6 @@ async function getTagBySlug(slug: string): Promise<WebTag | null> {
     }
 }
 
-/**
- * Tag'e ait ürünleri getir
- */
 async function getTagProducts(
     slug: string,
     page: number = 1,
@@ -74,12 +64,10 @@ async function getTagProducts(
     filters?: TagFilterParams
 ): Promise<TagProductsResponse | null> {
     try {
-        // URL parametrelerini oluştur
         const params = new URLSearchParams();
         params.append('page', page.toString());
         params.append('limit', limit.toString());
 
-        // Filtre parametrelerini ekle
         if (filters?.marka) params.append('marka', filters.marka);
         if (filters?.arac) params.append('arac', filters.arac);
         if (filters?.oem) params.append('oem', filters.oem);
@@ -92,13 +80,11 @@ async function getTagProducts(
         if (filters?.fiyatMax) params.append('fiyatMax', filters.fiyatMax.toString());
 
         const response = await fetch(
-            `${API_BASE_URL}/tags/${slug}/products?${params.toString()}`,
+            `${API_ENDPOINTS.tags.products(slug)}?${params.toString()}`,
             { next: { revalidate: 60 } }
         );
 
-        if (!response.ok) {
-            return null;
-        }
+        if (!response.ok) return null;
 
         const result = await response.json();
         return result.success ? result.data : null;
@@ -108,18 +94,17 @@ async function getTagProducts(
     }
 }
 
-/**
- * Lastik ebatına göre tag seoUrl bul
- */
-async function getTireSizeTag(width: number, aspectRatio: number, diameter: number): Promise<{ seoUrl: string; title: string } | null> {
+async function getTireSizeTag(
+    width: number,
+    aspectRatio: number,
+    diameter: number
+): Promise<{ seoUrl: string; title: string } | null> {
     try {
         const response = await fetch(
-            `${API_BASE_URL}/tags/tire-size?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
+            `${API_ENDPOINTS.tags.tireSize()}?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
         );
 
-        if (!response.ok) {
-            return null;
-        }
+        if (!response.ok) return null;
 
         const result = await response.json();
         return result.success ? result.data : null;
@@ -129,38 +114,34 @@ async function getTireSizeTag(width: number, aspectRatio: number, diameter: numb
     }
 }
 
-/**
- * Jant ebatına göre tag seoUrl bul
- */
 async function getRimPcdTag(pcd: string): Promise<{ seoUrl: string; title: string } | null> {
     try {
-        const response = await fetch(`${API_BASE_URL}/tags/rim-pcd?pcd=${pcd}`, {
-            next: { revalidate: 60 }
-        });
+        const response = await fetch(
+            `${API_ENDPOINTS.tags.rimPcd()}?pcd=${pcd}`,
+            { next: { revalidate: 60 } }
+        );
 
-        if (!response.ok) {
-            return null;
-        }
+        if (!response.ok) return null;
 
         const result = await response.json();
         return result.success ? result.data : null;
     } catch (error) {
-        console.error('getRimPcdTag error:', error);
+        console.error('[tagService] getRimPcdTag error:', error);
         return null;
     }
 }
-/**
- * Kar paleti ebatına göre tag seoUrl bul
- */
-async function getChainSizeTag(width: number, aspectRatio: number, diameter: number): Promise<{ seoUrl: string; title: string } | null> {
+
+async function getChainSizeTag(
+    width: number,
+    aspectRatio: number,
+    diameter: number
+): Promise<{ seoUrl: string; title: string } | null> {
     try {
         const response = await fetch(
-            `${API_BASE_URL}/tags/chain-size?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
+            `${API_ENDPOINTS.tags.chainSize()}?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
         );
 
-        if (!response.ok) {
-            return null;
-        }
+        if (!response.ok) return null;
 
         const result = await response.json();
         return result.success ? result.data : null;
@@ -169,6 +150,7 @@ async function getChainSizeTag(width: number, aspectRatio: number, diameter: num
         return null;
     }
 }
+
 const tagService = {
     getTagBySlug,
     getTagProducts,

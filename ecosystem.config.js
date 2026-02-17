@@ -4,7 +4,7 @@ module.exports = {
       name: 'alastik-api',
       script: 'src/server.js',
       cwd: '/var/www/alastik/apps/api',
-      instances: 2,
+      instances: 1,
       exec_mode: 'cluster',
       env_production: { NODE_ENV: 'production', PORT: 3082 }
     },

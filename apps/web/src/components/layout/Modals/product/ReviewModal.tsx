@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { Modal, Box, Rating } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useAuth, getToken } from '@/src/hooks/Theme/useAuth';
+import { API_ENDPOINTS } from '@/src/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
 interface ReviewModalData {
     productKey: string;
     productType: string;
@@ -93,7 +93,7 @@ export default function ReviewModal() {
     // Garajdan kilometre cek
     const fetchGarageMileage = async () => {
         try {
-            const res = await fetch(`${API_URL}/user/vehicles`, {
+            const res = await fetch(API_ENDPOINTS.user.vehicles(), {
                 headers: {
                     'Authorization': `Bearer ${getToken()}`
                 }
@@ -159,7 +159,7 @@ export default function ReviewModal() {
 
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/reviews`, {
+            const res = await fetch(API_ENDPOINTS.reviews.create(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,9 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Wheel-Size API Service
-// Bu servis backend API'si ile iletişim kurar
 
 // Backend API Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+import { API_ENDPOINTS } from '@/src/config/api';
+
+const getApiBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+};
 
 // API Response Tipleri
 export interface ApiResponse<T> {
@@ -123,17 +129,17 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
       });
     }
     const queryString = searchParams.toString();
-    const url = `${API_BASE_URL}${endpoint}${queryString ? `?${queryString}` : ''}`;
-    
+    const url = `${getApiBaseUrl()}${endpoint}${queryString ? `?${queryString}` : ''}`;
+
     console.log('🌐 [WHEEL-SIZE-API] İstek gönderiliyor:', url);
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
       // Timeout ekle
-      signal: AbortSignal.timeout(10000) // 10 saniye timeout
+      signal: AbortSignal.timeout(10000)
     });
 
     if (!response.ok) {
@@ -147,11 +153,11 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ [WHEEL-SIZE-API] Yanıt alındı:', typeof data, data.length || Object.keys(data).length, 'kayıt');
     }
-    
+
     return data;
   } catch (error) {
     console.error('❌ [WHEEL-SIZE-API] API Call Error:', error);
-    
+
     // Network hatası kontrolü
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
       return {
@@ -160,7 +166,7 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
         mesaj: 'Bağlantı hatası'
       };
     }
-    
+
     return {
       basarili: false,
       hata: error instanceof Error ? error.message : 'Bilinmeyen hata',

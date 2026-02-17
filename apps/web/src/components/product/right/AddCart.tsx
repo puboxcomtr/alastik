@@ -11,6 +11,7 @@ import { useCart } from '@/src/context/CartContext';
 
 import { getProductPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
 
+import { getImageUrl } from '@/src/config/api';
 
 interface CartProps {
     product: Product;
@@ -43,7 +44,7 @@ export default function Cart({ product }: CartProps) {
     const brandName = product.diaData.marka || '';
     const brandInfo = getBrand(brandName);
     const brandLogo = brandInfo?.logo && !brandInfo.logo.includes('gorsel-bulunamadi')
-        ? `https://api.alastik.com${brandInfo.logo}`
+        ? getImageUrl(brandInfo.logo)
         : null;
 
     return (

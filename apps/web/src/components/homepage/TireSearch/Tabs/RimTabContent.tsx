@@ -66,9 +66,13 @@ export default function RimTabContent({
                                         Jant Çapı
                                     </label>
                                     <select
-                                        className="form-select"
+                                        className="form-select cursor-pointer"
                                         id="rim_diameter"
                                         value={selectedCap}
+                                        style={{
+                                            borderRadius: '0.375rem',
+                                            border: '1px solid black'
+                                        }}
                                         onChange={(e) => setSelectedCap(e.target.value)}
                                         required
                                     >
@@ -85,9 +89,13 @@ export default function RimTabContent({
                                         Bijon Aralığı
                                     </label>
                                     <select
-                                        className="form-select"
+                                        className="form-select cursor-pointer"
                                         id="rim_pcd"
                                         value={selectedBijon}
+                                        style={{
+                                            borderRadius: '0.375rem',
+                                            border: '1px solid black'
+                                        }}
                                         onChange={(e) => setSelectedBijon(e.target.value)}
                                     >
                                         <option value="">Tümü</option>
@@ -100,25 +108,7 @@ export default function RimTabContent({
                                 </div>
                             </div>
                             <div className="row align-items-end">
-                                <div className="col-md-4 position-relative ps-0 pb-3">
-                                    <a
-                                        href="#"
-                                        className="nav-link fs-xs d-flex text-decoration-underline text-muted justify-content-center justify-content-lg-start"
-                                        role="button"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#rimSize"
-                                    >
-                                        Jant ebatımı nasıl öğrenebilirim?
-                                    </a>
-                                </div>
-                                <div className="col-md-5 position-relative d-none d-lg-block">
-                                    {!imageError && (
-                                        <img
-                                            src="/assets/img/home/tyre-search.png"
-                                            alt="Jant Arama"
-                                            onError={() => setImageError(true)}
-                                        />
-                                    )}
+                                <div className="col-md-9 position-relative d-none d-lg-block">
                                 </div>
                                 <div className="col-12 col-md-3 position-relative pb-3">
                                     <button type="submit" className="btn btn-primary rounded-2 w-100">

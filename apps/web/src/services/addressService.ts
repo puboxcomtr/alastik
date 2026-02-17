@@ -1,16 +1,16 @@
+// apps/web/src/services/addressService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 import { Address, AddressFormData } from '@/src/types/adress';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-
 export const addressService = {
-    // Kullanıcı adreslerini getir
+    // Kullanici adreslerini getir
     async getUserAddresses(userId: string): Promise<Address[]> {
         try {
-            const res = await fetch(`${API_URL}/address/user/${userId}`);
+            const res = await fetch(API_ENDPOINTS.address.list(userId));
             const data = await res.json();
             return data.success ? data.data : [];
         } catch (error) {
-            console.error('Adres yükleme hatası:', error);
+            console.error('[addressService] getUserAddresses error:', error);
             return [];
         }
     },
@@ -18,11 +18,11 @@ export const addressService = {
     // Tek adres getir
     async getAddress(addressId: string): Promise<Address | null> {
         try {
-            const res = await fetch(`${API_URL}/address/${addressId}`);
+            const res = await fetch(API_ENDPOINTS.address.detail(addressId));
             const data = await res.json();
             return data.success ? data.data : null;
         } catch (error) {
-            console.error('Adres getirme hatası:', error);
+            console.error('[addressService] getAddress error:', error);
             return null;
         }
     },
@@ -30,7 +30,7 @@ export const addressService = {
     // Adres ekle
     async createAddress(userId: string, addressData: AddressFormData): Promise<Address | null> {
         try {
-            const res = await fetch(`${API_URL}/address`, {
+            const res = await fetch(API_ENDPOINTS.address.create(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...addressData, userId })
@@ -38,15 +38,15 @@ export const addressService = {
             const data = await res.json();
             return data.success ? data.data : null;
         } catch (error) {
-            console.error('Adres ekleme hatası:', error);
+            console.error('[addressService] createAddress error:', error);
             return null;
         }
     },
 
-    // Adres güncelle
+    // Adres guncelle
     async updateAddress(addressId: string, addressData: Partial<AddressFormData>): Promise<Address | null> {
         try {
-            const res = await fetch(`${API_URL}/address/${addressId}`, {
+            const res = await fetch(API_ENDPOINTS.address.update(addressId), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(addressData)
@@ -54,7 +54,7 @@ export const addressService = {
             const data = await res.json();
             return data.success ? data.data : null;
         } catch (error) {
-            console.error('Adres güncelleme hatası:', error);
+            console.error('[addressService] updateAddress error:', error);
             return null;
         }
     },
@@ -62,21 +62,21 @@ export const addressService = {
     // Adres sil
     async deleteAddress(addressId: string): Promise<boolean> {
         try {
-            const res = await fetch(`${API_URL}/address/${addressId}`, {
+            const res = await fetch(API_ENDPOINTS.address.delete(addressId), {
                 method: 'DELETE'
             });
             const data = await res.json();
             return data.success;
         } catch (error) {
-            console.error('Adres silme hatası:', error);
+            console.error('[addressService] deleteAddress error:', error);
             return false;
         }
     },
 
-    // Varsayılan adres yap
+    // Varsayilan adres yap
     async setDefaultAddress(addressId: string): Promise<boolean> {
         try {
-            const res = await fetch(`${API_URL}/address/${addressId}`, {
+            const res = await fetch(API_ENDPOINTS.address.update(addressId), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isDefault: true })
@@ -84,7 +84,7 @@ export const addressService = {
             const data = await res.json();
             return data.success;
         } catch (error) {
-            console.error('Varsayılan adres hatası:', error);
+            console.error('[addressService] setDefaultAddress error:', error);
             return false;
         }
     }

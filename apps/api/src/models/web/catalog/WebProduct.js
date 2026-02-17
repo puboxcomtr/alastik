@@ -212,7 +212,10 @@ const customDataSchema = new mongoose.Schema({
     // Meta bilgiler
     isNew: { type: Boolean, default: false },
     isBestSeller: { type: Boolean, default: false },
-    isFeatured: { type: Boolean, default: false }
+    reviewStats: {
+        averageRating: { type: Number, default: 0 },
+        reviewCount: { type: Number, default: 0 }
+    }
 }, { _id: false });
 
 // Senkronizasyon Bilgi Schema

@@ -1,25 +1,24 @@
 const axios = require('axios');
+const fs = require('fs');
 
-axios.post('https://tatkoapi.tatko1927.com:28454/v6', {
-    UserName: '120.34.20270',
-    Password: 'Artlastik2561',
+axios.post('https://tatkoapi.tatko1927.com:28454/v6/api_1038/APIPortalStokArama', {
+    UserName: 'ART.API',
+    Password: 'm-VkE&*e*L;s),q4',
     CompanyCode: 'TATKOTEST',
     stokCode: ''
-}, { 
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
+}, {
+    timeout: 60000,
+    headers: { 'Content-Type': 'application/json' }
 })
-.then(res => {
-    console.log('BASARILI!');
-    console.log('Yanit:', JSON.stringify(res.data, null, 2));
-})
-.catch(err => {
-    if (err.response) {
-        console.log('HTTP', err.response.status);
-        console.log('Yanit:', JSON.stringify(err.response.data, null, 2));
-    } else {
-        console.log('BAGLANTI HATASI:', err.message);
-    }
-});
+    .then(res => {
+        const raw = res.data.Sonuc;
+        const sonuclar = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+        console.log('Toplam Ürün:', sonuclar.length);
+        console.log('\nTüm Veriler:');
+        console.log(JSON.stringify(sonuclar, null, 2));
+
+        fs.writeFileSync('/tmp/tatko_stok.json', JSON.stringify(sonuclar, null, 2));
+        console.log('\n/tmp/tatko_stok.json dosyasına kaydedildi.');
+    })
+    .catch(err => console.log('HATA:', err.message));

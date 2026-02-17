@@ -26,10 +26,9 @@ import { useCart } from '@/src/context/CartContext';
 import { ROUTES } from '@/src/config/routes';
 
 interface ActionButtonsProps {
-    setCartOpen: (open: boolean) => void;
 }
 
-export default function ActionButtons({ setCartOpen }: ActionButtonsProps) {
+export default function ActionButtons() {
     const { totals } = useCart();
     const cartItemCount = totals.itemCount;
 

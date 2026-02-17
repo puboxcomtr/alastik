@@ -1,6 +1,5 @@
 // apps/web/src/services/wheelSizeService.ts
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.alastik.com/api';
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface WheelSizeTireInfo {
     tire: string;
@@ -10,6 +9,11 @@ export interface WheelSizeTireInfo {
     tire_construction?: string;
     load_index?: number;
     speed_index?: string;
+    tire_pressure?: {
+        bar: number;
+        psi: number;
+        kPa: number;
+    } | null;
 }
 
 export interface WheelData {
@@ -51,22 +55,21 @@ export interface TireOption {
     speedIndex?: string;
     isStock: boolean;
     isWinter: boolean;
+    pressure?: {
+        bar: number;
+        psi: number;
+    } | null;
 }
 
 export type TirePosition = 'front' | 'rear' | 'both';
 
 export interface GroupedTires {
-    front: TireOption[];    
-    rear: TireOption[];     
+    front: TireOption[];
+    rear: TireOption[];
     both: TireOption[];
 }
+
 class WheelSizeService {
-    private baseUrl: string;
-
-    constructor() {
-        this.baseUrl = `${API_BASE_URL}/wheelsize`;
-    }
-
     async getVehicleDetails(
         make: string,
         model: string,
@@ -80,10 +83,10 @@ class WheelSizeService {
             modification
         });
 
-        const response = await fetch(`${this.baseUrl}/vehicle-details?${params}`);
+        const response = await fetch(`${API_ENDPOINTS.wheelsize.vehicleDetails()}?${params}`);
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
+            throw new Error(`API Hatası: ${response.status}`);
         }
 
         const result = await response.json();
@@ -115,7 +118,6 @@ class WheelSizeService {
             const hasRear = rear?.tire && rear.tire_width && rear.tire !== front.tire;
 
             if (hasRear) {
-                // Staggered setup - ön ve arka farklı
                 if (!frontMap.has(frontKey)) {
                     frontMap.set(frontKey, {
                         id: `front-${frontKey}`,
@@ -127,7 +129,8 @@ class WheelSizeService {
                         loadIndex: front.load_index,
                         speedIndex: front.speed_index,
                         isStock: wheel.is_stock || false,
-                        isWinter: wheel.is_recommended_for_winter || false
+                        isWinter: wheel.is_recommended_for_winter || false,
+                        pressure: front.tire_pressure ? { bar: front.tire_pressure.bar, psi: front.tire_pressure.psi } : null
                     });
                 }
 
@@ -143,11 +146,11 @@ class WheelSizeService {
                         loadIndex: rear.load_index,
                         speedIndex: rear.speed_index,
                         isStock: wheel.is_stock || false,
-                        isWinter: wheel.is_recommended_for_winter || false
+                        isWinter: wheel.is_recommended_for_winter || false,
+                        pressure: rear.tire_pressure ? { bar: rear.tire_pressure.bar, psi: rear.tire_pressure.psi } : null
                     });
                 }
             } else {
-                // Ön ve arka aynı
                 if (!bothMap.has(frontKey)) {
                     bothMap.set(frontKey, {
                         id: `both-${frontKey}`,
@@ -159,7 +162,8 @@ class WheelSizeService {
                         loadIndex: front.load_index,
                         speedIndex: front.speed_index,
                         isStock: wheel.is_stock || false,
-                        isWinter: wheel.is_recommended_for_winter || false
+                        isWinter: wheel.is_recommended_for_winter || false,
+                        pressure: front.tire_pressure ? { bar: front.tire_pressure.bar, psi: front.tire_pressure.psi } : null
                     });
                 }
             }

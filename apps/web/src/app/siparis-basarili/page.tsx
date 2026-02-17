@@ -1,64 +1,51 @@
 'use client';
-
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Container, Row, Col } from 'react-bootstrap'
-import { CheckCircle, Package, CreditCard, Home } from 'lucide-react';
+import { Container, Row, Col } from 'react-bootstrap';
+import { Package } from 'lucide-react';
 import { orderService } from '@/src/services/orderService';
+import { ROUTES } from '@/src/config/routes';
+
+import { Order } from '@/src/types/order';
+
 
 // Components
 import OrderSummary from '@/src/components/payment/Success/OrderSummary';
 import Coupon from '@/src/components/payment/Success/Coupon';
 import PaymentProducts from '@/src/components/payment/Success/PaymentProducts';
 
-interface Order {
-    orderNumber: string;
-    pricing: {
-        subtotal: number;
-        total: number;
-    };
-    payment: {
-        method: string;
-        bankTransfer?: {
-            referenceCode: string;
-        };
-    };
-    items: Array<{
-        name: string;
-        quantity: number;
-        unitPrice: number;
-        totalPrice: number;
-    }>;
-}
 
 export default function OrderSuccessPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const orderNumber = searchParams.get('order');
     const [order, setOrder] = useState<Order | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [isValidAccess, setIsValidAccess] = useState(false);
 
     useEffect(() => {
+        // Referrer kontrolü
+        const referrer = document.referrer;
+        const isFromOurSite = referrer.includes('alastik.com') || referrer.includes('localhost');
+
+        if (!isFromOurSite && !searchParams.get('order')) {
+            router.push(ROUTES.HOME);
+            return;
+        }
+
+        setIsValidAccess(true);
+
+        // Sipariş verilerini çek
         if (orderNumber) {
             orderService.getOrderByNumber(orderNumber).then(data => {
                 setOrder(data);
-                setLoading(false);
             });
-        } else {
-            setLoading(false);
         }
-    }, [orderNumber]);
+    }, [orderNumber, router, searchParams]);
 
-    if (loading) {
-        return (
-            <Container className="py-5 text-center">
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Yükleniyor...</span>
-                </div>
-            </Container>
-        );
+    if (!isValidAccess) {
+        return null;
     }
-
     if (!order) {
         return (
             <Container className="py-5">
@@ -68,7 +55,7 @@ export default function OrderSuccessPage() {
                     </div>
                     <h2>Sipariş Bulunamadı</h2>
                     <p className="text-muted">Sipariş bilgilerine ulaşılamadı.</p>
-                    <Link href="/" className="btn btn-primary mt-3">
+                    <Link href={ROUTES.HOME} className="btn btn-primary mt-3">
                         Anasayfaya Dön
                     </Link>
                 </div>

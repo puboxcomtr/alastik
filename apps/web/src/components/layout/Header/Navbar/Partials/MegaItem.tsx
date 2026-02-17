@@ -8,7 +8,7 @@ import Link from 'next/link';
 interface MegaItemProps {
     id: string;
     title: string;
-    href?: string; 
+    href?: string;
     children: React.ReactNode;
 }
 
@@ -21,7 +21,7 @@ export default function MegaItem({ id, title, href, children }: MegaItemProps) {
             show={show}
             onMouseEnter={() => setShow(true)}
             onMouseLeave={() => setShow(false)}
-            className="nav-item dropdown"
+            className="nav-item dropdown position-static"
         >
             {href && href !== '#' ? (
                 <Link href={href} className="nav-link text-white dropdown-toggle">

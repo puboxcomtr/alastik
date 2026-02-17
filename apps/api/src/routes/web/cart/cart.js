@@ -4,14 +4,68 @@ const WebCart = require('../../../models/web/cart/WebCart');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 // Sepeti getir
+// Sepeti getir (fiyatları DB'den güncel çeker)
 router.get('/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;
 
         let cart = await WebCart.findOne({ sessionId });
 
-        if (!cart) {
-            cart = { sessionId, items: [], totals: { subtotal: 0, kdv: 0, total: 0, itemCount: 0 } };
+        if (!cart || cart.items.length === 0) {
+            return res.json({
+                success: true,
+                data: { sessionId, items: [], totals: { subtotal: 0, kdv: 0, total: 0, itemCount: 0 } }
+            });
+        }
+        const productKeys = cart.items.map(item => item.productKey);
+        const products = await WebProduct.find({ _key: { $in: productKeys } });
+        const productMap = new Map(products.map(p => [p._key, p]));
+
+        let hasChanges = false;
+        const updatedItems = [];
+
+        for (const item of cart.items) {
+            const product = productMap.get(item.productKey);
+            if (!product || product.diaData?.durum !== 'A') {
+                hasChanges = true;
+                continue;
+            }
+
+            const currentPrice = product.diaData?.m_birimler?.[0]?.fiyat4 || 0;
+            const currentOriginalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
+            const currentImage = product.diaData?.m_resimler?.[0]?.aws_url || null;
+            const currentName = product.diaData?.aciklama || '';
+            const currentBrand = product.diaData?.marka || '';
+            const currentSlug = product.customData?.seoUrl || item.productKey;
+            if (currentPrice <= 0) {
+                hasChanges = true;
+                continue;
+            }
+            if (
+                item.unitPrice !== currentPrice ||
+                item.originalPrice !== currentOriginalPrice ||
+                item.productImage !== currentImage ||
+                item.productName !== currentName ||
+                item.brandName !== currentBrand ||
+                item.productSlug !== currentSlug
+            ) {
+                hasChanges = true;
+            }
+
+            updatedItems.push({
+                ...item.toObject(),
+                unitPrice: currentPrice,
+                originalPrice: currentOriginalPrice,
+                productImage: currentImage,
+                productName: currentName,
+                brandName: currentBrand,
+                productSlug: currentSlug
+            });
+        }
+        if (hasChanges) {
+            cart.items = updatedItems;
+            cart.lastActivity = new Date();
+            await cart.save();
         }
 
         res.json({ success: true, data: cart });

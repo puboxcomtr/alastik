@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid, TextField, MenuItem, Typography, FormControl, CircularProgress } from "@mui/material";
+import { Grid, TextField, MenuItem, Typography, FormControl } from "@mui/material";
 import { Offcanvas } from "react-bootstrap";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -16,7 +16,6 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const [loading, setLoading] = useState(true);
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
 
     const [jantCap, setJantCap] = useState(searchParams.get('jantCap') || 'all');
@@ -26,15 +25,12 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     useEffect(() => {
         const loadOptions = async () => {
             try {
-                setLoading(true);
                 const data = await getTireFilterOptions(categorySlug, tagSlug);
                 if (data) {
                     setOptions(data);
                 }
             } catch (error) {
                 console.error('RimsFilter error:', error);
-            } finally {
-                setLoading(false);
             }
         };
         loadOptions();
@@ -105,14 +101,6 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
         setVehicleType('all');
         router.push(pathname);
     };
-
-    if (loading) {
-        return (
-            <Grid container sx={{ borderBottom: "1px solid #ddd", py: 3, justifyContent: 'center' }}>
-                <CircularProgress size={24} />
-            </Grid>
-        );
-    }
 
     if (!options) {
         return (

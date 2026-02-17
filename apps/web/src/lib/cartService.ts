@@ -50,8 +50,12 @@ class CartService {
   private legacyKey: string = 'shopping_cart';
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-    
+    if (typeof window === 'undefined') {
+      this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+    } else {
+      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+    }
+
     // Client-side'da local cart'ı yükle
     if (typeof window !== 'undefined') {
       const localCartData = localStorage.getItem('local_cart');
@@ -75,7 +79,7 @@ class CartService {
         // Authenticated user - backend'den getir
         const response = await authService.authenticatedRequest('/cart');
         const data = await response.json();
-        
+
         if (data.success) {
           // Local sepeti backend'e merge et; merge olduysa sepeti tekrar çek
           const mergedCount = await this.syncLocalCartToBackend();
@@ -86,7 +90,7 @@ class CartService {
           }
           return data;
         }
-        
+
         return {
           success: false,
           message: data.message || 'Sepet getirilemedi',
@@ -122,12 +126,12 @@ class CartService {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           this.notifyCartUpdate();
           return data;
         }
-        
+
         return {
           success: false,
           message: data.message || 'Ürün sepete eklenemedi',
@@ -186,12 +190,12 @@ class CartService {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           this.notifyCartUpdate();
           return data;
         }
-        
+
         return {
           success: false,
           message: data.message || 'Ürün sepetten çıkarılamadı',
@@ -201,7 +205,7 @@ class CartService {
         // Guest user - localStorage'dan çıkar
         const cart = this.getLocalCart();
         cart.items = cart.items.filter(item => item.productId !== productId);
-        
+
         this.updateCartTotals(cart);
         this.saveLocalCart(cart);
         this.notifyCartUpdate();
@@ -239,12 +243,12 @@ class CartService {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           this.notifyCartUpdate();
           return data;
         }
-        
+
         return {
           success: false,
           message: data.message || 'Ürün miktarı güncellenemedi',
@@ -298,12 +302,12 @@ class CartService {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           this.notifyCartUpdate();
           return data;
         }
-        
+
         return {
           success: false,
           message: data.message || 'Sepet temizlenemedi',
@@ -341,7 +345,7 @@ class CartService {
         await this.syncLocalCartToBackend();
         const response = await authService.authenticatedRequest('/cart/summary');
         const data = await response.json();
-        
+
         if (data.success) {
           return {
             itemCount: data.data.itemCount,
@@ -350,7 +354,7 @@ class CartService {
           };
         }
       }
-      
+
       // Fallback to local carts (prefer modern 'local_cart'; if empty, use legacy 'shopping_cart')
       if (typeof window !== 'undefined') {
         // Modern local cart
@@ -366,7 +370,7 @@ class CartService {
             const itemCount = legacyItems.reduce((sum, it) => sum + (it.quantity || 1), 0);
             const totalPrice = legacyItems.reduce((sum, it) => sum + (it.price * (it.quantity || 1)), 0);
             return { itemCount, totalPrice, currency: 'TRY' };
-          } catch {}
+          } catch { }
         }
       }
       return { itemCount: 0, totalPrice: 0, currency: 'TRY' };
@@ -385,7 +389,7 @@ class CartService {
             return { itemCount, totalPrice, currency: 'TRY' };
           }
         }
-      } catch {}
+      } catch { }
       return { itemCount: 0, totalPrice: 0, currency: 'TRY' };
     }
   }
@@ -519,7 +523,7 @@ class CartService {
       if (data?.success) {
         return { itemCount: data.data.itemCount, totalPrice: data.data.totalPrice };
       }
-    } catch {}
+    } catch { }
     return null;
   }
 

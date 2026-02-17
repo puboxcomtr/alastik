@@ -2,6 +2,7 @@
  * Google OAuth Entegrasyonu
  * Google Sign-In API kullanarak kullanıcı kimlik doğrulaması
  */
+import { API_ENDPOINTS } from '@/src/config/api';
 
 interface GoogleUser {
   id: string;
@@ -26,7 +27,7 @@ class GoogleAuthService {
 
   constructor() {
     this.clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
-    
+
     // Client ID kontrolü
     if (!this.clientId) {
       console.warn('⚠️ Google Client ID bulunamadı. Google OAuth devre dışı.');
@@ -39,7 +40,7 @@ class GoogleAuthService {
   async initialize(): Promise<boolean> {
     if (this.isInitialized) return true;
     if (typeof window === 'undefined') return false;
-    
+
     // Client ID yoksa initialize etme
     if (!this.clientId) {
       console.warn('⚠️ Google Client ID eksik, OAuth başlatılamıyor');
@@ -49,7 +50,7 @@ class GoogleAuthService {
     try {
       // Google API script'ini yükle
       await this.loadGoogleScript();
-      
+
       // gapi'yi başlat
       await new Promise<void>((resolve, reject) => {
         (window as any).gapi.load('auth2', {
@@ -125,7 +126,7 @@ class GoogleAuthService {
 
       // Backend'e gönderilecek token ve user bilgisi
       const backendResponse = await this.sendToBackend(idToken, user);
-      
+
       if (backendResponse.success) {
         return { success: true, user };
       } else {
@@ -134,11 +135,11 @@ class GoogleAuthService {
 
     } catch (error: any) {
       console.error('Google Sign-In error:', error);
-      
+
       if (error.error === 'popup_closed_by_user') {
         return { success: false, error: 'Giriş işlemi iptal edildi' };
       }
-      
+
       return { success: false, error: 'Google ile giriş yapılırken bir hata oluştu' };
     }
   }
@@ -160,9 +161,9 @@ class GoogleAuthService {
   /**
    * Backend'e Google token ve user bilgilerini gönderir
    */
-  private async sendToBackend(idToken: string, user: GoogleUser): Promise<{success: boolean, error?: string}> {
+  private async sendToBackend(idToken: string, user: GoogleUser): Promise<{ success: boolean, error?: string }> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/users/google`, {
+      const response = await fetch(API_ENDPOINTS.auth.google(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +175,7 @@ class GoogleAuthService {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         // JWT token'ları localStorage'a kaydet
         if (data.tokens) {
@@ -196,7 +197,7 @@ class GoogleAuthService {
    */
   isSignedIn(): boolean {
     if (!this.isInitialized || !this.gapi) return false;
-    
+
     try {
       const authInstance = this.gapi.auth2.getAuthInstance();
       return authInstance.isSignedIn.get();

@@ -37,15 +37,21 @@ class DiaWorker {
         };
 
         // Bull Queue'ları oluştur
+        const queueSettings = {
+            stalledInterval: 1800000,
+            maxStalledCount: 0
+        };
         this.queues = {
             fullSync: new Queue('dia-full-sync', {
                 redis: workerConfig.redis,
-                defaultJobOptions: workerConfig.queue.defaultJobOptions
+                defaultJobOptions: workerConfig.queue.defaultJobOptions,
+                settings: queueSettings
             }),
 
             lightSync: new Queue('dia-light-sync', {
                 redis: workerConfig.redis,
-                defaultJobOptions: workerConfig.queue.defaultJobOptions
+                defaultJobOptions: workerConfig.queue.defaultJobOptions,
+                settings: queueSettings
             })
         };
 
@@ -122,7 +128,6 @@ class DiaWorker {
     async processFullSync(job) {
         const startTime = Date.now();
 
-        // Sync guard
         if (this.syncLock.fullSync) {
             throw new Error('Full sync zaten çalışıyor');
         }
@@ -130,22 +135,26 @@ class DiaWorker {
         this.syncLock.fullSync = true;
 
         try {
-            this.logger.info('=== FULL SYNC BAŞLANGICI ===', {
+            this.logger.info('Full Senkronizasyon Başladı', {
                 jobId: job.id,
                 timestamp: new Date().toISOString()
             });
 
-            // Progress güncelle
-            await job.progress(10);
+            const progressCallback = (progressData) => {
+                try {
+                    job.progress(progressData);
+                } catch (e) {
+                    // Progress güncelleme hatası sessizce geç
+                }
+            };
 
-            // DIA'dan ürünleri çek ve senkronize et
-            const result = await this.diaService.fullSync();
+            const result = await this.diaService.fullSync(progressCallback);
 
-            await job.progress(100);
+            await job.progress({ percent: 100, step: 5, totalSteps: 5, message: 'Tamamlandı' });
 
             const duration = Date.now() - startTime;
 
-            this.logger.info('=== FULL SYNC TAMAMLANDI ===', {
+            this.logger.info('=== Full Senkronizasyon Tamamlandı ===', {
                 jobId: job.id,
                 duration: `${duration}ms`,
                 result
@@ -158,7 +167,7 @@ class DiaWorker {
             };
 
         } catch (error) {
-            this.logger.error('Full sync hatası', {
+            this.logger.error('Full Senkronizasyon hatası', {
                 jobId: job.id,
                 error: error.message,
                 stack: error.stack
@@ -176,9 +185,16 @@ class DiaWorker {
     async processLightSync(job) {
         const startTime = Date.now();
 
+        // Full sync çalışıyorsa light sync'i atla
+        if (this.syncLock.fullSync) {
+            this.logger.info('Full sync çalışıyor, light sync atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
+        }
+
         // Sync guard
         if (this.syncLock.lightSync) {
-            throw new Error('Light sync zaten çalışıyor');
+            this.logger.info('Light sync zaten çalışıyor, atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'lightSync zaten çalışıyor' };
         }
 
         this.syncLock.lightSync = true;
@@ -235,39 +251,55 @@ class DiaWorker {
      */
     async setupScheduledJobs() {
         try {
-            // Full Sync - Her gün 05:00
+            const DiaSettings = require('../models/plugins/dia/DiaSettings');
+            const settings = await DiaSettings.getSettings();
+
+            // DB'den saat ve aralık al
+            const fullSyncSaat = settings?.sync?.fullSyncSaat || '05:00';
+            const lightSyncAraligi = settings?.sync?.lightSyncAraligi || 15;
+
+            // Saat'i cron formatına çevir (ör: "05:00" -> "0 5 * * *")
+            const [saat, dakika] = fullSyncSaat.split(':').map(Number);
+            const fullSyncCron = `${dakika || 0} ${saat || 5} * * *`;
+            const lightSyncCron = `*/${lightSyncAraligi} * * * *`;
+
+            // Eski repeat job'ları temizle
+            const existingFullRepeats = await this.queues.fullSync.getRepeatableJobs();
+            for (const job of existingFullRepeats) {
+                await this.queues.fullSync.removeRepeatableByKey(job.key);
+            }
+            const existingLightRepeats = await this.queues.lightSync.getRepeatableJobs();
+            for (const job of existingLightRepeats) {
+                await this.queues.lightSync.removeRepeatableByKey(job.key);
+            }
+
+            // Full Sync
             await this.queues.fullSync.add(
                 'scheduled-full-sync',
                 { type: 'scheduled' },
                 {
-                    repeat: {
-                        cron: workerConfig.sync.fullSync.schedule,
-                        tz: 'Europe/Istanbul'
-                    },
+                    repeat: { cron: fullSyncCron, tz: 'Europe/Istanbul' },
                     timeout: workerConfig.worker.timeout
                 }
             );
 
-            // Light Sync - Her 15 dakika
+            // Light Sync
             await this.queues.lightSync.add(
                 'scheduled-light-sync',
                 { type: 'scheduled' },
                 {
-                    repeat: {
-                        cron: workerConfig.sync.lightSync.schedule,
-                        tz: 'Europe/Istanbul'
-                    },
+                    repeat: { cron: lightSyncCron, tz: 'Europe/Istanbul' },
                     timeout: workerConfig.worker.lightSyncTimeout
                 }
             );
 
-            this.logger.info('✅ Zamanlanmış job\'lar ayarlandı', {
-                fullSync: workerConfig.sync.fullSync.schedule,
-                lightSync: workerConfig.sync.lightSync.schedule
+            this.logger.info('Zamanlanmis joblar ayarlandi', {
+                fullSync: `${fullSyncCron} (${fullSyncSaat})`,
+                lightSync: `${lightSyncCron} (her ${lightSyncAraligi} dk)`
             });
 
         } catch (error) {
-            this.logger.error('Scheduled job ayarlama hatası:', error);
+            this.logger.error('Scheduled job ayarlama hatasi:', error);
             throw error;
         }
     }

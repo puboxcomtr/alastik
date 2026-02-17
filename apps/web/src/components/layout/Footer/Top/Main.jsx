@@ -32,44 +32,44 @@ export default function FooterTop() {
                                     <ul className="nav flex-column gap-2 pt-sm-3 pb-3 pb-sm-0 mt-n1 mb-1 mb-sm-0">
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href="/category"
+                                                href="/sayfa/hakkimizda"
+                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
+                                                Biz Kimiz?
+                                            </Link>
+                                        </li>
+                                        <li className="d-flex w-100 pt-1">
+                                            <Link
+                                                href="/kampanyalar"
+                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
+                                                Kampanyalar
+                                            </Link>
+                                        </li>
+                                        <li className="d-flex w-100 pt-1">
+                                            <Link
+                                                href="/jant-lastik-hesaplama"
+                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
+                                                Jant Lastik Hesaplama
+                                            </Link>
+                                        </li>
+                                        <li className="d-flex w-100 pt-1">
+                                            <Link
+                                                href="/sayfa/banka-hesap-numaralari"
+                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
+                                                Banka Hesap Numaraları
+                                            </Link>
+                                        </li>
+                                        <li className="d-flex w-100 pt-1">
+                                            <Link
+                                                href="/sayfa/lastik-terimleri-ve-anlamlari"
+                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
+                                                Lastik Terimleri ve Anlamları
+                                            </Link>
+                                        </li>
+                                        <li className="d-flex w-100 pt-1">
+                                            <Link
+                                                href="/iletisim"
                                                 className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
                                                 Bize Ulaşın
-                                            </Link>
-                                        </li>
-                                        <li className="d-flex w-100 pt-1">
-                                            <Link
-                                                href="/category"
-                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
-                                                Hakkımızda
-                                            </Link>
-                                        </li>
-                                        <li className="d-flex w-100 pt-1">
-                                            <Link
-                                                href="/category"
-                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
-                                                Yardım / Destek
-                                            </Link>
-                                        </li>
-                                        <li className="d-flex w-100 pt-1">
-                                            <Link
-                                                href="/category"
-                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
-                                                Politikalar
-                                            </Link>
-                                        </li>
-                                        <li className="d-flex w-100 pt-1">
-                                            <Link
-                                                href="/category"
-                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
-                                                Blog
-                                            </Link>
-                                        </li>
-                                        <li className="d-flex w-100 pt-1">
-                                            <Link
-                                                href="/category"
-                                                className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
-                                                Yardım / Destek
                                             </Link>
                                         </li>
                                     </ul>
@@ -88,42 +88,42 @@ export default function FooterTop() {
                                     <ul className="nav flex-column gap-2 pt-sm-3 pb-3 pb-sm-0 mt-n1 mb-1 mb-sm-0">
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href="/category"
+                                                href="/marka/goodyear"
                                                 className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
                                                 Goodyear
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href="/category"
+                                                href="/marka/pirelli"
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Pirelli
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href="/category"
+                                                href="/marka/hankook"
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Hankook
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/marka/petlas'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Petlas
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/marka/bridgestone'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Bridgestone
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/marka/michelin'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Michelin
                                             </Link>
@@ -144,42 +144,42 @@ export default function FooterTop() {
                                     <ul className="nav flex-column gap-2 pt-sm-3 pb-3 pb-sm-0 mt-n1 mb-1 mb-sm-0">
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/etiket/205-55-16'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 205/55R16
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/etiket/185-55-15'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 185/55R15
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/etiket/205-45-15'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 205/45R15
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/etiket/205-55-17'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 205/55R17
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/etiket/205-45-16'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 225/45R16
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/etiket/205-55-17'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 225/55R17
                                             </Link>
@@ -200,42 +200,42 @@ export default function FooterTop() {
                                     <ul className="nav flex-column gap-2 pt-sm-3 pb-3 pb-sm-0 mt-n1 mb-1 mb-sm-0">
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/kategori/yaz-lastikleri'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Yaz Lastiği
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/kategori/kis-lastikleri'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Kış Lastiği
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/kategori/4-mevsim-lastikler'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 4 Mevsim Lastik
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/kategori/jant'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Elektrikli Araç Lastiği
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/kategori/jant'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Jant
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/category'
+                                                href='/kategori/kar-corabi-paleti-ve-zinciri'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Kar Paleti ve Zinciri
                                             </Link>
@@ -260,8 +260,8 @@ export default function FooterTop() {
                                     </Typography>
                                 </div>
                                 <div className="footer__svg">
-                                    <Image src="/assets/img/logo/website_logo.svg"
-                                        alt="A Lastik Logo"
+                                    <Image src="/assets/img/alastik-footer-logo.png"
+                                        alt="A Lastik Footer Logo"
                                         width={200}
                                         height={60}
                                     />
@@ -279,24 +279,17 @@ export default function FooterTop() {
                             <Tooltip title="Youtube">
                                 <Link
                                     className="btn btn-icon fs-base btn-outline-secondary border-0"
-                                    href="#!"
-                                    aria-label="YouTube">
+                                    href="https://www.youtube.com/@alastikcom"
+                                    aria-label="ALastik YouTube">
                                     <i className="ri-youtube-fill"></i>
-                                </Link>
-                            </Tooltip>
-                            <Tooltip title="Facebook">
-                                <Link
-                                    className="btn btn-icon fs-base btn-outline-secondary border-0"
-                                    href="#!"
-                                    aria-label="Facebook">
-                                    <i className="ri-facebook-fill"></i>
                                 </Link>
                             </Tooltip>
                             <Tooltip title="Instagram">
                                 <Link
                                     className="btn btn-icon fs-base btn-outline-secondary border-0"
-                                    href="#!"
-                                    aria-label="Instagram"
+                                    href="https://www.instagram.com/alastikcom"
+                                    aria-label="ALastik Instagram"
+                                    target="_blank"
                                 >
                                     <i className="ri-instagram-fill"></i>
                                 </Link>
@@ -347,11 +340,11 @@ export default function FooterTop() {
                             <li>
                                 <Link
                                     className="nav-link"
-                                    href="#!">
-                                    <Tooltip title="ALastik - N11 Pazaryeri">
+                                    href="https://www.trendyol.com/magaza/alastik-4mevsimlastik-m-885697?sst=0&channelId=1" target='_blank' rel="nofollow">
+                                    <Tooltip title="ALastik - Trendyol Pazaryeri">
                                         <Image
                                             sx={{ marginBottom: '-3px' }}
-                                            src="/assets/img/n11-logo.png"
+                                            src="/assets/img/pazaryeri/trendyol-logo.png"
                                             width={90}
                                             height={47}
                                             alt="N11 Pazaryeri" />
@@ -361,11 +354,11 @@ export default function FooterTop() {
                             <li>
                                 <Link
                                     className="nav-link"
-                                    href="#!">
-                                    <Tooltip title="ALastik - N11 Pazaryeri">
+                                    href="https://www.n11.com/magaza/alastik" target='_blank' rel="nofollow">
+                                    <Tooltip title="ALastik - Trendyol Pazaryeri">
                                         <Image
                                             sx={{ marginBottom: '-3px' }}
-                                            src="/assets/img/n11-logo.png"
+                                            src="/assets/img/pazaryeri/n11-logo.png"
                                             width={90}
                                             height={47}
                                             alt="N11 Pazaryeri" />
@@ -375,11 +368,11 @@ export default function FooterTop() {
                             <li>
                                 <Link
                                     className="nav-link"
-                                    href="#!">
-                                    <Tooltip title="ALastik - N11 Pazaryeri">
+                                    href="https://www.hepsiburada.com/magaza/alastik-4mevsimlastik" target='_blank' rel="nofollow">
+                                    <Tooltip title="ALastik - Trendyol Pazaryeri">
                                         <Image
                                             sx={{ marginBottom: '-3px' }}
-                                            src="/assets/img/n11-logo.png"
+                                            src="/assets/img/pazaryeri/hepsiburada-logo.png"
                                             width={90}
                                             height={47}
                                             alt="N11 Pazaryeri" />

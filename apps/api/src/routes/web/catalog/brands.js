@@ -86,23 +86,20 @@ router.get('/', async (req, res) => {
             }
 
             return {
+                _id: brand._id,
                 name: brand.diaBrand || brand.diaMarkaAck || brand.name,
-                slug: brand.seoUrl || brand.slug || (brand.name || '').toLowerCase().replace(/\s+/g, '-'),
+                slug: brand.seoUrl || brand.slug,
+                seoUrl: brand.seoUrl || brand.slug,
                 logo: formattedLogoUrl,
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,
-                productCount: brand.productCount || 0,
-                activeProductCount: brand.activeProductCount || 0,
-                totalStock: brand.totalStock || 0,
-                visible: brand.webVisible !== false,
-                seoTitle: brand.seoTitle || brand.name,
-                webOrder: brand.webOrder || 0
+                productCount: brand.productCount || 0
             };
         });
 
         res.json({
             success: true,
             data: formattedBrands,
-            brands: formattedBrands, 
+            brands: formattedBrands,
             meta: {
                 total,
                 page: parseInt(page),

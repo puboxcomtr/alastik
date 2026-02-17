@@ -18,7 +18,7 @@ export default function SummerTireHeader({
 }: Props) {
     return (
         <Box
-            className="border-bottom py-3 py-md-4 mt-lg-2"
+            className="py-3 py-md-4 mt-lg-2"
             display="flex"
             alignItems="center"
             justifyContent="space-between"
@@ -35,19 +35,6 @@ export default function SummerTireHeader({
                     </Typography>
                 )}
             </Box>
-            {showAllLink && (
-                <Box ml={3}>
-                    <Button
-                        component={Link}
-                        href={showAllLink}
-                        variant="text"
-                        className="animate-underline px-0 py-2"
-                        endIcon={<i className="ci-chevron-right fs-base ms-1"></i>}
-                    >
-                        <span className="animate-target">{showAllText}</span>
-                    </Button>
-                </Box>
-            )}
         </Box>
     );
 }

@@ -152,7 +152,7 @@ export default function LoginView() {
                                             </button>
                                         </div>
                                         <div>
-                                            <Link href="/sifremi-unuttum" className="fs-sm text-muted">
+                                            <Link href={ROUTES.FORGOT_PASSWORD} className="fs-sm text-muted">
                                                 {t('forgot_password')}
                                             </Link>
                                         </div>
@@ -189,7 +189,7 @@ export default function LoginView() {
 
                                 <div className='d-flex justify-content-between align-items-center mb-4'>
                                     <div>
-                                        <Link href="/kayit-ol"
+                                        <Link href="ROUTES.REGISTER"
                                             className="btn btn-primary w-100 px-5">
                                             {t('register_button')}
                                         </Link>

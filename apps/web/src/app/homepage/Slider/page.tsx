@@ -15,13 +15,11 @@ import type { Slider } from '@/src/types/slider';
 
 export default function HomeSlider() {
     const [slider, setSlider] = useState<Slider | null>(null);
-    const [loading, setLoading] = useState(true);
     const { theme } = useSettings();
 
     useEffect(() => {
         const fetchSlider = async () => {
             if (!theme?.sliderSelect) {
-                setLoading(false);
                 return;
             }
 
@@ -30,16 +28,12 @@ export default function HomeSlider() {
                 setSlider(sliderData);
             } catch (error) {
                 console.error('Slider yüklenemedi:', error);
-            } finally {
-                setLoading(false);
             }
         };
 
         fetchSlider();
     }, [theme?.sliderSelect]);
-
-    // Loading veya slider yoksa gösterme
-    if (loading || !slider || slider.sliders.length === 0) {
+    if (!slider || slider.sliders.length === 0) {
         return null;
     }
 

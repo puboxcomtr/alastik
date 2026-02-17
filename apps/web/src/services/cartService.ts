@@ -1,6 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// apps/web/src/services/cartService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 
-// SessionId al veya oluştur
+// SessionId al veya olustur
 export function getCartSessionId(): string {
     if (typeof window === 'undefined') return '';
 
@@ -18,11 +19,11 @@ export async function getCart() {
     if (!sessionId) return null;
 
     try {
-        const res = await fetch(`${API_URL}/cart/${sessionId}`);
+        const res = await fetch(API_ENDPOINTS.cart.get(sessionId));
         const data = await res.json();
         return data.success ? data.data : null;
     } catch (error) {
-        console.error('getCart error:', error);
+        console.error('[cartService] getCart error:', error);
         return null;
     }
 }
@@ -32,49 +33,49 @@ export async function addToCart(productKey: string, quantity: number = 1) {
     const sessionId = getCartSessionId();
 
     try {
-        const res = await fetch(`${API_URL}/cart/add`, {
+        const res = await fetch(API_ENDPOINTS.cart.add(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId, productKey, quantity })
         });
         return await res.json();
     } catch (error) {
-        console.error('addToCart error:', error);
-        return { success: false, message: 'Bir hata oluştu' };
+        console.error('[cartService] addToCart error:', error);
+        return { success: false, message: 'Bir hata olustu' };
     }
 }
 
-// Adet güncelle
+// Adet guncelle
 export async function updateCartItem(productKey: string, quantity: number) {
     const sessionId = getCartSessionId();
 
     try {
-        const res = await fetch(`${API_URL}/cart/update`, {
+        const res = await fetch(API_ENDPOINTS.cart.update(), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId, productKey, quantity })
         });
         return await res.json();
     } catch (error) {
-        console.error('updateCartItem error:', error);
-        return { success: false, message: 'Bir hata oluştu' };
+        console.error('[cartService] updateCartItem error:', error);
+        return { success: false, message: 'Bir hata olustu' };
     }
 }
 
-// Ürün kaldır
+// Urun kaldir
 export async function removeFromCart(productKey: string) {
     const sessionId = getCartSessionId();
 
     try {
-        const res = await fetch(`${API_URL}/cart/remove`, {
+        const res = await fetch(API_ENDPOINTS.cart.remove(), {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId, productKey })
         });
         return await res.json();
     } catch (error) {
-        console.error('removeFromCart error:', error);
-        return { success: false, message: 'Bir hata oluştu' };
+        console.error('[cartService] removeFromCart error:', error);
+        return { success: false, message: 'Bir hata olustu' };
     }
 }
 
@@ -83,12 +84,12 @@ export async function clearCart() {
     const sessionId = getCartSessionId();
 
     try {
-        const res = await fetch(`${API_URL}/cart/clear/${sessionId}`, {
+        const res = await fetch(API_ENDPOINTS.cart.clear(sessionId), {
             method: 'DELETE'
         });
         return await res.json();
     } catch (error) {
-        console.error('clearCart error:', error);
-        return { success: false, message: 'Bir hata oluştu' };
+        console.error('[cartService] clearCart error:', error);
+        return { success: false, message: 'Bir hata olustu' };
     }
 }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
+
 // ============================================
 // CATALOG ROUTES
 // ============================================
@@ -16,6 +17,9 @@ router.use('/brands', brandsRouter);
 const tagsRouter = require('./catalog/tags');
 router.use('/tags', tagsRouter);
 
+const championshipsRouter = require('./catalog/championships');
+router.use('/championships', championshipsRouter);
+
 const featuresRouter = require('./catalog/features');
 router.use('/features', featuresRouter);
 
@@ -24,6 +28,7 @@ router.use('/showcases', showcaseRouter);
 
 const mediaRouter = require('./catalog/media');
 router.use('/media', mediaRouter);
+
 
 // ============================================
 // ORDERS ROUTES
@@ -90,5 +95,17 @@ router.use('/design/menu', menuRoutes);
 
 const bannerRoutes = require('./design/banners');
 router.use('/design/banners', bannerRoutes);
+
+// ============================================
+// XML ROUTES
+// ============================================
+const webxmlRoutes = require('./integration/WebXml');
+router.use('/integration/xml', webxmlRoutes);
+
+// ============================================
+// DIA ROUTES
+// ============================================
+const diaModuleRoutes = require('./../plugins/dia/settings');
+router.use('/modules/dia', diaModuleRoutes);
 
 module.exports = router;

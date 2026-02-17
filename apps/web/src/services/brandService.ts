@@ -1,4 +1,5 @@
 // apps/web/src/services/brandService.ts
+import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 import type {
     Brand,
     BrandResponse,
@@ -6,15 +7,12 @@ import type {
     BrandListResponse
 } from '@/src/types/brand';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
-
 /**
- * Anasayfa markaları (showOnHomepage: true)
+ * Anasayfa markalari (showOnHomepage: true)
  */
 export async function getHomepageBrands(): Promise<BrandListResponse> {
     try {
-        const response = await fetch(`${API_BASE_URL}/brands/homepage`, {
+        const response = await fetch(API_ENDPOINTS.brands.homepage(), {
             next: { revalidate: 3600 }
         });
 
@@ -24,17 +22,17 @@ export async function getHomepageBrands(): Promise<BrandListResponse> {
 
         return await response.json();
     } catch (error) {
-        console.error('Homepage brands error:', error);
+        console.error('[brandService] getHomepageBrands error:', error);
         return { success: false, data: [], count: 0 };
     }
 }
 
 /**
- * Marka bilgisi (ProductCard için - basit)
+ * Marka bilgisi (ProductCard icin - basit)
  */
 export async function getBrandByName(brandName: string): Promise<BrandResponse> {
     try {
-        const response = await fetch(`${API_BASE_URL}/brands/${encodeURIComponent(brandName)}`, {
+        const response = await fetch(API_ENDPOINTS.brands.detail(brandName), {
             next: { revalidate: 3600 }
         });
 
@@ -44,7 +42,6 @@ export async function getBrandByName(brandName: string): Promise<BrandResponse> 
 
         const result = await response.json();
 
-        // BrandDetail'i Brand'e dönüştür (ProductCard uyumluluğu)
         if (result.success && result.data) {
             return {
                 success: true,
@@ -58,17 +55,17 @@ export async function getBrandByName(brandName: string): Promise<BrandResponse> 
 
         return { success: false, data: null };
     } catch (error) {
-        console.error('Brand service error:', error);
+        console.error('[brandService] getBrandByName error:', error);
         return { success: false, data: null };
     }
 }
 
 /**
- * Marka detayı (Marka sayfası için - tam bilgi)
+ * Marka detayi (Marka sayfasi icin - tam bilgi)
  */
 export async function getBrandDetail(seoUrl: string): Promise<BrandDetailResponse> {
     try {
-        const response = await fetch(`${API_BASE_URL}/brands/${encodeURIComponent(seoUrl)}`, {
+        const response = await fetch(API_ENDPOINTS.brands.detail(seoUrl), {
             next: { revalidate: 3600 }
         });
 
@@ -78,16 +75,15 @@ export async function getBrandDetail(seoUrl: string): Promise<BrandDetailRespons
 
         return await response.json();
     } catch (error) {
-        console.error('Brand detail error:', error);
+        console.error('[brandService] getBrandDetail error:', error);
         return { success: false, data: null };
     }
 }
 
 /**
- * Görsel URL helper
+ * Gorsel URL helper
  */
 export function getBrandImageUrl(url: string | null | undefined): string {
     if (!url) return '/images/marka/gorsel-bulunamadi.jpg';
-    if (url.startsWith('http')) return url;
-    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
+    return getImageUrl(url);
 }

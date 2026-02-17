@@ -30,9 +30,9 @@ router.get('/:id', async (req, res) => {
                 data: null
             });
         }
-        const activeSliders = slider.sliders
+        const activeSliders = [...slider.sliders]
             .filter(s => s.isActive)
-            .sort((a, b) => a.order - b.order);
+            .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
         res.json({
             success: true,

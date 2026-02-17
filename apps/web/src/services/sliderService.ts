@@ -1,58 +1,45 @@
+// apps/web/src/services/sliderService.ts
+import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 import type { Slider } from '@/src/types/slider';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
-
 /**
- * ID ile slider getir (mevcut - dropdown sistemi için)
+ * ID ile slider getir (dropdown sistemi için)
  */
 export async function getSliderById(id: string): Promise<Slider | null> {
     try {
-        if (!id) {
-            console.warn('Slider ID bos');
-            return null;
-        }
+        if (!id) return null;
 
-        const response = await fetch(`${API_BASE_URL}/admin/design/slider/${id}`, {
+        const response = await fetch(API_ENDPOINTS.slider.detail(id), {
             next: { revalidate: 3600 }
         });
 
-        if (!response.ok) {
-            console.error('Slider fetch failed:', response.status);
-            return null;
-        }
+        if (!response.ok) return null;
 
         const data = await response.json();
         return data.success && data.data ? data.data : null;
     } catch (error) {
-        console.error('Slider error:', error);
+        console.error('[sliderService] getSliderById hatası:', error);
         return null;
     }
 }
 
 /**
- * Key ile slider getir (yeni - placeholder sistemi için)
+ * Key ile slider getir (placeholder sistemi için)
  */
 export async function getSliderByKey(key: string): Promise<Slider | null> {
     try {
-        if (!key) {
-            console.warn('Slider key bos');
-            return null;
-        }
+        if (!key) return null;
 
-        const response = await fetch(`${API_BASE_URL}/admin/design/slider/key/${key}`, {
+        const response = await fetch(API_ENDPOINTS.slider.byKey(key), {
             next: { revalidate: 3600 }
         });
 
-        if (!response.ok) {
-            console.error('Slider key fetch failed:', response.status);
-            return null;
-        }
+        if (!response.ok) return null;
 
         const data = await response.json();
         return data.success && data.data ? data.data : null;
     } catch (error) {
-        console.error('Slider key error:', error);
+        console.error('[sliderService] getSliderByKey hatası:', error);
         return null;
     }
 }
@@ -62,6 +49,5 @@ export async function getSliderByKey(key: string): Promise<Slider | null> {
  */
 export function getSliderImageUrl(url: string | null | undefined): string {
     if (!url) return '/images/slider/gorsel-bulunamadi.jpg';
-    if (url.startsWith('http')) return url;
-    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
+    return getImageUrl(url);
 }

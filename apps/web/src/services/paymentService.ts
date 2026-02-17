@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+// apps/web/src/services/paymentService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface BankAccount {
     _id: string;
@@ -12,11 +13,11 @@ export interface BankAccount {
 export const paymentService = {
     async getBankAccounts(): Promise<BankAccount[]> {
         try {
-            const res = await fetch(`${API_URL}/payment-methods/bank-transfer`);
+            const res = await fetch(API_ENDPOINTS.payment.bankAccounts());
             const result = await res.json();
             return result.success ? result.data : [];
         } catch (error) {
-            console.error('Banka hesapları yükleme hatası:', error);
+            console.error('[paymentService] getBankAccounts error:', error);
             return [];
         }
     }

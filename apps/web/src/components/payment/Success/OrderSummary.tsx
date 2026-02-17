@@ -4,62 +4,8 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react';
 import { paymentService, BankAccount } from '@/src/services/paymentService';
 import { Tooltip } from '@mui/material';
-
-interface AddressSnapshot {
-    addressName?: string;
-    invoiceType?: string;
-    fullName?: string;
-    tcNo?: string;
-    companyName?: string;
-    taxOffice?: string;
-    taxNo?: string;
-    authorizedPerson?: string;
-    email?: string;
-    phone?: string;
-    cityName?: string;
-    districtName?: string;
-    neighborhoodName?: string;
-    street?: string;
-    buildingNo?: string;
-    floor?: string;
-    apartmentNo?: string;
-    addressNote?: string;
-}
-
-interface MemberSnapshot {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-}
-
-interface Order {
-    orderNumber: string;
-    isGuest: boolean;
-    billingSnapshot?: AddressSnapshot | null;
-    shippingSnapshot?: AddressSnapshot | null;
-    memberSnapshot?: MemberSnapshot | null;
-    pricing: {
-        subtotal: number;
-        total: number;
-    };
-    payment: {
-        method: string;
-        bankTransfer?: {
-            referenceCode: string;
-        };
-    };
-    items: Array<{
-        name: string;
-        quantity: number;
-        unitPrice: number;
-        totalPrice: number;
-    }>;
-}
-
-interface OrderSummaryProps {
-    order: Order;
-}
+import { ROUTES } from '@/src/config/routes';
+import { Order, AddressSnapshot, OrderSummaryProps } from '@/src/types/order';
 
 function OrderSummary({ order }: OrderSummaryProps) {
     const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -121,7 +67,7 @@ function OrderSummary({ order }: OrderSummaryProps) {
                     <div className="d-sm-flex align-items-center">
                         <h1 className="h4 mb-0 me-3">Siparişiniz Bize Ulaştı.</h1>
                         <div className="nav mt-2 mt-sm-0 ms-auto">
-                            <Link className="nav-link text-decoration-underline p-0" href="/hesabim/siparislerim">
+                            <Link className="nav-link text-decoration-underline p-0" href={ROUTES.ACCOUNT_ORDERS}>
                                 Sipariş Takip
                             </Link>
                         </div>

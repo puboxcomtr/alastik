@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl, CircularProgress } from "@mui/material";
+import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
 import { Offcanvas } from "react-bootstrap";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -17,7 +17,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const [loading, setLoading] = useState(true);
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
 
     const [width, setWidth] = useState(searchParams.get('genislik') || 'all');
@@ -28,15 +27,12 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
     useEffect(() => {
         const loadOptions = async () => {
             try {
-                setLoading(true);
                 const data = await getTireFilterOptions(categorySlug, tagSlug);
                 if (data) {
                     setOptions(data);
                 }
             } catch (error) {
                 console.error('TireFilter error:', error);
-            } finally {
-                setLoading(false);
             }
         };
         loadOptions();
@@ -118,14 +114,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
         setVehicleType(value);
         updateURL('arac', value);
     };
-
-    if (loading) {
-        return (
-            <Grid container sx={{ borderBottom: "1px solid #ddd", py: 3, justifyContent: 'center' }}>
-                <CircularProgress size={24} />
-            </Grid>
-        );
-    }
 
     if (!options) {
         return (

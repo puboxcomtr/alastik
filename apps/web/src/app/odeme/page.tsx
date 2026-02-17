@@ -14,24 +14,27 @@ import PaymentTitle from '@/src/components/payment/Content/PaymentTitle';
 import PaymentContent from '@/src/components/payment/Content/PaymentContent';
 import PaymentSidebar from '@/src/components/payment/Sidebar/PaymentSidebar';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082';
+import { API_ENDPOINTS } from '@/src/config/api';
+
 
 export default function PaymentPage() {
     const router = useRouter();
-    const { items, clearCart, loading: cartLoading } = useCart();
+    const { items, clearCart, refreshCart } = useCart();
     const [processing, setProcessing] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [orderCompleted, setOrderCompleted] = useState(false);
     const [cardData, setCardData] = useState<CardFormData | null>(null);
 
     const totalAmount = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-
     useEffect(() => {
-        if (cartLoading || orderCompleted) return;
+        refreshCart();
+    }, [refreshCart]);
+    useEffect(() => {
+        if (orderCompleted) return;
         if (items.length === 0) {
             router.push(ROUTES.CART);
         }
-    }, [items, router, cartLoading, orderCompleted]);
+    }, [items, router, orderCompleted]);
 
     const handlePayment = async () => {
         if (!termsAccepted) {
@@ -97,7 +100,7 @@ export default function PaymentPage() {
             // Kredi kartı ile ödeme
             if (cardData && cardData.isValid) {
                 try {
-                    const response = await fetch(`${API_URL}/web/payments/netahsilat/3d-init`, {
+                    const response = await fetch(API_ENDPOINTS.payment.threeDInit(), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -147,16 +150,6 @@ export default function PaymentPage() {
             setProcessing(false);
         }
     };
-
-    if (cartLoading) {
-        return (
-            <div className="container py-5 text-center">
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Yükleniyor...</span>
-                </div>
-            </div>
-        );
-    }
 
     if (items.length === 0) {
         return null;

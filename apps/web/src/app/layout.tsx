@@ -30,6 +30,7 @@ import { CartProvider } from '@/src/context/CartContext';
 
 /* Modal */
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
+import TireSize from '@components/layout/Modals/TireSize';
 import Modal from '@components/ui/Modal';
 
 /* Theme Settings */
@@ -108,6 +109,7 @@ export default async function RootLayout({
                 <Footer />
                 <Modal />
                 <TireSearchClient />
+                <TireSize />
               </CartProvider>
             </BrandsProvider>
           </ThemeRegistry>

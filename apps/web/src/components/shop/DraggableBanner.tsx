@@ -36,7 +36,6 @@ export default function DraggableBanner({
     showNavigation = true
 }: DraggableBannerProps) {
     const [slider, setSlider] = useState<Slider | null>(null);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchSlider = async () => {
@@ -44,38 +43,16 @@ export default function DraggableBanner({
                 const data = await getSliderByKey(sliderKey);
                 setSlider(data);
             } catch (error) {
-                console.error('Banner slider yuklenemedi:', error);
-            } finally {
-                setLoading(false);
+                console.error('Banner slider yüklenemedi:', error);
+
             }
         };
 
         if (sliderKey) {
             fetchSlider();
-        } else {
-            setLoading(false);
         }
     }, [sliderKey]);
 
-    // Loading
-    if (loading) {
-        return (
-            <section id="draggable_banner" className="position-relative">
-                <div className="container">
-                    <div className="row">
-                        {[...Array(4)].map((_, i) => (
-                            <div key={i} className="col-6 col-md-3 mb-3">
-                                <div
-                                    className="bg-secondary bg-opacity-25 rounded"
-                                    style={{ height: 150 }}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-        );
-    }
 
     // Slider yoksa veya boşsa gösterme
     if (!slider || !slider.sliders || slider.sliders.length === 0) {
@@ -128,6 +105,7 @@ export default function DraggableBanner({
                                             alt={slide.description || `${slider.name} - Banner ${index + 1}`}
                                             width={400}
                                             height={200}
+                                            quality={95}
                                             style={{ objectFit: 'cover', width: '100%', height: 'auto' }}
                                         />
                                     </Link>
@@ -150,7 +128,7 @@ export default function DraggableBanner({
                                     <button
                                         type="button"
                                         className={`btn banner_btn_prev_${sliderKey} btn-icon btn-primary border-0 rounded-circle animate-slide-start`}
-                                        aria-label="Onceki"
+                                        aria-label="Önceki"
                                     >
                                         <i className="ci-chevron-left fs-lg animate-target"></i>
                                     </button>

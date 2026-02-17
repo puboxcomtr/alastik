@@ -198,12 +198,12 @@ router.post('/', async (req, res) => {
             pricing,
             payment: {
                 method: paymentMethod,
-                status: paymentMethod === 'bank_transfer' ? 'pending' : 'pending',
+                status: 'pending',
                 bankTransfer: paymentMethod === 'bank_transfer' ? {
                     referenceCode: orderNumber
                 } : null
             },
-            status: 'pending',
+            status: paymentMethod === 'credit_card' ? 'payment_failed' : 'pending',
             customerNote,
             diaIntegration: {
                 status: 'pending'

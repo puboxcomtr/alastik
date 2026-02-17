@@ -104,7 +104,11 @@ const webReviewSchema = new mongoose.Schema({
         minlength: 10,
         maxlength: 2000
     },
-
+    // Fake Yorum için
+    displayName: {
+        type: String,
+        default: null
+    },
     source: {
         type: String,
         default: 'ALastik'

@@ -27,7 +27,6 @@ import {
 } from '@src/hooks/Products/productHelpers';
 
 export default function ProductCard({ product }: ProductCardProps) {
-    const [value, setValue] = useState<number | null>(4);
     const [isFavorite, setIsFavorite] = useState(false);
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
@@ -135,15 +134,15 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </Link>
             </div>
 
-            <div className="w-100 min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
+            <div className="min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
                 <div className="d-flex justify-content-between gap-2 mb-2">
                     <div>
                         {brandLogo ? (
                             <Image
                                 src={brandLogo}
                                 alt={brandName || 'Marka'}
-                                width={60}
-                                height={30}
+                                width={90}
+                                height={47}
                                 style={{ objectFit: 'contain' }}
                             />
                         ) : (
@@ -152,16 +151,20 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
                     {/* Rating */}
                     <div className='d-flex align-items-center'>
-                        <Rating
-                            name={`product-rating-${product._key}`}
-                            value={value}
-                            precision={0.5}
-                            size="small"
-                            onChange={(event, newValue) => {
-                                setValue(newValue);
-                            }}
-                        />
-                        <span className="text-body-tertiary fs-xs">({value})</span>
+                        {product.customData?.reviewStats?.reviewCount > 0 ? (
+                            <>
+                                <Rating
+                                    name={`product-rating-${product._key}`}
+                                    value={product.customData.reviewStats.averageRating}
+                                    precision={0.5}
+                                    size="small"
+                                    readOnly
+                                />
+                                <span className="text-body-tertiary fs-xs">({product.customData.reviewStats.reviewCount} Yorum) </span>
+                            </>
+                        ) : (
+                            <span className="text-body-tertiary fs-xs">Henüz Yorum Yapılmadı</span>
+                        )}
                     </div>
                 </div>
 
@@ -209,55 +212,56 @@ export default function ProductCard({ product }: ProductCardProps) {
                         {adding ? 'Ekleniyor...' : t('addToCart')}
                     </button>
                 </Tooltip>
-            </div>
 
-            {/* Product details hover */}
-            <div className="product-card-details position-absolute top-100 start-0 w-100 bg-body rounded-bottom shadow mt-n2 p-3 pt-1">
-                <span className="position-absolute top-0 start-0 w-100 bg-body mt-n2 py-2"></span>
-                <ul className="list-unstyled d-flex flex-column gap-2 m-0">
-                    {isJant(product) ? (
-                        <>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Bijon Sayısı:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonSayisi}</span>
-                            </li>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Bijon Aralığı:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonAraligi}</span>
-                            </li>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Jant Çapı:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{jantCapi}</span>
-                            </li>
-                        </>
-                    ) : (
-                        <>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Ebat:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{ebat}</span>
-                            </li>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Yük Endeksi:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{yukEndeksi}</span>
-                            </li>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Hız Endeksi:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{hizEndeksi}</span>
-                            </li>
-                            <li className="d-flex align-items-center">
-                                <span className="fs-xs">Üretim Tarihi:</span>
-                                <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                <span className="text-dark-emphasis fs-xs fw-medium text-end">{uretimTarihi}</span>
-                            </li>
-                        </>
-                    )}
-                </ul>
+                {/* Product details hover */}
+                <div className="product-card-details position-absolute top-100 start-0 bg-body w-100 rounded-bottom" style={{ border: '1px solid #e5e9dd' }}>
+                    <span className="position-absolute top-0 start-0 w-100 bg-body mt-n2 py-2">
+                        <ul className="list-unstyled d-flex flex-column gap-2 m-0 shadow mt-n2 p-3 pt-1">
+                            {isJant(product) ? (
+                                <>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Bijon Sayısı:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonSayisi}</span>
+                                    </li>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Bijon Aralığı:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonAraligi}</span>
+                                    </li>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Jant Çapı:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{jantCapi}</span>
+                                    </li>
+                                </>
+                            ) : (
+                                <>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Ebat:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{ebat}</span>
+                                    </li>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Yük Endeksi:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{yukEndeksi}</span>
+                                    </li>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Hız Endeksi:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{hizEndeksi}</span>
+                                    </li>
+                                    <li className="d-flex align-items-center">
+                                        <span className="fs-xs">Üretim Tarihi:</span>
+                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
+                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{uretimTarihi}</span>
+                                    </li>
+                                </>
+                            )}
+                        </ul>
+                    </span>
+                </div>
             </div>
         </div>
     );

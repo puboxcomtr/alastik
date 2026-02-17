@@ -6,45 +6,39 @@ import authService from '../../lib/auth';
 import toast from '../../lib/toast';
 
 export default function GaragePage() {
-  const [loading, setLoading] = useState(true);
   const [garage, setGarage] = useState<any[]>([]);
   const [form, setForm] = useState<any>({ marka: '', model: '', yil: '', modifikasyon: '', nickname: '' });
 
   const load = async () => {
     try {
-      setLoading(true);
       const resp = await authService.authenticatedRequest('/users/garage');
       const data = await resp.json();
       if (data.success) setGarage(data.data || []);
     } catch (e) {
       toast.error('Garaj bilgileri alınamadı');
-    } finally { setLoading(false); }
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   const addCar = async () => {
     try {
-      setLoading(true);
       const payload = { ...form, yil: parseInt(form.yil || '0') };
       const resp = await authService.authenticatedRequest('/users/garage', { method: 'POST', body: JSON.stringify(payload) });
       const data = await resp.json();
       if (data.success) { toast.success('Araç eklendi'); setForm({ marka: '', model: '', yil: '', modifikasyon: '', nickname: '' }); await load(); }
       else toast.error(data.message || 'Araç eklenemedi');
     } catch (e) { toast.error('Araç eklenemedi'); }
-    finally { setLoading(false); }
   };
 
   const deleteCar = async (index: number) => {
     if (!confirm('Aracı silmek istediğinize emin misiniz?')) return;
     try {
-      setLoading(true);
       const resp = await authService.authenticatedRequest(`/users/garage/${index}`, { method: 'DELETE' });
       const data = await resp.json();
       if (data.success) { toast.success('Araç silindi'); await load(); }
       else toast.error(data.message || 'Araç silinemedi');
     } catch (e) { toast.error('Araç silinemedi'); }
-    finally { setLoading(false); }
   };
 
   const toCategory = (car: any) => {
@@ -78,7 +72,7 @@ export default function GaragePage() {
                   </div>
                 ))}
               </div>
-              <button className="btn btn-primary mt-3" disabled={loading} onClick={addCar}><i className="ci-plus me-2"></i>Ekle</button>
+              <button className="btn btn-primary mt-3" onClick={addCar}><i className="ci-plus me-2"></i>Ekle</button>
             </div>
           </div>
         </div>
@@ -90,9 +84,7 @@ export default function GaragePage() {
               {garage.length > 0 && <span className="badge bg-success-subtle text-success border">{garage.length}</span>}
             </div>
             <div className="card-body">
-              {loading ? (
-                <div className="text-center py-5"><div className="spinner-border"></div></div>
-              ) : garage.length === 0 ? (
+              {garage.length === 0 ? (
                 <div className="text-center text-muted py-5">
                   <img src="/assets/img/cars/car-not-found.jpg" width={260} className="mb-3" alt="Boş garaj" />
                   <p>Garajınız boş. Araç ekleyerek hızlı lastik araması yapabilirsiniz.</p>

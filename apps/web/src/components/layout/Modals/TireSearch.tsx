@@ -393,7 +393,7 @@ export default function TireSearchModal({
                         selectedMake={searchState.make}
                         onSelect={(make, makeName) => {
                             updateSearchState({ make, makeName });
-                            goToNextStep();
+                            setCurrentStep('model');
                         }}
                     />
                 )}
@@ -405,7 +405,7 @@ export default function TireSearchModal({
                         selectedModel={searchState.model}
                         onSelect={(model, modelName) => {
                             updateSearchState({ model, modelName });
-                            goToNextStep();
+                            setCurrentStep('year');
                         }}
                     />
                 )}
@@ -418,7 +418,7 @@ export default function TireSearchModal({
                         modelName={searchState.modelName}
                         onSelect={(year, generation, vehicleImage) => {
                             updateSearchState({ year, generation, vehicleImage });
-                            goToNextStep();
+                            setCurrentStep('modification');
                         }}
                     />
                 )}
@@ -435,7 +435,7 @@ export default function TireSearchModal({
                         vehicleImage={searchState.vehicleImage}
                         onSelect={(modification, modificationName) => {
                             updateSearchState({ modification, modificationName });
-                            goToNextStep();
+                            setCurrentStep(stepOrder[4]);
                         }}
                     />
                 )}
@@ -503,29 +503,23 @@ export default function TireSearchModal({
             {/* Footer */}
             {showFooter && (
                 <DialogActions sx={{ justifyContent: 'space-between', p: 2 }}>
-                    <Button
+                    <button
+                        type="button"
                         onClick={goToPreviousStep}
                         disabled={!canGoPrevious || isRedirecting}
+                        className={`btn rounded-2 ${!canGoPrevious || isRedirecting ? 'btn-secondary' : 'btn-outline-primary'}`}
                     >
                         Geri
-                    </Button>
+                    </button>
 
-                    {actionButton ? (
+                    {actionButton && (
                         <Button
                             onClick={actionButton.onClick}
                             disabled={actionButton.disabled}
                             variant="contained"
-                            color="error"
-                            startIcon={isRedirecting ? <CircularProgress size={16} color="inherit" /> : null}
+                            color="primary"
                         >
                             {actionButton.label}
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={goToNextStep}
-                            disabled={!canGoNext}
-                        >
-                            İleri
                         </Button>
                     )}
                 </DialogActions>

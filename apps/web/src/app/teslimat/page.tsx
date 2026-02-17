@@ -25,21 +25,22 @@ import { BillingData, ShippingData, initialBillingData, initialShippingData } fr
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { items, totals, loading: cartLoading } = useCart();
-    const { user, isLoggedIn, loading: authLoading } = useAuth();
+    const { items, totals, refreshCart } = useCart();
+    const { user, isLoggedIn } = useAuth();
     const [billingData, setBillingData] = useState<BillingData>(initialBillingData);
     const [shippingData, setShippingData] = useState<ShippingData>(initialShippingData);
     const [differentShipping, setDifferentShipping] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string>('');
     const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string>('');
-
     useEffect(() => {
-        if (cartLoading) return;
+        refreshCart();
+    }, [refreshCart]);
+    useEffect(() => {
         if (items.length === 0) {
             router.push(ROUTES.CART);
         }
-    }, [items, router, cartLoading]);
+    }, [items, router]);
 
     const validateGuestForm = () => {
         const requiredFields = ['email', 'phone', 'cityId', 'districtId', 'neighborhoodId', 'street', 'buildingNo'];
@@ -98,16 +99,6 @@ export default function CheckoutPage() {
         sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
         router.push(ROUTES.PAYMENT);
     };
-
-    if (cartLoading || authLoading) {
-        return (
-            <div className="container py-5 text-center">
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Yükleniyor...</span>
-                </div>
-            </div>
-        );
-    }
 
     if (items.length === 0) {
         return null;

@@ -2,6 +2,56 @@ const express = require('express');
 const router = express.Router();
 const WebReview = require('../../../models/web/user/WebReview');
 const WebMember = require('../../../models/web/user/WebMember');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
+
+// GET /api/reviews/top - Ana sayfa icin en iyi yorumlar
+router.get('/top', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+
+        const reviews = await WebReview.find({
+            status: 'active',
+            overallRating: { $gte: 4 }
+        })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .select('displayName overallRating comment tireSize productKey createdAt')
+            .lean();
+
+        const productKeys = reviews.map(r => r.productKey).filter(Boolean);
+        const products = await WebProduct.find({
+            _key: { $in: productKeys }
+        })
+            .select('_key diaData.aciklama diaData.marka diaData.m_resimler customData.seoUrl')
+            .lean();
+
+        const productMap = {};
+        products.forEach(p => {
+            const img = p.diaData?.m_resimler?.[0]?.aws_url || null;
+            productMap[p._key] = {
+                name: p.diaData?.aciklama || '',
+                brand: p.diaData?.marka || '',
+                image: img,
+                seoUrl: p.customData?.seoUrl || ''
+            };
+        });
+
+        const data = reviews.map(r => ({
+            _id: r._id,
+            displayName: r.displayName,
+            overallRating: r.overallRating,
+            comment: r.comment,
+            tireSize: r.tireSize,
+            createdAt: r.createdAt,
+            product: productMap[r.productKey] || null
+        }));
+
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Top reviews hatasi:', error);
+        res.status(500).json({ success: false, message: 'Yorumlar yuklenemedi' });
+    }
+});
 
 // GET /api/reviews/:productKey - Ürün yorumları + istatistik
 router.get('/:productKey', async (req, res) => {
@@ -70,7 +120,11 @@ router.get('/:productKey', async (req, res) => {
             data: {
                 reviews: reviews.map(review => ({
                     ...review,
-                    user: {
+                    displayName: review.displayName || null,
+                    user: review.displayName ? {
+                        firstName: review.displayName.split(' ')[0],
+                        lastName: review.displayName.split(' ').slice(1).join(' ')
+                    } : {
                         firstName: review.userId?.firstName,
                         lastName: review.userId?.lastName
                     }

@@ -59,6 +59,10 @@ export interface CustomData {
     isNew?: boolean;
     isBestSeller?: boolean;
     isFeatured?: boolean;
+    reviewStats?: {
+        averageRating: number;
+        reviewCount: number;
+    };
 }
 
 // DIA Data

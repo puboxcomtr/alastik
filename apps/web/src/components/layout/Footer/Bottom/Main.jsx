@@ -17,21 +17,21 @@ export default function FooterTop() {
     return (
 
         <Container>
-            <Row className="row-fluid position-relative pt-4">
+            <Row className="row-fluid position-relative pt-4 align-items-center">
                 <Col lg={5}>
                     <ul className="nav justify-content-left gap-4 order-md-3 mb-4 mb-md-0">
                         <li className="animate-underline">
-                            <a className="nav-link fs-xs fw-normal p-0 animate-target" href="#!">
+                            <a className="nav-link fs-xs fw-normal p-0 animate-target" href="/sayfa/kvkk-ve-gizlilik-sozlesmesi">
                                 KVKK ve Gizlilik Sözleşmesi
                             </a>
                         </li>
                         <li className="animate-underline">
-                            <a className="nav-link fs-xs fw-normal p-0 animate-target" href="#!">
+                            <a className="nav-link fs-xs fw-normal p-0 animate-target" href="/sayfa/mesafeli-satis-sozlesmesi">
                                 Mesafeli Satış Sözleşmesi
                             </a>
                         </li>
                         <li className="animate-underline">
-                            <a className="nav-link fs-xs fw-normal p-0 animate-target" href="#!">
+                            <a className="nav-link fs-xs fw-normal p-0 animate-target" href="/sayfa/iade-politikasi">
                                 İade Politikası
                             </a>
                         </li>
@@ -49,7 +49,7 @@ export default function FooterTop() {
                         }}
                     >
                         <Link
-                            href={"#!"} >
+                            href={"https://etbis.ticaret.gov.tr/tr/Anasayfa/SiteAraSonuc?siteId=745e4066-7e80-4e3b-a831-b65ed62e3e77"} >
 
                             <Image
                                 src={'/assets/img/etbis.webp'}
@@ -64,45 +64,10 @@ export default function FooterTop() {
                     <div className="d-flex justify-content-end gap-2">
                         <div>
                             <Image
-                                src="/assets/img/payment-methods/visa-light-mode.svg"
-                                className="d-none-dark"
-                                width={58}
-                                height={40}
-                                alt="Visa" />
-                            <Image
-                                src="/assets/img/payment-methods/visa-dark-mode.svg"
-                                className="d-none d-block-dark"
-                                width={58}
-                                height={40}
-                                alt="Visa" />
-                        </div>
-                        <div>
-                            <Image
-                                src="/assets/img/payment-methods/paypal-dark-mode.svg"
-                                className="d-none-dark"
-                                width={58}
-                                height={40}
-                                alt="Visa" />
-                            <Image
-                                src="/assets/img/payment-methods/paypal-dark-mode.svg"
-                                className="d-none d-block-dark"
-                                width={58}
-                                height={40}
-                                alt="Visa" />
-                        </div>
-                        <div>
-                            <Image
-                                src="/assets/img/payment-methods/apple-pay-light-mode.svg"
-                                className="d-none-dark"
-                                width={58}
-                                height={40}
-                                alt="Visa" />
-                            <Image
-                                src="/assets/img/payment-methods/apple-pay-dark-mode.svg"
-                                className="d-none d-block-dark"
-                                width={58}
-                                height={40}
-                                alt="Visa" />
+                                src="/assets/img/odeme-yontemleri.png"
+                                width={754}
+                                height={30}
+                                alt="ALastik.com Ödeme Yöntemleri" />
                         </div>
                     </div>
                 </Col>

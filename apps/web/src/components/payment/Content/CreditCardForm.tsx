@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { API_ENDPOINTS } from '@/src/config/api';
 
 interface CardInfo {
     bin: string;
@@ -44,8 +45,6 @@ export interface CardFormData {
     vPosId: number;
     isValid: boolean;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082';
 
 export default function CreditCardForm({ onCardDataChange, totalAmount }: CreditCardFormProps) {
     const [cardNumber, setCardNumber] = useState('');
@@ -101,7 +100,7 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
     const checkBin = async (bin: string) => {
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/web/payments/netahsilat/bin/${bin}`);
+            const response = await fetch(API_ENDPOINTS.payment.binCheck(bin));
             const data: BinResponse = await response.json();
 
             if (data.success && data.cardInfo) {

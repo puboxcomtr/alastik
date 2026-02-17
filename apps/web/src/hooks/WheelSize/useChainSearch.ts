@@ -1,5 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export function useChainSearch() {
     const [genislikler, setGenislikler] = useState<{ value: string }[]>([]);
@@ -10,20 +11,12 @@ export function useChainSearch() {
     const [selectedYukseklik, setSelectedYukseklik] = useState('');
     const [selectedCap, setSelectedCap] = useState('');
 
-    const getApiUrl = () => {
-        if (typeof window !== 'undefined') {
-            return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-        }
-        return 'http://localhost:3082/api';
-    };
 
     useEffect(() => {
         const fetchWidths = async () => {
             setLoading(true);
-            const apiUrl = getApiUrl();
-
             try {
-                const response = await fetch(`${apiUrl}/filters/chain-options`);
+                const response = await fetch(API_ENDPOINTS.filters.chainOptions());
                 const data = await response.json();
 
                 if (data.success && data.widths) {
@@ -50,9 +43,8 @@ export function useChainSearch() {
         }
 
         const fetchAspects = async () => {
-            const apiUrl = getApiUrl();
             try {
-                const response = await fetch(`${apiUrl}/filters/chain-options?genislik=${selectedGenislik}`);
+                const response = await fetch(`${API_ENDPOINTS.filters.chainOptions()}?genislik=${selectedGenislik}`);
                 const data = await response.json();
                 if (data.success && data.aspects) {
                     setYanakOranlari(data.aspects);
@@ -73,9 +65,8 @@ export function useChainSearch() {
         }
 
         const fetchRims = async () => {
-            const apiUrl = getApiUrl();
             try {
-                const response = await fetch(`${apiUrl}/filters/chain-options?genislik=${selectedGenislik}&yanak=${selectedYukseklik}`);
+                const response = await fetch(`${API_ENDPOINTS.filters.chainOptions()}?genislik=${selectedGenislik}&yanak=${selectedYukseklik}`);
                 const data = await response.json();
                 if (data.success && data.rims) {
                     setJantCaplari(data.rims);

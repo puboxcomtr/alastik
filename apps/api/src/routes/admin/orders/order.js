@@ -14,7 +14,8 @@ const ORDER_STATUSES = {
     shipped: 'Kargoya Verildi',
     delivered: 'Teslim Edildi',
     cancelled: 'İptal Edildi',
-    returned: 'İade Edildi'
+    returned: 'İade Edildi',
+    payment_failed: 'Ödeme Başarısız'
 };
 
 // Ödeme durumları (model'deki enum'a göre)
@@ -108,8 +109,10 @@ router.get('/', async (req, res) => {
                 statusText: ORDER_STATUSES[order.status] || order.status || 'Onay Bekliyor',
                 paymentMethod: order.payment?.method || '',
                 paymentMethodText: order.payment?.method === 'bank_transfer' ? 'Banka Havalesi' :
-                    order.payment?.method === 'credit_card' ? 'Kredi Kartı' :
-                        order.payment?.method === 'cash_on_delivery' ? 'Kapıda Ödeme' : order.payment?.method || '',
+                    order.payment?.method === 'credit_card' ? 'Kredi Kartı (Ödeme Çekilmedi)' :
+                        order.payment?.method === 'credit_card_3d' ? 'Kredi Kartı 3D Secure' :
+                            order.payment?.method === 'netahsilat_installment' ? 'Kredi Kartı Taksitli' :
+                                order.payment?.method === 'cash_on_delivery' ? 'Kapıda Ödeme' : order.payment?.method || '',
                 paymentStatus: order.payment?.status || 'pending',
                 paymentStatusText: PAYMENT_STATUSES[order.payment?.status] || order.payment?.status || 'Bekliyor',
                 total: order.pricing?.total || 0,
@@ -251,8 +254,10 @@ router.get('/:id', async (req, res) => {
             payment: {
                 method: order.payment?.method || '',
                 methodText: order.payment?.method === 'bank_transfer' ? 'Banka Havalesi' :
-                    order.payment?.method === 'credit_card' ? 'Kredi Kartı' :
-                        order.payment?.method === 'cash_on_delivery' ? 'Kapıda Ödeme' : order.payment?.method || '',
+                    order.payment?.method === 'credit_card' ? 'Kredi Kartı (Ödeme Çekilmedi)' :
+                        order.payment?.method === 'credit_card_3d' ? 'Kredi Kartı 3D Secure' :
+                            order.payment?.method === 'netahsilat_installment' ? 'Kredi Kartı Taksitli' :
+                                order.payment?.method === 'cash_on_delivery' ? 'Kapıda Ödeme' : order.payment?.method || '',
                 status: order.payment?.status || 'pending',
                 statusText: PAYMENT_STATUSES[order.payment?.status] || order.payment?.status || 'Bekliyor',
                 bankTransfer: order.payment?.bankTransfer || null,

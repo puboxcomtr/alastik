@@ -147,7 +147,7 @@ router.post('/3d-callback', async (req, res) => {
         const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
         if (order) {
             order.paymentStatus = 'failed';
-            order.status = 'cancelled';
+            order.status = 'payment_failed';
             order.payment.errorMessage = errorMessage || 'Ödeme başarısız';
             order.payment.errorCode = errorCode;
             await order.save();

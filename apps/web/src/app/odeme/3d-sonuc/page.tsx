@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Container } from 'react-bootstrap';
 import { useCart } from '@/src/context/CartContext';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082';
+import { API_ENDPOINTS } from '@/src/config/api';
+import { ROUTES } from '@/src/config/routes';
 
 export default function ThreeDResultPage() {
     const searchParams = useSearchParams();
@@ -16,7 +16,6 @@ export default function ThreeDResultPage() {
 
     useEffect(() => {
         const processPayment = async () => {
-            // URL parametrelerini al
             const paymentGuid = searchParams.get('PaymentGuid');
             const transactionStatusId = searchParams.get('TransactionStatusId');
             const orderReference = searchParams.get('OrderReference') || searchParams.get('ClientReferenceCode');
@@ -34,7 +33,7 @@ export default function ThreeDResultPage() {
                 setStatus('error');
                 setMessage(bankMessage || 'Ödeme başarısız oldu');
                 setTimeout(() => {
-                    router.push(`/odeme/basarisiz?error=${encodeURIComponent(bankMessage || 'Ödeme başarısız')}`);
+                    router.push(`${ROUTES.PAYMENT_FAILED}?error=${encodeURIComponent(bankMessage || 'Ödeme başarısız')}`);
                 }, 2000);
                 return;
             }
@@ -44,14 +43,14 @@ export default function ThreeDResultPage() {
                 setStatus('error');
                 setMessage('Ödeme bilgisi alınamadı');
                 setTimeout(() => {
-                    router.push('/odeme/basarisiz?error=Ödeme bilgisi alınamadı');
+                    router.push(`${ROUTES.PAYMENT_FAILED}?error=Ödeme bilgisi alınamadı`);
                 }, 2000);
                 return;
             }
 
             try {
                 // CommitPayment çağır
-                const response = await fetch(`${API_URL}/web/payments/netahsilat/3d-commit`, {
+                const response = await fetch(API_ENDPOINTS.payment.threeDCommit(), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -70,13 +69,13 @@ export default function ThreeDResultPage() {
                     await clearCart(true);
 
                     setTimeout(() => {
-                        router.push(`/siparis-basarili?order=${result.orderNumber}`);
+                        router.push(`${ROUTES.ORDER_SUCCESS}?order=${result.orderNumber}`);
                     }, 1500);
                 } else {
                     setStatus('error');
                     setMessage(result.message || 'Ödeme tamamlanamadı');
                     setTimeout(() => {
-                        router.push(`/odeme/basarisiz?error=${encodeURIComponent(result.message || 'Ödeme tamamlanamadı')}`);
+                        router.push(`${ROUTES.PAYMENT_FAILED}?error=${encodeURIComponent(result.message || 'Ödeme tamamlanamadı')}`);
                     }, 2000);
                 }
             } catch (error) {
@@ -84,7 +83,7 @@ export default function ThreeDResultPage() {
                 setStatus('error');
                 setMessage('Bağlantı hatası');
                 setTimeout(() => {
-                    router.push('/odeme/basarisiz?error=Bağlantı hatası');
+                    router.push(`${ROUTES.PAYMENT_FAILED}?error=Bağlantı hatası`);
                 }, 2000);
             }
         };

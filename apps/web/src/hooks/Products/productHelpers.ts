@@ -1,8 +1,7 @@
 // apps/web/src/hooks/Products/productHelpers.ts
 import { Product } from '@src/types/products';
 import { buildProductUrl } from '@src/config/routes';
-
-const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'https://api.alastik.com';
+import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 
 /**
  * Ürün detay URL'ini oluştur
@@ -59,10 +58,8 @@ export const hasProductDiscount = (product: Product): boolean => {
  */
 const normalizeUrl = (url: string): string => {
     if (!url) return '';
-    if (url.startsWith('http')) return url;
-    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
+    return getImageUrl(url);
 };
-
 /**
  * Ürün görselini al
  * @param product - Ürün
@@ -83,16 +80,15 @@ export const getProductImage = (product: Product, defaultImage?: string): string
         return normalizeUrl(defaultImage);
     }
 
-    return `${MEDIA_URL}/theme/katalog-gorseli.jpg`;
+    return getImageUrl('/theme/katalog-gorseli.jpg');
 };
 
 /**
  * Ürün görsel URL'ini al (direkt URL için)
  */
 export const getProductImageUrl = (url: string | null | undefined): string => {
-    if (!url) return `${MEDIA_URL}/theme/katalog-gorseli.jpg`;
-    if (url.startsWith('http')) return url;
-    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
+    if (!url) return getImageUrl('/theme/katalog-gorseli.jpg');
+    return getImageUrl(url);
 };
 
 /**
@@ -136,7 +132,7 @@ export const getProductStockCode = (product: Product): string => {
 export async function getRandomProducts(limit: number = 3) {
     try {
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/products/filter?limit=${limit}&random=true`,
+            `${API_ENDPOINTS.products.filter()}?limit=${limit}&random=true`,
             {
                 cache: 'no-store',
                 next: { revalidate: 0 }
@@ -336,7 +332,7 @@ export const fetchAlternativeSizes = async (product: Product): Promise<Product[]
 
     try {
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/products/filter?marka=${encodeURIComponent(marka)}&ozelkod5=${encodeURIComponent(ozelkod5)}&limit=50`
+            `${API_ENDPOINTS.products.filter()}?marka=${encodeURIComponent(marka)}&ozelkod5=${encodeURIComponent(ozelkod5)}&limit=50`
         );
         const data = await response.json();
 

@@ -1,26 +1,38 @@
 const mongoose = require('mongoose');
 
 const DiaStockSchema = new mongoose.Schema({
-  // DIA ERP benzersiz identifier - tek required alan
+  // DIA ERP benzersiz identifier
   _key: {
     type: String,
     required: [true, 'DIA _key gereklidir'],
     unique: true,
     trim: true
   },
-  
-  // **YENİ ALAN - Senkronizasyon Kontrolü**
+
+  // Senkronizasyon Kontrolü
   synchronization: {
     type: String,
     enum: ['Y', 'N'],
     default: 'Y', // Default: Her şeyi senkronize et
     description: 'Y: Her şeyi senkronize et, N: Sadece stok/fiyat senkronize et'
   },
-  
+  dataHash: {
+    type: String,
+    default: null,
+    index: true
+  },
+  priceHash: {
+    type: String,
+    default: null
+  },
+  stockHash: {
+    type: String,
+    default: null
+  },
   // Tarih bilgileri
   _cdate: String,
   _date: String,
-  
+
   // DIA Foreign Key'ler (nullable)
   _key_scf_karebarkod: String,
   _key_scf_marka: String,
@@ -40,18 +52,18 @@ const DiaStockSchema = new mongoose.Schema({
   _key_sis_resim: String,
   _key_sis_ulkeler_mensei: String,
   _key_web_b2c_magazalar: String,
-  
+
   // Temel ürün bilgileri
   aciklama: {
     type: String,
     trim: true // Arama için index
   },
-  
+
   // Barkod bilgileri
   anabarkod: String,
   barkodu: String,
   karebarkod: String,
-  
+
   // Birim bilgileri
   anabirimbrutagirlik: Number,
   anabirimdesi: Number,
@@ -59,7 +71,7 @@ const DiaStockSchema = new mongoose.Schema({
   anabirimnetagirlik: Number,
   birimadi: String,
   birimindirimorani: String,
-  
+
   // Stok bilgileri
   fiili_stok: {
     type: Number,
@@ -71,7 +83,7 @@ const DiaStockSchema = new mongoose.Schema({
   },
   azamimiktar: Number,
   azamimiktar_firma: Number,
-  
+
   // B2B/B2C durum bilgileri
   b2b_depomiktari: Number,
   b2b_gonder: {
@@ -81,7 +93,7 @@ const DiaStockSchema = new mongoose.Schema({
   b2b_kargobedava: String,
   b2bgoster: String,
   b2bgoster_birim: String,
-  
+
   b2c_depomiktari: Number,
   b2c_depomiktari_list: String,
   b2c_depomiktari_listesi: String,
@@ -98,7 +110,7 @@ const DiaStockSchema = new mongoose.Schema({
   b2c_kargobedava: String,
   b2c_kargobedava_birim: String,
   b2c_kargodurumu: String,
-  
+
   // Fiyat bilgileri
   fiyat1: Number,
   fiyat2: Number,
@@ -106,20 +118,20 @@ const DiaStockSchema = new mongoose.Schema({
   fiyat4: Number,
   fiyat10: Number,
   sontuketicifiyati: Number,
-  
+
   // Döviz bilgileri
   doviz1: String,
   doviz2: String,
   doviz3: String,
   doviz4: String,
-  
+
   // Durum bilgileri
   durum: {
     type: String,
     enum: ['A', 'P'], // A=Aktif, P=Pasif
     default: 'A'
   },
-  
+
   // Ek alanlar
   ekalan1: String,
   ekalan2: String,
@@ -132,12 +144,12 @@ const DiaStockSchema = new mongoose.Schema({
   ekalan9: String,
   ekalan10: String,
   ekalantum: String,
-  
+
   // Firma ve kullanıcı bilgileri
   ekleyenkullaniciadi: String,
   kullaniciadi: String,
   firmaadi: String,
-  
+
   // KDV bilgileri
   kdvalis: Number,
   kdvdurumu: String,
@@ -151,7 +163,7 @@ const DiaStockSchema = new mongoose.Schema({
   kdvsatistoptan: Number,
   kdvtevkifatkodu: String,
   kdvtevkifatorani: Number,
-  
+
   // Diğer alanlar
   gtipno: String,
   images_count: Number,
@@ -161,7 +173,7 @@ const DiaStockSchema = new mongoose.Schema({
   karyuzdesi: Number,
   kilitli: String,
   kodveaciklama: String,
-  
+
   // Marka bilgileri
   marka: {
     type: String,
@@ -169,10 +181,10 @@ const DiaStockSchema = new mongoose.Schema({
   },
   markaack: String,
   menseiulkeadi: String,
-  
+
   // Not alanı
   note: String,
-  
+
   // Özel kodlar
   ozelkod1: String,
   ozelkod1kodu: String,
@@ -196,17 +208,17 @@ const DiaStockSchema = new mongoose.Schema({
   ozelkod10kodu: String,
   ozelkod11: String,
   ozelkod11kodu: String,
-  
+
   // Stok kart bilgileri
   stokkartkodu: {
     type: String,
     trim: true // Stok kart kodu ile arama için
   },
-  
+
   // Ürün ağaçları
   urunagaci1: String,
   urunagaclari: String,
-  
+
   // Birimler array - performans için embedded
   m_birimler: [{
     _key: String,
@@ -232,7 +244,7 @@ const DiaStockSchema = new mongoose.Schema({
     miktar: Number,
     oranlama: String
   }],
-  
+
   // Kategoriler array - performans için embedded
   m_kategoriler: [{
     _key: String,
@@ -256,7 +268,7 @@ const DiaStockSchema = new mongoose.Schema({
     kategori_durum_5: String,
     kategori_durum_6: String
   }],
-  
+
   // Ürün özellikleri array - performans için embedded
   m_urunOzellikleri: [{
     _key: String,
@@ -268,7 +280,7 @@ const DiaStockSchema = new mongoose.Schema({
     ozellikadi: String,
     ozellisirano: String
   }],
-  
+
   // Resimler array - performans için embedded
   m_resimler: [{
     _key: String,
@@ -282,7 +294,7 @@ const DiaStockSchema = new mongoose.Schema({
     varyantlar: String,
     yukleyen: String
   }],
-  
+
   // Senkronizasyon bilgileri
   syncInfo: {
     lastSyncDate: {
@@ -301,18 +313,18 @@ const DiaStockSchema = new mongoose.Schema({
       default: 'dia_api'
     }
   },
-  
+
   // Performans alanları (virtual alanlar için hesaplanmış)
   isActive: {
     type: Boolean,
     default: true
   },
-  
+
   hasStock: {
     type: Boolean,
     default: false
   },
-  
+
   isB2CActive: {
     type: Boolean,
     default: false
@@ -333,42 +345,42 @@ DiaStockSchema.index({ 'syncInfo.syncStatus': 1 });
 DiaStockSchema.index({ synchronization: 1 }); // **YENİ INDEX**
 
 // Text search index
-DiaStockSchema.index({ 
-  aciklama: 'text', 
-  marka: 'text', 
+DiaStockSchema.index({
+  aciklama: 'text',
+  marka: 'text',
   stokkartkodu: 'text',
   ekalan1: 'text',
   ekalan2: 'text'
 });
 
 // Virtual alanlar
-DiaStockSchema.virtual('isInStock').get(function() {
+DiaStockSchema.virtual('isInStock').get(function () {
   return this.fiili_stok > 0;
 });
 
-DiaStockSchema.virtual('isB2CEnabled').get(function() {
+DiaStockSchema.virtual('isB2CEnabled').get(function () {
   return this.b2c_gonder === 'E' && this.durum === 'A';
 });
 
-DiaStockSchema.virtual('primaryCategory').get(function() {
+DiaStockSchema.virtual('primaryCategory').get(function () {
   if (this.m_kategoriler && this.m_kategoriler.length > 0) {
     return this.m_kategoriler[0].kategori_aciklama_1;
   }
   return null;
 });
 
-DiaStockSchema.virtual('primaryUnit').get(function() {
+DiaStockSchema.virtual('primaryUnit').get(function () {
   if (this.m_birimler && this.m_birimler.length > 0) {
     return this.m_birimler[0].birimadi;
   }
   return this.birimadi;
 });
 
-DiaStockSchema.virtual('primaryPrice').get(function() {
+DiaStockSchema.virtual('primaryPrice').get(function () {
   return this.fiyat1 || this.sontuketicifiyati || 0;
 });
 
-DiaStockSchema.virtual('primaryImage').get(function() {
+DiaStockSchema.virtual('primaryImage').get(function () {
   if (this.m_resimler && this.m_resimler.length > 0) {
     return this.m_resimler[0].aws_url;
   }
@@ -376,90 +388,90 @@ DiaStockSchema.virtual('primaryImage').get(function() {
 });
 
 // Middleware - performans alanlarını otomatik güncelle
-DiaStockSchema.pre('save', function(next) {
+DiaStockSchema.pre('save', function (next) {
   // Durum kontrolü
   this.isActive = this.durum === 'A';
-  
+
   // Stok kontrolü
   this.hasStock = this.fiili_stok > 0;
-  
+
   // B2C aktiflik kontrolü
   this.isB2CActive = this.b2c_gonder === 'E' && this.durum === 'A';
-  
+
   // Sync bilgisi güncelle
   this.syncInfo.lastSyncDate = new Date();
-  
+
   next();
 });
 
 // Static methods
-DiaStockSchema.statics.findActiveProducts = function() {
+DiaStockSchema.statics.findActiveProducts = function () {
   return this.find({ durum: 'A', isActive: true });
 };
 
-DiaStockSchema.statics.findB2CProducts = function() {
+DiaStockSchema.statics.findB2CProducts = function () {
   return this.find({ b2c_gonder: 'E', durum: 'A' });
 };
 
-DiaStockSchema.statics.findInStockProducts = function() {
+DiaStockSchema.statics.findInStockProducts = function () {
   return this.find({ fiili_stok: { $gt: 0 }, durum: 'A' });
 };
 
-DiaStockSchema.statics.findByBrand = function(brand) {
+DiaStockSchema.statics.findByBrand = function (brand) {
   return this.find({ marka: brand, durum: 'A' });
 };
 
-DiaStockSchema.statics.findByCategory = function(category) {
-  return this.find({ 
+DiaStockSchema.statics.findByCategory = function (category) {
+  return this.find({
     'm_kategoriler.kategori_aciklama_1': category,
     durum: 'A'
   });
 };
 
-DiaStockSchema.statics.findBySyncStatus = function(status) {
+DiaStockSchema.statics.findBySyncStatus = function (status) {
   return this.find({ 'syncInfo.syncStatus': status });
 };
 
-DiaStockSchema.statics.findPendingSync = function() {
+DiaStockSchema.statics.findPendingSync = function () {
   return this.find({ 'syncInfo.syncStatus': 'pending' });
 };
 
-DiaStockSchema.statics.findSyncErrors = function() {
+DiaStockSchema.statics.findSyncErrors = function () {
   return this.find({ 'syncInfo.syncStatus': 'error' });
 };
 
 // **YENİ STATIC METHODS - Synchronization için**
-DiaStockSchema.statics.findLimitedSyncProducts = function() {
+DiaStockSchema.statics.findLimitedSyncProducts = function () {
   return this.find({ synchronization: 'N' }); // N: Sadece stok/fiyat
 };
 
-DiaStockSchema.statics.findFullSyncProducts = function() {
+DiaStockSchema.statics.findFullSyncProducts = function () {
   return this.find({ synchronization: 'Y' }); // Y: Her şey
 };
 
 // Instance methods
-DiaStockSchema.methods.markSyncSuccess = function() {
+DiaStockSchema.methods.markSyncSuccess = function () {
   this.syncInfo.syncStatus = 'synced';
   this.syncInfo.errorMessage = null;
   this.syncInfo.lastSyncDate = new Date();
   return this.save();
 };
 
-DiaStockSchema.methods.markSyncError = function(errorMessage) {
+DiaStockSchema.methods.markSyncError = function (errorMessage) {
   this.syncInfo.syncStatus = 'error';
   this.syncInfo.errorMessage = errorMessage;
   this.syncInfo.lastSyncDate = new Date();
   return this.save();
 };
 
-DiaStockSchema.methods.updateStock = function(newStock) {
+DiaStockSchema.methods.updateStock = function (newStock) {
   this.fiili_stok = newStock;
   this.gercek_stok = newStock;
   this.hasStock = newStock > 0;
   return this.save();
 };
 
-DiaStockSchema.methods.updateFromDiaData = function(diaData) {
+DiaStockSchema.methods.updateFromDiaData = function (diaData) {
   // synchronization kontrolü
   if (this.synchronization === 'N') {
     // Sadece stok ve fiyat alanlarını güncelle
@@ -477,25 +489,25 @@ DiaStockSchema.methods.updateFromDiaData = function(diaData) {
       }
     });
   }
-  
+
   // Sync bilgilerini güncelle
   this.syncInfo.lastSyncDate = new Date();
   this.syncInfo.syncStatus = 'synced';
   this.syncInfo.errorMessage = null;
-  
+
   return this.save();
 };
 
-DiaStockSchema.methods.enableLimitedSync = function() {
+DiaStockSchema.methods.enableLimitedSync = function () {
   return this.save();
 };
 
-DiaStockSchema.methods.enableFullSync = function() {
-  this.synchronization = 'Y'; 
+DiaStockSchema.methods.enableFullSync = function () {
+  this.synchronization = 'Y';
   return this.save();
 };
 
-DiaStockSchema.methods.toggleSyncMode = function() {
+DiaStockSchema.methods.toggleSyncMode = function () {
   this.synchronization = this.synchronization === 'Y' ? 'N' : 'Y';
   return this.save();
 };

@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { api } from '@/src/lib/api';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
-
+import { ROUTES } from '@/src/config/routes';
 
 export default function RegisterView() {
     const router = useRouter();
@@ -29,7 +29,7 @@ export default function RegisterView() {
 
     useEffect(() => {
         if (isLoggedIn) {
-            router.replace('/hesabim');
+            router.replace(ROUTES.ACCOUNT);
         }
     }, [isLoggedIn, router]);
 
@@ -89,10 +89,10 @@ export default function RegisterView() {
 
                 if (result.data?.token && result.data?.member) {
                     setAuth(result.data.token, result.data.member);
-                    router.replace('/hesabim');
+                    router.replace(ROUTES.ACCOUNT);
                 } else {
                     setTimeout(() => {
-                        router.push('/giris-yap');
+                        router.push(ROUTES.LOGIN);
                     }, 1500);
                 }
             } else {
@@ -309,7 +309,7 @@ export default function RegisterView() {
                                 </p>
 
                                 <div className="d-flex justify-content-between align-items-center">
-                                    <Link href="/giris-yap" className="btn btn-primary px-5">
+                                    <Link href={ROUTES.LOGIN} className="btn btn-primary px-5">
                                         {t('login_button')}
                                     </Link>
                                 </div>

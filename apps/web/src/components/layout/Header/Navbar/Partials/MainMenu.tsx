@@ -10,18 +10,7 @@ interface MainMenuProps {
 }
 
 export default function MainMenu({ handleClose }: MainMenuProps) {
-    const { menus, loading, getMenuUrl } = useMenu();
-
-    if (loading) {
-        return (
-            <Nav as="ul" className="navbar-nav">
-                <Nav.Item as="li">
-                    <span className="nav-link text-white">Yükleniyor...</span>
-                </Nav.Item>
-            </Nav>
-        );
-    }
-
+    const { menus, getMenuUrl } = useMenu();
     const closeMenu = () => handleClose();
 
     // Alt menüleri başlıklara göre grupla

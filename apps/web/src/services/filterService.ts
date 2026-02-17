@@ -1,4 +1,5 @@
-import { api } from '@lib/api';
+// apps/web/src/services/filterService.ts
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface FilterOption {
     value: string;
@@ -14,14 +15,9 @@ export interface VehicleTypeOption {
 
 export interface TireFilterOptions {
     productType: 'LASTİK' | 'JANT';
-    // Ortak
     brands: FilterOption[];
     vehicleTypes: VehicleTypeOption[];
-    priceRange: {
-        min: number;
-        max: number;
-    };
-    // Lastik
+    priceRange: { min: number; max: number };
     widths?: FilterOption[];
     aspects?: FilterOption[];
     rims?: FilterOption[];
@@ -31,7 +27,6 @@ export interface TireFilterOptions {
     loadIndex?: FilterOption[];
     speedIndex?: FilterOption[];
     productionYears?: FilterOption[];
-    // Jant
     jantCaplar?: FilterOption[];
     bijonlar?: FilterOption[];
 }
@@ -42,25 +37,19 @@ export async function getTireFilterOptions(
 ): Promise<TireFilterOptions | null> {
     try {
         const params = new URLSearchParams();
-
         if (categorySlug) params.append('category', categorySlug);
         if (tagSlug) params.append('tag', tagSlug);
 
         const queryString = params.toString();
-        const url = `/filters/tire-options${queryString ? `?${queryString}` : ''}`;
+        const url = `${API_ENDPOINTS.filters.tireOptions()}${queryString ? `?${queryString}` : ''}`;
 
-        const result = await api.get(url);
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) return null;
 
-        if (result?.success && result?.data) {
-            return result.data;
-        }
-        if (result?.data?.success && result?.data?.data) {
-            return result.data.data;
-        }
-
-        return null;
+        const result = await res.json();
+        return result.success ? result.data : null;
     } catch (error) {
-        console.error('Filtre seçenekleri alınamadı:', error);
+        console.error('[filterService] getTireFilterOptions error:', error);
         return null;
     }
 }

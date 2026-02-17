@@ -44,3 +44,16 @@ export interface BreadcrumbProps {
     parentCategory?: ParentCategory | null;
     sizeInfo?: SizeInfo | null;
 }
+
+export interface PageHeaderProps {
+    tip: string | null;
+    genelArama?: string | null;
+    kategori?: string | null;
+    marka?: string | null;
+    genislik?: string | null;
+    yanak?: string | null;
+    cap?: string | null;
+    vehicleInfo?: any;
+    selectedSize?: any;
+    totalCount: number;
+}

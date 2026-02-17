@@ -146,7 +146,7 @@ export default function TireSizeSelection({
                                 <th>Ebat</th>
                                 <th>Yük/Hız</th>
                                 <th>Uyumlu Jant</th>
-                                <th className='text-end'>Durum</th>
+                                <th>Hava Basıncı (PSI)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -180,8 +180,12 @@ export default function TireSizeSelection({
                                             </Tooltip>
                                         ) : '-'}
                                     </td>
-                                    <td className='text-end'>
-                                        {tire.isStock && <span className="badge bg-success">Fabrika Çıkış Ebatı</span>}
+                                    <td>
+                                        {tire.pressure ? (
+                                            <span style={{ fontSize: '13px' }}>
+                                                {tire.pressure.psi} PSI
+                                            </span>
+                                        ) : '-'}
                                     </td>
                                 </tr>
                             ))}

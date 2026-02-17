@@ -4,6 +4,7 @@ const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
+const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
 const { getProductListFilters } = require('../../../config/diaFilters');
 
 
@@ -310,7 +311,17 @@ router.get('/filter', async (req, res) => {
         });
     }
 });
+router.get('/championships/:productKey', async (req, res) => {
+    try {
+        const championships = await ChampionshipTire.find({
+            productKey: req.params.productKey
+        }).select('name rank').lean();
 
+        res.json({ success: true, data: championships });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Şampiyonluk bilgisi alınamadı' });
+    }
+});
 router.get('/:slug/wheelsize', async (req, res) => {
     try {
         const product = await WebProduct.findOne({

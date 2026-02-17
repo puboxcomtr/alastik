@@ -1,6 +1,7 @@
 // apps/web/src/hooks/WheelSize/useRimSearch.ts
 'use client';
 import { useState, useCallback, useEffect } from "react";
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export function useRimSearch() {
     const [jantCaplari, setJantCaplari] = useState<{ value: string }[]>([]);
@@ -9,22 +10,14 @@ export function useRimSearch() {
     const [selectedCap, setSelectedCap] = useState("");
     const [selectedBijon, setSelectedBijon] = useState("");
 
-    const getApiUrl = () => {
-        if (typeof window !== 'undefined') {
-            return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-        }
-        return 'http://localhost:3082/api';
-    };
-
     useEffect(() => {
         const fetchRimSizes = async () => {
             setLoading(true);
-            const apiUrl = getApiUrl();
 
             try {
                 const [capResponse, bijonResponse] = await Promise.all([
-                    fetch(`${apiUrl}/jant/caplar?regions=eudm`),
-                    fetch(`${apiUrl}/jant/vida-sablonlari?regions=eudm`)
+                    fetch(`${API_ENDPOINTS.jant.caplar()}?regions=eudm`),
+                    fetch(`${API_ENDPOINTS.jant.vidaSablonlari()}?regions=eudm`)
                 ]);
 
                 const capData = await capResponse.json();

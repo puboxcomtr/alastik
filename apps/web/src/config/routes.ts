@@ -23,6 +23,8 @@ export const ROUTES = {
     CART: '/sepet',
     CHECKOUT: '/teslimat',
     PAYMENT: '/odeme',
+    PAYMENT_FAILED: '/odeme/basarisiz',
+    ORDER_SUCCESS: '/siparis-basarili',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

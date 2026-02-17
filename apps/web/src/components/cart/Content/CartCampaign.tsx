@@ -1,25 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
 
-interface CartItem {
-    productKey: string;
-    productName: string;
-    productImage: string | null;
-    productSlug: string;
-    brandName: string;
-    quantity: number;
-    unitPrice: number;
-    kdvRate: number;
-}
-
-interface CartContentProps {
-    items: CartItem[];
-    onUpdateQuantity: (productKey: string, quantity: number) => void;
-    onRemoveItem: (productKey: string) => void;
-}
 
 export default function CartContent() {
 

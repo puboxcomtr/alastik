@@ -2,6 +2,8 @@
 'use client';
 import { useState, useCallback, useEffect } from "react";
 import { buildTireSearchUrl, getSeasonSlugFromValue } from '@/src/config/routes';
+import { API_ENDPOINTS } from '@/src/config/api';
+
 
 export function useTireSearch() {
     const [mevsim, setMevsim] = useState("1");
@@ -13,23 +15,16 @@ export function useTireSearch() {
     const [selectedYukseklik, setSelectedYukseklik] = useState("55");
     const [selectedCap, setSelectedCap] = useState("16");
 
-    const getApiUrl = () => {
-        if (typeof window !== 'undefined') {
-            return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-        }
-        return 'http://localhost:3082/api';
-    };
 
     useEffect(() => {
         const fetchTireSizes = async () => {
             setLoading(true);
-            const apiUrl = getApiUrl();
 
             try {
                 const [genislikResponse, yanakResponse, capResponse] = await Promise.all([
-                    fetch(`${apiUrl}/lastik/kesit-genislikleri?regions=eudm`),
-                    fetch(`${apiUrl}/lastik/yanak-oranlari?regions=eudm`),
-                    fetch(`${apiUrl}/lastik/jant-caplari?regions=eudm`)
+                    fetch(`${API_ENDPOINTS.lastik.kesitGenislikleri()}?regions=eudm`),
+                    fetch(`${API_ENDPOINTS.lastik.yanakOranlari()}?regions=eudm`),
+                    fetch(`${API_ENDPOINTS.lastik.jantCaplari()}?regions=eudm`)
                 ]);
 
                 const genislikData = await genislikResponse.json();

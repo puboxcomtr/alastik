@@ -244,8 +244,9 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(async () => {
     logger.info('Connected to MongoDB');
-
-    // Create default admin user if not exists
+    // XML Kontrolü
+    const xmlSyncScheduler = require('./services/plugins/xml/XmlSyncScheduler');
+    xmlSyncScheduler.start();
     try {
       await AdminUser.createDefaultAdmin();
     } catch (error) {
@@ -490,83 +491,6 @@ try {
 } catch (e) {
   console.warn('External payments routes not loaded:', e?.message);
 }
-
-// ============================================
-// (PLUGIN) - DIA ROUTES
-// ============================================
-
-/* * Tümünü Güncelle (Full Sync) * */
-app.post('/api/dia-stock/sync', async (req, res) => {
-  try {
-    // Hemen response dön
-    res.json({
-      success: true,
-      message: 'Full sync başlatıldı, arka planda çalışıyor'
-    });
-
-    // Arka planda sync çalıştır
-    setTimeout(async () => {
-      try {
-        const result = await diaStockService.fullSync();
-        console.log('Full sync tamamlandı:', result);
-      } catch (error) {
-        console.error('Full sync hatası:', error);
-      }
-    }, 100);
-
-  } catch (error) {
-    console.error('Full sync hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-/* * Sadece Ürün Adı Güncelle * */
-app.post('/api/dia-stock/sync-names', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyNames();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync names hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece SKU Güncelle * */
-app.post('/api/dia-stock/sync-codes', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyCodes();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync codes hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece Fiyat Güncelle * */
-app.post('/api/dia-stock/sync-prices', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyPrices();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync prices hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/* * Sadece Görsel Güncelle * */
-app.post('/api/dia-stock/sync-images', async (req, res) => {
-  try {
-    const result = await diaStockService.syncOnlyImages();
-    res.json(result);
-  } catch (error) {
-    console.error('Sync images hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // ============================================
 // (PLUGIN) - WHEELSIZE ROUTES
 // ============================================

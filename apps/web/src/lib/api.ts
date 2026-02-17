@@ -1,5 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
+import { API_ENDPOINTS, getImageUrl as configGetImageUrl } from '@/src/config/api';
 
 interface ApiResponse<T = any> {
     success: boolean;
@@ -11,8 +10,12 @@ interface ApiResponse<T = any> {
 class ApiClient {
     private baseUrl: string;
 
-    constructor(baseUrl: string) {
-        this.baseUrl = baseUrl;
+    constructor() {
+        if (typeof window === 'undefined') {
+            this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+        } else {
+            this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+        }
     }
 
     /* Helper - Token Al */
@@ -185,9 +188,7 @@ class ApiClient {
     }
     /* Sabit Fonksiyonlar */
     getImageUrl(path?: string): string {
-        if (!path) return '';
-        if (path.startsWith('http')) return path;
-        return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`;
+        return configGetImageUrl(path);
     }
     async getSiteName(): Promise<string> {
         try {
@@ -238,5 +239,5 @@ class ApiClient {
     };
 
 }
-export const api = new ApiClient(API_URL);
+export const api = new ApiClient();
 export type { ApiResponse };

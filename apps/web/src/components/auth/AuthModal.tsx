@@ -4,28 +4,9 @@ import React, { useState } from 'react';
 import toast from '@lib/toast';
 import authService from '@lib/auth';
 import googleAuthService from '@lib/googleAuth';
+import { AuthModalProps, LoginForm, RegisterForm } from '@/src/types/auth';
+
 import styles from '@components/auth/auth.module.css';
-
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAuthSuccess?: (user: any) => void;
-  initialMode?: 'login' | 'register';
-}
-
-interface LoginForm {
-  identifier: string; // email veya telefon
-  password: string;
-}
-
-interface RegisterForm {
-  username: string;
-  email: string; // opsiyonel
-  phone: string; // opsiyonel
-  password: string;
-  confirmPassword: string;
-  acceptTerms: boolean;
-}
 
 const AuthModal: React.FC<AuthModalProps> = ({ 
   isOpen, 

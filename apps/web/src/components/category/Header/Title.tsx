@@ -1,19 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
-interface PageHeaderProps {
-    tip: string | null;
-    genelArama?: string | null;
-    kategori?: string | null;
-    marka?: string | null;
-    genislik?: string | null;
-    yanak?: string | null;
-    cap?: string | null;
-    vehicleInfo?: any;
-    selectedSize?: any;
-    totalCount: number;
-}
+import { PageHeaderProps } from '@/src/types/category';
 
 export default function PageHeader({
     tip,

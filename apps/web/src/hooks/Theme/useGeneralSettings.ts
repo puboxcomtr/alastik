@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface SiteSetting {
     _id: string;
@@ -14,7 +14,7 @@ export interface SiteSetting {
  */
 export async function getSetting(key: string): Promise<string | null> {
     try {
-        const response = await fetch(`${API_URL}/general-settings/key/${key}`, {
+        const response = await fetch(API_ENDPOINTS.generalSettings.byKey(key), {
             cache: 'no-store'
         });
 
@@ -34,7 +34,7 @@ export async function getSetting(key: string): Promise<string | null> {
  */
 export async function isSiteActive(): Promise<boolean> {
     try {
-        const response = await fetch(`${API_URL}/general-settings/site-status`, {
+        const response = await fetch(API_ENDPOINTS.generalSettings.siteStatus(), {
             cache: 'no-store'
         });
 
@@ -53,7 +53,7 @@ export async function isSiteActive(): Promise<boolean> {
  */
 export async function getSettingsByGroup(group: string): Promise<SiteSetting[]> {
     try {
-        const response = await fetch(`${API_URL}/general-settings/group/${group}`, {
+        const response = await fetch(API_ENDPOINTS.generalSettings.byGroup(group), {
             cache: 'no-store'
         });
 

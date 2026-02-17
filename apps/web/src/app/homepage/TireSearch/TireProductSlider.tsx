@@ -6,6 +6,7 @@ import { Navigation, Pagination } from 'swiper/modules'
 
 // Components
 import ProductCard from '@components/shop/Product/Showcase/Card'
+import { API_ENDPOINTS } from '@/src/config/api';
 
 // Swiper
 import 'swiper/css'
@@ -25,13 +26,10 @@ type Props = {
     showcaseKey?: 'first' | 'second' | 'third'
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-
 export default function TireProductSlider({ showcaseKey = 'first' }: Props) {
     const prevRef = useRef<HTMLButtonElement | null>(null)
     const nextRef = useRef<HTMLButtonElement | null>(null)
     const [showcase, setShowcase] = useState<ShowcaseData | null>(null)
-    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         fetchShowcase()
@@ -39,7 +37,7 @@ export default function TireProductSlider({ showcaseKey = 'first' }: Props) {
 
     const fetchShowcase = async () => {
         try {
-            const res = await fetch(`${API_URL}/showcases/public/homepage`)
+            const res = await fetch(API_ENDPOINTS.showcases.homepage())
             const result = await res.json()
 
             if (result.success && result.data) {
@@ -47,22 +45,8 @@ export default function TireProductSlider({ showcaseKey = 'first' }: Props) {
                 setShowcase(found || null)
             }
         } catch (error) {
-            console.error('Vitrin yuklenemedi:', error)
-        } finally {
-            setLoading(false)
+            console.error('Vitrin yüklenemedi', error)
         }
-    }
-
-    if (loading) {
-        return (
-            <div className="featured_products position-relative">
-                <div className="text-center py-4">
-                    <div className="spinner-border spinner-border-sm text-primary" role="status">
-                        <span className="visually-hidden">Yükleniyor...</span>
-                    </div>
-                </div>
-            </div>
-        )
     }
 
     if (!showcase || !showcase.products || showcase.products.length === 0) {

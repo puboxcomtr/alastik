@@ -24,12 +24,10 @@ interface CategorySliderProps {
 
 export default function CategorySlider({ sliderId }: CategorySliderProps) {
     const [slider, setSlider] = useState<Slider | null>(null);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchSlider = async () => {
             if (!sliderId) {
-                setLoading(false);
                 return;
             }
 
@@ -38,18 +36,11 @@ export default function CategorySlider({ sliderId }: CategorySliderProps) {
                 setSlider(data);
             } catch (error) {
                 console.error('Slider fetch error:', error);
-            } finally {
-                setLoading(false);
             }
         };
 
         fetchSlider();
     }, [sliderId]);
-
-    // Slider yoksa veya yükleniyorsa gösterme
-    if (loading) {
-        return null;
-    }
 
     if (!slider || !slider.sliders || slider.sliders.length === 0) {
         return null;

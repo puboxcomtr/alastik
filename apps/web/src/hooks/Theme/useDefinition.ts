@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Definition } from '@src/types/definition';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
+import { API_ENDPOINTS, getImageUrl as apiGetImageUrl } from '@/src/config/api';
 
 export const useDefinition = () => {
     const [definition, setDefinition] = useState<Definition | null>(null);
@@ -16,7 +14,7 @@ export const useDefinition = () => {
     const fetchDefinition = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${API_URL}/definition`, {
+            const res = await fetch(API_ENDPOINTS.definition.get(), {
                 cache: 'no-store'
             });
 
@@ -39,8 +37,7 @@ export const useDefinition = () => {
 
     const getImageUrl = (path?: string) => {
         if (!path) return null;
-        if (path.startsWith('http')) return path;
-        return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`;
+        return apiGetImageUrl(path);
     };
 
     return {

@@ -1,6 +1,5 @@
 // apps/web/src/services/settingsService.ts
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface ShowcaseSettings {
     productsPerPage: number;
@@ -8,14 +7,19 @@ export interface ShowcaseSettings {
 }
 
 export async function getShowcaseSettings(): Promise<ShowcaseSettings> {
-    const response = await fetch(`${API_BASE_URL}/settings/group/showcase`, {
-        cache: 'no-store'
-    });
+    try {
+        const response = await fetch(API_ENDPOINTS.settings.group('showcase'), {
+            cache: 'no-store'
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    return {
-        productsPerPage: data.data.productsPerPage,
-        showcaseProductSize: data.data.showcaseProductSize
-    };
+        return {
+            productsPerPage: data.data.productsPerPage,
+            showcaseProductSize: data.data.showcaseProductSize
+        };
+    } catch (error) {
+        console.error('[settingsService] getShowcaseSettings hatası:', error);
+        return { productsPerPage: 12, showcaseProductSize: 'medium' };
+    }
 }

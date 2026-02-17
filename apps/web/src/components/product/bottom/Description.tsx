@@ -321,7 +321,10 @@ function ReviewItem({ review, product }: { review: any; product: any }) {
             <div className="d-flex align-items-center mb-3">
                 <div className="text-nowrap me-3">
                     <span className="h6 mb-0">
-                        {review.user?.firstName} {review.user?.lastName}
+                        {review.displayName
+                            ? `${review.user?.firstName?.charAt(0)}${review.user?.firstName?.slice(1).replace(/./g, '*')} ${review.user?.lastName?.charAt(0)}${review.user?.lastName?.slice(1).replace(/./g, '*')}`
+                            : `${review.user?.firstName} ${review.user?.lastName}`
+                        }
                     </span>
                     <Tooltip title="Doğrulanmış Kullanıcı">
                         <i className="ci-check-circle text-success align-middle ms-1 cursor-pointer"></i>
@@ -406,7 +409,9 @@ function ReviewItem({ review, product }: { review: any; product: any }) {
             )}
 
             {/* Yorum */}
-            <p className="fs-sm text-body-tertiary">{review.comment}</p>
+            {!review.displayName && (
+                <p className="fs-sm text-body-tertiary">{review.comment}</p>
+            )}
 
             {/* Ek Bilgiler */}
             <ul className="d-flex flex-row list-unstyled fs-sm pb-2 mb-1 gap-5">

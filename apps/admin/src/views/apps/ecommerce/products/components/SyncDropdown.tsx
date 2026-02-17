@@ -4,26 +4,15 @@ import { useState } from 'react'
 import Button from '@mui/material/Button'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
-import LinearProgress from '@mui/material/LinearProgress'
-import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-
+import CircularProgress from '@mui/material/CircularProgress'
+import { toast } from 'react-toastify'
 import { API_ENDPOINTS } from '@libs/api'
 
 const SyncDropdown = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
     const [loading, setLoading] = useState(false)
-    const [progress, setProgress] = useState(0)
-    const [currentProduct, setCurrentProduct] = useState('')
     const open = Boolean(anchorEl)
-
-    const syncOptions = [
-        { id: 'names', label: 'Sadece Ürün İsimlerini Güncelle' },
-        { id: 'codes', label: 'Sadece Stok Kodlarını Güncelle' },
-        { id: 'prices', label: 'Sadece Fiyatları Güncelle' },
-        { id: 'images', label: 'Sadece Görselleri Güncelle' },
-        { id: 'all', label: 'Tümünü Güncelle' }
-    ]
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
         setAnchorEl(event.currentTarget)
@@ -33,54 +22,49 @@ const SyncDropdown = () => {
         setAnchorEl(null)
     }
 
-    const handleSync = async (syncType: string) => {
+    const handleFullSync = async () => {
         handleClose()
         setLoading(true)
-        setProgress(0)
 
         try {
-            let endpoint = API_ENDPOINTS.diaSync.all()
-
-            if (syncType === 'names') {
-                endpoint = API_ENDPOINTS.diaSync.names()
-            } else if (syncType === 'codes') {
-                endpoint = API_ENDPOINTS.diaSync.codes()
-            } else if (syncType === 'prices') {
-                endpoint = API_ENDPOINTS.diaSync.prices()
-            } else if (syncType === 'images') {
-                endpoint = API_ENDPOINTS.diaSync.images()
-            }
-
-            const response = await fetch(endpoint, {
+            const res = await fetch(API_ENDPOINTS.diaSync.fullSync(), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: syncType })
+                headers: { 'Content-Type': 'application/json' }
             })
+            const data = await res.json()
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            if (data.success) {
+                toast.info('Tam senkronizasyon başlatıldı. DIA Ayarları sayfasından takip edebilirsiniz.')
+            } else {
+                toast.error(data.message || 'Senkronizasyon başlatılamadı')
             }
-
-            const result = await response.json()
-
-            setProgress(100)
-            setCurrentProduct(`Tamamlandı: ${result.message}`)
-
-            setTimeout(() => {
-                setLoading(false)
-                setCurrentProduct('')
-                setProgress(0)
-            }, 3000)
-
-        } catch (error: any) {
-            console.error('Sync hatası:', error)
+        } catch {
+            toast.error('Senkronizasyon başlatılamadı')
+        } finally {
             setLoading(false)
-            setProgress(0)
-            setCurrentProduct(`Hata: ${error.message}`)
+        }
+    }
 
-            setTimeout(() => {
-                setCurrentProduct('')
-            }, 3000)
+    const handleLightSync = async () => {
+        handleClose()
+        setLoading(true)
+
+        try {
+            const res = await fetch(API_ENDPOINTS.diaSync.lightSync(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            const data = await res.json()
+
+            if (data.success) {
+                toast.info('Fiyat ve stok güncelleme başlatıldı. DIA Ayarları sayfasından takip edebilirsiniz.')
+            } else {
+                toast.error(data.message || 'Güncelleme başlatılamadı')
+            }
+        } catch {
+            toast.error('Güncelleme başlatılamadı')
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -90,35 +74,19 @@ const SyncDropdown = () => {
                 variant="contained"
                 onClick={handleClick}
                 disabled={loading}
+                startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
             >
-                {loading ? 'Senkronize Ediliyor...' : 'Ürünleri Senkronize Et (DİA)'}
+                {loading ? 'Başlatılıyor...' : 'Ürünleri Senkronize Et'}
             </Button>
 
             <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-                {syncOptions.map((option) => (
-                    <MenuItem
-                        key={option.id}
-                        onClick={() => handleSync(option.id)}
-                        disabled={loading}
-                    >
-                        {option.label}
-                    </MenuItem>
-                ))}
+                <MenuItem onClick={handleFullSync} disabled={loading}>
+                    Tam Senkronizasyon
+                </MenuItem>
+                <MenuItem onClick={handleLightSync} disabled={loading}>
+                    Sadece Fiyat ve Stok Güncelle
+                </MenuItem>
             </Menu>
-
-            {loading && (
-                <Box sx={{ width: '100%', mt: 2 }}>
-                    <Typography variant="body2" gutterBottom>
-                        İlerleme: %{Math.round(progress)}
-                    </Typography>
-                    <LinearProgress variant="determinate" value={progress} />
-                    {currentProduct && (
-                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                            {currentProduct}
-                        </Typography>
-                    )}
-                </Box>
-            )}
         </Box>
     )
 }
