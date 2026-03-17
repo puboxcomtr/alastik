@@ -28,7 +28,7 @@ import { ROUTES } from '@/src/config/routes';
 interface ActionButtonsProps {
 }
 
-export default function ActionButtons() {
+export default function ActionButtons({ onMenuOpen }: ActionButtonsProps) {
     const { totals } = useCart();
     const cartItemCount = totals.itemCount;
 
@@ -50,7 +50,9 @@ export default function ActionButtons() {
     const handleLoginClick = () => {
         router.push(ROUTES.LOGIN);
     };
-
+    interface ActionButtonsProps {
+        onMenuOpen?: () => void;
+    }
     return (
         <div id="action_button" className="d-flex align-items-center gap-0 gap-lg-5">
             <button
@@ -167,8 +169,7 @@ export default function ActionButtons() {
             <button
                 type="button"
                 className="navbar-toggler"
-                data-bs-toggle="offcanvas"
-                data-bs-target="#navbarNav"
+                onClick={onMenuOpen}
                 aria-controls="navbarNav"
                 aria-label="Toggle navigation"
             >

@@ -15,6 +15,8 @@ interface OrderItem {
     totalPrice: number
     image?: string
     brand?: string
+    sku?: string
+    season?: string
 }
 
 interface Pricing {
@@ -64,6 +66,9 @@ const OrderDetailContent = ({ items, pricing }: OrderDetailContentProps) => {
                                         <div className='flex flex-col items-start'>
                                             <Typography color='text.primary' className='font-medium'>
                                                 {item.name}
+                                            </Typography>
+                                            <Typography variant='body2' color='text.secondary'>
+                                                {[item.sku, item.brand, item.season].filter(Boolean).join(' | ')}
                                             </Typography>
                                         </div>
                                     </div>

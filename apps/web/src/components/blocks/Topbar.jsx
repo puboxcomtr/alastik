@@ -6,10 +6,12 @@ export default function Topbar({ data }) {
     if (!data) return null;
 
     return (
-        <Container fluid className="position-relative rounded-0">
-            <Row className="row-fluid">
-                <div dangerouslySetInnerHTML={{ __html: data }} />
-            </Row>
+        <Container className="position-relative rounded-0 bg-light">
+            <div className="row-fluid">
+                <Row>
+                    <div dangerouslySetInnerHTML={{ __html: data }} />
+                </Row>
+            </div>
         </Container>
     );
 }

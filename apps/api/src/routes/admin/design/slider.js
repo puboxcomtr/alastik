@@ -63,7 +63,6 @@ router.get('/:id', async (req, res) => {
         }
         if (slider.sliders && slider.sliders.length > 0) {
             slider.sliders = slider.sliders
-                .filter(s => s.isActive !== false)
                 .sort((a, b) => (a.order || 0) - (b.order || 0));
         }
         res.json({

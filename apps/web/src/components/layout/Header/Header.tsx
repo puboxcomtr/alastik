@@ -7,6 +7,7 @@ import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/layout/Header/Middle/Main';
 import Navbar from '@components/layout/Header/Navbar/Main';
 import AuthModal from '@components/auth/AuthModal';
+import MobileMenu from '@components/layout/Header/MobileMenu';
 
 /* Api Connection */
 import { api } from '@src/lib/api';
@@ -15,6 +16,7 @@ import { api } from '@src/lib/api';
 export default function Header() {
     const [logo, setLogo] = useState('');
     const [siteName, setSiteName] = useState('A Lastik');
+    const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {
         api.get('/admin/design/settings/theme').then(data => {
@@ -28,8 +30,10 @@ export default function Header() {
     return (
         <>
             <BlockRenderer blockKey="topbar" />
-            <Middle logo={logo} siteName={siteName} />
+            <Middle logo={logo} siteName={siteName} onMenuOpen={() => setMenuOpen(true)} />
             <Navbar />
+            <MobileMenu show={menuOpen} onClose={() => setMenuOpen(false)} />
+
         </>
     );
 }

@@ -1,10 +1,9 @@
-// apps/web/src/components/category/Top/Content.tsx
-
 "use client";
-
-import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Offcanvas, Button } from "react-bootstrap";
-import { Grid, TextField, MenuItem, Typography, FormControl } from "@mui/material";
+import { Grid, TextField, MenuItem, Typography, FormControl, Tooltip } from "@mui/material";
+import { useViewMode } from "@/src/context/ViewModeContext";
 
 interface CategoryTopProps {
     productCount?: number;
@@ -15,12 +14,64 @@ export default function CategoryTop({
     productCount = 0,
     categoryName = "Ürünler"
 }: CategoryTopProps) {
-    const [order, setOrder] = useState("all");
-    const [filter, setFilter] = useState("default");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [isPending, startTransition] = useTransition();
+
+    // URL'den mevcut sortBy ve sortOrder değerlerini al
+    const currentSortBy = searchParams.get('sortBy') || '';
+    const currentSortOrder = searchParams.get('sortOrder') || '';
+
+    // Mevcut filter değerini belirle
+    const getCurrentFilter = () => {
+        if (currentSortBy === 'price' && currentSortOrder === 'asc') return 'price-asc';
+        if (currentSortBy === 'price' && currentSortOrder === 'desc') return 'price-desc';
+        if (currentSortBy === 'rating') return 'rating';
+        if (currentSortBy === 'reviews') return 'reviews';
+        if (currentSortBy === 'sales') return 'sales';
+        return 'default';
+    };
+    const { viewMode, setViewMode } = useViewMode();
+    const handleFilterChange = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        // Sayfa numarasını sıfırla
+        params.delete('page');
+
+        // Sıralama parametrelerini ayarla
+        if (value === 'price-asc') {
+            params.set('sortBy', 'price');
+            params.set('sortOrder', 'asc');
+        } else if (value === 'price-desc') {
+            params.set('sortBy', 'price');
+            params.set('sortOrder', 'desc');
+        } else if (value === 'rating') {
+            params.set('sortBy', 'rating');
+            params.delete('sortOrder');
+        } else if (value === 'reviews') {
+            params.set('sortBy', 'reviews');
+            params.delete('sortOrder');
+        } else if (value === 'sales') {
+            params.set('sortBy', 'sales');
+            params.delete('sortOrder');
+        } else {
+            params.delete('sortBy');
+            params.delete('sortOrder');
+        }
+
+        const newURL = `${pathname}?${params.toString()}`;
+
+        // StartTransition ile router.replace kullan
+        startTransition(() => {
+            router.replace(newURL, { scroll: false });
+            router.refresh();
+        });
+    };
 
     return (
         <div>
-            <div className="offcanvas-lg offcanvas-start pe-lg-4" id="filterSidebar">
+            <div className="offcanvas-lg offcanvas-start" id="filterSidebar">
                 <div className="offcanvas-header py-3">
                     <Offcanvas.Title as="h3">Filtrele</Offcanvas.Title>
                     <Button
@@ -38,58 +89,17 @@ export default function CategoryTop({
                         </Typography>
                     </Grid>
                     <Grid size={6} className="d-flex justify-content-end">
-                        <Grid size={6}>
+                        <Grid size={6} sx={{ mr: '20px' }}>
                             <FormControl fullWidth>
                                 <TextField
                                     select
                                     fullWidth
                                     label=""
                                     size="small"
-                                    defaultValue="all"
                                     variant="outlined"
-                                    value={order}
-                                    onChange={(e) => setOrder(e.target.value)}
-                                    InputLabelProps={{ style: { color: "#000" } }}
-                                    SelectProps={{
-                                        MenuProps: {
-                                            PaperProps: {
-                                                style: {
-                                                    maxHeight: 200,
-                                                    overflowY: "auto",
-                                                },
-                                            },
-                                        },
-                                        IconComponent: (props) => (
-                                            <i
-                                                {...props}
-                                                className="ri-arrow-down-s-line"
-                                                style={{ color: "#555", fontSize: 20 }}
-                                            />
-                                        ),
-                                    }}
-                                    sx={{
-                                        backgroundColor: "#f5f5f5",
-                                        borderRadius: 1,
-                                        border: "transparent",
-                                    }}
-                                >
-                                    <MenuItem value="all">Tümünü Göster</MenuItem>
-                                    <MenuItem value="1">Stokta Var</MenuItem>
-                                    <MenuItem value="2">Stokta Yok</MenuItem>
-                                </TextField>
-                            </FormControl>
-                        </Grid>
-                        <Grid size={6} sx={{ ml: '20px' }}>
-                            <FormControl fullWidth>
-                                <TextField
-                                    select
-                                    fullWidth
-                                    label=""
-                                    size="small"
-                                    defaultValue="default"
-                                    variant="outlined"
-                                    value={filter}
-                                    onChange={(e) => setFilter(e.target.value)}
+                                    value={getCurrentFilter()}
+                                    onChange={(e) => handleFilterChange(e.target.value)}
+                                    disabled={isPending}
                                     InputLabelProps={{ style: { color: "#000" } }}
                                     SelectProps={{
                                         MenuProps: {
@@ -115,12 +125,34 @@ export default function CategoryTop({
                                     }}
                                 >
                                     <MenuItem value="default">Çok Satanlar</MenuItem>
-                                    <MenuItem value="1">Fiyata Göre (Artan)</MenuItem>
-                                    <MenuItem value="2">Fiyata Göre (Azalan)</MenuItem>
-                                    <MenuItem value="3">Yüksek Puanlar</MenuItem>
-                                    <MenuItem value="4">Çok Yorum Alanlar</MenuItem>
+                                    <MenuItem value="price-asc">Fiyata Göre (Artan)</MenuItem>
+                                    <MenuItem value="price-desc">Fiyata Göre (Azalan)</MenuItem>
+                                    <MenuItem value="rating">Yüksek Puanlar</MenuItem>
+                                    <MenuItem value="reviews">Çok Yorum Alanlar</MenuItem>
                                 </TextField>
                             </FormControl>
+                        </Grid>
+                        <Grid size="auto" className="d-flex align-items-center gap-2 ms-2">
+                            <Tooltip title="Çoklu Ürün Görünümü">
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm btn-icon ${viewMode === 'grid' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                                    onClick={() => setViewMode('grid')}
+                                >
+                                    <i className="ri-layout-grid-line"></i>
+                                </button>
+                            </Tooltip>
+
+                            <Tooltip title="Tekli Ürün Görünümü">
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm btn-icon ${viewMode === 'list' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                                    onClick={() => setViewMode('list')}
+                                    aria-label="Liste görünümü"
+                                >
+                                    <i className="ri-list-check"></i>
+                                </button>
+                            </Tooltip>
                         </Grid>
                     </Grid>
                 </Grid>

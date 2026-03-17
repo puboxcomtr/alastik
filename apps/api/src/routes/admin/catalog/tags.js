@@ -2,24 +2,36 @@ const express = require('express');
 const router = express.Router();
 const WebTag = require('../../../models/web/catalog/WebTag');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
+const TagMatchingService = require('../../../services/web/products/TagMatching');
 
 /**
  * Etiket Listeleme -
  * GET /api/tags
  */
+
 router.get('/', async (req, res) => {
     try {
         const {
             page = 1,
-            limit = 20,
+            limit = 50,
             search,
             isActive,
+            type,
+            hasProducts,
+            width,
+            profile,
+            rim,
+            season,
             sortBy = 'order',
             sortOrder = 'asc'
         } = req.query;
 
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+
         const filter = {};
 
+        // Arama filtresi
         if (search) {
             filter.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -27,27 +39,121 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        if (isActive !== undefined) {
+        // Durum filtresi
+        if (isActive !== undefined && isActive !== 'all') {
             filter.isActive = isActive === 'true';
+        }
+
+        // Tip filtresi
+        if (type && type !== 'all') {
+            filter.type = type;
+        }
+
+        // Ürün var/yok filtresi
+        if (hasProducts === 'true') {
+            filter.productCount = { $gt: 0 };
+        } else if (hasProducts === 'false') {
+            filter.$or = filter.$or || [];
+            // $or zaten search'den varsa and ile birleştir
+            if (search) {
+                filter.$and = [
+                    { $or: filter.$or },
+                    { $or: [{ productCount: 0 }, { productCount: { $exists: false } }] }
+                ];
+                delete filter.$or;
+            } else {
+                filter.$or = [{ productCount: 0 }, { productCount: { $exists: false } }];
+            }
+        }
+
+        // Genişlik filtresi (seoUrl'den: 205-xx-xx)
+        if (width) {
+            const widthFilter = { seoUrl: { $regex: `^${width}-`, $options: 'i' } };
+            if (filter.$and) {
+                filter.$and.push(widthFilter);
+            } else if (filter.$or && search) {
+                filter.$and = [{ $or: filter.$or }, widthFilter];
+                delete filter.$or;
+            } else {
+                Object.assign(filter, widthFilter);
+            }
+        }
+
+        // Yanak filtresi (seoUrl'den: xxx-55-xxx)
+        if (profile) {
+            const profileRegex = `^\\d{3}-${profile}-`;
+            if (filter.seoUrl) {
+                filter.$and = filter.$and || [];
+                filter.$and.push({ seoUrl: filter.seoUrl });
+                filter.$and.push({ seoUrl: { $regex: profileRegex, $options: 'i' } });
+                delete filter.seoUrl;
+            } else {
+                filter.seoUrl = { ...(filter.seoUrl || {}), $regex: profileRegex, $options: 'i' };
+            }
+        }
+
+        // Jant çapı filtresi (seoUrl'den: xxx-xx-r16 veya xxx-xx-16)
+        if (rim) {
+            const rimRegex = `^\\d{3}-\\d{2}-r?${rim}[-$]`;
+            if (filter.$and) {
+                filter.$and.push({ seoUrl: { $regex: rimRegex, $options: 'i' } });
+            } else if (filter.seoUrl) {
+                filter.$and = [
+                    { seoUrl: filter.seoUrl },
+                    { seoUrl: { $regex: rimRegex, $options: 'i' } }
+                ];
+                delete filter.seoUrl;
+            } else {
+                filter.seoUrl = { $regex: rimRegex, $options: 'i' };
+            }
+        }
+
+        // Mevsim filtresi (seoUrl'den)
+        if (season && season !== 'all') {
+            let seasonRegex;
+            if (season === 'yaz') seasonRegex = 'yaz';
+            else if (season === 'kis') seasonRegex = 'kis';
+            else if (season === '4-mevsim') seasonRegex = '4-mevsim';
+            else if (season === 'none') seasonRegex = 'lastik-fiyatlari$';
+
+            if (seasonRegex) {
+                const seasonFilter = { seoUrl: { $regex: seasonRegex, $options: 'i' } };
+                if (filter.$and) {
+                    filter.$and.push(seasonFilter);
+                } else {
+                    filter.$and = filter.$and || [];
+                    if (filter.seoUrl) {
+                        filter.$and.push({ seoUrl: filter.seoUrl });
+                        delete filter.seoUrl;
+                    }
+                    filter.$and.push(seasonFilter);
+                    if (filter.$and.length === 1) {
+                        Object.assign(filter, seasonFilter);
+                        delete filter.$and;
+                    }
+                }
+            }
         }
 
         const sort = {};
         sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-        const tags = await WebTag.find(filter)
-            .sort(sort)
-            .limit(limit * 1)
-            .skip((page - 1) * limit);
-
-        const count = await WebTag.countDocuments(filter);
+        const [tags, count] = await Promise.all([
+            WebTag.find(filter)
+                .sort(sort)
+                .limit(limitNum)
+                .skip((pageNum - 1) * limitNum),
+            WebTag.countDocuments(filter)
+        ]);
 
         res.json({
             success: true,
             data: tags,
-            pagination: {
+            meta: {
                 total: count,
-                page: parseInt(page),
-                pages: Math.ceil(count / limit)
+                page: pageNum,
+                limit: limitNum,
+                pages: Math.ceil(count / limitNum)
             }
         });
 
@@ -56,6 +162,47 @@ router.get('/', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Etiketler yüklenirken hata oluştu',
+            error: error.message
+        });
+    }
+});
+/**
+ * Etiket Filtreleme -
+ * GET /api/filter-options
+ */
+router.get('/filter-options', async (req, res) => {
+    try {
+        const tags = await WebTag.find(
+            { type: 'tire_size', isActive: true },
+            { seoUrl: 1 }
+        ).lean();
+
+        const widths = new Set();
+        const profiles = new Set();
+        const rims = new Set();
+
+        for (const tag of tags) {
+            const match = tag.seoUrl.match(/^(\d{3})-(\d{2})-r?(\d{2})/i);
+            if (match) {
+                widths.add(match[1]);
+                profiles.add(match[2]);
+                rims.add(match[3]);
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                widths: [...widths].sort((a, b) => Number(a) - Number(b)),
+                profiles: [...profiles].sort((a, b) => Number(a) - Number(b)),
+                rims: [...rims].sort((a, b) => Number(a) - Number(b))
+            }
+        });
+    } catch (error) {
+        console.error('Filtre seçenekleri hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Filtre seçenekleri yüklenirken hata oluştu',
             error: error.message
         });
     }
@@ -142,6 +289,59 @@ router.post('/', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Etiket oluşturulurken hata oluştu',
+            error: error.message
+        });
+    }
+});
+
+// Tüm etiketler için otomatik ürün eşleştirme
+router.post('/matching/run', async (req, res) => {
+    try {
+        const { dryRun = false, tagType = null } = req.body;
+
+        const results = await TagMatchingService.runMatching({ dryRun, tagType });
+
+        res.json({
+            success: true,
+            message: dryRun
+                ? `Dry run tamamlandı. ${results.matched} etiket eşleşti, ${results.skipped} atlandı.`
+                : `${results.updated} etiket güncellendi, ${results.skipped} atlandı.`,
+            data: {
+                total: results.total,
+                matched: results.matched,
+                updated: results.updated,
+                skipped: results.skipped,
+                errors: results.errors,
+                details: results.details
+            }
+        });
+    } catch (error) {
+        console.error('Tag matching hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Etiket eşleştirme sırasında hata oluştu',
+            error: error.message
+        });
+    }
+});
+
+// Tek etiket için otomatik ürün eşleştirme
+router.post('/:id/matching', async (req, res) => {
+    try {
+        const result = await TagMatchingService.matchSingleTag(req.params.id);
+
+        res.json({
+            success: true,
+            message: result.status === 'matched'
+                ? `${result.productCount} ürün eşleştirildi.`
+                : `Etiket atlandı: ${result.reason}`,
+            data: result
+        });
+    } catch (error) {
+        console.error('Tek etiket matching hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Eşleştirme sırasında hata oluştu',
             error: error.message
         });
     }
@@ -280,6 +480,8 @@ router.delete('/:id', async (req, res) => {
         });
     }
 });
+
+
 
 // Etikete Ürün Ekleme/Çıkarma
 router.post('/:id/products', async (req, res) => {

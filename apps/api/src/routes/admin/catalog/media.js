@@ -207,4 +207,50 @@ router.get('/list', async (req, res) => {
     }
 });
 
+router.delete('/:fileId', async (req, res) => {
+    try {
+        const { fileId } = req.params;
+
+        const filename = fileId;
+
+        const folders = Object.keys(MEDIA_FOLDERS);
+        let deleted = false;
+        let deletedFolder = '';
+
+        for (const folder of folders) {
+            const uploadPath = getUploadPath(folder);
+            const filePath = path.join(uploadPath, filename);
+
+            try {
+                await fs.access(filePath);
+                await fs.unlink(filePath);
+                deleted = true;
+                deletedFolder = folder;
+                break;
+            } catch (error) {
+                continue;
+            }
+        }
+        if (deleted) {
+            res.json({
+                success: true,
+                message: 'Dosya başarıyla silindi',
+                folder: deletedFolder,
+                filename: filename
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: 'Dosya bulunamadı'
+            });
+        }
+    } catch (error) {
+        console.error('Dosya silme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Dosya silinirken hata oluştu'
+        });
+    }
+});
+
 module.exports = router;

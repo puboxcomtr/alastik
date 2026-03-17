@@ -24,9 +24,10 @@ interface SidebarProps {
     categorySlug?: string;
     tagSlug?: string;
     tagType?: string;
+    brandSlug?: string;
 }
 
-export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType }: SidebarProps) {
+export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug }: SidebarProps) {
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
     const [productType, setProductType] = useState<string>('LASTİK');
 
@@ -36,7 +37,7 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
             setProductType(type);
         }
         const loadOptions = async () => {
-            const data = await getTireFilterOptions(categorySlug, tagSlug);
+            const data = await getTireFilterOptions(categorySlug, tagSlug, brandSlug);
             if (data) {
                 setOptions(data);
                 if (!tagType) {
@@ -45,7 +46,7 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
             }
         };
         loadOptions();
-    }, [categorySlug, tagSlug, tagType]);
+    }, [categorySlug, tagSlug, tagType, brandSlug]);
 
     const isJant = productType === 'JANT';
 
@@ -65,10 +66,12 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                 <Grid container className="offcanvas-body flex-column py-lg-0">
                     <Grid>
                         {/* Ortak Filtreler */}
-                        <Brand
-                            categorySlug={categorySlug}
-                            brands={options?.brands || []}
-                        />
+                        {!brandSlug && (
+                            <Brand
+                                categorySlug={categorySlug}
+                                brands={options?.brands || []}
+                            />
+                        )}
                         <Price priceRange={options?.priceRange} />
 
                         {/* Jant Filtreleri */}

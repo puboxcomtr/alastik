@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const WebMember = require('../../../models/web/user/WebMember');
+const WebAddress = require('../../../models/web/address/WebAddress');
 const SettingsHelper = require('../../../utils/web/settingsHelper');
+const authMiddleware = require('../../../middleware/authMiddleware');
+
 const jwt = require('jsonwebtoken');
 
 // Üye Ol
@@ -197,6 +200,76 @@ router.post('/login', async (req, res) => {
             success: false,
             message: 'Giriş yapılırken bir hata oluştu.'
         });
+    }
+});
+
+// Profil Getir
+router.get('/profile', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findById(req.user._id).select('-password');
+        if (!member) {
+            return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                user: {
+                    id: member._id,
+                    email: member.email,
+                    profile: {
+                        firstName: member.firstName || '',
+                        lastName: member.lastName || '',
+                        phone: member.phone || ''
+                    },
+                    addresses: await WebAddress.find({ userId: member._id, isActive: true }).sort({ isDefault: -1 }).lean(),
+                    customerSegment: member.customerSegment || '',
+                    statistics: {
+                        totalOrders: member.totalOrders || 0,
+                        totalSpent: member.totalSpent || 0
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Profile get error:', error);
+        res.status(500).json({ success: false, message: 'Profil alınamadı.' });
+    }
+});
+
+// Profil Güncelle
+router.put('/profile', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findById(req.user._id);
+        if (!member) {
+            return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const updates = req.body;
+        if (updates['profile.firstName'] !== undefined) member.firstName = updates['profile.firstName'];
+        if (updates['profile.lastName'] !== undefined) member.lastName = updates['profile.lastName'];
+        if (updates['profile.phone'] !== undefined) member.phone = updates['profile.phone'];
+
+        await member.save();
+
+        res.json({
+            success: true,
+            message: 'Profil güncellendi.',
+            data: {
+                user: {
+                    id: member._id,
+                    email: member.email,
+                    profile: {
+                        firstName: member.firstName,
+                        lastName: member.lastName,
+                        phone: member.phone
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({ success: false, message: 'Profil güncellenemedi.' });
     }
 });
 

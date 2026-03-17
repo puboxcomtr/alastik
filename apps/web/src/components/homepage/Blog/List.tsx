@@ -1,21 +1,39 @@
-import React from 'react';
-import Link from 'next/link'
+'use client';
 
-/* Components */
-import { Container, Row, Col } from 'react-bootstrap';
+import React, { useEffect, useState } from 'react';
+import { Container, Row } from 'react-bootstrap';
+import { API_ENDPOINTS } from '@/src/config/api';
 
-/* Library */
-import Title from '@components/homepage/Blog/Title'
-import Content from '@components/homepage/Blog/Content'
+import Title from '@components/homepage/Blog/Title';
+import Content from '@components/homepage/Blog/Content';
 
 export default function HomeBlog() {
+    const [blogs, setBlogs] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchBlogs = async () => {
+            try {
+                const res = await fetch(API_ENDPOINTS.blogs.homepage());
+                const result = await res.json();
+                if (result.success && result.data) {
+                    setBlogs(result.data);
+                }
+            } catch (error) {
+                console.error('Blog yüklenemedi:', error);
+            }
+        };
+        fetchBlogs();
+    }, []);
+
+    if (blogs.length === 0) return null;
+
     return (
         <Container>
             <Row className="row-fluid">
                 <Title />
             </Row>
             <Row className="row-fluid pt-4">
-                <Content />               
+                <Content blogs={blogs} />
             </Row>
         </Container>
     );

@@ -26,7 +26,7 @@ import Footer from "@components/layout/Footer/Footer";
 // Context
 import { BrandsProvider } from '@/src/context/BrandsContext';
 import { CartProvider } from '@/src/context/CartContext';
-
+import { FavouritesProvider } from '@/src/context/FavouritesContext';
 
 /* Modal */
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
@@ -49,8 +49,8 @@ const inter = Inter({
 
 /* Meta */
 export const metadata: Metadata = {
-  title: "Anasayfa - ALastik.com",
-  description: "Kaliteli lastik çeşitleri ve uygun fiyatlarla ALastik.com'da!",
+  title: "A Lastik.com | Online Lastik Satışı – En Uygun Fiyatlı Lastikler",
+  description: "Binek, SUV ve ticari araçlar için geniş lastik seçenekleri ALastik.com'da. Uygun fiyat, güvenilir alışveriş ve hızlı sipariş avantajlarını keşfedin.",
 };
 
 export default async function RootLayout({
@@ -88,28 +88,14 @@ export default async function RootLayout({
           <ThemeRegistry>
             <BrandsProvider>
               <CartProvider>
-                {!siteActive && isAdminLoggedIn && (
-                  <div
-                    style={{
-                      backgroundColor: '#ff9800',
-                      color: '#000',
-                      textAlign: 'center',
-                      padding: '10px',
-                      fontWeight: 'bold',
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 9999
-                    }}
-                  >
-                    Sadece Yönetici Görüntüleme Modu
-                  </div>
-                )}
-                <Header />
-                {children}
-                <Footer />
-                <Modal />
-                <TireSearchClient />
-                <TireSize />
+                <FavouritesProvider>
+                  <Header />
+                  {children}
+                  <Footer />
+                  <Modal />
+                  <TireSearchClient />
+                  <TireSize />
+                </FavouritesProvider>
               </CartProvider>
             </BrandsProvider>
           </ThemeRegistry>

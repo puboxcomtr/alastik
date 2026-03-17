@@ -10,6 +10,7 @@ import { useSettings } from '@src/context/SettingsContext'
 import { useBrands } from '@/src/context/BrandsContext'
 import { useCart } from '@/src/context/CartContext'
 import { useTranslations } from '@/src/hooks/Theme/useTranslations'
+import { useDefinition } from '@/src/hooks/Theme/useDefinition'
 import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 import {
   getProductUrl,
@@ -33,6 +34,12 @@ export default function ProductSlideCard({ product }: Props) {
   const { getBrand } = useBrands()
   const { addToCart } = useCart()
   const { t } = useTranslations('general')
+  const { definition } = useDefinition()
+  const getWhatsAppUrl = () => {
+    const phone = definition?.companyInfo?.phone || '0539 825 71 01'
+    const formatted = phone.replace(/\s+/g, '').replace(/^0/, '90')
+    return `https://wa.me/${formatted}`
+  }
   const [championship, setChampionship] = useState<{ name: string; rank: number } | null>(null)
   useEffect(() => {
     if (product._key) {
@@ -46,6 +53,13 @@ export default function ProductSlideCard({ product }: Props) {
         .catch(() => { })
     }
   }, [product._key])
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 992)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const toggleFavorite = () => setIsFavorite((prev) => !prev)
   const handleAddToCart = async () => {
@@ -71,46 +85,48 @@ export default function ProductSlideCard({ product }: Props) {
     : null
 
   return (
-    <Container className="p-0" style={{ backgroundColor: '#fff' }}>
+    <Container className="slide__card p-0" style={{ backgroundColor: '#fff' }}>
       <div className="position-relative p-3 p-sm-4">
         {/* Favori / Şampiyonluk Butonu */}
-        {championship ? (
-          <div style={{
-            position: 'absolute', top: 12, left: -4, zIndex: 2,
-          }}>
+        {!isMobile && (
+          championship ? (
             <div style={{
-              background: 'linear-gradient(90deg, #B8860B, #DAA520, #B8860B)',
-              color: '#fff', padding: '6px 16px 6px 12px',
-              display: 'flex', alignItems: 'center', gap: '8px',
-              clipPath: 'polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-              minWidth: '180px'
+              position: 'absolute', top: 12, left: -4, zIndex: 2,
             }}>
-              <i className="ri-trophy-fill" style={{ fontSize: '16px' }}></i>
-              <span style={{ fontSize: '11px', fontWeight: 700 }}>{championship.name}</span>
+              <div style={{
+                background: 'linear-gradient(90deg, #B8860B, #DAA520, #B8860B)',
+                color: '#fff', padding: '6px 16px 6px 12px',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                clipPath: 'polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%)',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                minWidth: '180px'
+              }}>
+                <i className="ri-trophy-fill" style={{ fontSize: '16px' }}></i>
+                <span style={{ fontSize: '11px', fontWeight: 700 }}>{championship.name}</span>
+              </div>
             </div>
-          </div>
-        ) : (
-          <Tooltip title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"}>
-            <button
-              type="button"
-              onClick={toggleFavorite}
-              className="btn btn-icon btn-secondary animate-pulse d-none d-lg-inline-flex position-absolute top-0 end-0 mt-3 me-3 z-2"
-              aria-label="Favorilere Ekle"
-            >
-              {isFavorite ? (
-                <i className="ri-heart-fill fs-base text-danger animate-target"></i>
-              ) : (
-                <i className="ri-heart-line fs-base animate-target"></i>
-              )}
-            </button>
-          </Tooltip>
+          ) : (
+            <Tooltip title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"}>
+              <button
+                type="button"
+                onClick={toggleFavorite}
+                className="btn btn-icon btn-secondary animate-pulse position-absolute top-0 end-0 mt-3 me-3 z-2"
+                aria-label="Favorilere Ekle"
+              >
+                {isFavorite ? (
+                  <i className="ri-heart-fill fs-base text-danger animate-target"></i>
+                ) : (
+                  <i className="ri-heart-line fs-base animate-target"></i>
+                )}
+              </button>
+            </Tooltip>
+          )
         )}
 
         {/* Ürün görseli */}
         <Link href={productUrl} className="d-block rounded-top overflow-hidden">
           {season && (
-            <span className="position-absolute top-0 start-0 mt-5 ms-2 mt-lg-5 ms-lg-3" style={{ zIndex: 1 }}>
+            <span className="season_icon position-absolute top-0 start-0 mt-5 ms-2 mt-lg-5 ms-lg-3" style={{ zIndex: 1 }}>
               <img src={season.icon} alt={season.text} width={28} height={28} />
             </span>
           )}
@@ -120,7 +136,20 @@ export default function ProductSlideCard({ product }: Props) {
             className="w-100"
           />
         </Link>
-
+        {/* Mobil Şampiyonluk Etiketi */}
+        {isMobile && championship && (
+          <div className="d-inline-flex align-items-center gap-1 mt-2 mb-1" style={{
+            background: 'linear-gradient(90deg, #B8860B, #DAA520, #B8860B)',
+            color: '#fff',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 700
+          }}>
+            <i className="ri-trophy-fill" style={{ fontSize: '14px' }}></i>
+            <span>{championship.name}</span>
+          </div>
+        )}
         {/* Marka logosu / adı */}
         <div className="d-flex justify-content-between align-items-center mt-2 mb-1">
           <div>
@@ -164,6 +193,7 @@ export default function ProductSlideCard({ product }: Props) {
         </h3>
 
         {/* Fiyat */}
+        {/* Fiyat */}
         <div className="d-flex justify-content-end border-top pt-3 gap-2">
           <span>
             {hasDiscount && originalPrice && (
@@ -175,6 +205,26 @@ export default function ProductSlideCard({ product }: Props) {
           <span className="fw-bold">
             {price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
           </span>
+        </div>
+
+        <div className="d-flex justify-content-end gap-2">
+          {/* Sepete Ekle / Stok Sorunuz */}
+          {product.diaData?.gercek_stok > 0 ? (
+            <Tooltip title="Sepete Ekle">
+              <button
+                type="button"
+                className="btn btn-primary w-100 mt-3"
+                onClick={handleAddToCart}
+                disabled={adding}
+              >
+                {adding ? 'Ekleniyor...' : t('addToCart')}
+              </button>
+            </Tooltip>
+          ) : (
+            <Link href={getWhatsAppUrl()} target="_blank" className="btn btn-outline-success w-100 mt-3">
+              <i className="ri-whatsapp-line me-1"></i> Stok Sorunuz
+            </Link>
+          )}
         </div>
       </div>
     </Container>

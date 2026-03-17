@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { Grid } from "@mui/material";
 import { useCart } from '@/src/context/CartContext';
+import { Col, Container, Row } from 'react-bootstrap';
 import CartEmpty from '@/src/components/cart/Empty/CartEmpty';
 import CartTitle from '@/src/components/cart/Content/CartTitle';
 import CartContent from '@/src/components/cart/Content/CartContent';
@@ -21,25 +22,33 @@ export default function CartPage() {
     }
 
     return (
-        <Grid className="row-fluid" container>
-            <Grid size={12}>
-                <CartTitle />
-            </Grid>
-            <Grid size={9}>
-                <Grid size={12}>
-                    <CartCampaign />
-                </Grid>
-                <Grid size={12}>
-                    <CartContent
-                        items={items}
-                        onUpdateQuantity={updateQuantity}
-                        onRemoveItem={removeItem}
-                    />
-                </Grid>
-            </Grid>
-            <Grid size={3}>
-                <CartSidebar totals={totals} />
-            </Grid>
-        </Grid>
+        <>
+            <Container>
+                <div className='row-fluid'>
+                    <Row>
+                        <Col lg={12}>
+                            <CartTitle />
+                        </Col>
+                        {/* <Col lg={12}><CartCampaign /> </Col> */}
+                    </Row>
+                </div>
+            </Container>
+            <Container>
+                <div className='row-fluid'>
+                    <Row>
+                        <Col lg={9}>
+                            <CartContent
+                                items={items}
+                                onUpdateQuantity={updateQuantity}
+                                onRemoveItem={removeItem}
+                            />
+                        </Col>
+                        <Col lg={3}>
+                            <CartSidebar totals={totals} />
+                        </Col>
+                    </Row>
+                </div>
+            </Container>
+        </>
     );
 }

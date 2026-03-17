@@ -62,7 +62,13 @@ export default function TireProductSlider({ showcaseKey = 'first' }: Props) {
           }
         }}
         pagination={{ clickable: true }}
-        spaceBetween={20}
+        slidesPerView={1.4}
+        spaceBetween={12}
+        breakpoints={{
+          576: { slidesPerView: 2.3, spaceBetween: 12 },
+          768: { slidesPerView: 2, spaceBetween: 16 },
+          992: { slidesPerView: 1, spaceBetween: 20 },
+        }}
         loop={showcase.products.length > 1}
         className="swiper"
       >

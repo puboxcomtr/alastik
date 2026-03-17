@@ -268,7 +268,8 @@ const OrderListTable = () => {
                         { value: 'shipped', label: 'Kargoya Verildi' },
                         { value: 'delivered', label: 'Teslim Edildi' },
                         { value: 'cancelled', label: 'İptal Edildi' },
-                        { value: 'returned', label: 'İade Edildi' }
+                        { value: 'returned', label: 'İade Edildi' },
+                        { value: 'payment_failed', label: 'Başarısız' }
                     ]
 
                     return (

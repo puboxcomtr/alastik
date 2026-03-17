@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import classnames from 'classnames'
 
 // API Imports
@@ -25,6 +25,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
+import Switch from '@mui/material/Switch'
 
 import { toast } from 'react-toastify'
 
@@ -39,11 +40,11 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFacetedMinMaxValues,
-  getPaginationRowModel,
   getSortedRowModel
 } from '@tanstack/react-table'
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
+import LabelFilters, { TagFilters, defaultFilters } from './LabelFilter'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
@@ -109,25 +110,70 @@ const LabelListTable = () => {
   const [tagToDelete, setTagToDelete] = useState<TagType | null>(null)
   const router = useRouter()
   const { lang: locale } = useParams()
+  const searchParams = useSearchParams()
   const [rowSelection, setRowSelection] = useState({})
   const [data, setData] = useState<TagType[]>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [filters, setFilters] = useState<TagFilters>(() => ({
+    search: searchParams.get('search') || '',
+    isActive: searchParams.get('isActive') || 'all',
+    hasProducts: searchParams.get('hasProducts') || 'all',
+    type: searchParams.get('type') || 'all',
+    width: searchParams.get('width') || '',
+    profile: searchParams.get('profile') || '',
+    rim: searchParams.get('rim') || '',
+    season: searchParams.get('season') || 'all'
+  }))
   const [loading, setLoading] = useState(true)
 
-  // Pagination state
-  const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(50)
+  // URL'den sayfalama durumunu oku
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get('page')
+    return p ? parseInt(p) : 1
+  })
+  const [limit, setLimit] = useState(() => {
+    const l = searchParams.get('limit')
+    return l ? parseInt(l) : 50
+  })
   const [totalCount, setTotalCount] = useState(0)
+
+  // URL'i güncelle
+  const updateURL = (newPage: number, newLimit: number, newFilters?: TagFilters) => {
+    const f = newFilters || filters
+    const params = new URLSearchParams()
+    params.set('page', String(newPage))
+    params.set('limit', String(newLimit))
+    if (f.search) params.set('search', f.search)
+    if (f.isActive !== 'all') params.set('isActive', f.isActive)
+    if (f.hasProducts !== 'all') params.set('hasProducts', f.hasProducts)
+    if (f.type !== 'all') params.set('type', f.type)
+    if (f.width) params.set('width', f.width)
+    if (f.profile) params.set('profile', f.profile)
+    if (f.rim) params.set('rim', f.rim)
+    if (f.season !== 'all') params.set('season', f.season)
+    router.replace(`/${locale}/apps/label/list?${params.toString()}`, { scroll: false })
+  }
 
   useEffect(() => {
     loadTags()
-  }, [page, limit])
+  }, [page, limit, filters])
 
   const loadTags = async () => {
     setLoading(true)
     try {
+      const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(limit))
+      if (filters.search) params.set('search', filters.search)
+      if (filters.isActive !== 'all') params.set('isActive', filters.isActive)
+      if (filters.hasProducts !== 'all') params.set('hasProducts', filters.hasProducts)
+      if (filters.type !== 'all') params.set('type', filters.type)
+      if (filters.width) params.set('width', filters.width)
+      if (filters.profile) params.set('profile', filters.profile)
+      if (filters.rim) params.set('rim', filters.rim)
+      if (filters.season !== 'all') params.set('season', filters.season)
+
       const response = await fetchAPI(
-        `${API_ENDPOINTS.labels.list()}?page=${page}&limit=${limit}`,
+        `${API_ENDPOINTS.labels.list()}?${params.toString()}`,
         { cache: 'no-store' }
       )
 
@@ -174,6 +220,47 @@ const LabelListTable = () => {
   const handleDeleteCancel = () => {
     setDeleteConfirmOpen(false)
     setTagToDelete(null)
+  }
+  const handleActiveToggle = async (tagId: string, currentValue: boolean) => {
+    try {
+      const result = await fetchAPI(API_ENDPOINTS.labels.detail(tagId), {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !currentValue })
+      })
+
+      if (result.success) {
+        setData(prev =>
+          prev.map(tag =>
+            tag._id === tagId
+              ? { ...tag, isActive: !currentValue }
+              : tag
+          )
+        )
+        toast.success(!currentValue ? 'Etiket aktif edildi' : 'Etiket pasife alındı')
+      } else {
+        toast.error('Güncelleme başarısız')
+      }
+    } catch (err) {
+      toast.error('Bir hata oluştu')
+    }
+  }
+
+  const handlePageChange = (_: any, newPage: number) => {
+    const p = newPage + 1
+    setPage(p)
+    updateURL(p, limit)
+  }
+
+  const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newLimit = Number(e.target.value)
+    setLimit(newLimit)
+    setPage(1)
+    updateURL(1, newLimit)
+  }
+  const handleFiltersChange = (newFilters: TagFilters) => {
+    setFilters(newFilters)
+    setPage(1)
+    updateURL(1, limit, newFilters)
   }
 
   const columns = useMemo<ColumnDef<TagWithActionsType, any>[]>(
@@ -230,9 +317,19 @@ const LabelListTable = () => {
       columnHelper.accessor('isActive', {
         header: 'Durum',
         cell: ({ row }) => (
-          <Typography color={row.original.isActive ? 'success.main' : 'error.main'}>
-            {row.original.isActive ? 'Aktif' : 'Pasif'}
-          </Typography>
+          <div className='flex items-center gap-2'>
+            <Tooltip title={row.original.isActive ? 'Pasife Al' : 'Aktif Et'}>
+              <Switch
+                checked={row.original.isActive}
+                onChange={() => handleActiveToggle(row.original._id, row.original.isActive)}
+                size='small'
+                color='success'
+              />
+            </Tooltip>
+            <Typography variant='body2'>
+              {row.original.isActive ? 'Aktif' : 'Pasif'}
+            </Typography>
+          </div>
         )
       }),
       columnHelper.accessor('actions', {
@@ -242,8 +339,20 @@ const LabelListTable = () => {
             <Tooltip title="Düzenle">
               <IconButton
                 size='small'
-                onClick={() => router.push(`/${locale}/apps/label/edit/${row.original._id}`)}
-              >
+                onClick={() => {
+                  const returnParams = new URLSearchParams()
+                  returnParams.set('returnPage', String(page))
+                  returnParams.set('returnLimit', String(limit))
+                  if (filters.search) returnParams.set('search', filters.search)
+                  if (filters.isActive !== 'all') returnParams.set('isActive', filters.isActive)
+                  if (filters.hasProducts !== 'all') returnParams.set('hasProducts', filters.hasProducts)
+                  if (filters.type !== 'all') returnParams.set('type', filters.type)
+                  if (filters.width) returnParams.set('width', filters.width)
+                  if (filters.profile) returnParams.set('profile', filters.profile)
+                  if (filters.rim) returnParams.set('rim', filters.rim)
+                  if (filters.season !== 'all') returnParams.set('season', filters.season)
+                  router.push(`/${locale}/apps/label/edit/${row.original._id}?${returnParams.toString()}`)
+                }}>
                 <i className='ri-edit-box-line text-[22px] text-textSecondary' />
               </IconButton>
             </Tooltip>
@@ -260,21 +369,20 @@ const LabelListTable = () => {
         enableSorting: false
       })
     ],
-    [locale]
+    [locale, page, limit, filters]
   )
 
   const table = useReactTable({
     data,
     columns,
     filterFns: { fuzzy: fuzzyFilter },
-    state: { rowSelection, globalFilter },
+    state: { rowSelection },
     pageCount: Math.ceil(totalCount / limit),
     manualPagination: true,
     enableRowSelection: true,
     globalFilterFn: fuzzyFilter,
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
@@ -287,29 +395,46 @@ const LabelListTable = () => {
       <Card>
         <CardHeader title='Etiket Listesi' className='pbe-4' />
         <Divider />
-        <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
-          <div className='flex flex-col gap-2'>
-            <DebouncedInput
-              value={globalFilter ?? ''}
-              onChange={value => setGlobalFilter(String(value))}
-              placeholder='Etiket adı ile arama'
-              className='max-sm:is-full'
-            />
-            <Typography variant='body2' color='text.secondary'>
-              Toplam <strong>{totalCount} Etiket</strong> bulundu
-            </Typography>
-          </div>
-          <div className='flex items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
+        <div className='flex items-center justify-between p-4 pl-0 pb-0'>
+          <LabelFilters
+            filters={filters}
+            onChange={handleFiltersChange}
+            totalCount={totalCount}
+          />
+          <div className="flex gap-1"><Button
+            color='primary'
+            variant='outlined'
+            startIcon={<i className='ri-puzzle-2-line' />}
+            onClick={async () => {
+              try {
+                toast.info('Etiket eşleştirme başlatıldı...')
+                const res = await fetchAPI(`${API_ENDPOINTS.labels.list()}/matching/run`, {
+                  method: 'POST',
+                  body: JSON.stringify({ dryRun: false })
+                })
+                if (res.success) {
+                  toast.success(`${res.data.updated} etiket güncellendi, ${res.data.skipped} atlandı, ${res.data.errors} hata.`)
+                  await loadTags()
+                } else {
+                  toast.error(res.message || 'Eşleştirme sırasında hata oluştu')
+                }
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Eşleştirme sırasında hata oluştu')
+              }
+            }}
+          >
+            Etiketleri Eşleştir
+          </Button>
+
             <Button
               color='primary'
-              fullWidth
               variant='contained'
-              className='max-sm:is-full is-auto'
               startIcon={<i className='ri-add-line' />}
               onClick={() => router.push(`/${locale}/apps/label/add`)}
             >
               Yeni Etiket Ekle
             </Button>
+
           </div>
         </div>
 
@@ -367,7 +492,7 @@ const LabelListTable = () => {
                   <tr>
                     <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
                       <Typography variant='body1' color='text.secondary'>
-                        {globalFilter ? 'Arama kriterlerinize uygun etiket bulunamadı' : 'Etiket bulunamadı'}
+                        {filters.search ? 'Arama kriterlerinize uygun etiket bulunamadı' : 'Etiket bulunamadı'}
                       </Typography>
                     </td>
                   </tr>
@@ -394,13 +519,8 @@ const LabelListTable = () => {
           count={totalCount}
           rowsPerPage={limit}
           page={page - 1}
-          onPageChange={(_, newPage) => {
-            setPage(newPage + 1)
-          }}
-          onRowsPerPageChange={e => {
-            setLimit(Number(e.target.value))
-            setPage(1)
-          }}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleLimitChange}
         />
       </Card>
 

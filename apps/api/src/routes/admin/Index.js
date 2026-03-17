@@ -23,6 +23,9 @@ router.use('/championships', championshipsRouter);
 const featuresRouter = require('./catalog/features');
 router.use('/features', featuresRouter);
 
+const filtersRouter = require('./catalog/filters');
+router.use('/filters', filtersRouter);
+
 const showcaseRouter = require('./catalog/showcase');
 router.use('/showcases', showcaseRouter);
 

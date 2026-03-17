@@ -2,8 +2,7 @@ import React from 'react';
 import Link from 'next/link'
 
 /* Components */
-import BlogList from '@components/homepage/Blog/List'
-import { Container, Row, Col } from 'react-bootstrap';
+import { Col } from 'react-bootstrap';
 
 export default function Title() {
     return (
@@ -13,7 +12,7 @@ export default function Title() {
             </Col>
             <Col className="d-flex justify-content-end">
                 <Link
-                    href="/category-detail"
+                    href="/tum-haberler"
                     className="nav-link animate-underline px-0 py-2 d-inline-flex align-items-center">
                     <span className="animate-target">Tümünü Gör</span>
                     <i className="ci-chevron-right fs-base ms-1"></i>

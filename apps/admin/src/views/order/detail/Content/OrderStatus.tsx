@@ -56,6 +56,7 @@ const OrderStatus = ({ orderId, status, onStatusChange }: OrderStatusProps) => {
                         <MenuItem value="delivered">Teslim Edildi</MenuItem>
                         <MenuItem value="cancelled">İptal Edildi</MenuItem>
                         <MenuItem value="returned">İade Edildi</MenuItem>
+                        <MenuItem value="payment_failed">Başarısız</MenuItem>
                     </Select>
                 </FormControl>
             </CardContent>

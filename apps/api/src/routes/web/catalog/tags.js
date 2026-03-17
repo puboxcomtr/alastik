@@ -6,6 +6,7 @@ const router = express.Router();
 const WebTag = require('../../../models/web/catalog/WebTag');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+const Setting = require('../../../models/admin/settings/Setting');
 
 /**
  * GET /api/tags/tire-size
@@ -203,6 +204,10 @@ router.get('/:slug/products', async (req, res) => {
                 filter[fieldPath] = f.value;
             }
         });
+        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
+        if (hidePricelessSetting?.value === true) {
+            filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
+        }
 
         // Ek filtreler için $and
         const andConditions = [];

@@ -69,7 +69,7 @@
     --cz-info-rgb: 47, 110, 213;
     --cz-warning-rgb: 252, 146, 49;
     --cz-danger-rgb: 240, 61, 61;
-    --cz-light-rgb: #f9f9f9;
+    --cz-light-rgb: #f6f6f6;
     --cz-dark-rgb: #e5e5e5;
     --cz-primary-text-emphasis: #f2223b;
     --cz-secondary-text-emphasis: #333d4c;
@@ -187,7 +187,7 @@ hr {
     border: 0;
     border-top: var(--cz-border-width) solid;
     color: var(--cz-border-color);
-    margin: 1.5rem 0;
+    margin: 1rem 0;
     opacity: 1
 }
 
@@ -319,7 +319,7 @@ blockquote {
 
 b,
 strong {
-    font-weight: bolder
+    font-weight: 600 !important
 }
 
 .small,
@@ -626,7 +626,7 @@ progress {
 
 @media (min-width:1200px) {
     .display-2 {
-        font-size: 4.5rem
+        font-size: 4.5remf
     }
 }
 
@@ -4961,7 +4961,6 @@ fieldset:disabled .btn {
 .card-body {
     color: var(--cz-card-color);
     flex: 1 1 auto;
-    padding: var(--cz-card-spacer-y) var(--cz-card-spacer-x)
 }
 
 .card-title {
@@ -9380,7 +9379,7 @@ fieldset:disabled .btn {
 
 .text-danger {
     --cz-text-opacity: 1;
-    color: rgba(var(--cz-danger-rgb), var(--cz-text-opacity)) !important
+    color: var(--cz-primary) !important
 }
 
 .text-light {
@@ -14711,11 +14710,6 @@ kbd {
         color: #000 !important;
     }
 
-    #main_tire_search {
-        height: 860px !important;
-        margin-bottom: 5rem !important;
-    }
-
     .top-3 {
         top: 3% !important
     }
@@ -16266,7 +16260,6 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 }
 
 .navbar-nav>.nav-item>.nav-link:before {
-    background-color: currentcolor;
     bottom: 0;
     content: "";
     height: var(--cz-nav-link-underline-border-width);
@@ -18797,8 +18790,10 @@ span.flatpickr-weekday {
 #main_tire_search {
     background: url("../img/bg/bg_slider.jpg");
     background-repeat: no-repeat;
-    height: 570px;
+    height: 530px;
+    background-size: cover;
     margin-bottom: 4rem;
+    padding: 3rem 0;
 }
 
 /* Home Slider */
@@ -18814,7 +18809,7 @@ span.flatpickr-weekday {
 /* Product Slider */
 .featured_products .swiper-horizontal>.swiper-pagination-bullets,
 .featured_products .swiper-pagination-bullets.swiper-pagination-horizontal {
-    bottom: 0 !important;
+    bottom: 3px !important;
 }
 
 /* Draggable Banner */
@@ -18839,7 +18834,6 @@ span.flatpickr-weekday {
 }
 
 .red_footer {
-    background-color: var(--cz-primary);
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -18858,7 +18852,7 @@ span.flatpickr-weekday {
 
 
 #footer__social a {
-    background: #000;
+    background: #404040;
     border-radius: 100%;
 }
 
@@ -18877,7 +18871,7 @@ span.flatpickr-weekday {
 }
 
 .merchant a {
-    padding: 12px 16px;
+    padding: 12px 7px;
     border-radius: 4px;
     box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .03);
     background-color: #fff;
@@ -18952,25 +18946,439 @@ span.flatpickr-weekday {
 
 /* Yaz Lastiği */
 .nav-item.dropdown:nth-child(2) .mega-dropdown {
-    background: linear-gradient(90deg, #fff 50%, #fdf6ec 100%) !important;
+    background: linear-gradient(90deg, #fff 50%, #fdf6ec 100%);
 }
 
 /* Kış Lastiği */
 .nav-item.dropdown:nth-child(3) .mega-dropdown {
-    background: linear-gradient(90deg, #fff 50%, #eaf4fd 100%) !important;
+    background: linear-gradient(90deg, #fff 50%, #eaf4fd 100%);
 }
 
 /* 4 Mevsim */
 .nav-item.dropdown:nth-child(4) .mega-dropdown {
-    background: linear-gradient(90deg, #fff 50%, #eafde9 100%) !important;
+    background: linear-gradient(90deg, #fff 50%, #eafde9 100%);
 }
 
 /* Elektrikli Araçlar */
 .nav-item.dropdown:nth-child(5) .mega-dropdown {
-    background: linear-gradient(90deg, #fff 50%, #f0ecfd 100%) !important;
+    background: linear-gradient(90deg, #fff 50%, #f0ecfd 100%);
 }
 
 /* Jant */
 .nav-item.dropdown:nth-child(6) .mega-dropdown {
-    background: linear-gradient(90deg, #fff 50%, #f5f5f5 100%) !important;
+    background: linear-gradient(90deg, #fff 50%, #f5f5f5 100%);
+}
+
+.main__menu .nav-link {
+    color: #FFF;
+}
+
+
+/* Mobile Menu */
+#mobile__menu .nav-link {
+    color: white;
+}
+
+.mobile__mega {
+    padding: 1rem 2rem
+}
+
+/* Slider */
+#slider_list .slide__item {
+    max-height: 400px;
+}
+
+/* Single Showcase */
+.showcase__group {
+    align-items: center;
+    justify-content: center;
+}
+
+.showcase__group .showcase__season {
+    color: rgb(255, 255, 255);
+    max-width: 450px;
+    min-height: 81px;
+}
+
+/* Breadcumb */
+#breadcumb {
+    margin: 1rem 0
+}
+
+#breadcumb ol {
+    margin: 0;
+}
+
+/* Ürün Detay */
+.mainProductGallery .main__image {
+    width: 350px;
+    height: 350px;
+    object-fit: contain;
+}
+
+.productGallery {
+    width: 100px;
+    height: 100px;
+    margin-top: .5rem;
+    display: flex;
+    border-radius: .5rem;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+}
+
+.productGallery.active {
+    border-color: #000;
+}
+
+/* Ürün Detay - Mobil Accordion */
+.product-accordion__item {
+    border-top: 1px solid #dee2e6;
+}
+
+.product-accordion__header {
+    transition: color 0.2s;
+    color: #333;
+}
+
+.product-accordion__header.active {
+    color: #000;
+    font-weight: 700;
+}
+
+.product-accordion__body {
+    animation: accordionFadeIn 0.25s ease-in-out;
+}
+
+#description h1,
+#description h2,
+#description h3,
+#description h4,
+#description h5 {
+    font-size: 1.4rem;
+    margin: 1rem 0;
+}
+
+#description p {
+    margin-bottom: 1rem;
+}
+
+#description ol,
+#description ul {
+    gap: 0rem;
+}
+#description ul li p {
+    margin-bottom: .5rem;
+}
+/* Sayfa Detay */
+#page__detail h1,
+#page__detail h2,
+#page__detail h3,
+#page__detail h4,
+#page__detail h5{
+    font-size:1.4rem;
+    margin:1rem 0;
+}
+
+/* Blog Detay */
+#blog__detail h1.blog__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5 {
+    font-size: 1rem;
+    margin: 1rem 0;
+}
+
+.blog-content p {
+    margin-bottom: .5rem;
+}
+
+.blog-content ol,
+.blog-content ul {
+    gap: 0;
+}
+
+/* Contact */
+.contact__title {
+    font-size: 1.4rem;
+    margin-bottom: 2rem;
+}
+
+/* Mobile */
+@media (max-width: 991px) {
+    .topbar {
+        display: none;
+    }
+
+    /* Mobile Menu */
+    #mobile__menu {
+        flex-direction: column;
+    }
+
+    #mobile__menu li.nav-item {
+        width: 100% !important;
+    }
+
+    #mobile__menu .nav-link {
+        color: #000 !important;
+        padding: .8rem 0;
+    }
+
+    .main__menu {
+        flex-direction: column;
+    }
+
+    .main__menu li {
+        width: 100%;
+        border-bottom: 1px solid #ededed;
+    }
+
+    .main__menu .nav-link {
+        color: #313131 !important;
+    }
+
+    .mobile__mega {
+        padding: 0 1rem !important;
+    }
+
+    .mobile__mega .h6 {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .mobile__mega ul li a {
+        font-size: .75rem !important;
+        color: #6c727f m !important;
+    }
+
+    .header__logo {
+        width: 140px;
+        height: auto;
+    }
+
+    .nav-item .mega-dropdown {
+        width: 100% !important;
+        background: #FFF !important;
+        box-shadow: unset !important;
+        border: 0 !important;
+    }
+
+    /* Slider */
+    #main_tire_search {
+        background: url(../img/bg/bg_slider_mobile.jpg);
+        height: auto !important;
+        margin-bottom: 0rem !important;
+        padding-bottom: 0 !important;
+        background-size: contain;
+        background-repeat: no-repeat;
+        padding: 1rem 0 !important
+    }
+
+    /* Kategori Slider */
+    .category-slider .swiper-slide {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .category-slider .swiper-slide img {
+        pointer-events: none;
+        -webkit-user-drag: none;
+    }
+
+    .category-slider .swiper-slide a {
+        pointer-events: auto;
+    }
+
+    .category-slider {
+        touch-action: pan-y;
+    }
+
+    /* Slider Product Card */
+    .slide__card {
+        border-radius: 4px;
+        background-color: #fff !important;
+        box-shadow: 0 0 10px 0 rgba(0, 0, 0, .1);
+        margin: 1rem .1rem !important;
+        margin-bottom: 2rem !important;
+    }
+
+    .slide__card .season_icon {
+        margin-top: 0 !important;
+    }
+
+    .swiper {
+        height: 100% !important;
+    }
+
+    /* Kategori Sayfası */
+    #breadcumb {
+        background: var(--cz-light-rgb) !important;
+        padding: 1.5rem 0;
+    }
+
+    #breadcumb ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Blog Detay */
+
+    #breadcumb .breadcrumb-item.active {
+        max-width: 35ch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #blog__detail h1.blog__title {
+        font-size: 1rem
+    }
+
+    /* Ürün Kartı */
+    .product-card {
+        padding: .3rem;
+    }
+
+    .product__information {
+        flex-direction: column !important;
+        gap: 0 !important;
+    }
+
+    .product__price {
+        flex-direction: column !important;
+        gap: 0 !important;
+    }
+
+    /* Single Showcase */
+    .single__background {
+        min-height: 860px !important;
+    }
+
+    .showcase__group {
+        align-items: unset !important;
+        justify-content: unset !important;
+        margin: 0 !important;
+    }
+
+    .showcase__group>div {
+        padding: 0 !important;
+    }
+
+    .showcase__group .showcase__season {
+        color: rgb(255, 255, 255);
+        max-width: 320px;
+        min-height: 150px;
+        font-size: 16px;
+    }
+
+    /* Draggable Banner */
+    #draggable_banner .homepage_banner {
+        margin-top: 0 !important;
+    }
+
+    /* Filter Products */
+    .search_box .search_tabheader {
+        width: 100% !important;
+    }
+
+    .search_tabheader span {
+        width: 50% !important;
+    }
+
+    .search_box .search_tabcontent .nav-tabs {
+        background: #FFF;
+    }
+
+    /* Ürün Detay */
+    .mainProductGallery .main__image {
+        width: 100%;
+        height: auto;
+    }
+
+    .productGallery {
+        display: none;
+    }
+
+    /* Mobil Sepet Bottom Bar */
+    .cart-mobile-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+    }
+
+    .cart-mobile-panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 14%;
+        background: #fff;
+        padding: 20px 16px;
+        z-index: 1050;
+        transition: bottom 0.3s ease;
+    }
+
+
+    .cart-mobile-panel--closed {
+        bottom: -100%;
+    }
+
+    .cart-mobile-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-top: 1px solid #e9ecef;
+        z-index: 1051;
+        padding: 12px 16px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        overflow: visible;
+    }
+
+    .cart__toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .cart__toggle i {
+        background-color: #FFF;
+        border-radius: 10px;
+        padding: 0 20px;
+    }
+
+    .cart-mobile-price {
+        font-size: 18px;
+    }
+
+    .cart-mobile-label {
+        font-size: 12px;
+    }
+
+}
+
+@keyframes accordionFadeIn {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+
+    to {
+        opacity: 1;
+        max-height: 2000px;
+    }
 }

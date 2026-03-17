@@ -182,7 +182,7 @@ const customDataSchema = new mongoose.Schema({
     delivery: {
         type: String,
         enum: ['same_day', 'next_day', 'next_week'],
-        default: 'next_week'
+        default: 'same_day'
     },
 
     // İçerik

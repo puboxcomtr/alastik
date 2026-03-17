@@ -14,25 +14,25 @@ export default function TabHeader({ activeTab, setActiveTab }: TabHeaderProps) {
     return (
         <div className="search_tabheader">
             <span
-                className="search_icon"
+                className="search_icon cursor-pointer"
                 onClick={() => setActiveTab('tire')}
-                style={{ cursor: 'pointer', ...(activeTab === 'tire' ? activeStyle : {}) }}
+                style={{ ...(activeTab === 'tire' ? activeStyle : {}) }}
             >
                 <i className="ri-car-line"></i>
                 Araç Lastiği
             </span>
             <span
-                className="search_icon"
+                className="search_icon cursor-pointer"
                 onClick={() => setActiveTab('rim')}
-                style={{ cursor: 'pointer', ...(activeTab === 'rim' ? activeStyle : {}) }}
+                style={{  ...(activeTab === 'rim' ? activeStyle : {}) }}
             >
                 <i className="ri-steering-2-fill"></i>
                 Jant
             </span>
             <span
-                className="search_icon"
+                className="search_icon cursor-pointer d-none d-md-flex"
                 onClick={() => setActiveTab('chain')}
-                style={{ cursor: 'pointer', ...(activeTab === 'chain' ? activeStyle : {}) }}
+                style={{ ...(activeTab === 'chain' ? activeStyle : {}) }}
             >
                 <i className="ri-snowflake-line"></i>
                 Kar Paleti ve Zincir

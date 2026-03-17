@@ -233,14 +233,15 @@ app.use((req, res, next) => {
 
 // MongoDB connection with improved settings
 mongoose.connect(process.env.MONGODB_URI, {
-  maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE) || 15,
+  maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE) || 50,
+  minPoolSize: 5,
   serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
   family: 4,
-  bufferCommands: false,
+  bufferCommands: true,
   connectTimeoutMS: 10000,
   heartbeatFrequencyMS: 10000,
-  maxIdleTimeMS: 30000
+  maxIdleTimeMS: 60000
 })
   .then(async () => {
     logger.info('Connected to MongoDB');
@@ -284,8 +285,14 @@ app.use('/api/dia', diaRoutes);
 // ============================================
 // PAYMENT ROUTES
 // ============================================
+
+/* Netahsilat */
 const netahsilatRouter = require('./routes/web/payment/netahsilat');
 app.use('/api/web/payments/netahsilat', netahsilatRouter);
+
+/* N Kolay */
+const nkolayRouter = require('./routes/web/payment/nkolay');
+app.use('/api/web/payments/nkolay', nkolayRouter);
 
 
 // ============================================
@@ -344,9 +351,15 @@ app.use('/api/tags', webTagsRoutes);
 const definitionRouter = require('./routes/web/other/definition');
 app.use('/api/definition', definitionRouter);
 
+/* Sayfa */
+const webPageRoutes = require('./routes/web/content/pages');
+app.use('/api/pages', webPageRoutes);
+
 /* Blog */
 const webBlogRoutes = require('./routes/web/content/blog');
 app.use('/api/blogs', webBlogRoutes);
+
+
 
 /* Ürün Yorumları */
 const webReviewsRoutes = require('./routes/web/user/reviews');
@@ -385,6 +398,9 @@ app.use('/api/address', webAddressRoutes);
 /* Siparişler */
 const webOrderRoutes = require('./routes/web/order/order');
 app.use('/api/order', webOrderRoutes);
+
+const webFavouritesRoutes = require('./routes/web/user/favourites');
+app.use('/api/favourites', webFavouritesRoutes);
 
 
 /* Görsel Listeleme */

@@ -21,7 +21,7 @@ const Showcase = () => {
     paymentSystem: false,
 
     // Product Management
-    priceReminder: false,
+    hidePricelessProducts: false,
     recommendedProducts: false,
     autoCommentApproval: '1',
     commentFieldRequirement: '1',
@@ -50,7 +50,7 @@ const Showcase = () => {
         setFormData({
           saleAgree: response.data.saleAgree || false,
           paymentSystem: response.data.paymentSystem || false,
-          priceReminder: response.data.priceReminder || false,
+          hidePricelessProducts: response.data.hidePricelessProducts || false,
           recommendedProducts: response.data.recommendedProducts || false,
           autoCommentApproval: response.data.autoCommentApproval || '1',
           commentFieldRequirement: response.data.commentFieldRequirement || '1',
@@ -95,7 +95,7 @@ const Showcase = () => {
       const dataToSave = {
         saleAgree: formData.saleAgree,
         paymentSystem: formData.paymentSystem,
-        priceReminder: formData.priceReminder,
+        hidePricelessProducts: formData.hidePricelessProducts,
         recommendedProducts: formData.recommendedProducts,
         autoCommentApproval: formData.autoCommentApproval,
         commentFieldRequirement: formData.commentFieldRequirement,

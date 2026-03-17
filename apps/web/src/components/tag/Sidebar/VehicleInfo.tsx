@@ -8,6 +8,7 @@ import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import wheelSizeService from '@/src/services/wheelSizeService';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ROUTES } from '@/src/config/routes';
 
 interface VehicleData {
     make: string;
@@ -53,12 +54,20 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
     const [tireSizes, setTireSizes] = useState<TireSizeOption[]>([]);
     const [rimSizes, setRimSizes] = useState<RimSizeOption[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     const { isLoggedIn } = useAuth();
     const { vehicles, loading: vehiclesLoading } = useVehicles();
 
     useEffect(() => {
         setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 992);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
     useEffect(() => {
@@ -70,7 +79,7 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                 const data = JSON.parse(stored) as VehicleData;
                 const isValid = data.timestamp && (Date.now() - data.timestamp) < 2 * 60 * 60 * 1000;
 
-                if (isValid && data.make) {
+                if (isValid && data.make && data.source === 'search') {
                     setVehicle(data);
                     return;
                 } else {
@@ -80,11 +89,10 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
         } catch (error) {
             console.error('[VehicleInfo] localStorage read error:', error);
         }
-        if (isLoggedIn && !vehiclesLoading && vehicles.length > 0) {
+        if (isLoggedIn && !vehiclesLoading) {
             const primaryVehicle = vehicles.find(v => v.isPrimary);
 
             if (primaryVehicle) {
-                console.log('[VehicleInfo] Garaj varsayılan araç:', primaryVehicle);
                 setVehicle({
                     make: primaryVehicle.wheelSizeData?.make || '',
                     makeName: primaryVehicle.wheelSizeData?.makeName || '',
@@ -96,6 +104,8 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                     vehicleImage: primaryVehicle.image?.url || '',
                     source: 'garage'
                 });
+            } else {
+                setVehicle(null);
             }
         }
     }, [mounted, isLoggedIn, vehicles, vehiclesLoading]);
@@ -285,364 +295,369 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
         return null;
     }
 
-    return (
-        <div className="vehicle-info-sidebar">
-            {/* Araç Bilgisi */}
-            <div>
-                <div className="d-flex justify-content-between align-items-center">
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                        {vehicle.source === 'garage' ? 'Garajımdaki Aracım' : 'Aracınız'}
-                    </Typography>
-                    {vehicle.source === 'search' && (
-                        <button
-                            onClick={handleClearVehicle}
-                            className="btn btn-sm btn-link text-muted p-0"
-                            title="Araç seçimini kaldır"
-                        >
-                            <i className="ri-close-line"></i>
-                        </button>
-                    )}
-                </div>
-                <Divider sx={{ my: 1.5 }} />
-
-                {/* Araç Görseli */}
-                <div className="mb-3">
-                    {vehicle.vehicleImage ? (
-                        <img
-                            src={vehicle.vehicleImage}
-                            alt={`${vehicle.makeName} ${vehicle.modelName}`}
-                            className="img-fluid"
-                            style={{ maxHeight: '180px', objectFit: 'contain' }}
-                        />
-                    ) : (
-                        <i className="ri-car-line" style={{ fontSize: '1.4rem', color: '#dee2e6' }}></i>
-                    )}
-                </div>
-                <div>
-                    <strong>{vehicle.makeName} {vehicle.modelName} {vehicle.year}</strong>
-                    {vehicle.source === 'garage' && (
-                        <span className="badge bg-success ms-2" style={{ fontSize: '10px' }}>Garajım</span>
-                    )}
+    // Araç Görseli 
+    const vehicleInfoContent = (
+        <>
+            <div className="d-flex justify-content-between align-items-center">
+                <Typography className='d-none d-md-flex' variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                    {vehicle.source === 'garage' ? 'Garajımdaki Aracım' : 'Aracınız'}
+                </Typography>
+                {vehicle.source === 'search' && (
                     <button
-                        onClick={handleOpenModal}
-                        className="btn p-0 w-100 text-start justify-content-start"
-                        style={{ fontSize: '12px', color: 'var(--cz-primary)' }}
+                        onClick={handleClearVehicle}
+                        className="btn btn-sm btn-link text-muted p-0"
+                        title="Araç seçimini kaldır"
                     >
-                        Aracı Değiştir <i className="ri-arrow-right-s-line"></i>
+                        <i className="ri-close-line"></i>
                     </button>
-                </div>
+                )}
             </div>
-
             <Divider sx={{ my: 1.5 }} />
 
-            {loading ? (
-                <div className="text-center py-3">
-                    <div className="spinner-border spinner-border-sm text-primary" role="status">
-                        <span className="visually-hidden">Yükleniyor...</span>
-                    </div>
-                </div>
+            {/* Araç Görseli */}
+            <div className="mb-3">
+                {vehicle.vehicleImage ? (
+                    <img
+                        src={vehicle.vehicleImage}
+                        alt={`${vehicle.makeName} ${vehicle.modelName}`}
+                        className="img-fluid d-none d-md-flex"
+                        style={{ maxHeight: '180px', objectFit: 'contain' }}
+                    />
+                ) : (
+                    <i className="ri-car-line" style={{ fontSize: '1.4rem', color: '#dee2e6' }}></i>
+                )}
+            </div>
+            <div>
+                <strong>{vehicle.makeName} {vehicle.modelName} {vehicle.year}</strong>
+                {vehicle.source === 'garage' && (
+                    <span className="badge bg-success ms-2" style={{ fontSize: '10px' }}>Garajım</span>
+                )}
+                <button
+                    onClick={handleOpenModal}
+                    className="d-none d-md-flex btn p-0 w-100 text-start justify-content-start"
+                    style={{ fontSize: '12px', color: 'var(--cz-primary)' }}
+                >
+                    Aracı Değiştir <i className="ri-arrow-right-s-line"></i>
+                </button>
+
+                <Link
+                    href={ROUTES.ACCOUNT_VEHICLES}
+                    className="d-flex d-md-none btn p-0 w-100 text-start justify-content-start"
+                    style={{ fontSize: '12px', color: 'var(--cz-primary)' }}
+                >
+                    Garaja Git <i className="ri-arrow-right-s-line"></i>
+                </Link>
+            </div>
+        </>
+    );
+
+    return (
+        <div className="vehicle-info-sidebar">
+            {/* ===== ARAÇ GÖRSELİ */}
+            {isMobile ? (
+                <Accordion
+                    defaultExpanded={false}
+                    className='mb-3 border'
+                    sx={{ boxShadow: 'none', borderColor: 'black', borderRadius: '8px !important', '&:before': { display: 'none' } }}
+                >
+                    <AccordionSummary
+                        expandIcon={<ExpandMoreIcon />}
+                        sx={{
+                            minHeight: 'unset',
+                            '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                            '&.Mui-expanded': { minHeight: 'unset' },
+                            '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' },
+                        }}
+                    >
+                        <Typography className='fw-semibold text-black' variant="subtitle1">
+                            Garajım
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0 }}>
+                        {vehicleInfoContent}
+                    </AccordionDetails>
+                </Accordion>
             ) : (
+                <div>{vehicleInfoContent}</div>
+            )}
+            {!isMobile && (
                 <>
-                    {/* LASTİK ETİKETİ - Sadece Lastik Grupları */}
-                    {tagType === 'tire_size' && (
+                    <Divider sx={{ my: 1.5 }} />
+
+                    {loading ? (
+                        <div className="text-center py-3">
+                            <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                <span className="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                    ) : (
                         <>
-                            {/* Ön/Arka Lastik */}
-                            {tireSizes.filter(s => s.position === 'both').length > 0 && (
+                            {/* LASTİK ETİKETİ  */}
+                            {tagType === 'tire_size' && (
                                 <>
-                                    <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
-                                        <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                            sx={{
-                                                minHeight: 'unset',
-                                                pl: 0,
-                                                '& .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                },
-                                                '&.Mui-expanded': {
-                                                    minHeight: 'unset'
-                                                },
-                                                '&.Mui-expanded .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                }
-                                            }}
-                                        >
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                                                {vehicle.makeName} {vehicle.modelName} Ön/Arka Lastik
-                                            </Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
-                                            {tireSizes.filter(s => s.position === 'both').map((size, idx) => (
-                                                <div key={idx} className="input-group mb-2">
-                                                    {size.isSelected ? (
-                                                        <div className="d-flex align-items-center">
-                                                            <input type="radio" checked={true} readOnly />
-                                                            <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
-                                                                {size.display}
-                                                            </label>
+                                    {/* Ön/Arka Lastik */}
+                                    {tireSizes.filter(s => s.position === 'both').length > 0 && (
+                                        <>
+                                            <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMoreIcon />}
+                                                    sx={{
+                                                        minHeight: 'unset',
+                                                        pl: 0,
+                                                        '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                                                        '&.Mui-expanded': { minHeight: 'unset' },
+                                                        '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' }
+                                                    }}
+                                                >
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                                                        {vehicle.makeName} {vehicle.modelName} Ön/Arka Lastik
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
+                                                    {tireSizes.filter(s => s.position === 'both').map((size, idx) => (
+                                                        <div key={idx} className="input-group mb-2">
+                                                            {size.isSelected ? (
+                                                                <div className="d-flex align-items-center">
+                                                                    <input type="radio" checked={true} readOnly />
+                                                                    <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
+                                                                        {size.display}
+                                                                    </label>
+                                                                </div>
+                                                            ) : (
+                                                                <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
+                                                                    <input type="radio" checked={false} readOnly />
+                                                                    <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.display}</span>
+                                                                </Link>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
-                                                            <input type="radio" checked={false} readOnly />
-                                                            <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.display}</span>
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
-                                    <Divider sx={{ my: 1 }} />
+                                                    ))}
+                                                </AccordionDetails>
+                                            </Accordion>
+                                            <Divider sx={{ my: 1 }} />
+                                        </>
+                                    )}
+
+                                    {/* Ön Lastik */}
+                                    {tireSizes.filter(s => s.position === 'front').length > 0 && (
+                                        <>
+                                            <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMoreIcon />}
+                                                    sx={{
+                                                        minHeight: 'unset',
+                                                        pl: 0,
+                                                        '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                                                        '&.Mui-expanded': { minHeight: 'unset' },
+                                                        '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' }
+                                                    }}
+                                                >
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                                                        {vehicle.makeName} {vehicle.modelName} Ön Lastik
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
+                                                    {tireSizes.filter(s => s.position === 'front').map((size, idx) => (
+                                                        <div key={idx} className="input-group mb-2">
+                                                            {size.isSelected ? (
+                                                                <div className="d-flex align-items-center">
+                                                                    <input type="radio" checked={true} readOnly />
+                                                                    <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
+                                                                        {size.display}
+                                                                    </label>
+                                                                </div>
+                                                            ) : (
+                                                                <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
+                                                                    <input type="radio" checked={false} readOnly />
+                                                                    <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.display}</span>
+                                                                </Link>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </AccordionDetails>
+                                            </Accordion>
+                                            <Divider sx={{ my: 1 }} />
+                                        </>
+                                    )}
+
+                                    {/* Arka Lastik */}
+                                    {tireSizes.filter(s => s.position === 'rear').length > 0 && (
+                                        <>
+                                            <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMoreIcon />}
+                                                    sx={{
+                                                        minHeight: 'unset',
+                                                        pl: 0,
+                                                        '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                                                        '&.Mui-expanded': { minHeight: 'unset' },
+                                                        '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' }
+                                                    }}
+                                                >
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                                                        {vehicle.makeName} {vehicle.modelName} Arka Lastik
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
+                                                    {tireSizes.filter(s => s.position === 'rear').map((size, idx) => (
+                                                        <div key={idx} className="input-group mb-2">
+                                                            {size.isSelected ? (
+                                                                <div className="d-flex align-items-center">
+                                                                    <input type="radio" checked={true} readOnly />
+                                                                    <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
+                                                                        {size.display}
+                                                                    </label>
+                                                                </div>
+                                                            ) : (
+                                                                <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
+                                                                    <input type="radio" checked={false} readOnly />
+                                                                    <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.display}</span>
+                                                                </Link>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </AccordionDetails>
+                                            </Accordion>
+                                        </>
+                                    )}
+
+                                    {tireSizes.length === 0 && (
+                                        <p className="text-muted small mb-0">Lastik bilgisi yükleniyor...</p>
+                                    )}
                                 </>
                             )}
 
-                            {/* Ön Lastik */}
-                            {tireSizes.filter(s => s.position === 'front').length > 0 && (
+                            {/* JANT ETİKETİ  */}
+                            {tagType === 'rim_pcd' && (
                                 <>
-                                    <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
-                                        <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                            sx={{
-                                                minHeight: 'unset',
-                                                pl: 0,
-                                                '& .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                },
-                                                '&.Mui-expanded': {
-                                                    minHeight: 'unset'
-                                                },
-                                                '&.Mui-expanded .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                }
-                                            }}
-                                        >
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                                                {vehicle.makeName} {vehicle.modelName} Ön Lastik
-                                            </Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
-                                            {tireSizes.filter(s => s.position === 'front').map((size, idx) => (
-                                                <div key={idx} className="input-group mb-2">
-                                                    {size.isSelected ? (
-                                                        <div className="d-flex align-items-center">
-                                                            <input type="radio" checked={true} readOnly />
-                                                            <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
-                                                                {size.display}
-                                                            </label>
+                                    {/* Ön/Arka Jant */}
+                                    {rimSizes.filter(s => s.position === 'both').length > 0 && (
+                                        <>
+                                            <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMoreIcon />}
+                                                    sx={{
+                                                        minHeight: 'unset',
+                                                        pl: 0,
+                                                        '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                                                        '&.Mui-expanded': { minHeight: 'unset' },
+                                                        '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' }
+                                                    }}
+                                                >
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                                                        {vehicle.makeName} {vehicle.modelName} Ön/Arka Jant
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
+                                                    {rimSizes.filter(s => s.position === 'both').map((size, idx) => (
+                                                        <div key={idx} className="input-group mb-2">
+                                                            {size.isSelected ? (
+                                                                <div className="d-flex align-items-center">
+                                                                    <input type="radio" checked={true} readOnly />
+                                                                    <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
+                                                                        {size.pcd} ({size.display})
+                                                                    </label>
+                                                                </div>
+                                                            ) : (
+                                                                <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
+                                                                    <input type="radio" checked={false} readOnly />
+                                                                    <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.pcd} ({size.display})</span>
+                                                                </Link>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
-                                                            <input type="radio" checked={false} readOnly />
-                                                            <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.display}</span>
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
-                                    <Divider sx={{ my: 1 }} />
-                                </>
-                            )}
+                                                    ))}
+                                                </AccordionDetails>
+                                            </Accordion>
+                                            <Divider sx={{ my: 1 }} />
+                                        </>
+                                    )}
 
-                            {/* Arka Lastik */}
-                            {tireSizes.filter(s => s.position === 'rear').length > 0 && (
-                                <>
-                                    <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
-                                        <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                            sx={{
-                                                minHeight: 'unset',
-                                                pl: 0,
-                                                '& .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                },
-                                                '&.Mui-expanded': {
-                                                    minHeight: 'unset'
-                                                },
-                                                '&.Mui-expanded .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                }
-                                            }}
-                                        >
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                                                {vehicle.makeName} {vehicle.modelName} Arka Lastik
-                                            </Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
-                                            {tireSizes.filter(s => s.position === 'rear').map((size, idx) => (
-                                                <div key={idx} className="input-group mb-2">
-                                                    {size.isSelected ? (
-                                                        <div className="d-flex align-items-center">
-                                                            <input type="radio" checked={true} readOnly />
-                                                            <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
-                                                                {size.display}
-                                                            </label>
+                                    {/* Ön Jant */}
+                                    {rimSizes.filter(s => s.position === 'front').length > 0 && (
+                                        <>
+                                            <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMoreIcon />}
+                                                    sx={{
+                                                        minHeight: 'unset',
+                                                        pl: 0,
+                                                        '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                                                        '&.Mui-expanded': { minHeight: 'unset' },
+                                                        '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' }
+                                                    }}
+                                                >
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                                                        {vehicle.makeName} {vehicle.modelName} Ön Jant
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
+                                                    {rimSizes.filter(s => s.position === 'front').map((size, idx) => (
+                                                        <div key={idx} className="input-group mb-2">
+                                                            {size.isSelected ? (
+                                                                <div className="d-flex align-items-center">
+                                                                    <input type="radio" checked={true} readOnly />
+                                                                    <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
+                                                                        {size.pcd} ({size.display})
+                                                                    </label>
+                                                                </div>
+                                                            ) : (
+                                                                <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
+                                                                    <input type="radio" checked={false} readOnly />
+                                                                    <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.pcd} ({size.display})</span>
+                                                                </Link>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
-                                                            <input type="radio" checked={false} readOnly />
-                                                            <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.display}</span>
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
-                                </>
-                            )}
+                                                    ))}
+                                                </AccordionDetails>
+                                            </Accordion>
+                                            <Divider sx={{ my: 1 }} />
+                                        </>
+                                    )}
 
-                            {tireSizes.length === 0 && (
-                                <p className="text-muted small mb-0">Lastik bilgisi yükleniyor...</p>
-                            )}
-                        </>
-                    )}
-
-                    {/* JANT ETİKETİ - Sadece Jant Grupları */}
-                    {tagType === 'rim_pcd' && (
-                        <>
-                            {/* Ön/Arka Jant */}
-                            {rimSizes.filter(s => s.position === 'both').length > 0 && (
-                                <>
-                                    <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
-                                        <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                            sx={{
-                                                minHeight: 'unset',
-                                                pl: 0,
-                                                '& .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                },
-                                                '&.Mui-expanded': {
-                                                    minHeight: 'unset'
-                                                },
-                                                '&.Mui-expanded .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                }
-                                            }}
-                                        >
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                                                {vehicle.makeName} {vehicle.modelName} Ön/Arka Jant
-                                            </Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
-                                            {rimSizes.filter(s => s.position === 'both').map((size, idx) => (
-                                                <div key={idx} className="input-group mb-2">
-                                                    {size.isSelected ? (
-                                                        <div className="d-flex align-items-center">
-                                                            <input type="radio" checked={true} readOnly />
-                                                            <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
-                                                                {size.pcd} ({size.display})
-                                                            </label>
+                                    {/* Arka Jant */}
+                                    {rimSizes.filter(s => s.position === 'rear').length > 0 && (
+                                        <>
+                                            <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMoreIcon />}
+                                                    sx={{
+                                                        minHeight: 'unset',
+                                                        pl: 0,
+                                                        '& .MuiAccordionSummary-content': { margin: '10px 0' },
+                                                        '&.Mui-expanded': { minHeight: 'unset' },
+                                                        '&.Mui-expanded .MuiAccordionSummary-content': { margin: '10px 0' }
+                                                    }}
+                                                >
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
+                                                        {vehicle.makeName} {vehicle.modelName} Arka Jant
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
+                                                    {rimSizes.filter(s => s.position === 'rear').map((size, idx) => (
+                                                        <div key={idx} className="input-group mb-2">
+                                                            {size.isSelected ? (
+                                                                <div className="d-flex align-items-center">
+                                                                    <input type="radio" checked={true} readOnly />
+                                                                    <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
+                                                                        {size.pcd} ({size.display})
+                                                                    </label>
+                                                                </div>
+                                                            ) : (
+                                                                <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
+                                                                    <input type="radio" checked={false} readOnly />
+                                                                    <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.pcd} ({size.display})</span>
+                                                                </Link>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
-                                                            <input type="radio" checked={false} readOnly />
-                                                            <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.pcd} ({size.display})</span>
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
-                                    <Divider sx={{ my: 1 }} />
-                                </>
-                            )}
+                                                    ))}
+                                                </AccordionDetails>
+                                            </Accordion>
+                                        </>
+                                    )}
 
-                            {/* Ön Jant */}
-                            {rimSizes.filter(s => s.position === 'front').length > 0 && (
-                                <>
-                                    <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
-                                        <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                            sx={{
-                                                minHeight: 'unset',
-                                                pl: 0,
-                                                '& .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                },
-                                                '&.Mui-expanded': {
-                                                    minHeight: 'unset'
-                                                },
-                                                '&.Mui-expanded .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                }
-                                            }}
-                                        >
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                                                {vehicle.makeName} {vehicle.modelName} Ön Jant
-                                            </Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
-                                            {rimSizes.filter(s => s.position === 'front').map((size, idx) => (
-                                                <div key={idx} className="input-group mb-2">
-                                                    {size.isSelected ? (
-                                                        <div className="d-flex align-items-center">
-                                                            <input type="radio" checked={true} readOnly />
-                                                            <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
-                                                                {size.pcd} ({size.display})
-                                                            </label>
-                                                        </div>
-                                                    ) : (
-                                                        <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
-                                                            <input type="radio" checked={false} readOnly />
-                                                            <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.pcd} ({size.display})</span>
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
-                                    <Divider sx={{ my: 1 }} />
+                                    {rimSizes.length === 0 && (
+                                        <p className="text-muted small mb-0">Jant bilgisi yükleniyor...</p>
+                                    )}
                                 </>
-                            )}
-
-                            {/* Arka Jant */}
-                            {rimSizes.filter(s => s.position === 'rear').length > 0 && (
-                                <>
-                                    <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
-                                        <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                            sx={{
-                                                minHeight: 'unset',
-                                                pl: 0,
-                                                '& .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                },
-                                                '&.Mui-expanded': {
-                                                    minHeight: 'unset'
-                                                },
-                                                '&.Mui-expanded .MuiAccordionSummary-content': {
-                                                    margin: '10px 0'
-                                                }
-                                            }}
-                                        >
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'black' }}>
-                                                {vehicle.makeName} {vehicle.modelName} Arka Jant
-                                            </Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 1, pb: 0, pl: 0 }}>
-                                            {rimSizes.filter(s => s.position === 'rear').map((size, idx) => (
-                                                <div key={idx} className="input-group mb-2">
-                                                    {size.isSelected ? (
-                                                        <div className="d-flex align-items-center">
-                                                            <input type="radio" checked={true} readOnly />
-                                                            <label className="input-group-label ms-2" style={{ fontWeight: 600, color: 'var(--cz-primary)', fontSize: '13px' }}>
-                                                                {size.pcd} ({size.display})
-                                                            </label>
-                                                        </div>
-                                                    ) : (
-                                                        <Link href={buildTagUrl(size.seoUrl)} className="d-flex align-items-center text-decoration-none text-dark">
-                                                            <input type="radio" checked={false} readOnly />
-                                                            <span className="input-group-label ms-2" style={{ fontSize: '13px' }}>{size.pcd} ({size.display})</span>
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
-                                </>
-                            )}
-
-                            {rimSizes.length === 0 && (
-                                <p className="text-muted small mb-0">Jant bilgisi yükleniyor...</p>
                             )}
                         </>
                     )}

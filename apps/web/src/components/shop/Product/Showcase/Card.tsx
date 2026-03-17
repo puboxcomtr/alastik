@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import Tooltip from '@mui/material/Tooltip';
 import Rating from '@mui/material/Rating';
+import { Container } from "react-bootstrap"
 import Dropdown from "react-bootstrap/Dropdown";
 import Image from 'next/image';
 
@@ -12,6 +13,8 @@ import { ProductCardProps } from '@src/types/products';
 import { useSettings } from '@src/context/SettingsContext';
 import { useBrands } from '@/src/context/BrandsContext';
 import { useCart } from '@/src/context/CartContext';
+import { useFavourites } from '@/src/context/FavouritesContext';
+import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
 import {
     getProductUrl,
@@ -27,10 +30,15 @@ import {
 } from '@src/hooks/Products/productHelpers';
 
 export default function ProductCard({ product }: ProductCardProps) {
-    const [isFavorite, setIsFavorite] = useState(false);
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
-
+    const { toggleFavourite, isFavourite } = useFavourites();
+    const { definition } = useDefinition();
+    const getWhatsAppUrl = () => {
+        const phone = definition?.companyInfo?.phone || '0539 825 71 01';
+        const formatted = phone.replace(/\s+/g, '').replace(/^0/, '90');
+        return `https://wa.me/${formatted}`;
+    };
     const handleAddToCart = async () => {
         if (adding) return;
         setAdding(true);
@@ -42,23 +50,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     const { t } = useTranslations('general');
     const { getBrand } = useBrands();
 
-    const toggleFavorite = () => {
-        setIsFavorite((prev) => !prev);
-    };
-
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
     const stockCode = getProductStockCode(product);
-    // Lastik özellikleri
-    const { ebat, yukEndeksi, hizEndeksi, uretimTarihi } = getProductFeatures(product);
 
-    // Jant özellikleri
-    const bijonSayisi = getProductFeature(product, 'Bijon Sayısı');
-    const bijonAraligi = getProductFeature(product, 'Bijon Aralığı') || product.diaData?.ozelkod3kodu || '-';
-    const jantCapi = getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-';
     // Marka bilgisini context'ten al
     const brandName = product.diaData.marka || '';
     const brandInfo = getBrand(brandName);
@@ -67,202 +65,140 @@ export default function ProductCard({ product }: ProductCardProps) {
         : null;
 
     return (
-        <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
-            <div className="position-relative">
-                {/* Favorite button */}
-                <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-0 mt-3 me-3">
-                    <div className="d-flex flex-column gap-2">
-                        <button
-                            type="button"
-                            onClick={toggleFavorite}
-                            className="btn btn-icon btn-secondary animate-pulse d-none d-lg-inline-flex"
-                            aria-label="Favorilere Ekle"
-                        >
-                            {isFavorite ? (
-                                <i className="ri-heart-fill fs-base text-danger animate-target"></i>
-                            ) : (
-                                <i className="ri-heart-line fs-base animate-target"></i>
-                            )}
-                        </button>
-                    </div>
-                </div>
 
-                {/* Mobile dropdown */}
-                <div className="d-lg-none position-absolute top-0 end-0 z-2 mt-2 me-2">
-                    <Dropdown align="end">
-                        <Dropdown.Toggle
-                            variant="secondary"
-                            size="sm"
-                            className="btn btn-icon bg-body"
-                            aria-label="More actions"
-                        >
-                            <i className="ri-more-2-fill fs-lg"></i>
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu className="fs-xs p-2" style={{ minWidth: "auto" }}>
-                            <Dropdown.Item onClick={toggleFavorite}>
-                                <i className="ri-heart-line fs-sm ms-n1 me-2"></i>
-                                {isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"}
-                            </Dropdown.Item>
-                        </Dropdown.Menu>
-                    </Dropdown>
-                </div>
-
-                {/* Product Image */}
-                <Link className="d-block rounded-top overflow-hidden p-3 p-sm-4" href={productUrl}>
-                    {season && (
-                        <span
-                            className="position-absolute top-0 start-0 mt-2 ms-2 mt-lg-3 ms-lg-3"
-                            style={{ zIndex: 1 }}
-                        >
-                            <img
-                                src={season.icon}
-                                alt={season.text}
-                                width={32}
-                                height={32}
-                            />
-                        </span>
-                    )}
-                    <div>
-                        <img
-                            src={imageUrl}
-                            alt={product.diaData.aciklama}
-                            className="productImage"
-                            width={60}
-                            height={29}
-                        />
+        <Container className="p-0">
+            <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
+                <div className="position-relative">
+                    {/* Favorite button */}
+                    <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-0 mt-3 me-3">
+                        <div className="d-flex flex-column gap-2">
+                            <button
+                                type="button"
+                                onClick={() => toggleFavourite(product._key)}
+                                className="btn btn-icon btn-secondary animate-pulse d-none d-lg-inline-flex"
+                                aria-label="Favorilere Ekle"
+                            >
+                                {isFavourite(product._key) ? (
+                                    <i className="ri-heart-fill fs-base text-danger animate-target"></i>
+                                ) : (
+                                    <i className="ri-heart-line fs-base animate-target"></i>
+                                )}
+                            </button>
+                        </div>
                     </div>
-                </Link>
-            </div>
 
-            <div className="min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
-                <div className="d-flex justify-content-between gap-2 mb-2">
-                    <div>
-                        {brandLogo ? (
-                            <Image
-                                src={brandLogo}
-                                alt={brandName || 'Marka'}
-                                width={90}
-                                height={47}
-                                style={{ objectFit: 'contain' }}
-                            />
-                        ) : (
-                            <span className="fw-medium fs-sm">{brandName || 'Marka Yok'}</span>
-                        )}
-                    </div>
-                    {/* Rating */}
-                    <div className='d-flex align-items-center'>
-                        {product.customData?.reviewStats?.reviewCount > 0 ? (
-                            <>
-                                <Rating
-                                    name={`product-rating-${product._key}`}
-                                    value={product.customData.reviewStats.averageRating}
-                                    precision={0.5}
-                                    size="small"
-                                    readOnly
+                    {/* Product Image */}
+                    <Link className="d-block rounded-top overflow-hidden p-0 p-md-3" href={productUrl}>
+                        {season && (
+                            <span
+                                className="position-absolute top-0 start-0 mt-2 ms-2 mt-lg-3 ms-lg-3"
+                                style={{ zIndex: 1 }}
+                            >
+                                <img
+                                    src={season.icon}
+                                    alt={season.text}
+                                    width={32}
+                                    height={32}
                                 />
-                                <span className="text-body-tertiary fs-xs">({product.customData.reviewStats.reviewCount} Yorum) </span>
-                            </>
-                        ) : (
-                            <span className="text-body-tertiary fs-xs">Henüz Yorum Yapılmadı</span>
+                            </span>
                         )}
-                    </div>
-                </div>
-
-                <h3 className="pb-1 mb-2">
-                    <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
-                        {stockCode}
-                    </span>
-                    <Link
-                        className="d-block fs-sm fw-medium text-truncates"
-                        href={productUrl}
-                    >
-                        <span className="animate-target fs-sm">
-                            {product.diaData.aciklama}
-                        </span>
+                        <div>
+                            <img
+                                src={imageUrl}
+                                alt={product.diaData.aciklama}
+                                className="productImage"
+                                width={60}
+                                height={29}
+                            />
+                        </div>
                     </Link>
-                </h3>
-
-                <div className="d-flex justify-content-end border-top pt-3 gap-2">
-                    <span>
-                        {hasDiscount && (
-                            <del className="text-body-tertiary fw-normal">
-                                {originalPrice?.toLocaleString('tr-TR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })} TL
-                            </del>
-                        )}
-                    </span>
-                    <span className="fw-bold">
-                        {price.toLocaleString('tr-TR', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        })} TL
-                    </span>
                 </div>
-
-                <Tooltip title="Sepete Ekle">
-                    <button
-                        type="button"
-                        className="product-card-button btn btn-icon btn-primary animate-slide-end w-100 mt-3"
-                        aria-label="Sepete Ekle"
-                        onClick={handleAddToCart}
-                        disabled={adding}
-                    >
-                        {adding ? 'Ekleniyor...' : t('addToCart')}
-                    </button>
-                </Tooltip>
-
-                {/* Product details hover */}
-                <div className="product-card-details position-absolute top-100 start-0 bg-body w-100 rounded-bottom" style={{ border: '1px solid #e5e9dd' }}>
-                    <span className="position-absolute top-0 start-0 w-100 bg-body mt-n2 py-2">
-                        <ul className="list-unstyled d-flex flex-column gap-2 m-0 shadow mt-n2 p-3 pt-1">
-                            {isJant(product) ? (
+                <div className="min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
+                    <div className="product__information d-flex justify-content-between gap-2 mb-2">
+                        <div>
+                            {brandLogo ? (
+                                <Image
+                                    src={brandLogo}
+                                    alt={brandName || 'Marka'}
+                                    width={90}
+                                    height={47}
+                                    style={{ objectFit: 'contain' }}
+                                />
+                            ) : (
+                                <span className="fw-medium fs-sm">{brandName || 'Marka Yok'}</span>
+                            )}
+                        </div>
+                        {/* Rating */}
+                        <div className='d-flex align-items-center'>
+                            {product.customData?.reviewStats?.reviewCount > 0 ? (
                                 <>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Bijon Sayısı:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonSayisi}</span>
-                                    </li>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Bijon Aralığı:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{bijonAraligi}</span>
-                                    </li>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Jant Çapı:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{jantCapi}</span>
-                                    </li>
+                                    <Rating
+                                        name={`product-rating-${product._key}`}
+                                        value={product.customData.reviewStats.averageRating}
+                                        precision={0.5}
+                                        size="small"
+                                        readOnly
+                                    />
+                                    <span className="text-body-tertiary fs-xs">({product.customData.reviewStats.reviewCount} Yorum) </span>
                                 </>
                             ) : (
-                                <>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Ebat:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{ebat}</span>
-                                    </li>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Yük Endeksi:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{yukEndeksi}</span>
-                                    </li>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Hız Endeksi:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{hizEndeksi}</span>
-                                    </li>
-                                    <li className="d-flex align-items-center">
-                                        <span className="fs-xs">Üretim Tarihi:</span>
-                                        <span className="d-block flex-grow-1 border-bottom border-dashed px-1 mt-2 mx-2"></span>
-                                        <span className="text-dark-emphasis fs-xs fw-medium text-end">{uretimTarihi}</span>
-                                    </li>
-                                </>
+                                <span className="text-body-tertiary fs-xs">Henüz Yorum Yapılmadı</span>
                             )}
-                        </ul>
-                    </span>
+                        </div>
+                    </div>
+
+                    <h3 className="pb-1 mb-2">
+                        <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
+                            {stockCode}
+                        </span>
+                        <Link
+                            className="d-block fs-sm fw-medium text-truncates"
+                            href={productUrl}
+                        >
+                            <span className="animate-target fs-sm">
+                                {product.diaData.aciklama}
+                            </span>
+                        </Link>
+                    </h3>
+
+                    <div className="product__price d-flex justify-content-end border-top pt-3 gap-2">
+                        <span>
+                            {hasDiscount && (
+                                <del className="text-body-tertiary fw-normal">
+                                    {originalPrice?.toLocaleString('tr-TR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })} TL
+                                </del>
+                            )}
+                        </span>
+                        <span className="fw-bold">
+                            {price.toLocaleString('tr-TR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })} TL
+                        </span>
+                    </div>
+
+                    {product.diaData?.gercek_stok > 0 ? (
+                        <Tooltip title="Sepete Ekle">
+                            <button
+                                type="button"
+                                className="product-card-button btn btn-icon btn-primary animate-slide-end w-100 mt-3"
+                                aria-label="Sepete Ekle"
+                                onClick={handleAddToCart}
+                                disabled={adding}
+                            >
+                                {adding ? 'Ekleniyor...' : t('addToCart')}
+                            </button>
+                        </Tooltip>
+                    ) : (
+                        <Link href={getWhatsAppUrl()} target="_blank" className="btn btn-outline-success w-100 mt-3">
+                            <i className="ri-whatsapp-line me-1"></i> Stok Sorunuz
+                        </Link>
+                    )}
                 </div>
             </div>
-        </div>
+        </Container>
     );
 }

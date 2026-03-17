@@ -15,9 +15,9 @@ import {
     getCategory,
     isLastik,
     getProductFeature,
-    getProductUrl,
     fetchAlternativeSizes
 } from '@/src/hooks/Products/productHelpers';
+import { getRelatedBlogs } from '@/src/services/productService';
 
 /* ========================================
    Layout Components
@@ -54,7 +54,21 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
 
         checkAlternatives();
     }, [product]);
-    const handleEbatClick = () => setEbatDialogOpen(true);
+    const [blogCount, setBlogCount] = useState(0);
+    useEffect(() => {
+        if (!isLastik(product)) return;
+        const ozelkod5 = product.diaData?.ozelkod5 || '';
+        const patternMatch = ozelkod5.match(/^([a-z0-9-]+)/i);
+        const pattern = patternMatch ? patternMatch[1].toLowerCase() : null;
+        if (!pattern) return;
+        getRelatedBlogs(pattern).then(blogs => setBlogCount(blogs.length));
+    }, [product._key]);
+    const handleEbatClick = () => {
+        const model = product.diaData?.ozelkod5 || '';
+        const modelKodu = product.diaData?.ozelkod5kodu || '';
+        if (!model || !modelKodu || model.toLowerCase() === 'yok' || modelKodu.toLowerCase() === 'yok') return;
+        setEbatDialogOpen(true);
+    };
     return (
         <>
             <Grid container>
@@ -96,19 +110,20 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                         className="fs-xs text-muted"
                                         component="span"
                                     >
-                                        Henuz yorum yok
+                                        Henüz Yorum Yok
                                     </Typography>
                                 )}
                                 {/* Test Sonuçları */}
-                                <div className='d-flex gap-1'>
-                                    <Link
-                                        href="#tire_test"
-                                        className='fw-semibold text-decoration-none fs-sm d-flex gap-1'
-                                        color='primary'>
-                                        <span>{reviewCount} Lastik Test Sonucu</span>
-                                        <i className="ri-arrow-down-wide-line text-primary fw-bold"></i>
-                                    </Link>
-                                </div>
+                                {blogCount > 0 && (
+                                    <div className='d-flex gap-1'>
+                                        <Link
+                                            href="#tire_test"
+                                            className='fw-semibold text-decoration-none fs-sm d-flex gap-1'
+                                            color='primary'>
+                                            <span>{blogCount} Lastik Test Sonucu</span>
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
                         </Grid>
                         <Grid size={12}>
@@ -153,7 +168,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                             <Divider sx={{ my: 2 }} />
                         </Grid>
                         <Grid size={10}>
-
                             {isLastik(product) && (
                                 <div className="d-flex gap-3">
                                     <p>

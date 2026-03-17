@@ -13,7 +13,7 @@ const DiaStockSchema = new mongoose.Schema({
   synchronization: {
     type: String,
     enum: ['Y', 'N'],
-    default: 'Y', // Default: Her şeyi senkronize et
+    default: 'Y',
     description: 'Y: Her şeyi senkronize et, N: Sadece stok/fiyat senkronize et'
   },
   dataHash: {
@@ -26,6 +26,10 @@ const DiaStockSchema = new mongoose.Schema({
     default: null
   },
   stockHash: {
+    type: String,
+    default: null
+  },
+  ozelkodHash: {
     type: String,
     default: null
   },
@@ -63,7 +67,6 @@ const DiaStockSchema = new mongoose.Schema({
   anabarkod: String,
   barkodu: String,
   karebarkod: String,
-
   // Birim bilgileri
   anabirimbrutagirlik: Number,
   anabirimdesi: Number,

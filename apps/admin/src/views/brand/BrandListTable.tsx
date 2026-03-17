@@ -171,7 +171,7 @@ const BrandListTable = () => {
       }
     } catch (err) {
       console.error('Homepage toggle error:', err)
-      toast.error('Bir hata olustu')
+      toast.error('Bir hata oluştu')
     }
   }
 

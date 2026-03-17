@@ -106,6 +106,57 @@ router.get('/', maybeAuth, async (req, res) => {
     if (brand && brand !== '') {
       webFilter['diaData.marka'] = brand;
     }
+    // Ürün tipi filtreleme (LASTİK, JANT vb.)
+    if (req.query.product_type && req.query.product_type !== '') {
+      webFilter['diaData.ozelkod7kodu'] = req.query.product_type;
+    }
+    // Mevsim filtreleme (YAZ, KIS vb.)
+    if (req.query.season && req.query.season !== '') {
+      webFilter['diaData.ozelkod1kodu'] = req.query.season;
+    }
+    // Ebat filtreleme (205/50R17 vb.)
+    if (req.query.size && req.query.size !== '') {
+      webFilter['diaData.ozelkod3kodu'] = req.query.size;
+    }
+    // Ebat filtreleme - kombine (205/50R17 vb.)
+    if (req.query.size && req.query.size !== '') {
+      webFilter['diaData.ozelkod3kodu'] = req.query.size;
+    }
+    // Ebat filtreleme - ayrı ayrı (genişlik, yanak, jant çapı)
+    if (req.query.width && req.query.width !== '') {
+      if (!webFilter.$and) webFilter.$and = [];
+      webFilter.$and.push({
+        'diaData.m_urunOzellikleri': {
+          $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: req.query.width }
+        }
+      });
+    }
+    if (req.query.profile && req.query.profile !== '') {
+      if (!webFilter.$and) webFilter.$and = [];
+      webFilter.$and.push({
+        'diaData.m_urunOzellikleri': {
+          $elemMatch: { ozellikadi: 'Yanak', detayaciklama: req.query.profile }
+        }
+      });
+    }
+    if (req.query.rim && req.query.rim !== '') {
+      if (!webFilter.$and) webFilter.$and = [];
+      webFilter.$and.push({
+        'diaData.m_urunOzellikleri': {
+          $elemMatch: {
+            ozellikadi: 'Jant Çapı',
+            detayaciklama: { $regex: new RegExp(`^R?${req.query.rim}C?$`, 'i') }
+          }
+        }
+      });
+    }
+    // Stok durumu
+    if (req.query.stock_status === 'in_stock') {
+      webFilter['diaData.gercek_stok'] = { $gt: 0 };
+    } else if (req.query.stock_status === 'out_of_stock') {
+      webFilter['diaData.gercek_stok'] = { $lte: 0 };
+    }
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const totalCount = await WebProduct.countDocuments(webFilter);
     const products = await WebProduct.find(webFilter)
@@ -571,6 +622,13 @@ router.patch('/:id', maybeAuth, [
     if (isBestSeller !== undefined) updateData['customData.isBestSeller'] = Boolean(isBestSeller);
     if (isFeatured !== undefined) updateData['customData.isFeatured'] = Boolean(isFeatured);
 
+    // Görseller
+    if (req.body.customImages !== undefined) {
+      updateData['customData.customImages'] = req.body.customImages;
+      if (req.body.customImages.length > 0) {
+        updateData['customData.featuredImage'] = req.body.customImages[0].url;
+      }
+    }
     // Sync bilgilerini güncelle
     updateData['syncInfo.lastWebUpdate'] = new Date();
 
@@ -719,6 +777,44 @@ router.get('/debug/:id', async (req, res) => {
   }
 });
 
+/**
+ * Görsel Sıralama - imageOrder güncelleme
+ */
+router.patch('/:id/synchronization', maybeAuth, async (req, res) => {
+  try {
+    const productId = String(req.params.id);
+    const { synchronization } = req.body;
 
+    const product = await WebProduct.findOne({ _key: productId });
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün bulunamadı'
+      });
+    }
+
+    await WebProduct.findOneAndUpdate(
+      { _key: productId },
+      {
+        $set: {
+          'diaData.synced': synchronization === 'Y' ? 'synced' : 'not_synced',
+          'syncInfo.lastWebUpdate': new Date()
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: 'Senkronizasyon güncellendi'
+    });
+
+  } catch (error) {
+    console.error('Synchronization update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Senkronizasyon güncellenirken hata oluştu'
+    });
+  }
+});
 
 module.exports = router;

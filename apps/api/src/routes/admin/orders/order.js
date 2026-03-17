@@ -114,7 +114,10 @@ router.get('/', async (req, res) => {
                             order.payment?.method === 'netahsilat_installment' ? 'Kredi Kartı Taksitli' :
                                 order.payment?.method === 'cash_on_delivery' ? 'Kapıda Ödeme' : order.payment?.method || '',
                 paymentStatus: order.payment?.status || 'pending',
-                paymentStatusText: PAYMENT_STATUSES[order.payment?.status] || order.payment?.status || 'Bekliyor',
+                statusText: order.payment?.paidAt ? 'Ödendi' :
+                    order.payment?.status === 'failed' ? 'Başarısız' :
+                        order.payment?.status === 'paid' ? 'Ödendi' :
+                            PAYMENT_STATUSES[order.payment?.status] || 'Bekliyor',
                 total: order.pricing?.total || 0,
                 currency: order.pricing?.currency || 'TRY',
                 itemCount: order.items?.length || 0,
@@ -163,19 +166,23 @@ router.get('/:id', async (req, res) => {
             const productKeys = order.items.map(item => item.productKey);
             const products = await WebProduct.find({
                 '_key': { $in: productKeys }
-            }).select('_key diaData.m_resimler diaData.marka').lean();
+            }).select('_key diaData.m_resimler diaData.marka diaData.stokkartkodu diaData.ozelkod1kodu').lean();
             const productMap = {};
             products.forEach(product => {
                 const firstImage = product.diaData?.m_resimler?.[0]?.aws_url || null;
                 productMap[product._key] = {
                     image: firstImage,
-                    brand: product.diaData?.marka || ''
+                    brand: product.diaData?.marka || '',
+                    sku: product.diaData?.stokkartkodu || '',
+                    season: product.diaData?.ozelkod1kodu || ''
                 };
             });
             order.items = order.items.map(item => ({
                 ...item,
                 image: productMap[item.productKey]?.image || null,
-                brand: productMap[item.productKey]?.brand || ''
+                brand: productMap[item.productKey]?.brand || '',
+                sku: productMap[item.productKey]?.sku || '',
+                season: productMap[item.productKey]?.season || ''
             }));
         }
 
@@ -260,6 +267,9 @@ router.get('/:id', async (req, res) => {
                                 order.payment?.method === 'cash_on_delivery' ? 'Kapıda Ödeme' : order.payment?.method || '',
                 status: order.payment?.status || 'pending',
                 statusText: PAYMENT_STATUSES[order.payment?.status] || order.payment?.status || 'Bekliyor',
+                gateway: order.payment?.gateway || null,
+                installment: order.payment?.installment || null,
+                referenceCode: order.payment?.referenceCode || null,
                 bankTransfer: order.payment?.bankTransfer || null,
                 cardInfo: order.payment?.cardInfo || null,
                 paidAt: order.payment?.paidAt || null

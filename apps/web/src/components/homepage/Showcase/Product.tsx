@@ -54,8 +54,7 @@ export default function ProductShowCase({ showcaseKey = 'second' }: Props) {
     const getBreakpoints = (perRow: number) => {
         const base = Math.min(perRow, 5);
         return {
-            0: { slidesPerView: 1.2, spaceBetween: 12 },
-            480: { slidesPerView: 2, spaceBetween: 16 },
+            0: { slidesPerView: 1.4, spaceBetween: 12 },
             768: { slidesPerView: Math.min(base, 3), spaceBetween: 20 },
             1024: { slidesPerView: Math.min(base, 4), spaceBetween: 20 },
             1280: { slidesPerView: base, spaceBetween: 24 },
@@ -67,7 +66,7 @@ export default function ProductShowCase({ showcaseKey = 'second' }: Props) {
     }
 
     return (
-        <Container className="row-fluid py-4">
+        <Container className="row-fluid">
             <Row>
                 <Col className="d-flex justify-content-between align-items-center">
                     <Title
@@ -93,7 +92,7 @@ export default function ProductShowCase({ showcaseKey = 'second' }: Props) {
                 </Col>
             </Row>
             <Row className="mt-2">
-                <Col>
+                <Col className='p-0'>
                     <Swiper
                         modules={[Navigation, Autoplay]}
                         onBeforeInit={(swiper) => {
@@ -103,9 +102,9 @@ export default function ProductShowCase({ showcaseKey = 'second' }: Props) {
                             }
                         }}
                         autoplay={{ delay: 3000, disableOnInteraction: false }}
-                        loop={true}
+                        loop={false}
                         breakpoints={getBreakpoints(showcase.itemsPerRow)}
-                        style={{ overflow: 'hidden' }}
+                        style={{ overflow: 'hidden', clipPath: 'inset(0px 0px -100% 0px)' }}
                     >
                         {showcase.products.map((product) => (
                             <SwiperSlide key={product._key} style={{ height: 'auto', overflow: 'visible' }}>

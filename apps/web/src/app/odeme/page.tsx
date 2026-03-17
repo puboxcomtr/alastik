@@ -53,7 +53,6 @@ export default function PaymentPage() {
         setProcessing(true);
 
         try {
-            // Sipariş oluştur
             const orderData = {
                 memberId: checkoutData.memberId || null,
                 isGuest: checkoutData.isGuest,
@@ -99,37 +98,76 @@ export default function PaymentPage() {
 
             // Kredi kartı ile ödeme
             if (cardData && cardData.isValid) {
+                const gateway = cardData.gateway || 'netahsilat';
+
                 try {
-                    const response = await fetch(API_ENDPOINTS.payment.threeDInit(), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            orderId: order._id,
-                            cardNumber: cardData.cardNumber,
-                            cardHolderName: cardData.cardHolderName,
-                            expMonth: cardData.expMonth,
-                            expYear: cardData.expYear,
-                            cvc: cardData.cvc,
-                            installment: cardData.installment,
-                            vPosId: cardData.vPosId,
-                            email: checkoutData.isGuest ? checkoutData.billing?.email : checkoutData.customerEmail
-                        })
-                    });
+                    if (gateway === 'nkolay') {
+                        // ===== NKOLAY (Tek çekim + Banka kartı) =====
+                        const response = await fetch(API_ENDPOINTS.payment.nkolayInit(), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                orderId: order._id,
+                                cardNumber: cardData.cardNumber,
+                                cardHolderName: cardData.cardHolderName,
+                                expMonth: cardData.expMonth,
+                                expYear: cardData.expYear,
+                                cvc: cardData.cvc,
+                                email: checkoutData.isGuest ? checkoutData.billing?.email : checkoutData.customerEmail
+                            })
+                        });
 
-                    const result = await response.json();
+                        const result = await response.json();
 
-                    if (result.success && result.threeDUrl) {
-                        // 3D Secure sayfasına yönlendir
-                        sessionStorage.removeItem('checkoutData');
-                        window.location.href = result.threeDUrl;
-                        return;
+                        if (result.success && result.threeDHtml) {
+                            sessionStorage.removeItem('checkoutData');
+                            document.open();
+                            document.write(result.threeDHtml);
+                            document.close();
+                            return;
+                        } else if (result.success && result.directSuccess) {
+                            sessionStorage.removeItem('checkoutData');
+                            await clearCart(true);
+                            router.push(`/siparis-basarili?order=${result.orderNumber}`);
+                            return;
+                        } else {
+                            toast.error(result.message || 'Ödeme başlatılamadı');
+                            setProcessing(false);
+                            return;
+                        }
+
                     } else {
-                        toast.error(result.message || '3D Secure başlatılamadı');
-                        setProcessing(false);
-                        return;
+                        // ===== NETAHSILAT (Taksitli) =====
+                        const response = await fetch(API_ENDPOINTS.payment.threeDInit(), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                orderId: order._id,
+                                cardNumber: cardData.cardNumber,
+                                cardHolderName: cardData.cardHolderName,
+                                expMonth: cardData.expMonth,
+                                expYear: cardData.expYear,
+                                cvc: cardData.cvc,
+                                installment: cardData.installment,
+                                vPosId: cardData.vPosId,
+                                email: checkoutData.isGuest ? checkoutData.billing?.email : checkoutData.customerEmail
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success && result.threeDUrl) {
+                            sessionStorage.removeItem('checkoutData');
+                            window.location.href = result.threeDUrl;
+                            return;
+                        } else {
+                            toast.error(result.message || '3D Secure başlatılamadı');
+                            setProcessing(false);
+                            return;
+                        }
                     }
                 } catch (error) {
-                    console.error('3D init hatası:', error);
+                    console.error('Ödeme hatası:', error);
                     toast.error('Ödeme işlemi başarısız');
                     setProcessing(false);
                     return;
@@ -157,12 +195,14 @@ export default function PaymentPage() {
 
     return (
         <Container>
-            <Row className='row-fluid'>
-                <Col lg="12">
-                    <PaymentTitle />
-                </Col>
+            <div className="row-fluid">
                 <Row>
-                    <Col lg={8} className='pl-0 ml-0'>
+                    <Col lg="12">
+                        <PaymentTitle />
+                    </Col>
+                </Row>
+                <Row>
+                    <Col lg={8}>
                         <PaymentContent
                             onReady={setTermsAccepted}
                             onCardData={setCardData}
@@ -177,7 +217,7 @@ export default function PaymentPage() {
                         />
                     </Col>
                 </Row>
-            </Row>
+            </div>
         </Container>
     );
 }

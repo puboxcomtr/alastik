@@ -11,7 +11,8 @@ import {
   Button,
   IconButton,
   Typography,
-  Box
+  Box,
+  Link
 } from '@mui/material'
 
 // Third-party Imports
@@ -74,6 +75,26 @@ const ProductImage = ({ product }: ProductImageProps) => {
       toast.error('Senkronizasyon güncellenemedi')
     }
   }
+  const saveImageOrder = async (images: string[]) => {
+    if (!product?.id) return
+    try {
+      const customImages = images.map((url, index) => ({
+        order: index,
+        url: url,
+        alt: '',
+        title: ''
+      }))
+
+      await fetchAPI(API_ENDPOINTS.products.update(product.id), {
+        method: 'PATCH',
+        body: JSON.stringify({ customImages })
+      })
+      toast.success('Görsel sıralaması kaydedildi')
+    } catch (error) {
+      console.error('Image order save error:', error)
+      toast.error('Görsel sıralaması kaydedilemedi')
+    }
+  }
 
   // Drag & Drop Handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -86,22 +107,16 @@ const ProductImage = ({ product }: ProductImageProps) => {
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
-
     if (draggedIndex === null || draggedIndex === dropIndex) return
-
     const newImages = [...diaImages]
     const draggedImage = newImages[draggedIndex]
-
     newImages.splice(draggedIndex, 1)
     newImages.splice(dropIndex, 0, draggedImage)
-
     setDiaImages(newImages)
     setDraggedIndex(null)
-
-    toast.success('Görsel sıralaması güncellendi')
-    updateProductSynchronization('N')
+    await saveImageOrder(newImages)
   }
 
   const handleDragEnd = () => {
@@ -216,13 +231,15 @@ const ProductImage = ({ product }: ProductImageProps) => {
             </Box>
           ) : (
             <Box sx={{ textAlign: 'center', py: 4 }}>
-              <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
-              <Typography color="text.secondary" sx={{ mt: 2 }}>
-                Henüz ürün görseli eklenmemiş
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                "Görsel Ekle" butonuna tıklayarak görsel ekleyebilirsiniz
-              </Typography>
+              <Link>
+                <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
+                <Typography color="text.secondary" sx={{ mt: 2 }}>
+                  Henüz ürün görseli eklenmemiş
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  "Görsel Ekle" butonuna tıklayarak görsel ekleyebilirsiniz
+                </Typography>
+              </Link>
             </Box>
           )}
         </CardContent>

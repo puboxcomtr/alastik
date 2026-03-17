@@ -1,5 +1,5 @@
 'use client';
-
+import { useState } from 'react';
 import Nav from 'react-bootstrap/Nav';
 import Link from 'next/link';
 import { useMenu } from '@/src/hooks/Menu/useMenu';
@@ -11,7 +11,8 @@ interface MainMenuProps {
 
 export default function MainMenu({ handleClose }: MainMenuProps) {
     const { menus, getMenuUrl } = useMenu();
-    const closeMenu = () => handleClose();
+    const closeMenu = () => handleClose?.();
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Alt menüleri başlıklara göre grupla
     const groupChildrenByHeading = (children: any[]) => {
@@ -46,14 +47,14 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
     };
 
     return (
-        <Nav as="ul" className="navbar-nav align-items-baseline align-items-lg-center position-relative">
+        <Nav as="ul" id="mobile__menu" className="navbar-nav align-items-baseline align-items-lg-center position-relative">
             {menus.map((menu) => {
                 if (!menu.children || menu.children.length === 0) {
                     return (
                         <Nav.Item as="li" className="nav-item" key={menu._id}>
                             <Link
                                 href={getMenuUrl(menu)}
-                                className="nav-link text-white"
+                                className="nav-link"
                                 onClick={handleClose}
                                 target={menu.openNewTab ? '_blank' : undefined}
                             >
@@ -69,8 +70,10 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                         id={menu._id}
                         title={menu.name}
                         href={getMenuUrl(menu)}
+                        openMenuId={openMenuId}
+                        setOpenMenuId={setOpenMenuId}
                     >
-                        <div className="p-4 d-flex flex-column flex-lg-row gap-4">
+                        <div className="mobile__mega d-flex flex-column flex-lg-row gap-4">
                             {groupedChildren.map((group, groupIndex) => (
                                 <div style={{ minWidth: '190px' }} key={`group-${groupIndex}`}>
                                     {group.heading && (

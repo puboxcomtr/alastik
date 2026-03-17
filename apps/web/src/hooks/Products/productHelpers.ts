@@ -66,15 +66,24 @@ const normalizeUrl = (url: string): string => {
  * @param defaultImage - Context'ten gelen default görsel
  */
 export const getProductImage = (product: Product, defaultImage?: string): string => {
+    // 1. customImages varsa ilk görseli kullan (web sıralaması)
+    if (product.customData?.customImages && product.customData.customImages.length > 0) {
+        const sorted = [...product.customData.customImages].sort((a, b) => a.order - b.order);
+        if (sorted[0]?.url) {
+            return normalizeUrl(sorted[0].url);
+        }
+    }
+    // 2. featuredImage varsa kullan
+    if (product.customData?.featuredImage) {
+        return normalizeUrl(product.customData.featuredImage);
+    }
+    // 3. DIA görselleri
     if (product.diaData?.m_resimler && product.diaData.m_resimler.length > 0) {
         const firstImage = product.diaData.m_resimler
             .sort((a, b) => parseInt(a.order_id || '999') - parseInt(b.order_id || '999'))[0];
         if (firstImage?.aws_url) {
             return normalizeUrl(firstImage.aws_url);
         }
-    }
-    if (product.customData?.featuredImage) {
-        return normalizeUrl(product.customData.featuredImage);
     }
     if (defaultImage) {
         return normalizeUrl(defaultImage);
@@ -121,9 +130,10 @@ export const getProductFeatures = (product: Product) => {
  * Ürün stok kodunu getir
  */
 export const getProductStockCode = (product: Product): string => {
-    return product.diaData?.anabarkod ||
+    const code = product.diaData?.anabarkod ||
         product.diaData?.stokkartkodu ||
         '-';
+    return code.replace(/-XMLA$/i, '');
 };
 
 /**
@@ -443,7 +453,7 @@ export const getAllLastikFeatures = (product: Product): Array<{ label: string; v
     if (oem !== '-' && oem.toLowerCase() !== 'hayır') ekstraOzellikler.push(`OEM: ${oem}`);
 
     return [
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
+        { label: 'Stok Kodu', value: getProductStockCode(product) },
         { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
         { label: 'Araç Tipi', value: getProductFeature(product, 'Araç Tipi') },
         { label: 'Marka', value: capitalizeText(product.diaData?.marka || '-') },
@@ -466,7 +476,7 @@ export const getAllLastikFeatures = (product: Product): Array<{ label: string; v
  */
 export const getAllJantFeatures = (product: Product): Array<{ label: string; value: string }> => {
     return [
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
+        { label: 'Stok Kodu', value: getProductStockCode(product) },
         { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
         { label: 'Marka', value: capitalizeText(product.diaData?.marka || '-') },
         { label: 'Model', value: product.diaData?.ozelkod5 || product.diaData?.ozelkod5kodu || '-' },
@@ -523,11 +533,15 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
     }
 
     return [
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' },
+        { label: 'Stok Kodu', value: getProductStockCode(product) },
         {
             label: 'Ebat',
             value: ebat,
-            isClickable: true,
+            isClickable: (() => {
+                const model = product.diaData?.ozelkod5 || '';
+                const modelKodu = product.diaData?.ozelkod5kodu || '';
+                return model.toLowerCase() !== 'yok' && modelKodu.toLowerCase() !== 'yok' && !!modelKodu;
+            })(),
             tooltip: 'Taban Genişliği - Yanak Yüksekliği - Jant Çapı'
         },
         {
@@ -567,7 +581,7 @@ const getJantDetailFeatures = (product: Product): ProductFeatureItem[] => {
         { label: 'Göbek Çapı', value: getProductFeature(product, 'Göbek Çapı') },
         { label: 'Offset (ET)', value: getProductFeature(product, 'ET') },
         { label: 'Renk', value: getProductFeature(product, 'Renk') },
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+        { label: 'Stok Kodu', value: getProductStockCode(product) }
     ].filter(f => f.value && f.value !== '-');
 };
 
@@ -580,7 +594,7 @@ const getZincirDetailFeatures = (product: Product): ProductFeatureItem[] => {
         { label: 'Uyumlu Lastik Genişliği', value: getProductFeature(product, 'Genişlik') || product.diaData?.ozelkod3kodu || '-' },
         { label: 'Uyumlu Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
         { label: 'Tip', value: product.diaData?.ekalan2 || '-' },
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+        { label: 'Stok Kodu', value: getProductStockCode(product) }
     ].filter(f => f.value && f.value !== '-');
 };
 
@@ -592,7 +606,7 @@ const getAksesuarDetailFeatures = (product: Product): ProductFeatureItem[] => {
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
         { label: 'Marka', value: product.diaData?.marka || '-' },
         { label: 'Tip', value: product.diaData?.ekalan1 || '-' },
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+        { label: 'Stok Kodu', value: getProductStockCode(product) }
     ].filter(f => f.value && f.value !== '-');
 };
 
@@ -603,7 +617,7 @@ const getGenericFeatures = (product: Product): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
         { label: 'Marka', value: product.diaData?.marka || '-' },
-        { label: 'Stok Kodu', value: product.diaData?.stokkartkodu || '-' }
+        { label: 'Stok Kodu', value: getProductStockCode(product) }
     ].filter(f => f.value && f.value !== '-');
 };
 

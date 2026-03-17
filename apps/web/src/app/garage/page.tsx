@@ -2,16 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import authService from '../../lib/auth';
-import toast from '../../lib/toast';
+import { toast } from 'react-toastify';
+import { useAuth } from '@/src/hooks/Theme/useAuth';
 
 export default function GaragePage() {
+  const { getToken } = useAuth();
   const [garage, setGarage] = useState<any[]>([]);
   const [form, setForm] = useState<any>({ marka: '', model: '', yil: '', modifikasyon: '', nickname: '' });
-
+  const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${getToken()}`
+  });
   const load = async () => {
     try {
-      const resp = await authService.authenticatedRequest('/users/garage');
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/garage`, { headers: authHeaders() });
       const data = await resp.json();
       if (data.success) setGarage(data.data || []);
     } catch (e) {
@@ -24,7 +28,7 @@ export default function GaragePage() {
   const addCar = async () => {
     try {
       const payload = { ...form, yil: parseInt(form.yil || '0') };
-      const resp = await authService.authenticatedRequest('/users/garage', { method: 'POST', body: JSON.stringify(payload) });
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/garage`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
       const data = await resp.json();
       if (data.success) { toast.success('Araç eklendi'); setForm({ marka: '', model: '', yil: '', modifikasyon: '', nickname: '' }); await load(); }
       else toast.error(data.message || 'Araç eklenemedi');
@@ -34,7 +38,7 @@ export default function GaragePage() {
   const deleteCar = async (index: number) => {
     if (!confirm('Aracı silmek istediğinize emin misiniz?')) return;
     try {
-      const resp = await authService.authenticatedRequest(`/users/garage/${index}`, { method: 'DELETE' });
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/garage/${index}`, { method: 'DELETE', headers: authHeaders() });
       const data = await resp.json();
       if (data.success) { toast.success('Araç silindi'); await load(); }
       else toast.error(data.message || 'Araç silinemedi');

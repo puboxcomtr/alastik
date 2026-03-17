@@ -3,19 +3,13 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from "next/image";
 
-// Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import { Pagination, Autoplay } from 'swiper/modules';
 
-// Services
 import { getSliderById, getSliderImageUrl } from '@/src/services/sliderService';
-
-// Types
 import type { Slider } from '@/src/types/slider';
 
-// Swiper CSS
 import 'swiper/css';
-import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 interface CategorySliderProps {
@@ -24,13 +18,18 @@ interface CategorySliderProps {
 
 export default function CategorySlider({ sliderId }: CategorySliderProps) {
     const [slider, setSlider] = useState<Slider | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
 
     useEffect(() => {
         const fetchSlider = async () => {
-            if (!sliderId) {
-                return;
-            }
-
+            if (!sliderId) return;
             try {
                 const data = await getSliderById(sliderId);
                 setSlider(data);
@@ -38,36 +37,36 @@ export default function CategorySlider({ sliderId }: CategorySliderProps) {
                 console.error('Slider fetch error:', error);
             }
         };
-
         fetchSlider();
     }, [sliderId]);
 
-    if (!slider || !slider.sliders || slider.sliders.length === 0) {
-        return null;
-    }
+    if (isMobile) return null;
+    if (!slider || !slider.sliders || slider.sliders.length === 0) return null;
 
-    // Sadece aktif sliderları filtrele
     const activeSlides = slider.sliders.filter(s => s.isActive !== false);
-
-    if (activeSlides.length === 0) {
-        return null;
-    }
+    if (activeSlides.length === 0) return null;
 
     const settings = slider.settings || {};
+    const width = parseInt(settings.width) || 1260;
+    const height = parseInt(settings.height) || 500;
+    const showDots = settings.showDots !== false;
+    const autoStart = settings.autoStart;
+    const displayDuration = parseInt(settings.displayDuration) || 5000;
+
+    const autoplayConfig = autoStart ? { delay: displayDuration, disableOnInteraction: false } : undefined;
+
+    const modules = [];
+    if (showDots) modules.push(Pagination);
+    if (autoStart) modules.push(Autoplay);
 
     return (
         <Swiper
-            modules={[Pagination, Autoplay]}
+            modules={modules}
             loop={settings.loop !== false && activeSlides.length > 1}
-            autoplay={settings.autoStart ? {
-                delay: parseInt(settings.displayDuration) || 5000,
-                disableOnInteraction: false
-            } : false}
-            speed={parseInt(settings.changeSpeed) || 500}
-            pagination={settings.showDots !== false ? { clickable: true } : false}
-            slidesPerView={1}
-            spaceBetween={0}
-            className="category-slider hover-effect-opacity mb-4"
+            autoplay={autoplayConfig}
+            speed={300}
+            pagination={showDots ? { clickable: true } : false}
+            className="mb-4"
         >
             {activeSlides.map((slide, index) => (
                 <SwiperSlide key={index} className="rounded">
@@ -75,30 +74,28 @@ export default function CategorySlider({ sliderId }: CategorySliderProps) {
                         <Link
                             href={slide.link}
                             target={slide.openNewTab ? '_blank' : '_self'}
-                            className="w-100 d-flex align-items-center justify-content-center"
+                            rel={slide.openNewTab ? 'noopener noreferrer' : undefined}
                         >
                             <Image
-                                className="rounded"
+                                className="slide__item w-100 rounded"
                                 src={getSliderImageUrl(slide.image)}
                                 alt={slide.description || `${slider.name} - Slide ${index + 1}`}
-                                width={parseInt(settings.width) || 1260}
-                                height={parseInt(settings.height) || 500}
-                                style={{ objectFit: 'cover', maxWidth: '100%', height: 'auto' }}
+                                width={width}
+                                height={height}
                                 priority={index === 0}
+                                quality={95}
                             />
                         </Link>
                     ) : (
-                        <div className="w-100 d-flex align-items-center justify-content-center">
-                            <Image
-                                className="rounded"
-                                src={getSliderImageUrl(slide.image)}
-                                alt={slide.description || `${slider.name} - Slide ${index + 1}`}
-                                width={parseInt(settings.width) || 1260}
-                                height={parseInt(settings.height) || 500}
-                                style={{ objectFit: 'cover', maxWidth: '100%', height: 'auto' }}
-                                priority={index === 0}
-                            />
-                        </div>
+                        <Image
+                            className="slide__item w-100 rounded"
+                            src={getSliderImageUrl(slide.image)}
+                            alt={slide.description || `${slider.name} - Slide ${index + 1}`}
+                            width={width}
+                            height={height}
+                            priority={index === 0}
+                            quality={95}
+                        />
                     )}
                 </SwiperSlide>
             ))}

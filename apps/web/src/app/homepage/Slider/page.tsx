@@ -15,6 +15,8 @@ import type { Slider } from '@/src/types/slider';
 
 export default function HomeSlider() {
     const [slider, setSlider] = useState<Slider | null>(null);
+    const [mobileSlider, setMobileSlider] = useState<Slider | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
     const { theme } = useSettings();
 
     useEffect(() => {
@@ -33,9 +35,31 @@ export default function HomeSlider() {
 
         fetchSlider();
     }, [theme?.sliderSelect]);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 992);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
+    useEffect(() => {
+        const fetchMobileSlider = async () => {
+            if (!theme?.mobileSelect) return;
+            try {
+                const data = await getSliderById(theme.mobileSelect);
+                setMobileSlider(data);
+            } catch (error) {
+                console.error('Mobil slider yüklenemedi:', error);
+            }
+        };
+        fetchMobileSlider();
+    }, [theme?.mobileSelect]);
+    if (isMobile && mobileSlider && mobileSlider.sliders.length > 0) {
+        return <SliderComponent slider={mobileSlider} />;
+    }
+
     if (!slider || slider.sliders.length === 0) {
         return null;
     }
-
     return <SliderComponent slider={slider} />;
 }

@@ -105,57 +105,60 @@ export default function CheckoutPage() {
     }
 
     return (
-        <Container className='p-0'>
-            <Row className='row-fluid px-0 py-lg-3'>
-                <Col lg="12" className='px-0'>
-                    <DeliveryTitle />
-                </Col>
-                <Col lg="8">
-                    {isLoggedIn ? (
-                        <Col size={12} className='px-0'>
-                            <MemberCheckout
-                                onAddressSelect={(billingId, shippingId) => {
-                                    setSelectedBillingAddressId(billingId);
-                                    setSelectedShippingAddressId(shippingId || billingId);
-                                }}
-                                loading={loading}
-                            />
-                        </Col>
-                    ) : (
-                        <>
-                            <Col lg={12} className='px-0'>
-                                <BillingForm data={billingData} onChange={setBillingData} />
+        <Container>
+            <div className='row-fluid'>
+                <Row className='px-0 py-lg-3'>
+                    <Col lg="12" className='px-0'>
+                        <DeliveryTitle />
+                    </Col>
+                    <Col lg="8">
+                        {isLoggedIn ? (
+                            <Col size={12} className='px-0'>
+                                <MemberCheckout
+                                    onAddressSelect={(billingId, shippingId) => {
+                                        setSelectedBillingAddressId(billingId);
+                                        setSelectedShippingAddressId(shippingId || billingId);
+                                    }}
+                                    loading={loading}
+                                />
                             </Col>
-                            <div className="card border-0 mt-4">
-                                <div className="card-body py-0">
-                                    <div className="form-check">
-                                        <input
-                                            type="checkbox"
-                                            className="form-check-input"
-                                            id="differentShipping"
-                                            checked={differentShipping}
-                                            onChange={(e) => setDifferentShipping(e.target.checked)}
-                                        />
-                                        <label className="form-check-label cursor-pointer" htmlFor="differentShipping">
-                                            Ürünlerim farklı bir <strong>teslimat adresine </strong>gönderilsin.
-                                        </label>
+                        ) : (
+                            <>
+                                <Col lg={12} className='px-0'>
+                                    <BillingForm data={billingData} onChange={setBillingData} />
+                                </Col>
+                                <div className="card border-0 mt-4">
+                                    <div className="card-body py-0">
+                                        <div className="form-check">
+                                            <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                id="differentShipping"
+                                                checked={differentShipping}
+                                                onChange={(e) => setDifferentShipping(e.target.checked)}
+                                            />
+                                            <label className="form-check-label cursor-pointer" htmlFor="differentShipping">
+                                                Ürünlerim farklı bir <strong>teslimat adresine </strong>gönderilsin.
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            {differentShipping && (
-                                <ShippingForm data={shippingData} onChange={setShippingData} />
-                            )}
-                        </>
-                    )}
-                </Col>
-                <Col lg="3" className="offset-xl-1">
-                    <CheckoutSummary
-                        onSubmit={isLoggedIn ? handleMemberSubmit : handleGuestSubmit}
-                        loading={loading}
-                        showButton={true}
-                    />
-                </Col>
-            </Row>
+                                {differentShipping && (
+                                    <ShippingForm data={shippingData} onChange={setShippingData} />
+                                )}
+                            </>
+                        )}
+                    </Col>
+                    <Col lg="3" className="offset-xl-1">
+                        <CheckoutSummary
+                            onSubmit={isLoggedIn ? handleMemberSubmit : handleGuestSubmit}
+                            loading={loading}
+                            showButton={true}
+                        />
+                    </Col>
+                </Row>
+            </div>
+
         </Container>
     );
 }

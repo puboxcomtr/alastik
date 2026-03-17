@@ -1,255 +1,331 @@
-// React Imports
-import { useState, useEffect, useCallback } from 'react'
+'use client'
 
-// MUI Imports
+import { useState, useEffect } from 'react'
+
 import Grid from '@mui/material/Grid2'
 import CardContent from '@mui/material/CardContent'
-import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
-import Select from '@mui/material/Select'
-import CircularProgress from '@mui/material/CircularProgress'
+import MenuItem from '@mui/material/MenuItem'
+import Button from '@mui/material/Button'
+import InputAdornment from '@mui/material/InputAdornment'
 
-// Type Imports
-import type { ProductType } from '@/types/apps/productTypes'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-type CategoryType = {
-  _id: string
-  subCategories: string[]
-  count: number
+type FilterOptions = {
+  brands: string[]
+  productTypes: string[]
+  seasons: string[]
+  mainCategories: string[]
+  widths: string[]
+  profiles: string[]
+  rims: string[]
 }
 
-type BrandType = {
-  name: string
-  count: number
+type Filters = {
+  search: string
+  sku: string
+  brand: string
+  product_type: string
+  season: string
+  main_category: string
+  sub_category: string
+  width: string
+  profile: string
+  rim: string
+  stock_status: string
 }
 
 const TableFilters = ({
-  setData,
-  productData,
-  setLoading
+  onFilterChange
 }: {
-  setData: (data: ProductType[]) => void
-  productData?: ProductType[]
-  setLoading: (loading: boolean) => void
+  onFilterChange: (filters: Record<string, string>) => void
 }) => {
+  const [filters, setFilters] = useState<Filters>({
+    search: '',
+    sku: '',
+    brand: '',
+    product_type: '',
+    season: '',
+    main_category: '',
+    sub_category: '',
+    width: '',
+    profile: '',
+    rim: '',
+    stock_status: ''
+  })
 
-  // States
-  const [stock, setStock] = useState('')
-  const [searchText, setSearchText] = useState('')
-  const [mainCategory, setMainCategory] = useState('')
-  const [subCategory, setSubCategory] = useState('')
-  const [categories, setCategories] = useState<CategoryType[]>([])
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    brands: [],
+    productTypes: [],
+    seasons: [],
+    mainCategories: [],
+    widths: [],
+    profiles: [],
+    rims: []
+  })
+
   const [subCategories, setSubCategories] = useState<string[]>([])
-  const [categoriesLoading, setCategoriesLoading] = useState(false)
-  const [brand, setBrand] = useState('')
-  const [brandData, setBrandData] = useState<BrandType[]>([])
 
-  // Debounced search için
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
-
-  // Marka verilerini çek
   useEffect(() => {
-    fetch('http://localhost:3082/api/brands')
-      .then(res => res.json())
-      .then(data => setBrandData(data.data || []))
-      .catch(err => console.error('Brand fetch error:', err))
+    loadFilterOptions()
   }, [])
 
-  // Kategori verilerini çek
   useEffect(() => {
-    setCategoriesLoading(true)
-    fetch('http://localhost:3082/api/categories')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setCategories(data.data || [])
-        }
-      })
-      .catch(error => console.error('Kategori yükleme hatası:', error))
-      .finally(() => setCategoriesLoading(false))
-  }, [])
-
-  // Ana kategori değiştiğinde alt kategorileri güncelle
-  useEffect(() => {
-    if (mainCategory) {
-      const selected = categories.find(cat => cat._id === mainCategory)
-      setSubCategories(selected?.subCategories || [])
-      setSubCategory('')
+    if (filters.main_category) {
+      loadSubCategories(filters.main_category)
     } else {
       setSubCategories([])
-      setSubCategory('')
     }
-  }, [mainCategory, categories])
+  }, [filters.main_category])
 
-  // API çağrısı fonksiyonu
-  const fetchFilteredData = useCallback(async () => {
-    setLoading(true)
-
+  const loadFilterOptions = async () => {
     try {
-      const params = new URLSearchParams()
-
-      // Stok Kodu (SKU) filtresi - sadece SKU ile tam eşleştirme
-      if (searchText && searchText.trim() !== '') {
-        params.append('sku', searchText.trim())
+      const res = await fetchAPI(API_ENDPOINTS.filters.productOptions())
+      if (res.success) {
+        setFilterOptions(res.data)
       }
-
-      // Durum filtresi
-      if (stock && stock.trim() !== '') {
-        params.append('web_status', stock.trim())
-      }
-
-      // Kategori filtreleri
-      if (mainCategory) {
-        params.append('main_category', mainCategory)
-      }
-      if (subCategory) {
-        params.append('sub_category', subCategory)
-      }
-
-      // Marka filtresi
-      if (brand && brand !== '') {
-        params.append('brand', brand)
-      }
-
-      console.log('API çağrısı parametreleri:', params.toString()) // Debug için
-
-      const response = await fetch(`http://localhost:3082/api/products?${params}`)
-      const data = await response.json()
-
-      if (data.success) {
-        setData(data.data || [])
-        console.log(`${data.data?.length || 0} ürün bulundu`) // Debug için
-      } else {
-        console.error('API Hatası:', data.message)
-        setData([])
-      }
-
-    } catch (error) {
-      console.error('Filter error:', error)
-      setData([])
-    } finally {
-      setLoading(false)
+    } catch (err) {
+      console.error('Filtre seçenekleri yüklenemedi:', err)
     }
-  }, [stock, mainCategory, subCategory, brand, searchText, setData, setLoading])
+  }
 
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout)
+  const loadSubCategories = async (mainCategory: string) => {
+    try {
+      const res = await fetchAPI(API_ENDPOINTS.filters.subCategories(mainCategory))
+      if (res.success) {
+        setSubCategories(res.data)
+      }
+    } catch (err) {
+      console.error('Alt kategoriler yüklenemedi:', err)
+    }
+  }
+
+  const handleChange = (field: keyof Filters) => (e: any) => {
+    const newFilters = { ...filters, [field]: e.target.value }
+
+    if (field === 'main_category') {
+      newFilters.sub_category = ''
     }
 
-    const timeout = setTimeout(() => {
-      fetchFilteredData()
-    }, searchText ? 300 : 0)
+    setFilters(newFilters)
+  }
 
-    setSearchTimeout(timeout)
-
-    return () => {
-      if (timeout) {
-        clearTimeout(timeout)
+  const handleSearch = () => {
+    const params: Record<string, string> = {}
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value.trim() !== '') {
+        params[key] = value.trim()
       }
-    }
-  }, [searchText, stock, mainCategory, subCategory, brand])
+    })
+    onFilterChange(params)
+  }
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchText(value)
-    console.log('SKU Kodu:', value)
+  const handleReset = () => {
+    const empty: Filters = {
+      search: '', sku: '', brand: '', product_type: '',
+      season: '', main_category: '', sub_category: '',
+      width: '', profile: '', rim: '', stock_status: ''
+    }
+    setFilters(empty)
+    setSubCategories([])
+    onFilterChange({})
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSearch()
+    }
   }
 
   return (
     <CardContent>
-      <Grid container spacing={6}>
-        <Grid size={{ xs: 12, sm: 2 }}>
+      <Grid container spacing={3}>
+        {/* Satır 1: Arama alanları */}
+        <Grid size={{ xs: 12, sm: 3 }}>
           <TextField
             fullWidth
-            label="Stok Kodu"
-            value={searchText}
-            onChange={handleSearchChange}
-            variant="outlined"
-            placeholder="SKU kodu girin..."
+            size='small'
+            label='Ürün Adı'
+            placeholder='Ürün adı ile ara...'
+            value={filters.search}
+            onChange={handleChange('search')}
+            onKeyDown={handleKeyPress}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position='start'>
+                  <i className='ri-search-line' />
+                </InputAdornment>
+              )
+            }}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 3 }}>
-          <FormControl fullWidth>
-            <InputLabel id='stock-select'>Durum</InputLabel>
-            <Select
-              fullWidth
-              id='select-stock'
-              value={stock}
-              onChange={e => setStock(e.target.value)}
-              label='Durum'
-              labelId='stock-select'
-            >
-              <MenuItem value=''>Tümü</MenuItem>
-              <MenuItem value='A'>Aktif</MenuItem>
-              <MenuItem value='P'>Pasif</MenuItem>
-            </Select>
-          </FormControl>
+          <TextField
+            fullWidth
+            size='small'
+            label='Stok Kodu'
+            placeholder='Stok kodu ile ara...'
+            value={filters.sku}
+            onChange={handleChange('sku')}
+            onKeyDown={handleKeyPress}
+          />
         </Grid>
-        <Grid size={{ xs: 12, sm: 3 }}>
-          <FormControl fullWidth>
-            <InputLabel id='main-category-select'>Ana Kategori</InputLabel>
-            <Select
-              fullWidth
-              id='select-main-category'
-              value={mainCategory}
-              onChange={e => setMainCategory(e.target.value)}
-              label='Ana Kategori'
-              labelId='main-category-select'
-              disabled={categoriesLoading}
-            >
-              <MenuItem value=''>Tümü</MenuItem>
-              {categoriesLoading ? (
-                <MenuItem disabled>
-                  <CircularProgress size={20} /> Yükleniyor...
-                </MenuItem>
-              ) : (
-                categories.map(cat => (
-                  <MenuItem key={cat._id} value={cat._id}>
-                    {cat._id}
-                  </MenuItem>
-                ))
-              )}
-            </Select>
-          </FormControl>
+        <Grid size={{ xs: 6, sm: 2 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Marka'
+            value={filters.brand}
+            onChange={handleChange('brand')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.brands.map(b => (
+              <MenuItem key={b} value={b}>{b}</MenuItem>
+            ))}
+          </TextField>
         </Grid>
-        <Grid size={{ xs: 12, sm: 2 }}>
-          <FormControl fullWidth>
-            <InputLabel id='sub-category-select'>Alt Kategori</InputLabel>
-            <Select
-              fullWidth
-              id='select-sub-category'
-              value={subCategory}
-              onChange={e => setSubCategory(e.target.value)}
-              label='Alt Kategori'
-              labelId='sub-category-select'
-              disabled={!mainCategory || subCategories.length === 0}
-            >
-              <MenuItem value=''>Tümü</MenuItem>
-              {subCategories
-                .filter(subCat => subCat && subCat.trim() !== '')
-                .map(subCat => (
-                  <MenuItem key={subCat} value={subCat}>
-                    {subCat}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
+        <Grid size={{ xs: 6, sm: 2 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Ürün Tipi'
+            value={filters.product_type}
+            onChange={handleChange('product_type')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.productTypes.map(t => (
+              <MenuItem key={t} value={t}>{t}</MenuItem>
+            ))}
+          </TextField>
         </Grid>
-        <Grid size={{ xs: 12, sm: 2 }}>
-          <FormControl fullWidth>
-            <InputLabel>Marka</InputLabel>
-            <Select value={brand} label='Marka' onChange={(e) => setBrand(e.target.value)}>
-              <MenuItem value=''>Tümü</MenuItem>
-              {brandData.map((brandItem) => (
-                <MenuItem key={brandItem.name} value={brandItem.name}>
-                  {brandItem.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <Grid size={{ xs: 6, sm: 2 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Mevsim'
+            value={filters.season}
+            onChange={handleChange('season')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.seasons.map(s => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+
+        {/* Satır 2: Kategori + Ebat + Stok */}
+        <Grid size={{ xs: 6, sm: 2 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Ana Kategori'
+            value={filters.main_category}
+            onChange={handleChange('main_category')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.mainCategories.map(c => (
+              <MenuItem key={c} value={c}>{c}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 2 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Alt Kategori'
+            value={filters.sub_category}
+            onChange={handleChange('sub_category')}
+            disabled={!filters.main_category || subCategories.length === 0}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {subCategories.map(s => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 4, sm: 1.5 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Genişlik'
+            value={filters.width}
+            onChange={handleChange('width')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.widths.map(w => (
+              <MenuItem key={w} value={w}>{w}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 4, sm: 1.5 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Yanak'
+            value={filters.profile}
+            onChange={handleChange('profile')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.profiles.map(p => (
+              <MenuItem key={p} value={p}>{p}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 4, sm: 1.5 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Jant Çapı'
+            value={filters.rim}
+            onChange={handleChange('rim')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            {filterOptions.rims.map(r => (
+              <MenuItem key={r} value={r}>{r}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 1.5 }}>
+          <TextField
+            select
+            fullWidth
+            size='small'
+            label='Stok'
+            value={filters.stock_status}
+            onChange={handleChange('stock_status')}
+          >
+            <MenuItem value=''>Tümü</MenuItem>
+            <MenuItem value='in_stock'>Stokta Var</MenuItem>
+            <MenuItem value='out_of_stock'>Stokta Yok</MenuItem>
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 1.5 }} sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            fullWidth
+            variant='contained'
+            size='medium'
+            onClick={handleSearch}
+          >
+            Filtrele
+          </Button>
+          <Button
+            fullWidth
+            variant='outlined'
+            color='secondary'
+            size='medium'
+            onClick={handleReset}
+          >
+            Temizle
+          </Button>
         </Grid>
       </Grid>
     </CardContent>

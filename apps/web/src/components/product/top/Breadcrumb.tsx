@@ -24,7 +24,7 @@ export default function ProductBreadcrumb({
   const { t } = useTranslations('general');
 
   return (
-    <nav className="container pt-1 my-3 mb-4" aria-label="breadcrumb">
+    <nav className="my-3" aria-label="breadcrumb">
       <ol className="breadcrumb">
         <li className="breadcrumb-item">
           <Link href={ROUTES.HOME}>

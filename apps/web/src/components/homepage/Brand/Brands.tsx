@@ -43,14 +43,14 @@ export default function Brand() {
     }
 
     return (
-        <section id="brand_list" className="position-relative pt-md-5 pb-md-4 pb-2">
+        <section id="brand_list" className="position-relative pt-md-5 pb-md-4 pt-2 pb-2">
             <div className="container">
                 <div className="row-fluid">
                     <Swiper
                         modules={[Navigation, Autoplay]}
                         loop={brands.length > 10}
-                        slidesPerView={2}
-                        spaceBetween={20}
+                        slidesPerView={3}
+                        spaceBetween={10}
                         autoplay={{
                             delay: 3000,
                             disableOnInteraction: false,
@@ -61,7 +61,7 @@ export default function Brand() {
                         }}
                         breakpoints={{
                             600: {
-                                slidesPerView: 3,
+                                slidesPerView: 5,
                             },
                             768: {
                                 slidesPerView: 6,

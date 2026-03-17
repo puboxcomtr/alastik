@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
 // API Imports
@@ -21,12 +21,27 @@ import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Checkbox from '@mui/material/Checkbox'
+import MenuItem from '@mui/material/MenuItem'
 
 const EditLabelPage = () => {
     const router = useRouter()
     const params = useParams()
+    const searchParams = useSearchParams()
     const tagId = params.id as string
     const locale = params.lang as string
+
+    // Liste sayfasına dönüş parametreleri
+    const getListUrl = () => {
+        const params = new URLSearchParams()
+        params.set('page', searchParams.get('returnPage') || '1')
+        params.set('limit', searchParams.get('returnLimit') || '50')
+        const filterKeys = ['search', 'isActive', 'hasProducts', 'type', 'width', 'profile', 'rim', 'season']
+        filterKeys.forEach(key => {
+            const val = searchParams.get(key)
+            if (val) params.set(key, val)
+        })
+        return `/${locale}/apps/label/list?${params.toString()}`
+    }
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -36,6 +51,19 @@ const EditLabelPage = () => {
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
     const [searchPerformed, setSearchPerformed] = useState(false)
+    const [productFilters, setProductFilters] = useState({
+        brand: '',
+        product_type: '',
+        season: '',
+        size: '',
+        stock_status: ''
+    })
+    const [filterOptions, setFilterOptions] = useState<{
+        brands: string[]
+        productTypes: string[]
+        seasons: string[]
+        sizes: string[]
+    }>({ brands: [], productTypes: [], seasons: [], sizes: [] })
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -48,7 +76,19 @@ const EditLabelPage = () => {
 
     useEffect(() => {
         loadTag()
+        loadFilterOptions()
     }, [tagId])
+
+    const loadFilterOptions = async () => {
+        try {
+            const res = await fetchAPI(API_ENDPOINTS.filters.productOptions())
+            if (res.success) {
+                setFilterOptions(res.data)
+            }
+        } catch (err) {
+            console.error('Filtre seçenekleri yüklenemedi:', err)
+        }
+    }
 
     const loadTag = async () => {
         try {
@@ -77,7 +117,7 @@ const EditLabelPage = () => {
             }
         } catch (error) {
             toast.error('Etiket yüklenirken hata oluştu')
-            router.push(`/${locale}/apps/label/list`)
+            router.push(getListUrl())
         } finally {
             setLoading(false)
         }
@@ -90,8 +130,9 @@ const EditLabelPage = () => {
     }
 
     const handleProductSearch = async () => {
-        if (!searchQuery.trim()) {
-            toast.error('Lütfen arama yapmak için bir terim girin')
+        const hasFilter = searchQuery.trim() || productFilters.brand || productFilters.product_type || productFilters.season || productFilters.size || productFilters.stock_status
+        if (!hasFilter) {
+            toast.error('Lütfen arama terimi girin veya en az bir filtre seçin')
             return
         }
 
@@ -99,8 +140,17 @@ const EditLabelPage = () => {
         setSearchPerformed(true)
 
         try {
+            const params = new URLSearchParams()
+            if (searchQuery.trim()) params.set('search', searchQuery.trim())
+            if (productFilters.brand) params.set('brand', productFilters.brand)
+            if (productFilters.product_type) params.set('product_type', productFilters.product_type)
+            if (productFilters.season) params.set('season', productFilters.season)
+            if (productFilters.size) params.set('size', productFilters.size)
+            if (productFilters.stock_status) params.set('stock_status', productFilters.stock_status)
+            params.set('limit', '200')
+
             const response = await fetchAPI(
-                `${API_ENDPOINTS.products.list()}?search=${encodeURIComponent(searchQuery)}`
+                `${API_ENDPOINTS.products.list()}?${params.toString()}`
             )
             setSearchResults(response.data || [])
 
@@ -202,7 +252,7 @@ const EditLabelPage = () => {
                 })
             })
             toast.success('Etiket başarıyla güncellendi')
-            router.push(`/${locale}/apps/label/list`)
+            router.push(getListUrl())
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Etiket güncellenirken hata oluştu')
         } finally {
@@ -236,7 +286,7 @@ const EditLabelPage = () => {
                             <Button
                                 variant='outlined'
                                 color='secondary'
-                                onClick={() => router.back()}
+                                onClick={() => router.push(getListUrl())}
                                 disabled={saving}
                             >
                                 Geri Dön
@@ -354,11 +404,11 @@ const EditLabelPage = () => {
                                     <Typography variant='subtitle2' className='mb-2' color='text.secondary'>
                                         Yeni Ürün Ekle
                                     </Typography>
-                                    <Grid container spacing={3}>
-                                        <Grid size={{ xs: 12, md: 8 }}>
+                                    <Grid container spacing={2}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             <TextField
                                                 fullWidth
-                                                placeholder='Ürün adı, stok kodu veya marka ile ara...'
+                                                placeholder='Ürün adı, stok kodu ile ara...'
                                                 size='small'
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -377,7 +427,81 @@ const EditLabelPage = () => {
                                                 }}
                                             />
                                         </Grid>
-                                        <Grid size={{ xs: 12, md: 4 }}>
+                                        <Grid size={{ xs: 6, md: 3 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                size='small'
+                                                label='Marka'
+                                                value={productFilters.brand}
+                                                onChange={(e) => setProductFilters(prev => ({ ...prev, brand: e.target.value }))}
+                                            >
+                                                <MenuItem value=''>Tümü</MenuItem>
+                                                {filterOptions.brands.map(b => (
+                                                    <MenuItem key={b} value={b}>{b}</MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </Grid>
+                                        <Grid size={{ xs: 6, md: 3 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                size='small'
+                                                label='Ürün Tipi'
+                                                value={productFilters.product_type}
+                                                onChange={(e) => setProductFilters(prev => ({ ...prev, product_type: e.target.value }))}
+                                            >
+                                                <MenuItem value=''>Tümü</MenuItem>
+                                                {filterOptions.productTypes.map(t => (
+                                                    <MenuItem key={t} value={t}>{t}</MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </Grid>
+                                        <Grid size={{ xs: 6, md: 3 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                size='small'
+                                                label='Mevsim'
+                                                value={productFilters.season}
+                                                onChange={(e) => setProductFilters(prev => ({ ...prev, season: e.target.value }))}
+                                            >
+                                                <MenuItem value=''>Tümü</MenuItem>
+                                                {filterOptions.seasons.map(s => (
+                                                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </Grid>
+                                        <Grid size={{ xs: 6, md: 3 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                size='small'
+                                                label='Ebat'
+                                                value={productFilters.size}
+                                                onChange={(e) => setProductFilters(prev => ({ ...prev, size: e.target.value }))}
+                                            >
+                                                <MenuItem value=''>Tümü</MenuItem>
+                                                {filterOptions.sizes.map(s => (
+                                                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </Grid>
+                                        <Grid size={{ xs: 6, md: 3 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                size='small'
+                                                label='Stok'
+                                                value={productFilters.stock_status}
+                                                onChange={(e) => setProductFilters(prev => ({ ...prev, stock_status: e.target.value }))}
+                                            >
+                                                <MenuItem value=''>Tümü</MenuItem>
+                                                <MenuItem value='in_stock'>Stokta Var</MenuItem>
+                                                <MenuItem value='out_of_stock'>Stokta Yok</MenuItem>
+                                            </TextField>
+                                        </Grid>
+                                        <Grid size={{ xs: 6, md: 3 }}>
                                             <Button
                                                 fullWidth
                                                 variant='outlined'
@@ -389,7 +513,6 @@ const EditLabelPage = () => {
                                             </Button>
                                         </Grid>
                                     </Grid>
-
                                     {/* Arama Sonuçları Tablosu */}
                                     <div className='overflow-x-auto mt-4' style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

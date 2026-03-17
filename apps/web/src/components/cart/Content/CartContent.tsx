@@ -20,11 +20,11 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
     };
     const { getBrand } = useBrands();
     return (
-        <div className="card border-0">
-            <div className="card-body p-3">
+        <div className="card mr-2">
+            <div className="card-body">
                 {items.map((item, index) => (
                     <div className='mb-3' key={item.productKey}>
-                        <div className="p-2 border rounded">
+                        <div className="p-2 border-bottom rounded">
                             <div className="row align-items-center">
                                 {/* Resim */}
                                 <div className="col-3 col-md-2">

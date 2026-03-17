@@ -88,12 +88,12 @@ export default async function ProductDetailPage(
                 </Grid>
             </Grid>
             <Grid className="row-fluid" container>
-                <Grid size={4}>
-                    <Grid size={10}>
+                <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, md: 10 }}>
                         <Gallery product={product} />
                     </Grid>
                 </Grid>
-                <Grid size={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                     <Middle
                         product={product}
                         productName={product.diaData?.aciklama || ''}
@@ -101,7 +101,7 @@ export default async function ProductDetailPage(
                         reviews={reviews}
                     />
                 </Grid>
-                <Grid size={3} sx={{ pl: 3 }}>
+                <Grid size={{ xs: 12, md: 3 }}>
                     <AddCart product={product} />
                 </Grid>
             </Grid>

@@ -221,6 +221,8 @@ router.get('/:slug', async (req, res) => {
             data: {
                 name: brand.diaBrand || brand.diaMarkaAck || brand.name,
                 slug: brand.seoUrl || brand.slug,
+                diaBrand: brand.diaBrand,         
+                diaMarkaAck: brand.diaMarkaAck,
                 logo: formattedLogoUrl,
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,
                 description: brand.description,

@@ -18,11 +18,13 @@ export const ROUTES = {
     PRODUCT: '/urun',
     BRAND: '/marka',
     BLOG: '/blog',
+    PAGE: '/sayfa',
     CATEGORY: '/kategori',
     TAG: '/etiket',
     CART: '/sepet',
     CHECKOUT: '/teslimat',
     PAYMENT: '/odeme',
+    CONTACT: '/iletisim',
     PAYMENT_FAILED: '/odeme/basarisiz',
     ORDER_SUCCESS: '/siparis-basarili',
 } as const;
@@ -83,12 +85,12 @@ export const buildTireSearchUrl = (
  */
 export const getSeasonSlugFromValue = (mevsimValue: string): string => {
     const mevsimMap: Record<string, string> = {
-        "1": "lastik",
+        "1": "otomobil-lastikleri",
         "2": "yaz-lastikleri",
         "3": "kis-lastikleri",
         "4": "4-mevsim-lastikler"
     };
-    return mevsimMap[mevsimValue] || "tum-lastikler";
+    return mevsimMap[mevsimValue] || "otomobil-lastikleri";
 };
 
 /**

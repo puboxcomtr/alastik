@@ -128,6 +128,8 @@ export interface ProductFilterParams {
     uretim?: string;
     fiyatMin?: number;
     fiyatMax?: number;
+    sortBy?: string;
+    sortOrder?: string;
     page?: number;
     limit?: number;
 }

@@ -94,12 +94,12 @@ export default function TabContent({
                     className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
                     Genişlik
-                    <span style={{ cursor: 'pointer' }}>
+                    <span className="d-none d-lg-inline" style={{ cursor: 'pointer' }}>
                       <i className="ci-info fs-sm text-muted"></i>
                     </span>
                   </label>
                   {hoveredTooltip === 'genislik' && (
-                    <span style={{
+                    <span className="d-none d-lg-block" style={{
                       position: 'absolute',
                       bottom: '100%',
                       left: '50%',
@@ -144,12 +144,12 @@ export default function TabContent({
                     className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
                     Yanak
-                    <span style={{ cursor: 'pointer' }}>
+                    <span className="d-none d-lg-inline" style={{ cursor: 'pointer' }}>
                       <i className="ci-info fs-sm text-muted"></i>
                     </span>
                   </label>
                   {hoveredTooltip === 'yukseklik' && (
-                    <span style={{
+                    <span className="d-none d-lg-block" style={{
                       position: 'absolute',
                       bottom: '100%',
                       left: '50%',
@@ -194,12 +194,12 @@ export default function TabContent({
                     className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
                     Çap
-                    <span style={{ cursor: 'pointer' }}>
+                    <span className="d-none d-lg-inline" style={{ cursor: 'pointer' }}>
                       <i className="ci-info fs-sm text-muted"></i>
                     </span>
                   </label>
                   {hoveredTooltip === 'cap' && (
-                    <span style={{
+                    <span className="d-none d-lg-block" style={{
                       position: 'absolute',
                       bottom: '100%',
                       left: '50%',
@@ -235,14 +235,14 @@ export default function TabContent({
                 </div>
               </div>
               <div className="row align-items-end">
-                <div className="col-md-4 position-relative ps-0 pb-3">
+                <div className="d-none d-md-block col-md-4 position-relative ps-0 pb-3">
                   <button
                     type="button"
                     onClick={() => {
                       const event = new Event('openTireSizeModal');
                       window.dispatchEvent(event);
                     }}
-                    className="nav-link fs-xs d-flex text-decoration-underline text-muted justify-content-center justify-content-lg-start bg-transparent border-0 p-0"
+                    className="d-none d-lg-flex nav-link fs-xs text-decoration-underline text-muted justify-content-center justify-content-lg-start bg-transparent border-0 p-0"
                   >
                     Lastik ebatımı nasıl öğrenebilirim?
                   </button>

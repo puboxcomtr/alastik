@@ -21,29 +21,29 @@ const ProductManagament = ({ formData, setFormData }) => {
             <FormControl component='fieldset'>
               <div className='flex items-start gap-3'>
                 <Switch
-                  id="priceReminder"
-                  checked={formData.priceReminder}
+                  id="hidePricelessProducts"
+                  checked={formData.hidePricelessProducts}
                   onChange={(e) => setFormData((prev) => ({
                     ...prev,
-                    priceReminder: e.target.checked
+                    hidePricelessProducts: e.target.checked
                   }))}
                 />
                 <div>
                   <FormLabel
                     component='label'
-                    htmlFor='priceReminder'
+                    htmlFor='hidePricelessProducts'
                     className='text-base font-medium mb-1 cursor-pointer'
                   >
-                    Fiyatı Düşünce Haber Ver Butonu
+                    Fiyatsız Ürünleri Gizle
                   </FormLabel>
                   <Typography variant='caption' color='text.secondary' className='block'>
-                    'Fiyatı Düşünce Haber Ver' butonu gösterebilir ve müşterilerinizin kullanımına sunabilirsiniz.
+                    Aktif edildiğinde fiyatı olmayan ürünler vitrin ve listeleme sayfalarında gizlenir.
                   </Typography>
                 </div>
               </div>
             </FormControl>
           </Grid>
-          
+
           <Grid size={{ xs: 12, sm: 3 }}>
             <FormControl component='fieldset'>
               <div className='flex items-start gap-3'>
@@ -70,7 +70,7 @@ const ProductManagament = ({ formData, setFormData }) => {
               </div>
             </FormControl>
           </Grid>
-          
+
           <Grid size={{ xs: 12, sm: 3 }}>
             <FormControl fullWidth>
               <InputLabel>Otomatik Yorum Onayı</InputLabel>
@@ -87,7 +87,7 @@ const ProductManagament = ({ formData, setFormData }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid size={{ xs: 12, sm: 3 }}>
             <FormControl fullWidth>
               <InputLabel>Yorumlarda Alan Zorunluluğu</InputLabel>

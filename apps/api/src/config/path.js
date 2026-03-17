@@ -12,6 +12,7 @@ const MEDIA_FOLDERS = {
     urun: 'urun',
     kategori: 'kategori',
     marka: 'marka',
+    blog: 'blog',
     general: 'general'
 };
 
@@ -65,15 +66,15 @@ const paths = {
         isProduction,
         isDevelopment,
 
-        maxFileSize: 5 * 1024 * 1024, 
-        maxFileCount: 5, 
+        maxFileSize: 5 * 1024 * 1024,
+        maxFileCount: 5,
         allowedFileTypes: /jpeg|jpg|png|gif|webp|svg/,
 
         uploadBasePath: process.env.UPLOAD_BASE_PATH || path.join(ROOT_DIR, 'public'),
 
         enableLogging: isDevelopment || process.env.ENABLE_DEBUG_LOGS === 'true',
         enableCompression: isProduction,
-        cacheTimeout: isProduction ? 3600 : 0 
+        cacheTimeout: isProduction ? 3600 : 0
     }
 };
 

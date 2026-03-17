@@ -1,3 +1,4 @@
+// apps/web/src/components/payment/Content/CreditCardForm.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -44,6 +45,7 @@ export interface CardFormData {
     installment: number;
     vPosId: number;
     isValid: boolean;
+    gateway: 'netahsilat' | 'nkolay';
 }
 
 export default function CreditCardForm({ onCardDataChange, totalAmount }: CreditCardFormProps) {
@@ -108,18 +110,21 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                 setBinChecked(true);
 
                 if (data.cardInfo.isDebitCard) {
+                    // Netahsilat banka kartı derse taksit gösterme
                     setInstallments([]);
                     setSelectedInstallment(1);
                     setSelectedVPosId(0);
-                    toast.info('Banka kartı ile sadece tek çekim yapılabilir');
                 } else if (data.hasInstallment && data.installments) {
-                    setInstallments(data.installments);
-                    if (data.installments.length > 0) {
-                        setSelectedInstallment(data.installments[0].installment);
-                        setSelectedVPosId(data.installments[0].vPosId);
-                    }
+                    // Taksit seçeneklerini göster (1'den büyük olanlar)
+                    const multiInstallments = data.installments.filter((i: Installment) => i.installment > 1);
+                    setInstallments(multiInstallments);
+                    // Varsayılan: tek çekim (Nkolay)
+                    setSelectedInstallment(1);
+                    setSelectedVPosId(0);
                 } else {
                     setInstallments([]);
+                    setSelectedInstallment(1);
+                    setSelectedVPosId(0);
                 }
             } else {
                 toast.error(data.message || 'Kart bilgisi alınamadı');
@@ -130,6 +135,17 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         } finally {
             setLoading(false);
         }
+    };
+
+    // Hangi gateway kullanılacak
+    const getGateway = (): 'netahsilat' | 'nkolay' => {
+        if (!cardInfo) return 'netahsilat';
+        // Banka kartı → Nkolay
+        if (cardInfo.isDebitCard) return 'nkolay';
+        // Kredi kartı tek çekim → Nkolay
+        if (selectedInstallment === 1) return 'nkolay';
+        // Kredi kartı taksitli → Netahsilat
+        return 'netahsilat';
     };
 
     // Form validasyonu ve data güncelleme
@@ -143,9 +159,11 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
             expiry.length === 5 &&
             cvc.length >= 3 &&
             binChecked &&
-            (cardInfo?.isDebitCard || selectedInstallment >= 1)
+            (cardInfo?.isDebitCard || selectedInstallment >= 1);
 
         if (isValid && cardInfo) {
+            const gateway = getGateway();
+
             onCardDataChange({
                 cardNumber: cleanNumber,
                 cardHolderName: cardHolderName.trim(),
@@ -154,7 +172,8 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                 cvc,
                 installment: cardInfo.isDebitCard ? 1 : selectedInstallment,
                 vPosId: selectedVPosId,
-                isValid: true
+                isValid: true,
+                gateway
             });
         } else {
             onCardDataChange(null);
@@ -167,12 +186,13 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         setSelectedVPosId(inst.vPosId);
     };
 
-    // Taksitli tutar hesapla (mevcut fonksiyonu güncelle)
-    const calculateInstallmentAmount = (installment: number): string => {
-        return formatCurrency(totalAmount / installment);
+    // Tek çekim seçimi (banka kartı veya kredi kartı tek çekim)
+    const handleSinglePaymentSelect = () => {
+        setSelectedInstallment(1);
+        setSelectedVPosId(0);
     };
 
-    // Para formatı helper fonksiyonu (component dışına ekle)
+    // Para formatı
     const formatCurrency = (amount: number): string => {
         return new Intl.NumberFormat('tr-TR', {
             minimumFractionDigits: 2,
@@ -180,12 +200,17 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         }).format(amount);
     };
 
+    // Taksitli tutar hesapla
+    const calculateInstallmentAmount = (installment: number): string => {
+        return formatCurrency(totalAmount / installment);
+    };
+
     return (
         <div className="p-3 bg-white">
             <div className="row g-3">
                 {/* Kart Üzerindeki İsim */}
                 <div className="col-12">
-                    <label className="form-label">Kart Üzerindeki İsim Soyisim <span className="text-danger">*</span> </label>
+                    <label className="form-label">Kart Üzerindeki İsim Soyisim <span className="text-danger">*</span></label>
                     <div className='position-relative'>
                         <input
                             type="text"
@@ -204,9 +229,10 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                         </span>
                     </div>
                 </div>
+
                 {/* Kart Numarası */}
                 <div className="col-12">
-                    <label className="form-label">Kart Numarası <span className="text-danger">*</span> </label>
+                    <label className="form-label">Kart Numarası <span className="text-danger">*</span></label>
                     <div className="position-relative">
                         <input
                             type="text"
@@ -229,7 +255,7 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
 
                 {/* Son Kullanma ve CVV */}
                 <div className="col-md-6">
-                    <label className="form-label small">Son Kullanma Tarihi <span className="text-danger">*</span> </label>
+                    <label className="form-label small">Son Kullanma Tarihi <span className="text-danger">*</span></label>
                     <input
                         type="text"
                         className="form-control"
@@ -260,74 +286,137 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                         maxLength={4}
                     />
                 </div>
-                {/* Taksit Seçenekleri - JSX */}
-                {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length > 0 && (
-                    <div className="col-12">
-                        <hr />
-                        <h6>Taksit Seçenekleri</h6>
-                        <div className="d-flex flex-column gap-2">
-                            {installments.map((inst) => {
-                                const isSelected = selectedInstallment === inst.installment;
-                                return (
-                                    <div
-                                        key={inst.installment}
-                                        onClick={() => handleInstallmentSelect(inst)}
-                                        className={`d-flex align-items-center justify-content-between p-3 rounded-3 border ${isSelected ? 'border-primary border-1' : 'border-secondary-subtle'}`}
-                                        style={{
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        <div className="d-flex align-items-center gap-3">
-                                            <div
-                                                className={`d-flex align-items-center justify-content-center rounded-circle ${isSelected ? 'bg-primary' : 'border border-secondary'}`}
-                                                style={{ width: '22px', height: '22px' }}
-                                            >
-                                                {isSelected && (
-                                                    <i className="ri-check-line text-white" style={{ fontSize: '14px' }}></i>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <span className={`fw-semibold ${isSelected ? 'text-primary' : ''}`}>
-                                                    {inst.installment === 1 ? 'Tek Çekim' : `${inst.installment} Taksit`}
-                                                </span>
-                                                {inst.installment > 1 && (
-                                                    <small className="text-muted d-block">
-                                                        Aylık {calculateInstallmentAmount(inst.installment)} TL
-                                                    </small>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-end">
-                                            <span className={`fw-bold ${isSelected ? 'text-primary' : ''}`}>
-                                                {formatCurrency(totalAmount)} TL
-                                            </span>
-                                            {inst.commRate > 0 && (
-                                                <small className="text-muted d-block">
-                                                    +%{inst.commRate} komisyon
-                                                </small>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-                {/* Banka Kartı Uyarısı */}
+
+                {/* Banka Kartı: Tek Çekim */}
                 {cardInfo && cardInfo.isDebitCard && (
                     <div className="col-12">
-                        <div className="alert alert-info mb-0 small">
-                            Banka kartı ile sadece tek çekim yapılabilir. Tek çekim seçeneği yakın zamanda aktif olacaktır.
+                        <hr />
+                        <div
+                            className="d-flex align-items-center justify-content-between p-3 rounded-3 border border-primary border-1"
+                            style={{ cursor: 'default' }}
+                        >
+                            <div className="d-flex align-items-center gap-3">
+                                <div
+                                    className="d-flex align-items-center justify-content-center rounded-circle bg-primary"
+                                    style={{ width: '22px', height: '22px' }}
+                                >
+                                    <i className="ri-check-line text-white" style={{ fontSize: '14px' }}></i>
+                                </div>
+                                <div>
+                                    <span className="fw-semibold text-primary">Tek Çekim</span>
+                                    <small className="text-muted d-block">Banka kartı ile tek çekim ödeme</small>
+                                </div>
+                            </div>
+                            <div className="text-end">
+                                <span className="fw-bold text-primary">{formatCurrency(totalAmount)} TL</span>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* Taksit Yok Uyarısı */}
+                {/* Kredi Kartı: Taksit Seçenekleri + Tek Çekim */}
+                {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length > 0 && (
+                    <div className="col-12">
+                        <hr />
+                        <h6>Ödeme Seçenekleri</h6>
+                        <div className="d-flex flex-column gap-2">
+                            {/* Tek Çekim (Nkolay) */}
+                            <div
+                                onClick={handleSinglePaymentSelect}
+                                className={`d-flex align-items-center justify-content-between p-3 rounded-3 border ${selectedInstallment === 1 ? 'border-primary border-1' : 'border-secondary-subtle'}`}
+                                style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                            >
+                                <div className="d-flex align-items-center gap-3">
+                                    <div
+                                        className={`d-flex align-items-center justify-content-center rounded-circle ${selectedInstallment === 1 ? 'bg-primary' : 'border border-secondary'}`}
+                                        style={{ width: '22px', height: '22px' }}
+                                    >
+                                        {selectedInstallment === 1 && (
+                                            <i className="ri-check-line text-white" style={{ fontSize: '14px' }}></i>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className={`fw-semibold ${selectedInstallment === 1 ? 'text-primary' : ''}`}>
+                                            Tek Çekim
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="text-end">
+                                    <span className={`fw-bold ${selectedInstallment === 1 ? 'text-primary' : ''}`}>
+                                        {formatCurrency(totalAmount)} TL
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Taksitli Seçenekler (Netahsilat) */}
+                            {installments
+                                .filter(inst => inst.installment > 1)
+                                .map((inst) => {
+                                    const isSelected = selectedInstallment === inst.installment;
+                                    return (
+                                        <div
+                                            key={inst.installment}
+                                            onClick={() => handleInstallmentSelect(inst)}
+                                            className={`d-flex align-items-center justify-content-between p-3 rounded-3 border ${isSelected ? 'border-primary border-1' : 'border-secondary-subtle'}`}
+                                            style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                                        >
+                                            <div className="d-flex align-items-center gap-3">
+                                                <div
+                                                    className={`d-flex align-items-center justify-content-center rounded-circle ${isSelected ? 'bg-primary' : 'border border-secondary'}`}
+                                                    style={{ width: '22px', height: '22px' }}
+                                                >
+                                                    {isSelected && (
+                                                        <i className="ri-check-line text-white" style={{ fontSize: '14px' }}></i>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <span className={`fw-semibold ${isSelected ? 'text-primary' : ''}`}>
+                                                        {inst.installment} Taksit
+                                                    </span>
+                                                    <small className="text-muted d-block">
+                                                        Aylık {calculateInstallmentAmount(inst.installment)} TL
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div className="text-end">
+                                                <span className={`fw-bold ${isSelected ? 'text-primary' : ''}`}>
+                                                    {formatCurrency(totalAmount)} TL
+                                                </span>
+                                                {inst.commRate > 0 && (
+                                                    <small className="text-muted d-block">
+                                                        +%{inst.commRate} komisyon
+                                                    </small>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Kredi Kartı Taksit Yok: Sadece Tek Çekim */}
                 {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length === 0 && (
                     <div className="col-12">
-                        <div className="alert alert-warning mb-0 small">
-                            Bu kart için taksit seçeneği bulunmamaktadır.
+                        <hr />
+                        <div
+                            className="d-flex align-items-center justify-content-between p-3 rounded-3 border border-primary border-1"
+                            style={{ cursor: 'default' }}
+                        >
+                            <div className="d-flex align-items-center gap-3">
+                                <div
+                                    className="d-flex align-items-center justify-content-center rounded-circle bg-primary"
+                                    style={{ width: '22px', height: '22px' }}
+                                >
+                                    <i className="ri-check-line text-white" style={{ fontSize: '14px' }}></i>
+                                </div>
+                                <div>
+                                    <span className="fw-semibold text-primary">Tek Çekim</span>
+                                </div>
+                            </div>
+                            <div className="text-end">
+                                <span className="fw-bold text-primary">{formatCurrency(totalAmount)} TL</span>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -58,10 +58,18 @@ const blogSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    featuredImage: {
+        type: String,
+        default: ''
+    },
     wheelSizePattern: {
         type: String,
         default: null,
         index: true
+    },
+    showOnHomepage: {
+        type: Boolean,
+        default: false
     },
     author: {
         type: mongoose.Schema.Types.ObjectId,

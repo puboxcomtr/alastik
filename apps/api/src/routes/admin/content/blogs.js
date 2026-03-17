@@ -37,6 +37,49 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Blog Öne Çıkarılmış Görsel Ekle
+router.put('/:id/image', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { featuredImage } = req.body;
+
+        const blog = await Blog.findByIdAndUpdate(
+            id,
+            { featuredImage },
+            { new: true }
+        );
+
+        if (!blog) {
+            return res.status(404).json({ success: false, message: 'Blog bulunamadı' });
+        }
+
+        res.json({ success: true, data: blog });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Blog Öne Çıkarılmış Görsel Sil
+router.delete('/:id/image', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const blog = await Blog.findByIdAndUpdate(
+            id,
+            { featuredImage: '' },
+            { new: true }
+        );
+
+        if (!blog) {
+            return res.status(404).json({ success: false, message: 'Blog bulunamadı' });
+        }
+
+        res.json({ success: true, data: blog });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // GET /api/admin/blogs/:id
 router.get('/:id', async (req, res) => {
     try {

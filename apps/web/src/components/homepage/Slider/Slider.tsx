@@ -54,7 +54,6 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
         <section id="slider_list">
             <div className="container">
                 <div className="row-fluid">
-
                     <Swiper
                         modules={modules}
                         effect="fade"
@@ -76,7 +75,7 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
                                         rel={slide.openNewTab ? 'noopener noreferrer' : undefined}
                                     >
                                         <Image
-                                            className="w-100 rounded"
+                                            className="slide__item w-100 rounded"
                                             src={getImageUrl(slide.image)}
                                             alt={slide.description || `${slider.name} - Slider ${index + 1}`}
                                             width={width}
@@ -87,7 +86,7 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
                                     </Link>
                                 ) : (
                                     <Image
-                                        className="w-100 rounded"
+                                        className="slide__item w-100 rounded"
                                         src={getImageUrl(slide.image)}
                                         alt={slide.description || `${slider.name} - Slider ${index + 1}`}
                                         width={width}
@@ -100,7 +99,7 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
                         ))}
                         {showNavButtons && (
                             <>
-                                <div className="position-absolute top-50 start-0 z-2 translate-middle-y ms-3 ms-sm-4 hover-effect-target">
+                                <div className="position-absolute top-50 start-0 z-2 translate-middle-y ms-3 ms-sm-4 hover-effect-target d-none d-lg-block">
                                     <button
                                         type="button"
                                         className="btn slide_btn-prev btn-icon btn-primary border-0 rounded-circle animate-slide-start"
@@ -109,7 +108,7 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
                                         <i className="ci-chevron-left fs-lg animate-target"></i>
                                     </button>
                                 </div>
-                                <div className="position-absolute top-50 end-0 z-2 translate-middle-y me-3 me-sm-4 hover-effect-target">
+                                <div className="position-absolute top-50 end-0 z-2 translate-middle-y me-3 me-sm-4 hover-effect-target d-none d-lg-block">
                                     <button
                                         type="button"
                                         className="btn slide_btn-next btn-icon btn-primary border-0 rounded-circle animate-slide-end"

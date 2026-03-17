@@ -19,7 +19,21 @@ router.get('/by-pattern/:pattern', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+// Anasayfa blogları
+router.get('/homepage', async (req, res) => {
+    try {
+        const blogs = await WebBlog.find({ status: 'published', showOnHomepage: true })
+            .select('title slug excerpt publishedAt viewCount featuredImage tags')
+            .sort({ publishedAt: -1 })
+            .limit(4)
+            .lean();
 
+        res.json({ success: true, data: blogs });
+    } catch (error) {
+        console.error('Homepage blogs error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // Tüm blogları listele
 router.get('/', async (req, res) => {
     try {

@@ -19,18 +19,19 @@ import { ROUTES } from '@/src/config/routes';
 interface MiddleProps {
     logo: string;
     siteName: string;
+    onMenuOpen?: () => void;
 }
-export default function Main({ logo, siteName }: MiddleProps) {
+export default function Main({ logo, siteName, onMenuOpen }: MiddleProps) {
     const { settings, getImageUrl } = useThemeSettings()
 
     return (
         <Container className="navbar navbar-expand-lg d-block p-0">
-            <Row className='row-fluid align-items-center px-2 py-lg-3'>
-                <Col lg="3">
+            <Row className='row-fluid align-items-center py-2 py-lg-3'>
+                <Col xs="8" lg="3">
                     <Link prefetch={false} href={ROUTES.HOME} className="navbar-brand fs-2 py-0 m-0 me-auto me-sm-n5">
                         {settings?.logo && (
                             <img
-                                className="shop-header__logo hide-mobile"
+                                className="header__logo"
                                 src={getImageUrl(settings.logo)}
                                 alt={`${siteName} - Logo`}
                                 width={207}
@@ -39,11 +40,11 @@ export default function Main({ logo, siteName }: MiddleProps) {
                         )}
                     </Link>
                 </Col>
-                <Col lg="6">
+                <Col lg="6" className="d-none d-lg-flex">
                     <SearchBox />
                 </Col>
-                <Col lg="3" className="d-flex justify-content-end">
-                    <ActionButtons />
+                <Col xs="4" lg="3" className="d-flex justify-content-end">
+                    <ActionButtons onMenuOpen={onMenuOpen} />
                 </Col>
             </Row>
         </Container>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 /* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
+import Box from '@mui/material/Box'
 import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
@@ -37,6 +38,13 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Image } from '@tiptap/extension-image'
+
+/* Media Library */
+import MediaLibrary from '@/components/MediaLibrary/MediaLibrary'
+import type { MediaFile } from '@/types/apps/mediaTypes'
+
+/* Get Image URL */
+import { getImageUrl } from '@/libs/api'
 
 /* Toast */
 import { toast } from 'react-toastify'
@@ -369,16 +377,22 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
-    // localStorage'dan mode'u al
-    const [isHtmlMode, setIsHtmlMode] = useState(() => {
-        if (typeof window !== 'undefined' && isEdit && blog?._id) {
+    // Görsel yönetimi
+    const [featuredImage, setFeaturedImage] = useState<string>(blog?.featuredImage || '')
+    const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
+
+    const [isHtmlMode, setIsHtmlMode] = useState(false)
+
+    useEffect(() => {
+        if (isEdit && blog?._id) {
             const savedMode = localStorage.getItem(`blog-editor-mode-${blog._id}`)
             if (savedMode) {
-                return savedMode === 'html'
+                setIsHtmlMode(savedMode === 'html')
+            } else if (blog?.content) {
+                setIsHtmlMode(true)
             }
         }
-        return isEdit && blog?.content ? true : false
-    })
+    }, [isEdit, blog?._id, blog?.content])
 
     const [htmlContent, setHtmlContent] = useState('')
 
@@ -387,6 +401,7 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
         slug: blog?.slug || '',
         excerpt: blog?.excerpt || '',
         status: blog?.status || 'published',
+        featuredImage: blog?.featuredImage || '',
         seo: {
             metaTitle: blog?.seo?.metaTitle || '',
             metaDescription: blog?.seo?.metaDescription || '',
@@ -525,6 +540,19 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
 
         toast.success('SEO URL otomatik oluşturuldu')
     }
+    // Görsel Ekle
+    const handleMediaSelect = (selectedFiles: MediaFile[]) => {
+        if (selectedFiles.length > 0) {
+            setFeaturedImage(selectedFiles[0].url)
+            toast.success('Görsel eklendi')
+        }
+    }
+
+    // Görsel Kaldırma
+    const handleRemoveImage = () => {
+        setFeaturedImage('')
+        toast.success('Görsel kaldırıldı')
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -550,6 +578,7 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                 content,
                 excerpt: formData.excerpt,
                 status: formData.status,
+                featuredImage: featuredImage,
                 seo: {
                     metaTitle: formData.seo.metaTitle,
                     metaDescription: formData.seo.metaDescription,
@@ -834,9 +863,110 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                                 </CardContent>
                             </Card>
                         </Grid>
+
+                        {/* Öne Çıkarılmış Görsel*/}
+                        <Grid size={{ xs: 12 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant='h6' className='mb-4'>
+                                        Öne Çıkarılmış Görsel
+                                    </Typography>
+                                    <Grid container spacing={5}>
+                                        <Grid size={{ xs: 12 }}>
+                                            {featuredImage ? (
+                                                <Box>
+                                                    <Box
+                                                        sx={{
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            paddingTop: '56.25%',
+                                                            borderRadius: 2,
+                                                            overflow: 'hidden',
+                                                            border: '1px solid',
+                                                            borderColor: 'grey.300'
+                                                        }}
+                                                    >
+                                                        <img
+                                                            src={getImageUrl(featuredImage)}
+                                                            alt='Öne çıkarılmış görsel'
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 0,
+                                                                left: 0,
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement
+                                                                target.src = '/images/placeholder-image.png'
+                                                            }}
+                                                        />
+                                                        <IconButton
+                                                            sx={{
+                                                                position: 'absolute',
+                                                                top: 8,
+                                                                right: 8,
+                                                                backgroundColor: 'error.main',
+                                                                color: 'white',
+                                                                '&:hover': {
+                                                                    backgroundColor: 'error.dark'
+                                                                }
+                                                            }}
+                                                            onClick={handleRemoveImage}
+                                                        >
+                                                            <i className='ri-delete-bin-line' />
+                                                        </IconButton>
+                                                    </Box>
+                                                    <Button
+                                                        variant='outlined'
+                                                        fullWidth
+                                                        sx={{ mt: 2 }}
+                                                        onClick={() => setMediaLibraryOpen(true)}
+                                                        startIcon={<i className='ri-refresh-line' />}
+                                                    >
+                                                        Görseli Değiştir
+                                                    </Button>
+                                                </Box>
+                                            ) : (
+                                                <Box>
+                                                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                                                        <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
+                                                        <Typography color="text.secondary" sx={{ mt: 2 }}>
+                                                            Henüz görsel eklenmemiş
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            Aşağıdaki butona tıklayarak görsel ekleyebilirsiniz
+                                                        </Typography>
+                                                    </Box>
+                                                    <Button
+                                                        variant='contained'
+                                                        fullWidth
+                                                        onClick={() => setMediaLibraryOpen(true)}
+                                                        startIcon={<i className='ri-image-add-line' />}
+                                                    >
+                                                        Görsel Ekle
+                                                    </Button>
+                                                </Box>
+                                            )}
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        </Grid>
                     </Grid>
                 </Grid>
             </Grid>
+            {/* Media Library Modal */}
+            <MediaLibrary
+                open={mediaLibraryOpen}
+                onClose={() => setMediaLibraryOpen(false)}
+                onSelect={handleMediaSelect}
+                multiple={false}
+                folder="blog"
+                title="Blog Görseli Seç"
+                maxFileSize={10 * 1024 * 1024}
+            />
         </form>
     )
 }

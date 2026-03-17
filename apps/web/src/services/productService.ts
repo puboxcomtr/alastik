@@ -22,11 +22,14 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
         if (params.bijon) queryParams.append('bijon', params.bijon);
         if (params.fiyatMin) queryParams.append('fiyatMin', params.fiyatMin.toString());
         if (params.fiyatMax) queryParams.append('fiyatMax', params.fiyatMax.toString());
+        if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+        if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
 
         const res = await fetch(`${API_ENDPOINTS.products.filter()}?${queryParams.toString()}`, {
-            cache: 'no-store'
+            cache: 'no-store',
+            next: { revalidate: 0 }
         });
 
         if (!res.ok) return null;

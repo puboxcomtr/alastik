@@ -65,6 +65,7 @@ const ProductListTable = () => {
 
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
 
   // Pagination state
   const [page, setPage] = useState(1)
@@ -78,8 +79,14 @@ const ProductListTable = () => {
     const fetchProducts = async () => {
       setLoading(true)
       try {
+        const params = new URLSearchParams()
+        params.set('page', String(page))
+        params.set('limit', String(limit))
+        Object.entries(activeFilters).forEach(([key, value]) => {
+          if (value) params.set(key, value)
+        })
         const response = await fetchAPI(
-          `${API_ENDPOINTS.products.list()}?page=${page}&limit=${limit}`,
+          `${API_ENDPOINTS.products.list()}?${params.toString()}`,
           { cache: 'no-store' }
         )
 
@@ -115,7 +122,7 @@ const ProductListTable = () => {
     }
 
     fetchProducts()
-  }, [page, limit])
+  }, [page, limit, activeFilters])
   const columns = useMemo<ColumnDef<ProductType, any>[]>(
     () => [
       {
@@ -259,7 +266,7 @@ const ProductListTable = () => {
     <>
       <Card>
         <CardHeader title='Ürün Filtreleme' className='pbe-4' />
-        {/* <TableFilters setData={setFilteredData} productData={data} setLoading={setLoading} /> DAHA SONRA AÇ*/}
+        <TableFilters onFilterChange={(params) => { setActiveFilters(params); setPage(1) }} />
         <Divider />
         <div style={{ position: 'relative' }}>
           {loading && (
@@ -346,7 +353,7 @@ const ProductListTable = () => {
           className='border-bs'
           count={totalCount}
           rowsPerPage={limit}
-          page={page - 1}  
+          page={page - 1}
           onPageChange={(_, newPage) => {
             setPage(newPage + 1)
           }}

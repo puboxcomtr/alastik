@@ -59,13 +59,9 @@ export default function ProductGallery({ product }: GalleryProps) {
         <div>
             <div className="mainProductGallery">
                 <img
+                    className="main__image"
                     src={mainImages[activeIndex]}
                     alt={imageAlts[activeIndex]}
-                    style={{
-                        width: "350px",
-                        height: "350px",
-                        objectFit: "cover"
-                    }}
                     onClick={() => setOpen(true)}
                 />
                 <div className='position-absolute bottom-0 end-0'>
@@ -88,18 +84,7 @@ export default function ProductGallery({ product }: GalleryProps) {
             >
                 {originalImages.map((img, i) => (
                     <SwiperSlide key={i}>
-                        <div className={"productGallery"} style={{
-                            width: "100px",
-                            height: "100px",
-                            display: "flex",
-                            borderRadius: ".5rem",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: "#f8f9fa",
-                            border: i === activeIndex ? "1px solid #000" : "transparent",
-                            cursor: "pointer",
-                            flexShrink: 0
-                        }}>
+                        <div className={`productGallery ${i === activeIndex ? 'active' : ''}`}>
                             <img
                                 src={thumbnailImages[i]}
                                 alt={imageAlts[i]}
@@ -122,7 +107,7 @@ export default function ProductGallery({ product }: GalleryProps) {
                 )}
             </Swiper>
 
-            <Typography className='text-muted fs-xs mt-3'>
+            <Typography className='text-muted fs-xs my-3'>
                 Ürün görselleri örnek niteliğindedir ve teslim edilen ürünlerle farklılık gösterebilir. Gösterilen jantlar teslimat kapsamına dahil değildir.
             </Typography>
 

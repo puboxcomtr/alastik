@@ -16,13 +16,19 @@ import Breadcrumb from "@/src/components/category/Header/Breadcrumb";
 import CategorySlider from '@components/category/Top/Slider';
 import CategoryTop from '@components/category/Top/Content';
 import CategoryTireSearch from '@components/category/Top/CategoryTireSearch';
+import MobileFilterSort from '@components/category/Top/MobileFilterSort';
 import Pagination from '@/src/components/category/Pagination/MainPagination';
-import ProductCard from '@components/shop/Product/Showcase/Card';
+
 /* Utils */
 import { parseTireSize } from '@/src/config/routes';
 
-/* Types */
-import type { Category } from '@/src/types/category';
+/* Context */
+import { ViewModeProvider } from '@/src/context/ViewModeContext';
+
+/* Product Mode */ 
+import ViewModeProductList from '@components/shop/Product/Showcase/Mode';
+
+
 interface Props {
     params: Promise<{
         slug: string;
@@ -105,79 +111,86 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
         fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined,
         page: currentPage,
-        limit: showcaseSettings.productsPerPage
+        limit: showcaseSettings.productsPerPage,
+        // Sıralama parametreleri
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder
     });
 
     const displayProductCount = productsData?.pagination?.totalProducts ?? category.activeProductCount;
 
     return (
-        <Container className="category-page-container">
-            <Row className="row-fluid">
-                <Row className="my-3">
-                    <Col>
-                        <Breadcrumb
-                            categoryName={displayName}
-                            categorySlug={slug}
-                            parentCategory={parentCategory}
-                            sizeInfo={sizeInfo}
-                        />
-                    </Col>
-                </Row>
-
-                <Row>
-                    <Col lg={3}>
-                        <Sidebar hideEbatFilters={false} categorySlug={slug} />
-                    </Col>
-
-                    <Col lg={9}>
+        <>
+            <section id="breadcumb">
+                <Container>
+                    <div className="row-fluid">
                         <Row>
-                            <Col md={12}>
-                                <Col md={12}>
-                                    <CategorySlider sliderId={category.sliderId} />
-                                </Col>
-                            </Col>
-                            <Col md={12}>
-                                <CategoryTireSearch />
-                            </Col>
-
-                            <Col md={12}>
-                                <CategoryTop
-                                    productCount={displayProductCount}
+                            <Col lg={12}>
+                                <Breadcrumb
                                     categoryName={displayName}
+                                    categorySlug={slug}
+                                    parentCategory={parentCategory}
+                                    sizeInfo={sizeInfo}
                                 />
                             </Col>
                         </Row>
-
-                        {/* Ürün Listesi */}
-                        <Row className="row-cols-2 row-cols-md-3 row-cols-lg-3">
-                            {productsData?.products && productsData.products.length > 0 ? (
-                                productsData.products.map((product) => (
-                                    <Col key={product._key} className="px-2">
-                                        <ProductCard product={product} />
-                                    </Col>
-                                ))
-                            ) : (
-                                <Col md={12} className="text-center py-5">
-                                    <p className="text-muted">Bu filtreye uygun ürün bulunamadı.</p>
-                                </Col>
-                            )}
-                        </Row>
-
-                        {/* Pagination */}
-                        {productsData?.pagination && (
+                    </div>
+                </Container>
+            </section>
+            <ViewModeProvider>
+                <section id="category__detail">
+                    <Container className="category-page-container">
+                        <div className="row-fluid">
                             <Row>
-                                <Col md={12}>
-                                    <Pagination
-                                        currentPage={productsData.pagination.currentPage}
-                                        totalPages={productsData.pagination.totalPages}
-                                        totalProducts={productsData.pagination.totalProducts}
-                                    />
+                                <Col lg={3}>
+                                    <Sidebar hideEbatFilters={false} categorySlug={slug} />
+                                </Col>
+
+                                <Col lg={9}>
+                                    <Row>
+                                        <Col md={12}>
+                                            <Col md={12}>
+                                                <CategorySlider sliderId={category.sliderId} />
+                                            </Col>
+                                        </Col>
+                                        <Col md={12}>
+                                            <MobileFilterSort
+                                                hideEbatFilters={false}
+                                                categorySlug={slug}
+                                            />
+                                        </Col>
+                                        <Col md={12}>
+                                            <CategoryTireSearch />
+                                        </Col>
+
+                                        <Col md={12}>
+                                            <CategoryTop
+                                                productCount={displayProductCount}
+                                                categoryName={displayName}
+                                            />
+                                        </Col>
+                                    </Row>
+
+                                    {/* Ürün Listesi */}
+                                    <ViewModeProductList products={productsData?.products || []} />
+                                    {/* Pagination */}
+                                    {productsData?.pagination && (
+                                        <Row>
+                                            <Col md={12}>
+                                                <Pagination
+                                                    currentPage={productsData.pagination.currentPage}
+                                                    totalPages={productsData.pagination.totalPages}
+                                                    totalProducts={productsData.pagination.totalProducts}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
                                 </Col>
                             </Row>
-                        )}
-                    </Col>
-                </Row>
-            </Row>
-        </Container>
+                        </div>
+                    </Container>
+                </section>
+            </ViewModeProvider>
+        </>
     );
 }

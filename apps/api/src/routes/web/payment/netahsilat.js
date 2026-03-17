@@ -89,7 +89,7 @@ router.post('/3d-init', async (req, res) => {
             order.payment.installment = parseInt(installment);
             order.payment.referenceCode = result.referenceCode;
             order.payment.transactionId = result.transactionId;
-            order.paymentStatus = 'pending';
+            order.payment.status = 'pending';
             await order.save();
 
             return res.json({
@@ -128,7 +128,7 @@ router.post('/3d-callback', async (req, res) => {
                 // Siparişi bul ve güncelle
                 const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
                 if (order) {
-                    order.paymentStatus = 'paid';
+                    order.payment.status = 'paid';
                     order.status = 'confirmed';
                     order.payment.method = 'netahsilat_installment';
                     order.payment.paidAt = new Date();
@@ -146,7 +146,7 @@ router.post('/3d-callback', async (req, res) => {
         // Başarısız işlem
         const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
         if (order) {
-            order.paymentStatus = 'failed';
+            order.payment.status = 'failed';
             order.status = 'payment_failed';
             order.payment.errorMessage = errorMessage || 'Ödeme başarısız';
             order.payment.errorCode = errorCode;
@@ -182,7 +182,7 @@ router.post('/3d-commit', async (req, res) => {
             }).sort({ createdAt: -1 });
 
             if (order) {
-                order.paymentStatus = 'paid';
+                order.payment.status = 'paid';
                 order.status = 'confirmed';
                 order.payment.method = 'netahsilat_installment';
                 order.payment.paidAt = new Date();
@@ -206,7 +206,7 @@ router.post('/3d-commit', async (req, res) => {
         // Başarısız
         const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
         if (order) {
-            order.paymentStatus = 'failed';
+            order.payment.status = 'failed';
             order.status = 'payment_failed';
             order.payment.errorMessage = commitResult.message;
             await order.save();

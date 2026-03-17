@@ -24,6 +24,7 @@ import {
 } from '@mui/material'
 import { useDropzone } from 'react-dropzone'
 import { toast } from 'react-toastify'
+import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@/libs/api'
 
 interface MediaFile {
     id: string
@@ -46,10 +47,10 @@ interface MediaLibraryProps {
     maxSelection?: number
 }
 
-interface ApiResponse<T> {
+interface ApiResponse {
     success: boolean
     message?: string
-    files?: T[]
+    files?: MediaFile[]
     folders?: string[]
     total?: number
     page?: number
@@ -60,6 +61,7 @@ const MEDIA_FOLDERS = {
     urun: 'Ürün Görselleri',
     kategori: 'Kategori Görselleri',
     marka: 'Marka Görselleri',
+    blog: 'Blog Görselleri',
     general: 'Genel'
 } as const
 
@@ -72,7 +74,7 @@ const MediaLibrary = ({
     multiple = true,
     folder = 'urun',
     allowedTypes = ['image/*'],
-    maxFileSize = 10 * 1024 * 1024, // 10MB
+    maxFileSize = 10 * 1024 * 1024,
     title = 'Media Kütüphanesi',
     maxSelection = 10
 }: MediaLibraryProps) => {
@@ -86,33 +88,7 @@ const MediaLibrary = ({
     const [currentPage, setCurrentPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
     const [error, setError] = useState<string | null>(null)
-    const [refreshTrigger, setRefreshTrigger] = useState(0) // Cache yenileme tetikleyicisi
-
-    const API_BASE_URL = 'http://localhost:3082'
-    const getApiUrl = useCallback((endpoint: string) =>
-        `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, [])
-
-    const apiCall = useCallback(async <T,>(url: string, options?: RequestInit): Promise<ApiResponse<T>> => {
-        try {
-            const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options?.headers
-                },
-                ...options
-            })
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-            }
-
-            const data = await response.json()
-            return data
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Bilinmeyen hata'
-            throw new Error(message)
-        }
-    }, [])
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     // Medya dosyalarını getir
     const fetchMediaFiles = useCallback(async (searchQuery = '', page = 1, forceRefresh = false) => {
@@ -120,20 +96,17 @@ const MediaLibrary = ({
         setError(null)
 
         try {
-            const params = new URLSearchParams({
+            const url = API_ENDPOINTS.media.list({
                 folder: currentFolder,
                 search: searchQuery,
-                limit: '24', 
-                page: page.toString(),
+                page,
+                limit: 24,
                 sortBy: 'date',
                 sortOrder: 'desc'
             })
 
-            if (forceRefresh) {
-                params.append('_t', Date.now().toString())
-            }
-
-            const data = await apiCall<MediaFile>(getApiUrl(`/api/media/list?${params}`))
+            const timestamp = forceRefresh ? `&_t=${Date.now()}` : ''
+            const data: ApiResponse = await fetchAPI(`${url}${timestamp}`)
 
             if (data.success && data.files) {
                 setMediaFiles(data.files)
@@ -149,11 +122,12 @@ const MediaLibrary = ({
         } finally {
             setLoading(false)
         }
-    }, [currentFolder, apiCall, getApiUrl])
+    }, [currentFolder])
 
+    // Klasörleri getir
     const fetchFolders = useCallback(async () => {
         try {
-            const data = await apiCall<never>(getApiUrl('/api/media/folders'))
+            const data: ApiResponse = await fetchAPI(API_ENDPOINTS.media.folders())
 
             if (data.success && data.folders) {
                 setFolders(data.folders)
@@ -161,7 +135,7 @@ const MediaLibrary = ({
         } catch (error) {
             setFolders(Object.keys(MEDIA_FOLDERS))
         }
-    }, [apiCall, getApiUrl])
+    }, [])
 
     // Effects
     useEffect(() => {
@@ -169,7 +143,7 @@ const MediaLibrary = ({
             setCurrentPage(1)
             setSearchTerm('')
             setSelectedFiles([])
-            fetchMediaFiles('', 1, true) 
+            fetchMediaFiles('', 1, true)
             fetchFolders()
         }
     }, [open, currentFolder, fetchMediaFiles, fetchFolders, refreshTrigger])
@@ -179,7 +153,7 @@ const MediaLibrary = ({
             if (currentPage === 1) {
                 fetchMediaFiles(searchTerm, 1)
             } else {
-                setCurrentPage(1) 
+                setCurrentPage(1)
             }
         }, 500)
 
@@ -198,7 +172,7 @@ const MediaLibrary = ({
         setCurrentFolder(newFolder)
         setSelectedFiles([])
         setCurrentPage(1)
-        setRefreshTrigger(prev => prev + 1) 
+        setRefreshTrigger(prev => prev + 1)
     }
 
     const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
@@ -220,11 +194,18 @@ const MediaLibrary = ({
                 }
             })
         } else {
-            setSelectedFiles([file])
+            setSelectedFiles(prev => {
+                const isSelected = prev.find(f => f.id === file.id)
+                if (isSelected) {
+                    return []
+                } else {
+                    return [file]
+                }
+            })
         }
     }
 
-    // Dosya yükleme - GÜNCELLENDİ
+    // Dosya yükleme
     const uploadFiles = async (files: File[]) => {
         if (files.length === 0) return
 
@@ -237,7 +218,7 @@ const MediaLibrary = ({
                 formData.append('files', file)
             })
 
-            const response = await fetch(getApiUrl(`/api/media/upload?folder=${currentFolder}`), {
+            const response = await fetch(API_ENDPOINTS.media.upload(currentFolder), {
                 method: 'POST',
                 body: formData
             })
@@ -246,20 +227,18 @@ const MediaLibrary = ({
                 throw new Error(`Upload hatası: ${response.status}`)
             }
 
-            const data: ApiResponse<MediaFile> = await response.json()
+            const data: ApiResponse = await response.json()
 
             if (data.success) {
                 toast.success(`${files.length} dosya başarıyla yüklendi`)
 
-                // Upload sonrası state'i resetle ve zorla yenile
                 setSearchTerm('')
                 setCurrentPage(1)
                 setSelectedFiles([])
 
-                // 1 saniye bekle (WebP dönüşümü için) sonra yenile
                 setTimeout(() => {
                     setRefreshTrigger(prev => prev + 1)
-                    fetchMediaFiles('', 1, true) // Zorla yenile
+                    fetchMediaFiles('', 1, true)
                 }, 1000)
 
             } else {
@@ -271,6 +250,33 @@ const MediaLibrary = ({
             toast.error(message)
         } finally {
             setUploading(false)
+        }
+    }
+    const handleDeleteFile = async (fileId: string, fileName: string) => {
+        if (!confirm(`"${fileName}" dosyasını kalıcı olarak silmek istediğinize emin misiniz?`)) {
+            return
+        }
+        try {
+            const response = await fetch(API_ENDPOINTS.media.delete(fileId), {
+                method: 'DELETE'
+            })
+
+            if (!response.ok) {
+                throw new Error(`Silme hatası: ${response.status}`)
+            }
+
+            const data = await response.json()
+
+            if (data.success) {
+                toast.success('Dosya başarıyla silindi')
+                setSelectedFiles(prev => prev.filter(f => f.id !== fileId))
+                fetchMediaFiles(searchTerm, currentPage)
+            } else {
+                throw new Error(data.message || 'Silme hatası')
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Dosya silinirken hata oluştu'
+            toast.error(message)
         }
     }
 
@@ -335,17 +341,14 @@ const MediaLibrary = ({
             </DialogTitle>
 
             <DialogContent>
-                {/* Hata gösterimi */}
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
                         {error}
                     </Alert>
                 )}
 
-                {/* Kontroller */}
                 <Box sx={{ mb: 3 }}>
                     <Grid container spacing={2} alignItems="center">
-                        {/* Klasör seçimi */}
                         <Grid item xs={12} sm={4}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Klasör</InputLabel>
@@ -363,7 +366,6 @@ const MediaLibrary = ({
                             </FormControl>
                         </Grid>
 
-                        {/* Arama */}
                         <Grid item xs={12} sm={8}>
                             <TextField
                                 fullWidth
@@ -379,7 +381,6 @@ const MediaLibrary = ({
                     </Grid>
                 </Box>
 
-                {/* Upload Area */}
                 <Box
                     {...getRootProps()}
                     sx={{
@@ -407,9 +408,6 @@ const MediaLibrary = ({
                             <Typography variant="h6" sx={{ mt: 1 }}>
                                 {isDragActive ? 'Dosyaları buraya bırakın' : 'Dosya yüklemek için tıklayın veya sürükleyin'}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Maksimum dosya boyutu: {formatFileSize(maxFileSize)}
-                            </Typography>
                             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                                 Klasör: {MEDIA_FOLDERS[currentFolder]} • Sadece WebP gösterilir
                             </Typography>
@@ -417,7 +415,6 @@ const MediaLibrary = ({
                     )}
                 </Box>
 
-                {/* Seçilen dosyalar */}
                 {selectedFiles.length > 0 && (
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -438,7 +435,6 @@ const MediaLibrary = ({
                     </Box>
                 )}
 
-                {/* Dosya listesi - 6 Sütunlu Grid */}
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                         <CircularProgress />
@@ -451,7 +447,6 @@ const MediaLibrary = ({
                                 return (
                                     <Grid item xs={2} key={file.id}>
                                         <Box
-                                            onClick={() => handleFileSelect(file)}
                                             sx={{
                                                 position: 'relative',
                                                 cursor: 'pointer',
@@ -462,11 +457,13 @@ const MediaLibrary = ({
                                                 transition: 'all 0.2s',
                                                 '&:hover': {
                                                     borderColor: 'primary.main',
-                                                    transform: 'scale(1.02)'
+                                                    transform: 'scale(1.02)',
+                                                    '& .delete-button': {
+                                                        opacity: 1
+                                                    }
                                                 }
                                             }}
                                         >
-                                            {/* Kare görsel container */}
                                             <Box
                                                 sx={{
                                                     aspectRatio: '1',
@@ -475,10 +472,7 @@ const MediaLibrary = ({
                                                 }}
                                             >
                                                 <img
-                                                    src={file.url.includes('/api/proxy-image')
-                                                        ? file.url
-                                                        : `/api/proxy-image?url=${encodeURIComponent(file.url)}`
-                                                    }
+                                                    src={getImageUrl(file.url)}
                                                     alt={file.filename}
                                                     style={{
                                                         width: '100%',
@@ -488,10 +482,11 @@ const MediaLibrary = ({
                                                     loading="lazy"
                                                     onError={(e) => {
                                                         const target = e.target as HTMLImageElement
-                                                        target.src = '/placeholder-image.png' // Fallback image
+                                                        target.src = '/placeholder-image.png'
                                                     }}
                                                 />
 
+                                                {/* Seçim işareti */}
                                                 {isSelected && (
                                                     <Box
                                                         sx={{
@@ -505,15 +500,51 @@ const MediaLibrary = ({
                                                             height: 24,
                                                             display: 'flex',
                                                             alignItems: 'center',
-                                                            justifyContent: 'center'
+                                                            justifyContent: 'center',
+                                                            zIndex: 2
                                                         }}
                                                     >
                                                         <i className='ri-check-line' style={{ fontSize: '14px' }} />
                                                     </Box>
                                                 )}
+                                                {/* Silme butonu */}
+                                                <IconButton
+                                                    className="delete-button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleDeleteFile(file.id, file.filename)
+                                                    }}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 8,
+                                                        left: 8,
+                                                        backgroundColor: 'error.main',
+                                                        color: 'white',
+                                                        opacity: 0,
+                                                        transition: 'opacity 0.2s',
+                                                        zIndex: 2,
+                                                        '&:hover': {
+                                                            backgroundColor: 'error.dark'
+                                                        }
+                                                    }}
+                                                    size="small"
+                                                >
+                                                    <i className='ri-delete-bin-line' style={{ fontSize: '14px' }} />
+                                                </IconButton>
+                                                {/* Seçim için tıklama alanı */}
+                                                <Box
+                                                    onClick={() => handleFileSelect(file)}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: 0,
+                                                        right: 0,
+                                                        bottom: 0,
+                                                        zIndex: 1
+                                                    }}
+                                                />
                                             </Box>
 
-                                            {/* Alt bilgi paneli - Beyaz arkaplan */}
                                             <Box
                                                 sx={{
                                                     backgroundColor: 'white',
@@ -561,7 +592,6 @@ const MediaLibrary = ({
                             })}
                         </Grid>
 
-                        {/* Sayfalama */}
                         {totalPages > 1 && (
                             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                                 <Pagination

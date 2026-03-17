@@ -13,6 +13,9 @@ interface Payment {
     methodText: string
     status: string
     statusText: string
+    gateway?: string
+    installment?: number
+    referenceCode?: string
 }
 
 interface PaymentInformationProps {
@@ -39,7 +42,13 @@ const PaymentInformation = ({ payment, isGuest, ipAddress, shippingMethod }: Pay
                     <ListItem>
                         <ListItemText
                             primary='Ödeme Türü:'
-                            secondary={payment?.methodText || '-'}
+                            secondary={
+                                [
+                                    payment?.methodText,
+                                    payment?.gateway ? `(${payment.gateway.charAt(0).toUpperCase() + payment.gateway.slice(1)})` : null,
+                                    payment?.installment && payment.installment > 1 ? `- ${payment.installment} Taksit` : null
+                                ].filter(Boolean).join(' ') || '-'
+                            }
                             sx={listItemSx}
                         />
                     </ListItem>

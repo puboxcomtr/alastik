@@ -22,6 +22,7 @@ const webBlogSchema = new mongoose.Schema({
     viewCount: { type: Number, default: 0 },
     wheelSizePattern: { type: String, index: true },
     featuredImage: String,
+    showOnHomepage: { type: Boolean, default: false },
     author: String,
     tags: [String]
 }, {

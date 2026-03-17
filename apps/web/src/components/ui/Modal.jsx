@@ -27,16 +27,13 @@ export default function Modal() {
                                         <li><strong>16</strong> - Jant çapı (inç)</li>
                                     </ul>
                                 </div>
-                                <div className="col-md-6">
-                                    <img src="/assets/img/demo2.jpg" alt="Lastik Ebat Rehberi" className="img-fluid rounded" />
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             {/* Tire Search Modal */}
-            
+
         </>
     );
 }

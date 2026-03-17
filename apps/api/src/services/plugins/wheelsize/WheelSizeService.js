@@ -241,6 +241,18 @@ class WheelSizeService {
             // Marka > Model > Yıl grupla
             const grouped = {};
 
+            // Marka logolarını çek
+            let makesLogoMap = {};
+            try {
+                const allMakes = await this.request('/makes/', { region: this.defaultRegion });
+                if (Array.isArray(allMakes)) {
+                    allMakes.forEach(m => {
+                        if (m.slug && m.logo) makesLogoMap[m.slug] = m.logo;
+                    });
+                }
+            } catch (e) {
+                console.warn('Marka logoları alınamadı:', e.message);
+            }
             vehicles.forEach(v => {
                 const makeSlug = v.make?.slug || 'other';
                 const makeName = v.make?.name || 'Diger';
@@ -248,7 +260,7 @@ class WheelSizeService {
                 const modelName = v.name || 'Model';
 
                 if (!grouped[makeSlug]) {
-                    grouped[makeSlug] = { name: makeName, slug: makeSlug, models: {} };
+                    grouped[makeSlug] = { name: makeName, slug: makeSlug, logo: makesLogoMap[makeSlug] || null, models: {} };
                 }
 
                 if (!grouped[makeSlug].models[modelSlug]) {

@@ -3,31 +3,46 @@
 import { useState } from "react";
 /* Library */
 import { Offcanvas, Button } from "react-bootstrap";
+import { Col, Container, Row } from 'react-bootstrap';
 /* MUI */
-import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
+import { TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
 
 export default function CategoryTireSearch() {
     return (
-        <Grid container className="d-flex align-items-center border-bottom mb-4 p-4" style={{ boxShadow: "0 0 24px 0 rgba(0,0,0,.1)" }}>
-            <Grid size={8}>
-                <Grid container alignItems="center">
-                    <Grid size={1}>
-                        <i className="ri-chat-search-line fs-1 text-primary"></i>
-                    </Grid>
-                    <Grid size={11}>
-                        <Typography className="fw-semibold" sx={{ fontSize: "15px", marginLeft: "20px" }}>
-                            Ücretsiz ve online lastik danışmanlığı aracınıza özel çözümler sunar
-                        </Typography>
-                    </Grid>
-                </Grid>
-            </Grid>
-            <Grid size={4} className="d-flex justify-content-end">
-                <Button variant="outline-primary" color="primary"
-                    data-bs-toggle="modal"
-                    data-bs-target="#tireSearch">
-                    Uygun Lastik Bul
-                </Button>
-            </Grid>
-        </Grid>
+        <Container className="border-bottom mb-4 pb-3 px-0">
+            <Row className="align-items-center">
+                <Col xs={6} md={8}>
+                    <Row className="align-items-center ">
+                        <Col md={1} className="d-none d-md-block">
+                            <i className="ri-chat-search-line fs-1 text-primary"></i>
+                        </Col>
+                        <Col xs={12} md={11}>
+                            <Typography
+                                className="fw-semibold"
+                                sx={{
+                                    fontSize: { xs: "13px", md: "15px" },
+                                    marginLeft: { xs: "10px", md: "20px" }
+                                }}
+                            >
+                                Aracınıza en uygun lastiği hemen bulun.
+                            </Typography>
+                        </Col>
+                    </Row>
+                </Col>
+                <Col xs={6} md={4} className="d-flex justify-content-end">
+                    <Button
+                        variant="outline-primary"
+                        color="primary"
+                        className="btn-sm btn-md-xl btn-xl"
+                        onClick={() => {
+                            const event = new Event('openTireSearchModal');
+                            window.dispatchEvent(event);
+                        }}
+                    >
+                        Uygun Lastik Bul
+                    </Button>
+                </Col>
+            </Row>
+        </Container>
     );
 }

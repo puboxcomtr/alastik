@@ -2,7 +2,7 @@
 import React from 'react';
 
 /* Components */
-import SingleShowcase from '@components/shop/Product/Showcase/Single';
+import SingleShowcase from '@/src/components/shop/Product/Showcase/Single';
 
 type Props = {
   showcaseKey?: 'first' | 'second' | 'third' | 'fourth' | 'fifth';

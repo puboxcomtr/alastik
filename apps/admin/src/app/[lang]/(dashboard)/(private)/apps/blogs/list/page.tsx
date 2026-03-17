@@ -6,6 +6,7 @@ import classnames from 'classnames'
 
 /* API */
 import { fetchBlogs, deleteBlog, type BlogType } from '@/utils/api/blogs'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 /* MUI */
 import Card from '@mui/material/Card'
@@ -18,6 +19,7 @@ import Typography from '@mui/material/Typography'
 import Tooltip from '@mui/material/Tooltip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
+import Switch from '@mui/material/Switch'
 import type { TextFieldProps } from '@mui/material/TextField'
 
 /* Dialog */
@@ -146,7 +148,28 @@ const BlogListTable = () => {
             setLoading(false)
         }
     }
+    const handleHomepageToggle = async (blog: BlogType) => {
+        try {
+            const newValue = !blog.showOnHomepage
+            const result = await fetchAPI(API_ENDPOINTS.blogs.detail(blog._id), {
+                method: 'PUT',
+                body: JSON.stringify({ showOnHomepage: newValue })
+            })
 
+            if (result.success) {
+                setData(prev =>
+                    prev.map(b =>
+                        b._id === blog._id ? { ...b, showOnHomepage: newValue } : b
+                    )
+                )
+                toast.success(newValue ? 'Blog Anasayfada Gösterilecek' : 'Blog Anasayfadan Kaldırıldı')
+            } else {
+                toast.error('Güncelleme Başarısız')
+            }
+        } catch (err) {
+            toast.error('Güncelleme başarısız')
+        }
+    }
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'published':
@@ -221,7 +244,21 @@ const BlogListTable = () => {
                     />
                 )
             }),
+            columnHelper.accessor('showOnHomepage' as any, {
+                header: 'Anasayfa',
+                cell: ({ row }) => (
+                    <Tooltip title={row.original.showOnHomepage ? 'Anasayfadan Kaldır' : 'Anasayfada Göster'}>
+                        <Switch
+                            checked={row.original.showOnHomepage || false}
+                            onChange={() => handleHomepageToggle(row.original)}
+                            size='small'
+                            color='success'
+                        />
+                    </Tooltip>
+                )
+            }),
             columnHelper.accessor('viewCount', {
+                header: 'Görüntülenme',
                 header: 'Görüntülenme',
                 cell: ({ row }) => (
                     <Typography>{row.original.viewCount}</Typography>

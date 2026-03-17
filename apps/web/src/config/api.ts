@@ -69,13 +69,28 @@ export const API_ENDPOINTS = {
         modifications: () => `${getBaseUrl()}/wheelsize/modifications`,
     },
     blogs: {
+        homepage: () => `${getBaseUrl()}/blogs/homepage`,
+        list: () => `${getBaseUrl()}/blogs`,
+        detail: (slug: string) => `${getBaseUrl()}/blogs/${encodeURIComponent(slug)}`,
         byPattern: (pattern: string) => `${getBaseUrl()}/blogs/by-pattern/${encodeURIComponent(pattern)}`,
+    },
+    pages: {
+        detail: (slug: string) => `${getBaseUrl()}/pages/${encodeURIComponent(slug)}`,
     },
     payment: {
         bankAccounts: () => `${getBaseUrl()}/payment-methods/bank-transfer`,
-        threeDInit: () => `${getBaseUrl().replace('/api', '')}/web/payments/netahsilat/3d-init`,
-        threeDCommit: () => `${getBaseUrl().replace('/api', '')}/web/payments/netahsilat/3d-commit`,
-        binCheck: (bin: string) => `${getBaseUrl().replace('/api', '')}/web/payments/netahsilat/bin/${bin}`,
+        // Netahsilat
+        threeDInit: () => `${getBaseUrl()}/web/payments/netahsilat/3d-init`,
+        threeDCommit: () => `${getBaseUrl()}/web/payments/netahsilat/3d-commit`,
+        binCheck: (bin: string) => `${getBaseUrl()}/web/payments/netahsilat/bin/${bin}`,
+        // Nkolay
+        nkolayInit: () => `${getBaseUrl()}/web/payments/nkolay/3d-init`,
+    },
+    search: {
+        autocomplete: () => `${getBaseUrl()}/search/autocomplete`,
+        track: () => `${getBaseUrl()}/search/track`,
+        results: () => `${getBaseUrl()}/search/results`,
+        page: (query: string) => `/arama?q=${encodeURIComponent(query)}`,
     },
     order: {
         create: () => `${getBaseUrl()}/order`,
@@ -117,16 +132,17 @@ export const API_ENDPOINTS = {
         siteStatus: () => `${getBaseUrl()}/general-settings/site-status`,
         byGroup: (group: string) => `${getBaseUrl()}/general-settings/group/${group}`,
     },
+    favourites: {
+        toggle: () => `${getBaseUrl()}/favourites/toggle`,
+        list: () => `${getBaseUrl()}/favourites`,
+        check: (keys: string) => `${getBaseUrl()}/favourites/check?keys=${keys}`,
+    },
     address: {
         list: (userId: string) => `${getBaseUrl()}/address/user/${userId}`,
         detail: (addressId: string) => `${getBaseUrl()}/address/${addressId}`,
         create: () => `${getBaseUrl()}/address`,
         update: (addressId: string) => `${getBaseUrl()}/address/${addressId}`,
         delete: (addressId: string) => `${getBaseUrl()}/address/${addressId}`,
-    },
-    search: {
-        autocomplete: () => `${getBaseUrl()}/search/autocomplete`,
-        track: () => `${getBaseUrl()}/search/track`,
     },
     auth: {
         register: () => `${getBaseUrl()}/auth/register`,
@@ -145,6 +161,7 @@ export const API_ENDPOINTS = {
     menus: {
         header: () => `${getBaseUrl()}/menus/header`,
     },
+
     admin: {
         settingsGeneral: () => `${getBaseUrl()}/admin/settings/general`,
     },

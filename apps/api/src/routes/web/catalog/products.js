@@ -6,7 +6,7 @@ const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
 const { getProductListFilters } = require('../../../config/diaFilters');
-
+const Setting = require('../../../models/admin/settings/Setting');
 
 router.get('/filter', async (req, res) => {
     try {
@@ -33,12 +33,20 @@ router.get('/filter', async (req, res) => {
             marka,
             fiyatMin,
             fiyatMax,
-            limit
+            limit,
+            // Sıralama parametreleri
+            sortBy,
+            sortOrder
         } = req.query;
 
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
         const filter = getProductListFilters();
+
+        console.log('=== SORTING DEBUG ===');
+        console.log('sortBy:', sortBy);
+        console.log('sortOrder:', sortOrder);
+        console.log('====================');
 
         // ==========================================
         // ÜRÜN TİPİ TESPİTİ (kategorideki ürünlerden ozelkod7kodu)
@@ -82,6 +90,11 @@ router.get('/filter', async (req, res) => {
         }
 
         const isJantCategory = productType === 'JANT';
+
+        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
+        if (hidePricelessSetting?.value === true) {
+            filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
+        }
 
         const andConditions = [];
         if (webCategory?.diaCategory) {
@@ -156,10 +169,12 @@ router.get('/filter', async (req, res) => {
 
             // Mevsim filtresi
             if (mevsim) {
-                const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
+                const mevsimList = mevsim.split(',').map(m => m.trim()).filter(Boolean);
                 if (mevsimList.length > 0) {
                     andConditions.push({
-                        'diaData.ozelkod1kodu': { $in: mevsimList }
+                        'diaData.ozelkod1kodu': {
+                            $in: mevsimList.map(m => new RegExp(`^${m}$`, 'i'))
+                        }
                     });
                 }
             }
@@ -283,8 +298,23 @@ router.get('/filter', async (req, res) => {
         const totalProducts = await WebProduct.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limitNum);
 
+        // Sıralama 
+        let sortQuery = {};
+        if (sortBy === 'price') {
+            sortQuery = { 'diaData.m_birimler.0.fiyat4': sortOrder === 'asc' ? 1 : -1 };
+        } else if (sortBy === 'sales') {
+            sortQuery = { 'customData.salesCount': -1, 'diaData.gercek_stok': -1 };
+        } else if (sortBy === 'rating') {
+            sortQuery = { 'customData.reviewStats.averageRating': -1, 'customData.reviewStats.reviewCount': -1 };
+        } else if (sortBy === 'reviews') {
+            sortQuery = { 'customData.reviewStats.reviewCount': -1, 'customData.reviewStats.averageRating': -1 };
+        } else {
+            sortQuery = { 'diaData.gercek_stok': -1, 'createdAt': -1 };
+        }
+
         const products = await WebProduct.find(filter)
             .select('_key customData diaData')
+            .sort(sortQuery)
             .skip(skip)
             .limit(limitNum)
             .lean();

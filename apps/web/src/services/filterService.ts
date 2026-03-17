@@ -1,4 +1,3 @@
-// apps/web/src/services/filterService.ts
 import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface FilterOption {
@@ -33,12 +32,14 @@ export interface TireFilterOptions {
 
 export async function getTireFilterOptions(
     categorySlug?: string,
-    tagSlug?: string
+    tagSlug?: string,
+    brandSlug?: string
 ): Promise<TireFilterOptions | null> {
     try {
         const params = new URLSearchParams();
         if (categorySlug) params.append('category', categorySlug);
         if (tagSlug) params.append('tag', tagSlug);
+        if (brandSlug) params.append('brand', brandSlug);
 
         const queryString = params.toString();
         const url = `${API_ENDPOINTS.filters.tireOptions()}${queryString ? `?${queryString}` : ''}`;

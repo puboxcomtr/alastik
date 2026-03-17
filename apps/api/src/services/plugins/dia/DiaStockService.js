@@ -630,6 +630,9 @@ class DiaStockService {
       // Web görünüm - mevcut değerleri koru
       webOrder: existingCustomData?.webOrder || 0,
       webVisible: existingCustomData?.webVisible !== undefined ? existingCustomData.webVisible : true,
+      delivery: existingCustomData?.delivery && existingCustomData.delivery !== 'next_week'
+        ? existingCustomData.delivery
+        : (diaProduct.stokkartkodu && diaProduct.stokkartkodu.includes('-XMLA') ? 'next_day' : 'same_day'),
 
       // İçerik - her zaman null, manuel doldurulur
       customDescription: existingCustomData?.customDescription || null,
@@ -1160,6 +1163,44 @@ class DiaStockService {
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
   }
   /**
+ * Özelkod hash'i oluştur
+ */
+  generateOzelkodHash(product) {
+    const data = {
+      marka: product.marka || '',
+      anabarkod: product.anabarkod || '',
+      ozelkod1: product.ozelkod1 || '',
+      ozelkod1kodu: product.ozelkod1kodu || '',
+      ozelkod2: product.ozelkod2 || '',
+      ozelkod2kodu: product.ozelkod2kodu || '',
+      ozelkod3: product.ozelkod3 || '',
+      ozelkod3kodu: product.ozelkod3kodu || '',
+      ozelkod4: product.ozelkod4 || '',
+      ozelkod4kodu: product.ozelkod4kodu || '',
+      ozelkod5: product.ozelkod5 || '',
+      ozelkod5kodu: product.ozelkod5kodu || '',
+      ozelkod6: product.ozelkod6 || '',
+      ozelkod6kodu: product.ozelkod6kodu || '',
+      ozelkod7: product.ozelkod7 || '',
+      ozelkod7kodu: product.ozelkod7kodu || '',
+      ozelkod8: product.ozelkod8 || '',
+      ozelkod8kodu: product.ozelkod8kodu || '',
+      ozelkod9: product.ozelkod9 || '',
+      ozelkod9kodu: product.ozelkod9kodu || '',
+      ozelkod10: product.ozelkod10 || '',
+      ozelkod10kodu: product.ozelkod10kodu || '',
+      ozelkod11: product.ozelkod11 || '',
+      ozelkod11kodu: product.ozelkod11kodu || '',
+      m_urunOzellikleri: JSON.stringify(
+        (product.m_urunOzellikleri || []).map(o => ({
+          ad: o.ozellikadi,
+          deger: o.detayaciklama
+        }))
+      )
+    };
+    return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
+  }
+  /**
    * Marka için slug oluştur
    */
   generateBrandSlug(brandName) {
@@ -1275,7 +1316,26 @@ class DiaStockService {
         totalFeatures: features.length,
         duration: `${duration}ms`
       });
+      const validFeaturePairs = features.map(f => ({
+        featureName: f._id.featureName,
+        featureValue: f._id.featureValue
+      }));
+      if (validFeaturePairs.length > 0) {
+        const deleteResult = await WebFeature.deleteMany({
+          syncSource: 'dia_sync',
+          $nor: validFeaturePairs.map(pair => ({
+            featureName: pair.featureName,
+            featureValue: pair.featureValue
+          }))
+        });
 
+        if (deleteResult.deletedCount > 0) {
+          this.logger.info('Eski özellikler temizlendi', {
+            deletedCount: deleteResult.deletedCount,
+            operationId
+          });
+        }
+      }
       return {
         success: true,
         created,
@@ -1430,8 +1490,10 @@ class DiaStockService {
         // Hash bazlı değişiklik kontrolü
         const newHash = this.generateProductHash(item);
         const existingHash = diaHashMap[item._key];
+        const hasWebProduct = !!webProductMap[item._key];
 
-        if (existingHash && existingHash === newHash) {
+        // Hash aynı VE webproduct zaten varsa atla
+        if (existingHash && existingHash === newHash && hasWebProduct) {
           skippedCount++;
           continue;
         }
@@ -1724,13 +1786,135 @@ class DiaStockService {
       return [];
     }
   }
+
+  /**
+   * Sadece Kategorileri Güncelle
+   * 3 collection birden: diastocks + webproducts + webcategories
+   */
+  async syncOnlyCategories() {
+    const operationId = `sync_categories_only_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== SADECE KATEGORİ SYNC BAŞLANGICI ===', { operationId });
+
+      let totalProcessed = 0;
+      let diaUpdated = 0;
+      let webUpdated = 0;
+      let offset = 0;
+      let hasMore = true;
+      let batchCount = 0;
+
+      while (hasMore) {
+        batchCount++;
+
+        const batchData = await this.fetchStockFromDia({
+          limit: 1000,
+          offset: offset
+        });
+
+        if (!batchData || batchData.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        const diaOps = [];
+        const webOps = [];
+
+        for (const product of batchData) {
+          if (!product._key) continue;
+
+          const kategoriler = product.m_kategoriler || [];
+
+          diaOps.push({
+            updateOne: {
+              filter: { _key: product._key },
+              update: {
+                $set: {
+                  m_kategoriler: kategoriler,
+                  urunagaci1: product.urunagaci1 || '',
+                  urunagaclari: product.urunagaclari || '',
+                  'syncInfo.lastSyncDate': new Date(),
+                  'syncInfo.syncStatus': 'synced',
+                  'syncInfo.syncType': 'categories_only'
+                }
+              }
+            }
+          });
+
+          webOps.push({
+            updateOne: {
+              filter: { _key: product._key },
+              update: {
+                $set: {
+                  'diaData.m_kategoriler': kategoriler,
+                  'syncInfo.lastDiaSync': new Date(),
+                  'syncInfo.diaStatus': 'synced'
+                }
+              }
+            }
+          });
+        }
+
+        if (diaOps.length > 0) {
+          const diaResult = await DiaStock.bulkWrite(diaOps, { ordered: false });
+          diaUpdated += diaResult.modifiedCount || 0;
+        }
+        if (webOps.length > 0) {
+          const webResult = await WebProduct.bulkWrite(webOps, { ordered: false });
+          webUpdated += webResult.modifiedCount || 0;
+        }
+
+        totalProcessed += batchData.length;
+        offset += 1000;
+
+        this.logger.info(`Categories Batch ${batchCount}: ${diaOps.length} işlendi`, {
+          operationId,
+          diaUpdated,
+          webUpdated
+        });
+
+        await this.sleep(100);
+      }
+
+      this.logger.info('WebCategories collection yeniden senkronize ediliyor...', { operationId });
+      const categoryResult = await this.syncCategoriesToWebCategory();
+
+      const duration = Date.now() - startTime;
+
+      this.logger.info('=== SADECE KATEGORİ SYNC TAMAMLANDI ===', {
+        operationId,
+        totalProcessed,
+        diaUpdated,
+        webUpdated,
+        webCategoriesCreated: categoryResult.created,
+        webCategoriesUpdated: categoryResult.updated,
+        duration: `${duration}ms`
+      });
+
+      return {
+        success: true,
+        processed: totalProcessed,
+        diaUpdated,
+        webUpdated,
+        webCategories: categoryResult,
+        type: 'categories_only',
+        duration: `${duration}ms`,
+        message: `${diaUpdated} DiaStock + ${webUpdated} WebProduct kategorisi güncellendi, ${categoryResult.created} yeni + ${categoryResult.updated} mevcut web kategorisi senkronize edildi`
+      };
+
+    } catch (error) {
+      this.logger.error('Kategori sync hatası:', { error: error.message, operationId });
+      throw error;
+    }
+  }
   /**
    * Tam senkronizasyon işlemi - FİLTRELENMİŞ *
    */
   async fullSync(progressCallback = null) {
     try {
       const startTime = Date.now();
-      const totalSteps = 5;
+      const totalSteps = 7;
       let currentStep = 0;
 
       const reportProgress = (step, message, detail = {}) => {
@@ -1757,6 +1941,11 @@ class DiaStockService {
       const webProductResult = await this.fetchAndSyncIncrementally();
       reportProgress(2, 'Web Sitesine aktarımı tamamlandı', { processed: webProductResult.processed });
 
+      // 2.5 Eksik ürünleri diastocks'tan webproducts'a aktar
+      reportProgress(2, 'Eksik ürünler kontrol ediliyor...');
+      const missingResult = await this.syncMissingWebProducts();
+      reportProgress(2, 'Eksik ürün aktarımı tamamlandı', { created: missingResult.created });
+
       // 3. Kategorileri senkronize et
       reportProgress(2, 'Kategori senkronizasyonu başlıyor...');
       const categoryResult = await this.syncCategoriesToWebCategory();
@@ -1768,9 +1957,20 @@ class DiaStockService {
       reportProgress(4, 'Marka senkronizasyonu tamamlandı', { created: brandResult.created, updated: brandResult.updated });
 
       // 5. H/P olanları temizle
+      // 5. H/P olanları temizle
       reportProgress(4, 'Ürün temizleme başlıyor...');
       const deletedCount = await this.archiveStaleProducts();
-      reportProgress(5, 'Tam senkronizasyon tamamlandı', { deleted: deletedCount });
+      reportProgress(5, 'Ürün temizleme tamamlandı', { deleted: deletedCount });
+
+      // 6. Özelkod senkronizasyonu
+      reportProgress(5, 'Özelkod senkronizasyonu başlıyor...');
+      const ozelkodResult = await this.syncOnlyOzelkodlar();
+      reportProgress(6, 'Özelkod senkronizasyonu tamamlandı', { updated: ozelkodResult.updated, skipped: ozelkodResult.skipped });
+
+      // 7. Ürün özellikleri (feature) senkronizasyonu
+      reportProgress(6, 'Ürün özellikleri senkronizasyonu başlıyor...');
+      const featureResult = await this.syncFeaturesToWebFeature();
+      reportProgress(7, 'Tam senkronizasyon tamamlandı', { featuresCreated: featureResult.created, featuresUpdated: featureResult.updated });
 
       const endTime = Date.now();
 
@@ -1781,6 +1981,8 @@ class DiaStockService {
         categories: categoryResult,
         brands: brandResult,
         deleted: deletedCount,
+        ozelkodlar: ozelkodResult,
+        features: featureResult,
         timestamp: new Date()
       };
 
@@ -1880,40 +2082,197 @@ class DiaStockService {
     }
   }
   /**
+ * diastocks'ta olup webproducts'ta olmayan ürünleri aktar
+ */
+  async syncMissingWebProducts() {
+    const operationId = `sync_missing_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== EKSİK ÜRÜN AKTARIMI BAŞLANGICI ===', { operationId });
+
+      // diastocks'taki E ürün key'lerini al
+      const diaKeys = await DiaStock.distinct('_key', { durum: 'A', ozelkod11kodu: 'E' });
+
+      // webproducts'taki key'leri al
+      const webKeys = await WebProduct.distinct('_key');
+      const webKeySet = new Set(webKeys);
+
+      // Eksik key'leri bul
+      const missingKeys = diaKeys.filter(k => !webKeySet.has(k));
+
+      this.logger.info(`Eksik ürün sayısı: ${missingKeys.length}`, { operationId });
+
+      if (missingKeys.length === 0) {
+        return { success: true, created: 0, duration: '0ms' };
+      }
+
+      let created = 0;
+      let errors = 0;
+
+      // Batch içinde seoUrl çakışmasını önlemek için set tut
+      const usedSeoUrls = new Set();
+
+      // Batch halinde işle
+      for (let i = 0; i < missingKeys.length; i += 50) {
+        const batchKeys = missingKeys.slice(i, i + 50);
+
+        // diastocks'tan ürünleri çek
+        const diaProducts = await DiaStock.find({ _key: { $in: batchKeys } }).lean();
+
+        for (const dia of diaProducts) {
+          try {
+            const transformedDiaData = this.transformDiaDataForWeb(dia);
+            let seoUrl = await this.generateUniqueSeoUrl(dia.aciklama || dia.stokkartkodu, dia._key);
+
+            // Batch içi çakışma kontrolü
+            let counter = 1;
+            while (usedSeoUrls.has(seoUrl)) {
+              seoUrl = seoUrl.replace(/-\d+$/, '') + '-' + (++counter);
+            }
+            usedSeoUrls.add(seoUrl);
+
+            const delivery = (dia.stokkartkodu && dia.stokkartkodu.includes('-XMLA')) ? 'next_day' : 'same_day';
+
+            try {
+              await WebProduct.updateOne(
+                { _key: dia._key },
+                {
+                  $set: {
+                    _key: dia._key,
+                    diaData: transformedDiaData,
+                    customData: {
+                      seoUrl: seoUrl,
+                      seoTitle: dia.aciklama,
+                      seoDescription: this.generateSeoDescription(dia),
+                      seoKeywords: this.generateWebTags(dia),
+                      webOrder: 0,
+                      webVisible: true,
+                      delivery: delivery,
+                      customDescription: null,
+                      shortDescription: null,
+                      webTags: null,
+                      webCategory: null,
+                      webSubCategory: null,
+                      customImages: [],
+                      featuredImage: null,
+                      webPrice: null,
+                      originalPrice: null,
+                      webDiscount: 0,
+                      discountType: 'percentage',
+                      minOrderQuantity: 1,
+                      maxOrderQuantity: null,
+                      stockAlert: 5,
+                      isNew: false,
+                      isBestSeller: false,
+                      isFeatured: false
+                    },
+                    syncInfo: {
+                      lastDiaSync: new Date(),
+                      diaStatus: 'synced',
+                      webStatus: 'active',
+                      syncSource: 'dia_missing_sync'
+                    }
+                  }
+                },
+                { upsert: true }
+              );
+              created++;
+            } catch (writeErr) {
+              if (writeErr.code === 11000) {
+                // seoUrl duplicate - sonuna key ekle
+                const fallbackUrl = seoUrl + '-' + dia._key;
+                usedSeoUrls.add(fallbackUrl);
+                await WebProduct.updateOne(
+                  { _key: dia._key },
+                  {
+                    $set: {
+                      _key: dia._key,
+                      diaData: transformedDiaData,
+                      customData: {
+                        seoUrl: fallbackUrl,
+                        seoTitle: dia.aciklama,
+                        seoDescription: this.generateSeoDescription(dia),
+                        seoKeywords: this.generateWebTags(dia),
+                        webOrder: 0,
+                        webVisible: true,
+                        delivery: delivery,
+                        customDescription: null,
+                        shortDescription: null,
+                        webTags: null,
+                        webCategory: null,
+                        webSubCategory: null,
+                        customImages: [],
+                        featuredImage: null,
+                        webPrice: null,
+                        originalPrice: null,
+                        webDiscount: 0,
+                        discountType: 'percentage',
+                        minOrderQuantity: 1,
+                        maxOrderQuantity: null,
+                        stockAlert: 5,
+                        isNew: false,
+                        isBestSeller: false,
+                        isFeatured: false
+                      },
+                      syncInfo: {
+                        lastDiaSync: new Date(),
+                        diaStatus: 'synced',
+                        webStatus: 'active',
+                        syncSource: 'dia_missing_sync'
+                      }
+                    }
+                  },
+                  { upsert: true }
+                );
+                created++;
+                this.logger.warn('seoUrl çakışması düzeltildi:', { key: dia._key, fallbackUrl });
+              } else {
+                errors++;
+                this.logger.error('Eksik ürün yazma hatası:', { key: dia._key, error: writeErr.message });
+              }
+            }
+          } catch (err) {
+            errors++;
+            this.logger.error('Eksik ürün hazırlama hatası:', { key: dia._key, error: err.message });
+          }
+        }
+
+        this.logger.info(`Eksik ürün batch ${Math.floor(i / 50) + 1}: ${diaProducts.length} işlendi`, { operationId });
+      }
+
+      const duration = Date.now() - startTime;
+
+      this.logger.info('=== EKSİK ÜRÜN AKTARIMI TAMAMLANDI ===', {
+        operationId,
+        created,
+        errors,
+        totalMissing: missingKeys.length,
+        duration: `${duration}ms`
+      });
+
+      return { success: true, created, errors, totalMissing: missingKeys.length, duration: `${duration}ms` };
+
+    } catch (error) {
+      this.logger.error('Eksik ürün aktarımı hatası:', { error: error.message, operationId });
+      return { success: false, created: 0, error: error.message };
+    }
+  }
+  /**
    * Senkronizasyonda güncellenmeyen ürünleri arşivle
    */
   async archiveStaleProducts(syncStartTime) {
     try {
       this.logger.info('=== WEBPRODUCTS TEMİZLEME BAŞLANGICI ===');
 
-      let activeEKeys = new Set();
-      let offset = 0;
-      let hasMore = true;
+      // DIA API yerine diastocks collection'ından al (daha güvenilir)
+      const activeEKeys = await DiaStock.distinct('_key', { durum: 'A', ozelkod11kodu: 'E' });
 
-      this.logger.info('DIA\'dan güncel E ürün listesi çekiliyor...');
+      this.logger.info(`diastocks'tan ${activeEKeys.length} aktif E ürün key'i alındı`);
 
-      while (hasMore) {
-        const batchData = await this.fetchStockFromDia({
-          limit: 1000,
-          offset: offset
-        });
-
-        if (!batchData || batchData.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        batchData.forEach(item => {
-          if (item._key) activeEKeys.add(item._key);
-        });
-
-        offset += 1000;
-      }
-
-      this.logger.info(`DIA'dan ${activeEKeys.size} aktif E ürün key'i alındı`);
-
+      const activeKeySet = new Set(activeEKeys);
       const webProductKeys = await WebProduct.distinct('_key');
-      const keysToDelete = webProductKeys.filter(key => !activeEKeys.has(key));
+      const keysToDelete = webProductKeys.filter(key => !activeKeySet.has(key));
 
       let deletedCount = 0;
       if (keysToDelete.length > 0) {
@@ -1924,13 +2283,13 @@ class DiaStockService {
 
         this.logger.info('=== DIA\'DA E OLMAYAN ÜRÜNLER SİLİNDİ ===', {
           deletedCount: deletedCount,
-          reason: 'DIA API\'de ozelkod11=E listesinde bulunmuyor'
+          reason: 'diastocks collection\'da durum=A ve ozelkod11kodu=E olarak bulunmuyor'
         });
       }
 
       this.logger.info('=== TEMİZLEME TAMAMLANDI ===', {
         totalDeleted: deletedCount,
-        activeEInDia: activeEKeys.size,
+        activeEInDiaStocks: activeEKeys.length,
         webProductsBefore: webProductKeys.length,
         webProductsAfter: webProductKeys.length - deletedCount
       });
@@ -2552,6 +2911,165 @@ class DiaStockService {
 
     } catch (error) {
       this.logger.error('Stok sync hatası:', { error: error.message, operationId });
+      throw error;
+    }
+  }
+  async syncOnlyOzelkodlar() {
+    const operationId = `sync_ozelkodlar_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== ÖZELKOD SYNC BAŞLANGICI ===', { operationId });
+
+      let totalProcessed = 0;
+      let totalUpdated = 0;
+      let totalSkipped = 0;
+      let offset = 0;
+      let hasMore = true;
+      let batchCount = 0;
+
+      while (hasMore) {
+        batchCount++;
+
+        const batchData = await this.fetchStockFromDia({
+          limit: 1000,
+          offset: offset
+        });
+
+        if (!batchData || batchData.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        const keys = batchData.map(item => item._key).filter(k => k);
+        const existingDocs = await DiaStock.find(
+          { _key: { $in: keys } },
+          { _key: 1, ozelkodHash: 1 }
+        ).lean();
+        const hashMap = {};
+        existingDocs.forEach(d => { hashMap[d._key] = d.ozelkodHash; });
+
+        const diaOps = [];
+        const webOps = [];
+
+        for (const product of batchData) {
+          if (!product._key) continue;
+
+          const newHash = this.generateOzelkodHash(product);
+          if (hashMap[product._key] && hashMap[product._key] === newHash) {
+            totalSkipped++;
+            continue;
+          }
+
+          diaOps.push({
+            updateOne: {
+              filter: { _key: product._key },
+              update: {
+                $set: {
+                  marka: product.marka || '',
+                  markaack: product.markaack || '',
+                  anabarkod: product.anabarkod || '',
+                  ozelkod1: product.ozelkod1 || '',
+                  ozelkod1kodu: product.ozelkod1kodu || '',
+                  ozelkod2: product.ozelkod2 || '',
+                  ozelkod2kodu: product.ozelkod2kodu || '',
+                  ozelkod3: product.ozelkod3 || '',
+                  ozelkod3kodu: product.ozelkod3kodu || '',
+                  ozelkod4: product.ozelkod4 || '',
+                  ozelkod4kodu: product.ozelkod4kodu || '',
+                  ozelkod5: product.ozelkod5 || '',
+                  ozelkod5kodu: product.ozelkod5kodu || '',
+                  ozelkod6: product.ozelkod6 || '',
+                  ozelkod6kodu: product.ozelkod6kodu || '',
+                  ozelkod7: product.ozelkod7 || '',
+                  ozelkod7kodu: product.ozelkod7kodu || '',
+                  ozelkod8: product.ozelkod8 || '',
+                  ozelkod8kodu: product.ozelkod8kodu || '',
+                  ozelkod9: product.ozelkod9 || '',
+                  ozelkod9kodu: product.ozelkod9kodu || '',
+                  ozelkod10: product.ozelkod10 || '',
+                  ozelkod10kodu: product.ozelkod10kodu || '',
+                  ozelkod11: product.ozelkod11 || '',
+                  ozelkod11kodu: product.ozelkod11kodu || '',
+                  m_urunOzellikleri: product.m_urunOzellikleri || [],
+                  ozelkodHash: newHash,
+                  'syncInfo.lastSyncDate': new Date(),
+                  'syncInfo.syncStatus': 'synced'
+                }
+              }
+            }
+          });
+
+          webOps.push({
+            updateOne: {
+              filter: { _key: product._key },
+              update: {
+                $set: {
+                  'diaData.marka': product.marka || '',
+                  'diaData.anabarkod': product.anabarkod || '',
+                  'diaData.ozelkod1': product.ozelkod1 || '',
+                  'diaData.ozelkod1kodu': product.ozelkod1kodu || '',
+                  'diaData.ozelkod2': product.ozelkod2 || '',
+                  'diaData.ozelkod2kodu': product.ozelkod2kodu || '',
+                  'diaData.ozelkod3': product.ozelkod3 || '',
+                  'diaData.ozelkod3kodu': product.ozelkod3kodu || '',
+                  'diaData.ozelkod4': product.ozelkod4 || '',
+                  'diaData.ozelkod4kodu': product.ozelkod4kodu || '',
+                  'diaData.ozelkod5': product.ozelkod5 || '',
+                  'diaData.ozelkod5kodu': product.ozelkod5kodu || '',
+                  'diaData.ozelkod6': product.ozelkod6 || '',
+                  'diaData.ozelkod6kodu': product.ozelkod6kodu || '',
+                  'diaData.ozelkod7': product.ozelkod7 || '',
+                  'diaData.ozelkod7kodu': product.ozelkod7kodu || '',
+                  'diaData.ozelkod8': product.ozelkod8 || '',
+                  'diaData.ozelkod8kodu': product.ozelkod8kodu || '',
+                  'diaData.ozelkod9': product.ozelkod9 || '',
+                  'diaData.ozelkod9kodu': product.ozelkod9kodu || '',
+                  'diaData.ozelkod10': product.ozelkod10 || '',
+                  'diaData.ozelkod10kodu': product.ozelkod10kodu || '',
+                  'diaData.ozelkod11': product.ozelkod11 || '',
+                  'diaData.ozelkod11kodu': product.ozelkod11kodu || '',
+                  'diaData.m_urunOzellikleri': product.m_urunOzellikleri || [],
+                  'syncInfo.lastDiaSync': new Date(),
+                  'syncInfo.diaStatus': 'synced'
+                }
+              }
+            }
+          });
+        }
+
+        if (diaOps.length > 0) {
+          await DiaStock.bulkWrite(diaOps, { ordered: false });
+        }
+        if (webOps.length > 0) {
+          await WebProduct.bulkWrite(webOps, { ordered: false });
+        }
+
+        totalUpdated += diaOps.length;
+        totalProcessed += batchData.length;
+        offset += 1000;
+
+        this.logger.info(`Ozelkod Batch ${batchCount}: ${diaOps.length} güncellendi, ${batchData.length - diaOps.length} atlandı`, { operationId });
+
+        await this.sleep(100);
+      }
+
+      const duration = Date.now() - startTime;
+      this.logger.info('=== ÖZELKOD SYNC TAMAMLANDI ===', {
+        operationId, totalProcessed, totalUpdated, totalSkipped,
+        duration: `${duration}ms`
+      });
+
+      return {
+        success: true,
+        processed: totalProcessed,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        duration: `${duration}ms`
+      };
+
+    } catch (error) {
+      this.logger.error('Özelkod sync hatası:', { error: error.message, operationId });
       throw error;
     }
   }

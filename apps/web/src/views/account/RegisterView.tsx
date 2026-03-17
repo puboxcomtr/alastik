@@ -23,8 +23,8 @@ export default function RegisterView() {
         phone: '+90 ',
         password: '',
         passwordConfirm: '',
-        marketingConsent: false,
-        termsAccepted: false
+        marketingConsent: true,
+        termsAccepted: true
     });
 
     useEffect(() => {
@@ -76,6 +76,12 @@ export default function RegisterView() {
         try {
             if (formData.password !== formData.passwordConfirm) {
                 toast.error('Şifreler eşleşmiyor');
+                setLoading(false);
+                return;
+            }
+            const phoneDigits = formData.phone.replace(/\D/g, '');
+            if (phoneDigits.length < 12) {
+                toast.error('Lütfen geçerli bir telefon numarası girin');
                 setLoading(false);
                 return;
             }
@@ -255,10 +261,10 @@ export default function RegisterView() {
                                                 name="marketingConsent"
                                                 checked={formData.marketingConsent}
                                                 onChange={handleChange}
-                                                className="form-check-input"
+                                                className="form-check-input cursor-pointer"
                                                 id="marketingConsent"
                                             />
-                                            <label className="form-check-label fs-sm" htmlFor="marketingConsent">
+                                            <label className="form-check-label fs-sm cursor-pointer" htmlFor="marketingConsent">
                                                 {t('marketing_consent')}
                                             </label>
                                         </div>
@@ -271,11 +277,11 @@ export default function RegisterView() {
                                                 name="termsAccepted"
                                                 checked={formData.termsAccepted}
                                                 onChange={handleChange}
-                                                className="form-check-input"
+                                                className="form-check-input cursor-pointer"
                                                 id="termsAccepted"
                                                 required
                                             />
-                                            <label className="form-check-label fs-sm" htmlFor="termsAccepted">
+                                            <label className="form-check-label fs-sm cursor-pointer" htmlFor="termsAccepted">
                                                 {t('terms_accept')}
                                             </label>
                                         </div>

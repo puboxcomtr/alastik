@@ -4,16 +4,14 @@ import { getSession } from 'next-auth/react'
 // MEDIA
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
 
-
 // API Base URL
 const getBaseUrl = () => {
     if (typeof window === 'undefined') {
-        // Server-side
         return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
     }
-    // Client-side
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 }
+
 export const API_ENDPOINTS = {
     products: {
         list: () => `${getBaseUrl()}/admin/products`,
@@ -39,6 +37,10 @@ export const API_ENDPOINTS = {
         product: (productKey: string) => `${getBaseUrl()}/admin/championships/product/${productKey}`,
         assign: (id: string) => `${getBaseUrl()}/admin/championships/${id}/assign`,
         unassign: (id: string) => `${getBaseUrl()}/admin/championships/${id}/unassign`,
+    },
+    filters: {
+        productOptions: () => `${getBaseUrl()}/admin/filters/product-options`,
+        subCategories: (mainCategory: string) => `${getBaseUrl()}/admin/filters/sub-categories?main_category=${encodeURIComponent(mainCategory)}`,
     },
     features: {
         list: () => `${getBaseUrl()}/admin/features`,
@@ -75,6 +77,11 @@ export const API_ENDPOINTS = {
         list: () => `${getBaseUrl()}/admin/showcases`,
         detail: (id: string) => `${getBaseUrl()}/admin/showcases/${id}`,
     },
+    blogs: {
+        list: () => `${getBaseUrl()}/admin/blogs`,
+        detail: (id: string) => `${getBaseUrl()}/admin/blogs/${id}`,
+        image: (id: string) => `${getBaseUrl()}/admin/blogs/${id}/image`,
+    },
     roles: {
         list: () => `${getBaseUrl()}/admin/user/roles`,
         create: () => `${getBaseUrl()}/admin/user/roles`,
@@ -94,8 +101,32 @@ export const API_ENDPOINTS = {
         update: () => `${getBaseUrl()}/admin/modules/dia/settings`,
         testConnection: () => `${getBaseUrl()}/admin/modules/dia/test-connection`,
         fullSync: () => `${getBaseUrl()}/dia/full-sync`,
-    }
+    },
+    media: {
+        list: (params: {
+            folder: string
+            search?: string
+            page?: number
+            limit?: number
+            sortBy?: string
+            sortOrder?: string
+        }) => {
+            const query = new URLSearchParams({
+                folder: params.folder,
+                search: params.search || '',
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 24).toString(),
+                sortBy: params.sortBy || 'date',
+                sortOrder: params.sortOrder || 'desc'
+            })
+            return `${getBaseUrl()}/media/list?${query}`
+        },
+        upload: (folder: string) => `${getBaseUrl()}/media/upload?folder=${folder}`,
+        folders: () => `${getBaseUrl()}/media/folders`,
+        delete: (fileId: string) => `${getBaseUrl()}/media/${fileId}`,
+    },
 }
+
 export async function fetchAPI(url: string, options?: RequestInit) {
     let token: string | undefined
     if (typeof window !== 'undefined') {
@@ -119,12 +150,12 @@ export async function fetchAPI(url: string, options?: RequestInit) {
     return response.json()
 }
 
-/* Helper - Image URL */
 export function getImageUrl(path?: string): string {
     if (!path) return ''
     if (path.startsWith('http')) return path
     return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`
 }
+
 export async function getThemeSettings() {
     try {
         const response = await fetchAPI(`${getBaseUrl()}/admin/design/settings/theme`)
@@ -133,6 +164,7 @@ export async function getThemeSettings() {
         return null
     }
 }
+
 export async function getSiteName(): Promise<string> {
     try {
         const response = await fetchAPI(`${getBaseUrl()}/admin/settings/general`)

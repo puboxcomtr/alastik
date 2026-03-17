@@ -1,5 +1,3 @@
-// apps/web/src/types/brand.ts
-
 // Temel marka bilgisi (ProductCard için)
 export interface Brand {
     name: string;
@@ -23,20 +21,34 @@ export interface BrandDetail {
     _id: string;
     name: string;
     slug: string;
+    diaBrand: string;
+    diaMarkaAck: string;
     seoUrl: string;
+    seoTitle: string;
+    seoDescription: string;
+    seoKeywords: string[];
     logo: string | null;
     logoAlt: string;
     bannerImage: string | null;
-    seoTitle: string;
-    seoDescription: string;
     description: string | null;
     productCount: number;
+    activeProductCount: number;
+    totalStock: number;
+    priceRange: {
+        min: number;
+        max: number;
+        average: number;
+    } | null;
+    categoryDistribution: {
+        categoryName: string;
+        productCount: number;
+    }[];
     brandInfo: {
         foundedYear: number | null;
         country: string | null;
         website: string | null;
         about: string | null;
-    };
+    } | null;
 }
 
 // Response tipleri

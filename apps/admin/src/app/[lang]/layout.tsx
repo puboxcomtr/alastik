@@ -30,8 +30,15 @@ import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
   title: 'ALastik.com - Yönetici Paneli',
-  description:
-    'ALastik.com - Yönetici Paneli'
+  description: 'ALastik.com - Yönetici Paneli',
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false
+    }
+  }
 }
 
 const RootLayout = async (props: ChildrenType & { params: Promise<{ lang: Locale }> }) => {

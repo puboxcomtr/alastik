@@ -57,67 +57,65 @@ export default function MainTireSearch() {
 
   return (
     <>
-      <section id="main_tire_search" className="container position-relative p-0 pb-5">
-        <div className="w-100 h-100 position-absolute top-3">
-          <Container className="container">
-            <div className="row-fluid">
-              <Row className="row">
-                <Col md={9}>
-                  <div className="search_box">
-                    <TabHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+      <section id="main_tire_search" className="container position-relative">
+        <Container>
+          <div className="row-fluid">
+            <Row>
+              <Col md={9}>
+                <div className="search_box">
+                  <TabHeader activeTab={activeTab} setActiveTab={setActiveTab} />
 
-                    {activeTab === 'tire' && (
-                      <TabContent
-                        mevsim={mevsim}
-                        setMevsim={setMevsim}
-                        selectedGenislik={selectedGenislik}
-                        setSelectedGenislik={setSelectedGenislik}
-                        selectedYukseklik={selectedYukseklik}
-                        setSelectedYukseklik={setSelectedYukseklik}
-                        selectedCap={selectedCap}
-                        setSelectedCap={setSelectedCap}
-                        genislikler={genislikler}
-                        yanakOranlari={yanakOranlari}
-                        jantCaplari={jantCaplari}
-                        handleJantaGoreArama={handleJantaGoreArama}
-                      />
-                    )}
+                  {activeTab === 'tire' && (
+                    <TabContent
+                      mevsim={mevsim}
+                      setMevsim={setMevsim}
+                      selectedGenislik={selectedGenislik}
+                      setSelectedGenislik={setSelectedGenislik}
+                      selectedYukseklik={selectedYukseklik}
+                      setSelectedYukseklik={setSelectedYukseklik}
+                      selectedCap={selectedCap}
+                      setSelectedCap={setSelectedCap}
+                      genislikler={genislikler}
+                      yanakOranlari={yanakOranlari}
+                      jantCaplari={jantCaplari}
+                      handleJantaGoreArama={handleJantaGoreArama}
+                    />
+                  )}
 
-                    {activeTab === 'rim' && (
-                      <RimTabContent
-                        selectedCap={rimSelectedCap}
-                        setSelectedCap={setRimSelectedCap}
-                        selectedBijon={selectedBijon}
-                        setSelectedBijon={setSelectedBijon}
-                        jantCaplari={rimCaplari}
-                        bijonAraliklari={bijonAraliklari}
-                        handleJantArama={handleJantArama}
-                      />
-                    )}
+                  {activeTab === 'rim' && (
+                    <RimTabContent
+                      selectedCap={rimSelectedCap}
+                      setSelectedCap={setRimSelectedCap}
+                      selectedBijon={selectedBijon}
+                      setSelectedBijon={setSelectedBijon}
+                      jantCaplari={rimCaplari}
+                      bijonAraliklari={bijonAraliklari}
+                      handleJantArama={handleJantArama}
+                    />
+                  )}
 
-                    {activeTab === 'chain' && (
-                      <ChainTabContent
-                        selectedGenislik={chainSelectedGenislik}
-                        setSelectedGenislik={setChainSelectedGenislik}
-                        selectedYukseklik={chainSelectedYukseklik}
-                        setSelectedYukseklik={setChainSelectedYukseklik}
-                        selectedCap={chainSelectedCap}
-                        setSelectedCap={setChainSelectedCap}
-                        genislikler={chainGenislikler}
-                        yanakOranlari={chainYanakOranlari}
-                        jantCaplari={chainJantCaplari}
-                        handleKarPaletiArama={handleKarPaletiArama}
-                      />
-                    )}
-                  </div>
-                </Col>
-                <Col md={3}>
-                  <TireProductSlider showcaseKey="first" />
-                </Col>
-              </Row>
-            </div>
-          </Container>
-        </div>
+                  {activeTab === 'chain' && (
+                    <ChainTabContent
+                      selectedGenislik={chainSelectedGenislik}
+                      setSelectedGenislik={setChainSelectedGenislik}
+                      selectedYukseklik={chainSelectedYukseklik}
+                      setSelectedYukseklik={setChainSelectedYukseklik}
+                      selectedCap={chainSelectedCap}
+                      setSelectedCap={setChainSelectedCap}
+                      genislikler={chainGenislikler}
+                      yanakOranlari={chainYanakOranlari}
+                      jantCaplari={chainJantCaplari}
+                      handleKarPaletiArama={handleKarPaletiArama}
+                    />
+                  )}
+                </div>
+              </Col>
+              <Col md={3}>
+                <TireProductSlider showcaseKey="first" />
+              </Col>
+            </Row>
+          </div>
+        </Container>
       </section>
     </>
   );

@@ -67,6 +67,12 @@ export default function SearchBox() {
                     placeholder="Ürün Adı, stok kodu veya lastik ebatı ile arama yapabilirsiniz.."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && searchTerm.length >= 2) {
+                            setOpen(false)
+                            window.location.href = `/arama?q=${encodeURIComponent(searchTerm)}`
+                        }
+                    }}
                     onFocus={() => searchTerm.length >= 2 && setOpen(true)}
                     size="small"
                     sx={{
@@ -79,7 +85,7 @@ export default function SearchBox() {
                                 {loading ? (
                                     <CircularProgress size={20} />
                                 ) : (
-                                    <IconButton disabled>
+                                    <IconButton onClick={() => searchTerm.length >= 2 && (window.location.href = `/arama?q=${encodeURIComponent(searchTerm)}`)}>
                                         <i className="ri-search-line" style={{ fontSize: 18, color: '#999' }}></i>
                                     </IconButton>
                                 )}
