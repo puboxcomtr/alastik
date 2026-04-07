@@ -125,12 +125,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                                     style={{ objectFit: 'contain' }}
                                 />
                             ) : (
-                                <span className="fw-medium fs-sm">{brandName || 'Marka Yok'}</span>
+                                <span className="fw-medium fs-sm">{brandInfo?.name || brandName || 'Marka Yok'}</span>
                             )}
                         </div>
                         {/* Rating */}
                         <div className='d-flex align-items-center'>
-                            {product.customData?.reviewStats?.reviewCount > 0 ? (
+                            {product.customData?.reviewStats?.reviewCount > 0 && (
                                 <>
                                     <Rating
                                         name={`product-rating-${product._key}`}
@@ -141,8 +141,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                                     />
                                     <span className="text-body-tertiary fs-xs">({product.customData.reviewStats.reviewCount} Yorum) </span>
                                 </>
-                            ) : (
-                                <span className="text-body-tertiary fs-xs">Henüz Yorum Yapılmadı</span>
                             )}
                         </div>
                     </div>
@@ -156,7 +154,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                             href={productUrl}
                         >
                             <span className="animate-target fs-sm">
-                                {product.diaData.aciklama}
+                                {product.diaData.aciklama?.replace(/^LJA/i, 'AKD')}
                             </span>
                         </Link>
                     </h3>

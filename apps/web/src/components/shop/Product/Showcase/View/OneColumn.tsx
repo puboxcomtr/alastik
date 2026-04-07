@@ -93,18 +93,14 @@ export default function OneColumn({ product }: ProductCardProps) {
                             {brandLogo ? (
                                 <Image src={brandLogo} alt={brandName} width={90} height={36} style={{ objectFit: 'contain', marginLeft: '-8px' }} />
                             ) : (
-                                <span className="fw-medium fs-sm">{brandName || 'Marka Yok'}</span>
+                                <span className="fw-medium fs-sm">{brandInfo?.name || brandName || 'Marka Yok'}</span>
                             )}
                         </div>
-                        {reviewCount > 0 ? (
-                            <>
-                                <Link href={`${productUrl}#reviews`} className="d-flex flex-column text-decoration-none">
-                                    <span className="text-black text-end" style={{ fontSize: '10px' }}>({reviewCount} Yorum)</span>
-                                    <Rating value={reviewRating} precision={0.5} size="small" readOnly />
-                                </Link>
-                            </>
-                        ) : (
-                            <span className="text-black" style={{ fontSize: '10px' }}>Henüz Yorum Yapılmadı</span>
+                        {reviewCount > 0 && (
+                            <Link href={`${productUrl}#reviews`} className="d-flex flex-column text-decoration-none">
+                                <span className="text-black text-end" style={{ fontSize: '10px' }}>({reviewCount} Yorum)</span>
+                                <Rating value={reviewRating} precision={0.5} size="small" readOnly />
+                            </Link>
                         )}
                     </div>
                     {/* Ürün Adı */}

@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from '@libs/api'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 // Component Imports
-import XmlRulesForm from '@/views/modules/xmlRules/XmlRulesForm'
+import XmlRulesForm from '@/views/modules/xml/xmlRules/XmlRulesForm'
 
 type Props = {
     params: { id: string }

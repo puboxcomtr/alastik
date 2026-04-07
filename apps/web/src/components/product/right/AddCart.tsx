@@ -71,7 +71,7 @@ export default function Cart({ product }: CartProps) {
                                 style={{ objectFit: 'contain' }}
                             />
                         ) : (
-                            <span className="fw-medium fs-lg">{brandName || 'Marka Yok'}</span>
+                            <span className="fw-medium fs-lg">{brandInfo?.name || brandName || 'Marka Yok'}</span>
                         )}
                     </div>
                 </Grid>

@@ -33,7 +33,6 @@ export default function MetaHead() {
         <link rel="preload" href="/assets/css/theme.min.css" as="style" />
         <link rel="stylesheet" href="/assets/css/theme.min.css" id="theme-styles" />
       </head>
-
       {/* Google Ads (gtag.js) */}
       <Script
         src="https://www.googletagmanager.com/gtag/js?id=AW-18022245202"
@@ -45,6 +44,26 @@ export default function MetaHead() {
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', 'AW-18022245202');
+        `}
+      </Script>
+      {/* JivoChat */}
+      <Script src="//code.jivosite.com/widget/RYzlSJFToU" strategy="afterInteractive" async />
+
+      {/* Smartlook */}
+      <Script id="smartlook-init" strategy="afterInteractive">
+        {`
+          (function(d) {
+            var o=window.smartlook=function(){o.api.push(arguments)};
+            var h=d.getElementsByTagName('head')[0];
+            var c=d.createElement('script');
+            o.api=[];
+            c.async=true;
+            c.type='text/javascript';
+            c.charset='utf-8';
+            c.src='https://web-sdk.smartlook.com/recorder.js';
+            h.appendChild(c);
+          })(document);
+          window.smartlook('init','360f1f6a6a1e2514b15e7cff88b12c23f33f5088',{region:'eu'});
         `}
       </Script>
     </>

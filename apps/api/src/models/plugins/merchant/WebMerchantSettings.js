@@ -1,0 +1,57 @@
+const mongoose = require('mongoose');
+
+const webMerchantSettingsSchema = new mongoose.Schema({
+    // Genel Ayarlar
+    isActive: { type: Boolean, default: true },
+    currency: { type: String, default: 'TRY' },
+    language: { type: String, default: 'tr' },
+    country: { type: String, default: 'TR' },
+
+    // Fiyat Ayarları
+    priceField: {
+        type: String,
+        enum: ['fiyat1', 'fiyat2', 'fiyat3', 'fiyat4', 'fiyat10'],
+        default: 'fiyat4'
+    },
+    includeTax: { type: Boolean, default: true },
+    taxRate: { type: Number, default: 20 },
+
+    // Ürün Filtresi
+    onlyInStock: { type: Boolean, default: true },
+    minPrice: { type: Number, default: 0 },
+    minStock: { type: Number, default: 1 },
+
+    // Görsel Ayarları
+    imageSource: {
+        type: String,
+        enum: ['custom_first', 'dia_first'],
+        default: 'custom_first'
+    },
+
+    // Alan Eşleştirmeleri
+    fieldMapping: {
+        id: { type: String, default: 'stokkartkodu' },
+        title: { type: String, default: 'diaData.aciklama' },
+        description: { type: String, default: 'customData.customDescription' },
+        brand: { type: String, default: 'marka' },
+        gtin: { type: String, default: 'anabarkod' },
+        condition: { type: String, enum: ['new', 'used', 'refurbished'], default: 'new' },
+    },
+
+    // Kargo Ayarları
+    shippingEnabled: { type: Boolean, default: true },
+    shippingCountry: { type: String, default: 'TR' },
+    shippingPrice: { type: Number, default: 0 },
+    freeShippingThreshold: { type: Number, default: 0 },
+
+    // Feed Ayarları
+    feedFormat: { type: String, enum: ['xml', 'csv'], default: 'xml' },
+    lastGenerated: { type: Date, default: null },
+    productCount: { type: Number, default: 0 }
+
+}, {
+    timestamps: true,
+    collection: 'webmerchantsettings'
+});
+
+module.exports = mongoose.model('WebMerchantSettings', webMerchantSettingsSchema);

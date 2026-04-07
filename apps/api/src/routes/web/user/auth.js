@@ -223,6 +223,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
                         phone: member.phone || ''
                     },
                     addresses: await WebAddress.find({ userId: member._id, isActive: true }).sort({ isDefault: -1 }).lean(),
+                    marketingConsent: member.marketingConsent || false,
                     customerSegment: member.customerSegment || '',
                     statistics: {
                         totalOrders: member.totalOrders || 0,
@@ -245,10 +246,12 @@ router.put('/profile', authMiddleware, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
         }
 
-        const updates = req.body;
-        if (updates['profile.firstName'] !== undefined) member.firstName = updates['profile.firstName'];
-        if (updates['profile.lastName'] !== undefined) member.lastName = updates['profile.lastName'];
-        if (updates['profile.phone'] !== undefined) member.phone = updates['profile.phone'];
+        const { firstName, lastName, phone, marketingConsent } = req.body;
+
+        if (firstName !== undefined) member.firstName = firstName;
+        if (lastName !== undefined) member.lastName = lastName;
+        if (phone !== undefined) member.phone = phone;
+        if (marketingConsent !== undefined) member.marketingConsent = marketingConsent;
 
         await member.save();
 
@@ -263,13 +266,51 @@ router.put('/profile', authMiddleware, async (req, res) => {
                         firstName: member.firstName,
                         lastName: member.lastName,
                         phone: member.phone
-                    }
+                    },
+                    marketingConsent: member.marketingConsent
                 }
             }
         });
     } catch (error) {
         console.error('Profile update error:', error);
         res.status(500).json({ success: false, message: 'Profil güncellenemedi.' });
+    }
+});
+
+// Şifre Değiştir
+router.put('/change-password', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findById(req.user._id);
+        if (!member) {
+            return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const { currentPassword, newPassword, newPasswordConfirm } = req.body;
+
+        if (!currentPassword || !newPassword || !newPasswordConfirm) {
+            return res.status(400).json({ success: false, message: 'Tüm alanları doldurunuz.' });
+        }
+
+        if (newPassword !== newPasswordConfirm) {
+            return res.status(400).json({ success: false, message: 'Yeni şifreler eşleşmiyor.' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: 'Şifre en az 6 karakter olmalıdır.' });
+        }
+
+        const isValid = await member.comparePassword(currentPassword);
+        if (!isValid) {
+            return res.status(400).json({ success: false, message: 'Mevcut şifre hatalı.' });
+        }
+
+        member.password = newPassword;
+        await member.save();
+
+        res.json({ success: true, message: 'Şifreniz başarıyla değiştirildi.' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ success: false, message: 'Şifre değiştirilemedi.' });
     }
 });
 

@@ -79,7 +79,9 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
     }, [generations, filterYear, filterBody]);
 
     const handleSelect = (gen: Generation) => {
-        const year = gen.end || gen.start;
+        const year = gen.years?.length > 0
+            ? gen.years[gen.years.length - 1]
+            : gen.end || gen.start;
         const image = gen.bodies?.[0]?.image;
         onSelect(year, gen.slug, image);
     };

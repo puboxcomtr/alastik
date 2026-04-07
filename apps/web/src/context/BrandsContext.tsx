@@ -7,6 +7,7 @@ interface Brand {
     name: string;
     slug: string;
     logo?: string;
+    diaBrand?: string;
 }
 
 interface BrandsContextType {
@@ -36,14 +37,21 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
 
                 brandsList.forEach((brand: Brand) => {
                     if (brand.name) {
-                        // Hem büyük hem küçük harfle eşleşebilsin
                         brandsMap.set(brand.name.toUpperCase(), brand);
                         brandsMap.set(brand.name.toLowerCase(), brand);
                     }
                     if (brand.slug) {
                         brandsMap.set(brand.slug.toLowerCase(), brand);
                     }
-                });
+                    if (brand.diaBrand) {
+                        brandsMap.set(brand.diaBrand.toUpperCase(), brand);
+                        brandsMap.set(brand.diaBrand.toLowerCase(), brand);
+                    }
+                    if (brand.diaBrand) {
+                        brandsMap.set(brand.diaBrand.toUpperCase(), brand);
+                        brandsMap.set(brand.diaBrand.toLowerCase(), brand);
+                    }
+                })
 
                 setBrands(brandsMap);
             } catch (error) {

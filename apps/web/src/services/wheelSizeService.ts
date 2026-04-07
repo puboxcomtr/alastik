@@ -104,6 +104,8 @@ class WheelSizeService {
             return { front: [], rear: [], both: [] };
         }
 
+        const normalizeTire = (tire: string) => tire.replace(/ZR/g, 'R');
+
         const frontMap = new Map<string, TireOption>();
         const rearMap = new Map<string, TireOption>();
         const bothMap = new Map<string, TireOption>();
@@ -114,14 +116,14 @@ class WheelSizeService {
 
             if (!front?.tire || !front.tire_width) return;
 
-            const frontKey = front.tire;
-            const hasRear = rear?.tire && rear.tire_width && rear.tire !== front.tire;
+            const frontKey = normalizeTire(front.tire);
+            const hasRear = rear?.tire && rear.tire_width && normalizeTire(rear.tire) !== normalizeTire(front.tire);
 
             if (hasRear) {
                 if (!frontMap.has(frontKey)) {
                     frontMap.set(frontKey, {
                         id: `front-${frontKey}`,
-                        display: front.tire,
+                        display: normalizeTire(front.tire),
                         width: front.tire_width,
                         aspectRatio: front.tire_aspect_ratio,
                         diameter: front.rim_diameter,
@@ -134,11 +136,11 @@ class WheelSizeService {
                     });
                 }
 
-                const rearKey = rear.tire;
+                const rearKey = normalizeTire(rear.tire);
                 if (!rearMap.has(rearKey)) {
                     rearMap.set(rearKey, {
                         id: `rear-${rearKey}`,
-                        display: rear.tire,
+                        display: normalizeTire(rear.tire),
                         width: rear.tire_width,
                         aspectRatio: rear.tire_aspect_ratio,
                         diameter: rear.rim_diameter,
@@ -154,7 +156,7 @@ class WheelSizeService {
                 if (!bothMap.has(frontKey)) {
                     bothMap.set(frontKey, {
                         id: `both-${frontKey}`,
-                        display: front.tire,
+                        display: normalizeTire(front.tire),
                         width: front.tire_width,
                         aspectRatio: front.tire_aspect_ratio,
                         diameter: front.rim_diameter,

@@ -1,13 +1,22 @@
 'use client';
 
+// React & Next.js
 import React, { useEffect, useState } from 'react';
-import { Col, Container, Row } from 'react-bootstrap';
 import Link from 'next/link';
+
+// Bootstrap
+import { Col, Container, Row } from 'react-bootstrap';
+
+// Hooks
+import { useAuth } from '@/src/hooks/Theme/useAuth';
+
+// Config
+import { ROUTES } from '@/src/config/routes';
+
+// Components
 import AccountSidebar from '@/src/components/account/Sidebar/Content';
 import ProfileContent from '@/src/components/account/Content/Profile';
-import AddressContent from '@/src/components/account/Content/Adress';
-import { ROUTES } from '@/src/config/routes';
-import { useAuth } from '@/src/hooks/Theme/useAuth';
+import OrdersContent from '@/src/components/account/Content/Orders';
 
 type Profile = {
   firstName?: string;
@@ -23,6 +32,8 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<Profile>({});
   const [stats, setStats] = useState<any>(null);
   const [addresses, setAddresses] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [userId, setUserId] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +56,8 @@ export default function AccountPage() {
         });
         const data = await resp.json();
         if (data.success && data.data?.user) {
+          const uid = data.data.user._id || data.data.user.id || '';
+          setUserId(uid);
           setUsername(data.data.user.username || '');
           setEmail(data.data.user.email);
           setProfile({
@@ -58,6 +71,22 @@ export default function AccountPage() {
             spent: data.data.user.statistics?.totalSpent
           });
           setAddresses(data.data.user.addresses || []);
+          if (uid) {
+            try {
+              const ordersResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order/user/${uid}`, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              const ordersData = await ordersResp.json();
+              if (ordersData.success) {
+                setOrders(ordersData.data || []);
+              }
+            } catch (e) {
+              console.error('Sipariş çekme hatası:', e);
+            }
+          }
         } else {
           setError(data.message || 'Profil alınamadı');
         }
@@ -85,22 +114,6 @@ export default function AccountPage() {
 
   return (
     <>
-      <section id="breadcumb">
-        <Container>
-          <div className='row-fluid'>
-            <Row>
-              <Col md={12}>
-                <nav aria-label="breadcrumb" className="mb-4">
-                  <ol className="breadcrumb">
-                    <li className="breadcrumb-item"><Link href={ROUTES.HOME}>Ana Sayfa</Link></li>
-                    <li className="breadcrumb-item active" aria-current="page">Hesabım</li>
-                  </ol>
-                </nav>
-              </Col>
-            </Row>
-          </div>
-        </Container>
-      </section>
       <section id="main_account">
         <Container>
           <div className='row-fluid'>
@@ -114,12 +127,11 @@ export default function AccountPage() {
                   profile={profile}
                   onProfileChange={setProfile}
                 />
-                <AddressContent addresses={addresses} />
+                <OrdersContent orders={orders.slice(0, 10)} showAllLink />
               </Col>
             </Row>
           </div>
         </Container>
-
       </section>
     </>
   );

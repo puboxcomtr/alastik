@@ -17056,7 +17056,7 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 .productImage {
     width: 100%;
     height: 250px;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     background-color: #fff;
 }
@@ -17389,7 +17389,6 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 
 .list-group-borderless {
     border-radius: 0;
-    gap: var(--cz-list-group-borderless-item-spacer)
 }
 
 .list-group-borderless .list-group-item {
@@ -18988,6 +18987,11 @@ span.flatpickr-weekday {
     max-height: 400px;
 }
 
+/* Hesabım */
+#main_account {
+    margin: 2rem 0;
+}
+
 /* Single Showcase */
 .showcase__group {
     align-items: center;
@@ -19070,17 +19074,19 @@ span.flatpickr-weekday {
 #description ul {
     gap: 0rem;
 }
+
 #description ul li p {
     margin-bottom: .5rem;
 }
+
 /* Sayfa Detay */
 #page__detail h1,
 #page__detail h2,
 #page__detail h3,
 #page__detail h4,
-#page__detail h5{
-    font-size:1.4rem;
-    margin:1rem 0;
+#page__detail h5 {
+    font-size: 1.4rem;
+    margin: 1rem 0;
 }
 
 /* Blog Detay */
@@ -19306,6 +19312,13 @@ span.flatpickr-weekday {
 
     .productGallery {
         display: none;
+    }
+
+    /* Hesabım */
+
+    #main_account {
+        background: #f8f9fa;
+        margin: 0;
     }
 
     /* Mobil Sepet Bottom Bar */

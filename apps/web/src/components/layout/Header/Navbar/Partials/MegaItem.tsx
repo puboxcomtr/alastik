@@ -12,8 +12,10 @@ interface MegaItemProps {
     children: React.ReactNode;
     openMenuId?: string | null;
     setOpenMenuId?: (id: string | null) => void;
+    isMega?: boolean;
+    dropdownClassName?: string;
 }
-export default function MegaItem({ id, title, href, children, openMenuId, setOpenMenuId }: MegaItemProps) {
+export default function MegaItem({ id, title, href, children, openMenuId, setOpenMenuId, isMega = true, dropdownClassName }: MegaItemProps) {
     const [show, setShow] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const isOpen = isMobile ? openMenuId === id : show;
@@ -48,7 +50,7 @@ export default function MegaItem({ id, title, href, children, openMenuId, setOpe
             show={isOpen}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className="nav-item dropdown position-static"
+            className={`nav-item dropdown${isMega ? ' position-static' : ''}`}
         >
             {href && href !== '#' && !isMobile ? (
                 <Link href={href} className="nav-link dropdown-toggle">
@@ -68,7 +70,7 @@ export default function MegaItem({ id, title, href, children, openMenuId, setOpe
                 </button>
             )}
 
-            <Dropdown.Menu className="px-0 dropdown-menu mega-dropdown">
+            <Dropdown.Menu className={`pt-1 px-0 ${children && (children as any)?.props?.className?.includes('mobile__mega') ? 'dropdown-menu mega-dropdown' : 'dropdown-menu'}`}>
                 {children}
             </Dropdown.Menu>
         </Dropdown>

@@ -150,7 +150,7 @@ class DiaWorker {
 
             const result = await this.diaService.fullSync(progressCallback);
 
-            await job.progress({ percent: 100, step: 5, totalSteps: 5, message: 'Tamamlandı' });
+            await job.progress({ percent: 100, step: 8, totalSteps: 8, message: 'Tamamlandı' });
 
             const duration = Date.now() - startTime;
 

@@ -74,7 +74,7 @@ router.post('/toggle', async (req, res) => {
 // GET /api/favourites - Kullanıcının favorilerini listele
 router.get('/', async (req, res) => {
     try {
-        const memberId = req.member._id;
+        const memberId = req.user._id;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
@@ -133,7 +133,7 @@ router.get('/', async (req, res) => {
 // GET /api/favourites/check?keys=key1,key2,key3 - Toplu favori kontrolü
 router.get('/check', async (req, res) => {
     try {
-        const memberId = req.member._id;
+        const memberId = req.user._id;
         const keys = req.query.keys ? req.query.keys.split(',') : [];
 
         if (!keys.length) {

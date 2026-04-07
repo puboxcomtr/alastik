@@ -1,9 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { toast } from 'react-toastify';
 import { ROUTES } from '@/src/config/routes';
 
 interface AccountSidebarProps {
@@ -28,7 +27,12 @@ export default function AccountSidebar({ profile, email, username, stats }: Acco
         ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
         : (username || email || 'Kullanıcı');
 
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const handleLogout = () => {
+        setShowLogoutConfirm(true);
+    };
+
+    const confirmLogout = () => {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('authToken');
             localStorage.removeItem('user');
@@ -90,16 +94,14 @@ export default function AccountSidebar({ profile, email, username, stats }: Acco
                         <i className="ci-map-pin fs-base opacity-75 me-2"></i>Adreslerim
                     </Link>
                     <Link className={linkClass(ROUTES.ACCOUNT_VEHICLES)} href={ROUTES.ACCOUNT_VEHICLES}>
-                        <i className="ci-car fs-base opacity-75 me-2"></i>Araçlarım
-                    </Link>
-                    <Link className={linkClass(ROUTES.ACCOUNT_NOTIFICATIONS)} href={ROUTES.ACCOUNT_NOTIFICATIONS}>
-                        <i className="ci-bell fs-base opacity-75 me-2"></i>Bildirimlerim
+                        <i className="ri-car-line fs-base opacity-75 me-2"></i>
+                        Araçlarım
                     </Link>
                 </nav>
                 <h6 className="pt-4 ps-2 ms-1">Yardım</h6>
                 <nav className="list-group list-group-borderless">
                     <Link className={linkClass(ROUTES.SUPPORT_TICKET)} href={ROUTES.SUPPORT_TICKET}>
-                        <i className="ci-help-circle fs-base opacity-75 me-2"></i>Talep Oluştur
+                        <i className="ci-help-circle fs-base opacity-75 me-2"></i>Talep Merkezi
                     </Link>
                 </nav>
                 <nav className="list-group list-group-borderless pt-3">
@@ -108,6 +110,22 @@ export default function AccountSidebar({ profile, email, username, stats }: Acco
                     </button>
                 </nav>
             </div>
+            {showLogoutConfirm && (
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setShowLogoutConfirm(false)}>
+                    <div className="modal-dialog modal-sm modal-dialog-centered" onClick={e => e.stopPropagation()}>
+                        <div className="modal-content">
+                            <div className="modal-body text-center py-4">
+                                <i className="ci-log-out fs-1 text-primary mb-3 d-block"></i>
+                                <h6 className="mb-3">Çıkış yapmak istediğinize emin misiniz?</h6>
+                                <div className="d-flex gap-2 justify-content-center">
+                                    <button className="btn btn-primary btn-sm px-4" onClick={confirmLogout}>Evet</button>
+                                    <button className="btn btn-outline-secondary btn-sm px-4" onClick={() => setShowLogoutConfirm(false)}>Hayır</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

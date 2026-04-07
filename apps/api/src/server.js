@@ -147,22 +147,24 @@ app.use(helmet({
 
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 500,
+  max: 1500,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    return process.env.NODE_ENV === 'development';
+    if (process.env.NODE_ENV === 'development') return true;
+    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   }
 });
-
 const searchLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 dakika
+  windowMs: 1 * 60 * 1000, 
   max: 300,
   message: 'Too many search requests, please try again later.',
   skip: (req) => {
-    // Development'ta search rate limiting'i gevşet
-    return process.env.NODE_ENV === 'development';
+    if (process.env.NODE_ENV === 'development') return true;
+    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   }
 });
 app.use('/api/', limiter);
@@ -290,7 +292,7 @@ app.use('/api/dia', diaRoutes);
 const netahsilatRouter = require('./routes/web/payment/netahsilat');
 app.use('/api/web/payments/netahsilat', netahsilatRouter);
 
-/* N Kolay */
+/* NKolay */
 const nkolayRouter = require('./routes/web/payment/nkolay');
 app.use('/api/web/payments/nkolay', nkolayRouter);
 
@@ -359,8 +361,6 @@ app.use('/api/pages', webPageRoutes);
 const webBlogRoutes = require('./routes/web/content/blog');
 app.use('/api/blogs', webBlogRoutes);
 
-
-
 /* Ürün Yorumları */
 const webReviewsRoutes = require('./routes/web/user/reviews');
 app.use('/api/reviews', webReviewsRoutes);
@@ -402,6 +402,10 @@ app.use('/api/order', webOrderRoutes);
 const webFavouritesRoutes = require('./routes/web/user/favourites');
 app.use('/api/favourites', webFavouritesRoutes);
 
+/* İletişim Formu */
+
+const contactRoutes = require('./routes/web/content/contact');
+app.use('/api/contact', contactRoutes);
 
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);

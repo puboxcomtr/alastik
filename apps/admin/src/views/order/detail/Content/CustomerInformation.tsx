@@ -73,7 +73,7 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote }: 
                             </ListItemIcon>
                             <ListItemText
                                 primary='Adı Soyadı:'
-                                secondary={shippingAddress?.fullName || '-'}
+                                secondary={shippingAddress?.fullName || shippingAddress?.authorizedPerson || '-'}
                                 sx={listItemSx}
                             />
                         </ListItem>

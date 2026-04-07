@@ -111,4 +111,19 @@ router.use('/integration/xml', webxmlRoutes);
 const diaModuleRoutes = require('./../plugins/dia/settings');
 router.use('/modules/dia', diaModuleRoutes);
 
+// ============================================
+// INDEXING ROUTES
+// ============================================
+const indexingRoutes = require('./catalog/indexing');
+router.use('/indexing', indexingRoutes);
+
+// ============================================
+// MERCHANT ROUTES
+// ============================================
+const merchantSettingsRoutes = require('../plugins/merchant/settings');
+router.use('/modules/merchant', merchantSettingsRoutes);
+
+const merchantFeedRoutes = require('../plugins/merchant/feed');
+router.use('/modules/merchant/feed', merchantFeedRoutes);
+
 module.exports = router;

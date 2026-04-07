@@ -1,4 +1,4 @@
-import XmlProductListTable from '@/views/modules/xmlListProducts/XmlProductTable'
+import XmlProductListTable from '@/views/modules/xml/xmlListProducts/XmlProductTable'
 
 const XmlProductsPage = () => {
     return <XmlProductListTable />

@@ -109,12 +109,10 @@ export default function AccountPage() {
                                 <AccountSidebar profile={profile} email={email} username={username} stats={stats} />
                             </Col>
                             <Col md={9}>
-                                <ProfileContent
-                                    email={email}
-                                    profile={profile}
-                                    onProfileChange={setProfile}
-                                />
-                                <AddressContent addresses={addresses} />
+                                <div className="alert alert-warning d-flex align-items-center gap-2" role="alert">
+                                    <i className="ri-error-warning-line"></i>
+                                    Bu sayfa yapım aşamasındadır, kısa süre içerisinde kontrol edebilirsiniz.
+                                </div>
                             </Col>
                         </Row>
                     </div>

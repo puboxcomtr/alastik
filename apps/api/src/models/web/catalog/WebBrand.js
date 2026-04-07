@@ -19,6 +19,10 @@ const webBrandSchema = new mongoose.Schema({
         trim: true,
         unique: true
     },
+    customName: {
+        type: String,
+        default: null
+    },
     slug: {
         type: String,
         required: true,

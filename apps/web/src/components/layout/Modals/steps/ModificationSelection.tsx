@@ -22,6 +22,7 @@ interface ModificationSelectionProps {
     selectedModification?: string;
     vehicleImage?: string;
     onSelect: (modification: string, modificationName: string) => void;
+    onSkipToSize?: () => void;
 }
 
 export default function ModificationSelection({
@@ -33,6 +34,7 @@ export default function ModificationSelection({
     generation,
     selectedModification,
     vehicleImage,
+    onSkipToSize,
     onSelect
 }: ModificationSelectionProps) {
     const { getModifications, loading } = useWheelSize();
@@ -123,8 +125,16 @@ export default function ModificationSelection({
                                 Motor Bilgisi Bulunamadı
                             </Typography>
                             <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                                <strong>{makeName} {modelName}</strong> için detaylı bilgi internet sitemizde bulunmuyor.
+                                <strong>{makeName} {modelName}</strong> için motor bilgisi bulunamadı.
                             </Typography>
+                            {onSkipToSize && (
+                                <button
+                                    className="btn btn-primary mt-3"
+                                    onClick={onSkipToSize}
+                                >
+                                    Lastik Ebatlarına Git
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

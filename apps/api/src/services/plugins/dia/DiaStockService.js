@@ -549,7 +549,7 @@ class DiaStockService {
       ekalan9: diaProduct.ekalan9,
       ekalan10: diaProduct.ekalan10,
 
-      gercek_stok: diaProduct.gercek_stok || diaProduct.fiili_stok || 0,
+      gercek_stok: diaProduct.gercek_stok ?? 0,
       marka: diaProduct.marka,
       menseiulkeadi: diaProduct.menseiulkeadi,
 
@@ -1040,7 +1040,7 @@ class DiaStockService {
           { _id: existingBrand._id },
           {
             $set: {
-              name: brandData._id.toUpperCase(),
+              name: existingBrand.customName || brandData._id.toUpperCase(),
               diaMarkaAck: brandData.markaAck,
               diaKey: brandData.diaKey,
               productCount: brandData.productCount,
@@ -1119,7 +1119,7 @@ class DiaStockService {
       ozelkod11: product.ozelkod11 || '',
       ozelkod11kodu: product.ozelkod11kodu || '',
       durum: product.durum || '',
-      gercek_stok: product.gercek_stok || product.fiili_stok || 0,
+      gercek_stok: product.gercek_stok ?? 0,
       fiyat1: product.fiyat1 || 0,
       fiyat2: product.fiyat2 || 0,
       fiyat3: product.fiyat3 || 0,
@@ -1158,7 +1158,7 @@ class DiaStockService {
    */
   generateStockHash(product) {
     const data = {
-      gercek_stok: parseFloat(product.gercek_stok) || parseFloat(product.fiili_stok) || 0
+      gercek_stok: parseFloat(product.gercek_stok) ?? 0
     };
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
   }
@@ -1914,7 +1914,7 @@ class DiaStockService {
   async fullSync(progressCallback = null) {
     try {
       const startTime = Date.now();
-      const totalSteps = 7;
+      const totalSteps = 8;
       let currentStep = 0;
 
       const reportProgress = (step, message, detail = {}) => {
@@ -1970,6 +1970,8 @@ class DiaStockService {
       // 7. Ürün özellikleri (feature) senkronizasyonu
       reportProgress(6, 'Ürün özellikleri senkronizasyonu başlıyor...');
       const featureResult = await this.syncFeaturesToWebFeature();
+      reportProgress(7, 'Görsel senkronizasyonu başlıyor...');
+      const imageResult = await this.syncImagesToWebProducts();
       reportProgress(7, 'Tam senkronizasyon tamamlandı', { featuresCreated: featureResult.created, featuresUpdated: featureResult.updated });
 
       const endTime = Date.now();
@@ -1983,6 +1985,7 @@ class DiaStockService {
         deleted: deletedCount,
         ozelkodlar: ozelkodResult,
         features: featureResult,
+        images: imageResult,
         timestamp: new Date()
       };
 
@@ -2265,7 +2268,25 @@ class DiaStockService {
     try {
       this.logger.info('=== WEBPRODUCTS TEMİZLEME BAŞLANGICI ===');
 
-      // DIA API yerine diastocks collection'ından al (daha güvenilir)
+      // Son 7 günde güncellenmemiş ürünleri diastocks'ta pasif yap 
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const staleResult = await DiaStock.updateMany(
+        {
+          'syncInfo.lastSyncDate': { $lt: sevenDaysAgo },
+          ozelkod11kodu: 'E'
+        },
+        {
+          $set: { ozelkod11kodu: 'H' }
+        }
+      );
+
+      if (staleResult.modifiedCount > 0) {
+        this.logger.info('Eski ürünler pasif yapıldı', {
+          count: staleResult.modifiedCount,
+          reason: `${sevenDaysAgo.toISOString()} tarihinden önce sync edilmemiş`
+        });
+      }
+
       const activeEKeys = await DiaStock.distinct('_key', { durum: 'A', ozelkod11kodu: 'E' });
 
       this.logger.info(`diastocks'tan ${activeEKeys.length} aktif E ürün key'i alındı`);
@@ -2919,86 +2940,47 @@ class DiaStockService {
     const startTime = Date.now();
 
     try {
-      this.logger.info('=== ÖZELKOD SYNC BAŞLANGICI ===', { operationId });
+      this.logger.info('=== ÖZELKOD SYNC BAŞLANGICI (DIASTOCKS) ===', { operationId });
 
+      const batchSize = 500;
+      let offset = 0;
       let totalProcessed = 0;
       let totalUpdated = 0;
       let totalSkipped = 0;
-      let offset = 0;
       let hasMore = true;
       let batchCount = 0;
 
       while (hasMore) {
         batchCount++;
 
-        const batchData = await this.fetchStockFromDia({
-          limit: 1000,
-          offset: offset
-        });
+        const batchData = await DiaStock.find(
+          { durum: 'A', ozelkod11kodu: 'E' },
+          {
+            _key: 1, marka: 1, markaack: 1, anabarkod: 1,
+            ozelkod1: 1, ozelkod1kodu: 1, ozelkod2: 1, ozelkod2kodu: 1,
+            ozelkod3: 1, ozelkod3kodu: 1, ozelkod4: 1, ozelkod4kodu: 1,
+            ozelkod5: 1, ozelkod5kodu: 1, ozelkod6: 1, ozelkod6kodu: 1,
+            ozelkod7: 1, ozelkod7kodu: 1, ozelkod8: 1, ozelkod8kodu: 1,
+            ozelkod9: 1, ozelkod9kodu: 1, ozelkod10: 1, ozelkod10kodu: 1,
+            ozelkod11: 1, ozelkod11kodu: 1, m_urunOzellikleri: 1, ozelkodHash: 1
+          }
+        ).skip(offset).limit(batchSize).lean();
 
         if (!batchData || batchData.length === 0) {
           hasMore = false;
           break;
         }
 
-        const keys = batchData.map(item => item._key).filter(k => k);
-        const existingDocs = await DiaStock.find(
-          { _key: { $in: keys } },
-          { _key: 1, ozelkodHash: 1 }
-        ).lean();
-        const hashMap = {};
-        existingDocs.forEach(d => { hashMap[d._key] = d.ozelkodHash; });
-
-        const diaOps = [];
         const webOps = [];
 
         for (const product of batchData) {
           if (!product._key) continue;
 
           const newHash = this.generateOzelkodHash(product);
-          if (hashMap[product._key] && hashMap[product._key] === newHash) {
+          if (product.ozelkodHash && product.ozelkodHash === newHash) {
             totalSkipped++;
             continue;
           }
-
-          diaOps.push({
-            updateOne: {
-              filter: { _key: product._key },
-              update: {
-                $set: {
-                  marka: product.marka || '',
-                  markaack: product.markaack || '',
-                  anabarkod: product.anabarkod || '',
-                  ozelkod1: product.ozelkod1 || '',
-                  ozelkod1kodu: product.ozelkod1kodu || '',
-                  ozelkod2: product.ozelkod2 || '',
-                  ozelkod2kodu: product.ozelkod2kodu || '',
-                  ozelkod3: product.ozelkod3 || '',
-                  ozelkod3kodu: product.ozelkod3kodu || '',
-                  ozelkod4: product.ozelkod4 || '',
-                  ozelkod4kodu: product.ozelkod4kodu || '',
-                  ozelkod5: product.ozelkod5 || '',
-                  ozelkod5kodu: product.ozelkod5kodu || '',
-                  ozelkod6: product.ozelkod6 || '',
-                  ozelkod6kodu: product.ozelkod6kodu || '',
-                  ozelkod7: product.ozelkod7 || '',
-                  ozelkod7kodu: product.ozelkod7kodu || '',
-                  ozelkod8: product.ozelkod8 || '',
-                  ozelkod8kodu: product.ozelkod8kodu || '',
-                  ozelkod9: product.ozelkod9 || '',
-                  ozelkod9kodu: product.ozelkod9kodu || '',
-                  ozelkod10: product.ozelkod10 || '',
-                  ozelkod10kodu: product.ozelkod10kodu || '',
-                  ozelkod11: product.ozelkod11 || '',
-                  ozelkod11kodu: product.ozelkod11kodu || '',
-                  m_urunOzellikleri: product.m_urunOzellikleri || [],
-                  ozelkodHash: newHash,
-                  'syncInfo.lastSyncDate': new Date(),
-                  'syncInfo.syncStatus': 'synced'
-                }
-              }
-            }
-          });
 
           webOps.push({
             updateOne: {
@@ -3038,18 +3020,15 @@ class DiaStockService {
           });
         }
 
-        if (diaOps.length > 0) {
-          await DiaStock.bulkWrite(diaOps, { ordered: false });
-        }
         if (webOps.length > 0) {
           await WebProduct.bulkWrite(webOps, { ordered: false });
         }
 
-        totalUpdated += diaOps.length;
+        totalUpdated += webOps.length;
         totalProcessed += batchData.length;
-        offset += 1000;
+        offset += batchSize;
 
-        this.logger.info(`Ozelkod Batch ${batchCount}: ${diaOps.length} güncellendi, ${batchData.length - diaOps.length} atlandı`, { operationId });
+        this.logger.info(`Ozelkod Batch ${batchCount}: ${webOps.length} güncellendi, ${totalSkipped} atlandı`, { operationId });
 
         await this.sleep(100);
       }
@@ -3070,6 +3049,66 @@ class DiaStockService {
 
     } catch (error) {
       this.logger.error('Özelkod sync hatası:', { error: error.message, operationId });
+      throw error;
+    }
+  }
+  async syncImagesToWebProducts() {
+    const operationId = `sync_images_web_${Date.now()}`;
+    const startTime = Date.now();
+
+    try {
+      this.logger.info('=== DIASTOCKS → WEBPRODUCTS GÖRSEL SYNC BAŞLANGICI ===', { operationId });
+
+      const batchSize = 500;
+      let offset = 0;
+      let totalUpdated = 0;
+      let hasMore = true;
+      let batchCount = 0;
+
+      while (hasMore) {
+        batchCount++;
+
+        const diaStocks = await DiaStock.find(
+          { durum: 'A', ozelkod11kodu: 'E' },
+          { _key: 1, m_resimler: 1 }
+        ).skip(offset).limit(batchSize).lean();
+
+        if (!diaStocks || diaStocks.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        const webOps = diaStocks.map(dia => ({
+          updateOne: {
+            filter: { _key: dia._key },
+            update: {
+              $set: {
+                'diaData.m_resimler': dia.m_resimler || [],
+                'syncInfo.lastDiaSync': new Date()
+              }
+            }
+          }
+        }));
+
+        if (webOps.length > 0) {
+          const result = await WebProduct.bulkWrite(webOps, { ordered: false });
+          totalUpdated += result.modifiedCount || 0;
+        }
+
+        offset += batchSize;
+
+        this.logger.info(`Görsel sync batch ${batchCount}: ${totalUpdated} güncellendi`, { operationId });
+
+        await this.sleep(100);
+      }
+
+      const duration = Date.now() - startTime;
+      this.logger.info('=== GÖRSEL SYNC TAMAMLANDI ===', { operationId, totalUpdated, duration: `${duration}ms` });
+
+      return { success: true, updated: totalUpdated, duration: `${duration}ms` };
+
+    } catch (error) {
+      this.logger.error('Görsel sync hatası:', { error: error.message, operationId });
       throw error;
     }
   }

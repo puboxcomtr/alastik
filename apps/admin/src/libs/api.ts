@@ -54,17 +54,20 @@ export const API_ENDPOINTS = {
     },
     webxml: {
         list: () => `${getBaseUrl()}/admin/integration/xml`,
+        create: () => `${getBaseUrl()}/admin/integration/xml`,
         detail: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}`,
         update: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}`,
         updateStatus: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/status`,
         startSync: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/sync`,
         updateRules: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/rules`,
         getFilterOptions: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/filter-options`,
-        getDiaFields: () => `${getBaseUrl()}/admin/integration/xml/dia-fields`,
-        syncToDia: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/sync-to-dia`,
+        getSourceFields: (id: string) => `${getBaseUrl()}/admin/integration/xml/${id}/source-fields`,
         xmlProducts: (source: string) => `${getBaseUrl()}/admin/integration/xml/products?source=${source}`,
-        exportExcel: () => `${getBaseUrl()}/admin/integration/xml/export-excel`,
-        downloadExcel: (fileName: string) => `${getBaseUrl()}/admin/integration/xml/export-excel/download/${fileName}`,
+        allProducts: () => `${getBaseUrl()}/admin/integration/xml/all-products`,
+        productsExport: (source?: string) => `${getBaseUrl()}/admin/integration/xml/products/export${source ? `?source=${source}` : ''}`,
+        mappingExport: (source?: string) => `${getBaseUrl()}/admin/integration/xml/mapping/export${source ? `?source=${source}` : ''}`,
+        mappingImport: () => `${getBaseUrl()}/admin/integration/xml/mapping/import`,
+        mappingDelete: (productId: string) => `${getBaseUrl()}/admin/integration/xml/mapping/${productId}`,
     },
     admins: {
         list: () => `${getBaseUrl()}/admin/user/admins`,
@@ -101,6 +104,12 @@ export const API_ENDPOINTS = {
         update: () => `${getBaseUrl()}/admin/modules/dia/settings`,
         testConnection: () => `${getBaseUrl()}/admin/modules/dia/test-connection`,
         fullSync: () => `${getBaseUrl()}/dia/full-sync`,
+    },
+    merchantSettings: {
+        get: () => `${getBaseUrl()}/admin/modules/merchant`,
+        update: () => `${getBaseUrl()}/admin/modules/merchant`,
+        priceFields: () => `${getBaseUrl()}/admin/modules/merchant/price-fields`,
+        textFields: () => `${getBaseUrl()}/admin/modules/merchant/text-fields`,
     },
     media: {
         list: (params: {

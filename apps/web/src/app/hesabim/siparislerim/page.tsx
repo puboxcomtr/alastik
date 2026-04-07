@@ -1,13 +1,23 @@
 'use client';
 
+// React & Next.js
 import React, { useEffect, useState } from 'react';
-import { Col, Container, Row } from 'react-bootstrap';
 import Link from 'next/link';
-import AccountSidebar from '@/src/components/account/Sidebar/Content';
-import ProfileContent from '@/src/components/account/Content/Profile';
-import AddressContent from '@/src/components/account/Content/Adress';
-import { ROUTES } from '@/src/config/routes';
+import { useRouter } from 'next/navigation';
+
+// Bootstrap
+import { Col, Container, Row } from 'react-bootstrap';
+
+// Hooks
 import { useAuth } from '@/src/hooks/Theme/useAuth';
+
+// Config
+import { ROUTES } from '@/src/config/routes';
+
+// Components
+import AccountSidebar from '@/src/components/account/Sidebar/Content';
+import OrdersContent from '@/src/components/account/Content/Orders';
+import OrderDetail from '@/src/components/account/Content/OrderDetail';
 
 type Profile = {
     firstName?: string;
@@ -15,26 +25,31 @@ type Profile = {
     phone?: string;
 };
 
-export default function AccountPage() {
+export default function OrdersPage() {
+    const router = useRouter();
     const { isLoggedIn, loading: authLoading, getToken } = useAuth();
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [profile, setProfile] = useState<Profile>({});
     const [stats, setStats] = useState<any>(null);
-    const [addresses, setAddresses] = useState<any[]>([]);
+    const [orders, setOrders] = useState<any[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
+
+    // Offcanvas state
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [showDetail, setShowDetail] = useState(false);
 
     useEffect(() => {
         if (authLoading) return;
 
         if (!isLoggedIn) {
-            setError('Bu sayfa için giriş yapmalısınız.');
-            setPageLoading(false);
+            router.push(ROUTES.LOGIN);
             return;
         }
 
-        const fetchProfile = async () => {
+        const fetchData = async () => {
             try {
                 const token = getToken();
                 const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
@@ -57,7 +72,20 @@ export default function AccountPage() {
                         orders: data.data.user.statistics?.totalOrders,
                         spent: data.data.user.statistics?.totalSpent
                     });
-                    setAddresses(data.data.user.addresses || []);
+
+                    const uid = data.data.user._id || data.data.user.id;
+                    if (uid) {
+                        const ordersResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order/user/${uid}`, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        const ordersData = await ordersResp.json();
+                        if (ordersData.success) {
+                            setOrders(ordersData.data || []);
+                        }
+                    }
                 } else {
                     setError(data.message || 'Profil alınamadı');
                 }
@@ -67,8 +95,32 @@ export default function AccountPage() {
                 setPageLoading(false);
             }
         };
-        fetchProfile();
+        fetchData();
     }, [authLoading, isLoggedIn]);
+
+    const handleOrderClick = async (orderId: string) => {
+        setShowDetail(true);
+        setDetailLoading(true);
+        setSelectedOrder(null);
+
+        try {
+            const token = getToken();
+            const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order/${orderId}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await resp.json();
+            if (data.success) {
+                setSelectedOrder(data.data);
+            }
+        } catch (e) {
+            console.error('Sipariş detay hatası:', e);
+        } finally {
+            setDetailLoading(false);
+        }
+    };
 
     if (authLoading || pageLoading) return null;
 
@@ -85,42 +137,27 @@ export default function AccountPage() {
 
     return (
         <>
-            <section id="breadcumb">
-                <Container>
-                    <div className='row-fluid'>
-                        <Row>
-                            <Col md={12}>
-                                <nav aria-label="breadcrumb" className="mb-4">
-                                    <ol className="breadcrumb">
-                                        <li className="breadcrumb-item"><Link href={ROUTES.HOME}>Ana Sayfa</Link></li>
-                                        <li className="breadcrumb-item active" aria-current="page">Hesabım</li>
-                                    </ol>
-                                </nav>
-                            </Col>
-                        </Row>
-                    </div>
-                </Container>
-            </section>
             <section id="main_account">
                 <Container>
-                    <div className='row-fluid'>
+                    <div className="row-fluid">
                         <Row>
                             <Col md={3}>
                                 <AccountSidebar profile={profile} email={email} username={username} stats={stats} />
                             </Col>
                             <Col md={9}>
-                                <ProfileContent
-                                    email={email}
-                                    profile={profile}
-                                    onProfileChange={setProfile}
-                                />
-                                <AddressContent addresses={addresses} />
+                                <OrdersContent orders={orders} onOrderClick={handleOrderClick} />
                             </Col>
                         </Row>
                     </div>
                 </Container>
-
             </section>
+
+            <OrderDetail
+                order={selectedOrder}
+                show={showDetail}
+                onHide={() => setShowDetail(false)}
+                loading={detailLoading}
+            />
         </>
     );
 }

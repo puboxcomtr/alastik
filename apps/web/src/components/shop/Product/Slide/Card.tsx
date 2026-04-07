@@ -167,7 +167,7 @@ export default function ProductSlideCard({ product }: Props) {
           </div>
           {/* Rating */}
           <div className="d-flex align-items-center gap-1">
-            {product.customData?.reviewStats?.reviewCount > 0 ? (
+            {product.customData?.reviewStats?.reviewCount > 0 && (
               <>
                 <Rating
                   name={`slide-rating-${product._key}`}
@@ -178,8 +178,6 @@ export default function ProductSlideCard({ product }: Props) {
                 />
                 <span className="text-body-tertiary fs-xs">({product.customData.reviewStats.reviewCount} Yorum)</span>
               </>
-            ) : (
-              <span className="text-body-tertiary fs-xs">Henüz Yorum Yapılmadı</span>
             )}
           </div>
         </div>

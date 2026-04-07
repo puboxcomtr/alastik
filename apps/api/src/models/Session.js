@@ -8,7 +8,7 @@ const SessionSchema = new mongoose.Schema({
     required: true
   },
   
-  // Kullanıcı referansı (login olduktan sonra)
+  // Kullanıcı referansı
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

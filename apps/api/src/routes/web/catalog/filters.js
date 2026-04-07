@@ -133,7 +133,11 @@ router.get('/tire-options', async (req, res) => {
                 success: true,
                 data: {
                     productType: 'JANT',
-                    brands: brands.map(b => ({ value: b._id, label: b._id, count: b.count })),
+                    brands: await Promise.all(brands.map(async b => {
+                        const webBrand = await WebBrand.findOne({ diaBrand: { $regex: new RegExp(`^${b._id}$`, 'i') } }).select('customName name').lean();
+                        const displayName = webBrand?.customName || webBrand?.name || b._id;
+                        return { value: b._id, label: displayName, count: b.count };
+                    })),
                     priceRange: priceRange[0] ? {
                         min: Math.floor(priceRange[0].minPrice),
                         max: Math.ceil(priceRange[0].maxPrice)
@@ -263,8 +267,11 @@ router.get('/tire-options', async (req, res) => {
                     .filter((r, i, arr) => arr.findIndex(x => x.value === r.value) === i)
                     .sort((a, b) => parseInt(a.value) - parseInt(b.value)),
                 vehicleTypes: vehicleTypes.map(v => ({ value: v._id, label: getVehicleTypeLabel(v._id), count: v.count })),
-                brands: brands.map(b => ({ value: b._id, label: b._id, count: b.count })),
-                oem: oem.map(o => {
+                brands: await Promise.all(brands.map(async b => {
+                    const webBrand = await WebBrand.findOne({ diaBrand: { $regex: new RegExp(`^${b._id}$`, 'i') } }).select('customName name').lean();
+                    const displayName = webBrand?.customName || webBrand?.name || b._id;
+                    return { value: b._id, label: displayName, count: b.count };
+                })), oem: oem.map(o => {
                     const slug = o._id.split('(')[0].trim().toLowerCase().replace(/\s+/g, '-');
                     return { value: slug, label: o._id, count: o.count };
                 }),

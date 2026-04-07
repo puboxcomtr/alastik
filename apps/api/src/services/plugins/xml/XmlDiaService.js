@@ -17,6 +17,7 @@ class XmlDiaService {
         this.firmaKodu = parseInt(process.env.DIA_FIRMA_KODU) || 1;
         this.donemKodu = parseInt(process.env.DIA_DONEM_KODU) || 3;
         this.sessionId = null;
+        this.isSyncingPriceAndStock = false;
 
         // DIA Sabit Degerler
         this.DIA_SUBE_KEY = 2033;
@@ -278,7 +279,6 @@ class XmlDiaService {
      */
     async updateStockAndPrice(diaKey, mappedData, diaGercekStok) {
         const results = { priceUpdated: false, stockUpdated: false };
-
         // Fiyat guncelle
         if (mappedData.fiyat1) {
             try {
@@ -503,7 +503,6 @@ class XmlDiaService {
     async syncSingleProduct(xmlProductId) {
         try {
             if (!await this.login()) return { success: false, message: 'DIA login başarısız' };
-
             const xmlProduct = await XmlProduct.findById(xmlProductId);
             if (!xmlProduct) return { success: false, message: 'XML ürünü bulunamadı' };
 
@@ -593,9 +592,22 @@ class XmlDiaService {
                 }
             }
 
-            const query = XmlProduct.find(filter).select('_id sourceProductId rawData diaKey');
-            if (limit > 0) query.limit(limit);
-            const products = await query;
+            // diaKey olan pending ürünleri ayrıca çek (stok sıfırlama için)
+            const diaKeyFilter = {
+                source: webXml.code,
+                status: 'pending',
+                diaKey: { $ne: null, $exists: true }
+            };
+
+            const [filteredProducts, diaKeyProducts] = await Promise.all([
+                XmlProduct.find(filter).select('_id sourceProductId rawData diaKey').limit(limit > 0 ? limit : 0),
+                XmlProduct.find(diaKeyFilter).select('_id sourceProductId rawData diaKey')
+            ]);
+
+            // Tekrarları önle — filteredProducts zaten varsa diaKeyProducts'tan çıkar
+            const filteredIds = new Set(filteredProducts.map(p => p._id.toString()));
+            const extraProducts = diaKeyProducts.filter(p => !filteredIds.has(p._id.toString()));
+            const products = [...filteredProducts, ...extraProducts];
 
             const results = {
                 total: products.length,
@@ -609,7 +621,8 @@ class XmlDiaService {
             };
 
             if (products.length === 0) {
-                logger.info('[XmlDiaService] Pending ürün yok, sync gerekmiyor');
+                logger.info('[XmlDiaService] Pending ürün yok, fiyat/stok kontrolü yapılıyor');
+                await this.syncPriceAndStockForSynced(integrationId);
                 return { success: true, results };
             }
 
@@ -628,6 +641,18 @@ class XmlDiaService {
                     const mappedData = this.mapXmlToDia(product, fieldMappings, webXml.code);
 
                     if (mappedData._skipSync) {
+                        if (product.diaKey) {
+                            const source = webXml.code;
+                            const rawCode = source === 'tatko' ? product.rawData?.stokkodu : product.rawData?.ProductCode;
+                            const stokkartkodu = rawCode ? this.formatStokKodu(rawCode, source) : null;
+                            if (stokkartkodu) {
+                                const checkResult = await this.checkStockExists(stokkartkodu);
+                                if (checkResult.exists && checkResult.gercekStok > 0) {
+                                    await this.adjustStock(product.diaKey, 0, checkResult.gercekStok);
+                                    logger.info('[XmlDiaService] Eşik altı ürün stoku sıfırlandı', { diaKey: product.diaKey, stokkartkodu });
+                                }
+                            }
+                        }
                         results.skipped++;
                         continue;
                     }
@@ -676,6 +701,7 @@ class XmlDiaService {
             }
 
             logger.info('[XmlDiaService] Toplu sync tamamlandı', results);
+            await this.syncPriceAndStockForSynced(integrationId);
             return { success: true, results };
         } catch (error) {
             logger.error('[XmlDiaService] Toplu sync hatası:', error.message);
@@ -690,9 +716,16 @@ class XmlDiaService {
     // =====================================================================
 
     async syncPriceAndStockForSynced(integrationId) {
+        if (this.isSyncingPriceAndStock) {
+            logger.warn('[XmlDiaService] Fiyat/Stok sync zaten çalışıyor, atlanıyor...');
+            return { success: false, message: 'Zaten çalışıyor' };
+        }
+        this.isSyncingPriceAndStock = true;
         try {
-            if (!await this.login()) return { success: false, message: 'DIA login başarısız' };
-
+            if (!await this.login()) {
+                this.isSyncingPriceAndStock = false;
+                return { success: false, message: 'DIA login başarısız' };
+            }
             const webXml = await WebXml.findById(integrationId);
             if (!webXml) return { success: false, message: 'Entegrasyon bulunamadı' };
 
@@ -703,7 +736,8 @@ class XmlDiaService {
             const products = await XmlProduct.find({
                 source: webXml.code,
                 status: 'synced_to_dia',
-                diaKey: { $ne: null, $exists: true }
+                diaKey: { $ne: null, $exists: true },
+                $expr: { $gt: ['$lastFetchedAt', '$lastSyncedToDiaAt'] }
             }).select('_id sourceProductId rawData diaKey mappedData').lean();
 
             const results = {
@@ -872,11 +906,12 @@ class XmlDiaService {
                     }
                 }
             }
-
             logger.info('[XmlDiaService] Fiyat/Stok kontrolü tamamlandı', results);
+            this.isSyncingPriceAndStock = false;
             return { success: true, results };
         } catch (error) {
             logger.error('[XmlDiaService] Fiyat/Stok kontrol hatası:', error.message);
+            this.isSyncingPriceAndStock = false;
             return { success: false, message: error.message };
         }
     }

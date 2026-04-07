@@ -437,6 +437,7 @@ export default function TireSearchModal({
                             updateSearchState({ modification, modificationName });
                             setCurrentStep(stepOrder[4]);
                         }}
+                        onSkipToSize={() => setCurrentStep(stepOrder[4])}
                     />
                 )}
 

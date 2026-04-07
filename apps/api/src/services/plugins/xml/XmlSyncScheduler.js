@@ -4,8 +4,8 @@
  */
 
 const cron = require('node-cron');
-const crypto = require('crypto');
 const https = require('https');
+const crypto = require('crypto');
 const WebXml = require('../../../models/plugins/xml/WebXml');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
 const XmlDiaService = require('./XmlDiaService');
@@ -47,7 +47,6 @@ class XmlSyncScheduler {
             for (const integration of dueIntegrations) {
                 try {
                     await this.syncIntegration(integration);
-                    await this.syncToDia(integration);
                 } catch (err) {
                     console.error(`[XmlSyncScheduler] ${integration.name} sync hatası:`, err.message);
                 }
@@ -97,78 +96,72 @@ class XmlSyncScheduler {
     async syncIntegration(integration) {
         const startTime = Date.now();
         const axios = require('axios');
+        const { parseStringPromise } = require('xml2js');
         console.log(`[XmlSyncScheduler] ${integration.name} XML çekme başlıyor...`);
 
         try {
             let products = [];
 
-            if (integration.code === 'tatko') {
-                const response = await axios.post(integration.apiUrl, {
-                    UserName: integration.credentials.userName,
-                    Password: integration.credentials.password,
-                    CompanyCode: integration.credentials.companyCode,
-                    stokCode: ''
-                }, {
-                    timeout: 60000,
-                    headers: { 'Content-Type': 'application/json' }
-                });
+            const headers = {};
+            if (integration.credentials?.apiKey) headers['API-KEY'] = integration.credentials.apiKey;
+            if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
+            if (integration.credentials?.secretKey) headers['SECRET-KEY'] = integration.credentials.secretKey;
 
-                if (!response.data?.Basarili) {
-                    throw new Error('Tatko API hatası: ' + (response.data?.Hatakodu || 'Bilinmeyen'));
-                }
+            let url = integration.apiUrl;
+            if (integration.credentials?.token && !url.includes('token=')) {
+                url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
+            }
 
-                const raw = response.data.Sonuc;
-                products = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            } else {
-                const url = new URL(`${integration.apiUrl}?token=${integration.credentials.token}`);
+            const response = await axios.get(url, {
+                headers,
+                timeout: 60000,
+                responseType: 'text'
+            });
 
-                const options = {
-                    hostname: url.hostname,
-                    port: url.port || 443,
-                    path: url.pathname + url.search,
-                    method: 'GET',
-                    headers: {
-                        'API-KEY': integration.credentials.apiKey,
-                        'APP-KEY': integration.credentials.appKey,
-                        'SECRET-KEY': integration.credentials.secretKey,
-                        'Content-Type': 'application/json'
-                    },
-                    rejectUnauthorized: false
-                };
-
-                const apiResponse = await new Promise((resolve, reject) => {
-                    const req = https.request(options, (response) => {
-                        let data = '';
-                        response.on('data', chunk => data += chunk);
-                        response.on('end', () => {
-                            try {
-                                resolve(JSON.parse(data));
-                            } catch (e) {
-                                reject(new Error('JSON parse hatası'));
-                            }
-                        });
-                    });
-                    req.on('error', reject);
-                    req.setTimeout(120000, () => reject(new Error('Timeout')));
-                    req.end();
-                });
-
-                products = apiResponse;
-                if (integration.dataPath) {
-                    const paths = integration.dataPath.split('.');
-                    for (const p of paths) {
-                        products = products?.[p];
+            const findFirstArray = (obj, depth = 0) => {
+                if (depth > 5) return null;
+                for (const key of Object.keys(obj)) {
+                    const val = obj[key];
+                    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
+                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                        const found = findFirstArray(val, depth + 1);
+                        if (found) return found;
                     }
                 }
+                return null;
+            };
+
+            if (integration.format === 'xml') {
+                const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
+                products = findFirstArray(parsed1) || [];
+
+                if (products.length === 0) {
+                    const parsed2 = await parseStringPromise(response.data, { explicitArray: true, mergeAttrs: true });
+                    const rawProducts = findFirstArray(parsed2) || [];
+                    products = rawProducts.map(p => {
+                        const flat = {};
+                        for (const key of Object.keys(p)) {
+                            const val = p[key];
+                            flat[key] = Array.isArray(val) && val.length === 1 ? val[0] : val;
+                        }
+                        return flat;
+                    });
+                }
+            } else {
+                const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                products = Array.isArray(data) ? data : (findFirstArray(data) || []);
             }
 
-            if (!Array.isArray(products)) {
-                throw new Error('Ürün listesi bulunamadı');
+            if (!Array.isArray(products) || products.length === 0) {
+                throw new Error('Ürün listesi bulunamadı veya boş');
             }
 
+            // stokKodu mapping'inden ID tespiti
+            const fieldMappings = integration.rules?.fieldMappings || [];
+            const stokKoduMapping = fieldMappings.find(m => m.target === 'stokKodu');
             const getProductId = (p) => {
-                if (integration.code === 'tatko') return p.stokkodu;
-                return String(p.ProductID);
+                if (stokKoduMapping?.source) return String(p[stokKoduMapping.source] ?? '');
+                return String(Object.values(p)[0] ?? Math.random());
             };
 
             const sourceProductIds = products.map(p => getProductId(p));
@@ -182,67 +175,36 @@ class XmlSyncScheduler {
                 existingMap[ep.sourceProductId] = ep.syncHash || null;
             }
 
-            let changedCount = 0;
-            let unchangedCount = 0;
-            let newCount = 0;
-
+            let changedCount = 0, unchangedCount = 0, newCount = 0;
             const bulkOps = [];
 
             for (const product of products) {
                 const pid = getProductId(product);
-                const newHash = this.generateSyncHash(product, integration.code);
+                if (!pid) continue;
+                const newHash = crypto.createHash('md5').update(JSON.stringify(product)).digest('hex');
                 const oldHash = existingMap[pid];
 
-                if (!oldHash) {
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { source: integration.code, sourceProductId: pid },
-                            update: {
-                                $set: {
-                                    rawData: product,
-                                    lastFetchedAt: new Date(),
-                                    syncHash: newHash,
-                                    status: 'pending'
-                                }
-                            },
-                            upsert: true
-                        }
-                    });
-                    newCount++;
-                } else if (oldHash !== newHash) {
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { source: integration.code, sourceProductId: pid },
-                            update: {
-                                $set: {
-                                    rawData: product,
-                                    lastFetchedAt: new Date(),
-                                    syncHash: newHash,
-                                    status: 'pending'
-                                }
+                bulkOps.push({
+                    updateOne: {
+                        filter: { source: integration.code, sourceProductId: pid },
+                        update: {
+                            $set: {
+                                rawData: product,
+                                lastFetchedAt: new Date(),
+                                syncHash: newHash,
+                                ...(!oldHash || oldHash !== newHash ? { status: 'pending' } : {})
                             }
-                        }
-                    });
-                    changedCount++;
-                } else {
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { source: integration.code, sourceProductId: pid },
-                            update: {
-                                $set: {
-                                    rawData: product,
-                                    lastFetchedAt: new Date()
-                                }
-                            }
-                        }
-                    });
-                    unchangedCount++;
-                }
+                        },
+                        upsert: true
+                    }
+                });
+
+                if (!oldHash) newCount++;
+                else if (oldHash !== newHash) changedCount++;
+                else unchangedCount++;
             }
 
-            if (bulkOps.length > 0) {
-                await XmlProduct.bulkWrite(bulkOps);
-            }
+            if (bulkOps.length > 0) await XmlProduct.bulkWrite(bulkOps);
 
             const duration = Date.now() - startTime;
 
@@ -257,11 +219,10 @@ class XmlSyncScheduler {
                 }
             });
 
-            console.log(`[XmlSyncScheduler] ${integration.name} XML çekildi: ${products.length} urun (${newCount} yeni, ${changedCount} değişmiş, ${unchangedCount} aynı), ${duration}ms`);
+            console.log(`[XmlSyncScheduler] ${integration.name} tamamlandı: ${products.length} ürün, ${duration}ms`);
 
         } catch (error) {
             const duration = Date.now() - startTime;
-
             await WebXml.findByIdAndUpdate(integration._id, {
                 $set: {
                     'syncInfo.lastSyncAt': new Date(),
@@ -271,7 +232,6 @@ class XmlSyncScheduler {
                     'syncInfo.lastSyncDuration': duration
                 }
             });
-
             throw error;
         }
     }

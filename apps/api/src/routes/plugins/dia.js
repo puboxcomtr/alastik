@@ -260,4 +260,13 @@ router.get('/sync/stats', async (req, res) => {
     }
 });
 
+router.post('/sync/images', async (req, res) => {
+    try {
+        const result = await diaStockService.syncImagesToWebProducts();
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

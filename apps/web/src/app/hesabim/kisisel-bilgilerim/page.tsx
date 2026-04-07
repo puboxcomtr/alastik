@@ -8,6 +8,7 @@ import ProfileContent from '@/src/components/account/Content/Profile';
 import AddressContent from '@/src/components/account/Content/Adress';
 import { ROUTES } from '@/src/config/routes';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
+import { useRouter } from 'next/navigation';
 
 type Profile = {
     firstName?: string;
@@ -16,6 +17,7 @@ type Profile = {
 };
 
 export default function AccountPage() {
+    const router = useRouter();
     const { isLoggedIn, loading: authLoading, getToken } = useAuth();
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState('');
@@ -23,14 +25,14 @@ export default function AccountPage() {
     const [profile, setProfile] = useState<Profile>({});
     const [stats, setStats] = useState<any>(null);
     const [addresses, setAddresses] = useState<any[]>([]);
+    const [marketingConsent, setMarketingConsent] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
 
     useEffect(() => {
         if (authLoading) return;
 
         if (!isLoggedIn) {
-            setError('Bu sayfa için giriş yapmalısınız.');
-            setPageLoading(false);
+            router.push(ROUTES.LOGIN);
             return;
         }
 
@@ -58,6 +60,7 @@ export default function AccountPage() {
                         spent: data.data.user.statistics?.totalSpent
                     });
                     setAddresses(data.data.user.addresses || []);
+                    setMarketingConsent(data.data.user.marketingConsent || false);
                 } else {
                     setError(data.message || 'Profil alınamadı');
                 }
@@ -109,12 +112,13 @@ export default function AccountPage() {
                                 <AccountSidebar profile={profile} email={email} username={username} stats={stats} />
                             </Col>
                             <Col md={9}>
-                                <ProfileContent
+                                 <ProfileContent
                                     email={email}
                                     profile={profile}
+                                    marketingConsent={marketingConsent}
                                     onProfileChange={setProfile}
+                                    onMarketingChange={setMarketingConsent}
                                 />
-                                <AddressContent addresses={addresses} />
                             </Col>
                         </Row>
                     </div>

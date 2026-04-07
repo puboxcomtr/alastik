@@ -173,7 +173,7 @@ export default function TireSizeSelection({
                                                 <a
                                                     href={`/kategori/jant?jantCap=${tire.diameter}&bijon=${vehiclePcd}`}
                                                     className="text-primary text-decoration-none"
-                                                    style={{ fontSize: '13px' }}
+                                                    style={{ fontSize: '14px' }}
                                                 >
                                                     {tire.diameter}" / {vehiclePcd}
                                                 </a>

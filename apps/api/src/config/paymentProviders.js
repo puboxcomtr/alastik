@@ -56,8 +56,33 @@ const PAYMENT_PROVIDERS = {
                 { value: 'test', label: 'Test Modu', apiUrl: 'https://test.netahsilat.com/api' },
                 { value: 'live', label: 'Canlı Mod', apiUrl: 'https://secure.netahsilat.com/api' }
             ]
+        },
+        nkolay: {
+            code: 'nkolay',
+            name: 'PayNkolay',
+            logo: '/images/providers/nkolay.png',
+            description: 'Tek çekim ve banka kartı ödemeleri',
+            color: '#1a73e8',
+            icon: '💳',
+            requiredFields: [
+                { key: 'sx', label: 'SX Token', type: 'password', required: true, help: 'Nkolay SX işlem token' },
+                { key: 'sxCancel', label: 'SX Cancel Token', type: 'password', required: true, help: 'Nkolay iptal işlem token' },
+                { key: 'sxList', label: 'SX List Token', type: 'password', required: true, help: 'Nkolay listeleme token' },
+                { key: 'merchantSecretKey', label: 'Merchant Secret Key', type: 'password', required: true, help: 'Mağaza gizli anahtarı' },
+                { key: 'baseUrl', label: 'API Base URL', type: 'text', required: true, placeholder: 'https://paynkolay.nkolayislem.com.tr' }
+            ],
+            settings: {
+                supportedCurrency: ['TRY'],
+                has3DSecure: true,
+                hasInstallment: false,
+                maxInstallment: 1
+            },
+            modes: [
+                { value: 'live', label: 'Canlı Mod', apiUrl: 'https://paynkolay.nkolayislem.com.tr' }
+            ]
         }
     },
+
     // BANKA HAVALESİ
     bank_transfer: {
         akbank: {

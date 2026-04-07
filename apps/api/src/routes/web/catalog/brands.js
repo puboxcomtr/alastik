@@ -60,7 +60,7 @@ router.get('/', async (req, res) => {
         // Markaları getir
         const [brands, total] = await Promise.all([
             WebBrand.find(filter)
-                .select('name slug diaBrand diaMarkaAck seoUrl seoTitle logo productCount activeProductCount totalStock webVisible webOrder')
+                .select('name slug diaBrand diaMarkaAck customName seoUrl seoTitle logo productCount activeProductCount totalStock webVisible webOrder')
                 .sort(sortOptions)
                 .skip(skip)
                 .limit(parseInt(limit))
@@ -87,7 +87,8 @@ router.get('/', async (req, res) => {
 
             return {
                 _id: brand._id,
-                name: brand.diaBrand || brand.diaMarkaAck || brand.name,
+                name: brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
+                diaBrand: brand.diaBrand,
                 slug: brand.seoUrl || brand.slug,
                 seoUrl: brand.seoUrl || brand.slug,
                 logo: formattedLogoUrl,
@@ -130,7 +131,7 @@ router.get('/homepage', async (req, res) => {
             webVisible: true,
             showOnHomepage: true
         })
-            .select('name diaBrand diaMarkaAck slug seoUrl logo productCount homepageOrder')
+            .select('name diaBrand diaMarkaAck customName slug seoUrl logo productCount homepageOrder')
             .sort({ homepageOrder: 1, name: 1 })
             .lean();
 
@@ -150,7 +151,7 @@ router.get('/homepage', async (req, res) => {
 
             return {
                 _id: brand._id,
-                name: brand.diaBrand || brand.diaMarkaAck || brand.name,
+                name: brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
                 slug: brand.seoUrl || brand.slug,
                 logo: formattedLogoUrl,
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,
@@ -221,7 +222,7 @@ router.get('/:slug', async (req, res) => {
             data: {
                 name: brand.diaBrand || brand.diaMarkaAck || brand.name,
                 slug: brand.seoUrl || brand.slug,
-                diaBrand: brand.diaBrand,         
+                diaBrand: brand.diaBrand,
                 diaMarkaAck: brand.diaMarkaAck,
                 logo: formattedLogoUrl,
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,

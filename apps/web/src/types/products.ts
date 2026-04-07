@@ -32,6 +32,7 @@ export interface ProductKategori {
 export interface CustomData {
     seoUrl?: string;
     seoTitle?: string;
+    brandDisplayName?: string;
     seoDescription?: string;
     seoKeywords?: string[];
     webPrice?: number;

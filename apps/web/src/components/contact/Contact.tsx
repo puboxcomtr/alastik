@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 import Breadcumb from './Content/Top/Breadcumb';
@@ -26,13 +27,27 @@ export default function Contact() {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (): Promise<void> => {
         if (!formData.name || !formData.email || !formData.message) return;
         setSending(true);
-        setTimeout(() => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Mesajınız iletildi');
+                setFormData({ name: '', surname: '', email: '', phone: '', subject: '', message: '' });
+            } else {
+                toast.error(data.message || 'Bir hata oluştu');
+            }
+        } catch {
+            toast.error('Bağlantı hatası');
+        } finally {
             setSending(false);
-            setFormData({ name: '', surname: '', email: '', phone: '', subject: '', message: '' });
-        }, 1000);
+        }
     };
 
     return (

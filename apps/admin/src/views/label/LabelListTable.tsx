@@ -401,31 +401,7 @@ const LabelListTable = () => {
             onChange={handleFiltersChange}
             totalCount={totalCount}
           />
-          <div className="flex gap-1"><Button
-            color='primary'
-            variant='outlined'
-            startIcon={<i className='ri-puzzle-2-line' />}
-            onClick={async () => {
-              try {
-                toast.info('Etiket eşleştirme başlatıldı...')
-                const res = await fetchAPI(`${API_ENDPOINTS.labels.list()}/matching/run`, {
-                  method: 'POST',
-                  body: JSON.stringify({ dryRun: false })
-                })
-                if (res.success) {
-                  toast.success(`${res.data.updated} etiket güncellendi, ${res.data.skipped} atlandı, ${res.data.errors} hata.`)
-                  await loadTags()
-                } else {
-                  toast.error(res.message || 'Eşleştirme sırasında hata oluştu')
-                }
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : 'Eşleştirme sırasında hata oluştu')
-              }
-            }}
-          >
-            Etiketleri Eşleştir
-          </Button>
-
+          <div className="flex gap-1">
             <Button
               color='primary'
               variant='contained'

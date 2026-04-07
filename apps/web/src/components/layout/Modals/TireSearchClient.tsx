@@ -37,13 +37,13 @@ export default function TireSearchClient() {
 
         window.addEventListener('openTireSearchModal', handleOpenTireSearch);
         window.addEventListener('openRimSearchModal', handleOpenRimSearch);
-        window.addEventListener('openChainSearchModal', handleOpenChainSearch); // EKLE
+        window.addEventListener('openChainSearchModal', handleOpenChainSearch);
         window.addEventListener('openAddVehicleModal', handleOpenAddVehicle);
 
         return () => {
             window.removeEventListener('openTireSearchModal', handleOpenTireSearch);
             window.removeEventListener('openRimSearchModal', handleOpenRimSearch);
-            window.removeEventListener('openChainSearchModal', handleOpenChainSearch); // EKLE
+            window.removeEventListener('openChainSearchModal', handleOpenChainSearch);
             window.removeEventListener('openAddVehicleModal', handleOpenAddVehicle);
         };
     }, []);

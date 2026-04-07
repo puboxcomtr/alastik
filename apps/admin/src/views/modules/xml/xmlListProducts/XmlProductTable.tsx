@@ -150,13 +150,13 @@ const XmlProductListTable = () => {
                 ),
                 size: 44
             },
-            columnHelper.accessor('productName', {
+            columnHelper.accessor('urunAdi', {
                 header: 'Ürün',
                 cell: ({ row }) => (
                     <div className='flex items-center' style={{ gap: 8 }}>
-                        {row.original.imageUrl ? (
+                        {row.original.gorselUrl ? (
                             <img
-                                src={row.original.imageUrl}
+                                src={row.original.gorselUrl}
                                 width={40}
                                 height={40}
                                 className='rounded bg-actionHover'
@@ -170,49 +170,45 @@ const XmlProductListTable = () => {
                         )}
                         <div className='flex flex-col'>
                             <Typography variant='body2' fontWeight='bold'>
-                                {row.original.productCode}
+                                {row.original.stokKodu}
                             </Typography>
                             <Typography variant='body2' color='text.secondary' style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {row.original.productName}
+                                {row.original.urunAdi}
                             </Typography>
                         </div>
-                    </div>
+                    </div >
                 )
             }),
-            columnHelper.accessor('brandName', {
+            columnHelper.accessor('marka', {
                 header: 'Marka',
                 cell: ({ row }) => (
-                    <Typography variant='body2'>{row.original.brandName}</Typography>
+                    <Typography variant='body2'>{row.original.marka}</Typography>
                 )
             }),
-            ...(source !== 'tatko' ? [columnHelper.accessor('categoryCode', {
+            columnHelper.accessor('kategori', {
                 header: 'Kategori',
                 cell: ({ row }) => (
-                    <Typography variant='body2'>{row.original.categoryCode}</Typography>
-                )
-            })] : []),
-            columnHelper.accessor('retailPrice', {
-                header: 'Fiyat',
-                cell: ({ row }) => (
-                    <div className='flex flex-col'>
-                        <Typography variant='body2' fontWeight='bold'>
-                            {row.original.retailPrice || row.original.price || '-'} TL
-                        </Typography>
-                    </div>
+                    <Typography variant='body2'>{row.original.kategori}</Typography>
                 )
             }),
-            columnHelper.accessor('stockNumber', {
-                header: 'Stok',
+            columnHelper.accessor('hamFiyat', {
+                header: 'Fiyat',
                 cell: ({ row }) => (
-                    <Typography variant='body2'>
-                        {row.original.stockNumber}
+                    <Typography variant='body2' fontWeight='bold'>
+                        {row.original.hamFiyat || '-'} TL
                     </Typography>
                 )
             }),
-            columnHelper.accessor('productionDate', {
+            columnHelper.accessor('stokAdeti', {
+                header: 'Stok',
+                cell: ({ row }) => (
+                    <Typography variant='body2'>{row.original.stokAdeti}</Typography>
+                )
+            }),
+            columnHelper.accessor('uretimYili', {
                 header: 'Yıl',
                 cell: ({ row }) => (
-                    <Typography variant='body2'>{row.original.productionDate}</Typography>
+                    <Typography variant='body2'>{row.original.uretimYili}</Typography>
                 )
             }),
             columnHelper.accessor('status', {

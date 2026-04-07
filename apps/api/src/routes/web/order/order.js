@@ -3,6 +3,7 @@ const router = express.Router();
 const WebOrder = require('../../../models/web/order/WebOrder');
 const WebAddress = require('../../../models/web/address/WebAddress');
 const WebMember = require('../../../models/web/user/WebMember');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 
 // POST - Yeni sipariş oluştur
 router.post('/', async (req, res) => {
@@ -230,7 +231,54 @@ router.get('/user/:userId', async (req, res) => {
         const orders = await WebOrder.find({
             memberId: req.params.userId,
             isActive: true
-        }).sort({ createdAt: -1 });
+        }).sort({ createdAt: -1 }).lean();
+
+        // Tüm productKey'leri topla
+        const allKeys = [];
+        orders.forEach(order => {
+            order.items.forEach(item => {
+                if (item.productKey && !allKeys.includes(item.productKey)) {
+                    allKeys.push(item.productKey);
+                }
+            });
+        });
+
+        // Tek sorguda tüm ürünleri çek
+        const products = await WebProduct.find(
+            { _key: { $in: allKeys } },
+            { _key: 1, 'diaData.m_resimler': 1, 'customData.featuredImage': 1, 'customData.customImages': 1 }
+        ).lean();
+
+        // Key → görsel map
+        const imageMap = {};
+        products.forEach(p => {
+            let image = null;
+
+            if (p.customData?.customImages && p.customData.customImages.length > 0) {
+                const sorted = [...p.customData.customImages].sort((a, b) => (a.order || 0) - (b.order || 0));
+                if (sorted[0]?.url) image = sorted[0].url;
+            }
+
+            if (!image && p.customData?.featuredImage) {
+                image = p.customData.featuredImage;
+            }
+
+            if (!image && p.diaData?.m_resimler && p.diaData.m_resimler.length > 0) {
+                const sorted = [...p.diaData.m_resimler].sort((a, b) =>
+                    parseInt(a.order_id || '999') - parseInt(b.order_id || '999')
+                );
+                if (sorted[0]?.aws_url) image = sorted[0].aws_url;
+            }
+
+            imageMap[p._key] = image;
+        });
+
+        // Siparişlere görsel ekle
+        orders.forEach(order => {
+            order.items.forEach(item => {
+                item.image = imageMap[item.productKey] || null;
+            });
+        });
 
         res.json({ success: true, data: orders });
     } catch (error) {
@@ -244,10 +292,44 @@ router.get('/:id', async (req, res) => {
         const order = await WebOrder.findById(req.params.id)
             .populate('memberId', 'firstName lastName email phone')
             .populate('billingAddressId')
-            .populate('shippingAddressId');
+            .populate('shippingAddressId')
+            .lean();
 
         if (!order) {
             return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
+        }
+
+        // Ürün görsellerini çek
+        const productKeys = order.items
+            .filter(item => item.productKey)
+            .map(item => item.productKey);
+
+        if (productKeys.length > 0) {
+            const products = await WebProduct.find(
+                { _key: { $in: productKeys } },
+                { _key: 1, 'diaData.m_resimler': 1, 'customData.featuredImage': 1, 'customData.customImages': 1, 'customData.seoUrl': 1 }
+            ).lean();
+
+            const productMap = {};
+            products.forEach(p => {
+                let image = null;
+                if (p.customData?.customImages?.length > 0) {
+                    const sorted = [...p.customData.customImages].sort((a, b) => (a.order || 0) - (b.order || 0));
+                    if (sorted[0]?.url) image = sorted[0].url;
+                }
+                if (!image && p.customData?.featuredImage) image = p.customData.featuredImage;
+                if (!image && p.diaData?.m_resimler?.length > 0) {
+                    const sorted = [...p.diaData.m_resimler].sort((a, b) => parseInt(a.order_id || '999') - parseInt(b.order_id || '999'));
+                    if (sorted[0]?.aws_url) image = sorted[0].aws_url;
+                }
+                productMap[p._key] = { image, seoUrl: p.customData?.seoUrl || null };
+            });
+
+            order.items.forEach(item => {
+                const prod = productMap[item.productKey] || {};
+                item.image = prod.image || null;
+                item.seoUrl = prod.seoUrl || null;
+            });
         }
 
         res.json({ success: true, data: order });

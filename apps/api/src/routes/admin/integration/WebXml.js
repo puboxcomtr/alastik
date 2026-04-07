@@ -7,6 +7,9 @@ const express = require('express');
 const router = express.Router();
 const WebXml = require('../../../models/plugins/xml/WebXml');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
+const XLSX = require('xlsx');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * GET /api/admin/webxml
@@ -89,105 +92,157 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/webxml/export-excel
-// synced_to_dia olan ürünleri Excel'e aktar
-// ============================================
-router.post('/export-excel', async (req, res) => {
+/**
+ * POST /api/admin/integration/xml
+ * Yeni entegrasyon ekle
+ */
+router.post('/', async (req, res) => {
     try {
-        const XLSX = require('xlsx');
-        const path = require('path');
-        const fs = require('fs');
-        const { source } = req.body;
+        const { name, format, apiUrl, isActive, credentials, syncInterval } = req.body;
 
-        const filter = { status: 'synced_to_dia' };
-        if (source) filter.source = source;
+        if (!name?.trim()) {
+            return res.status(400).json({ success: false, message: 'Kaynak adı zorunludur' });
+        }
 
-        const products = await XmlProduct.find(filter).lean();
+        if (!apiUrl?.trim() || !apiUrl.startsWith('http')) {
+            return res.status(400).json({ success: false, message: 'Geçerli bir URL giriniz' });
+        }
 
-        if (!products || products.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Dışa aktarılacak ürün bulunamadı'
+        // name'den otomatik slug üret
+        const code = name
+            .toLowerCase()
+            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+            .replace(/[^a-z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_|_$/g, '');
+
+        const existing = await WebXml.findOne({ code });
+        if (existing) {
+            return res.status(400).json({ success: false, message: `"${code}" kodu zaten kullanımda` });
+        }
+
+        const item = await WebXml.create({
+            name: name.trim(),
+            code,
+            format: format || 'xml',
+            apiUrl: apiUrl.trim(),
+            isActive: isActive ?? false,
+            credentials: credentials || {},
+            syncInterval: syncInterval || 180
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Entegrasyon eklendi',
+            data: {
+                id: item._id,
+                name: item.name,
+                code: item.code,
+                format: item.format,
+                isActive: item.isActive
+            }
+        });
+
+    } catch (error) {
+        console.error('WebXml create error:', error);
+        res.status(500).json({ success: false, message: 'Entegrasyon eklenirken hata oluştu', error: error.message });
+    }
+});
+
+// ============================================
+// GET /api/admin/integration/xml/products/export
+// Tüm XML ürünlerini Excel'e aktar
+// ============================================
+// ============================================
+// GET /api/admin/integration/xml/products/export
+// Tüm XML ürünlerini Excel'e aktar (kurallara göre filtreli)
+// ============================================
+router.get('/products/export', async (req, res) => {
+    try {
+        const { source = '' } = req.query;
+
+        const integrations = await WebXml.find({}, { code: 1, name: 1, rules: 1 }).lean();
+        const intgMap = {};
+        for (const i of integrations) intgMap[i.code] = i;
+
+        const getNestedValue = (obj, path) => {
+            if (!path) return '';
+            return path.split('.').reduce((acc, key) => acc?.[key] ?? '', obj);
+        };
+
+        const isFiltered = (item, intg) => {
+            const rules = intg?.rules || {};
+            const fieldMappings = rules.fieldMappings || [];
+            const get = (target) => fieldMappings.find(m => m.target === target)?.source;
+            const rd = item.rawData || {};
+
+            const stok = parseFloat(getNestedValue(rd, get('stokAdeti')) || 0);
+            const gorsel = getNestedValue(rd, get('gorselUrl'));
+            const fiyat = parseFloat(getNestedValue(rd, get('hamFiyat')) || 0);
+            const marka = getNestedValue(rd, get('marka'));
+            const kategori = getNestedValue(rd, get('kategori'));
+            const yil = String(getNestedValue(rd, get('uretimYili')) || '');
+
+            if (rules.minStock > 0 && stok < rules.minStock) return true;
+            if (rules.filters?.onlyInStock && stok <= 0) return true;
+            if (rules.filters?.onlyWithImage && !gorsel) return true;
+            if (rules.filters?.onlyWithPrice && !fiyat) return true;
+            if (rules.excludedBrands?.length > 0 && marka && rules.excludedBrands.includes(marka)) return true;
+            if (rules.excludedCategories?.length > 0 && kategori && rules.excludedCategories.includes(kategori)) return true;
+            if (rules.excludedYears?.length > 0 && yil && rules.excludedYears.includes(yil)) return true;
+
+            return false;
+        };
+
+        const query = {};
+        if (source) query.source = source;
+
+        const items = await XmlProduct.find(query, {
+            source: 1,
+            sourceProductId: 1,
+            rawData: 1,
+            status: 1
+        }).lean();
+
+        const rows = [];
+        for (const item of items) {
+            const intg = intgMap[item.source];
+            if (isFiltered(item, intg)) continue;
+
+            const fieldMappings = intg?.rules?.fieldMappings || [];
+            const get = (target) => fieldMappings.find(m => m.target === target)?.source;
+            const rd = item.rawData || {};
+
+            rows.push({
+                'Stok Kodu': getNestedValue(rd, get('stokKodu')) || item.sourceProductId,
+                'Ürün Adı': getNestedValue(rd, get('urunAdi')),
+                'Marka': getNestedValue(rd, get('marka')),
+                'Kategori': getNestedValue(rd, get('kategori')),
+                'Fiyat': getNestedValue(rd, get('hamFiyat')),
+                'Stok': getNestedValue(rd, get('stokAdeti')) || '0',
+                'Yıl': getNestedValue(rd, get('uretimYili')),
+                'Kaynak': intg?.name || item.source
             });
         }
 
-        const rows = products.map(p => {
-            const raw = p.rawData || {};
-            return {
-                'Kaynak': p.source || '',
-                'Kaynak Ürün ID': p.sourceProductId || '',
-                'Ürün Adı': raw.ProductName || '',
-                'Stok Kodu': raw.ProductCode || '',
-                'Kısa Kod': raw.ProductShortCode || '',
-                'Marka': raw.BrandName || '',
-                'Fiyat (KDV Dahil)': raw.Price || '',
-                'Fiyat (KDV Hariç)': raw.RetailPriceWithOrWithoutTax || '',
-                'KDV Oranı': raw.TaxRatio || '',
-                'Para Birimi': raw.CurrencyToken || '',
-                'Stok Adedi': raw.StockNumberSort || '0',
-                'Üretim Yılı (DOT)': raw.ProductionDate || '',
-                'Kategori ID': raw.CategoryID || '',
-                'Görsel URL': raw.ImageUrl || '',
-                'Açıklama': raw.ProductDescription || '',
-                'Son Çekilme': p.lastFetchedAt ? new Date(p.lastFetchedAt).toLocaleString('tr-TR') : '',
-                'DIA Aktarım': p.lastSyncedToDiaAt ? new Date(p.lastSyncedToDiaAt).toLocaleString('tr-TR') : ''
-            };
-        });
-
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(rows);
-
         ws['!cols'] = [
-            { wch: 12 }, { wch: 14 }, { wch: 50 }, { wch: 18 },
-            { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 },
-            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
-            { wch: 14 }, { wch: 60 }, { wch: 60 }, { wch: 20 }, { wch: 20 }
+            { wch: 20 }, { wch: 20 }, { wch: 50 }, { wch: 20 }, { wch: 20 },
+            { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 15 }
         ];
+        XLSX.utils.book_append_sheet(wb, ws, 'Urunler');
 
-        XLSX.utils.book_append_sheet(wb, ws, 'Ürünler');
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-        const exportDir = path.join(__dirname, '../../../../exports/xml');
-        if (!fs.existsSync(exportDir)) {
-            fs.mkdirSync(exportDir, { recursive: true });
-        }
-
-        const fileName = `xml-urunler-${source || 'tumu'}-${Date.now()}.xlsx`;
-        const filePath = path.join(exportDir, fileName);
-        XLSX.writeFile(wb, filePath);
-
-        return res.json({
-            success: true,
-            message: `${rows.length} ürün Excel dosyasına aktarıldı`,
-            data: { fileName, totalExported: rows.length }
-        });
+        res.setHeader('Content-Disposition', 'attachment; filename="xml-urunler.xlsx"');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buf);
     } catch (error) {
-        console.error('Excel export hatası:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Excel dışa aktarma sırasında hata oluştu',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 });
-
-// GET /api/admin/webxml/export-excel/download/:fileName
-router.get('/export-excel/download/:fileName', async (req, res) => {
-    try {
-        const path = require('path');
-        const fs = require('fs');
-        const filePath = path.join(__dirname, '../../../../exports/xml', req.params.fileName);
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ success: false, message: 'Dosya bulunamadı' });
-        }
-
-        res.download(filePath, req.params.fileName);
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'Dosya indirme hatası' });
-    }
-});
-
 // ============================================
 // POST /api/admin/webxml/scheduler/run
 // Scheduler'ı manuel tetikle
@@ -212,84 +267,254 @@ router.post('/scheduler/run', async (req, res) => {
 });
 
 // ============================================
-// GET /api/admin/integration/xml/dia-fields
-// diastocks collection'daki alanları listele
+// GET /api/admin/integration/xml/mapping/export
+// Excel dışarı aktar
 // ============================================
-router.get('/dia-fields', async (req, res) => {
+router.get('/mapping/export', async (req, res) => {
     try {
-        const db = require('mongoose').connection.db;
-        const diastocksCollection = db.collection('diastocks');
+        const { source = '' } = req.query;
 
-        // Örnek bir doküman al
-        const sampleDoc = await diastocksCollection.findOne({ durum: 'A' });
+        const query = {};
+        if (source) query.source = source;
 
-        if (!sampleDoc) {
-            return res.status(404).json({
-                success: false,
-                message: 'diastocks collection boş'
-            });
+        const items = await XmlProduct.find(query, {
+            source: 1,
+            sourceProductId: 1,
+            rawData: 1,
+            'mappedData.hedefStokKodu': 1
+        }).lean();
+
+        const integrations = await WebXml.find({}, { code: 1, rules: 1 }).lean();
+        const intgMap = {};
+        for (const i of integrations) intgMap[i.code] = i;
+
+        const getNestedValue = (obj, path) => {
+            if (!path) return '';
+            return path.split('.').reduce((acc, key) => acc?.[key] ?? '', obj);
+        };
+
+        const rows = items.map(item => {
+            const intg = intgMap[item.source];
+            const fieldMappings = intg?.rules?.fieldMappings || [];
+            const stokKoduField = fieldMappings.find(m => m.target === 'stokKodu')?.source;
+            const stokKodu = getNestedValue(item.rawData, stokKoduField) || item.sourceProductId;
+
+            return {
+                'XML Stok Kodu': stokKodu,
+                'Hedef Stok Kodu': item.mappedData?.hedefStokKodu || '',
+                'Kaynak': item.source
+            };
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Eslesme');
+
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+        res.setHeader('Content-Disposition', 'attachment; filename="xml-eslesme.xlsx"');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buf);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// POST /api/admin/integration/xml/mapping/import
+// Excel içeri aktar
+// ============================================
+router.post('/mapping/import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Dosya bulunamadı' });
         }
 
-        // Hariç tutulacak sistem alanları
-        const excludeFields = [
-            '_id', '__v', 'createdAt', 'updatedAt', 'syncInfo',
-            '_cdate', '_date', 'm_kategoriler', 'm_urunOzellikleri'
-        ];
+        const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
 
-        const fields = [];
+        if (!rows.length) {
+            return res.status(400).json({ success: false, message: 'Excel boş' });
+        }
 
-        // Boş seçenek
-        fields.push({ key: '', label: '-- Eşleştirme Yok --' });
+        const integrations = await WebXml.find({}, { code: 1, rules: 1 }).lean();
+        const intgMap = {};
+        for (const i of integrations) intgMap[i.code] = i;
 
-        // Ana alanları ekle
-        for (const key of Object.keys(sampleDoc)) {
-            if (excludeFields.includes(key)) continue;
+        const getNestedValue = (obj, path) => {
+            if (!path) return '';
+            return path.split('.').reduce((acc, key) => acc?.[key] ?? '', obj);
+        };
 
-            const value = sampleDoc[key];
-            const type = Array.isArray(value) ? 'array' : typeof value;
+        let guncellenen = 0, atilan = 0;
 
-            // Array ve object olmayan alanları ekle
-            if (type !== 'array' && type !== 'object') {
-                fields.push({ key: key, label: key });
+        for (const row of rows) {
+            const xmlStokKodu = String(row['XML Stok Kodu'] || '').trim();
+            const hedefStokKodu = String(row['Hedef Stok Kodu'] || '').trim();
+            const kaynak = String(row['Kaynak'] || '').trim();
+
+            if (!xmlStokKodu || !hedefStokKodu) { atilan++; continue; }
+
+            const query = {};
+            if (kaynak) query.source = kaynak;
+
+            // Önce sourceProductId ile dene
+            const byId = await XmlProduct.findOne({ ...query, sourceProductId: xmlStokKodu });
+            if (byId) {
+                await XmlProduct.updateOne(
+                    { _id: byId._id },
+                    { $set: { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() } }
+                );
+                guncellenen++;
+                continue;
             }
-        }
 
-        // m_birimler içindeki fiyat alanlarını ekle
-        if (sampleDoc.m_birimler && sampleDoc.m_birimler[0]) {
-            const birim = sampleDoc.m_birimler[0];
-            for (const key of Object.keys(birim)) {
-                if (key.startsWith('fiyat') || key.startsWith('kdv')) {
-                    fields.push({ key: `m_birimler.${key}`, label: `m_birimler.${key}` });
+            // rawData içindeki stokKodu alanından bul
+            const intg = kaynak ? intgMap[kaynak] : null;
+            if (intg) {
+                const fieldMappings = intg.rules?.fieldMappings || [];
+                const stokKoduField = fieldMappings.find(m => m.target === 'stokKodu')?.source;
+                if (stokKoduField) {
+                    const byRaw = await XmlProduct.findOne({
+                        source: kaynak,
+                        [`rawData.${stokKoduField}`]: xmlStokKodu
+                    });
+                    if (byRaw) {
+                        await XmlProduct.updateOne(
+                            { _id: byRaw._id },
+                            { $set: { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() } }
+                        );
+                        guncellenen++;
+                        continue;
+                    }
                 }
             }
+
+            atilan++;
         }
-
-        // m_resimler için görsel URL ekle
-        fields.push({ key: 'm_resimler.aws_url', label: 'm_resimler.aws_url' });
-
-        const sortedFields = [
-            fields[0],
-            ...fields.slice(1).sort((a, b) => a.label.localeCompare(b.label, 'tr'))
-        ];
 
         res.json({
             success: true,
-            data: {
-                fields: sortedFields,
-                totalFields: sortedFields.length - 1
+            message: `${guncellenen} ürün güncellendi, ${atilan} satır atlandı`,
+            data: { guncellenen, atilan }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// GET /api/admin/integration/xml/all-products
+// Tüm kaynaklardan filtreli ürün listesi
+// ============================================
+router.get('/all-products', async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 50,
+            search = '',
+            source = '',
+            brand = '',
+            status = ''
+        } = req.query;
+
+        // Tüm aktif entegrasyonları çek
+        const integrations = await WebXml.find({ isActive: true }).lean();
+        const integrationMap = {};
+        for (const intg of integrations) {
+            integrationMap[intg.code] = intg;
+        }
+
+        const query = {};
+        if (source) query.source = source;
+        if (status === 'eslesti') query['mappedData.hedefStokKodu'] = { $ne: null, $exists: true, $gt: '' };
+        else if (status === 'eslestirilmedi') query.$or = [
+            { mappedData: null },
+            { 'mappedData.hedefStokKodu': null },
+            { 'mappedData.hedefStokKodu': '' }
+        ];
+
+        if (search) {
+            query.$or = [
+                { sourceProductId: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const [items, total] = await Promise.all([
+            XmlProduct.find(query).sort({ updatedAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+            XmlProduct.countDocuments(query)
+        ]);
+
+        const getNestedValue = (obj, path) => {
+            if (!path) return '';
+            return path.split('.').reduce((acc, key) => {
+                if (acc === null || acc === undefined) return '';
+                return acc[key] ?? '';
+            }, obj);
+        };
+
+        const getSourceField = (fieldMappings, target) => {
+            const m = fieldMappings.find(m => m.target === target);
+            return m ? m.source : null;
+        };
+
+        const formatted = items.map(item => {
+            const intg = integrationMap[item.source];
+            const fieldMappings = intg?.rules?.fieldMappings || [];
+            const rd = item.rawData || {};
+
+            const stokKoduField = getSourceField(fieldMappings, 'stokKodu');
+            const urunAdiField = getSourceField(fieldMappings, 'urunAdi');
+            const markaField = getSourceField(fieldMappings, 'marka');
+            const kategoriField = getSourceField(fieldMappings, 'kategori');
+            const hamFiyatField = getSourceField(fieldMappings, 'hamFiyat');
+            const stokAdetiField = getSourceField(fieldMappings, 'stokAdeti');
+            const yilField = getSourceField(fieldMappings, 'uretimYili');
+
+            const stokKodu = getNestedValue(rd, stokKoduField);
+            const hedefStokKodu = item.mappedData?.hedefStokKodu || null;
+
+            return {
+                id: item._id,
+                source: item.source,
+                sourceName: intg?.name || item.source,
+                sourceProductId: item.sourceProductId,
+                stokKodu,
+                hedefStokKodu,
+                urunAdi: getNestedValue(rd, urunAdiField),
+                marka: getNestedValue(rd, markaField),
+                kategori: getNestedValue(rd, kategoriField),
+                hamFiyat: getNestedValue(rd, hamFiyatField),
+                stokAdeti: getNestedValue(rd, stokAdetiField) || '0',
+                uretimYili: getNestedValue(rd, yilField),
+                eslesmeDurumu: hedefStokKodu ? 'eslesti' : 'eslestirilmedi'
+            };
+        });
+
+        // Kaynak listesi
+        const sources = integrations.map(i => ({ code: i.code, name: i.name }));
+
+        res.json({
+            success: true,
+            data: formatted,
+            meta: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit)),
+                sources
             }
         });
 
     } catch (error) {
-        console.error('DIA fields hatası:', error);
-        res.status(500).json({
-            success: false,
-            message: 'DIA alanları yüklenirken hata oluştu',
-            error: error.message
-        });
+        console.error('All products hatası:', error);
+        res.status(500).json({ success: false, message: 'Ürünler listelenirken hata oluştu', error: error.message });
     }
 });
-
 
 // ============================================
 // GET /api/admin/integration/xml/products
@@ -304,118 +529,104 @@ router.get('/products', async (req, res) => {
             search = '',
             status = '',
             brand = '',
-            season = ''
+            year = ''
         } = req.query;
 
         if (!source) {
-            return res.status(400).json({
-                success: false,
-                message: 'source parametresi gerekli'
-            });
+            return res.status(400).json({ success: false, message: 'source parametresi gerekli' });
         }
+
+        const webXml = await WebXml.findOne({ code: source }).lean();
+        const fieldMappings = webXml?.rules?.fieldMappings || [];
+
+        const getSourceField = (target) => {
+            const m = fieldMappings.find(m => m.target === target);
+            return m ? m.source : null;
+        };
+
+        const getNestedValue = (obj, path) => {
+            if (!path) return '';
+            return path.split('.').reduce((acc, key) => {
+                if (acc === null || acc === undefined) return '';
+                return acc[key] ?? '';
+            }, obj);
+        };
+
+        const brandField = getSourceField('marka');
+        const yearField = getSourceField('uretimYili');
+        const categoryField = getSourceField('kategori');
+        const stokKoduField = getSourceField('stokKodu');
+        const urunAdiField = getSourceField('urunAdi');
+        const hamFiyatField = getSourceField('hamFiyat');
+        const stokAdetiField = getSourceField('stokAdeti');
+        const gorselField = getSourceField('gorselUrl');
 
         const query = { source };
+        if (status) query.status = status;
 
-        // Durum filtresi
-        if (status) {
-            query.status = status;
+        if (brand && brandField) query[`rawData.${brandField}`] = brand;
+        if (year && yearField) query[`rawData.${yearField}`] = year;
+
+        // Kuralları uygula
+        const rules = webXml?.rules || {};
+
+        if (rules.minStock > 0 && stokAdetiField) {
+            query[`rawData.${stokAdetiField}`] = { $gte: String(rules.minStock) };
+        }
+        if (rules.filters?.onlyInStock && stokAdetiField) {
+            query[`rawData.${stokAdetiField}`] = { $gt: '0', $exists: true };
+        }
+        if (rules.filters?.onlyWithImage && gorselField) {
+            query[`rawData.${gorselField}`] = { $ne: '', $exists: true };
+        }
+        if (rules.filters?.onlyWithPrice && hamFiyatField) {
+            query[`rawData.${hamFiyatField}`] = { $ne: '', $ne: '0', $exists: true };
+        }
+        if (rules.excludedBrands?.length > 0 && brandField) {
+            query[`rawData.${brandField}`] = { $nin: rules.excludedBrands };
+        }
+        if (rules.excludedCategories?.length > 0 && categoryField) {
+            query[`rawData.${categoryField}`] = { $nin: rules.excludedCategories };
+        }
+        if (rules.excludedYears?.length > 0 && yearField) {
+            query[`rawData.${yearField}`] = { $nin: rules.excludedYears };
         }
 
-        // Marka filtresi
-        if (brand) {
-            if (source === 'tatko') {
-                query['rawData.markaismi'] = brand;
-            } else {
-                query['rawData.BrandName'] = brand;
-            }
-        }
-
-        // Mevsim filtresi
-        if (season) {
-            query['rawData.Season'] = season;
-        }
-
-        // Arama filtresi
         if (search) {
-            query.$or = [
-                { 'rawData.ProductName': { $regex: search, $options: 'i' } },
-                { 'rawData.ProductCode': { $regex: search, $options: 'i' } },
-                { 'rawData.BrandName': { $regex: search, $options: 'i' } },
-                { sourceProductId: { $regex: search, $options: 'i' } }
-            ];
+            const searchFields = [stokKoduField, urunAdiField, brandField].filter(Boolean);
+            if (searchFields.length > 0) {
+                query.$or = searchFields.map(f => ({
+                    [`rawData.${f}`]: { $regex: search, $options: 'i' }
+                }));
+            }
         }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Filtre kurallarını çek
-        const webXml = await WebXml.findOne({ code: source }).lean();
-        const rules = webXml?.rules || {};
-
-        // Filtre dışı sayısını hesapla (canlı, status değiştirmeden)
-        const filteredOutConditions = [];
-
-        if (rules.excludedBrands?.length > 0) {
-            filteredOutConditions.push({ 'rawData.BrandName': { $in: rules.excludedBrands } });
-        }
-        if (rules.excludedYears?.length > 0) {
-            filteredOutConditions.push({ 'rawData.ProductionDate': { $in: rules.excludedYears } });
-        }
-        if (rules.excludedCategories?.length > 0) {
-            filteredOutConditions.push({ 'rawData.CategoryCode': { $in: rules.excludedCategories } });
-        }
-        if (rules.minStock > 0) {
-            filteredOutConditions.push({
-                $or: [
-                    { 'rawData.StockNumberSort': '0' },
-                    { 'rawData.StockNumberSort': { $exists: false } }
-                ]
-            });
-        }
-
-        let filteredOutCount = 0;
-        if (filteredOutConditions.length > 0) {
-            filteredOutCount = await XmlProduct.countDocuments({
-                source,
-                $or: filteredOutConditions
-            });
-        }
-
-        const [items, total, brandList, statsAgg, diaKeyCount] = await Promise.all([
-            XmlProduct.find(query)
-                .sort({ updatedAt: -1 })
-                .skip(skip)
-                .limit(parseInt(limit))
-                .lean(),
+        const [items, total, statsAgg, diaKeyCount] = await Promise.all([
+            XmlProduct.find(query).sort({ updatedAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
             XmlProduct.countDocuments(query),
-            XmlProduct.distinct(
-                source === 'tatko' ? 'rawData.markaismi' : 'rawData.BrandName',
-                { source, [source === 'tatko' ? 'rawData.markaismi' : 'rawData.BrandName']: { $ne: null } }
-            ),
             XmlProduct.aggregate([
                 { $match: { source } },
-                {
-                    $group: {
-                        _id: '$status',
-                        count: { $sum: 1 }
-                    }
-                }
-            ])
-            ,
+                { $group: { _id: '$status', count: { $sum: 1 } } }
+            ]),
             XmlProduct.countDocuments({ source, diaKey: { $ne: null } })
         ]);
 
-        // İstatistikleri düzenle
         const totalProducts = statsAgg.reduce((sum, s) => sum + s.count, 0);
-        const stats = { total: totalProducts, diaAktarilan: diaKeyCount, filtered: filteredOutCount, pending: 0, error: 0 };
+        const stats = { total: totalProducts, diaAktarilan: diaKeyCount, pending: 0, error: 0 };
         for (const s of statsAgg) {
             if (s._id === 'pending') stats.pending = s.count;
             else if (s._id === 'error') stats.error = s.count;
         }
 
-        // Verileri formatla
+        const brandList = brandField
+            ? await XmlProduct.distinct(`rawData.${brandField}`, { source, [`rawData.${brandField}`]: { $nin: [null, ''] } })
+            : [];
+
         const formatted = items.map(item => {
             const rd = item.rawData || {};
-            const base = {
+            return {
                 id: item._id,
                 sourceProductId: item.sourceProductId,
                 source: item.source,
@@ -425,56 +636,18 @@ router.get('/products', async (req, res) => {
                 updatedAt: item.updatedAt,
                 lastFetchedAt: item.lastFetchedAt,
                 lastSyncedToDiaAt: item.lastSyncedToDiaAt,
-                syncHash: item.syncHash,
-                diaKey: item.diaKey || null
-            };
-
-            if (source === 'tatko') {
-                return {
-                    ...base,
-                    productName: rd.desen || '',
-                    productCode: rd.stokkodu || '',
-                    brandName: rd.markaismi || '',
-                    categoryCode: rd.stokanagrup || '',
-                    imageUrl: rd.desenresim || '',
-                    retailPrice: '',
-                    price: rd.kdvdahilfiyat || '',
-                    taxRatio: '',
-                    stockNumber: String(rd.miktar || '0'),
-                    productionDate: rd.dot || '',
-                    season: rd.mevsim || '',
-                    runFlat: '',
-                    oem: rd.Oem || '',
-                    width: '',
-                    profile: '',
-                    rim: '',
-                    loadIndex: '',
-                    speedIndex: '',
-                    kampanya: rd.kampanya || '',
-                    depoAdi: rd.depoAdi || ''
-                };
-            }
-
-            return {
-                ...base,
-                productName: rd.ProductName || '',
-                productCode: rd.ProductCode || '',
-                brandName: rd.BrandName || '',
-                categoryCode: rd.CategoryCode || '',
-                imageUrl: rd.ImageUrl || '',
-                retailPrice: rd.RetailPrice || '',
-                price: rd.Price || '',
-                taxRatio: rd.TaxRatio || '',
-                stockNumber: rd.StockNumberSort || '0',
-                productionDate: rd.ProductionDate || '',
-                season: rd.Season || '0',
-                runFlat: rd.RunFlat || '0',
-                oem: rd.OEM || '',
-                width: rd.Field4 || '',
-                profile: rd.Field5 || '',
-                rim: rd.Field6 || '',
-                loadIndex: rd.Field2 || '',
-                speedIndex: rd.Field3 || ''
+                diaKey: item.diaKey || null,
+                // Mapping'e göre standart alanlar
+                stokKodu: getNestedValue(rd, stokKoduField),
+                urunAdi: getNestedValue(rd, urunAdiField),
+                marka: getNestedValue(rd, brandField),
+                hamFiyat: getNestedValue(rd, hamFiyatField),
+                stokAdeti: getNestedValue(rd, stokAdetiField) || '0',
+                gorselUrl: getNestedValue(rd, gorselField),
+                uretimYili: getNestedValue(rd, yearField),
+                kategori: getNestedValue(rd, categoryField),
+                // Ham veri de gelsin
+                rawData: rd
             };
         });
 
@@ -486,20 +659,162 @@ router.get('/products', async (req, res) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 totalPages: Math.ceil(total / parseInt(limit)),
-                brands: brandList.filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')),
+                brands: brandList.filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'tr')),
                 stats
             }
         });
 
     } catch (error) {
         console.error('XML products list hatası:', error);
-        res.status(500).json({
-            success: false,
-            message: 'XML ürünleri listelenirken hata oluştu',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'XML ürünleri listelenirken hata oluştu', error: error.message });
     }
 });
+
+
+// ============================================
+// DELETE /api/admin/integration/xml/mapping/:productId
+// Eşleşmeyi kaldır
+// ============================================
+router.delete('/mapping/:productId', async (req, res) => {
+    try {
+        const result = await XmlProduct.updateOne(
+            { _id: req.params.productId },
+            { $set: { mappedData: null, status: 'pending', lastMappedAt: null } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
+        }
+
+        res.json({ success: true, message: 'Eşleşme kaldırıldı' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// GET /api/admin/integration/xml/:id/source-fields
+// XML URL'den ilk ürünü çekip alanları tespit et
+// ============================================
+router.get('/:id/source-fields', async (req, res) => {
+    try {
+        const integration = await WebXml.findById(req.params.id).lean();
+        if (!integration) {
+            return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
+        }
+
+        const axios = require('axios');
+        const { parseStringPromise } = require('xml2js');
+
+        const headers = {};
+        if (integration.credentials?.apiKey) headers['API-KEY'] = integration.credentials.apiKey;
+        if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
+        if (integration.credentials?.secretKey) headers['SECRET-KEY'] = integration.credentials.secretKey;
+        if (integration.credentials?.token) headers['TOKEN'] = integration.credentials.token;
+
+        let url = integration.apiUrl;
+        if (integration.credentials?.token && !url.includes('token=')) {
+            url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
+        }
+
+        // Önce xmlproducts'tan çek, varsa dışarıya istek atma
+        const existingSample = await XmlProduct.findOne({ source: integration.code }).lean();
+
+        let firstProduct = null;
+
+        if (existingSample?.rawData) {
+            firstProduct = existingSample.rawData;
+        } else {
+            const response = await axios.get(url, {
+                headers,
+                timeout: 30000,
+                responseType: 'text'
+            });
+
+            if (integration.format === 'xml') {
+                const findFirstArraySingle = (obj, depth = 0) => {
+                    if (depth > 4) return null;
+                    for (const key of Object.keys(obj)) {
+                        const val = obj[key];
+                        if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val[0];
+                        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                            const found = findFirstArraySingle(val, depth + 1);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+
+                const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
+                firstProduct = findFirstArraySingle(parsed1);
+
+                if (!firstProduct) {
+                    const parsed2 = await parseStringPromise(response.data, { explicitArray: true, mergeAttrs: true });
+                    const raw = findFirstArraySingle(parsed2);
+                    if (raw) {
+                        firstProduct = {};
+                        for (const key of Object.keys(raw)) {
+                            const val = raw[key];
+                            firstProduct[key] = Array.isArray(val) && val.length === 1 ? val[0] : val;
+                        }
+                    }
+                }
+            } else {
+                const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                if (Array.isArray(data)) firstProduct = data[0];
+                else {
+                    const findFirstArray = (obj, depth = 0) => {
+                        if (depth > 4) return null;
+                        for (const key of Object.keys(obj)) {
+                            const val = obj[key];
+                            if (Array.isArray(val) && val.length > 0) return val[0];
+                            if (typeof val === 'object' && val !== null) {
+                                const found = findFirstArray(val, depth + 1);
+                                if (found) return found;
+                            }
+                        }
+                        return null;
+                    };
+                    firstProduct = findFirstArray(data);
+                }
+            }
+        }
+
+        if (!firstProduct) {
+            return res.status(400).json({ success: false, message: 'Ürün verisi bulunamadı' });
+        }
+
+        // Alanları düzleştir (nested için nokta notasyonu)
+        const flattenFields = (obj, prefix = '') => {
+            const fields = [];
+            for (const key of Object.keys(obj)) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                const val = obj[key];
+                if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+                    fields.push(...flattenFields(val, fullKey));
+                } else if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+                    fields.push(...flattenFields(val[0], `${fullKey}[0]`));
+                } else {
+                    fields.push({
+                        key: fullKey,
+                        example: Array.isArray(val) ? JSON.stringify(val) : String(val ?? '')
+                    });
+                }
+            }
+            return fields;
+        };
+
+        const fields = flattenFields(firstProduct);
+
+        res.json({ success: true, data: { fields, totalFields: fields.length } });
+
+    } catch (error) {
+        console.error('Source fields hatası:', error);
+        res.status(500).json({ success: false, message: 'Kaynak alanları alınırken hata oluştu', error: error.message });
+    }
+});
+
+
 
 /**
  * GET /api/admin/webxml/:id
@@ -546,6 +861,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
+
 
 /**
  * PUT /api/admin/webxml/:id
@@ -670,111 +986,139 @@ router.patch('/:id/status', async (req, res) => {
 router.post('/:id/sync', async (req, res) => {
     try {
         const integration = await WebXml.findById(req.params.id);
-
         if (!integration) {
             return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
         }
 
+        const axios = require('axios');
+        const { parseStringPromise } = require('xml2js');
         const crypto = require('crypto');
+
+        const headers = {};
+        if (integration.credentials?.apiKey) headers['API-KEY'] = integration.credentials.apiKey;
+        if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
+        if (integration.credentials?.secretKey) headers['SECRET-KEY'] = integration.credentials.secretKey;
+
+        let url = integration.apiUrl;
+        if (integration.credentials?.token && !url.includes('token=')) {
+            url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
+        }
+
+        const response = await axios.get(url, {
+            headers,
+            timeout: 60000,
+            responseType: 'text'
+        });
+
         let products = [];
 
-        // ========== KAYNAĞA GÖRE VERİ ÇEK ==========
-        if (integration.code === 'tatko') {
-            // TATKO: POST request, body credentials, Sonuc string olarak dönüyor
-            const axios = require('axios');
-            const response = await axios.post(integration.apiUrl, {
-                UserName: integration.credentials.userName,
-                Password: integration.credentials.password,
-                CompanyCode: integration.credentials.companyCode,
-                stokCode: ''
-            }, {
-                timeout: 60000,
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!response.data?.Basarili) {
-                return res.status(400).json({ success: false, message: 'Tatko API hatası: ' + (response.data?.Hatakodu || 'Bilinmeyen') });
-            }
-
-            const raw = response.data.Sonuc;
-            products = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-        } else {
-            // MOLLAOĞLU: GET request, header credentials
-            const https = require('https');
-            const url = new URL(`${integration.apiUrl}?token=${integration.credentials.token}`);
-
-            const options = {
-                hostname: url.hostname,
-                port: url.port || 443,
-                path: url.pathname + url.search,
-                method: 'GET',
-                headers: {
-                    'API-KEY': integration.credentials.apiKey,
-                    'APP-KEY': integration.credentials.appKey,
-                    'SECRET-KEY': integration.credentials.secretKey,
-                    'Content-Type': 'application/json'
-                },
-                rejectUnauthorized: false
+        if (integration.format === 'xml') {
+            const findFirstArray = (obj, depth = 0) => {
+                if (depth > 5) return null;
+                for (const key of Object.keys(obj)) {
+                    const val = obj[key];
+                    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
+                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                        const found = findFirstArray(val, depth + 1);
+                        if (found) return found;
+                    }
+                }
+                return null;
             };
 
-            const apiResponse = await new Promise((resolve, reject) => {
-                const req = https.request(options, (response) => {
-                    let data = '';
-                    response.on('data', chunk => data += chunk);
-                    response.on('end', () => {
-                        try {
-                            resolve(JSON.parse(data));
-                        } catch (e) {
-                            reject(new Error('JSON parse hatası'));
-                        }
-                    });
-                });
-                req.on('error', reject);
-                req.setTimeout(120000, () => reject(new Error('Timeout')));
-                req.end();
-            });
+            // Önce explicitArray:false dene
+            const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
+            products = findFirstArray(parsed1) || [];
 
-            products = apiResponse;
-            if (integration.dataPath) {
-                const paths = integration.dataPath.split('.');
-                for (const p of paths) {
-                    products = products?.[p];
+            // Array bulunamadıysa veya tek eleman geldiyse explicitArray:true ile tekrar dene
+            if (products.length === 0) {
+                const parsed2 = await parseStringPromise(response.data, { explicitArray: true, mergeAttrs: true });
+                const rawProducts = findFirstArray(parsed2) || [];
+                // Değerleri düzleştir
+                products = rawProducts.map(p => {
+                    const flat = {};
+                    for (const key of Object.keys(p)) {
+                        const val = p[key];
+                        flat[key] = Array.isArray(val) && val.length === 1 ? val[0] : val;
+                    }
+                    return flat;
+                });
+            }
+        } else {
+            const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            if (Array.isArray(data)) {
+                products = data;
+            } else {
+                const findFirstArray = (obj, depth = 0) => {
+                    if (depth > 5) return null;
+                    for (const key of Object.keys(obj)) {
+                        const val = obj[key];
+                        if (Array.isArray(val) && val.length > 0) return val;
+                        if (typeof val === 'object' && val !== null) {
+                            const found = findFirstArray(val, depth + 1);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+                products = findFirstArray(data) || [];
+            }
+        }
+
+        console.log('[XML SYNC DEBUG] products length:', products.length);
+        if (products.length > 0) console.log('[XML SYNC DEBUG] ilk ürün:', JSON.stringify(products[0]).slice(0, 300));
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ success: false, message: 'Ürün listesi bulunamadı veya boş' });
+        }
+
+        const fieldMappings = integration.rules?.fieldMappings || [];
+        const rules = integration.rules || {};
+
+        const stokKoduMapping = fieldMappings.find(m => m.target === 'stokKodu');
+        const stokAdetiM = fieldMappings.find(m => m.target === 'stokAdeti');
+        const markaM = fieldMappings.find(m => m.target === 'marka');
+        const kategoriM = fieldMappings.find(m => m.target === 'kategori');
+        const yilM = fieldMappings.find(m => m.target === 'uretimYili');
+        const gorselM = fieldMappings.find(m => m.target === 'gorselUrl');
+        const fiyatM = fieldMappings.find(m => m.target === 'hamFiyat');
+
+        const getVal = (p, mapping) => {
+            if (!mapping?.source) return null;
+            return mapping.source.split('.').reduce((acc, key) => acc?.[key], p) ?? null;
+        };
+
+        const isFiltered = (product) => {
+            const stok = parseFloat(getVal(product, stokAdetiM) ?? 0);
+            const marka = getVal(product, markaM);
+            const kategori = getVal(product, kategoriM);
+            const yil = String(getVal(product, yilM) ?? '');
+            const gorsel = getVal(product, gorselM);
+            const fiyat = parseFloat(getVal(product, fiyatM) ?? 0);
+
+            if (rules.minStock > 0 && stok < rules.minStock) return true;
+            if (rules.filters?.onlyInStock && stok <= 0) return true;
+            if (rules.filters?.onlyWithImage && !gorsel) return true;
+            if (rules.filters?.onlyWithPrice && !fiyat) return true;
+            if (rules.excludedBrands?.length > 0 && marka && rules.excludedBrands.includes(marka)) return true;
+            if (rules.excludedCategories?.length > 0 && kategori && rules.excludedCategories.includes(kategori)) return true;
+            if (rules.excludedYears?.length > 0 && yil && rules.excludedYears.includes(yil)) return true;
+
+            return false;
+        };
+
+        const getProductId = (p) => {
+            if (stokKoduMapping?.source) {
+                return String(p[stokKoduMapping.source] ?? '');
+            }
+            for (const key of Object.keys(p)) {
+                if (typeof p[key] === 'string' || typeof p[key] === 'number') {
+                    return String(p[key]);
                 }
             }
-        }
-
-        if (!Array.isArray(products)) {
-            return res.status(400).json({ success: false, message: 'Ürün listesi bulunamadı' });
-        }
-
-        // ========== ÜRÜN ID VE HASH ALANLARI (KAYNAĞA GÖRE) ==========
-        const getProductId = (p) => {
-            if (integration.code === 'tatko') return p.stokkodu;
-            return String(p.ProductID);
+            return String(Math.random());
         };
 
-        const getHashData = (p) => {
-            if (integration.code === 'tatko') {
-                return {
-                    kdvdahilfiyat: p.kdvdahilfiyat || '',
-                    miktar: p.miktar || '',
-                    dot: p.dot || '',
-                    stokkodu: p.stokkodu || '',
-                    desen: p.desen || ''
-                };
-            }
-            return {
-                Price: p.Price || '',
-                RetailPrice: p.RetailPrice || '',
-                StockNumberSort: p.StockNumberSort || '',
-                ProductionDate: p.ProductionDate || '',
-                ProductCode: p.ProductCode || '',
-                ProductName: p.ProductName || ''
-            };
-        };
-
-        // ========== HASH KARŞILAŞTIRMA VE KAYIT ==========
         const sourceProductIds = products.map(p => getProductId(p));
         const existingProducts = await XmlProduct.find(
             { source: integration.code, sourceProductId: { $in: sourceProductIds } },
@@ -783,7 +1127,7 @@ router.post('/:id/sync', async (req, res) => {
 
         const existingMap = {};
         for (const ep of existingProducts) {
-            existingMap[ep.sourceProductId] = ep.syncHash || null;
+            existingMap[ep.sourceProductId] = ep.syncHash;
         }
 
         let newCount = 0, changedCount = 0, unchangedCount = 0;
@@ -791,55 +1135,32 @@ router.post('/:id/sync', async (req, res) => {
 
         for (const product of products) {
             const pid = getProductId(product);
-            const hashStr = JSON.stringify(getHashData(product));
-            const newHash = crypto.createHash('md5').update(hashStr).digest('hex');
+            if (!pid) continue;
+            if (isFiltered(product)) continue;
+
+            const newHash = crypto.createHash('md5').update(JSON.stringify(product)).digest('hex');
             const oldHash = existingMap[pid];
 
-            if (!oldHash) {
-                bulkOps.push({
-                    updateOne: {
-                        filter: { source: integration.code, sourceProductId: pid },
-                        update: {
-                            $set: {
-                                rawData: product,
-                                lastFetchedAt: new Date(),
-                                syncHash: newHash,
-                                status: 'pending'
-                            }
-                        },
-                        upsert: true
-                    }
-                });
-                newCount++;
-            } else if (oldHash !== newHash) {
-                bulkOps.push({
-                    updateOne: {
-                        filter: { source: integration.code, sourceProductId: pid },
-                        update: {
-                            $set: {
-                                rawData: product,
-                                lastFetchedAt: new Date(),
-                                syncHash: newHash,
-                                status: 'pending'
-                            }
+            const op = {
+                updateOne: {
+                    filter: { source: integration.code, sourceProductId: pid },
+                    update: {
+                        $set: {
+                            rawData: product,
+                            lastFetchedAt: new Date(),
+                            syncHash: newHash,
+                            ...((!oldHash || oldHash !== newHash) && { status: 'pending' })
                         }
-                    }
-                });
-                changedCount++;
-            } else {
-                bulkOps.push({
-                    updateOne: {
-                        filter: { source: integration.code, sourceProductId: pid },
-                        update: {
-                            $set: {
-                                rawData: product,
-                                lastFetchedAt: new Date()
-                            }
-                        }
-                    }
-                });
-                unchangedCount++;
-            }
+                    },
+                    upsert: true
+                }
+            };
+
+            bulkOps.push(op);
+
+            if (!oldHash) newCount++;
+            else if (oldHash !== newHash) changedCount++;
+            else unchangedCount++;
         }
 
         if (bulkOps.length > 0) {
@@ -859,17 +1180,11 @@ router.post('/:id/sync', async (req, res) => {
         res.json({
             success: true,
             message: 'Senkronizasyon tamamlandı',
-            data: {
-                productCount: products.length,
-                newCount,
-                changedCount,
-                unchangedCount
-            }
+            data: { productCount: products.length, newCount, changedCount, unchangedCount }
         });
 
     } catch (error) {
         console.error('Sync error:', error);
-
         await WebXml.findByIdAndUpdate(req.params.id, {
             $set: {
                 'syncInfo.lastSyncAt': new Date(),
@@ -877,8 +1192,7 @@ router.post('/:id/sync', async (req, res) => {
                 'syncInfo.lastSyncType': 'manual',
                 'syncInfo.lastSyncMessage': error.message
             }
-        });
-
+        }).catch(() => { });
         res.status(500).json({ success: false, message: error.message });
     }
 });
@@ -900,29 +1214,28 @@ router.get('/:id/filter-options', async (req, res) => {
 
         const sourceCode = webXml.code;
 
-        const fieldMap = {
-            mollaoglu: { brand: 'rawData.BrandName', year: 'rawData.ProductionDate', category: 'rawData.CategoryCode' },
-            tatko: { brand: 'rawData.markaismi', year: 'rawData.dot', category: 'rawData.stokanagrup' }
+        // fieldMappings'ten ilgili alanları bul
+        const fieldMappings = webXml.rules?.fieldMappings || [];
+        const getSourceField = (target) => {
+            const mapping = fieldMappings.find(m => m.target === target);
+            return mapping ? `rawData.${mapping.source}` : null;
         };
-        const fields = fieldMap[sourceCode] || fieldMap.mollaoglu;
 
-        // Kategoriler
-        const categories = await XmlProduct.distinct(fields.category, {
-            source: sourceCode,
-            [fields.category]: { $ne: null, $ne: '' }
-        });
+        const brandField = getSourceField('marka');
+        const yearField = getSourceField('uretimYili');
+        const categoryField = getSourceField('kategori');
 
-        // Markalar
-        const brands = await XmlProduct.distinct(fields.brand, {
-            source: sourceCode,
-            [fields.brand]: { $ne: null, $ne: '' }
-        });
-
-        // Yıllar
-        const years = await XmlProduct.distinct(fields.year, {
-            source: sourceCode,
-            [fields.year]: { $ne: null, $ne: '' }
-        });
+        const [categories, brands, years] = await Promise.all([
+            categoryField
+                ? XmlProduct.distinct(categoryField, { source: sourceCode, [categoryField]: { $nin: [null, ''] } })
+                : Promise.resolve([]),
+            brandField
+                ? XmlProduct.distinct(brandField, { source: sourceCode, [brandField]: { $nin: [null, ''] } })
+                : Promise.resolve([]),
+            yearField
+                ? XmlProduct.distinct(yearField, { source: sourceCode, [yearField]: { $nin: [null, ''] } })
+                : Promise.resolve([])
+        ]);
 
         // Alfabetik sırala
         const sortedCategories = categories.filter(Boolean).sort((a, b) =>
@@ -1010,50 +1323,5 @@ router.put('/:id/rules', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/integration/xml/:id/sync-to-dia
-// XML ürünlerini DIA'ya aktar
-// ============================================
-router.post('/:id/sync-to-dia', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { testMode, productId } = req.body; // testMode: true ise tek ürün
-
-        const XmlDiaService = require('../../../services/plugins/xml/XmlDiaService');
-
-        let result;
-
-        if (testMode && productId) {
-            // Tek ürün test
-            result = await XmlDiaService.syncSingleProduct(productId);
-        } else {
-            // Toplu sync
-            const options = {};
-            if (req.body.limit) options.limit = parseInt(req.body.limit);
-            result = await XmlDiaService.syncToDia(id, options);
-        }
-
-        if (result.success) {
-            res.json({
-                success: true,
-                message: 'DIA aktarımı tamamlandı',
-                data: result.results || result
-            });
-        } else {
-            res.status(400).json({
-                success: false,
-                message: result.message
-            });
-        }
-
-    } catch (error) {
-        console.error('DIA sync hatası:', error);
-        res.status(500).json({
-            success: false,
-            message: 'DIA aktarımı sırasında hata oluştu',
-            error: error.message
-        });
-    }
-});
 
 module.exports = router;

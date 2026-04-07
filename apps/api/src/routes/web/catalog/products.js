@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
+const WebBrand = require('../../../models/web/catalog/WebBrand');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
 const { getProductListFilters } = require('../../../config/diaFilters');
@@ -410,6 +411,25 @@ router.get('/:slug', async (req, res) => {
                 success: false,
                 message: 'Ürün bulunamadı'
             });
+        }
+
+        // Marka customName kontrolü
+        const marka = product.diaData?.marka;
+        if (marka) {
+            const webBrand = await WebBrand.findOne({
+                diaBrand: { $regex: new RegExp(`^${marka}$`, 'i') }
+            }).select('customName name').lean();
+
+            if (webBrand && webBrand.customName) {
+                product.customData = product.customData || {};
+                product.customData.brandDisplayName = webBrand.customName;
+                if (product.diaData?.aciklama) {
+                    product.diaData.aciklama = product.diaData.aciklama.replace(
+                        new RegExp(marka, 'gi'),
+                        webBrand.customName
+                    );
+                }
+            }
         }
 
         res.json({

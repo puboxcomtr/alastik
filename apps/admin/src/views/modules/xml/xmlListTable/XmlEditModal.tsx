@@ -1,6 +1,5 @@
 /**
- * XML Entegrasyon Düzenleme Modalı
- * Dosya: admin/src/views/modules/xmlListTable/XmlEditModal.tsx
+ * admin/src/views/modules/xmlListTable/XmlEditModal.tsx
  */
 
 'use client'
@@ -18,7 +17,8 @@ import {
     IconButton,
     InputAdornment,
     CircularProgress,
-    Divider
+    Divider,
+    MenuItem
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
@@ -27,6 +27,7 @@ type XmlIntegrationDetail = {
     id: string
     name: string
     code: string
+    format: string
     apiUrl: string
     credentials: {
         apiKey: string
@@ -61,6 +62,7 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
         id: '',
         name: '',
         code: '',
+        format: '',
         apiUrl: '',
         credentials: {
             apiKey: '',
@@ -96,6 +98,7 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                     id: data.id,
                     name: data.name || '',
                     code: data.code || '',
+                    format: data.format || 'xml',
                     apiUrl: data.apiUrl || '',
                     credentials: {
                         apiKey: data.credentials?.apiKey || '',
@@ -180,6 +183,7 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                 method: 'PUT',
                 body: JSON.stringify({
                     name: formData.name,
+                    format: formData.format,
                     apiUrl: formData.apiUrl,
                     credentials: formData.credentials,
                     syncInterval: formData.syncInterval
@@ -230,7 +234,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
             </DialogTitle>
 
             <Divider />
-
             <DialogContent>
                 {loading ? (
                     <div className="flex items-center justify-center py-10">
@@ -239,7 +242,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                     </div>
                 ) : (
                     <Grid container spacing={3} sx={{ mt: 0 }}>
-                        {/* Temel Bilgiler */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
                                 Temel Bilgiler
@@ -269,6 +271,23 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                             />
                         </Grid>
 
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                select
+                                fullWidth
+                                label="Format"
+                                value={formData.format}
+                                onChange={(e) => handleChange('format', e.target.value)}
+                                size="small"
+                            >
+                                <MenuItem value="xml">XML</MenuItem>
+                                <MenuItem value="json">API (JSON)</MenuItem>
+                                <MenuItem value="csv">CSV</MenuItem>
+                            </TextField>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6} />
+
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
@@ -282,15 +301,36 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                             />
                         </Grid>
 
-                        {/* Credentials */}
+                        {/* Senkronizasyon Ayarları — her format için */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, mt: 2 }}>
-                                Kimlik Bilgileri
+                                Senkronizasyon Ayarları
                             </Typography>
                         </Grid>
 
-                        {formData.code === 'tatko' ? (
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="Yenileme Sıklığı (dakika)"
+                                type="number"
+                                value={formData.syncInterval}
+                                onChange={(e) => handleChange('syncInterval', parseInt(e.target.value) || 15)}
+                                error={!!errors.syncInterval}
+                                helperText={errors.syncInterval || 'Min: 15, Max: 900 dakika'}
+                                size="small"
+                                inputProps={{ min: 15, max: 900 }}
+                            />
+                        </Grid>
+
+                        {/* Credentials — sadece JSON/API formatında göster */}
+                        {formData.format === 'json' && (
                             <>
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, mt: 2 }}>
+                                        Kimlik Bilgileri
+                                    </Typography>
+                                </Grid>
+
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         fullWidth
@@ -303,34 +343,12 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         fullWidth
-                                        label="Şifre"
-                                        type={showSecrets.appKey ? 'text' : 'password'}
-                                        value={formData.credentials.password}
-                                        onChange={(e) => handleChange('credentials.password', e.target.value)}
-                                        size="small"
-                                        InputProps={{
-                                            endAdornment: (
-                                                <InputAdornment position="end">
-                                                    <IconButton onClick={() => toggleShowSecret('appKey')} edge="end" size="small">
-                                                        <i className={showSecrets.appKey ? 'ri-eye-off-line' : 'ri-eye-line'} />
-                                                    </IconButton>
-                                                </InputAdornment>
-                                            )
-                                        }}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
                                         label="Firma Kodu"
                                         value={formData.credentials.companyCode}
                                         onChange={(e) => handleChange('credentials.companyCode', e.target.value)}
                                         size="small"
                                     />
                                 </Grid>
-                            </>
-                        ) : (
-                            <>
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         fullWidth
@@ -409,27 +427,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                                 </Grid>
                             </>
                         )}
-
-                        {/* Ayarlar */}
-                        <Grid item xs={12}>
-                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, mt: 2 }}>
-                                Senkronizasyon Ayarları
-                            </Typography>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Yenileme Sıklığı (dakika)"
-                                type="number"
-                                value={formData.syncInterval}
-                                onChange={(e) => handleChange('syncInterval', parseInt(e.target.value) || 15)}
-                                error={!!errors.syncInterval}
-                                helperText={errors.syncInterval || 'Min: 15, Max: 900 dakika'}
-                                size="small"
-                                inputProps={{ min: 15, max: 900 }}
-                            />
-                        </Grid>
                     </Grid>
                 )}
             </DialogContent>

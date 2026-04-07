@@ -58,7 +58,11 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
       return false;
     });
 
-    if (!hasError) handleSubmit();
+    if (!hasError) {
+      handleSubmit().then(() => {
+        setTouched({});
+      });
+    }
   };
 
   const inputSx = {

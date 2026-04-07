@@ -133,7 +133,7 @@ export const getProductStockCode = (product: Product): string => {
     const code = product.diaData?.anabarkod ||
         product.diaData?.stokkartkodu ||
         '-';
-    return code.replace(/-XMLA$/i, '');
+    return code.replace(/-XMLA$/i, '').replace(/^LJA/i, 'AKD');
 };
 
 /**
@@ -456,7 +456,7 @@ export const getAllLastikFeatures = (product: Product): Array<{ label: string; v
         { label: 'Stok Kodu', value: getProductStockCode(product) },
         { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
         { label: 'Araç Tipi', value: getProductFeature(product, 'Araç Tipi') },
-        { label: 'Marka', value: capitalizeText(product.diaData?.marka || '-') },
+        { label: 'Marka', value: capitalizeText(product.customData?.brandDisplayName || product.diaData?.marka || '-') },
         { label: 'Model', value: product.diaData?.ozelkod5 || product.diaData?.ozelkod5kodu || '-' },
         { label: 'Mevsim', value: getProductFeature(product, 'Mevsim') },
         { label: 'Ebat', value: ebat },
@@ -478,7 +478,7 @@ export const getAllJantFeatures = (product: Product): Array<{ label: string; val
     return [
         { label: 'Stok Kodu', value: getProductStockCode(product) },
         { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
-        { label: 'Marka', value: capitalizeText(product.diaData?.marka || '-') },
+        { label: 'Marka', value: capitalizeText(product.customData?.brandDisplayName || product.diaData?.marka || '-') },
         { label: 'Model', value: product.diaData?.ozelkod5 || product.diaData?.ozelkod5kodu || '-' },
         { label: 'Jant Genişliği', value: getProductFeature(product, 'Jant Genişliği') },
         { label: 'Bijon Sayısı', value: getProductFeature(product, 'Bijon Sayısı') },

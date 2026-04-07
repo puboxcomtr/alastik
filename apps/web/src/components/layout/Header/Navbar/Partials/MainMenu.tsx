@@ -6,7 +6,7 @@ import { useMenu } from '@/src/hooks/Menu/useMenu';
 import MegaItem from './MegaItem';
 
 interface MainMenuProps {
-    handleClose: () => void;
+    handleClose?: () => void;
 }
 
 export default function MainMenu({ handleClose }: MainMenuProps) {
@@ -55,12 +55,43 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
                             <Link
                                 href={getMenuUrl(menu)}
                                 className="nav-link"
-                                onClick={handleClose}
+                                onClick={() => handleClose?.()}
                                 target={menu.openNewTab ? '_blank' : undefined}
                             >
                                 {menu.name}
                             </Link>
                         </Nav.Item>
+                    );
+                }
+                const hasHeading = menu.children.some((child: any) => child.menuType === 'heading');
+
+                if (!hasHeading) {
+                    return (
+                        <MegaItem
+                            key={menu._id}
+                            id={menu._id}
+                            title={menu.name}
+                            href={getMenuUrl(menu)}
+                            openMenuId={openMenuId}
+                            setOpenMenuId={setOpenMenuId}
+                            isMega={false}
+                            dropdownClassName="p-0"
+                        >
+                            <ul className="nav flex-column gap-2 px-3" style={{ '--bs-nav-link-padding-y': 0 } as any}>
+                                {menu.children.map((item: any, index: number) => (
+                                    <li className={`d-flex w-100 animate-underline animate-target pb-2${index < menu.children.length - 1 ? ' border-bottom' : ''}`} key={item._id}>
+                                        <Link
+                                            href={getMenuUrl(item)}
+                                            className="nav-link fw-normal text-truncate p-0 text-muted fs-sm"
+                                            onClick={closeMenu}
+                                            target={item.openNewTab ? '_blank' : undefined}
+                                        >
+                                            {item.name}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </MegaItem>
                     );
                 }
                 const groupedChildren = groupChildrenByHeading(menu.children);

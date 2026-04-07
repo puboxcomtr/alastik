@@ -3,6 +3,55 @@ const router = express.Router();
 const WebReview = require('../../../models/web/user/WebReview');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
+const authMiddleware = require('../../../middleware/authMiddleware');
+
+router.get('/my', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const reviews = await WebReview.find({ userId })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Ürün bilgilerini çek
+        const productKeys = reviews.map(r => r.productKey).filter(Boolean);
+        const products = await WebProduct.find(
+            { _key: { $in: productKeys } },
+            { _key: 1, 'diaData.aciklama': 1, 'diaData.marka': 1, 'diaData.m_resimler': 1, 'customData.seoUrl': 1, 'customData.featuredImage': 1, 'customData.customImages': 1 }
+        ).lean();
+
+        const productMap = {};
+        products.forEach(p => {
+            let image = null;
+            if (p.customData?.customImages?.length > 0) {
+                const sorted = [...p.customData.customImages].sort((a, b) => (a.order || 0) - (b.order || 0));
+                if (sorted[0]?.url) image = sorted[0].url;
+            }
+            if (!image && p.customData?.featuredImage) image = p.customData.featuredImage;
+            if (!image && p.diaData?.m_resimler?.length > 0) {
+                const sorted = [...p.diaData.m_resimler].sort((a, b) => parseInt(a.order_id || '999') - parseInt(b.order_id || '999'));
+                if (sorted[0]?.aws_url) image = sorted[0].aws_url;
+            }
+            productMap[p._key] = {
+                name: p.diaData?.aciklama || '',
+                brand: p.diaData?.marka || '',
+                image,
+                seoUrl: p.customData?.seoUrl || null
+            };
+        });
+
+        const result = reviews.map(r => ({
+            ...r,
+            product: productMap[r.productKey] || null
+        }));
+
+        res.json({ success: true, data: result });
+    } catch (error) {
+        console.error('Kullanıcı yorumları hatası:', error);
+        res.status(500).json({ success: false, message: 'Yorumlar yüklenemedi' });
+    }
+});
+
 
 // GET /api/reviews/top - Ana sayfa icin en iyi yorumlar
 router.get('/top', async (req, res) => {

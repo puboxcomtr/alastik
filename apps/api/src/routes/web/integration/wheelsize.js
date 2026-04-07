@@ -33,7 +33,7 @@ router.get('/models', async (req, res) => {
                 message: 'Make parametresi gereklidir'
             });
         }
-        const response = await WheelSizeService.getModels(make, { region });
+        const response = await WheelSizeService.getModels(make, { region: region || 'eudm' });
         return res.json({
             success: true,
             data: response || [],
@@ -61,7 +61,7 @@ router.get('/years', async (req, res) => {
             });
         }
 
-        const response = await WheelSizeService.getYears(make, model, { region });
+        const response = await WheelSizeService.getYears(make, model, { region: region || 'eudm' });
 
         return res.json({
             success: true,
@@ -83,7 +83,7 @@ router.get('/generations', async (req, res) => {
     try {
         const { make, model } = req.query;
 
-       if (!make || !model) { 
+        if (!make || !model) {
             return res.status(400).json({
                 success: false,
                 message: 'Make ve model parametreleri gereklidir'

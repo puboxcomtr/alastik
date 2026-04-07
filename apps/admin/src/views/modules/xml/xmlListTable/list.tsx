@@ -44,6 +44,7 @@ import tableStyles from '@core/styles/table.module.css'
 
 // Component Imports
 import XmlEditModal from './XmlEditModal'
+import XmlAddModal from './XmlAddModal'
 
 declare module '@tanstack/table-core' {
     interface FilterFns {
@@ -105,7 +106,6 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     return itemRank.passed
 }
 
-// Format renkleri
 const getFormatColor = (format: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     const colors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
         json: 'primary',
@@ -115,7 +115,6 @@ const getFormatColor = (format: string): 'default' | 'primary' | 'secondary' | '
     return colors[format.toLowerCase()] || 'default'
 }
 
-// Sync durumu renkleri
 const getSyncStatusColor = (status: string | null): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     if (!status) return 'default'
     const colors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
@@ -126,7 +125,6 @@ const getSyncStatusColor = (status: string | null): 'default' | 'primary' | 'sec
     return colors[status] || 'default'
 }
 
-// Tarih formatla
 const formatDate = (dateString: string | null) => {
     if (!dateString) return '-'
     return new Date(dateString).toLocaleDateString('tr-TR', {
@@ -148,45 +146,41 @@ const XmlListTable = () => {
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [loading, setLoading] = useState(true)
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(20)
     const [totalCount, setTotalCount] = useState(0)
 
-    // Export XML
     const [exporting, setExporting] = useState(false)
+
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null)
+
+    const [addModalOpen, setAddModalOpen] = useState(false)
+
     const handleExportExcel = async () => {
         setExporting(true)
         try {
-            toast.info('Excel dosyası hazırlanıyor...')
+            const { getSession } = await import('next-auth/react')
+            const session = await getSession()
+            const token = (session as any)?.user?.accessToken
 
-            const response = await fetchAPI(API_ENDPOINTS.webxml.exportExcel(), {
-                method: 'POST',
-                body: JSON.stringify({ source: 'mollaoglu' })
+            const res = await fetch(API_ENDPOINTS.webxml.productsExport(), {
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) }
             })
+            if (!res.ok) throw new Error('Dışa çıkartma işlemi başarısız')
 
-            if (response.success) {
-                toast.success(response.message)
-                const downloadUrl = API_ENDPOINTS.webxml.downloadExcel(response.data.fileName)
-                const link = document.createElement('a')
-                link.href = downloadUrl
-                link.download = response.data.fileName
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
-            } else {
-                toast.error(response.message || 'Excel aktarımı başarısız')
-            }
-        } catch (error) {
+            const blob = await res.blob()
+            const link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.download = 'xml-urunler.xlsx'
+            link.click()
+            toast.success('Excel indirildi')
+        } catch {
             toast.error('Excel aktarımı sırasında hata oluştu')
         } finally {
             setExporting(false)
         }
     }
-
-    // Modal state
-    const [editModalOpen, setEditModalOpen] = useState(false)
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null)
 
     const handleOpenEditModal = (id: string) => {
         setSelectedIntegrationId(id)
@@ -199,6 +193,10 @@ const XmlListTable = () => {
     }
 
     const handleEditSuccess = () => {
+        loadXmlIntegrations(debouncedSearch, page, limit)
+    }
+
+    const handleAddSuccess = () => {
         loadXmlIntegrations(debouncedSearch, page, limit)
     }
 
@@ -222,7 +220,6 @@ const XmlListTable = () => {
                 toast.error(response.message || 'Veriler yüklenemedi')
             }
         } catch (error) {
-            console.error('XML integrations fetch error:', error)
             toast.error('XML entegrasyonları yüklenirken hata oluştu')
         } finally {
             setLoading(false)
@@ -235,11 +232,8 @@ const XmlListTable = () => {
                 method: 'PATCH',
                 body: JSON.stringify({ isActive })
             })
-
             if (response.success) {
-                setData(prev => prev.map(item =>
-                    item.id === id ? { ...item, isActive } : item
-                ))
+                setData(prev => prev.map(item => item.id === id ? { ...item, isActive } : item))
                 toast.success(response.message)
             } else {
                 toast.error(response.message || 'Durum güncellenemedi')
@@ -248,17 +242,15 @@ const XmlListTable = () => {
             toast.error('Durum güncellenirken hata oluştu')
         }
     }
+
     const handleStartSync = async (id: string, name: string) => {
         try {
             toast.info(`${name} senkronizasyonu başlatılıyor...`)
-
             const response = await fetchAPI(API_ENDPOINTS.webxml.startSync(id), {
                 method: 'POST'
             })
-
             if (response.success) {
                 toast.success(`${response.data.productCount} ürün bulundu`)
-                console.log('API Çıktısı:', response.data.products)
             } else {
                 toast.error(response.message || 'Senkronizasyon başarısız')
             }
@@ -266,17 +258,16 @@ const XmlListTable = () => {
             toast.error('Senkronizasyon başlatılırken hata oluştu')
         }
     }
+
     const handleSyncToDia = async (id: string, name: string) => {
         try {
             toast.info(`${name} DIA aktarımı başlatılıyor...`)
-
             const response = await fetchAPI(API_ENDPOINTS.webxml.syncToDia(id), {
                 method: 'POST'
             })
-
             if (response.success) {
                 const d = response.data
-                toast.success(`DIA aktarımı tamamlandı: ${d.created || 0} olusturuldu, ${d.updated || 0} güncellendi, ${d.stockWritten || 0} stok yazıldı`)
+                toast.success(`DIA aktarımı tamamlandı: ${d.created || 0} oluşturuldu, ${d.updated || 0} güncellendi, ${d.stockWritten || 0} stok yazıldı`)
                 loadXmlIntegrations(debouncedSearch, page, limit)
             } else {
                 toast.error(response.message || 'DIA aktarımı başarısız')
@@ -354,11 +345,8 @@ const XmlListTable = () => {
                             handleStatusChange(row.original.id, !row.original.isActive)
                         }}
                     >
-                        <Switch
-                            checked={row.original.isActive}
-                            size='small'
-                        />
-                        <Typography variant='body2' color={row.original.isActive ? 'text.secondary' : 'text.secondary'}>
+                        <Switch checked={row.original.isActive} size='small' />
+                        <Typography variant='body2' color='text.secondary'>
                             {row.original.isActive ? 'Aktif' : 'Pasif'}
                         </Typography>
                     </div>
@@ -369,42 +357,22 @@ const XmlListTable = () => {
                 cell: ({ row }) => (
                     <div className='flex items-center gap-1' onClick={(e) => e.stopPropagation()}>
                         <Tooltip title='API Düzenle'>
-                            <IconButton
-                                size='small'
-                                onClick={() => handleOpenEditModal(row.original.id)}
-                            >
+                            <IconButton size='small' onClick={() => handleOpenEditModal(row.original.id)}>
                                 <i className='ri-settings-3-line text-[20px] text-textSecondary' />
                             </IconButton>
                         </Tooltip>
                         <Tooltip title='Kuralları Düzenle'>
-                            <IconButton
-                                size='small'
-                                onClick={() => router.push(`/${locale}/apps/modules/xml/rules/${row.original.id}`)}
-                            >
+                            <IconButton size='small' onClick={() => router.push(`/${locale}/apps/modules/xml/rules/${row.original.id}`)}>
                                 <i className='ri-git-branch-line text-[20px] text-textSecondary' />
                             </IconButton>
                         </Tooltip>
                         <Tooltip title='Ürün Listesi'>
-                            <IconButton
-                                size='small'
-                                onClick={() => router.push(`/${locale}/apps/modules/xml/products?source=${row.original.code}`)}
-                            >
-                                <i className="ri-store-2-line text-[20px] text-textSecondary" />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="DIA'ya Aktar">
-                            <IconButton
-                                size='small'
-                                onClick={() => handleSyncToDia(row.original.id, row.original.name)}
-                            >
-                                <i className='ri-upload-cloud-2-line text-[20px] text-textSecondary' />
+                            <IconButton size='small' onClick={() => router.push(`/${locale}/apps/modules/xml/products?source=${row.original.code}`)}>
+                                <i className='ri-store-2-line text-[20px] text-textSecondary' />
                             </IconButton>
                         </Tooltip>
                         <Tooltip title='Senkronizasyonu Başlat'>
-                            <IconButton
-                                size='small'
-                                onClick={() => handleStartSync(row.original.id, row.original.name)}
-                            >
+                            <IconButton size='small' onClick={() => handleStartSync(row.original.id, row.original.name)}>
                                 <i className='ri-play-circle-line text-[20px] text-textSecondary' />
                             </IconButton>
                         </Tooltip>
@@ -436,20 +404,36 @@ const XmlListTable = () => {
                 title='XML Entegrasyonları'
                 className='pbe-4'
                 action={
-                    <span>
+                    <span style={{ display: 'flex', gap: 8 }}>
+                        <IconButton
+                            onClick={() => setAddModalOpen(true)}
+                            color='primary'
+                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
+                        >
+                            <i className='ri-add-line text-[22px]' />
+                            <Typography variant='body2' fontWeight={500}>
+                                XML Ekle
+                            </Typography>
+                        </IconButton>
                         <IconButton
                             onClick={handleExportExcel}
                             disabled={exporting}
                             color='success'
                             sx={{ borderRadius: 1, gap: 1, px: 2 }}
                         >
-                            {exporting ? (
-                                <CircularProgress size={20} />
-                            ) : (
-                                <i className='ri-file-excel-2-line text-[22px]' />
-                            )}
+                            {exporting ? <CircularProgress size={20} /> : <i className='ri-file-excel-2-line text-[22px]' />}
                             <Typography variant='body2' fontWeight={500}>
                                 Excel'e Aktar
+                            </Typography>
+                        </IconButton>
+                        <IconButton
+                            onClick={() => router.push(`/${locale}/apps/modules/xml/mapping`)}
+                            color='secondary'
+                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
+                        >
+                            <i className='ri-links-line text-[22px]' />
+                            <Typography variant='body2' fontWeight={500}>
+                                Eşleşme Listesi
                             </Typography>
                         </IconButton>
                     </span>
@@ -478,10 +462,7 @@ const XmlListTable = () => {
                 {loading && (
                     <div style={{
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
+                        top: 0, left: 0, right: 0, bottom: 0,
                         backgroundColor: 'rgba(255,255,255,0.8)',
                         display: 'flex',
                         alignItems: 'center',
@@ -555,9 +536,7 @@ const XmlListTable = () => {
                 count={totalCount}
                 rowsPerPage={limit}
                 page={page - 1}
-                onPageChange={(_, newPage) => {
-                    setPage(newPage + 1)
-                }}
+                onPageChange={(_, newPage) => setPage(newPage + 1)}
                 onRowsPerPageChange={e => {
                     setLimit(Number(e.target.value))
                     setPage(1)
@@ -566,12 +545,17 @@ const XmlListTable = () => {
                 labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
             />
 
-            {/* Edit Modal */}
             <XmlEditModal
                 open={editModalOpen}
                 onClose={handleCloseEditModal}
                 integrationId={selectedIntegrationId}
                 onSuccess={handleEditSuccess}
+            />
+
+            <XmlAddModal
+                open={addModalOpen}
+                onClose={() => setAddModalOpen(false)}
+                onSuccess={handleAddSuccess}
             />
         </Card>
     )
