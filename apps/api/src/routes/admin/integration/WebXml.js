@@ -5,8 +5,10 @@
 
 const express = require('express');
 const router = express.Router();
+const https = require('https');
 const WebXml = require('../../../models/plugins/xml/WebXml');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
+const XmlPricingRule = require('../../../models/plugins/xml/XmlPricingRule');
 const XLSX = require('xlsx');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
@@ -149,14 +151,80 @@ router.post('/', async (req, res) => {
         res.status(500).json({ success: false, message: 'Entegrasyon eklenirken hata oluştu', error: error.message });
     }
 });
+// ============================================
+// POST /api/admin/integration/xml/sync-all
+// Tüm XML sync — arka planda worker üzerinden
+// ============================================
+router.post('/sync-all', async (req, res) => {
+    try {
+        const Queue = require('bull');
+        const workerConfig = require('../../../config/worker.config');
+
+        const xmlSyncQueue = new Queue('xml-full-sync', {
+            redis: workerConfig.redis
+        });
+
+        const activeCounts = await xmlSyncQueue.getJobCounts();
+        if (activeCounts.active > 0 || activeCounts.waiting > 0) {
+            return res.json({ success: false, message: 'XML sync zaten devam ediyor' });
+        }
+
+        const job = await xmlSyncQueue.add(
+            'manual-xml-sync',
+            { type: 'manual', triggeredBy: 'admin', triggeredAt: new Date().toISOString() },
+            { timeout: 60 * 60 * 1000 } // 1 saat timeout
+        );
+
+        res.json({
+            success: true,
+            message: 'XML senkronizasyon başlatıldı',
+            data: { jobId: job.id }
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// POST /api/admin/integration/xml/web-sync/full
+// XML ürünlerini webproducts'a tam aktarım
+// ============================================
+router.post('/web-sync/full', async (req, res) => {
+    try {
+        const XmlWebProductSyncService = require('../../../services/plugins/xml/XmlWebProductSyncService');
+        const result = await XmlWebProductSyncService.fullSync();
+        res.json({
+            success: true,
+            message: `Tam aktarım tamamlandı — oluşturulan: ${result.created}, güncellenen: ${result.updated}, filtrelenen: ${result.filtered}, hata: ${result.errors}`,
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// POST /api/admin/integration/xml/web-sync/quick
+// Fiyat ve stok hızlı güncelleme
+// ============================================
+router.post('/web-sync/quick', async (req, res) => {
+    try {
+        const XmlWebProductSyncService = require('../../../services/plugins/xml/XmlWebProductSyncService');
+        const result = await XmlWebProductSyncService.quickSync();
+        res.json({
+            success: true,
+            message: `Hızlı sync tamamlandı — güncellenen: ${result.updated}, filtrelenen: ${result.filtered}, hata: ${result.errors}`,
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // ============================================
 // GET /api/admin/integration/xml/products/export
 // Tüm XML ürünlerini Excel'e aktar
-// ============================================
-// ============================================
-// GET /api/admin/integration/xml/products/export
-// Tüm XML ürünlerini Excel'e aktar (kurallara göre filtreli)
 // ============================================
 router.get('/products/export', async (req, res) => {
     try {
@@ -202,7 +270,8 @@ router.get('/products/export', async (req, res) => {
             source: 1,
             sourceProductId: 1,
             rawData: 1,
-            status: 1
+            status: 1,
+            'mappedData.hedefStokKodu': 1
         }).lean();
 
         const rows = [];
@@ -216,9 +285,11 @@ router.get('/products/export', async (req, res) => {
 
             rows.push({
                 'Stok Kodu': getNestedValue(rd, get('stokKodu')) || item.sourceProductId,
+                'Hedef Stok Kodu': item.mappedData?.hedefStokKodu || '',
                 'Ürün Adı': getNestedValue(rd, get('urunAdi')),
                 'Marka': getNestedValue(rd, get('marka')),
                 'Kategori': getNestedValue(rd, get('kategori')),
+                'Mevsim': getNestedValue(rd, get('mevsim')),
                 'Fiyat': getNestedValue(rd, get('hamFiyat')),
                 'Stok': getNestedValue(rd, get('stokAdeti')) || '0',
                 'Yıl': getNestedValue(rd, get('uretimYili')),
@@ -229,8 +300,8 @@ router.get('/products/export', async (req, res) => {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(rows);
         ws['!cols'] = [
-            { wch: 20 }, { wch: 20 }, { wch: 50 }, { wch: 20 }, { wch: 20 },
-            { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 15 }
+            { wch: 20 }, { wch: 20 }, { wch: 50 }, { wch: 20 }, { wch: 20 }, { wch: 15 },
+            { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 20 }
         ];
         XLSX.utils.book_append_sheet(wb, ws, 'Urunler');
 
@@ -669,7 +740,302 @@ router.get('/products', async (req, res) => {
         res.status(500).json({ success: false, message: 'XML ürünleri listelenirken hata oluştu', error: error.message });
     }
 });
+// ============================================
+// GET /api/admin/integration/xml/webproducts/export.xml
+// WebProducts XML dışa aktarım (XML kaynaklı ürünler)
+// ============================================
+router.get('/webproducts/export.xml', async (req, res) => {
+    try {
+        const WebProduct = require('../../../models/web/catalog/WebProduct');
+        const products = await WebProduct.find({
+            'syncInfo.syncSource': 'xml_integration',
+            'diaData.durum': 'A'
+        }, {
+            _key: 1,
+            diaData: 1,
+            'customData.seoUrl': 1
+        }).lean();
 
+        const escape = (val) => String(val || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+        const getOzellik = (ozellikler, isim) => {
+            const o = (ozellikler || []).find(x => x.ozellikadi === isim);
+            return o ? escape(o.detayaciklama) : '';
+        };
+
+        const now = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+        xml += `<!-- XML dosyası son güncellenme tarihi: ${now} -->\n`;
+        xml += `<Urunler>\n`;
+        xml += `<Metadata>\n`;
+        xml += `  <SonGuncelleme>${escape(now)}</SonGuncelleme>\n`;
+        xml += `  <ToplamUrunSayisi>${products.length}</ToplamUrunSayisi>\n`;
+        xml += `  <OlusturmaTarihi>${new Date().toLocaleDateString('tr-TR')}</OlusturmaTarihi>\n`;
+        xml += `  <OlusturmaSaati>${new Date().toLocaleTimeString('tr-TR')}</OlusturmaSaati>\n`;
+        xml += `</Metadata>\n`;
+
+        for (const p of products) {
+            const d = p.diaData || {};
+            const birim = d.m_birimler?.[0] || {};
+            const resimler = d.m_resimler || [];
+            const ozellikler = d.m_urunOzellikleri || [];
+
+            const fiyat1 = birim.fiyat1 || 0;
+            const fiyat4 = birim.fiyat4 || fiyat1;
+            const ebat = d.ozelkod3kodu || '';
+            const jantCapi = d.ozelkod4kodu || '';
+
+            const etiketDegerleri = `${getOzellik(ozellikler, 'Yakıt Verimliliği')} ${getOzellik(ozellikler, 'Islak Zeminde Frenleme')} ${getOzellik(ozellikler, 'Gürültü Seviyesi')}`.trim();
+
+            xml += `<Urun>\n`;
+            xml += `  <StokKodu>${escape(d.stokkartkodu)}</StokKodu>\n`;
+            xml += `  <StokAdi>${escape(d.aciklama)}</StokAdi>\n`;
+            xml += `  <Marka>${escape(d.marka)}</Marka>\n`;
+            xml += `  <ToptanFiyat>${fiyat1}</ToptanFiyat>\n`;
+            xml += `  <PerakendeFiyat>${fiyat4}</PerakendeFiyat>\n`;
+            xml += `  <HamFiyat>${fiyat1}</HamFiyat>\n`;
+            xml += `  <StokAdet>${d.gercek_stok ?? 0}</StokAdet>\n`;
+            xml += `  <Mevsim>${escape(d.ozelkod1kodu)}</Mevsim>\n`;
+            xml += `  <Ebat>${escape(ebat)}</Ebat>\n`;
+            xml += `  <JantCapi>${escape(jantCapi)}</JantCapi>\n`;
+            xml += `  <JantGrubu>${escape(d.ozelkod8kodu)}</JantGrubu>\n`;
+            xml += `  <Durumu>${escape(d.ozelkod6kodu)}</Durumu>\n`;
+            xml += `  <UrunTipi>${escape(d.ozelkod7kodu)}</UrunTipi>\n`;
+            xml += `  <IkOzelAlan>${escape(d.ozelkod9kodu)}</IkOzelAlan>\n`;
+            xml += `  <Rft>${escape(getOzellik(ozellikler, 'Run Flat'))}</Rft>\n`;
+            xml += `  <FiyatlandirmaTipi>XML</FiyatlandirmaTipi>\n`;
+            xml += `  <OzelKod10>${escape(d.ozelkod10kodu)}</OzelKod10>\n`;
+            xml += `  <Baslik>${escape(d.ekalan1)}</Baslik>\n`;
+            xml += `  <MetaTitle>${escape(d.ekalan2)}</MetaTitle>\n`;
+            xml += `  <Tags>${escape(d.ekalan3)}</Tags>\n`;
+            xml += `  <HizliAramaKelimeleri>${escape(d.ekalan4)}</HizliAramaKelimeleri>\n`;
+            xml += `  <UretimTarihi>${escape(d.ekalan5)}</UretimTarihi>\n`;
+            xml += `  <EtiketDegerleri>${etiketDegerleri}</EtiketDegerleri>\n`;
+            xml += `  <FinansalIskonto>Yok</FinansalIskonto>\n`;
+            xml += `  <KampanyaDurumu/>\n`;
+            xml += `  <StokKartiAciklamasi>${escape(d.ekalan9)}</StokKartiAciklamasi>\n`;
+            xml += `  <PazaryeriBarkodu>${escape(d.ekalan10)}</PazaryeriBarkodu>\n`;
+            xml += `  <KaynakDepo/>\n`;
+            xml += `  <XmlTarih>${escape(d.ekalan5)}</XmlTarih>\n`;
+            xml += `  <StokKaynak>${escape(d.ekalan9)}</StokKaynak>\n`;
+            xml += `  <StokCikisTarihi/>\n`;
+            xml += `  <KaldirilmaTarihi/>\n`;
+            xml += `  <RetentionUrun>Hayir</RetentionUrun>\n`;
+
+            // UrunAgaciDetay
+            const kategoriler = d.m_kategoriler?.[0] || {};
+            xml += `  <UrunAgaciDetay>\n`;
+            xml += `    <Grup1>${escape(kategoriler.kategori_aciklama_1)}</Grup1>\n`;
+            xml += `    <Grup2>${escape(kategoriler.kategori_aciklama_2)}</Grup2>\n`;
+            xml += `    <Grup3>${escape(kategoriler.kategori_aciklama_3)}</Grup3>\n`;
+            xml += `    <Grup4>${escape(kategoriler.kategori_aciklama_4)}</Grup4>\n`;
+            xml += `    <Grup5>${escape(kategoriler.kategori_aciklama_5)}</Grup5>\n`;
+            xml += `    <Grup6>${escape(kategoriler.kategori_aciklama_6)}</Grup6>\n`;
+            xml += `  </UrunAgaciDetay>\n`;
+
+            xml += `  <DiaKey>${escape(p._key)}</DiaKey>\n`;
+            xml += `  <UrlList>\n`;
+            resimler.slice(0, 6).forEach((r, i) => {
+                xml += `    <Url${i + 1}>${escape(r.aws_url || r.localdata)}</Url${i + 1}>\n`;
+            });
+            xml += `  </UrlList>\n`;
+            xml += `  <Ozellikler>\n`;
+            ozellikler.forEach((o, i) => {
+                xml += `    <Ozellik no="${i + 1}" isim="${escape(o.ozellikadi)}">${escape(o.detayaciklama)}</Ozellik>\n`;
+            });
+            xml += `  </Ozellikler>\n`;
+            if (d.note) {
+                xml += `  <Not>${d.note}</Not>\n`;
+            }
+            xml += `</Urun>\n`;
+        }
+
+        xml += `</Urunler>`;
+
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.send(xml);
+
+    } catch (error) {
+        console.error('WebProducts XML export hatası:', error);
+        res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><error>Hata oluştu</error>');
+    }
+});
+// ============================================
+// GET /api/admin/integration/xml/:source/export.xml
+// xmlproducts'tan XML çıktısı üret
+// ============================================
+router.get('/:source/export.xml', async (req, res) => {
+    try {
+        const { source } = req.params;
+
+        const webXml = await WebXml.findOne({ code: source }).lean();
+        if (!webXml) {
+            return res.status(404).send('<?xml version="1.0" encoding="UTF-8"?><error>Entegrasyon bulunamadı</error>');
+        }
+
+        const fieldMappings = webXml.rules?.fieldMappings || [];
+        const getSourceField = (target) => fieldMappings.find(m => m.target === target)?.source;
+
+        const stokKoduField = getSourceField('stokKodu');
+        const urunAdiField = getSourceField('urunAdi');
+        const markaField = getSourceField('marka');
+        const hamFiyatField = getSourceField('hamFiyat');
+        const stokAdetiField = getSourceField('stokAdeti');
+        const kategoriField = getSourceField('kategori');
+        const uretimYiliField = getSourceField('uretimYili');
+        const gorselField = getSourceField('gorselUrl');
+        const mevsimField = getSourceField('mevsim');
+
+        const getVal = (obj, field) => {
+            if (!field) return '';
+            return field.split('.').reduce((acc, key) => acc?.[key] ?? '', obj) ?? '';
+        };
+
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+        const axios = require('axios');
+
+        let items = [];
+
+        if (webXml.credentials?.userName) {
+            const apiRes = await axios.post(webXml.apiUrl, {
+                UserName: webXml.credentials.userName,
+                Password: webXml.credentials.password,
+                CompanyCode: webXml.credentials.companyCode,
+                stokCode: ''
+            }, { headers: { 'Content-Type': 'application/json' }, timeout: 120000, httpsAgent });
+            let data = apiRes.data;
+            if (webXml.dataPath) {
+                data = webXml.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
+            }
+            if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
+            items = Array.isArray(data) ? data.map(r => ({ rawData: r })) : [];
+        } else {
+            const headers = {};
+            if (webXml.credentials?.apiKey) headers['API-KEY'] = webXml.credentials.apiKey;
+            if (webXml.credentials?.appKey) headers['APP-KEY'] = webXml.credentials.appKey;
+            if (webXml.credentials?.secretKey) headers['SECRET-KEY'] = webXml.credentials.secretKey;
+            let url = webXml.apiUrl;
+            if (webXml.credentials?.token && !url.includes('token=')) {
+                url += (url.includes('?') ? '&' : '?') + `token=${webXml.credentials.token}`;
+            }
+            const apiRes = await axios.get(url, { headers, timeout: 120000, httpsAgent });
+            let data = apiRes.data;
+            if (webXml.dataPath) {
+                data = webXml.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
+            }
+            if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
+            items = Array.isArray(data) ? data.map(r => ({ rawData: r })) : [];
+        }
+
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<Products>\n';
+
+        for (const item of items) {
+            const rd = item.rawData || {};
+            const stok = parseFloat(getVal(rd, stokAdetiField)) || 0;
+            const fiyat = parseFloat(getVal(rd, hamFiyatField)) || 0;
+
+            // Kuralları uygula
+            const rules = webXml.rules || {};
+            if (rules.filters?.onlyInStock && stok <= 0) continue;
+            if (rules.filters?.onlyWithPrice && !fiyat) continue;
+
+            const escape = (val) => String(val || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            xml += '  <Product>\n';
+            xml += `    <StokKodu>${escape(getVal(rd, stokKoduField))}</StokKodu>\n`;
+            xml += `    <UrunAdi>${escape(getVal(rd, urunAdiField))}</UrunAdi>\n`;
+            xml += `    <Marka>${escape(getVal(rd, markaField))}</Marka>\n`;
+            xml += `    <Fiyat>${fiyat}</Fiyat>\n`;
+            xml += `    <Stok>${stok}</Stok>\n`;
+            xml += `    <Kategori>${escape(getVal(rd, kategoriField))}</Kategori>\n`;
+            xml += `    <Mevsim>${escape(getVal(rd, mevsimField))}</Mevsim>\n`;
+            xml += `    <UretimYili>${escape(getVal(rd, uretimYiliField))}</UretimYili>\n`;
+            xml += `    <Gorsel>${escape(getVal(rd, gorselField))}</Gorsel>\n`;
+            xml += '  </Product>\n';
+        }
+
+        xml += '</Products>';
+
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.send(xml);
+
+    } catch (error) {
+        console.error('XML export hatası:', error);
+        res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><error>Hata oluştu</error>');
+    }
+});
+// ============================================
+// GET /api/admin/integration/xml/pricing/rules
+// Tüm fiyatlandırma kurallarını listele
+// ============================================
+router.get('/pricing/rules', async (req, res) => {
+    try {
+        const kurallar = await XmlPricingRule.find().sort({ platform: 1, sira: 1, createdAt: 1 }).lean();
+        res.json({ success: true, data: kurallar.map(k => ({ ...k, id: k._id })) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// POST /api/admin/integration/xml/pricing/rules
+// Yeni fiyatlandırma kuralı ekle
+// ============================================
+router.post('/pricing/rules', async (req, res) => {
+    try {
+        const { platform, source, marka, tip, deger, aciklama } = req.body;
+
+        if (!platform || !tip || deger === undefined) {
+            return res.status(400).json({ success: false, message: 'Platform, tip ve değer zorunludur' });
+        }
+
+        if (deger <= 0) {
+            return res.status(400).json({ success: false, message: 'Değer 0\'dan büyük olmalı' });
+        }
+
+        const kural = await XmlPricingRule.create({
+            platform,
+            source: source || '',
+            marka: marka || '',
+            tip,
+            deger,
+            aciklama: aciklama || ''
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Kural eklendi',
+            data: { ...kural.toObject(), id: kural._id }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// DELETE /api/admin/integration/xml/pricing/rules/:id
+// Fiyatlandırma kuralı sil
+// ============================================
+router.delete('/pricing/rules/:id', async (req, res) => {
+    try {
+        const result = await XmlPricingRule.findByIdAndDelete(req.params.id);
+        if (!result) {
+            return res.status(404).json({ success: false, message: 'Kural bulunamadı' });
+        }
+        res.json({ success: true, message: 'Kural silindi' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // ============================================
 // DELETE /api/admin/integration/xml/mapping/:productId
@@ -717,34 +1083,50 @@ router.get('/:id/source-fields', async (req, res) => {
             url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
         }
 
-        // Önce xmlproducts'tan çek, varsa dışarıya istek atma
         const existingSample = await XmlProduct.findOne({ source: integration.code }).lean();
-
         let firstProduct = null;
 
         if (existingSample?.rawData) {
             firstProduct = existingSample.rawData;
         } else {
-            const response = await axios.get(url, {
-                headers,
-                timeout: 30000,
-                responseType: 'text'
-            });
+            const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+            let response;
+            if (integration.credentials?.userName) {
+                response = await axios.post(url, {
+                    UserName: integration.credentials.userName,
+                    Password: integration.credentials.password,
+                    CompanyCode: integration.credentials.companyCode,
+                    stokCode: ''
+                }, {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 60000,
+                    httpsAgent
+                });
+            } else {
+                response = await axios.get(url, {
+                    headers,
+                    timeout: 30000,
+                    httpsAgent
+                });
+            }
+
+            const findFirstArraySingle = (obj, depth = 0) => {
+                if (depth > 5) return null;
+                for (const key of Object.keys(obj)) {
+                    if (key === '$id') continue;
+                    const val = obj[key];
+                    if (key === '$values' && Array.isArray(val) && val.length > 0) return val[0];
+                    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val[0];
+                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                        const found = findFirstArraySingle(val, depth + 1);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
 
             if (integration.format === 'xml') {
-                const findFirstArraySingle = (obj, depth = 0) => {
-                    if (depth > 4) return null;
-                    for (const key of Object.keys(obj)) {
-                        const val = obj[key];
-                        if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val[0];
-                        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                            const found = findFirstArraySingle(val, depth + 1);
-                            if (found) return found;
-                        }
-                    }
-                    return null;
-                };
-
                 const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
                 firstProduct = findFirstArraySingle(parsed1);
 
@@ -760,23 +1142,17 @@ router.get('/:id/source-fields', async (req, res) => {
                     }
                 }
             } else {
-                const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-                if (Array.isArray(data)) firstProduct = data[0];
-                else {
-                    const findFirstArray = (obj, depth = 0) => {
-                        if (depth > 4) return null;
-                        for (const key of Object.keys(obj)) {
-                            const val = obj[key];
-                            if (Array.isArray(val) && val.length > 0) return val[0];
-                            if (typeof val === 'object' && val !== null) {
-                                const found = findFirstArray(val, depth + 1);
-                                if (found) return found;
-                            }
-                        }
-                        return null;
-                    };
-                    firstProduct = findFirstArray(data);
+                let data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+                if (integration.dataPath) {
+                    data = integration.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
                 }
+
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { }
+                }
+
+                firstProduct = Array.isArray(data) ? data[0] : findFirstArraySingle(data);
             }
         }
 
@@ -784,7 +1160,6 @@ router.get('/:id/source-fields', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ürün verisi bulunamadı' });
         }
 
-        // Alanları düzleştir (nested için nokta notasyonu)
         const flattenFields = (obj, prefix = '') => {
             const fields = [];
             for (const key of Object.keys(obj)) {
@@ -805,7 +1180,6 @@ router.get('/:id/source-fields', async (req, res) => {
         };
 
         const fields = flattenFields(firstProduct);
-
         res.json({ success: true, data: { fields, totalFields: fields.length } });
 
     } catch (error) {
@@ -985,9 +1359,22 @@ router.patch('/:id/status', async (req, res) => {
  */
 router.post('/:id/sync', async (req, res) => {
     try {
-        const integration = await WebXml.findById(req.params.id);
+        let integration = await WebXml.findById(req.params.id);
         if (!integration) {
             return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
+        }
+
+        if (integration.format === 'json') {
+            const xmlCode = integration.code + '_xml';
+            const xmlIntegration = await WebXml.findOne({ code: xmlCode, format: 'xml' });
+            if (!xmlIntegration) {
+                return res.status(200).json({
+                    success: false,
+                    message: `${integration.name} için XML entegrasyonu (${xmlCode}) bulunamadı.`
+                });
+            }
+            integration = xmlIntegration;
+            req.params.id = xmlIntegration._id.toString();
         }
 
         const axios = require('axios');
@@ -1004,37 +1391,52 @@ router.post('/:id/sync', async (req, res) => {
             url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
         }
 
-        const response = await axios.get(url, {
-            headers,
-            timeout: 60000,
-            responseType: 'text'
-        });
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+        let response;
+        if (integration.credentials?.userName) {
+            response = await axios.post(url, {
+                UserName: integration.credentials.userName,
+                Password: integration.credentials.password,
+                CompanyCode: integration.credentials.companyCode,
+                stokCode: ''
+            }, {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 120000,
+                httpsAgent
+            });
+        } else {
+            response = await axios.get(url, {
+                headers,
+                timeout: 120000,
+                httpsAgent
+            });
+        }
 
         let products = [];
 
-        if (integration.format === 'xml') {
-            const findFirstArray = (obj, depth = 0) => {
-                if (depth > 5) return null;
-                for (const key of Object.keys(obj)) {
-                    const val = obj[key];
-                    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
-                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                        const found = findFirstArray(val, depth + 1);
-                        if (found) return found;
-                    }
+        const findFirstArray = (obj, depth = 0) => {
+            if (depth > 5) return null;
+            for (const key of Object.keys(obj)) {
+                if (key === '$id') continue;
+                const val = obj[key];
+                if (key === '$values' && Array.isArray(val)) return val;
+                if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
+                if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                    const found = findFirstArray(val, depth + 1);
+                    if (found) return found;
                 }
-                return null;
-            };
+            }
+            return null;
+        };
 
-            // Önce explicitArray:false dene
+        if (integration.format === 'xml') {
             const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
             products = findFirstArray(parsed1) || [];
 
-            // Array bulunamadıysa veya tek eleman geldiyse explicitArray:true ile tekrar dene
             if (products.length === 0) {
                 const parsed2 = await parseStringPromise(response.data, { explicitArray: true, mergeAttrs: true });
                 const rawProducts = findFirstArray(parsed2) || [];
-                // Değerleri düzleştir
                 products = rawProducts.map(p => {
                     const flat = {};
                     for (const key of Object.keys(p)) {
@@ -1045,24 +1447,17 @@ router.post('/:id/sync', async (req, res) => {
                 });
             }
         } else {
-            const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-            if (Array.isArray(data)) {
-                products = data;
-            } else {
-                const findFirstArray = (obj, depth = 0) => {
-                    if (depth > 5) return null;
-                    for (const key of Object.keys(obj)) {
-                        const val = obj[key];
-                        if (Array.isArray(val) && val.length > 0) return val;
-                        if (typeof val === 'object' && val !== null) {
-                            const found = findFirstArray(val, depth + 1);
-                            if (found) return found;
-                        }
-                    }
-                    return null;
-                };
-                products = findFirstArray(data) || [];
+            let data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+            if (integration.dataPath) {
+                data = integration.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
             }
+
+            if (typeof data === 'string') {
+                try { data = JSON.parse(data); } catch (e) { }
+            }
+
+            products = Array.isArray(data) ? data : (findFirstArray(data) || []);
         }
 
         console.log('[XML SYNC DEBUG] products length:', products.length);

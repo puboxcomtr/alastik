@@ -133,7 +133,7 @@ export const getProductStockCode = (product: Product): string => {
     const code = product.diaData?.anabarkod ||
         product.diaData?.stokkartkodu ||
         '-';
-    return code.replace(/-XMLA$/i, '').replace(/^LJA/i, 'AKD');
+    return code.replace(/-XML$/i, '').replace(/^LJA/i, 'AKD');
 };
 
 /**

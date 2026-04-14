@@ -52,6 +52,11 @@ class DiaWorker {
                 redis: workerConfig.redis,
                 defaultJobOptions: workerConfig.queue.defaultJobOptions,
                 settings: queueSettings
+            }),
+            xmlSync: new Queue('xml-full-sync', {
+                redis: workerConfig.redis,
+                defaultJobOptions: workerConfig.queue.defaultJobOptions,
+                settings: queueSettings
             })
         };
 
@@ -82,6 +87,9 @@ class DiaWorker {
         // Light Sync - Manual job processor
         this.queues.lightSync.process('manual-light-sync', (job) => {
             return this.processLightSync(job);
+        });
+        this.queues.xmlSync.process('manual-xml-sync', (job) => {
+            return this.processXmlSync(job);
         });
         console.log('Processor kayıtları TAMAMLANDI!');
     }
@@ -147,11 +155,9 @@ class DiaWorker {
                     // Progress güncelleme hatası sessizce geç
                 }
             };
-
             const result = await this.diaService.fullSync(progressCallback);
 
-            await job.progress({ percent: 100, step: 8, totalSteps: 8, message: 'Tamamlandı' });
-
+            await job.progress({ percent: 100, step: 9, totalSteps: 9, message: 'Tamamlandı' });
             const duration = Date.now() - startTime;
 
             this.logger.info('=== Full Senkronizasyon Tamamlandı ===', {
@@ -177,7 +183,9 @@ class DiaWorker {
         } finally {
             this.syncLock.fullSync = false;
         }
+
     }
+
 
     /**
      * Light sync işlemini çalıştır (Fiyat + Stok)
@@ -245,7 +253,66 @@ class DiaWorker {
             this.syncLock.lightSync = false;
         }
     }
+    async processXmlSync(job) {
+        const startTime = Date.now();
 
+        if (this.syncLock.fullSync) {
+            this.logger.info('Full sync çalışıyor, XML sync atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
+        }
+
+        try {
+            this.logger.info('=== XML FULL SYNC BAŞLANGICI ===', {
+                jobId: job.id,
+                timestamp: new Date().toISOString()
+            });
+
+            const XmlSyncScheduler = require('../services/plugins/xml/XmlSyncScheduler');
+            const XmlDiaMatchService = require('../services/plugins/xml/XmlDiaMatchService');
+            const XmlWebProductSyncService = require('../services/plugins/xml/XmlWebProductSyncService');
+            const WebXml = require('../models/plugins/xml/WebXml');
+
+            // 1. Tüm aktif XML kaynaklarından ürün çek
+            await job.progress({ percent: 10, message: 'XML kaynakları çekiliyor...' });
+            const integrations = await WebXml.find({ isActive: true });
+            for (const intg of integrations) {
+                try {
+                    await XmlSyncScheduler.syncIntegration(intg);
+                } catch (err) {
+                    this.logger.error(`XML sync hatası: ${intg.name}`, { error: err.message });
+                }
+            }
+
+            // 2. DIA match
+            await job.progress({ percent: 40, message: 'DIA eşleştirme yapılıyor...' });
+            const matchResult = await XmlDiaMatchService.matchAll();
+            this.logger.info('XML-DIA eşleştirme tamamlandı', matchResult);
+
+            // 3. WebProducts sync
+            await job.progress({ percent: 80, message: 'Fiyatlar webproducts\'a aktarılıyor...' });
+            const syncResult = await XmlWebProductSyncService.fullSync();
+            this.logger.info('XML web sync tamamlandı', syncResult);
+
+            await job.progress({ percent: 100, message: 'Tamamlandı' });
+
+            const duration = Date.now() - startTime;
+            this.logger.info('=== XML FULL SYNC TAMAMLANDI ===', {
+                jobId: job.id,
+                duration: `${duration}ms`,
+                matchResult,
+                syncResult
+            });
+
+            return { success: true, duration: `${duration}ms`, matchResult, syncResult };
+
+        } catch (error) {
+            this.logger.error('XML full sync hatası', {
+                jobId: job.id,
+                error: error.message
+            });
+            throw error;
+        }
+    }
     /**
      * Zamanlanmış job'ları ayarla
      */
@@ -257,6 +324,9 @@ class DiaWorker {
             // DB'den saat ve aralık al
             const fullSyncSaat = settings?.sync?.fullSyncSaat || '05:00';
             const lightSyncAraligi = settings?.sync?.lightSyncAraligi || 15;
+            const [fsSaat, fsDakika] = fullSyncSaat.split(':').map(Number);
+            const xmlSaat = (fsSaat + 2) % 24;
+            const xmlSyncSaat = `${String(xmlSaat).padStart(2, '0')}:${String(fsDakika).padStart(2, '0')}`;
 
             // Saat'i cron formatına çevir (ör: "05:00" -> "0 5 * * *")
             const [saat, dakika] = fullSyncSaat.split(':').map(Number);
@@ -293,9 +363,26 @@ class DiaWorker {
                 }
             );
 
-            this.logger.info('Zamanlanmis joblar ayarlandi', {
+            const [xmlS, xmlD] = xmlSyncSaat.split(':').map(Number);
+            const xmlSyncCron = `${xmlD} ${xmlS} * * *`;
+
+            const existingXmlRepeats = await this.queues.xmlSync.getRepeatableJobs();
+            for (const job of existingXmlRepeats) {
+                await this.queues.xmlSync.removeRepeatableByKey(job.key);
+            }
+            await this.queues.xmlSync.add(
+                'manual-xml-sync',
+                { type: 'scheduled' },
+                {
+                    repeat: { cron: xmlSyncCron, tz: 'Europe/Istanbul' },
+                    timeout: 3600000
+                }
+            );
+
+            this.logger.info('Zamanlanmış joblar kuruldu', {
                 fullSync: `${fullSyncCron} (${fullSyncSaat})`,
-                lightSync: `${lightSyncCron} (her ${lightSyncAraligi} dk)`
+                lightSync: `${lightSyncCron} (her ${lightSyncAraligi} dakika)`,
+                xmlSync: `${xmlSyncCron} (${xmlSyncSaat})`
             });
 
         } catch (error) {

@@ -1526,7 +1526,10 @@ class DiaStockService {
 
           webOperations.push({
             updateOne: {
-              filter: { _key: item._key },
+              filter: {
+                _key: item._key,
+                'syncInfo.syncSource': { $ne: 'xml_integration' }
+              },
               update: {
                 $set: {
                   'diaData': transformedDiaData,
@@ -1842,12 +1845,16 @@ class DiaStockService {
             }
           });
 
+          // XML kaynağından gelen ürünlere DIA stok yazma
           webOps.push({
             updateOne: {
-              filter: { _key: product._key },
+              filter: {
+                _key: product._key,
+                'syncInfo.syncSource': { $ne: 'xml_integration' }
+              },
               update: {
                 $set: {
-                  'diaData.m_kategoriler': kategoriler,
+                  'diaData.gercek_stok': stokMiktari,
                   'syncInfo.lastDiaSync': new Date(),
                   'syncInfo.diaStatus': 'synced'
                 }
@@ -2288,12 +2295,15 @@ class DiaStockService {
       }
 
       const activeEKeys = await DiaStock.distinct('_key', { durum: 'A', ozelkod11kodu: 'E' });
+      // XML ürünlerini silme listesinden çıkar
+      const xmlKeys = await WebProduct.distinct('_key', { 'syncInfo.syncSource': 'xml_integration' });
+      const xmlKeySet = new Set(xmlKeys);
 
       this.logger.info(`diastocks'tan ${activeEKeys.length} aktif E ürün key'i alındı`);
 
       const activeKeySet = new Set(activeEKeys);
       const webProductKeys = await WebProduct.distinct('_key');
-      const keysToDelete = webProductKeys.filter(key => !activeKeySet.has(key));
+      const keysToDelete = webProductKeys.filter(key => !activeKeySet.has(key) && !xmlKeySet.has(key));
 
       let deletedCount = 0;
       if (keysToDelete.length > 0) {

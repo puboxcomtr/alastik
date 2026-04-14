@@ -129,7 +129,7 @@ export default function Settings() {
   const handleFullSync = async () => {
     try {
       setSyncing(true)
-      setSyncProgress({ percent: 0, message: 'Başlatılıyor...', step: 0, totalSteps: 5 })
+      setSyncProgress({ percent: 0, message: 'Başlatılıyor...', step: 0, totalSteps: 9 })
 
       const res = await fetch(API_ENDPOINTS.diaSync.fullSync(), {
         method: 'POST',

@@ -233,7 +233,9 @@ const syncInfoSchema = new mongoose.Schema({
     },
     syncErrors: [String],
     lastWebUpdate: Date,
-    syncSource: { type: String, default: 'dia_api' }
+    syncSource: { type: String, default: 'dia_api' },
+    xmlSource: { type: String, default: null },
+    lastXmlSync: { type: Date, default: null }
 }, { _id: false });
 
 // Ana WebProduct Schema

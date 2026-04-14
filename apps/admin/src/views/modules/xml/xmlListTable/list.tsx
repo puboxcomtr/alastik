@@ -151,6 +151,7 @@ const XmlListTable = () => {
     const [totalCount, setTotalCount] = useState(0)
 
     const [exporting, setExporting] = useState(false)
+    const [diaMatchLoading, setDiaMatchLoading] = useState(false)
 
     const [editModalOpen, setEditModalOpen] = useState(false)
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null)
@@ -251,6 +252,8 @@ const XmlListTable = () => {
             })
             if (response.success) {
                 toast.success(`${response.data.productCount} ürün bulundu`)
+            } else if (response.message?.includes('XML olarak ekleyin')) {
+                toast.info('Bu entegrasyon XML olarak senkronize edilir.')
             } else {
                 toast.error(response.message || 'Senkronizasyon başarısız')
             }
@@ -259,21 +262,19 @@ const XmlListTable = () => {
         }
     }
 
-    const handleSyncToDia = async (id: string, name: string) => {
+    const handleDiaMatch = async () => {
+        setDiaMatchLoading(true)
         try {
-            toast.info(`${name} DIA aktarımı başlatılıyor...`)
-            const response = await fetchAPI(API_ENDPOINTS.webxml.syncToDia(id), {
-                method: 'POST'
-            })
-            if (response.success) {
-                const d = response.data
-                toast.success(`DIA aktarımı tamamlandı: ${d.created || 0} oluşturuldu, ${d.updated || 0} güncellendi, ${d.stockWritten || 0} stok yazıldı`)
-                loadXmlIntegrations(debouncedSearch, page, limit)
+            const res = await fetchAPI(API_ENDPOINTS.webxml.syncAll(), { method: 'POST' })
+            if (res.success) {
+                toast.info('XML senkronizasyon başlatıldı, arka planda devam ediyor...')
             } else {
-                toast.error(response.message || 'DIA aktarımı başarısız')
+                toast.warning(res.message || 'Hata oluştu')
             }
-        } catch (error) {
-            toast.error('DIA aktarımı sırasında hata oluştu')
+        } catch {
+            toast.error('Hata oluştu')
+        } finally {
+            setDiaMatchLoading(false)
         }
     }
 
@@ -366,11 +367,19 @@ const XmlListTable = () => {
                                 <i className='ri-git-branch-line text-[20px] text-textSecondary' />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title='Ürün Listesi'>
-                            <IconButton size='small' onClick={() => router.push(`/${locale}/apps/modules/xml/products?source=${row.original.code}`)}>
-                                <i className='ri-store-2-line text-[20px] text-textSecondary' />
-                            </IconButton>
-                        </Tooltip>
+                        {row.original.format === 'json' ? (
+                            <Tooltip title='XML Görüntüle'>
+                                <IconButton size='small' onClick={() => window.open(`https://api.alastik.com/api/admin/integration/xml/${row.original.code}/export.xml`, '_blank')}>
+                                    <i className="ri-folder-cloud-line text-[20px] text-textSecondary"></i>
+                                </IconButton>
+                            </Tooltip>
+                        ) : (
+                            <Tooltip title='Ürün Listesi'>
+                                <IconButton size='small' onClick={() => router.push(`/${locale}/apps/modules/xml/products?source=${row.original.code}`)}>
+                                    <i className='ri-store-2-line text-[20px] text-textSecondary' />
+                                </IconButton>
+                            </Tooltip>
+                        )}
                         <Tooltip title='Senkronizasyonu Başlat'>
                             <IconButton size='small' onClick={() => handleStartSync(row.original.id, row.original.name)}>
                                 <i className='ri-play-circle-line text-[20px] text-textSecondary' />
@@ -399,165 +408,157 @@ const XmlListTable = () => {
     })
 
     return (
-        <Card>
-            <CardHeader
-                title='XML Entegrasyonları'
-                className='pbe-4'
-                action={
-                    <span style={{ display: 'flex', gap: 8 }}>
-                        <IconButton
-                            onClick={() => setAddModalOpen(true)}
-                            color='primary'
-                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
-                        >
-                            <i className='ri-add-line text-[22px]' />
-                            <Typography variant='body2' fontWeight={500}>
-                                XML Ekle
-                            </Typography>
-                        </IconButton>
-                        <IconButton
-                            onClick={handleExportExcel}
-                            disabled={exporting}
-                            color='success'
-                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
-                        >
-                            {exporting ? <CircularProgress size={20} /> : <i className='ri-file-excel-2-line text-[22px]' />}
-                            <Typography variant='body2' fontWeight={500}>
-                                Excel'e Aktar
-                            </Typography>
-                        </IconButton>
-                        <IconButton
-                            onClick={() => router.push(`/${locale}/apps/modules/xml/mapping`)}
-                            color='secondary'
-                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
-                        >
-                            <i className='ri-links-line text-[22px]' />
-                            <Typography variant='body2' fontWeight={500}>
-                                Eşleşme Listesi
-                            </Typography>
-                        </IconButton>
-                    </span>
-                }
-            />
-            <Divider />
-            <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
-                <div className='flex flex-col gap-2'>
-                    <DebouncedInput
-                        value={searchValue}
-                        onChange={value => {
-                            setSearchValue(String(value))
-                            setDebouncedSearch(String(value))
-                        }}
-                        placeholder='Entegrasyon adı ile ara...'
-                        debounce={500}
-                        sx={{ minWidth: 300 }}
-                    />
-                    <Typography variant='body2' color='text.secondary'>
-                        Toplam <strong>{totalCount} Entegrasyon</strong> bulundu
-                    </Typography>
-                </div>
-            </div>
-
-            <div style={{ position: 'relative' }}>
-                {loading && (
-                    <div style={{
-                        position: 'absolute',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: 'rgba(255,255,255,0.8)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        minHeight: '200px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <CircularProgress size={24} />
-                            <Typography>Entegrasyonlar yükleniyor...</Typography>
+        <>
+            <Card className='mb-6'>
+                <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                    {[
+                        { icon: 'ri-add-line', title: 'XML Ekle', description: 'Yeni XML tedarikçi ekle.', onClick: () => setAddModalOpen(true), color: '#2e263d', loading: false },
+                        { icon: 'ri-refresh-line', title: 'XML Ürünleri Senkronize Et', description: 'XML kaynaklarından ürünleri çek ve güncelle.', onClick: handleDiaMatch, color: '#2e263d', loading: diaMatchLoading },
+                        { icon: 'ri-file-excel-2-line', title: "XML Ürünleri Excel'e Aktar", description: 'Tüm XML ürünlerini Excel dosyası olarak indir.', onClick: handleExportExcel, color: '#2e263d', loading: exporting },
+                        { icon: 'ri-links-line', title: 'XML Ürünleri Eşleşme Listesi', description: 'XML ürünlerinin DIA eşleşmelerini yönet.', onClick: () => router.push(`/${locale}/apps/modules/xml/mapping`), color: '#2e263d', loading: false }
+                    ].map((menu, index) => (
+                        <div key={index} style={{ width: '25%' }}>
+                            <div
+                                className='flex items-start gap-4 cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-all'
+                                onClick={menu.loading ? undefined : menu.onClick}
+                            >
+                                <div className='flex items-center justify-center w-12 h-12 rounded-lg' style={{ backgroundColor: `${menu.color}15` }}>
+                                    {menu.loading ? <CircularProgress size={24} /> : <i className={`${menu.icon} text-2xl`} style={{ color: menu.color }} />}
+                                </div>
+                                <div className='flex-1'>
+                                    <Typography variant='h6' className='mb-1' style={{ color: menu.color }}>{menu.title}</Typography>
+                                    <Typography variant='body2' color='text.secondary'>{menu.description}</Typography>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    ))}
+                </div>
+            </Card>
 
-                <div className='overflow-x-auto'>
-                    <table className={tableStyles.table}>
-                        <thead>
-                            {table.getHeaderGroups().map(headerGroup => (
-                                <tr key={headerGroup.id}>
-                                    {headerGroup.headers.map(header => (
-                                        <th key={header.id}>
-                                            {header.isPlaceholder ? null : (
-                                                <div
-                                                    className={classnames({
-                                                        'flex items-center': header.column.getIsSorted(),
-                                                        'cursor-pointer select-none': header.column.getCanSort()
-                                                    })}
-                                                    onClick={header.column.getToggleSortingHandler()}
-                                                >
-                                                    {flexRender(header.column.columnDef.header, header.getContext())}
-                                                    {{
-                                                        asc: <i className='ri-arrow-up-s-line text-xl' />,
-                                                        desc: <i className='ri-arrow-down-s-line text-xl' />
-                                                    }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                                                </div>
-                                            )}
-                                        </th>
-                                    ))}
-                                </tr>
-                            ))}
-                        </thead>
-                        {data.length === 0 && !loading ? (
-                            <tbody>
-                                <tr>
-                                    <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
-                                        <Typography variant='body1' color='text.secondary'>
-                                            {searchValue ? 'Arama kriterlerinize uygun entegrasyon bulunamadı' : 'Entegrasyon bulunamadı'}
-                                        </Typography>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        ) : (
-                            <tbody>
-                                {table.getRowModel().rows.map(row => (
-                                    <tr key={row.id}>
-                                        {row.getVisibleCells().map(cell => (
-                                            <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+            <Card>
+                <CardHeader
+                    title='XML Tedarikçi Listesi'
+                    className='pbe-4'
+                />
+                <Divider />
+                <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
+                    <div className='flex flex-col gap-2'>
+                        <DebouncedInput
+                            value={searchValue}
+                            onChange={value => {
+                                setSearchValue(String(value))
+                                setDebouncedSearch(String(value))
+                            }}
+                            placeholder='Entegrasyon adı ile ara...'
+                            debounce={500}
+                            sx={{ minWidth: 300 }}
+                        />
+                        <Typography variant='body2' color='text.secondary'>
+                            Toplam <strong>{totalCount} Entegrasyon</strong> bulundu
+                        </Typography>
+                    </div>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                    {loading && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            minHeight: '200px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <CircularProgress size={24} />
+                                <Typography>Entegrasyonlar yükleniyor...</Typography>
+                            </div>
+                        </div>
+                    )}
+                    <div className='overflow-x-auto'>
+                        <table className={tableStyles.table}>
+                            <thead>
+                                {table.getHeaderGroups().map(headerGroup => (
+                                    <tr key={headerGroup.id}>
+                                        {headerGroup.headers.map(header => (
+                                            <th key={header.id}>
+                                                {header.isPlaceholder ? null : (
+                                                    <div
+                                                        className={classnames({
+                                                            'flex items-center': header.column.getIsSorted(),
+                                                            'cursor-pointer select-none': header.column.getCanSort()
+                                                        })}
+                                                        onClick={header.column.getToggleSortingHandler()}
+                                                    >
+                                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                                        {{
+                                                            asc: <i className='ri-arrow-up-s-line text-xl' />,
+                                                            desc: <i className='ri-arrow-down-s-line text-xl' />
+                                                        }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                                                    </div>
+                                                )}
+                                            </th>
                                         ))}
                                     </tr>
                                 ))}
-                            </tbody>
-                        )}
-                    </table>
+                            </thead>
+                            {data.length === 0 && !loading ? (
+                                <tbody>
+                                    <tr>
+                                        <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
+                                            <Typography variant='body1' color='text.secondary'>
+                                                {searchValue ? 'Arama kriterlerinize uygun entegrasyon bulunamadı' : 'Entegrasyon bulunamadı'}
+                                            </Typography>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            ) : (
+                                <tbody>
+                                    {table.getRowModel().rows.map(row => (
+                                        <tr key={row.id}>
+                                            {row.getVisibleCells().map(cell => (
+                                                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            )}
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            <TablePagination
-                rowsPerPageOptions={[10, 20, 50]}
-                component='div'
-                className='border-bs'
-                count={totalCount}
-                rowsPerPage={limit}
-                page={page - 1}
-                onPageChange={(_, newPage) => setPage(newPage + 1)}
-                onRowsPerPageChange={e => {
-                    setLimit(Number(e.target.value))
-                    setPage(1)
-                }}
-                labelRowsPerPage='Sayfa başına:'
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
-            />
+                <TablePagination
+                    rowsPerPageOptions={[10, 20, 50]}
+                    component='div'
+                    className='border-bs'
+                    count={totalCount}
+                    rowsPerPage={limit}
+                    page={page - 1}
+                    onPageChange={(_, newPage) => setPage(newPage + 1)}
+                    onRowsPerPageChange={e => {
+                        setLimit(Number(e.target.value))
+                        setPage(1)
+                    }}
+                    labelRowsPerPage='Sayfa başına:'
+                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+                />
 
-            <XmlEditModal
-                open={editModalOpen}
-                onClose={handleCloseEditModal}
-                integrationId={selectedIntegrationId}
-                onSuccess={handleEditSuccess}
-            />
+                <XmlEditModal
+                    open={editModalOpen}
+                    onClose={handleCloseEditModal}
+                    integrationId={selectedIntegrationId}
+                    onSuccess={handleEditSuccess}
+                />
 
-            <XmlAddModal
-                open={addModalOpen}
-                onClose={() => setAddModalOpen(false)}
-                onSuccess={handleAddSuccess}
-            />
-        </Card>
+                <XmlAddModal
+                    open={addModalOpen}
+                    onClose={() => setAddModalOpen(false)}
+                    onSuccess={handleAddSuccess}
+                />
+            </Card>
+        </>
     )
 }
 

@@ -108,7 +108,9 @@ const ProductListTable = () => {
           categorySeoUrl: product.categorySeoUrl,
           brand: product.brand,
           m_kategoriler: product.m_kategoriler,
-          seoUrl: product.seoUrl
+          seoUrl: product.seoUrl,
+          syncSource: product.syncSource,
+          xmlSource: product.xmlSource
         }))
 
         setData(products)
@@ -168,6 +170,11 @@ const ProductListTable = () => {
                   </Typography>
                 </Link>
               </Tooltip>
+              {(row.original as any).syncSource === 'xml_integration' && (row.original as any).xmlSource && (
+                <Typography variant='caption'>
+                  {(row.original as any).xmlSource}
+                </Typography>
+              )}
 
             </div>
           </div>
@@ -198,16 +205,30 @@ const ProductListTable = () => {
         cell: ({ row }) => {
           return (
             <div className='flex flex-col' style={{ gap: '5px' }}>
-              <div className='flex' style={{ gap: '5px' }}>
-                <Typography variant='body2' fontWeight={'bold'} color={'#eb3d63'}>Satış Fiyatı:</Typography>
-                <Typography variant='body2'>{row.original.price1.toLocaleString('tr-TR') + " TL"}</Typography>
-              </div>
-              <div className='flex' style={{ gap: '5px' }}>
-                <Typography variant='body2' fontWeight={'bold'}>İndirimli Fiyatı:</Typography>
-                <Typography variant='body2'>{row.original.price2.toLocaleString('tr-TR') + " TL"}</Typography>
-              </div>
+              {(row.original as any).syncSource === 'xml_integration' ? (
+                <>
+                  <div className='flex' style={{ gap: '5px' }}>
+                    <Typography variant='body2' fontWeight={'bold'} color={'#eb3d63'}>XML Fiyatı:</Typography>
+                    <Typography variant='body2'>{row.original.price1.toLocaleString('tr-TR') + " TL"}</Typography>
+                  </div>
+                  <div className='flex' style={{ gap: '5px' }}>
+                    <Typography variant='body2' fontWeight={'bold'}>Satış Fiyatı:</Typography>
+                    <Typography variant='body2'>{row.original.price4.toLocaleString('tr-TR') + " TL"}</Typography>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className='flex' style={{ gap: '5px' }}>
+                    <Typography variant='body2' fontWeight={'bold'} color={'#eb3d63'}>Satış Fiyatı:</Typography>
+                    <Typography variant='body2'>{row.original.price1.toLocaleString('tr-TR') + " TL"}</Typography>
+                  </div>
+                  <div className='flex' style={{ gap: '5px' }}>
+                    <Typography variant='body2' fontWeight={'bold'}>İndirimli Fiyatı:</Typography>
+                    <Typography variant='body2'>{row.original.price4.toLocaleString('tr-TR') + " TL"}</Typography>
+                  </div>
+                </>
+              )}
             </div>
-
           )
         }
       }),

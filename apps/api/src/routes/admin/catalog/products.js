@@ -180,10 +180,12 @@ router.get('/', maybeAuth, async (req, res) => {
         'customData.customImages': 1,
         'syncInfo.webStatus': 1,
         'syncInfo.lastDiaSync': 1,
+        'syncInfo.syncSource': 1,
+        'syncInfo.xmlSource': 1,
         createdAt: 1,
         updatedAt: 1
       })
-      .sort({ updatedAt: -1 })
+      .sort({ 'syncInfo.syncSource': 1, updatedAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
@@ -284,7 +286,9 @@ router.get('/', maybeAuth, async (req, res) => {
           // Tarih bilgileri
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
-          lastDiaSync: syncInfo.lastDiaSync
+          lastDiaSync: syncInfo.lastDiaSync,
+          syncSource: syncInfo.syncSource || 'dia_api',
+          xmlSource: syncInfo.xmlSource || diaData.ekalan9 || null
         };
       }),
       meta: {

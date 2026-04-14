@@ -68,6 +68,12 @@ export const API_ENDPOINTS = {
         mappingExport: (source?: string) => `${getBaseUrl()}/admin/integration/xml/mapping/export${source ? `?source=${source}` : ''}`,
         mappingImport: () => `${getBaseUrl()}/admin/integration/xml/mapping/import`,
         mappingDelete: (productId: string) => `${getBaseUrl()}/admin/integration/xml/mapping/${productId}`,
+        pricingRules: () => `${getBaseUrl()}/admin/integration/xml/pricing/rules`,
+        pricingRulesAdd: () => `${getBaseUrl()}/admin/integration/xml/pricing/rules`,
+        pricingRulesDelete: (id: string) => `${getBaseUrl()}/admin/integration/xml/pricing/rules/${id}`,
+        webSyncFull: () => `${getBaseUrl()}/admin/integration/xml/web-sync/full`,
+        webSyncQuick: () => `${getBaseUrl()}/admin/integration/xml/web-sync/quick`,
+        syncAll: () => `${getBaseUrl()}/admin/integration/xml/sync-all`,
     },
     admins: {
         list: () => `${getBaseUrl()}/admin/user/admins`,

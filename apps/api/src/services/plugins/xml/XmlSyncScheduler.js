@@ -1,5 +1,5 @@
 /**
- * XML Sync Scheduler
+ * XML Sync Scheduler Kullanılmayacak
  * Dosya: apps/api/src/services/plugins/xml/XmlSyncScheduler.js
  */
 
@@ -8,17 +8,25 @@ const https = require('https');
 const crypto = require('crypto');
 const WebXml = require('../../../models/plugins/xml/WebXml');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
-const XmlDiaService = require('./XmlDiaService');
+
+const XmlWebProductSyncService = require('./XmlWebProductSyncService');
 
 class XmlSyncScheduler {
     constructor() {
         this.isRunning = false;
+        this.isQuickSyncRunning = false;
     }
 
     start() {
+        // XML çekme — her 15dk
         cron.schedule('*/15 * * * *', async () => {
             console.log('[XmlSyncScheduler] Kontrol başlatıldı:', new Date().toISOString());
             await this.checkAndSync();
+        });
+
+        // Fiyat/stok hızlı sync — her 15dk (XML çekmeyle aynı anda değil, 7dk kaymalı)
+        cron.schedule('7-59/15 * * * *', async () => {
+            await this.runQuickSync();
         });
 
         console.log('[XmlSyncScheduler] Scheduler başlatıldı - Her 15 dakikada bir kontrol edilecek');
@@ -112,16 +120,37 @@ class XmlSyncScheduler {
                 url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
             }
 
-            const response = await axios.get(url, {
-                headers,
-                timeout: 60000,
-                responseType: 'text'
-            });
+            const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+            let response;
+            if (integration.credentials?.userName) {
+                // POST — Tatko tipi
+                response = await axios.post(url, {
+                    UserName: integration.credentials.userName,
+                    Password: integration.credentials.password,
+                    CompanyCode: integration.credentials.companyCode,
+                    stokCode: ''
+                }, {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 120000,
+                    httpsAgent
+                });
+            } else {
+                // GET — Mollaoğlu ve diğerleri
+                response = await axios.get(url, {
+                    headers,
+                    timeout: 120000,
+                    responseType: 'text',
+                    httpsAgent
+                });
+            }
 
             const findFirstArray = (obj, depth = 0) => {
                 if (depth > 5) return null;
                 for (const key of Object.keys(obj)) {
+                    if (key === '$id') continue;
                     const val = obj[key];
+                    if (key === '$values' && Array.isArray(val)) return val;
                     if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
                     if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
                         const found = findFirstArray(val, depth + 1);
@@ -148,7 +177,17 @@ class XmlSyncScheduler {
                     });
                 }
             } else {
-                const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                let data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+                if (integration.dataPath) {
+                    data = integration.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
+                }
+
+                // String JSON olabilir (Tatko Sonuc string döner)
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { }
+                }
+
                 products = Array.isArray(data) ? data : (findFirstArray(data) || []);
             }
 
@@ -236,28 +275,19 @@ class XmlSyncScheduler {
         }
     }
 
-    // DIA'ya sadece pending urunleri aktar
-    async syncToDia(integration) {
+
+    async runQuickSync() {
+        if (this.isQuickSyncRunning) {
+            console.log('[XmlSyncScheduler] Hızlı sync zaten çalışıyor, atlanıyor...');
+            return;
+        }
+        this.isQuickSyncRunning = true;
         try {
-            console.log(`[XmlSyncScheduler] ${integration.name} DIA aktarımı başlıyor...`);
-
-            const result = await XmlDiaService.syncToDia(integration._id);
-
-            if (result.success) {
-                const r = result.results;
-                console.log(`[XmlSyncScheduler] ${integration.name} DIA aktarım tamamlandı:`, {
-                    toplam: r.total,
-                    olusturulan: r.created,
-                    guncellenen: r.updated,
-                    stokYazilan: r.stockWritten,
-                    fiyatGuncellenen: r.priceUpdated,
-                    hatali: r.failed
-                });
-            } else {
-                console.error(`[XmlSyncScheduler] ${integration.name} DIA aktarım hatası:`, result.message);
-            }
-        } catch (error) {
-            console.error(`[XmlSyncScheduler] ${integration.name} DIA sync hatası:`, error.message);
+            await XmlWebProductSyncService.quickSync();
+        } catch (err) {
+            console.error('[XmlSyncScheduler] Hızlı sync hatası:', err.message);
+        } finally {
+            this.isQuickSyncRunning = false;
         }
     }
 
@@ -267,10 +297,14 @@ class XmlSyncScheduler {
             throw new Error('Entegrasyon bulunamadı');
         }
         await this.syncIntegration(integration);
-        await this.syncToDia(integration);
+        // DIA aktarımı kaldırıldı — XML→WebProduct sync
+        await XmlWebProductSyncService.fullSync();
+    }
+
+    async manualFullSync() {
+        return await XmlWebProductSyncService.fullSync();
     }
 }
-
 const xmlSyncScheduler = new XmlSyncScheduler();
 
 module.exports = xmlSyncScheduler;

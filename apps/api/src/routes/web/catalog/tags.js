@@ -325,6 +325,7 @@ router.get('/:slug/products', async (req, res) => {
         // Ürünleri getir
         const products = await WebProduct.find(filter)
             .select('_key customData diaData')
+            .sort({ 'syncInfo.syncSource': 1, 'diaData.gercek_stok': -1 })
             .skip(skip)
             .limit(limitNum)
             .lean();

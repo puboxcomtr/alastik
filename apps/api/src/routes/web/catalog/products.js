@@ -310,7 +310,7 @@ router.get('/filter', async (req, res) => {
         } else if (sortBy === 'reviews') {
             sortQuery = { 'customData.reviewStats.reviewCount': -1, 'customData.reviewStats.averageRating': -1 };
         } else {
-            sortQuery = { 'diaData.gercek_stok': -1, 'createdAt': -1 };
+            sortQuery = { 'syncInfo.syncSource': 1, 'diaData.gercek_stok': -1, 'createdAt': -1 };
         }
 
         const products = await WebProduct.find(filter)

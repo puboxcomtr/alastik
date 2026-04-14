@@ -135,11 +135,13 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     // API'ye yükle
     const formDataUpload = new FormData()
     formDataUpload.append('logo', file)
-
+    const { getSession } = await import('next-auth/react')
+    const session = await getSession()
+    const token = (session as any)?.user?.accessToken
     try {
       const res = await fetch(`${API_URL}/admin/brands/${selectedbrand.id}/logo`, {
         method: 'POST',
-        credentials: 'include',
+        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
         body: formDataUpload
       })
 

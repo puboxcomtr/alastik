@@ -119,6 +119,13 @@ class DiaStockScheduler {
 
       const startTime = Date.now();
       const result = await this.diaStockService.fullSync();
+      this.logger.info('XML ürünleri DIA sync başlıyor...');
+      const XmlDiaMatchService = require('../xml/XmlDiaMatchService');
+      const XmlWebProductSyncService = require('../xml/XmlWebProductSyncService');
+      const xmlMatchResult = await XmlDiaMatchService.matchAll();
+      this.logger.info('XML DIA match tamamlandı', xmlMatchResult);
+      const xmlSyncResult = await XmlWebProductSyncService.fullSync();
+      this.logger.info('XML web sync tamamlandı', xmlSyncResult);
       const duration = Date.now() - startTime;
 
       this.schedulerStatus.lastFullSync = new Date();

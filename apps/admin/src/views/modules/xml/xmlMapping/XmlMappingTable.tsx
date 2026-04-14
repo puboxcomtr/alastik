@@ -17,6 +17,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import Menu from '@mui/material/Menu'
 
 import classnames from 'classnames'
 import {
@@ -51,6 +52,7 @@ type SourceOption = { code: string; name: string }
 const columnHelper = createColumnHelper<XmlMappingProduct>()
 
 const XmlMappingTable = () => {
+
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -63,12 +65,16 @@ const XmlMappingTable = () => {
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)
 
-    const [search, setSearch] = useState(searchParams.get('search') || '')
-    const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
+    const [excelMenuAnchor, setExcelMenuAnchor] = useState<null | HTMLElement>(null)
+
+    const [searchSource, setSearchSource] = useState(searchParams.get('search') || '')
+    const [searchSourceInput, setSearchSourceInput] = useState(searchParams.get('search') || '')
+    const [searchHedef, setSearchHedef] = useState(searchParams.get('hedef') || '')
+    const [searchHedefInput, setSearchHedefInput] = useState(searchParams.get('hedef') || '')
+    const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
     const [filterSource, setFilterSource] = useState(searchParams.get('source') || '')
     const [filterDurum, setFilterDurum] = useState(searchParams.get('durum') || '')
 
-    const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
     const [exporting, setExporting] = useState(false)
     const [importing, setImporting] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -80,7 +86,8 @@ const XmlMappingTable = () => {
                 page: String(page),
                 limit: String(limit)
             })
-            if (search) params.append('search', search)
+            if (searchSource) params.append('search', searchSource)
+            if (searchHedef) params.append('hedef', searchHedef)
             if (filterSource) params.append('source', filterSource)
             if (filterDurum) params.append('status', filterDurum)
 
@@ -100,7 +107,7 @@ const XmlMappingTable = () => {
         } finally {
             setLoading(false)
         }
-    }, [page, limit, search, filterSource, filterDurum])
+    }, [page, limit, searchSource, searchHedef, filterSource, filterDurum])
 
     useEffect(() => {
         fetchProducts()
@@ -192,13 +199,13 @@ const XmlMappingTable = () => {
         router.replace(`?${current.toString()}`, { scroll: false })
     }
 
-    const handleSearchChange = (value: string) => {
-        setSearchInput(value)
+    const handleSearchChange = (field: 'source' | 'hedef', value: string) => {
+        if (field === 'source') setSearchSourceInput(value)
+        else setSearchHedefInput(value)
         if (searchTimeout) clearTimeout(searchTimeout)
         const t = setTimeout(() => {
-            setSearch(value)
-            setPage(1)
-            updateUrl({ search: value })
+            if (field === 'source') { setSearchSource(value); setPage(1); updateUrl({ search: value }) }
+            else { setSearchHedef(value); setPage(1); updateUrl({ hedef: value }) }
         }, 500)
         setSearchTimeout(t)
     }
@@ -266,7 +273,7 @@ const XmlMappingTable = () => {
             columnHelper.accessor('hedefStokKodu', {
                 header: 'Hedef Stok Kodu',
                 cell: ({ row }) => (
-                    <Typography variant='body2' color={row.original.hedefStokKodu ? 'text.primary' : 'text.disabled'}>
+                    <Typography variant='body2' color={row.original.hedefStokKodu ? 'success.main' : 'text.disabled'} fontFamily='monospace' fontSize={12}>
                         {row.original.hedefStokKodu || '-'}
                     </Typography>
                 )
@@ -325,25 +332,27 @@ const XmlMappingTable = () => {
                             <i className='ri-price-tag-3-line text-[22px]' />
                             <Typography variant='body2' fontWeight={500}>Fiyatlandırma Kuralları</Typography>
                         </IconButton>
-                        <IconButton
-                            color='success'
-                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
-                            onClick={handleExport}
-                            disabled={exporting}
-                        >
-                            {exporting ? <CircularProgress size={20} /> : <i className='ri-file-excel-2-line text-[22px]' />}
-                            <Typography variant='body2' fontWeight={500}>Dışarı Aktar</Typography>
-                        </IconButton>
-                        <IconButton
-                            color='primary'
-                            sx={{ borderRadius: 1, gap: 1, px: 2 }}
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={importing}
-                        >
-                            {importing ? <CircularProgress size={20} /> : <i className='ri-upload-2-line text-[22px]' />}
-                            <Typography variant='body2' fontWeight={500}>İçeri Aktar</Typography>
-                        </IconButton>
-                        <input ref={fileInputRef} type='file' accept='.xlsx' style={{ display: 'none' }} onChange={handleImport} />
+                        <>
+                            <IconButton
+                                color='success'
+                                sx={{ borderRadius: 1, gap: 1, px: 2 }}
+                                onClick={(e) => setExcelMenuAnchor(e.currentTarget)}
+                                disabled={exporting || importing}
+                            >
+                                {(exporting || importing) ? <CircularProgress size={20} /> : <i className='ri-file-excel-2-line text-[22px]' />}
+                                <Typography variant='body2' fontWeight={500}>Excel İşlemleri</Typography>
+                                <i className='ri-arrow-down-s-line text-[18px]' />
+                            </IconButton>
+                            <Menu anchorEl={excelMenuAnchor} open={Boolean(excelMenuAnchor)} onClose={() => setExcelMenuAnchor(null)}>
+                                <MenuItem onClick={() => { setExcelMenuAnchor(null); handleExport() }}>
+                                    <i className='ri-download-2-line text-[18px] mr-2' /> Dışarı Aktar
+                                </MenuItem>
+                                <MenuItem onClick={() => { setExcelMenuAnchor(null); fileInputRef.current?.click() }}>
+                                    <i className='ri-upload-2-line text-[18px] mr-2' /> İçeri Aktar
+                                </MenuItem>
+                            </Menu>
+                            <input ref={fileInputRef} type='file' accept='.xlsx' style={{ display: 'none' }} onChange={handleImport} />
+                        </>
                     </div>
                 }
             />
@@ -352,10 +361,19 @@ const XmlMappingTable = () => {
             <Box sx={{ display: 'flex', gap: 2, p: 3, flexWrap: 'wrap' }}>
                 <TextField
                     size='small'
-                    placeholder='Stok kodu ile ara...'
-                    value={searchInput}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    sx={{ minWidth: 260 }}
+                    placeholder='XML stok kodu ara...'
+                    value={searchSourceInput}
+                    onChange={(e) => handleSearchChange('source', e.target.value)}
+                    sx={{ minWidth: 200 }}
+                    InputProps={{ startAdornment: <i className='ri-barcode-line text-[16px] mr-1 text-gray-400' /> }}
+                />
+                <TextField
+                    size='small'
+                    placeholder='Hedef stok kodu ara...'
+                    value={searchHedefInput}
+                    onChange={(e) => handleSearchChange('hedef', e.target.value)}
+                    sx={{ minWidth: 200 }}
+                    InputProps={{ startAdornment: <i className='ri-focus-3-line text-[16px] mr-1 text-gray-400' /> }}
                 />
                 <TextField
                     select
@@ -433,7 +451,7 @@ const XmlMappingTable = () => {
                                 <tr>
                                     <td colSpan={columns.length} className='text-center py-4'>
                                         <Typography variant='body1' color='text.secondary'>
-                                            {search || filterSource || filterDurum ? 'Filtreye uygun ürün bulunamadı' : 'Ürün bulunamadı'}
+                                            {searchSource || searchHedef || filterSource || filterDurum ? 'Filtreye uygun ürün bulunamadı' : 'Ürün bulunamadı'}
                                         </Typography>
                                     </td>
                                 </tr>
