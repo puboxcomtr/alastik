@@ -12,6 +12,8 @@ import { useCart } from '@/src/context/CartContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
 import { getProductPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
+import { checkPurchaseLimit, productToLimitCheckItem } from '@/src/hooks/Products/purchaseLimitHelpers';
+import { toast } from 'react-toastify';
 
 import { getImageUrl } from '@/src/config/api';
 
@@ -36,8 +38,26 @@ export default function Cart({ product }: CartProps) {
     const handleAddToCart = async () => {
         if (adding) return;
         setAdding(true);
-        await addToCart(product._key, quantity);
-        setAdding(false);
+
+        try {
+            const item = productToLimitCheckItem(product, quantity);
+            const check = await checkPurchaseLimit([item]);
+
+            if (!check.valid && check.violations.length > 0) {
+                check.violations.forEach(v => {
+                    toast.error(v.message);
+                });
+                setAdding(false);
+                return;
+            }
+
+            await addToCart(product._key, quantity);
+        } catch (err) {
+            console.error('Sepete ekleme hatası:', err);
+            toast.error('Sepete eklenemedi');
+        } finally {
+            setAdding(false);
+        }
     };
     const handleDecrease = () => {
         if (quantity > 1) setQuantity(quantity - 1);

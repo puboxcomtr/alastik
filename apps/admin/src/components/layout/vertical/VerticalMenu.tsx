@@ -125,7 +125,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/campaign/list`}>{dictionary['navigation'].campaign}</MenuItem>
             <MenuItem href={`/${locale}/apps/campaign/promotions`}>{dictionary['navigation'].promotions}</MenuItem>
             <MenuItem href={`/${locale}/apps/campaign/buy-fast`}>{dictionary['navigation'].buy_fast}</MenuItem>
-            <MenuItem href={`/${locale}/apps/campaign/order-limit`}>{dictionary['navigation'].order_limit}</MenuItem>
+            <MenuItem href={`/${locale}/apps/purchase-limits/list`}>{dictionary['navigation'].order_limit}</MenuItem>
             <MenuItem href={`/${locale}/apps/campaign/package-creator`}>{dictionary['navigation'].package_creator}</MenuItem>
           </SubMenu>
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
@@ -142,7 +142,12 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/manager/list`}>{dictionary['navigation'].users}</MenuItem>
             <MenuItem href={`/${locale}/apps/design/list`}>{dictionary['navigation'].design_settings}</MenuItem>
             <MenuItem href={`/${locale}/apps/cargo/list`}>{dictionary['navigation'].cargo_settings}</MenuItem>
-            <MenuItem href={`/${locale}/apps/mail`}>{dictionary['navigation'].mail_settings}</MenuItem>
+            <SubMenu label={dictionary['navigation'].mail_settings}>
+              <MenuItem href={`/${locale}/apps/mail/management`}>{dictionary['navigation'].mail_management}</MenuItem>
+              <MenuItem href={`/${locale}/apps/mail/accounts`}>{dictionary['navigation'].mail_accounts}</MenuItem>
+              <MenuItem href={`/${locale}/apps/mail/smtp_settings`}>{dictionary['navigation'].mail_smtp}</MenuItem>
+              <MenuItem href={`/${locale}/apps/mail/templates`}>{dictionary['navigation'].mail_templates}</MenuItem>
+            </SubMenu>
             <MenuItem href={`/${locale}/apps/process`}>{dictionary['navigation'].process}</MenuItem>
           </SubMenu>
         </MenuSection>

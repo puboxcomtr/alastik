@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "downlevelIteration": true,
+    "ignoreDeprecations": "6.0",
     "lib": [
       "DOM",
       "DOM.Iterable",
@@ -19,6 +20,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
@@ -60,8 +62,9 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
-, "src/app/[lang]/(dashboard)/(private)/apps/settings/general/pagejtsx"  ],
+    ".next/types/**/*.ts",
+    "src/app/[lang]/(dashboard)/(private)/apps/settings/general/pagejtsx"
+  ],
   "exclude": [
     "node_modules"
   ]

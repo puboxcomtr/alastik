@@ -31,6 +31,29 @@ export const API_ENDPOINTS = {
     labels: {
         list: () => `${getBaseUrl()}/admin/tags`,
         detail: (id: string) => `${getBaseUrl()}/admin/tags/${id}`,
+        manualSync: () => `${getBaseUrl()}/admin/tags/sync/manual-sync`,
+    },
+    mailManagement: {
+        list: () => `${getBaseUrl()}/admin/mail-management`,
+        detail: (id: string) => `${getBaseUrl()}/admin/mail-management/${id}`,
+        create: () => `${getBaseUrl()}/admin/mail-management`,
+        update: (id: string) => `${getBaseUrl()}/admin/mail-management/${id}`,
+        delete: (id: string) => `${getBaseUrl()}/admin/mail-management/${id}`,
+        send: (id: string) => `${getBaseUrl()}/admin/mail-management/${id}/send`,
+        groups: () => `${getBaseUrl()}/admin/mail-management/groups`,
+        users: () => `${getBaseUrl()}/admin/mail-management/users`,
+    },
+    mailAccounts: {
+        list: () => `${getBaseUrl()}/admin/mail-accounts`,
+        detail: (id: string) => `${getBaseUrl()}/admin/mail-accounts/${id}`,
+        create: () => `${getBaseUrl()}/admin/mail-accounts`,
+        update: (id: string) => `${getBaseUrl()}/admin/mail-accounts/${id}`,
+        test: (id: string) => `${getBaseUrl()}/admin/mail-accounts/${id}/test`,
+    },
+    smtpSettings: {
+        get: () => `${getBaseUrl()}/admin/smtp-settings`,
+        update: () => `${getBaseUrl()}/admin/smtp-settings`,
+        test: () => `${getBaseUrl()}/admin/smtp-settings/test`,
     },
     championships: {
         list: () => `${getBaseUrl()}/admin/championships`,
@@ -41,6 +64,14 @@ export const API_ENDPOINTS = {
     filters: {
         productOptions: () => `${getBaseUrl()}/admin/filters/product-options`,
         subCategories: (mainCategory: string) => `${getBaseUrl()}/admin/filters/sub-categories?main_category=${encodeURIComponent(mainCategory)}`,
+    },
+    descriptionTemplates: {
+        list: () => `${getBaseUrl()}/admin/description-templates`,
+        detail: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}`,
+        create: () => `${getBaseUrl()}/admin/description-templates`,
+        update: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}`,
+        delete: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}`,
+        apply: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}/apply`,
     },
     features: {
         list: () => `${getBaseUrl()}/admin/features`,
@@ -82,6 +113,14 @@ export const API_ENDPOINTS = {
         update: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
         delete: (id: string) => `${getBaseUrl()}/admin/user/admins/${id}`,
     },
+    cargo: {
+        list: () => `${getBaseUrl()}/admin/cargo`,
+        detail: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
+        create: () => `${getBaseUrl()}/admin/cargo`,
+        update: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
+        toggleStatus: (id: string) => `${getBaseUrl()}/admin/cargo/${id}/status`,
+        delete: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
+    },
     showcases: {
         list: () => `${getBaseUrl()}/admin/showcases`,
         detail: (id: string) => `${getBaseUrl()}/admin/showcases/${id}`,
@@ -116,6 +155,14 @@ export const API_ENDPOINTS = {
         update: () => `${getBaseUrl()}/admin/modules/merchant`,
         priceFields: () => `${getBaseUrl()}/admin/modules/merchant/price-fields`,
         textFields: () => `${getBaseUrl()}/admin/modules/merchant/text-fields`,
+    },
+    purchaseLimits: {
+        list: () => `${getBaseUrl()}/admin/campaign/purchase-limits`,
+        detail: (id: string) => `${getBaseUrl()}/admin/campaign/purchase-limits/${id}`,
+        create: () => `${getBaseUrl()}/admin/campaign/purchase-limits`,
+        update: (id: string) => `${getBaseUrl()}/admin/campaign/purchase-limits/${id}`,
+        delete: (id: string) => `${getBaseUrl()}/admin/campaign/purchase-limits/${id}`,
+        toggle: (id: string) => `${getBaseUrl()}/admin/campaign/purchase-limits/${id}/toggle`,
     },
     media: {
         list: (params: {

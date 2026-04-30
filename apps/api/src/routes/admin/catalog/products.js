@@ -157,6 +157,102 @@ router.get('/', maybeAuth, async (req, res) => {
       webFilter['diaData.gercek_stok'] = { $lte: 0 };
     }
 
+    // Özel kod değer filtreleri (autocomplete'ten gelen)
+    ['1', '2', '3', '4', '5', '6', '7'].forEach(num => {
+      const param = req.query[`ozelkod${num}`];
+      if (param && String(param).trim() !== '') {
+        webFilter[`diaData.ozelkod${num}kodu`] = String(param).trim();
+      }
+    });
+    // ============================================
+    // EKSİK VERİ FİLTRELERİ (Var/Yok)
+    // ============================================
+    const ensureAnd = () => {
+      if (!webFilter.$and) webFilter.$and = [];
+      return webFilter.$and;
+    };
+
+    // Görsel kontrolü: m_resimler + customImages + featuredImage
+    if (req.query.has_image === 'yes') {
+      ensureAnd().push({
+        $or: [
+          { 'diaData.m_resimler.0': { $exists: true } },
+          { 'customData.customImages.0': { $exists: true } },
+          { 'customData.featuredImage': { $type: 'string', $ne: '' } }
+        ]
+      });
+    } else if (req.query.has_image === 'no') {
+      ensureAnd().push({
+        $and: [
+          { $or: [{ 'diaData.m_resimler': { $exists: false } }, { 'diaData.m_resimler': { $size: 0 } }] },
+          { $or: [{ 'customData.customImages': { $exists: false } }, { 'customData.customImages': { $size: 0 } }] },
+          { $or: [{ 'customData.featuredImage': { $exists: false } }, { 'customData.featuredImage': null }, { 'customData.featuredImage': '' }] }
+        ]
+      });
+    }
+
+    // Açıklama: customData.customDescription
+    if (req.query.has_description === 'yes') {
+      ensureAnd().push({
+        'customData.customDescription': { $exists: true, $nin: [null, ''] }
+      });
+    } else if (req.query.has_description === 'no') {
+      ensureAnd().push({
+        $or: [
+          { 'customData.customDescription': { $exists: false } },
+          { 'customData.customDescription': null },
+          { 'customData.customDescription': '' }
+        ]
+      });
+    }
+
+    // Fiyat: m_birimler[0].fiyat1 VEYA m_birimler[0].fiyat4
+    if (req.query.has_price === 'yes') {
+      ensureAnd().push({
+        $or: [
+          { 'diaData.m_birimler.0.fiyat1': { $gt: 0 } },
+          { 'diaData.m_birimler.0.fiyat4': { $gt: 0 } }
+        ]
+      });
+    } else if (req.query.has_price === 'no') {
+      ensureAnd().push({
+        $and: [
+          { $or: [{ 'diaData.m_birimler.0.fiyat1': { $exists: false } }, { 'diaData.m_birimler.0.fiyat1': { $in: [null, 0] } }] },
+          { $or: [{ 'diaData.m_birimler.0.fiyat4': { $exists: false } }, { 'diaData.m_birimler.0.fiyat4': { $in: [null, 0] } }] }
+        ]
+      });
+    }
+
+    // Özel kod var/yok kontrolü (ozelkod1,2,3,4,6,7)
+    const ozelkodList = ['1', '2', '3', '4', '6', '7'];
+    ozelkodList.forEach(num => {
+      const param = req.query[`has_ozelkod${num}`];
+      const field = `diaData.ozelkod${num}kodu`;
+      if (param === 'yes') {
+        ensureAnd().push({ [field]: { $exists: true, $nin: [null, ''] } });
+      } else if (param === 'no') {
+        ensureAnd().push({
+          $or: [
+            { [field]: { $exists: false } },
+            { [field]: null },
+            { [field]: '' }
+          ]
+        });
+      }
+    });
+
+    // ozelkod11 - Aktif kontrolü (E/H)
+    if (req.query.has_ozelkod11 === 'yes') {
+      webFilter['diaData.ozelkod11kodu'] = 'E';
+    } else if (req.query.has_ozelkod11 === 'no') {
+      ensureAnd().push({
+        $or: [
+          { 'diaData.ozelkod11kodu': { $exists: false } },
+          { 'diaData.ozelkod11kodu': { $nin: ['E'] } }
+        ]
+      });
+    }
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const totalCount = await WebProduct.countDocuments(webFilter);
     const products = await WebProduct.find(webFilter)

@@ -26,8 +26,13 @@ export interface TireFilterOptions {
     loadIndex?: FilterOption[];
     speedIndex?: FilterOption[];
     productionYears?: FilterOption[];
-    jantCaplar?: FilterOption[];
-    bijonlar?: FilterOption[];
+    jantGenislikleri?: FilterOption[];
+    jantCaplari?: FilterOption[];
+    bijonSayilari?: FilterOption[];
+    bijonAraliklari?: FilterOption[];
+    gobekCaplari?: FilterOption[];
+    etler?: FilterOption[];
+    renkler?: FilterOption[];
 }
 
 export async function getTireFilterOptions(

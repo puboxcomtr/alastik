@@ -74,17 +74,57 @@ class XmlWebProductSyncService {
     parseFiyat(val) {
         if (!val) return 0;
         const str = String(val).trim();
-        // Türkçe format: 11.115,00 → 11115.00
-        if (str.includes(',')) {
-            return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+        let sayi = 0;
+        if (str.includes(',') && str.includes('.')) {
+            sayi = parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+        } else if (str.includes(',')) {
+            sayi = parseFloat(str.replace(',', '.')) || 0;
+        } else if (/^\d{1,3}(\.\d{3})+$/.test(str)) {
+            sayi = parseFloat(str.replace(/\./g, '')) || 0;
+        } else {
+            sayi = parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
         }
-        return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+        return Math.ceil(sayi);
     }
+    // Kaynaklar arasından geçerli olanlardan en ucuzunu seç
+    // Geçerli kaynak: aktif entegrasyon + fiyat>0 + stok>0 + applyRules geçiyor
+    selectBestSource(candidates, integrationMap) {
+        let secilen = null;
+        let secilenFiyat = Infinity;
+
+        for (const xp of candidates) {
+            const intg = integrationMap[xp.source];
+            if (!intg || intg.isActive === false) continue;
+
+            const fm = intg?.rules?.fieldMappings || [];
+            const rd = xp.rawData || {};
+            const getMapped = (target) => {
+                const m = fm.find(f => f.target === target);
+                if (!m?.source) return null;
+                return m.source.split('.').reduce((acc, k) => acc?.[k], rd) ?? null;
+            };
+
+            const rawFiyat = getMapped('hamFiyat') ?? rd.pricePlusTax ?? rd.Price ?? rd.LISTE ?? rd.BAYI;
+            const rawStok = getMapped('stokAdeti') ?? rd.StockNumber ?? rd.ADET ?? rd.MERKEZ_ADET;
+            const fiyat = this.parseFiyat(rawFiyat);
+            const stok = this.parseStok(rawStok);
+
+            if (fiyat <= 0 || stok <= 0) continue;
+            if (!this.applyRules(xp, intg)) continue;
+
+            if (fiyat < secilenFiyat) {
+                secilen = xp;
+                secilenFiyat = fiyat;
+            }
+        }
+
+        return secilen;
+    }
+
     applyRules(xmlProduct, integration) {
         const rules = integration?.rules || {};
         const fieldMappings = rules.fieldMappings || [];
         const rd = xmlProduct.rawData || {};
-
         const getVal = (target) => {
             const m = fieldMappings.find(fm => fm.target === target);
             if (!m?.source) return null;
@@ -121,50 +161,49 @@ class XmlWebProductSyncService {
         }
 
         const xmlProducts = await XmlProduct.find(
-            { status: 'dia_matched', diaKey: { $ne: null, $gt: '' } },
-            { diaKey: 1, diaData: 1, rawData: 1, source: 1 }
+            { diaKey: { $ne: null, $gt: '' } },
+            { diaKey: 1, diaData: 1, rawData: 1, source: 1, status: 1 }
         ).lean();
 
-        console.log(`[XmlWebProductSync] ${xmlProducts.length} dia_matched ürün bulundu`);
+        console.log(`[XmlWebProductSync] ${xmlProducts.length} diaKey'li ürün bulundu`);
 
         // Aynı diaKey için en ucuz fiyatlı kaynağı seç
-        const diaKeyMap = {};
+        // Aynı diaKey için kaynakları grupla, en ucuz geçerliyi seç
+        const diaKeyCandidates = {};
         for (const xmlProduct of xmlProducts) {
             const diaKey = String(xmlProduct.diaKey);
-            const integration = integrationMap[xmlProduct.source];
-            const fieldMappings = integration?.rules?.fieldMappings || [];
-            const rd = xmlProduct.rawData || {};
+            if (!diaKeyCandidates[diaKey]) diaKeyCandidates[diaKey] = [];
+            diaKeyCandidates[diaKey].push(xmlProduct);
+        }
 
-            const getMapped = (target) => {
-                const m = fieldMappings.find(fm => fm.target === target);
-                if (!m?.source) return null;
-                return m.source.split('.').reduce((acc, key) => acc?.[key], rd) ?? null;
-            };
-
-            const rawF = getMapped('hamFiyat') ?? rd.pricePlusTax ?? rd.Price ?? rd.LISTE ?? rd.BAYI;
-            const fiyat = this.parseFiyat(rawF);
-
-            if (!diaKeyMap[diaKey]) {
-                diaKeyMap[diaKey] = xmlProduct;
+        const diaKeyMap = {};
+        const invalidDiaKeys = [];
+        for (const [diaKey, candidates] of Object.entries(diaKeyCandidates)) {
+            const secilen = this.selectBestSource(candidates, integrationMap);
+            if (secilen) {
+                diaKeyMap[diaKey] = secilen;
             } else {
-                const mevcutIntg = integrationMap[diaKeyMap[diaKey].source];
-                const mevcutFm = mevcutIntg?.rules?.fieldMappings || [];
-                const mevcutRd = diaKeyMap[diaKey].rawData || {};
-                const getMevcutMapped = (target) => {
-                    const m = mevcutFm.find(fm => fm.target === target);
-                    if (!m?.source) return null;
-                    return m.source.split('.').reduce((acc, key) => acc?.[key], mevcutRd) ?? null;
-                };
-                const mevcutRawF = getMevcutMapped('hamFiyat') ?? mevcutRd.pricePlusTax ?? mevcutRd.Price ?? mevcutRd.LISTE ?? mevcutRd.BAYI;
-                const mevcutFiyat = this.parseFiyat(mevcutRawF);
-
-                // Fiyat varsa ve daha ucuzsa değiştir
-                if (mevcutFiyat === 0 && fiyat > 0) {
-                    diaKeyMap[diaKey] = xmlProduct;
-                } else if (fiyat > 0 && fiyat < mevcutFiyat) {
-                    diaKeyMap[diaKey] = xmlProduct;
-                }
+                invalidDiaKeys.push(diaKey);
             }
+        }
+
+        // Hiçbir geçerli kaynak kalmayan ürünleri webproducts'tan sil
+        if (invalidDiaKeys.length > 0) {
+            const hideResult = await WebProduct.updateMany(
+                {
+                    _key: { $in: invalidDiaKeys },
+                    'syncInfo.syncSource': 'xml_integration'
+                },
+                {
+                    $set: {
+                        'diaData.gercek_stok': 0,
+                        'diaData.m_birimler.0.miktar': 0,
+                        'customData.webVisible': false,
+                        'syncInfo.lastXmlSync': new Date()
+                    }
+                }
+            );
+            console.log(`[XmlWebProductSync] fullSync — ${hideResult.modifiedCount} geçersiz ürün gizlendi (stok 0)`);
         }
 
         const filteredXmlProducts = Object.values(diaKeyMap);
@@ -177,6 +216,35 @@ class XmlWebProductSyncService {
         const bulkOps = [];
         let created = 0, updated = 0, filtered = 0, errors = 0;
 
+        const XmlPricingRule = require('../../../models/plugins/xml/XmlPricingRule');
+        const allPricingRules = await XmlPricingRule.find().lean();
+
+        // applyPricingRules yerine cache kullanan fonksiyon
+        const applyPricingRulesFromCache = (hamFiyat, source, marka) => {
+            const hesapla = (fiyat, rule) => {
+                switch (rule.tip) {
+                    case 'yuzde_artis': return fiyat * (1 + rule.deger / 100);
+                    case 'yuzde_azalis': return fiyat * (1 - rule.deger / 100);
+                    case 'sabit_artis': return fiyat + rule.deger;
+                    case 'sabit_azalis': return Math.max(0, fiyat - rule.deger);
+                    default: return fiyat;
+                }
+            };
+            const applyPlatform = (platform) => {
+                const rules = allPricingRules.filter(r => r.platform === platform &&
+                    (r.source === '' || r.source === source) &&
+                    (r.marka === '' || r.marka === marka));
+                const markaRules = rules.filter(r => r.marka === marka && r.marka !== '');
+                const genelRules = rules.filter(r => r.marka === '');
+                const aktif = markaRules.length > 0 ? markaRules : genelRules;
+                return aktif.reduce((f, r) => hesapla(f, r), hamFiyat);
+            };
+            return {
+                alastikPrice: Math.round(applyPlatform('alastik') * 100) / 100,
+                b2bPrice: Math.round(applyPlatform('b2b') * 100) / 100,
+                b2cPrice: Math.round(applyPlatform('b2c') * 100) / 100
+            };
+        };
         for (const xmlProduct of filteredXmlProducts) {
             try {
                 const integration = integrationMap[xmlProduct.source];
@@ -205,7 +273,7 @@ class XmlWebProductSyncService {
                 const gercekStok = this.parseStok(rawStok);
                 const marka = getMappedVal('marka') ?? diaData.marka ?? '';
 
-                const pricing = await this.applyPricingRules(hamFiyat, xmlProduct.source, marka);
+                const pricing = applyPricingRulesFromCache(hamFiyat, xmlProduct.source, marka);
                 const webPrice = pricing.alastikPrice || hamFiyat || null;
 
                 const isNew = !existingKeySet.has(diaKey);
@@ -321,6 +389,7 @@ class XmlWebProductSyncService {
                                     'diaData.ozelkod11kodu': 'E',
                                     'diaData.m_birimler': guncelBirimler.map((b, i) => i === 0 ? { ...b, fiyat1: hamFiyat, fiyat4: pricing.alastikPrice } : b),
                                     'customData.webPrice': webPrice,
+                                    'customData.webVisible': true,
                                     'pricingData.hamFiyat': hamFiyat,
                                     'pricingData.alastikPrice': pricing.alastikPrice,
                                     'pricingData.b2bPrice': pricing.b2bPrice,
@@ -369,56 +438,93 @@ class XmlWebProductSyncService {
 
         const xmlProducts = await XmlProduct.find(
             {
-                status: 'dia_matched',
                 diaKey: { $ne: null, $gt: '' },
                 lastFetchedAt: { $gte: new Date(Date.now() - 20 * 60 * 1000) }
             },
-            { diaKey: 1, rawData: 1, source: 1 }
+            { diaKey: 1, rawData: 1, source: 1, status: 1 }
         ).lean();
 
         console.log(`[XmlWebProductSync] ${xmlProducts.length} ürün hızlı sync edilecek`);
 
         // Aynı diaKey için en ucuz fiyatlı kaynağı seç
+        // Aynı diaKey için kaynakları grupla, en ucuz geçerliyi seç
+        // Quick sync için: pencereye giren diaKey'lerin TÜM kaynakları DB'den çek
+        const windowDiaKeys = [...new Set(xmlProducts.map(p => String(p.diaKey)))];
+        const allCandidates = await XmlProduct.find(
+            {
+                diaKey: { $in: windowDiaKeys }
+            },
+            { diaKey: 1, rawData: 1, source: 1, status: 1 }
+        ).lean();
+
+        const diaKeyCandidates = {};
+        for (const xp of allCandidates) {
+            const diaKey = String(xp.diaKey);
+            if (!diaKeyCandidates[diaKey]) diaKeyCandidates[diaKey] = [];
+            diaKeyCandidates[diaKey].push(xp);
+        }
+
         const diaKeyMapQuick = {};
-        for (const xmlProduct of xmlProducts) {
-            const diaKey = String(xmlProduct.diaKey);
-            const integration = integrationMap[xmlProduct.source];
-            const fieldMappings = integration?.rules?.fieldMappings || [];
-            const rd = xmlProduct.rawData || {};
-
-            const getMapped = (target) => {
-                const m = fieldMappings.find(fm => fm.target === target);
-                if (!m?.source) return null;
-                return m.source.split('.').reduce((acc, key) => acc?.[key], rd) ?? null;
-            };
-
-            const rawF = getMapped('hamFiyat') ?? rd.pricePlusTax ?? rd.Price ?? rd.LISTE ?? rd.BAYI;
-            const fiyat = this.parseFiyat(rawF);
-
-            if (!diaKeyMapQuick[diaKey]) {
-                diaKeyMapQuick[diaKey] = xmlProduct;
+        const invalidQuickDiaKeys = [];
+        for (const [diaKey, candidates] of Object.entries(diaKeyCandidates)) {
+            const secilen = this.selectBestSource(candidates, integrationMap);
+            if (secilen) {
+                diaKeyMapQuick[diaKey] = secilen;
             } else {
-                const mevcutIntg = integrationMap[diaKeyMapQuick[diaKey].source];
-                const mevcutFm = mevcutIntg?.rules?.fieldMappings || [];
-                const mevcutRd = diaKeyMapQuick[diaKey].rawData || {};
-                const getMevcutMapped = (target) => {
-                    const m = mevcutFm.find(fm => fm.target === target);
-                    if (!m?.source) return null;
-                    return m.source.split('.').reduce((acc, key) => acc?.[key], mevcutRd) ?? null;
-                };
-                const mevcutRawF = getMevcutMapped('hamFiyat') ?? mevcutRd.pricePlusTax ?? mevcutRd.Price ?? mevcutRd.LISTE ?? mevcutRd.BAYI;
-                const mevcutFiyat = this.parseFiyat(mevcutRawF);
-
-                if (mevcutFiyat === 0 && fiyat > 0) {
-                    diaKeyMapQuick[diaKey] = xmlProduct;
-                } else if (fiyat > 0 && fiyat < mevcutFiyat) {
-                    diaKeyMapQuick[diaKey] = xmlProduct;
-                }
+                invalidQuickDiaKeys.push(diaKey);
             }
+        }
+
+        if (invalidQuickDiaKeys.length > 0) {
+            const hideResult = await WebProduct.updateMany(
+                {
+                    _key: { $in: invalidQuickDiaKeys },
+                    'syncInfo.syncSource': 'xml_integration'
+                },
+                {
+                    $set: {
+                        'diaData.gercek_stok': 0,
+                        'diaData.m_birimler.0.miktar': 0,
+                        'customData.webVisible': false,
+                        'syncInfo.lastXmlSync': new Date()
+                    }
+                }
+            );
+            console.log(`[XmlWebProductSync] quickSync — ${hideResult.modifiedCount} geçersiz ürün gizlendi (stok 0)`);
         }
 
         const filteredQuickProducts = Object.values(diaKeyMapQuick);
         console.log(`[XmlWebProductSync] quickSync: ${filteredQuickProducts.length} unique ürün işlenecek`);
+
+        const XmlPricingRuleQ = require('../../../models/plugins/xml/XmlPricingRule');
+        const allPricingRulesQ = await XmlPricingRuleQ.find().lean();
+        const applyPricingRulesFromCache = (hamFiyat, source, marka) => {
+            const hesapla = (fiyat, rule) => {
+                switch (rule.tip) {
+                    case 'yuzde_artis': return fiyat * (1 + rule.deger / 100);
+                    case 'yuzde_azalis': return fiyat * (1 - rule.deger / 100);
+                    case 'sabit_artis': return fiyat + rule.deger;
+                    case 'sabit_azalis': return Math.max(0, fiyat - rule.deger);
+                    default: return fiyat;
+                }
+            };
+            const applyPlatform = (platform) => {
+                const rules = allPricingRulesQ.filter(r =>
+                    r.platform === platform &&
+                    (r.source === '' || r.source === source) &&
+                    (r.marka === '' || r.marka === marka)
+                );
+                const markaRules = rules.filter(r => r.marka === marka && r.marka !== '');
+                const genelRules = rules.filter(r => r.marka === '');
+                const aktif = markaRules.length > 0 ? markaRules : genelRules;
+                return aktif.reduce((f, r) => hesapla(f, r), hamFiyat);
+            };
+            return {
+                alastikPrice: Math.round(applyPlatform('alastik') * 100) / 100,
+                b2bPrice: Math.round(applyPlatform('b2b') * 100) / 100,
+                b2cPrice: Math.round(applyPlatform('b2c') * 100) / 100
+            };
+        };
 
         const bulkOps = [];
         let updated = 0, filtered = 0, errors = 0;
@@ -449,7 +555,7 @@ class XmlWebProductSyncService {
                 const hamFiyat = this.parseFiyat(rawFiyat) || 0;
                 const gercekStok = this.parseStok(rawStok);
 
-                const pricing = await this.applyPricingRules(hamFiyat, xmlProduct.source, marka);
+                const pricing = applyPricingRulesFromCache(hamFiyat, xmlProduct.source, marka);
                 const webPrice = pricing.alastikPrice || hamFiyat || null;
 
                 bulkOps.push({
@@ -461,6 +567,7 @@ class XmlWebProductSyncService {
                                 'diaData.m_birimler.0.fiyat1': hamFiyat,
                                 'diaData.m_birimler.0.fiyat4': pricing.alastikPrice,
                                 'customData.webPrice': webPrice,
+                                'customData.webVisible': true,
                                 'pricingData.hamFiyat': hamFiyat,
                                 'pricingData.alastikPrice': pricing.alastikPrice,
                                 'pricingData.b2bPrice': pricing.b2bPrice,
@@ -492,6 +599,237 @@ class XmlWebProductSyncService {
         console.log(`[XmlWebProductSync] Hızlı sync tamamlandı — güncellenen: ${updated}, filtrelenen: ${filtered}, hata: ${errors}`);
         return { success: true, updated, filtered, errors };
     }
+    // Silinen xmlproduct'ların hedefStokKodu'larını yeniden değerlendir
+    // - Başka kaynakta kaydı varsa en ucuzu seçip webproducts'ı günceller
+    // - Hiç kaynak kalmadıysa webproducts'ta stok 0 + gizli yapar
+    // Pasif entegrasyonların xmlproducts kayıtlarını sil ve webproducts'tan yeniden değerlendir
+    async cleanupInactiveSources() {
+        console.log('[XmlWebProductSync] Pasif kaynak temizliği başladı');
+
+        const inactiveIntegrations = await WebXml.find({ isActive: false }, { code: 1, name: 1 }).lean();
+        if (inactiveIntegrations.length === 0) {
+            console.log('[XmlWebProductSync] Pasif entegrasyon yok');
+            return { inactiveCount: 0, deletedXmlProducts: 0, reconsolidateStats: null };
+        }
+
+        const inactiveCodes = inactiveIntegrations.map(i => i.code);
+        console.log(`[XmlWebProductSync] Pasif entegrasyonlar: ${inactiveCodes.join(', ')}`);
+
+        // Pasif kaynaklardaki xmlproducts'ları çek
+        const staleProducts = await XmlProduct.find(
+            { source: { $in: inactiveCodes } },
+            { mappedData: 1 }
+        ).lean();
+
+        const affectedHedefKodlar = staleProducts
+            .map(p => p.mappedData?.hedefStokKodu)
+            .filter(Boolean);
+
+        // Pasif kaynaklardaki xmlproducts'ları sil
+        const deleteResult = await XmlProduct.deleteMany({
+            source: { $in: inactiveCodes }
+        });
+        console.log(`[XmlWebProductSync] ${deleteResult.deletedCount} pasif kaynak xmlproduct silindi`);
+
+        // Ayrıca webproducts'ta pasif xmlSource'lu ürünlerin hedefStokKodu'larını da topla
+        const orphanWebProducts = await WebProduct.find(
+            {
+                'syncInfo.syncSource': 'xml_integration',
+                'syncInfo.xmlSource': { $in: inactiveCodes }
+            },
+            { 'diaData.anabarkod': 1 }
+        ).lean();
+
+        const orphanHedefKodlar = orphanWebProducts
+            .map(p => p.diaData?.anabarkod)
+            .filter(Boolean);
+
+        const allAffected = [...new Set([...affectedHedefKodlar, ...orphanHedefKodlar])];
+
+        let reconsolidateStats = null;
+        if (allAffected.length > 0) {
+            reconsolidateStats = await this.reconsolidate(allAffected);
+        }
+
+        console.log(`[XmlWebProductSync] Pasif kaynak temizliği tamamlandı`);
+        return {
+            inactiveCount: inactiveIntegrations.length,
+            deletedXmlProducts: deleteResult.deletedCount,
+            reconsolidateStats
+        };
+    }
+    async reconsolidate(hedefStokKoduList) {
+        if (!Array.isArray(hedefStokKoduList) || hedefStokKoduList.length === 0) {
+            return { reCandidates: 0, updated: 0, disabled: 0, errors: 0 };
+        }
+
+        const uniqueList = [...new Set(hedefStokKoduList.filter(Boolean))];
+        console.log(`[XmlWebProductSync] reconsolidate başladı — ${uniqueList.length} hedefStokKodu`);
+
+        const integrations = await WebXml.find({ isActive: true }).lean();
+        const integrationMap = {};
+        for (const intg of integrations) integrationMap[intg.code] = intg;
+
+        const XmlPricingRule = require('../../../models/plugins/xml/XmlPricingRule');
+        const allPricingRules = await XmlPricingRule.find().lean();
+
+        const applyPricingRulesFromCache = (hamFiyat, source, marka) => {
+            const hesapla = (fiyat, rule) => {
+                switch (rule.tip) {
+                    case 'yuzde_artis': return fiyat * (1 + rule.deger / 100);
+                    case 'yuzde_azalis': return fiyat * (1 - rule.deger / 100);
+                    case 'sabit_artis': return fiyat + rule.deger;
+                    case 'sabit_azalis': return Math.max(0, fiyat - rule.deger);
+                    default: return fiyat;
+                }
+            };
+            const applyPlatform = (platform) => {
+                const rules = allPricingRules.filter(r =>
+                    r.platform === platform &&
+                    (r.source === '' || r.source === source) &&
+                    (r.marka === '' || r.marka === marka)
+                );
+                const markaRules = rules.filter(r => r.marka === marka && r.marka !== '');
+                const genelRules = rules.filter(r => r.marka === '');
+                const aktif = markaRules.length > 0 ? markaRules : genelRules;
+                return aktif.reduce((f, r) => hesapla(f, r), hamFiyat);
+            };
+            return {
+                alastikPrice: Math.round(applyPlatform('alastik') * 100) / 100,
+                b2bPrice: Math.round(applyPlatform('b2b') * 100) / 100,
+                b2cPrice: Math.round(applyPlatform('b2c') * 100) / 100
+            };
+        };
+
+        // Kalan xmlproducts kayıtlarını toplu çek
+        const remaining = await XmlProduct.find(
+            {
+                diaKey: { $ne: null, $gt: '' },
+                'mappedData.hedefStokKodu': { $in: uniqueList }
+            },
+            { diaKey: 1, rawData: 1, source: 1, mappedData: 1, status: 1 }
+        ).lean();
+
+        // hedefStokKodu -> xmlproducts[]
+        const grouped = {};
+        for (const xp of remaining) {
+            const hsk = xp.mappedData?.hedefStokKodu;
+            if (!hsk) continue;
+            if (!grouped[hsk]) grouped[hsk] = [];
+            grouped[hsk].push(xp);
+        }
+
+        const bulkOps = [];
+        let updated = 0, disabled = 0, errors = 0;
+
+        for (const hsk of uniqueList) {
+            try {
+
+                const candidates = grouped[hsk] || [];
+                if (candidates.length === 0) {
+                    // Hiç kaynak kalmadı — gizle (stok 0 + webVisible false)
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { 'diaData.anabarkod': hsk, 'syncInfo.syncSource': 'xml_integration' },
+                            update: {
+                                $set: {
+                                    'diaData.gercek_stok': 0,
+                                    'diaData.m_birimler.0.miktar': 0,
+                                    'customData.webVisible': false,
+                                    'syncInfo.lastXmlSync': new Date()
+                                }
+                            }
+                        }
+                    });
+                    disabled++;
+                    continue;
+                }
+
+                // En ucuz kaynağı seç (fullSync ile aynı mantık)
+                const secilen = this.selectBestSource(candidates, integrationMap);
+
+                if (!secilen) {
+                    // Geçerli kaynak yok — gizle (stok 0 + webVisible false)
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { 'diaData.anabarkod': hsk, 'syncInfo.syncSource': 'xml_integration' },
+                            update: {
+                                $set: {
+                                    'diaData.gercek_stok': 0,
+                                    'diaData.m_birimler.0.miktar': 0,
+                                    'customData.webVisible': false,
+                                    'syncInfo.lastXmlSync': new Date()
+                                }
+                            }
+                        }
+                    });
+                    disabled++;
+                    continue;
+                }
+
+                const intg = integrationMap[secilen.source];
+
+                const fm = intg?.rules?.fieldMappings || [];
+                const rd = secilen.rawData || {};
+                const getMappedVal = (target) => {
+                    const m = fm.find(f => f.target === target);
+                    if (!m?.source) return null;
+                    return m.source.split('.').reduce((acc, k) => acc?.[k], rd) ?? null;
+                };
+
+                const rawFiyat = getMappedVal('hamFiyat') ?? rd.pricePlusTax ?? rd.Price ?? rd.LISTE ?? rd.BAYI;
+                const rawStok = getMappedVal('stokAdeti') ?? rd.StockNumber ?? rd.ADET ?? rd.MERKEZ_ADET;
+                const marka = getMappedVal('marka') ?? '';
+
+                const hamFiyat = this.parseFiyat(rawFiyat) || 0;
+                const gercekStok = this.parseStok(rawStok);
+                const pricing = applyPricingRulesFromCache(hamFiyat, secilen.source, marka);
+                const webPrice = pricing.alastikPrice || hamFiyat || null;
+
+                bulkOps.push({
+                    updateOne: {
+                        filter: { 'diaData.anabarkod': hsk, 'syncInfo.syncSource': 'xml_integration' },
+                        update: {
+                            $set: {
+                                'diaData.gercek_stok': gercekStok,
+                                'diaData.m_birimler.0.fiyat1': hamFiyat,
+                                'diaData.m_birimler.0.fiyat4': pricing.alastikPrice,
+                                'diaData.m_birimler.0.miktar': gercekStok,
+                                'customData.webPrice': webPrice,
+                                'customData.webVisible': true,
+                                'pricingData.hamFiyat': hamFiyat,
+                                'pricingData.alastikPrice': pricing.alastikPrice,
+                                'pricingData.b2bPrice': pricing.b2bPrice,
+                                'pricingData.b2cPrice': pricing.b2cPrice,
+                                'pricingData.lastPricingAt': new Date(),
+                                'syncInfo.lastXmlSync': new Date(),
+                                'syncInfo.syncSource': 'xml_integration',
+                                'syncInfo.xmlSource': secilen.source
+                            }
+                        }
+                    }
+                });
+                updated++;
+
+                if (bulkOps.length >= 500) {
+                    const opsToWrite = [...bulkOps];
+                    bulkOps.length = 0;
+                    await WebProduct.bulkWrite(opsToWrite, { ordered: false });
+                }
+            } catch (err) {
+                errors++;
+                console.error(`[XmlWebProductSync] reconsolidate hatası (${hsk}):`, err.message);
+            }
+        }
+
+        if (bulkOps.length > 0) {
+            await WebProduct.bulkWrite(bulkOps, { ordered: false });
+        }
+
+        console.log(`[XmlWebProductSync] reconsolidate tamamlandı — güncellenen: ${updated}, satıştan çekilen: ${disabled}, hata: ${errors}`);
+        return { reCandidates: uniqueList.length, updated, disabled, errors };
+    }
+
     async applyPricingRules(hamFiyat, source, marka) {
         const XmlPricingRule = require('../../../models/plugins/xml/XmlPricingRule');
 

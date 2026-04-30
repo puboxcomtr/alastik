@@ -26,9 +26,11 @@ import { useCart } from '@/src/context/CartContext';
 import { ROUTES } from '@/src/config/routes';
 
 interface ActionButtonsProps {
+    onMenuOpen?: () => void;
+    onSearchToggle?: () => void;
 }
 
-export default function ActionButtons({ onMenuOpen }: ActionButtonsProps) {
+export default function ActionButtons({ onMenuOpen, onSearchToggle }: ActionButtonsProps) {
     const { totals } = useCart();
     const cartItemCount = totals.itemCount;
 
@@ -50,9 +52,7 @@ export default function ActionButtons({ onMenuOpen }: ActionButtonsProps) {
     const handleLoginClick = () => {
         router.push(ROUTES.LOGIN);
     };
-    interface ActionButtonsProps {
-        onMenuOpen?: () => void;
-    }
+
     return (
         <div id="action_button" className="d-flex align-items-center gap-0 gap-lg-5">
             <button
@@ -70,9 +70,7 @@ export default function ActionButtons({ onMenuOpen }: ActionButtonsProps) {
             <button
                 type="button"
                 className="btn btn-icon btn-lg fs-xl btn-outline-secondary border-0 rounded-circle animate-shake d-lg-none"
-                data-bs-toggle="offcanvas"
-                data-bs-target="#searchBox"
-                aria-controls="searchBox"
+                onClick={onSearchToggle}
                 aria-label="Toggle search bar"
             >
                 <SearchIcon className="animate-target" />

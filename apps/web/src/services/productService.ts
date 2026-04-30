@@ -6,7 +6,11 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
     try {
         const queryParams = new URLSearchParams();
 
-        if (params.category) queryParams.append('category', params.category);
+        if (params.category === 'tum-lastikler') {
+            queryParams.append('category', 'otomobil-lastikleri,elektrikli-arac-lastikleri,suv-lastikleri,ticari-arac-lastikleri,agir-vasita-lastikleri');
+        } else if (params.category) {
+            queryParams.append('category', params.category);
+        }
         if (params.genislik) queryParams.append('genislik', params.genislik);
         if (params.yukseklik) queryParams.append('yukseklik', params.yukseklik);
         if (params.cap) queryParams.append('cap', params.cap);

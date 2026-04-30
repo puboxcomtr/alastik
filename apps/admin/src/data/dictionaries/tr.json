@@ -133,6 +133,11 @@
     "design_settings": "Tasarım Ayarları",
     "cargo_settings": "Kargo Ayarları",
     "mail_settings": "Mail Ayarları",
-    "process": "İşlem Kuyruğu"
+    "process": "İşlem Kuyruğu",
+    "mail_management": "Mail Yönetimi",
+    "mail_accounts": "Mail Hesapları",
+    "mail_smtp": "SMTP Ayarları",
+    "mail_templates": "Mail Şablonları"
+
   }
 }

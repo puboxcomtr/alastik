@@ -18,49 +18,59 @@ router.get('/product-options', maybeAuth, async (req, res) => {
             'syncInfo.diaStatus': 'synced'
         };
 
-        const [brands, productTypes, seasons, sizes, mainCategories, widthsAgg, profilesAgg, rimsAgg] = await Promise.all([
-            WebProduct.distinct('diaData.marka', {
-                ...baseFilter,
-                'diaData.marka': { $exists: true, $ne: '', $ne: null }
-            }),
-            WebProduct.distinct('diaData.ozelkod7kodu', {
-                ...baseFilter,
-                'diaData.ozelkod7kodu': { $exists: true, $ne: '', $ne: null }
-            }),
-            WebProduct.distinct('diaData.ozelkod1kodu', {
-                ...baseFilter,
-                'diaData.ozelkod1kodu': { $exists: true, $ne: '', $ne: null }
-            }),
-            WebProduct.distinct('diaData.ozelkod3kodu', {
-                ...baseFilter,
-                'diaData.ozelkod3kodu': { $exists: true, $ne: '', $ne: null }
-            }),
-            WebProduct.distinct('diaData.m_kategoriler.kategori_aciklama_1', {
-                ...baseFilter,
-                'diaData.m_kategoriler.kategori_aciklama_1': { $exists: true, $ne: '', $ne: null }
-            }),
-            WebProduct.aggregate([
-                { $match: baseFilter },
-                { $unwind: '$diaData.m_urunOzellikleri' },
-                { $match: { 'diaData.m_urunOzellikleri.ozellikadi': 'Genişlik', 'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null } } },
-                { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama' } },
-                { $sort: { _id: 1 } }
-            ]),
-            WebProduct.aggregate([
-                { $match: baseFilter },
-                { $unwind: '$diaData.m_urunOzellikleri' },
-                { $match: { 'diaData.m_urunOzellikleri.ozellikadi': 'Yanak', 'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null } } },
-                { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama' } },
-                { $sort: { _id: 1 } }
-            ]),
-            WebProduct.aggregate([
-                { $match: baseFilter },
-                { $unwind: '$diaData.m_urunOzellikleri' },
-                { $match: { 'diaData.m_urunOzellikleri.ozellikadi': 'Jant Çapı', 'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null } } },
-                { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama' } },
-                { $sort: { _id: 1 } }
-            ])
-        ]);
+        const ozelkodDistinct = (num) => WebProduct.distinct(`diaData.ozelkod${num}kodu`, {
+            ...baseFilter,
+            [`diaData.ozelkod${num}kodu`]: { $exists: true, $ne: '', $ne: null }
+        });
+
+        const [brands, productTypes, seasons, sizes, mainCategories, widthsAgg, profilesAgg, rimsAgg,
+            ozelkod2Values, ozelkod4Values, ozelkod5Values, ozelkod6Values] = await Promise.all([
+                WebProduct.distinct('diaData.marka', {
+                    ...baseFilter,
+                    'diaData.marka': { $exists: true, $ne: '', $ne: null }
+                }),
+                WebProduct.distinct('diaData.ozelkod7kodu', {
+                    ...baseFilter,
+                    'diaData.ozelkod7kodu': { $exists: true, $ne: '', $ne: null }
+                }),
+                WebProduct.distinct('diaData.ozelkod1kodu', {
+                    ...baseFilter,
+                    'diaData.ozelkod1kodu': { $exists: true, $ne: '', $ne: null }
+                }),
+                WebProduct.distinct('diaData.ozelkod3kodu', {
+                    ...baseFilter,
+                    'diaData.ozelkod3kodu': { $exists: true, $ne: '', $ne: null }
+                }),
+                WebProduct.distinct('diaData.m_kategoriler.kategori_aciklama_1', {
+                    ...baseFilter,
+                    'diaData.m_kategoriler.kategori_aciklama_1': { $exists: true, $ne: '', $ne: null }
+                }),
+                WebProduct.aggregate([
+                    { $match: baseFilter },
+                    { $unwind: '$diaData.m_urunOzellikleri' },
+                    { $match: { 'diaData.m_urunOzellikleri.ozellikadi': 'Genişlik', 'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null } } },
+                    { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama' } },
+                    { $sort: { _id: 1 } }
+                ]),
+                WebProduct.aggregate([
+                    { $match: baseFilter },
+                    { $unwind: '$diaData.m_urunOzellikleri' },
+                    { $match: { 'diaData.m_urunOzellikleri.ozellikadi': 'Yanak', 'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null } } },
+                    { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama' } },
+                    { $sort: { _id: 1 } }
+                ]),
+                WebProduct.aggregate([
+                    { $match: baseFilter },
+                    { $unwind: '$diaData.m_urunOzellikleri' },
+                    { $match: { 'diaData.m_urunOzellikleri.ozellikadi': 'Jant Çapı', 'diaData.m_urunOzellikleri.detayaciklama': { $ne: '', $ne: null } } },
+                    { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama' } },
+                    { $sort: { _id: 1 } }
+                ]),
+                ozelkodDistinct(2),
+                ozelkodDistinct(4),
+                ozelkodDistinct(5),
+                ozelkodDistinct(6)
+            ]);
 
         const widths = new Set();
         const profiles = new Set();
@@ -75,17 +85,26 @@ router.get('/product-options', maybeAuth, async (req, res) => {
             }
         });
 
+        const sortTr = (arr) => arr.filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'tr'));
+
         res.json({
             success: true,
             data: {
-                brands: brands.filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')),
-                productTypes: productTypes.filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')),
-                seasons: seasons.filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')),
+                brands: sortTr(brands),
+                productTypes: sortTr(productTypes),
+                seasons: sortTr(seasons),
                 sizes: sizes.filter(Boolean).sort(),
-                mainCategories: mainCategories.filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')),
+                mainCategories: sortTr(mainCategories),
                 widths: widthsAgg.map(w => w._id).filter(Boolean).sort((a, b) => Number(a) - Number(b)),
                 profiles: profilesAgg.map(p => p._id).filter(Boolean).sort((a, b) => Number(a) - Number(b)),
-                rims: rimsAgg.map(r => r._id).filter(Boolean).sort()
+                rims: rimsAgg.map(r => r._id).filter(Boolean).sort(),
+                ozelkod1Values: sortTr(seasons),
+                ozelkod2Values: sortTr(ozelkod2Values),
+                ozelkod3Values: sizes.filter(Boolean).sort(),
+                ozelkod4Values: sortTr(ozelkod4Values),
+                ozelkod5Values: sortTr(ozelkod5Values),
+                ozelkod6Values: sortTr(ozelkod6Values),
+                ozelkod7Values: sortTr(productTypes)
             }
         });
     } catch (error) {

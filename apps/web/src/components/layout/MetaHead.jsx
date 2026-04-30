@@ -46,8 +46,6 @@ export default function MetaHead() {
           gtag('config', 'AW-18022245202');
         `}
       </Script>
-      {/* JivoChat */}
-      <Script src="//code.jivosite.com/widget/RYzlSJFToU" strategy="afterInteractive" async />
 
       {/* Smartlook */}
       <Script id="smartlook-init" strategy="afterInteractive">

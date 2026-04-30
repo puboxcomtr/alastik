@@ -158,7 +158,7 @@ const limiter = rateLimit({
   }
 });
 const searchLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, 
+  windowMs: 1 * 60 * 1000,
   max: 300,
   message: 'Too many search requests, please try again later.',
   skip: (req) => {
@@ -402,8 +402,11 @@ app.use('/api/order', webOrderRoutes);
 const webFavouritesRoutes = require('./routes/web/user/favourites');
 app.use('/api/favourites', webFavouritesRoutes);
 
-/* İletişim Formu */
+/* Satın Alma Limit Kontrolü */
+const webPurchaseLimitsRoutes = require('./routes/web/campaign/purchase-limits');
+app.use('/api/campaign/purchase-limits', webPurchaseLimitsRoutes);
 
+/* İletişim Formu */
 const contactRoutes = require('./routes/web/content/contact');
 app.use('/api/contact', contactRoutes);
 
@@ -750,7 +753,8 @@ app.get('/api/lastik/kesit-genislikleri', async (req, res) => {
 });
 app.get('/api/lastik/yanak-oranlari', async (req, res) => {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const cacheKey = 'lastik:yanak-oranlari:eudm';
+  const sectionWidth = req.query.section_width ? String(req.query.section_width) : '';
+  const cacheKey = `lastik:yanak-oranlari:eudm${sectionWidth ? `:sw-${sectionWidth}` : ''}`;
 
   try {
     const cached = await activeCache.get(cacheKey);
@@ -759,7 +763,9 @@ app.get('/api/lastik/yanak-oranlari', async (req, res) => {
     }
 
     const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
-    const data = await WheelSizeService.getTireAspectRatios({ region: 'eudm' });
+    const params = { region: 'eudm' };
+    if (sectionWidth) params.section_width = sectionWidth;
+    const data = await WheelSizeService.getTireAspectRatios(params);
 
     const response = {
       basarili: true,
@@ -782,7 +788,13 @@ app.get('/api/lastik/yanak-oranlari', async (req, res) => {
 });
 app.get('/api/lastik/jant-caplari', async (req, res) => {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const cacheKey = 'lastik:jant-caplari:eudm';
+  const sectionWidth = req.query.section_width ? String(req.query.section_width) : '';
+  const aspectRatio = req.query.aspect_ratio ? String(req.query.aspect_ratio) : '';
+  const suffix = [
+    sectionWidth ? `sw-${sectionWidth}` : '',
+    aspectRatio ? `ar-${aspectRatio}` : ''
+  ].filter(Boolean).join(':');
+  const cacheKey = `lastik:jant-caplari:eudm${suffix ? `:${suffix}` : ''}`;
 
   try {
     const cached = await activeCache.get(cacheKey);
@@ -791,7 +803,10 @@ app.get('/api/lastik/jant-caplari', async (req, res) => {
     }
 
     const WheelSizeService = require('./services/plugins/wheelsize/WheelSizeService');
-    const data = await WheelSizeService.getTireRimDiameters({ region: 'eudm' });
+    const params = { region: 'eudm' };
+    if (sectionWidth) params.section_width = sectionWidth;
+    if (aspectRatio) params.aspect_ratio = aspectRatio;
+    const data = await WheelSizeService.getTireRimDiameters(params);
 
     const response = {
       basarili: true,

@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
 
         const [items, total] = await Promise.all([
             WebXml.find(query)
-                .sort({ createdAt: -1 })
+                .sort({ format: -1, createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit))
                 .lean(),
@@ -230,7 +230,7 @@ router.get('/products/export', async (req, res) => {
     try {
         const { source = '' } = req.query;
 
-        const integrations = await WebXml.find({}, { code: 1, name: 1, rules: 1 }).lean();
+        const integrations = await WebXml.find({}, { code: 1, name: 1, format: 1, rules: 1 }).lean();
         const intgMap = {};
         for (const i of integrations) intgMap[i.code] = i;
 
@@ -263,8 +263,10 @@ router.get('/products/export', async (req, res) => {
             return false;
         };
 
-        const query = {};
-        if (source) query.source = source;
+        const xmlOnly = integrations.filter(i => i.format === 'xml').map(i => i.code);
+        const query = source ? { source } : { source: { $in: xmlOnly } };
+
+        console.log('[EXPORT] integrations:', integrations.length, 'xmlOnly:', xmlOnly.length, 'query:', JSON.stringify(query));
 
         const items = await XmlProduct.find(query, {
             source: 1,
@@ -274,10 +276,14 @@ router.get('/products/export', async (req, res) => {
             'mappedData.hedefStokKodu': 1
         }).lean();
 
+        console.log('[EXPORT] items found:', items.length);
+
         const rows = [];
+        let skipFormat = 0, skipFilter = 0;
         for (const item of items) {
             const intg = intgMap[item.source];
-            if (isFiltered(item, intg)) continue;
+            if (intg?.format !== 'xml') { skipFormat++; continue; }
+            if (isFiltered(item, intg)) { skipFilter++; continue; }
 
             const fieldMappings = intg?.rules?.fieldMappings || [];
             const get = (target) => fieldMappings.find(m => m.target === target)?.source;
@@ -305,6 +311,7 @@ router.get('/products/export', async (req, res) => {
         ];
         XLSX.utils.book_append_sheet(wb, ws, 'Urunler');
 
+        console.log('[EXPORT] rows:', rows.length, 'skipFormat:', skipFormat, 'skipFilter:', skipFilter);
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
         res.setHeader('Content-Disposition', 'attachment; filename="xml-urunler.xlsx"');
@@ -747,15 +754,70 @@ router.get('/products', async (req, res) => {
 router.get('/webproducts/export.xml', async (req, res) => {
     try {
         const WebProduct = require('../../../models/web/catalog/WebProduct');
-        const products = await WebProduct.find({
+        const { type } = req.query; // 'jant' | 'lastik' | undefined
+
+        const integrations = await WebXml.find({}, { code: 1, name: 1 }).lean();
+        const intgNameMap = {};
+        for (const i of integrations) intgNameMap[i.code] = i.name;
+
+        // Kod içinde "jant" geçen XML kaynakları
+        const jantSources = integrations
+            .filter(i => /jant/i.test(i.code))
+            .map(i => i.code);
+
+        const pricingRules = await XmlPricingRule.find().lean();
+
+        const hesaplaPlatformFiyat = (hamFiyat, source, marka, platform) => {
+            const kurallar = pricingRules.filter(r =>
+                r.platform === platform &&
+                (r.source === '' || r.source === source) &&
+                (r.marka === '' || r.marka === marka)
+            ).sort((a, b) => {
+                // Önce kaynak+marka eşleşmesi, sonra sadece kaynak, en son genel
+                const aScore = (a.source ? 1 : 0) + (a.marka ? 1 : 0);
+                const bScore = (b.source ? 1 : 0) + (b.marka ? 1 : 0);
+                return bScore - aScore;
+            });
+
+            if (!kurallar.length) return hamFiyat;
+
+            const kural = kurallar[0];
+            let fiyat = hamFiyat;
+
+            if (kural.tip === 'yuzde_artis') {
+                fiyat = hamFiyat * (1 + kural.deger / 100);
+            } else if (kural.tip === 'yuzde_azalis') {
+                fiyat = hamFiyat * (1 - kural.deger / 100);
+            } else if (kural.tip === 'sabit_artis') {
+                fiyat = hamFiyat + kural.deger;
+            } else if (kural.tip === 'sabit_azalis') {
+                fiyat = hamFiyat - kural.deger;
+            }
+
+            return Math.round(fiyat * 100) / 100;
+        };
+
+        const productQuery = {
             'syncInfo.syncSource': 'xml_integration',
-            'diaData.durum': 'A'
-        }, {
+            'diaData.durum': 'A',
+            'diaData.gercek_stok': { $gt: 0 },
+            'diaData.m_birimler.0.fiyat1': { $gt: 0 },
+            'customData.webVisible': true
+        };
+
+        if (type === 'jant') {
+            productQuery['diaData.ozelkod7kodu'] = 'JANT';
+        } else if (type !== 'all') {
+            productQuery['diaData.ozelkod7kodu'] = { $ne: 'JANT' };
+        }
+
+        const products = await WebProduct.find(productQuery, {
             _key: 1,
             diaData: 1,
-            'customData.seoUrl': 1
+            syncInfo: 1,
+            customData: 1,
+            pricingData: 1
         }).lean();
-
         const escape = (val) => String(val || '')
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -764,7 +826,55 @@ router.get('/webproducts/export.xml', async (req, res) => {
 
         const getOzellik = (ozellikler, isim) => {
             const o = (ozellikler || []).find(x => x.ozellikadi === isim);
-            return o ? escape(o.detayaciklama) : '';
+            const val = o?.detayaciklama;
+            return (val === undefined || val === null || val === '') ? '-' : escape(val);
+        };
+
+        // Sabit özellik şemaları (lastik / jant)
+        const LASTIK_OZELLIK_SEMASI = [
+            'Genişlik',
+            'Yanak',
+            'Jant Çapı',
+            'Mevsim',
+            'Araç Tipi',
+            'Ürün Tipi',
+            'Yük Endeksi',
+            'Hız Endeksi',
+            'XL',
+            'Run Flat',
+            'Seal',
+            'OEM',
+            'Ücretsiz Kargo',
+            'Durumu',
+            'Üretim Tarihi',
+            'Diş Derinliği',
+            'Islak Zeminde Frenleme',
+            'Yakıt Verimliliği',
+            'Gürültü Seviyesi'
+        ];
+
+        const JANT_OZELLIK_SEMASI = [
+            'Jant Genişliği',
+            'Jant Çapı',
+            'Bijon Sayısı',
+            'Bijon Aralığı',
+            'Göbek Çapı',
+            'ET',
+            'Renk',
+            'Ürün Tipi',
+            'Araç Tipi',
+            'Durumu',
+            'Üretim Tarihi'
+        ];
+
+        const renderOzellikler = (ozellikler, urunTipi) => {
+            const isJant = String(urunTipi || '').toLowerCase() === 'jant';
+            const sema = isJant ? JANT_OZELLIK_SEMASI : LASTIK_OZELLIK_SEMASI;
+            let out = '';
+            sema.forEach((isim, i) => {
+                out += `    <Ozellik no="${i + 1}" isim="${escape(isim)}">${getOzellik(ozellikler, isim)}</Ozellik>\n`;
+            });
+            return out;
         };
 
         const now = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
@@ -786,6 +896,10 @@ router.get('/webproducts/export.xml', async (req, res) => {
             const ozellikler = d.m_urunOzellikleri || [];
 
             const fiyat1 = birim.fiyat1 || 0;
+            const xmlSource = p.syncInfo?.xmlSource || '';
+            const alastikFiyat = p.pricingData?.alastikPrice ?? fiyat1;
+            const toptanFiyat = p.pricingData?.b2bPrice ?? fiyat1;
+            const perakendeFiyat = p.pricingData?.b2cPrice ?? Math.round(toptanFiyat * 1.08 * 100) / 100;
             const fiyat4 = birim.fiyat4 || fiyat1;
             const ebat = d.ozelkod3kodu || '';
             const jantCapi = d.ozelkod4kodu || '';
@@ -796,9 +910,10 @@ router.get('/webproducts/export.xml', async (req, res) => {
             xml += `  <StokKodu>${escape(d.stokkartkodu)}</StokKodu>\n`;
             xml += `  <StokAdi>${escape(d.aciklama)}</StokAdi>\n`;
             xml += `  <Marka>${escape(d.marka)}</Marka>\n`;
-            xml += `  <ToptanFiyat>${fiyat1}</ToptanFiyat>\n`;
-            xml += `  <PerakendeFiyat>${fiyat4}</PerakendeFiyat>\n`;
-            xml += `  <HamFiyat>${fiyat1}</HamFiyat>\n`;
+            xml += `  <HamFiyat>${Math.ceil(fiyat1).toFixed(2)}</HamFiyat>\n`;
+            xml += `  <ALastik>${Math.ceil(alastikFiyat).toFixed(2)}</ALastik>\n`;
+            xml += `  <PerakendeFiyat>${Math.ceil(perakendeFiyat).toFixed(2)}</PerakendeFiyat>\n`;
+            xml += `  <ToptanFiyat>${Math.ceil(toptanFiyat).toFixed(2)}</ToptanFiyat>\n`;
             xml += `  <StokAdet>${d.gercek_stok ?? 0}</StokAdet>\n`;
             xml += `  <Mevsim>${escape(d.ozelkod1kodu)}</Mevsim>\n`;
             xml += `  <Ebat>${escape(ebat)}</Ebat>\n`;
@@ -809,7 +924,7 @@ router.get('/webproducts/export.xml', async (req, res) => {
             xml += `  <IkOzelAlan>${escape(d.ozelkod9kodu)}</IkOzelAlan>\n`;
             xml += `  <Rft>${escape(getOzellik(ozellikler, 'Run Flat'))}</Rft>\n`;
             xml += `  <FiyatlandirmaTipi>XML</FiyatlandirmaTipi>\n`;
-            xml += `  <OzelKod10>${escape(d.ozelkod10kodu)}</OzelKod10>\n`;
+            xml += `  <OzelKod10>${escape(d.ozelkod11kodu)}</OzelKod10>\n`;
             xml += `  <Baslik>${escape(d.ekalan1)}</Baslik>\n`;
             xml += `  <MetaTitle>${escape(d.ekalan2)}</MetaTitle>\n`;
             xml += `  <Tags>${escape(d.ekalan3)}</Tags>\n`;
@@ -818,11 +933,12 @@ router.get('/webproducts/export.xml', async (req, res) => {
             xml += `  <EtiketDegerleri>${etiketDegerleri}</EtiketDegerleri>\n`;
             xml += `  <FinansalIskonto>Yok</FinansalIskonto>\n`;
             xml += `  <KampanyaDurumu/>\n`;
-            xml += `  <StokKartiAciklamasi>${escape(d.ekalan9)}</StokKartiAciklamasi>\n`;
+            const xmlSourceName = intgNameMap[p.syncInfo?.xmlSource] || d.ekalan9 || '';
+            xml += `  <StokKartiAciklamasi>${escape(xmlSourceName)}</StokKartiAciklamasi>\n`;
             xml += `  <PazaryeriBarkodu>${escape(d.ekalan10)}</PazaryeriBarkodu>\n`;
             xml += `  <KaynakDepo/>\n`;
             xml += `  <XmlTarih>${escape(d.ekalan5)}</XmlTarih>\n`;
-            xml += `  <StokKaynak>${escape(d.ekalan9)}</StokKaynak>\n`;
+            xml += `  <StokKaynak>${escape(xmlSourceName)}</StokKaynak>\n`;
             xml += `  <StokCikisTarihi/>\n`;
             xml += `  <KaldirilmaTarihi/>\n`;
             xml += `  <RetentionUrun>Hayir</RetentionUrun>\n`;
@@ -840,18 +956,16 @@ router.get('/webproducts/export.xml', async (req, res) => {
 
             xml += `  <DiaKey>${escape(p._key)}</DiaKey>\n`;
             xml += `  <UrlList>\n`;
-            resimler.slice(0, 6).forEach((r, i) => {
-                xml += `    <Url${i + 1}>${escape(r.aws_url || r.localdata)}</Url${i + 1}>\n`;
-            });
+            for (let i = 0; i < 6; i++) {
+                const r = resimler[i];
+                const url = r ? escape(r.aws_url || r.localdata) : '';
+                xml += `    <Url${i + 1}>${url}</Url${i + 1}>\n`;
+            }
             xml += `  </UrlList>\n`;
             xml += `  <Ozellikler>\n`;
-            ozellikler.forEach((o, i) => {
-                xml += `    <Ozellik no="${i + 1}" isim="${escape(o.ozellikadi)}">${escape(o.detayaciklama)}</Ozellik>\n`;
-            });
+            xml += renderOzellikler(ozellikler, d.ozelkod7kodu);
             xml += `  </Ozellikler>\n`;
-            if (d.note) {
-                xml += `  <Not>${d.note}</Not>\n`;
-            }
+            xml += `  <Not>${p.customData?.customDescription || d.note || ''}</Not>\n`;
             xml += `</Urun>\n`;
         }
 
@@ -893,7 +1007,8 @@ router.get('/:source/export.xml', async (req, res) => {
 
         const getVal = (obj, field) => {
             if (!field) return '';
-            return field.split('.').reduce((acc, key) => acc?.[key] ?? '', obj) ?? '';
+            const val = field.split('.').reduce((acc, key) => acc?.[key] ?? '', obj) ?? '';
+            return typeof val === 'object' ? '' : String(val);
         };
 
         const httpsAgent = new https.Agent({ rejectUnauthorized: false });
@@ -901,7 +1016,30 @@ router.get('/:source/export.xml', async (req, res) => {
 
         let items = [];
 
-        if (webXml.credentials?.userName) {
+        if (source === 'aslankardesler' || source === 'aslan_kardesler_jant') {
+            const markaKodu = source === 'aslan_kardesler_jant' ? 'JANT' : 'LAST\u00ddK';
+            const { parseStringPromise } = require('xml2js');
+            const qs = new URLSearchParams({
+                Username: webXml.credentials.userName,
+                Password: webXml.credentials.password,
+                marka: markaKodu
+            });
+            const aslanUrl = `https://stockapi.afkyazilim.com.tr/api/Stock/GetStockXml?${qs}`;
+            const apiRes = await axios.get(aslanUrl, { responseType: 'arraybuffer', timeout: 120000, httpsAgent });
+            const xmlStr = Buffer.from(apiRes.data).toString('latin1');
+            const parsed = await parseStringPromise(xmlStr, { explicitArray: false, mergeAttrs: true });
+            const stoklar = parsed?.Stoklar?.Stok;
+            const arr = Array.isArray(stoklar) ? stoklar : (stoklar ? [stoklar] : []);
+            items = arr.map(p => {
+                const converted = {};
+                for (const key of Object.keys(p)) {
+                    converted[key] = typeof p[key] === 'string'
+                        ? Buffer.from(p[key], 'latin1').toString('utf8')
+                        : p[key];
+                }
+                return { rawData: converted };
+            });
+        } else if (webXml.credentials?.userName) {
             const apiRes = await axios.post(webXml.apiUrl, {
                 UserName: webXml.credentials.userName,
                 Password: webXml.credentials.password,
@@ -916,20 +1054,40 @@ router.get('/:source/export.xml', async (req, res) => {
             items = Array.isArray(data) ? data.map(r => ({ rawData: r })) : [];
         } else {
             const headers = {};
-            if (webXml.credentials?.apiKey) headers['API-KEY'] = webXml.credentials.apiKey;
+            if (webXml.credentials?.apiKey) {
+                headers[webXml.credentials.apiKey.startsWith('lstk_') ? 'LSTK-IST' : 'API-KEY'] = webXml.credentials.apiKey;
+            }
             if (webXml.credentials?.appKey) headers['APP-KEY'] = webXml.credentials.appKey;
             if (webXml.credentials?.secretKey) headers['SECRET-KEY'] = webXml.credentials.secretKey;
             let url = webXml.apiUrl;
             if (webXml.credentials?.token && !url.includes('token=')) {
                 url += (url.includes('?') ? '&' : '?') + `token=${webXml.credentials.token}`;
             }
-            const apiRes = await axios.get(url, { headers, timeout: 120000, httpsAgent });
-            let data = apiRes.data;
-            if (webXml.dataPath) {
-                data = webXml.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
+
+            // Pagination destekli API (totalPages varsa)
+            if (webXml.credentials?.apiKey?.startsWith('lstk_')) {
+                const allProducts = [];
+                let pageNumber = 1;
+                let totalPages = 1;
+                do {
+                    const sep = url.includes('?') ? '&' : '?';
+                    const pageUrl = `${url}${sep}pageNumber=${pageNumber}&pageSize=100`;
+                    const apiRes = await axios.get(pageUrl, { headers, timeout: 120000, httpsAgent });
+                    const pdata = apiRes.data;
+                    allProducts.push(...(pdata.products || []));
+                    totalPages = pdata.totalPages || 1;
+                    pageNumber++;
+                } while (pageNumber <= totalPages);
+                items = allProducts.map(r => ({ rawData: r }));
+            } else {
+                const apiRes = await axios.get(url, { headers, timeout: 120000, httpsAgent });
+                let data = apiRes.data;
+                if (webXml.dataPath) {
+                    data = webXml.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
+                }
+                if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
+                items = Array.isArray(data) ? data.map(r => ({ rawData: r })) : [];
             }
-            if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
-            items = Array.isArray(data) ? data.map(r => ({ rawData: r })) : [];
         }
 
         let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<Products>\n';
@@ -973,6 +1131,9 @@ router.get('/:source/export.xml', async (req, res) => {
         res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><error>Hata oluştu</error>');
     }
 });
+
+
+
 // ============================================
 // GET /api/admin/integration/xml/pricing/rules
 // Tüm fiyatlandırma kurallarını listele
@@ -1073,7 +1234,9 @@ router.get('/:id/source-fields', async (req, res) => {
         const { parseStringPromise } = require('xml2js');
 
         const headers = {};
-        if (integration.credentials?.apiKey) headers['API-KEY'] = integration.credentials.apiKey;
+        if (integration.credentials?.apiKey) {
+            headers[integration.credentials.apiKey.startsWith('lstk_') ? 'LSTK-IST' : 'API-KEY'] = integration.credentials.apiKey;
+        }
         if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
         if (integration.credentials?.secretKey) headers['SECRET-KEY'] = integration.credentials.secretKey;
         if (integration.credentials?.token) headers['TOKEN'] = integration.credentials.token;
@@ -1092,7 +1255,32 @@ router.get('/:id/source-fields', async (req, res) => {
             const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
             let response;
-            if (integration.credentials?.userName) {
+            let products = [];
+
+            if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code)) {
+                const markaKodu = ['aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ? 'JANT' : 'LAST\u00ddK';
+                const { parseStringPromise } = require('xml2js');
+                const qs = new URLSearchParams({
+                    Username: integration.credentials.userName,
+                    Password: integration.credentials.password,
+                    marka: markaKodu
+                });
+                const aslanUrl = `https://stockapi.afkyazilim.com.tr/api/Stock/GetStockXml?${qs}`;
+                const apiRes = await axios.get(aslanUrl, { responseType: 'arraybuffer', timeout: 120000, httpsAgent });
+                const xmlStr = Buffer.from(apiRes.data).toString('latin1');
+                const parsed = await parseStringPromise(xmlStr, { explicitArray: false, mergeAttrs: true });
+                const stoklar = parsed?.Stoklar?.Stok;
+                const arr = Array.isArray(stoklar) ? stoklar : (stoklar ? [stoklar] : []);
+                products = arr.map(p => {
+                    const converted = {};
+                    for (const key of Object.keys(p)) {
+                        converted[key] = typeof p[key] === 'string'
+                            ? Buffer.from(p[key], 'latin1').toString('utf8')
+                            : p[key];
+                    }
+                    return converted;
+                });
+            } else if (integration.credentials?.userName) {
                 response = await axios.post(url, {
                     UserName: integration.credentials.userName,
                     Password: integration.credentials.password,
@@ -1100,18 +1288,18 @@ router.get('/:id/source-fields', async (req, res) => {
                     stokCode: ''
                 }, {
                     headers: { 'Content-Type': 'application/json' },
-                    timeout: 60000,
+                    timeout: 120000,
                     httpsAgent
                 });
             } else {
                 response = await axios.get(url, {
                     headers,
-                    timeout: 30000,
+                    timeout: 120000,
                     httpsAgent
                 });
             }
 
-            const findFirstArraySingle = (obj, depth = 0) => {
+            const findFirstArray = (obj, depth = 0) => {
                 if (depth > 5) return null;
                 for (const key of Object.keys(obj)) {
                     if (key === '$id') continue;
@@ -1364,7 +1552,7 @@ router.post('/:id/sync', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
         }
 
-        if (integration.format === 'json') {
+        if (integration.format === 'json' && !['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant', 'lastikistan'].includes(integration.code)) {
             const xmlCode = integration.code + '_xml';
             const xmlIntegration = await WebXml.findOne({ code: xmlCode, format: 'xml' });
             if (!xmlIntegration) {
@@ -1382,9 +1570,12 @@ router.post('/:id/sync', async (req, res) => {
         const crypto = require('crypto');
 
         const headers = {};
-        if (integration.credentials?.apiKey) headers['API-KEY'] = integration.credentials.apiKey;
+        if (integration.credentials?.apiKey) {
+            headers[integration.credentials.apiKey.startsWith('lstk_') ? 'LSTK-IST' : 'API-KEY'] = integration.credentials.apiKey;
+        }
         if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
         if (integration.credentials?.secretKey) headers['SECRET-KEY'] = integration.credentials.secretKey;
+
 
         let url = integration.apiUrl;
         if (integration.credentials?.token && !url.includes('token=')) {
@@ -1394,7 +1585,47 @@ router.post('/:id/sync', async (req, res) => {
         const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
         let response;
-        if (integration.credentials?.userName) {
+        let products = [];
+
+        if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code)) {
+            const markaKodu = ['aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ? 'JANT' : 'LAST\u00ddK';
+            const { parseStringPromise } = require('xml2js');
+            const qs = new URLSearchParams({
+                Username: integration.credentials.userName,
+                Password: integration.credentials.password,
+                marka: markaKodu
+            });
+            const aslanUrl = `https://stockapi.afkyazilim.com.tr/api/Stock/GetStockXml?${qs}`;
+            const apiRes = await axios.get(aslanUrl, { responseType: 'arraybuffer', timeout: 120000, httpsAgent });
+            const xmlStr = Buffer.from(apiRes.data).toString('latin1');
+            const parsed = await parseStringPromise(xmlStr, { explicitArray: false, mergeAttrs: true });
+            const stoklar = parsed?.Stoklar?.Stok;
+            const arr = Array.isArray(stoklar) ? stoklar : (stoklar ? [stoklar] : []);
+            products = arr.map(p => {
+                const converted = {};
+                for (const key of Object.keys(p)) {
+                    converted[key] = typeof p[key] === 'string'
+                        ? Buffer.from(p[key], 'latin1').toString('utf8')
+                        : p[key];
+                }
+                return converted;
+            });
+        } else if (integration.credentials?.apiKey?.startsWith('lstk_')) {
+            // Lastikistan — pagination destekli
+            const allProducts = [];
+            let pageNumber = 1;
+            let totalPages = 1;
+            do {
+                const sep = url.includes('?') ? '&' : '?';
+                const pageUrl = `${url}${sep}pageNumber=${pageNumber}&pageSize=100`;
+                const apiRes = await axios.get(pageUrl, { headers, timeout: 120000, httpsAgent });
+                const pdata = apiRes.data;
+                allProducts.push(...(pdata.products || []));
+                totalPages = pdata.totalPages || 1;
+                pageNumber++;
+            } while (pageNumber <= totalPages);
+            products = allProducts;
+        } else if (integration.credentials?.userName) {
             response = await axios.post(url, {
                 UserName: integration.credentials.userName,
                 Password: integration.credentials.password,
@@ -1413,8 +1644,6 @@ router.post('/:id/sync', async (req, res) => {
             });
         }
 
-        let products = [];
-
         const findFirstArray = (obj, depth = 0) => {
             if (depth > 5) return null;
             for (const key of Object.keys(obj)) {
@@ -1430,7 +1659,8 @@ router.post('/:id/sync', async (req, res) => {
             return null;
         };
 
-        if (integration.format === 'xml') {
+        if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) || integration.credentials?.apiKey?.startsWith('lstk_')) {
+        } else if (integration.format === 'xml') {
             const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
             products = findFirstArray(parsed1) || [];
 

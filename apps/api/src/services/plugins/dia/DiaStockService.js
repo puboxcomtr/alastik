@@ -11,8 +11,9 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 /* Web kategori Modeli */
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 
-/* Web kategori Modeli */
+/* Web marka Modeli */
 const WebBrand = require('../../../models/web/catalog/WebBrand');
+
 
 const CacheManager = require('../../../../../../packages/cache/');
 
@@ -1125,6 +1126,7 @@ class DiaStockService {
       fiyat3: product.fiyat3 || 0,
       fiyat4: product.fiyat4 || 0,
       fiyat10: product.fiyat10 || 0,
+      __dinamik__16: product.__dinamik__16 || '',
       m_birimler: JSON.stringify((product.m_birimler || []).map(b => ({
         fiyat1: b.fiyat1, fiyat2: b.fiyat2, fiyat3: b.fiyat3, fiyat4: b.fiyat4, fiyat10: b.fiyat10
       }))),
@@ -1149,7 +1151,8 @@ class DiaStockService {
       fiyat4: parseFloat(product.fiyat4) || 0,
       fiyat10: parseFloat(product.fiyat10) || 0,
       sontuketicifiyati: parseFloat(product.sontuketicifiyati) || 0,
-      kdvsatis: parseFloat(product.kdvsatis) || 0
+      kdvsatis: parseFloat(product.kdvsatis) || 0,
+      __dinamik__16: parseFloat(product.__dinamik__16) || 0
     };
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
   }
@@ -1679,6 +1682,24 @@ class DiaStockService {
         cleaned[field] = cleaned[field] === 't' || cleaned[field] === true;
       }
     });
+
+    let finalFiyat4 = null;
+    if (item.__dinamik__16 !== undefined && item.__dinamik__16 !== null && item.__dinamik__16 !== '') {
+      const dinamikFiyat = parseFloat(item.__dinamik__16);
+      if (!isNaN(dinamikFiyat) && dinamikFiyat > 0) {
+        finalFiyat4 = dinamikFiyat;
+      }
+    }
+    if (finalFiyat4 === null && item.fiyat4 !== undefined && item.fiyat4 !== null && item.fiyat4 !== '') {
+      const orijinalFiyat = parseFloat(item.fiyat4);
+      if (!isNaN(orijinalFiyat) && orijinalFiyat > 0) {
+        finalFiyat4 = orijinalFiyat;
+      }
+    }
+    cleaned.fiyat4 = finalFiyat4;
+    if (cleaned.m_birimler && cleaned.m_birimler[0]) {
+      cleaned.m_birimler[0].fiyat4 = finalFiyat4;
+    }
 
     return cleaned;
   }
@@ -2648,6 +2669,21 @@ class DiaStockService {
             continue;
           }
 
+          // fiyat4 öncelik: __dinamik__16 (HEPSİBURADA) → yoksa orijinal fiyat4
+          let finalFiyat4 = null;
+          if (product.__dinamik__16 !== undefined && product.__dinamik__16 !== null && product.__dinamik__16 !== '') {
+            const dinamikFiyat = parseFloat(product.__dinamik__16);
+            if (!isNaN(dinamikFiyat) && dinamikFiyat > 0) {
+              finalFiyat4 = dinamikFiyat;
+            }
+          }
+          if (finalFiyat4 === null && product.fiyat4 !== undefined && product.fiyat4 !== null && product.fiyat4 !== '') {
+            const orijinalFiyat = parseFloat(product.fiyat4);
+            if (!isNaN(orijinalFiyat) && orijinalFiyat > 0) {
+              finalFiyat4 = orijinalFiyat;
+            }
+          }
+
           // DiaStock bulk op
           diaOps.push({
             updateOne: {
@@ -2657,7 +2693,7 @@ class DiaStockService {
                   fiyat1: parseFloat(product.fiyat1) || 0,
                   fiyat2: parseFloat(product.fiyat2) || 0,
                   fiyat3: parseFloat(product.fiyat3) || 0,
-                  fiyat4: parseFloat(product.fiyat4) || 0,
+                  fiyat4: finalFiyat4,
                   fiyat10: parseFloat(product.fiyat10) || 0,
                   sontuketicifiyati: parseFloat(product.sontuketicifiyati) || 0,
                   kdvalis: parseFloat(product.kdvalis) || 0,
@@ -2680,7 +2716,7 @@ class DiaStockService {
                   'diaData.m_birimler.0.fiyat1': parseFloat(product.fiyat1) || 0,
                   'diaData.m_birimler.0.fiyat2': parseFloat(product.fiyat2) || 0,
                   'diaData.m_birimler.0.fiyat3': parseFloat(product.fiyat3) || 0,
-                  'diaData.m_birimler.0.fiyat4': parseFloat(product.fiyat4) || 0,
+                  'diaData.m_birimler.0.fiyat4': finalFiyat4,
                   'diaData.m_birimler.0.fiyat10': parseFloat(product.fiyat10) || 0,
                   'syncInfo.lastDiaSync': new Date(),
                   'syncInfo.diaStatus': 'synced'

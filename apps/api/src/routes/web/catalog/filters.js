@@ -106,28 +106,42 @@ router.get('/tire-options', async (req, res) => {
         ];
 
         // JANT
+        // JANT
         if (productType === 'JANT') {
-            const jantCapPipeline = [
+            // Jant özellikleri m_urunOzellikleri üzerinden dinamik olarak çekilir
+            const buildRimFeaturePipeline = (featureName) => ([
                 { $match: baseMatch },
-                { $group: { _id: '$diaData.ozelkod4kodu', count: { $sum: 1 } } },
-                { $match: { _id: { $ne: null, $ne: '' } } },
+                { $unwind: '$diaData.m_urunOzellikleri' },
+                {
+                    $match: {
+                        'diaData.m_urunOzellikleri.ozellikadi': featureName,
+                        'diaData.m_urunOzellikleri.detayaciklama': { $nin: [null, '', '-'] }
+                    }
+                },
+                { $group: { _id: '$diaData.m_urunOzellikleri.detayaciklama', count: { $sum: 1 } } },
                 { $sort: { _id: 1 } }
-            ];
+            ]);
 
-            const bijonPipeline = [
-                { $match: baseMatch },
-                { $group: { _id: '$diaData.ozelkod3kodu', count: { $sum: 1 } } },
-                { $match: { _id: { $ne: null, $ne: '' } } },
-                { $sort: { _id: 1 } }
-            ];
-
-            const [brands, priceRange, vehicleTypes, jantCaplar, bijonlar] = await Promise.all([
+            const [
+                brands, priceRange,
+                jantGenislikleri, jantCaplari, bijonSayilari, bijonAraliklari, gobekCaplari, etler, renkler
+            ] = await Promise.all([
                 WebProduct.aggregate(brandPipeline),
                 WebProduct.aggregate(pricePipeline),
-                WebProduct.aggregate(vehicleTypePipeline),
-                WebProduct.aggregate(jantCapPipeline),
-                WebProduct.aggregate(bijonPipeline)
+                WebProduct.aggregate(buildRimFeaturePipeline('Jant Genişliği')),
+                WebProduct.aggregate(buildRimFeaturePipeline('Jant Çapı')),
+                WebProduct.aggregate(buildRimFeaturePipeline('Bijon Sayısı')),
+                WebProduct.aggregate(buildRimFeaturePipeline('Bijon Aralığı')),
+                WebProduct.aggregate(buildRimFeaturePipeline('Göbek Çapı')),
+                WebProduct.aggregate(buildRimFeaturePipeline('ET')),
+                WebProduct.aggregate(buildRimFeaturePipeline('Renk'))
             ]);
+
+            const sortNumeric = (arr) => arr.sort((a, b) => {
+                const na = parseFloat(String(a.value).replace(/[^\d.]/g, ''));
+                const nb = parseFloat(String(b.value).replace(/[^\d.]/g, ''));
+                return (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+            });
 
             return res.json({
                 success: true,
@@ -142,10 +156,15 @@ router.get('/tire-options', async (req, res) => {
                         min: Math.floor(priceRange[0].minPrice),
                         max: Math.ceil(priceRange[0].maxPrice)
                     } : { min: 0, max: 10000 },
-                    vehicleTypes: vehicleTypes.map(v => ({ value: v._id, label: getVehicleTypeLabel(v._id), count: v.count })),
-                    jantCaplar: jantCaplar.map(j => ({ value: j._id, label: j._id + '"', count: j.count }))
-                        .sort((a, b) => parseInt(a.value) - parseInt(b.value)),
-                    bijonlar: bijonlar.map(b => ({ value: b._id, label: b._id, count: b.count }))
+                    jantGenislikleri: sortNumeric(jantGenislikleri.map(j => ({ value: j._id, label: j._id, count: j.count }))),
+                    jantCaplari: sortNumeric(jantCaplari.map(j => ({ value: j._id, label: j._id, count: j.count }))),
+                    bijonSayilari: sortNumeric(bijonSayilari.map(b => ({ value: b._id, label: b._id, count: b.count }))),
+                    bijonAraliklari: sortNumeric(bijonAraliklari.map(b => ({ value: b._id, label: b._id, count: b.count }))),
+                    gobekCaplari: sortNumeric(gobekCaplari.map(g => ({ value: g._id, label: g._id, count: g.count }))),
+                    etler: etler.map(e => ({ value: e._id, label: e._id, count: e.count }))
+                        .sort((a, b) => parseInt(a.value.replace(/[^\d]/g, '')) - parseInt(b.value.replace(/[^\d]/g, ''))),
+                    renkler: renkler.map(r => ({ value: r._id, label: r._id, count: r.count }))
+                        .sort((a, b) => b.count - a.count)
                 }
             });
         }

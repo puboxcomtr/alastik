@@ -72,12 +72,47 @@ export interface DiaData {
     marka?: string;
     stokkartkodu?: string;
     anabarkod?: string;
+    barkodu?: string;
     durum?: string;
     gercek_stok?: number;
-    ozelkod5kodu?: string;
-    ozelkod7kodu?: string;
-    ekalan5?: string;
+    menseiulkeadi?: string;
+
+    // Özel Kodlar
     ozelkod1?: string;
+    ozelkod1kodu?: string;
+    ozelkod2?: string;
+    ozelkod2kodu?: string;
+    ozelkod3?: string;
+    ozelkod3kodu?: string;
+    ozelkod4?: string;
+    ozelkod4kodu?: string;
+    ozelkod5?: string;
+    ozelkod5kodu?: string;
+    ozelkod6?: string;
+    ozelkod6kodu?: string;
+    ozelkod7?: string;
+    ozelkod7kodu?: string;
+    ozelkod8?: string;
+    ozelkod8kodu?: string;
+    ozelkod9?: string;
+    ozelkod9kodu?: string;
+    ozelkod10?: string;
+    ozelkod10kodu?: string;
+    ozelkod11?: string;
+    ozelkod11kodu?: string;
+
+    // Ek alanlar
+    ekalan1?: string;
+    ekalan2?: string;
+    ekalan3?: string;
+    ekalan4?: string;
+    ekalan5?: string;
+    ekalan6?: string;
+    ekalan7?: string;
+    ekalan8?: string;
+    ekalan9?: string;
+    ekalan10?: string;
+
     m_birimler?: ProductBirim[];
     m_urunOzellikleri?: ProductOzellik[];
     m_resimler?: ProductResim[];

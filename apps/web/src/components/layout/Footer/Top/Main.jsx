@@ -407,7 +407,7 @@ export default function FooterTop() {
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/kategori/jant'
+                                                href='/kategori/elektrikli-arac-lastikleri'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
                                                 Elektrikli Araç Lastiği
                                             </Link>

@@ -60,7 +60,7 @@ export default function ModelSelection({ make, makeName, selectedModel, onSelect
     return (
         <div className="model-selection">
             <div className="row">
-                <div className="col-md-2">
+                <div className="d-none d-md-block col-md-2">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black', }}>
                         {t('garage_car')}
                     </Typography>

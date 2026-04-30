@@ -286,7 +286,6 @@ const ProductListTable = () => {
   return (
     <>
       <Card>
-        <CardHeader title='Ürün Filtreleme' className='pbe-4' />
         <TableFilters onFilterChange={(params) => { setActiveFilters(params); setPage(1) }} />
         <Divider />
         <div style={{ position: 'relative' }}>

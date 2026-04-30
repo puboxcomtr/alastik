@@ -26,8 +26,12 @@ import {
     getProductFeatures,
     getProductSeason,
     isJant,
+    isSetLastik,
     getProductFeature
 } from '@src/hooks/Products/productHelpers';
+
+import { checkPurchaseLimit, productToLimitCheckItem } from '@src/hooks/Products/purchaseLimitHelpers';
+import { toast } from 'react-toastify';
 
 export default function ProductCard({ product }: ProductCardProps) {
     const [adding, setAdding] = useState(false);
@@ -42,8 +46,23 @@ export default function ProductCard({ product }: ProductCardProps) {
     const handleAddToCart = async () => {
         if (adding) return;
         setAdding(true);
-        await addToCart(product._key, 1);
-        setAdding(false);
+
+        try {
+            const item = productToLimitCheckItem(product, 1);
+            const check = await checkPurchaseLimit([item]);
+            if (!check.valid && check.violations.length > 0) {
+                check.violations.forEach(v => toast.error(v.message));
+                setAdding(false);
+                return;
+            }
+
+            await addToCart(product._key, 1);
+        } catch (err) {
+            console.error('Sepete ekleme hatası:', err);
+            toast.error('Sepete eklenemedi');
+        } finally {
+            setAdding(false);
+        }
     };
     const season = getProductSeason(product);
     const { theme } = useSettings();
@@ -159,8 +178,13 @@ export default function ProductCard({ product }: ProductCardProps) {
                         </Link>
                     </h3>
 
-                    <div className="product__price d-flex justify-content-end border-top pt-3 gap-2">
-                        <span>
+                    <div className="product__price border-top pt-3">
+                        {isSetLastik(product) && (
+                            <div className="d-flex justify-content-end">
+                                <span className="text-body-secondary fs-semibold fs-xs">Adet Fiyatı</span>
+                            </div>
+                        )}
+                        <div className="d-flex flex-column flex-md-row justify-content-end align-items-end gap-1 gap-md-2">
                             {hasDiscount && (
                                 <del className="text-body-tertiary fw-normal">
                                     {originalPrice?.toLocaleString('tr-TR', {
@@ -169,14 +193,15 @@ export default function ProductCard({ product }: ProductCardProps) {
                                     })} TL
                                 </del>
                             )}
-                        </span>
-                        <span className="fw-bold">
-                            {price.toLocaleString('tr-TR', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                            })} TL
-                        </span>
+                            <span className="fw-bold">
+                                {price.toLocaleString('tr-TR', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })} TL
+                            </span>
+                        </div>
                     </div>
+
 
                     {product.diaData?.gercek_stok > 0 ? (
                         <Tooltip title="Sepete Ekle">

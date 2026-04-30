@@ -217,7 +217,14 @@ const customDataSchema = new mongoose.Schema({
         reviewCount: { type: Number, default: 0 }
     }
 }, { _id: false });
-
+// Pricing Data Schema (XML kaynaklı Ürünler )
+const pricingDataSchema = new mongoose.Schema({
+    hamFiyat: Number,
+    alastikPrice: Number,
+    b2bPrice: Number,
+    b2cPrice: Number,
+    lastPricingAt: Date
+}, { _id: false });
 // Senkronizasyon Bilgi Schema
 const syncInfoSchema = new mongoose.Schema({
     lastDiaSync: { type: Date, default: Date.now },
@@ -254,7 +261,10 @@ const webProductSchema = new mongoose.Schema({
     customData: customDataSchema,
 
     // Senkronizasyon Bilgileri
-    syncInfo: syncInfoSchema
+    syncInfo: syncInfoSchema,
+
+    // Pricing Data (XML kaynaklı ürünler için hesaplanmış fiyatlar)
+    pricingData: pricingDataSchema
 
 }, {
     timestamps: true, // createdAt ve updatedAt otomatik ekler

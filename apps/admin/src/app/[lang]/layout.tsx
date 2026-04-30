@@ -29,6 +29,7 @@ import '@/app/globals.css'
 import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
+  
   title: 'ALastik.com - Yönetici Paneli',
   description: 'ALastik.com - Yönetici Paneli',
   robots: {

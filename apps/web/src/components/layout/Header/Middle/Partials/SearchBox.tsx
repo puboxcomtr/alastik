@@ -23,12 +23,24 @@ const TYPE_LABELS = {
     brand: 'Marka'
 };
 
-export default function SearchBox() {
-    const anchorRef = React.useRef(null);
+interface SearchBoxProps {
+    forceShow?: boolean;
+    autoFocus?: boolean;
+    onClose?: () => void;
+}
+
+export default function SearchBox({ forceShow = false, autoFocus = false, onClose }: SearchBoxProps) {
+    const anchorRef = React.useRef<HTMLInputElement>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [open, setOpen] = React.useState(false);
     const [loading, setLoading] = React.useState(false);
-    const [results, setResults] = React.useState([]);
+    const [results, setResults] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        if (autoFocus && anchorRef.current) {
+            anchorRef.current.focus();
+        }
+    }, [autoFocus]);
 
     React.useEffect(() => {
         if (!searchTerm || searchTerm.length < 2) {
@@ -60,7 +72,11 @@ export default function SearchBox() {
 
     return (
         <ClickAwayListener onClickAway={handleClickAway}>
-            <Box sx={{ position: 'relative', display: { xs: 'none', md: 'block' } }}>
+            <Box sx={{
+                position: 'relative',
+                display: forceShow ? 'block' : { xs: 'none', md: 'block' },
+                width: '100%'
+            }}>
                 <TextField
                     inputRef={anchorRef}
                     fullWidth
@@ -77,7 +93,7 @@ export default function SearchBox() {
                     size="small"
                     sx={{
                         '& .MuiOutlinedInput-root': { paddingRight: '5px' },
-                        width: 533,
+                        width: forceShow ? '100%' : 533,
                     }}
                     InputProps={{
                         endAdornment: (
@@ -89,6 +105,11 @@ export default function SearchBox() {
                                         <i className="ri-search-line" style={{ fontSize: 18, color: '#999' }}></i>
                                     </IconButton>
                                 )}
+                                {forceShow && onClose && (
+                                    <IconButton onClick={onClose} aria-label="Aramayı kapat">
+                                        <i className="ri-close-line" style={{ fontSize: 20, color: '#333' }}></i>
+                                    </IconButton>
+                                )}
                             </InputAdornment>
                         ),
                     }}
@@ -98,9 +119,9 @@ export default function SearchBox() {
                     open={open && results.length > 0}
                     anchorEl={anchorRef.current}
                     placement="bottom-start"
-                    style={{ zIndex: 1300 }}
+                    style={{ zIndex: 1300, width: forceShow ? anchorRef.current?.parentElement?.offsetWidth : 533 }}
                 >
-                    <Paper sx={{ width: 533, pt: 1 }}>
+                    <Paper sx={{ width: forceShow ? '100%' : 533, pt: 1 }}>
                         <List component="ul" sx={{ p: 0 }}>
                             {results.map((item, idx) => (
                                 <li key={idx}>

@@ -85,12 +85,12 @@ export const buildTireSearchUrl = (
  */
 export const getSeasonSlugFromValue = (mevsimValue: string): string => {
     const mevsimMap: Record<string, string> = {
-        "1": "otomobil-lastikleri",
+        "1": "tum-lastikler",
         "2": "yaz-lastikleri",
         "3": "kis-lastikleri",
         "4": "4-mevsim-lastikler"
     };
-    return mevsimMap[mevsimValue] || "otomobil-lastikleri";
+    return mevsimMap[mevsimValue] || "tum-lastikler";
 };
 
 /**

@@ -124,6 +124,7 @@ const LabelListTable = () => {
     season: searchParams.get('season') || 'all'
   }))
   const [loading, setLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // URL'den sayfalama durumunu oku
   const [page, setPage] = useState(() => {
@@ -262,6 +263,32 @@ const LabelListTable = () => {
     setPage(1)
     updateURL(1, limit, newFilters)
   }
+  const handleTagSync = async () => {
+    if (isSyncing) return
+
+    setIsSyncing(true)
+    toast.info('Etiket senkronizasyonu başlatıldı, bu işlem birkaç dakika sürebilir...')
+
+    try {
+      const res = await fetchAPI(API_ENDPOINTS.labels.manualSync(), {
+        method: 'POST'
+      })
+
+      if (res.success) {
+        const stats = res.data.stats
+        toast.success(
+          `Senkronizasyon tamamlandı! ${stats.processedProducts} ürün işlendi, ${stats.dbModified} etiket güncellendi.`
+        )
+        await loadTags()
+      } else {
+        toast.error(res.message || 'Senkronizasyon başarısız')
+      }
+    } catch (error: any) {
+      toast.error('Senkronizasyon hatası: ' + (error.message || 'Bilinmeyen hata'))
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   const columns = useMemo<ColumnDef<TagWithActionsType, any>[]>(
     () => [
@@ -393,7 +420,31 @@ const LabelListTable = () => {
   return (
     <>
       <Card>
-        <CardHeader title='Etiket Listesi' className='pbe-4' />
+        <CardHeader
+          title='Etiket Listesi'
+          className='pbe-4'
+          action={
+            <div className="flex gap-2">
+              <Button
+                color='secondary'
+                variant='outlined'
+                startIcon={<i className='ri-refresh-line' />}
+                onClick={handleTagSync}
+                disabled={isSyncing}
+              >
+                {isSyncing ? 'Senkronize Ediliyor...' : 'Etiketleri Senkronize Et'}
+              </Button>
+              <Button
+                color='primary'
+                variant='contained'
+                startIcon={<i className='ri-add-line' />}
+                onClick={() => router.push(`/${locale}/apps/label/add`)}
+              >
+                Yeni Etiket Ekle
+              </Button>
+            </div>
+          }
+        />
         <Divider />
         <div className='flex items-center justify-between p-4 pl-0 pb-0'>
           <LabelFilters
@@ -401,17 +452,6 @@ const LabelListTable = () => {
             onChange={handleFiltersChange}
             totalCount={totalCount}
           />
-          <div className="flex gap-1">
-            <Button
-              color='primary'
-              variant='contained'
-              startIcon={<i className='ri-add-line' />}
-              onClick={() => router.push(`/${locale}/apps/label/add`)}
-            >
-              Yeni Etiket Ekle
-            </Button>
-
-          </div>
         </div>
 
         <div style={{ position: 'relative' }}>

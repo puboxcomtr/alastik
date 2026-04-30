@@ -11,42 +11,36 @@ export function useTireSearch() {
     const [yanakOranlari, setYanakOranlari] = useState<{ value: number }[]>([]);
     const [jantCaplari, setJantCaplari] = useState<{ value: number }[]>([]);
     const [loading, setLoading] = useState(false);
-    const [selectedGenislik, setSelectedGenislik] = useState("205");
-    const [selectedYukseklik, setSelectedYukseklik] = useState("55");
+    const [selectedGenislik, setSelectedGenislikRaw] = useState("205");
+    const [selectedYukseklik, setSelectedYukseklikRaw] = useState("55");
     const [selectedCap, setSelectedCap] = useState("16");
 
+    // Genişlik değişince yanak ve çapı sıfırla
+    const setSelectedGenislik = useCallback((val: string) => {
+        setSelectedGenislikRaw(val);
+        setSelectedYukseklikRaw('');
+        setSelectedCap('');
+    }, []);
 
+    // Yanak değişince çapı sıfırla
+    const setSelectedYukseklik = useCallback((val: string) => {
+        setSelectedYukseklikRaw(val);
+        setSelectedCap('');
+    }, []);
+
+
+    // İlk yüklemede sadece genişlikleri çek
     useEffect(() => {
-        const fetchTireSizes = async () => {
+        const fetchGenislikler = async () => {
             setLoading(true);
-
             try {
-                const [genislikResponse, yanakResponse, capResponse] = await Promise.all([
-                    fetch(`${API_ENDPOINTS.lastik.kesitGenislikleri()}?regions=eudm`),
-                    fetch(`${API_ENDPOINTS.lastik.yanakOranlari()}?regions=eudm`),
-                    fetch(`${API_ENDPOINTS.lastik.jantCaplari()}?regions=eudm`)
-                ]);
-
-                const genislikData = await genislikResponse.json();
-                const yanakData = await yanakResponse.json();
-                const capData = await capResponse.json();
-
-                if (genislikData.basarili) {
-                    setGenislikler(genislikData.veri.map((item: any) => ({ value: item.value || item })));
+                const res = await fetch(`${API_ENDPOINTS.lastik.kesitGenislikleri()}?regions=eudm`);
+                const data = await res.json();
+                if (data.basarili) {
+                    setGenislikler(data.veri.map((item: any) => ({ value: item.value || item })));
                 }
-
-                if (yanakData.basarili) {
-                    setYanakOranlari(yanakData.veri.map((item: any) => ({ value: item.value || item })));
-                }
-
-                if (capData.basarili) {
-                    setJantCaplari(capData.veri.map((item: any) => ({ value: item.value || item })));
-                }
-
             } catch (error) {
-                console.error('Lastik ölçüleri yüklenirken hata:', error);
-
-                // Fallback
+                console.error('Genişlikler yüklenirken hata:', error);
                 setGenislikler([
                     { value: 145 }, { value: 155 }, { value: 165 }, { value: 175 },
                     { value: 185 }, { value: 195 }, { value: 205 }, { value: 215 },
@@ -54,25 +48,70 @@ export function useTireSearch() {
                     { value: 265 }, { value: 275 }, { value: 285 }, { value: 295 },
                     { value: 305 }, { value: 315 }
                 ]);
-
-                setYanakOranlari([
-                    { value: 30 }, { value: 35 }, { value: 40 }, { value: 45 },
-                    { value: 50 }, { value: 55 }, { value: 60 }, { value: 65 },
-                    { value: 70 }, { value: 75 }, { value: 80 }
-                ]);
-
-                setJantCaplari([
-                    { value: 13 }, { value: 14 }, { value: 15 }, { value: 16 },
-                    { value: 17 }, { value: 18 }, { value: 19 }, { value: 20 },
-                    { value: 21 }, { value: 22 }
-                ]);
             } finally {
                 setLoading(false);
             }
         };
-
-        fetchTireSizes();
+        fetchGenislikler();
     }, []);
+
+    // Genişlik değişince yanak oranlarını çek + alt seçimleri sıfırla
+    useEffect(() => {
+        if (!selectedGenislik) {
+            setYanakOranlari([]);
+            setJantCaplari([]);
+            return;
+        }
+
+        const fetchYanaklar = async () => {
+            try {
+                const res = await fetch(
+                    `${API_ENDPOINTS.lastik.yanakOranlari()}?regions=eudm&section_width=${selectedGenislik}`
+                );
+                const data = await res.json();
+                if (data.basarili) {
+                    const list = data.veri.map((item: any) => ({ value: item.value || item }));
+                    setYanakOranlari(list);
+
+                    // Mevcut seçim listede yoksa sıfırla
+                    if (selectedYukseklik && !list.find((y: any) => String(y.value) === String(selectedYukseklik))) {
+                        setSelectedYukseklik('');
+                    }
+                }
+            } catch (error) {
+                console.error('Yanaklar yüklenirken hata:', error);
+            }
+        };
+        fetchYanaklar();
+    }, [selectedGenislik]);
+
+    // Genişlik + yanak değişince çapları çek + alt seçimi sıfırla
+    useEffect(() => {
+        if (!selectedGenislik || !selectedYukseklik) {
+            setJantCaplari([]);
+            return;
+        }
+
+        const fetchCaplar = async () => {
+            try {
+                const res = await fetch(
+                    `${API_ENDPOINTS.lastik.jantCaplari()}?regions=eudm&section_width=${selectedGenislik}&aspect_ratio=${selectedYukseklik}`
+                );
+                const data = await res.json();
+                if (data.basarili) {
+                    const list = data.veri.map((item: any) => ({ value: item.value || item }));
+                    setJantCaplari(list);
+
+                    if (selectedCap && !list.find((c: any) => String(c.value) === String(selectedCap))) {
+                        setSelectedCap('');
+                    }
+                }
+            } catch (error) {
+                console.error('Çaplar yüklenirken hata:', error);
+            }
+        };
+        fetchCaplar();
+    }, [selectedGenislik, selectedYukseklik]);
 
     // Janta göre arama
     const handleJantaGoreArama = useCallback(

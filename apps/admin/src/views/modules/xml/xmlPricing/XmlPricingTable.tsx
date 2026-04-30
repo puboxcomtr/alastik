@@ -173,6 +173,7 @@ const XmlPricingTable = () => {
     const filteredKurallar = filterPlatform ? kurallar.filter(k => k.platform === filterPlatform) : kurallar
     return (
         <>
+        return (compass);
             <Grid container spacing={4}>
                 <Grid item xs={12}>
                     <Card>

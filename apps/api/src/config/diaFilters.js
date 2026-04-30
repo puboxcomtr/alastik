@@ -57,7 +57,8 @@ const DIA_FIELDS = [
     'azamimiktar_firma',
     'anabarkod',
     'anabirimkey',
-    'anabirimdesi'
+    'anabirimdesi',
+    '__dinamik__16'
 ];
 
 const FILTER_DESCRIPTIONS = {

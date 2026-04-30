@@ -4,12 +4,29 @@ import { Grid, TextField, MenuItem, Typography, FormControl } from "@mui/materia
 import { Offcanvas } from "react-bootstrap";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
+import { getTireFilterOptions, type TireFilterOptions, type FilterOption } from "@/src/services/filterService";
 
 interface RimsFilterProps {
     categorySlug?: string;
     tagSlug?: string;
 }
+
+interface RimFilterField {
+    key: string;
+    paramName: string;
+    label: string;
+    optionsKey: keyof TireFilterOptions;
+}
+
+const RIM_FILTER_FIELDS: RimFilterField[] = [
+    { key: 'jantGenisligi', paramName: 'jantGenisligi', label: 'Jant Genişliği', optionsKey: 'jantGenislikleri' },
+    { key: 'jantCap', paramName: 'jantCap', label: 'Jant Çapı', optionsKey: 'jantCaplari' },
+    { key: 'bijonSayisi', paramName: 'bijonSayisi', label: 'Bijon Sayısı', optionsKey: 'bijonSayilari' },
+    { key: 'bijon', paramName: 'bijon', label: 'Bijon Aralığı (PCD)', optionsKey: 'bijonAraliklari' },
+    { key: 'gobekCapi', paramName: 'gobekCapi', label: 'Göbek Çapı', optionsKey: 'gobekCaplari' },
+    { key: 'et', paramName: 'et', label: 'ET (Offset)', optionsKey: 'etler' },
+    { key: 'renk', paramName: 'renk', label: 'Renk', optionsKey: 'renkler' }
+];
 
 export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     const router = useRouter();
@@ -17,18 +34,19 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     const searchParams = useSearchParams();
 
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
-
-    const [jantCap, setJantCap] = useState(searchParams.get('jantCap') || 'all');
-    const [bijon, setBijon] = useState(searchParams.get('bijon') || 'all');
-    const [vehicleType, setVehicleType] = useState(searchParams.get('arac') || 'all');
+    const [values, setValues] = useState<Record<string, string>>(() => {
+        const initial: Record<string, string> = {};
+        RIM_FILTER_FIELDS.forEach(f => {
+            initial[f.key] = searchParams.get(f.paramName) || 'all';
+        });
+        return initial;
+    });
 
     useEffect(() => {
         const loadOptions = async () => {
             try {
                 const data = await getTireFilterOptions(categorySlug, tagSlug);
-                if (data) {
-                    setOptions(data);
-                }
+                if (data) setOptions(data);
             } catch (error) {
                 console.error('RimsFilter error:', error);
             }
@@ -37,190 +55,100 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     }, [categorySlug, tagSlug]);
 
     useEffect(() => {
-        setJantCap(searchParams.get('jantCap') || 'all');
-        setBijon(searchParams.get('bijon') || 'all');
-        setVehicleType(searchParams.get('arac') || 'all');
+        const next: Record<string, string> = {};
+        RIM_FILTER_FIELDS.forEach(f => {
+            next[f.key] = searchParams.get(f.paramName) || 'all';
+        });
+        setValues(next);
     }, [searchParams]);
-    const enhancedJantCaplar = useMemo(() => {
-        if (!options?.jantCaplar) return [];
-        const jantCaplar = [...options.jantCaplar];
-        if (jantCap !== 'all' && !jantCaplar.some(j => j.value === jantCap)) {
-            jantCaplar.unshift({ value: jantCap, label: jantCap + '"', count: 0 });
-        }
-        return jantCaplar;
-    }, [options?.jantCaplar, jantCap]);
 
-    const enhancedBijonlar = useMemo(() => {
-        if (!options?.bijonlar) return [];
-        const bijonlar = [...options.bijonlar];
-        if (bijon !== 'all' && !bijonlar.some(b => b.value === bijon)) {
-            bijonlar.unshift({ value: bijon, label: bijon, count: 0 });
-        }
-        return bijonlar;
-    }, [options?.bijonlar, bijon]);
-
-    const enhancedVehicleTypes = useMemo(() => {
-        if (!options?.vehicleTypes) return [];
-        const types = [...options.vehicleTypes];
-        if (vehicleType !== 'all' && !types.some(v => v.value === vehicleType)) {
-            types.unshift({ value: vehicleType, label: vehicleType, count: 0 });
-        }
-        return types;
-    }, [options?.vehicleTypes, vehicleType]);
-    const updateURL = (key: string, value: string) => {
+    const updateURL = (paramName: string, value: string) => {
         const params = new URLSearchParams(searchParams.toString());
         if (value === 'all') {
-            params.delete(key);
+            params.delete(paramName);
         } else {
-            params.set(key, value);
+            params.set(paramName, value);
         }
         params.delete('page');
         const queryString = params.toString();
-        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
-        router.push(newURL);
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    const handleJantCapChange = (value: string) => {
-        setJantCap(value);
-        updateURL('jantCap', value);
-    };
-
-    const handleBijonChange = (value: string) => {
-        setBijon(value);
-        updateURL('bijon', value);
-    };
-
-    const handleVehicleTypeChange = (value: string) => {
-        setVehicleType(value);
-        updateURL('arac', value);
+    const handleChange = (field: RimFilterField, value: string) => {
+        setValues(prev => ({ ...prev, [field.key]: value }));
+        updateURL(field.paramName, value);
     };
 
     const clearFilters = () => {
-        setJantCap('all');
-        setBijon('all');
-        setVehicleType('all');
+        const reset: Record<string, string> = {};
+        RIM_FILTER_FIELDS.forEach(f => { reset[f.key] = 'all'; });
+        setValues(reset);
         router.push(pathname);
+    };
+
+    const getEnhancedOptions = (field: RimFilterField): FilterOption[] => {
+        const rawOptions = (options?.[field.optionsKey] as FilterOption[] | undefined) || [];
+        const currentValue = values[field.key];
+        const list = [...rawOptions];
+        if (currentValue !== 'all' && !list.some(o => o.value === currentValue)) {
+            list.unshift({ value: currentValue, label: currentValue, count: 0 });
+        }
+        return list;
     };
 
     if (!options) {
         return (
             <Grid container sx={{ borderBottom: "1px solid #ddd", py: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                    Filtre seçenekleri yüklenemedi
+                    Filtre seçenekleri yükleniyor...
                 </Typography>
             </Grid>
         );
     }
 
-    const hasActiveFilters = searchParams.get('jantCap') || searchParams.get('bijon') || searchParams.get('arac');
+    const hasActiveFilters = RIM_FILTER_FIELDS.some(f => searchParams.get(f.paramName));
 
     return (
         <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
-            {/* Araç Tipi */}
-            {enhancedVehicleTypes.length > 0 && (
-                <Grid size={12} sx={{ mb: 2, mt: 1 }}>
-                    <Offcanvas.Title className="mb-2" as="h6">Jant Tipi</Offcanvas.Title>
-                    <FormControl fullWidth>
-                        <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            variant="outlined"
-                            value={vehicleType}
-                            onChange={(e) => handleVehicleTypeChange(e.target.value)}
-                            SelectProps={{
-                                MenuProps: { PaperProps: { style: { maxHeight: 200, overflowY: "auto" } } },
-                                IconComponent: (props) => <i {...props} className="ri-arrow-down-s-line" style={{ color: "#555", fontSize: 20 }} />
-                            }}
-                            sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
-                        >
-                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
-                                Tümü
-                            </MenuItem>
-                            {enhancedVehicleTypes.map((opt) => (
-                                <MenuItem
-                                    key={opt.value}
-                                    value={opt.value}
-                                    sx={{ fontSize: '13px', borderBottom: '1px solid #eee', '&:last-child': { borderBottom: 'none' } }}
-                                >
-                                    {opt.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </FormControl>
-                </Grid>
-            )}
+            {RIM_FILTER_FIELDS.map(field => {
+                const enhancedOptions = getEnhancedOptions(field);
+                if (enhancedOptions.length === 0) return null;
 
-            {/* Jant Çapı */}
-            {enhancedJantCaplar.length > 0 && (
-                <Grid size={12} sx={{ mb: 2, mt: 1 }}>
-                    <Offcanvas.Title className="mb-2" as="h6">Jant Çapı</Offcanvas.Title>
-                    <FormControl fullWidth>
-                        <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            variant="outlined"
-                            value={jantCap}
-                            onChange={(e) => handleJantCapChange(e.target.value)}
-                            SelectProps={{
-                                MenuProps: { PaperProps: { style: { maxHeight: 200, overflowY: "auto" } } },
-                                IconComponent: (props) => <i {...props} className="ri-arrow-down-s-line" style={{ color: "#555", fontSize: 20 }} />
-                            }}
-                            sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
-                        >
-                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
-                                Tümü
-                            </MenuItem>
-                            {enhancedJantCaplar.map((opt) => (
-                                <MenuItem
-                                    key={opt.value}
-                                    value={opt.value}
-                                    sx={{ fontSize: '13px', borderBottom: '1px solid #eee', '&:last-child': { borderBottom: 'none' } }}
-                                >
-                                    {opt.label}
+                return (
+                    <Grid size={12} key={field.key} sx={{ mb: 2, mt: 1 }}>
+                        <Offcanvas.Title className="mb-2" as="h6">{field.label}</Offcanvas.Title>
+                        <FormControl fullWidth>
+                            <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                variant="outlined"
+                                value={values[field.key]}
+                                onChange={(e) => handleChange(field, e.target.value)}
+                                SelectProps={{
+                                    MenuProps: { PaperProps: { style: { maxHeight: 200, overflowY: "auto" } } },
+                                    IconComponent: (props) => <i {...props} className="ri-arrow-down-s-line" style={{ color: "#555", fontSize: 20 }} />
+                                }}
+                                sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
+                            >
+                                <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
+                                    Tümü
                                 </MenuItem>
-                            ))}
-                        </TextField>
-                    </FormControl>
-                </Grid>
-            )}
+                                {enhancedOptions.map((opt) => (
+                                    <MenuItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                        sx={{ fontSize: '13px', borderBottom: '1px solid #eee', '&:last-child': { borderBottom: 'none' } }}
+                                    >
+                                        {opt.label || opt.value}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </FormControl>
+                    </Grid>
+                );
+            })}
 
-            {/* Bijon Aralığı */}
-            {enhancedBijonlar.length > 0 && (
-                <Grid size={12} sx={{ mb: 2, mt: 1 }}>
-                    <Offcanvas.Title className="mb-2" as="h6">Bijon Aralığı (PCD)</Offcanvas.Title>
-                    <FormControl fullWidth>
-                        <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            variant="outlined"
-                            value={bijon}
-                            onChange={(e) => handleBijonChange(e.target.value)}
-                            SelectProps={{
-                                MenuProps: { PaperProps: { style: { maxHeight: 200, overflowY: "auto" } } },
-                                IconComponent: (props) => <i {...props} className="ri-arrow-down-s-line" style={{ color: "#555", fontSize: 20 }} />
-                            }}
-                            sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
-                        >
-                            <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
-                                Tümü
-                            </MenuItem>
-                            {enhancedBijonlar.map((opt) => (
-                                <MenuItem
-                                    key={opt.value}
-                                    value={opt.value}
-                                    sx={{ fontSize: '13px', borderBottom: '1px solid #eee', '&:last-child': { borderBottom: 'none' } }}
-                                >
-                                    {opt.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </FormControl>
-                </Grid>
-            )}
-            {/* Filtreleri Temizle */}
             {hasActiveFilters && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <button

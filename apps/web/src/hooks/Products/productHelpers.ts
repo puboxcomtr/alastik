@@ -19,6 +19,13 @@ export const getCategory = (product: Product): string => {
 };
 
 /**
+ * Ürün Set Kontrolü
+ */
+export const isSetLastik = (product: Product): boolean => {
+    return product?.diaData?.ozelkod2kodu === 'setlastikler';
+};
+
+/**
  * Ürün özelliğini getir
  */
 export const getProductFeature = (product: Product, featureName: string): string => {

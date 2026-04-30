@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 
 export default function TabContent({
   mevsim,
@@ -63,28 +64,43 @@ export default function TabContent({
               <div className="row">
                 <div className="col-12 col-md-5 position-relative mb-4">
                   <label
-                    htmlFor="rimsby_season"
-                    className="form-label text-muted fs-xs"
+                    htmlFor="rimby_width"
+                    className="form-label text-muted fs-xs d-flex align-items-center gap-1"
                   >
                     Mevsim
+                    <span className="d-none d-lg-inline" style={{ cursor: 'pointer' }}>
+                      <i className="ci-info fs-sm text-muted"></i>
+                    </span>
                   </label>
-                  <select
-                    className="form-select cursor-pointer"
+                  <Autocomplete
                     id="rimsby_season"
-                    name="rimby_season"
-                    value={mevsim}
-                    style={{
-                      borderRadius: '0.375rem',
-                      border: '1px solid black'
-                    }}
-                    onChange={(e) => setMevsim(e.target.value)}
-                  >
-                    <option value="1">Tümü</option>
-                    <option value="2">Yaz Lastiği</option>
-                    <option value="3">Kış Lastiği</option>
-                    <option value="4">4 Mevsim Lastiği</option>
-                  </select>
-                </div><div
+                    options={[
+                      { value: '1', label: 'Tümü' },
+                      { value: '2', label: 'Yaz Lastiği' },
+                      { value: '3', label: 'Kış Lastiği' },
+                      { value: '4', label: '4 Mevsim Lastiği' }
+                    ]}
+                    getOptionLabel={(opt) => opt.label}
+                    isOptionEqualToValue={(opt, val) => opt.value === val.value}
+                    value={
+                      [
+                        { value: '1', label: 'Tümü' },
+                        { value: '2', label: 'Yaz Lastiği' },
+                        { value: '3', label: 'Kış Lastiği' },
+                        { value: '4', label: '4 Mevsim Lastiği' }
+                      ].find((o) => o.value === String(mevsim)) || null
+                    }
+                    onChange={(_, newVal) => setMevsim(newVal ? newVal.value : '1')}
+                    disableClearable
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Seçiniz"
+                      />
+                    )}
+                  />
+                </div>
+                <div
                   className="col-4 col-md-2 position-relative mb-4"
                   onMouseEnter={() => setHoveredTooltip('genislik')}
                   onMouseLeave={() => setHoveredTooltip(null)}
@@ -115,24 +131,20 @@ export default function TabContent({
                       <img src={TireWidth} alt="Lastik Genişlik" style={{ width: '298px', height: 'auto', display: 'block' }} />
                     </span>
                   )}
-                  <select
-                    className="form-select cursor-pointer"
+                  <Autocomplete
                     id="rimby_width"
-                    name="rimby_width"
-                    value={selectedGenislik}
-                    style={{
-                      borderRadius: '0.375rem',
-                      border: '1px solid black'
-                    }}
-                    onChange={(e) => setSelectedGenislik(e.target.value)}
-                  >
-                    <option value="">Seçiniz</option>
-                    {genislikler.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.value}
-                      </option>
-                    ))}
-                  </select>
+                    options={genislikler}
+                    getOptionLabel={(opt) => String(opt.value)}
+                    isOptionEqualToValue={(opt, val) => String(opt.value) === String(val.value)}
+                    value={genislikler.find((g) => String(g.value) === String(selectedGenislik)) || null}
+                    onChange={(_, newVal) => setSelectedGenislik(newVal ? String(newVal.value) : '')}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Seçiniz"
+                      />
+                    )}
+                  />
                 </div>
                 <div
                   className="col-4 col-md-2 position-relative mb-4"
@@ -165,25 +177,22 @@ export default function TabContent({
                       <img src={TireHeight} alt="Lastik Yükseklik" style={{ width: '298px', height: 'auto', display: 'block' }} />
                     </span>
                   )}
-                  <select
-                    className="form-select cursor-pointer"
+                  <Autocomplete
                     id="rimby_height"
-                    name="rimby_height"
-                    value={selectedYukseklik}
-                    style={{
-                      borderRadius: '0.375rem',
-                      border: '1px solid black'
-                    }}
-                    onChange={(e) => setSelectedYukseklik(e.target.value)}
-                  >
-                    <option value="">Seçiniz</option>
-                    {yanakOranlari.map((y) => (
-                      <option key={y.value} value={y.value}>
-                        {y.value}
-                      </option>
-                    ))}
-                  </select>
-                </div><div
+                    options={yanakOranlari}
+                    getOptionLabel={(opt) => String(opt.value)}
+                    isOptionEqualToValue={(opt, val) => String(opt.value) === String(val.value)}
+                    value={yanakOranlari.find((y) => String(y.value) === String(selectedYukseklik)) || null}
+                    onChange={(_, newVal) => setSelectedYukseklik(newVal ? String(newVal.value) : '')}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Seçiniz"
+                      />
+                    )}
+                  />
+                </div>
+                <div
                   className="col-4 col-md-3 position-relative mb-4"
                   onMouseEnter={() => setHoveredTooltip('cap')}
                   onMouseLeave={() => setHoveredTooltip(null)}
@@ -215,23 +224,20 @@ export default function TabContent({
                       <img src={TireRim} alt="Lastik Çapı" style={{ width: '298px', height: 'auto', display: 'block' }} />
                     </span>
                   )}
-                  <select
-                    className="form-select cursor-pointer"
+                  <Autocomplete
                     id="rimby_diameter"
-                    value={selectedCap}
-                    style={{
-                      borderRadius: '0.375rem',
-                      border: '1px solid black'
-                    }}
-                    onChange={(e) => setSelectedCap(e.target.value)}
-                  >
-                    <option value="">Seçiniz</option>
-                    {jantCaplari.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.value}
-                      </option>
-                    ))}
-                  </select>
+                    options={jantCaplari}
+                    getOptionLabel={(opt) => String(opt.value)}
+                    isOptionEqualToValue={(opt, val) => String(opt.value) === String(val.value)}
+                    value={jantCaplari.find((c) => String(c.value) === String(selectedCap)) || null}
+                    onChange={(_, newVal) => setSelectedCap(newVal ? String(newVal.value) : '')}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Seçiniz"
+                      />
+                    )}
+                  />
                 </div>
               </div>
               <div className="row align-items-end">

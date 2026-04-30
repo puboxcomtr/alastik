@@ -21,7 +21,8 @@ import {
   getProductStockCode,
   getProductSeason
 } from '@src/hooks/Products/productHelpers'
-
+import { checkPurchaseLimit, productToLimitCheckItem } from '@src/hooks/Products/purchaseLimitHelpers'
+import { toast } from 'react-toastify'
 type Props = {
   product: any
 }
@@ -65,10 +66,25 @@ export default function ProductSlideCard({ product }: Props) {
   const handleAddToCart = async () => {
     if (adding) return
     setAdding(true)
-    await addToCart(product._key, 1)
-    setAdding(false)
-  }
 
+    try {
+      const item = productToLimitCheckItem(product, 1)
+      const check = await checkPurchaseLimit([item])
+
+      if (!check.valid && check.violations.length > 0) {
+        check.violations.forEach(v => toast.error(v.message))
+        setAdding(false)
+        return
+      }
+
+      await addToCart(product._key, 1)
+    } catch (err) {
+      console.error('Sepete ekleme hatası:', err)
+      toast.error('Sepete eklenemedi')
+    } finally {
+      setAdding(false)
+    }
+  }
   const productUrl = getProductUrl(product)
   const price = getProductPrice(product)
   const originalPrice = getProductOriginalPrice(product)

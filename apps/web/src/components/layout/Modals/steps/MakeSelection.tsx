@@ -125,7 +125,7 @@ export default function MakeSelection({ selectedMake, onSelect }: MakeSelectionP
                         <>
                             <div className="row g-2">
                                 {displayedMakes.map((make) => (
-                                    <div key={make.slug} className="col-lg-4">
+                                    <div key={make.slug} className="col-6 col-lg-4">
                                         <div
                                             className={`card h-100 text-center ${selectedMake === make.slug ? 'border-primary' : ''}`}
                                             onClick={() => handleMakeClick(make)}
@@ -165,7 +165,7 @@ export default function MakeSelection({ selectedMake, onSelect }: MakeSelectionP
                         </div>
                     )}
                 </div>
-                <div className='col-md-4'>
+                <div className='d-none d-md-block col-md-4'>
                     {isLoggedIn ? (
                         <>
                             <Typography variant="h6" sx={{ py: 1.5, color: 'black', }}>

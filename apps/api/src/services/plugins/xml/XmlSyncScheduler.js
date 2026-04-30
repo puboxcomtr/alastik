@@ -43,6 +43,12 @@ class XmlSyncScheduler {
         this.isRunning = true;
 
         try {
+            try {
+                await XmlWebProductSyncService.cleanupInactiveSources();
+            } catch (cleanupErr) {
+                console.error('[XmlSyncScheduler] Pasif kaynak temizliği hatası:', cleanupErr.message);
+            }
+
             const dueIntegrations = await this.getDueIntegrations();
 
             if (dueIntegrations.length === 0) {
@@ -123,7 +129,53 @@ class XmlSyncScheduler {
             const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
             let response;
-            if (integration.credentials?.userName) {
+
+            // LSTK-IST header desteği (Lastikistan)
+            if (integration.credentials?.apiKey?.startsWith('lstk_')) {
+                headers['LSTK-IST'] = integration.credentials.apiKey;
+                delete headers['API-KEY'];
+            }
+
+            if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code)) {
+                // Aslan Kardeşler — GET + query param + latin1
+                const { parseStringPromise: psp } = require('xml2js');
+                const markaKodu = ['aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ? 'JANT' : 'LAST\u00ddK';
+                const qs = new URLSearchParams({
+                    Username: integration.credentials.userName,
+                    Password: integration.credentials.password,
+                    marka: markaKodu
+                });
+                const aslanUrl = `https://stockapi.afkyazilim.com.tr/api/Stock/GetStockXml?${qs}`;
+                const apiRes = await axios.get(aslanUrl, { responseType: 'arraybuffer', timeout: 120000, httpsAgent });
+                const xmlStr = Buffer.from(apiRes.data).toString('latin1');
+                const parsed = await psp(xmlStr, { explicitArray: false, mergeAttrs: true });
+                const stoklar = parsed?.Stoklar?.Stok;
+                const arr = Array.isArray(stoklar) ? stoklar : (stoklar ? [stoklar] : []);
+                products = arr.map(p => {
+                    const converted = {};
+                    for (const key of Object.keys(p)) {
+                        converted[key] = typeof p[key] === 'string'
+                            ? Buffer.from(p[key], 'latin1').toString('utf8')
+                            : p[key];
+                    }
+                    return converted;
+                });
+            } else if (integration.credentials?.apiKey?.startsWith('lstk_')) {
+                // Lastikistan — GET + LSTK-IST header + pagination
+                const allProducts = [];
+                let pageNumber = 1;
+                let totalPages = 1;
+                do {
+                    const sep = url.includes('?') ? '&' : '?';
+                    const pageUrl = `${url}${sep}pageNumber=${pageNumber}&pageSize=100`;
+                    const apiRes = await axios.get(pageUrl, { headers, timeout: 120000, httpsAgent });
+                    const pdata = apiRes.data;
+                    allProducts.push(...(pdata.products || []));
+                    totalPages = pdata.totalPages || 1;
+                    pageNumber++;
+                } while (pageNumber <= totalPages);
+                products = allProducts;
+            } else if (integration.credentials?.userName) {
                 // POST — Tatko tipi
                 response = await axios.post(url, {
                     UserName: integration.credentials.userName,
@@ -160,10 +212,16 @@ class XmlSyncScheduler {
                 return null;
             };
 
-            if (integration.format === 'xml') {
+            // Aslan Kardeşler ve Lastikistan için products zaten yukarıda dolduruldu, parse atla
+            const skipParse =
+                ['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ||
+                integration.credentials?.apiKey?.startsWith('lstk_');
+
+            if (skipParse) {
+                // products zaten dolu, parse bloğu atlanır
+            } else if (integration.format === 'xml') {
                 const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
                 products = findFirstArray(parsed1) || [];
-
                 if (products.length === 0) {
                     const parsed2 = await parseStringPromise(response.data, { explicitArray: true, mergeAttrs: true });
                     const rawProducts = findFirstArray(parsed2) || [];
@@ -182,12 +240,10 @@ class XmlSyncScheduler {
                 if (integration.dataPath) {
                     data = integration.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
                 }
-
                 // String JSON olabilir (Tatko Sonuc string döner)
                 if (typeof data === 'string') {
                     try { data = JSON.parse(data); } catch (e) { }
                 }
-
                 products = Array.isArray(data) ? data : (findFirstArray(data) || []);
             }
 
@@ -245,14 +301,93 @@ class XmlSyncScheduler {
 
             if (bulkOps.length > 0) await XmlProduct.bulkWrite(bulkOps);
 
+            // Ghost cleanup — kaynakta artık olmayan ürünleri sil ve reconsolidate et
+            let ghostDeleted = 0;
+            let reconsolidateStats = null;
+            try {
+                const currentIdSet = new Set(sourceProductIds);
+                const staleProducts = await XmlProduct.find(
+                    {
+                        source: integration.code,
+                        sourceProductId: { $nin: sourceProductIds }
+                    },
+                    { sourceProductId: 1, mappedData: 1 }
+                ).lean();
+
+                if (staleProducts.length > 0) {
+                    const staleIds = staleProducts.map(p => p.sourceProductId);
+                    const affectedHedefKodlar = staleProducts
+                        .map(p => p.mappedData?.hedefStokKodu)
+                        .filter(Boolean);
+
+                    const deleteResult = await XmlProduct.deleteMany({
+                        source: integration.code,
+                        sourceProductId: { $in: staleIds }
+                    });
+                    ghostDeleted = deleteResult.deletedCount || 0;
+
+                    console.log(`[XmlSyncScheduler] ${integration.name} — ${ghostDeleted} ghost ürün silindi`);
+
+                    if (affectedHedefKodlar.length > 0) {
+                        reconsolidateStats = await XmlWebProductSyncService.reconsolidate(affectedHedefKodlar);
+                    }
+                }
+
+                // Bu fetch'te gelen ürünlerden: fiyat=0 veya stok=0 olanların hedefStokKodu'larını topla → reconsolidate
+                // Böylece başka kaynakta varsa o aktifleşir, yoksa webproducts'tan silinir
+                try {
+                    const zeroProducts = await XmlProduct.find(
+                        {
+                            source: integration.code,
+                            sourceProductId: { $in: sourceProductIds }
+                        },
+                        { mappedData: 1, rawData: 1 }
+                    ).lean();
+
+                    const fm = integration.rules?.fieldMappings || [];
+                    const getMapped = (rd, target) => {
+                        const m = fm.find(f => f.target === target);
+                        if (!m?.source) return null;
+                        return m.source.split('.').reduce((acc, k) => acc?.[k], rd) ?? null;
+                    };
+
+                    const zeroHedefKodlar = zeroProducts
+                        .filter(p => {
+                            const rd = p.rawData || {};
+                            const rawF = getMapped(rd, 'hamFiyat') ?? rd.pricePlusTax ?? rd.Price;
+                            const rawS = getMapped(rd, 'stokAdeti') ?? rd.StockNumber ?? rd.Stok;
+                            const fiyat = parseFloat(String(rawF || 0).replace(',', '.')) || 0;
+                            const stok = parseInt(String(rawS || 0).replace(/[^0-9]/g, '')) || 0;
+                            return fiyat <= 0 || stok <= 0;
+                        })
+                        .map(p => p.mappedData?.hedefStokKodu)
+                        .filter(Boolean);
+
+                    if (zeroHedefKodlar.length > 0) {
+                        const zeroStats = await XmlWebProductSyncService.reconsolidate(zeroHedefKodlar);
+                        if (reconsolidateStats) {
+                            reconsolidateStats.updated += zeroStats.updated;
+                            reconsolidateStats.disabled += zeroStats.disabled;
+                        } else {
+                            reconsolidateStats = zeroStats;
+                        }
+                    }
+                } catch (zeroErr) {
+                    console.error(`[XmlSyncScheduler] ${integration.name} zero-stock cleanup hatası:`, zeroErr.message);
+                }
+            } catch (cleanupErr) {
+                console.error(`[XmlSyncScheduler] ${integration.name} ghost cleanup hatası:`, cleanupErr.message);
+            }
+
             const duration = Date.now() - startTime;
+
 
             await WebXml.findByIdAndUpdate(integration._id, {
                 $set: {
                     'syncInfo.lastSyncAt': new Date(),
                     'syncInfo.lastSyncStatus': 'success',
                     'syncInfo.lastSyncType': 'auto',
-                    'syncInfo.lastSyncMessage': `${products.length} ürün çekildi (${newCount} yeni, ${changedCount} değişmiş, ${unchangedCount} aynı)`,
+                    'syncInfo.lastSyncMessage': `${products.length} ürün çekildi (${newCount} yeni, ${changedCount} değişmiş, ${unchangedCount} aynı, ${ghostDeleted} silinen${reconsolidateStats ? `, ${reconsolidateStats.updated} yeniden seçildi, ${reconsolidateStats.disabled} satıştan çekildi` : ''})`,
                     'syncInfo.lastSyncDuration': duration,
                     'syncInfo.productCount': products.length
                 }

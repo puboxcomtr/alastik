@@ -23,11 +23,12 @@ interface MiddleProps {
 }
 export default function Main({ logo, siteName, onMenuOpen }: MiddleProps) {
     const { settings, getImageUrl } = useThemeSettings()
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
     return (
         <Container className="navbar navbar-expand-lg d-block p-0">
             <Row className='row-fluid align-items-center py-2 py-lg-3'>
-                <Col xs="8" lg="3">
+                <Col xs="8" lg="3" className={mobileSearchOpen ? 'd-none d-lg-block' : ''}>
                     <Link prefetch={false} href={ROUTES.HOME} className="navbar-brand fs-2 py-0 m-0 me-auto me-sm-n5">
                         {settings?.logo && (
                             <img
@@ -43,8 +44,20 @@ export default function Main({ logo, siteName, onMenuOpen }: MiddleProps) {
                 <Col lg="6" className="d-none d-lg-flex">
                     <SearchBox />
                 </Col>
-                <Col xs="4" lg="3" className="d-flex justify-content-end">
-                    <ActionButtons onMenuOpen={onMenuOpen} />
+                {mobileSearchOpen && (
+                    <Col xs="12" className="d-lg-none">
+                        <SearchBox
+                            forceShow
+                            autoFocus
+                            onClose={() => setMobileSearchOpen(false)}
+                        />
+                    </Col>
+                )}
+                <Col xs="4" lg="3" className={`${mobileSearchOpen ? 'd-none d-lg-flex' : 'd-flex'} justify-content-end`}>
+                    <ActionButtons
+                        onMenuOpen={onMenuOpen}
+                        onSearchToggle={() => setMobileSearchOpen(prev => !prev)}
+                    />
                 </Col>
             </Row>
         </Container>

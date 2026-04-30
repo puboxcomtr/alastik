@@ -28,7 +28,12 @@ router.get('/filter', async (req, res) => {
             ozelkod5,
             // Jant parametreleri
             jantCap,
+            jantGenisligi,
             bijon,
+            bijonSayisi,
+            gobekCapi,
+            et,
+            renk,
             // Ortak parametreler
             arac,
             marka,
@@ -54,39 +59,71 @@ router.get('/filter', async (req, res) => {
         // ==========================================
         let productType = null;
         let webCategory = null;
+        let webCategories = [];
+        let isMultiCategory = false;
+        let virtualSeasonFilter = null; // yaz-lastikleri / kis-lastikleri / 4-mevsim-lastikler için
+
+        // Mevsim slug → ozelkod1kodu eşlemesi (virtual kategoriler)
+        const seasonSlugMap = {
+            'yaz-lastikleri': 'Yaz',
+            'kis-lastikleri': 'Kış',
+            '4-mevsim-lastikler': '4 Mevsim'
+        };
+        // 5 araç tipi ana kategorisi (virtual multi-category için)
+        const vehicleCategorySlugs = [
+            'otomobil-lastikleri',
+            'elektrikli-arac-lastikleri',
+            'suv-lastikleri',
+            'ticari-arac-lastikleri',
+            'agir-vasita-lastikleri'
+        ];
 
         if (category) {
-            webCategory = await WebCategory.findOne({
-                slug: category,
-                webVisible: true
-            }).lean();
+            const categorySlugs = category.split(',').map(s => s.trim()).filter(Boolean);
 
-            if (webCategory && webCategory.diaCategory) {
-                const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
+            // Tek slug mevsim kategorisi ise → 5 araç tipini multi-category olarak aç + mevsim filtresi uygula
+            if (categorySlugs.length === 1 && seasonSlugMap[categorySlugs[0]]) {
+                virtualSeasonFilter = seasonSlugMap[categorySlugs[0]];
+                isMultiCategory = true;
+                webCategories = await WebCategory.find({
+                    slug: { $in: vehicleCategorySlugs },
+                    webVisible: true
+                }).lean();
+            } else if (categorySlugs.length > 1) {
+                isMultiCategory = true;
+                webCategories = await WebCategory.find({
+                    slug: { $in: categorySlugs },
+                    webVisible: true
+                }).lean();
+                // Multi-category: productType tespiti yapılmaz, her kategorinin ozelkod7kodu farklı olabilir
+            } else {
+                webCategory = await WebCategory.findOne({
+                    slug: categorySlugs[0],
+                    webVisible: true
+                }).lean();
 
-                // Bu kategorideki bir ürünün ozelkod7kodu değerini al
-                const sampleProduct = await WebProduct.findOne({
-                    'diaData.m_kategoriler': {
-                        $elemMatch: {
-                            [diaLevel]: webCategory.diaCategory
-                        }
-                    },
-                    'diaData.ozelkod7kodu': { $exists: true, $ne: '' }
-                }).select('diaData.ozelkod7kodu').lean();
+                if (webCategory && webCategory.diaCategory) {
+                    const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
+                    const sampleProduct = await WebProduct.findOne({
+                        'diaData.m_kategoriler': {
+                            $elemMatch: {
+                                [diaLevel]: webCategory.diaCategory
+                            }
+                        },
+                        'diaData.ozelkod7kodu': { $exists: true, $ne: '' }
+                    }).select('diaData.ozelkod7kodu').lean();
 
-                if (sampleProduct?.diaData?.ozelkod7kodu) {
-                    productType = sampleProduct.diaData.ozelkod7kodu;
+                    if (sampleProduct?.diaData?.ozelkod7kodu) {
+                        productType = sampleProduct.diaData.ozelkod7kodu;
+                    }
                 }
             }
         }
 
-        // Jant parametreleri geldiyse JANT olarak zorla
-        if (jantCap || bijon) {
+        if ((jantCap || bijon) && !isMultiCategory) {
             productType = 'JANT';
         }
-
-        // productType bulunduysa filtre uygula
-        if (productType) {
+        if (productType && !isMultiCategory) {
             filter['diaData.ozelkod7kodu'] = productType;
         }
 
@@ -107,6 +144,19 @@ router.get('/filter', async (req, res) => {
                     }
                 }
             });
+        } else if (webCategories.length > 0) {
+            const orClauses = webCategories
+                .filter(c => c.diaCategory)
+                .map(c => ({
+                    'diaData.m_kategoriler': {
+                        $elemMatch: {
+                            [c.diaLevel || 'kategori_aciklama_2']: c.diaCategory
+                        }
+                    }
+                }));
+            if (orClauses.length > 0) {
+                andConditions.push({ $or: orClauses });
+            }
         }
         // ==========================================
         // LASTİK FİLTRELERİ
@@ -149,8 +199,6 @@ router.get('/filter', async (req, res) => {
                     }
                 });
             }
-
-            // OEM filtresi
             if (oem) {
                 const oemList = oem.split(',').map(o => o.trim()).filter(Boolean);
                 if (oemList.length > 0) {
@@ -167,6 +215,11 @@ router.get('/filter', async (req, res) => {
                     });
                 }
             }
+            if (virtualSeasonFilter) {
+                andConditions.push({
+                    'diaData.ozelkod1kodu': virtualSeasonFilter
+                });
+            }
 
             // Mevsim filtresi
             if (mevsim) {
@@ -179,8 +232,6 @@ router.get('/filter', async (req, res) => {
                     });
                 }
             }
-
-            // Özellik filtresi (XL, Seal, Run Flat)
             if (ozellik) {
                 const ozellikList = ozellik.split(',').map(o => o.trim()).filter(Boolean);
                 ozellikList.forEach(oz => {
@@ -229,23 +280,40 @@ router.get('/filter', async (req, res) => {
         }
 
         // ==========================================
-        // JANT FİLTRELERİ
+        // JANT FİLTRELERİ (m_urunOzellikleri üzerinden)
         // ==========================================
         if (isJantCategory) {
-            // Jant çapı filtresi - ozelkod4kodu
+            const pushRimFilter = (ozellikadi, value) => {
+                if (!value) return;
+                andConditions.push({
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            ozellikadi,
+                            detayaciklama: value
+                        }
+                    }
+                });
+            };
+
             const jantCapValue = jantCap || jant || cap;
             if (jantCapValue) {
+                const jantCapNumeric = String(jantCapValue).replace(/[^\d]/g, '');
                 andConditions.push({
-                    'diaData.ozelkod4kodu': jantCapValue
+                    'diaData.m_urunOzellikleri': {
+                        $elemMatch: {
+                            ozellikadi: 'Jant Çapı',
+                            detayaciklama: { $regex: new RegExp(`^${jantCapNumeric}\\s*İnç$`, 'i') }
+                        }
+                    }
                 });
             }
 
-            // Bijon aralığı filtresi - ozelkod3kodu
-            if (bijon) {
-                andConditions.push({
-                    'diaData.ozelkod3kodu': bijon.toUpperCase()
-                });
-            }
+            pushRimFilter('Jant Genişliği', jantGenisligi);
+            pushRimFilter('Bijon Sayısı', bijonSayisi);
+            pushRimFilter('Bijon Aralığı', bijon);
+            pushRimFilter('Göbek Çapı', gobekCapi);
+            pushRimFilter('ET', et);
+            pushRimFilter('Renk', renk);
         }
 
         // ==========================================

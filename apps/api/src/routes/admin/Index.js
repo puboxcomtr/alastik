@@ -26,6 +26,9 @@ router.use('/features', featuresRouter);
 const filtersRouter = require('./catalog/filters');
 router.use('/filters', filtersRouter);
 
+const descriptionTemplatesRouter = require('./catalog/descriptionTemplates');
+router.use('/description-templates', descriptionTemplatesRouter);
+
 const showcaseRouter = require('./catalog/showcase');
 router.use('/showcases', showcaseRouter);
 
@@ -49,6 +52,12 @@ const blogRoutes = require('./content/blogs');
 router.use('/blogs', blogRoutes);
 
 // ============================================
+// CAMPAIGN ROUTES
+// ============================================
+const purchaseLimitsRoutes = require('./campaign/purchase-limits');
+router.use('/campaign/purchase-limits', purchaseLimitsRoutes);
+
+// ============================================
 // SETTINGS ROUTES
 // ============================================
 const paymentRoutes = require('./settings/payment');
@@ -65,6 +74,12 @@ router.use('/settings', settingRoutes);
 
 const seoRoutes = require('./settings/seo');
 router.use('/settings/seo', seoRoutes);
+
+// ============================================
+// SETTINGS CARGO ROUTES
+// ============================================
+const cargoRoutes = require('./settings/cargo');
+router.use('/cargo', cargoRoutes);
 
 // ============================================
 // USER ROUTES
@@ -125,5 +140,20 @@ router.use('/modules/merchant', merchantSettingsRoutes);
 
 const merchantFeedRoutes = require('../plugins/merchant/feed');
 router.use('/modules/merchant/feed', merchantFeedRoutes);
+
+// ============================================
+// TIRE Tag SYNC ROUTES
+// ============================================
+const tagSyncRouter = require('./catalog/tagSync');
+router.use('/tags/sync', tagSyncRouter);
+
+// ============================================
+// MAIL ROUTES
+// ============================================
+const mailManagementRoutes = require('./mail/management');
+router.use('/mail-management', mailManagementRoutes);
+
+const smtpSettingsRoutes = require('./mail/smtp');
+router.use('/smtp-settings', smtpSettingsRoutes);
 
 module.exports = router;

@@ -57,6 +57,11 @@ class DiaWorker {
                 redis: workerConfig.redis,
                 defaultJobOptions: workerConfig.queue.defaultJobOptions,
                 settings: queueSettings
+            }),
+            tagSync: new Queue('tag-sync', {
+                redis: workerConfig.redis,
+                defaultJobOptions: workerConfig.queue.defaultJobOptions,
+                settings: queueSettings
             })
         };
 
@@ -90,6 +95,12 @@ class DiaWorker {
         });
         this.queues.xmlSync.process('manual-xml-sync', (job) => {
             return this.processXmlSync(job);
+        });
+        this.queues.tagSync.process('scheduled-tag-sync', (job) => {
+            return this.processTagSync(job);
+        });
+        this.queues.tagSync.process('manual-tag-sync', (job) => {
+            return this.processTagSync(job);
         });
         console.log('Processor kayıtları TAMAMLANDI!');
     }
@@ -314,6 +325,61 @@ class DiaWorker {
         }
     }
     /**
+     * Tag sync işlemini çalıştır (Lastik etiketleri)
+     */
+    async processTagSync(job) {
+        const startTime = Date.now();
+
+        if (this.syncLock.fullSync) {
+            this.logger.info('Full sync çalışıyor, tag sync atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
+        }
+
+        try {
+            this.logger.info('=== TAG SYNC BAŞLANGICI ===', {
+                jobId: job.id,
+                timestamp: new Date().toISOString()
+            });
+
+            const TireTagSyncService = require('../services/plugins/tag/TireTagSyncService');
+
+            await job.progress({ percent: 10, message: 'Lastik etiketleri senkronize ediliyor...' });
+
+            const { stats } = await TireTagSyncService.sync({
+                dryRun: false,
+                limit: 0,
+                onProgress: ({ processed, total }) => {
+                    const percent = Math.min(95, 10 + Math.floor((processed / total) * 85));
+                    job.progress({ percent, message: `${processed}/${total} ürün işlendi` }).catch(() => { });
+                }
+            });
+
+            await job.progress({ percent: 100, message: 'Tamamlandı' });
+
+            const duration = Date.now() - startTime;
+
+            this.logger.info('=== TAG SYNC TAMAMLANDI ===', {
+                jobId: job.id,
+                duration: `${duration}ms`,
+                stats
+            });
+
+            return {
+                success: true,
+                duration: `${duration}ms`,
+                stats
+            };
+
+        } catch (error) {
+            this.logger.error('Tag sync hatası', {
+                jobId: job.id,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
+    }
+    /**
      * Zamanlanmış job'ları ayarla
      */
     async setupScheduledJobs() {
@@ -379,10 +445,29 @@ class DiaWorker {
                 }
             );
 
+            // Tag Sync - XML sync + 1 saat
+            const tagSaat = (xmlS + 1) % 24;
+            const tagSyncSaat = `${String(tagSaat).padStart(2, '0')}:${String(xmlD).padStart(2, '0')}`;
+            const tagSyncCron = `${xmlD} ${tagSaat} * * *`;
+
+            const existingTagRepeats = await this.queues.tagSync.getRepeatableJobs();
+            for (const job of existingTagRepeats) {
+                await this.queues.tagSync.removeRepeatableByKey(job.key);
+            }
+            await this.queues.tagSync.add(
+                'scheduled-tag-sync',
+                { type: 'scheduled' },
+                {
+                    repeat: { cron: tagSyncCron, tz: 'Europe/Istanbul' },
+                    timeout: 1800000
+                }
+            );
+
             this.logger.info('Zamanlanmış joblar kuruldu', {
                 fullSync: `${fullSyncCron} (${fullSyncSaat})`,
                 lightSync: `${lightSyncCron} (her ${lightSyncAraligi} dakika)`,
-                xmlSync: `${xmlSyncCron} (${xmlSyncSaat})`
+                xmlSync: `${xmlSyncCron} (${xmlSyncSaat})`,
+                tagSync: `${tagSyncCron} (${tagSyncSaat})`
             });
 
         } catch (error) {
@@ -403,6 +488,13 @@ class DiaWorker {
                     { timeout: workerConfig.worker.timeout }
                 );
                 return { jobId: job.id, type: 'full', status: 'queued' };
+            } else if (type === 'tag') {
+                const job = await this.queues.tagSync.add(
+                    'manual-tag-sync',
+                    { type: 'manual', triggeredBy: 'admin' },
+                    { timeout: 1800000 }
+                );
+                return { jobId: job.id, type: 'tag', status: 'queued' };
             } else {
                 const job = await this.queues.lightSync.add(
                     'manual-light-sync',

@@ -146,7 +146,7 @@ export default function ModificationSelection({
         <div className="modification-selection">
             <div className="row">
                 {/* Sol: Araç Bilgisi + Filtreler */}
-                <div className="col-md-3">
+                <div className="d-none d-md-block col-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         {t('garage_car')}
                     </Typography>
@@ -233,60 +233,116 @@ export default function ModificationSelection({
                 </div>
                 {/* Sağ: Motor Listesi */}
                 <div className="col-md-9">
-
                     {/* Motor Tablosu */}
                     {filteredModifications.length > 0 ? (
-                        <div className="table-responsive">
-                            <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
-                                <thead>
-                                    <tr className="text-muted" style={{ fontSize: '12px' }}>
-                                        <th>Tip</th>
-                                        <th>Üretim Yılı</th>
-                                        <th>Güç</th>
-                                        <th>Motor Hacmi</th>
-                                        <th>Yakıt</th>
-                                        <th>Kasa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredModifications.map((mod) => (
-                                        <tr
+                        <>
+                            {/* Masaüstü: Tablo */}
+                            <div className="table-responsive d-none d-md-block">
+                                <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
+                                    <thead>
+                                        <tr className="text-muted" style={{ fontSize: '12px' }}>
+                                            <th>Tip</th>
+                                            <th>Üretim Yılı</th>
+                                            <th>Güç</th>
+                                            <th>Motor Hacmi</th>
+                                            <th>Yakıt</th>
+                                            <th>Kasa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredModifications.map((mod) => (
+                                            <tr
+                                                key={mod.slug}
+                                                onClick={() => onSelect(mod.slug, mod.name)}
+                                                className={selectedModification === mod.slug ? 'table-active' : ''}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    borderLeft: selectedModification === mod.slug ? '3px solid #dc3545' : '3px solid transparent'
+                                                }}
+                                            >
+                                                <td><strong>{mod.name}</strong></td>
+                                                <td>
+                                                    {mod.start_year && mod.end_year
+                                                        ? `${mod.start_year} - ${mod.end_year}`
+                                                        : mod.start_year
+                                                            ? `${mod.start_year} - bugüne`
+                                                            : '-'
+                                                    }
+                                                </td>
+                                                <td>
+                                                    {mod.engine?.power?.hp
+                                                        ? `${mod.engine.power.hp} hp / ${mod.engine.power.kW} kW`
+                                                        : '-'
+                                                    }
+                                                </td>
+                                                <td>
+                                                    {mod.engine?.capacity
+                                                        ? <span>{mod.engine.capacity} L</span>
+                                                        : '-'
+                                                    }
+                                                </td>
+                                                <td>{mod.engine?.fuel ? translateFuelType(mod.engine.fuel) : '-'}</td>
+                                                <td>{mod.generation?.bodies?.[0]?.name ? translateBodyType(mod.generation.bodies[0].name) : '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobil: Kart Listesi */}
+                            <div className="d-block d-md-none">
+                                {filteredModifications.map((mod) => {
+                                    const isSelected = selectedModification === mod.slug;
+                                    return (
+                                        <div
                                             key={mod.slug}
                                             onClick={() => onSelect(mod.slug, mod.name)}
-                                            className={selectedModification === mod.slug ? 'table-active' : ''}
+                                            className="mb-2 p-3 border rounded"
                                             style={{
                                                 cursor: 'pointer',
-                                                borderLeft: selectedModification === mod.slug ? '3px solid #dc3545' : '3px solid transparent'
+                                                borderColor: isSelected ? '#dc3545' : '#dee2e6',
+                                                borderWidth: isSelected ? '2px' : '1px',
+                                                backgroundColor: isSelected ? '#fff5f5' : '#fff'
                                             }}
                                         >
-                                            <td><strong>{mod.name}</strong></td>
-                                            <td>
-                                                {mod.start_year && mod.end_year
-                                                    ? `${mod.start_year} - ${mod.end_year}`
-                                                    : mod.start_year
-                                                        ? `${mod.start_year} - bugüne`
-                                                        : '-'
-                                                }
-                                            </td>
-                                            <td>
-                                                {mod.engine?.power?.hp
-                                                    ? `${mod.engine.power.hp} hp / ${mod.engine.power.kW} kW`
-                                                    : '-'
-                                                }
-                                            </td>
-                                            <td>
-                                                {mod.engine?.capacity
-                                                    ? <span>{mod.engine.capacity} L</span>
-                                                    : '-'
-                                                }
-                                            </td>
-                                            <td>{mod.engine?.fuel ? translateFuelType(mod.engine.fuel) : '-'}</td>
-                                            <td>{mod.generation?.bodies?.[0]?.name ? translateBodyType(mod.generation.bodies[0].name) : '-'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            <div className="d-flex justify-content-between align-items-start mb-2">
+                                                <strong style={{ fontSize: '15px' }}>{mod.name}</strong>
+                                                <span className="text-muted" style={{ fontSize: '12px' }}>
+                                                    {mod.start_year && mod.end_year
+                                                        ? `${mod.start_year} - ${mod.end_year}`
+                                                        : mod.start_year
+                                                            ? `${mod.start_year} - bugüne`
+                                                            : '-'
+                                                    }
+                                                </span>
+                                            </div>
+                                            <div className="d-flex flex-wrap gap-2" style={{ fontSize: '13px' }}>
+                                                {mod.engine?.power?.hp && (
+                                                    <span className="badge bg-light text-dark border">
+                                                        {mod.engine.power.hp} hp / {mod.engine.power.kW} kW
+                                                    </span>
+                                                )}
+                                                {mod.engine?.capacity && (
+                                                    <span className="badge bg-light text-dark border">
+                                                        {mod.engine.capacity} L
+                                                    </span>
+                                                )}
+                                                {mod.engine?.fuel && (
+                                                    <span className="badge bg-light text-dark border">
+                                                        {translateFuelType(mod.engine.fuel)}
+                                                    </span>
+                                                )}
+                                                {mod.generation?.bodies?.[0]?.name && (
+                                                    <span className="badge bg-light text-dark border">
+                                                        {translateBodyType(mod.generation.bodies[0].name)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
                     ) : (
                         <div className="text-center py-5">
                             <i className="ri-settings-3-line fs-1 text-muted"></i>

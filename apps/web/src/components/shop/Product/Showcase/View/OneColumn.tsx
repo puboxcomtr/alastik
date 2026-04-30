@@ -14,7 +14,7 @@ import { useBrands } from '@/src/context/BrandsContext';
 import { useCart } from '@/src/context/CartContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
-import { isLastik, getProductFeature, getProductSeason } from '@src/hooks/Products/productHelpers';
+import { isLastik, getProductFeature, getProductSeason, isSetLastik } from '@src/hooks/Products/productHelpers';
 import { getRelatedBlogs } from '@/src/services/productService';
 
 
@@ -27,6 +27,8 @@ import {
     getProductImage,
     getProductStockCode,
 } from '@src/hooks/Products/productHelpers';
+import { checkPurchaseLimit, productToLimitCheckItem } from '@src/hooks/Products/purchaseLimitHelpers';
+import { toast } from 'react-toastify';
 
 export default function OneColumn({ product }: ProductCardProps) {
     const [isFavorite, setIsFavorite] = useState(false);
@@ -43,8 +45,24 @@ export default function OneColumn({ product }: ProductCardProps) {
     const handleAddToCart = async () => {
         if (adding) return;
         setAdding(true);
-        await addToCart(product._key, quantity);
-        setAdding(false);
+
+        try {
+            const item = productToLimitCheckItem(product, quantity);
+            const check = await checkPurchaseLimit([item]);
+
+            if (!check.valid && check.violations.length > 0) {
+                check.violations.forEach(v => toast.error(v.message));
+                setAdding(false);
+                return;
+            }
+
+            await addToCart(product._key, quantity);
+        } catch (err) {
+            console.error('Sepete ekleme hatası:', err);
+            toast.error('Sepete eklenemedi');
+        } finally {
+            setAdding(false);
+        }
     };
     useEffect(() => {
         if (!isLastik(product)) return;
@@ -160,10 +178,14 @@ export default function OneColumn({ product }: ProductCardProps) {
                                 </div>
                             </div>
                             <div className="text-end">
-                                {hasDiscount && (
-                                    <del className="text-body-tertiary fs-md d-block">
-                                        {originalPrice?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
-                                    </del>
+                                {isSetLastik(product) ? (
+                                    <span className="text-body-secondary fw-semibold fs-xs d-block">Adet Fiyatı</span>
+                                ) : (
+                                    hasDiscount && (
+                                        <del className="text-body-tertiary fs-md d-block">
+                                            {originalPrice?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
+                                        </del>
+                                    )
                                 )}
                                 <span className="fw-bold fs-lg">
                                     {price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL

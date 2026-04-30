@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Button from '@mui/material/Button'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
@@ -13,6 +14,8 @@ const SyncDropdown = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
     const [loading, setLoading] = useState(false)
     const open = Boolean(anchorEl)
+    const router = useRouter()
+    const { lang: locale } = useParams()
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
         setAnchorEl(event.currentTarget)
@@ -69,7 +72,7 @@ const SyncDropdown = () => {
     }
 
     return (
-        <Box>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Button
                 variant="contained"
                 onClick={handleClick}
@@ -77,6 +80,15 @@ const SyncDropdown = () => {
                 startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
             >
                 {loading ? 'Başlatılıyor...' : 'Ürünleri Senkronize Et'}
+            </Button>
+
+            <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<i className='ri-file-text-line' />}
+                onClick={() => router.push(`/${locale}/apps/products/templates`)}
+            >
+                Açıklama Şablonları
             </Button>
 
             <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>

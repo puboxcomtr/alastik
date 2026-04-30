@@ -128,7 +128,7 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
         <div className="generation-selection">
             <div className="row">
                 {/* Sol: Filtreler */}
-                <div className="col-md-3">
+                <div className="d-none d-md-blockcol-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black', }}>
                         {t('garage_car')}
                     </Typography>

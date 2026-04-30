@@ -120,7 +120,7 @@ class WheelSizeService {
     }
     async getTireSectionWidths(params = {}) {
         try {
-            return await this.request('/tire/list_section_widths/', {
+            return await this.request('/by_tire/sw/', {
                 region: this.defaultRegion,
                 ...params
             });
@@ -137,7 +137,7 @@ class WheelSizeService {
     }
     async getTireAspectRatios(params = {}) {
         try {
-            return await this.request('/tire/list_aspect_ratios/', {
+            return await this.request('/by_tire/ar/', {
                 region: this.defaultRegion,
                 ...params
             });
@@ -152,7 +152,7 @@ class WheelSizeService {
     }
     async getTireRimDiameters(params = {}) {
         try {
-            return await this.request('/tire/list_rim_diameters/', {
+            return await this.request('/by_tire/rd/', {
                 region: this.defaultRegion,
                 ...params
             });

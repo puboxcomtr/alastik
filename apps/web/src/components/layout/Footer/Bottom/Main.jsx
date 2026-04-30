@@ -19,6 +19,16 @@ export default function FooterTop() {
     if (isMobile) {
         return (
             <Container>
+                <a
+                    className="float-button"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href="https://wa.me/905467679592"
+                    aria-label="WhatsApp ile iletişime geç"
+                >
+                    <i className="ri-whatsapp-line" aria-hidden="true"></i>
+                    <span>Whatsapp Destek</span>
+                </a>
                 <Row className="row-fluid position-relative pt-4 align-items-center">
                     <Col lg={2} className="d-flex justify-content-center">
                         <div
@@ -32,7 +42,7 @@ export default function FooterTop() {
                             }}
                         >
                             <Link
-                                href={"https://etbis.ticaret.gov.tr/tr/Anasayfa/SiteAraSonuc?siteId=745e4066-7e80-4e3b-a831-b65ed62e3e77"} >
+                                href={"https://etbis.ticaret.gov.tr/tr/SiteSorgulamaSonuc?siteId=745e4066-7e80-4e3b-a831-b65ed62e3e77"} >
                                 <Image
                                     src={'/assets/img/etbis.webp'}
                                     width={82}
@@ -60,6 +70,16 @@ export default function FooterTop() {
 
     return (
         <Container>
+            <a
+                className="float-button"
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://wa.me/905467679592"
+                aria-label="WhatsApp ile iletişime geç"
+            >
+                <i className="ri-whatsapp-line" aria-hidden="true"></i>
+                <span>Whatsapp Destek</span>
+            </a>
             <Row className="row-fluid position-relative pt-4 align-items-center">
                 <Col lg={5}>
                     <ul className="nav justify-content-left gap-4 order-md-3 mb-4 mb-md-0">
@@ -92,7 +112,7 @@ export default function FooterTop() {
                         }}
                     >
                         <Link
-                            href={"https://etbis.ticaret.gov.tr/tr/Anasayfa/SiteAraSonuc?siteId=745e4066-7e80-4e3b-a831-b65ed62e3e77"} >
+                            href={"https://etbis.ticaret.gov.tr/tr/SiteSorgulamaSonuc?siteId=745e4066-7e80-4e3b-a831-b65ed62e3e77"} >
                             <Image
                                 src={'/assets/img/etbis.webp'}
                                 width={82}

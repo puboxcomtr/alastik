@@ -6,10 +6,22 @@ import { Category, ParentCategory } from '@src/types/category';
  * Slug ile kategori getir
  */
 export async function getCategory(slug: string): Promise<Category | null> {
-    const actualSlug = slug === 'tum-lastikler' ? 'lastik' : slug;
+    // Özel virtual kategori — 5 gerçek kategoriyi birleştiren görsel bir kategori
+    if (slug === 'tum-lastikler') {
+        return {
+            slug: 'tum-lastikler',
+            name: 'Tüm Lastikler',
+            seoTitle: 'Tüm Lastikler',
+            description: 'Tüm lastik kategorilerinde aramanızı yapabilirsiniz.',
+            seoKeywords: ['lastik', 'tüm lastikler', 'lastik arama'],
+            parent: null,
+            activeProductCount: 0,
+            sliderId: null
+        } as unknown as Category;
+    }
 
     try {
-        const response = await fetch(API_ENDPOINTS.categories.bySlug(actualSlug), {
+        const response = await fetch(API_ENDPOINTS.categories.bySlug(slug), {
             cache: 'no-store'
         });
 
@@ -27,10 +39,12 @@ export async function getCategory(slug: string): Promise<Category | null> {
  * Slug + Ebat ile kategori getir
  */
 export async function getCategoryWithSize(slug: string, ebatSlug: string): Promise<Category | null> {
-    const actualSlug = slug === 'tum-lastikler' ? 'lastik' : slug;
+    if (slug === 'tum-lastikler') {
+        return await getCategory(slug);
+    }
 
     try {
-        const response = await fetch(API_ENDPOINTS.categories.bySlugWithSize(actualSlug, ebatSlug), {
+        const response = await fetch(API_ENDPOINTS.categories.bySlugWithSize(slug, ebatSlug), {
             cache: 'no-store'
         });
 

@@ -129,8 +129,6 @@ export default function TireSizeSelection({
     // Staggered var mı?
     const hasStaggered = groupedTires.front.length > 0 || groupedTires.rear.length > 0;
 
-
-
     const renderTireGroup = (title: string, tires: TireOption[], position: 'front' | 'rear' | 'both', badgeColor: string) => {
         if (tires.length === 0) return null;
 
@@ -139,7 +137,8 @@ export default function TireSizeSelection({
                 <h4 className="mb-1" style={{ fontSize: '16px', fontWeight: 600 }}>{title}</h4>
                 <Divider sx={{ mb: 2 }} />
 
-                <div className="table-responsive">
+                {/* Masaüstü: Tablo */}
+                <div className="table-responsive d-none d-md-block">
                     <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
                         <thead>
                             <tr className="text-muted" style={{ fontSize: '12px' }}>
@@ -170,8 +169,8 @@ export default function TireSizeSelection({
                                     <td>
                                         {vehiclePcd ? (
                                             <Tooltip title="Ürünleri İncele">
-                                                <a
-                                                    href={`/kategori/jant?jantCap=${tire.diameter}&bijon=${vehiclePcd}`}
+
+                                                <a href={`/kategori/jant?jantCap=${tire.diameter}&bijon=${vehiclePcd}`}
                                                     className="text-primary text-decoration-none"
                                                     style={{ fontSize: '14px' }}
                                                 >
@@ -191,6 +190,53 @@ export default function TireSizeSelection({
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobil: Kart Listesi */}
+                <div className="d-block d-md-none">
+                    {tires.map(tire => {
+                        const isSelected = selectedId === tire.id;
+                        return (
+                            <div
+                                key={tire.id}
+                                onClick={() => handleSelect(tire, position)}
+                                className="mb-2 p-3 border rounded"
+                                style={{
+                                    cursor: 'pointer',
+                                    borderColor: isSelected ? 'var(--cz-primary)' : '#dee2e6',
+                                    borderWidth: isSelected ? '2px' : '1px',
+                                    backgroundColor: isSelected ? '#fff5f5' : '#fff'
+                                }}
+                            >
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <strong style={{ fontSize: '16px' }}>{tire.display}</strong>
+                                    {tire.loadIndex && tire.speedIndex && (
+                                        <span className="badge bg-dark">{tire.loadIndex}{tire.speedIndex}</span>
+                                    )}
+                                </div>
+                                <div className="d-flex flex-wrap gap-3" style={{ fontSize: '13px' }}>
+                                    {vehiclePcd && (
+                                        <div>
+                                            <span className="text-muted">Jant: </span>
+
+                                            <a href={`/kategori/jant?jantCap=${tire.diameter}&bijon=${vehiclePcd}`}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-primary text-decoration-none fw-semibold"
+                                            >
+                                                {tire.diameter}" / {vehiclePcd}
+                                            </a>
+                                        </div>
+                                    )}
+                                    {tire.pressure && (
+                                        <div>
+                                            <span className="text-muted">Basınç: </span>
+                                            <strong>{tire.pressure.psi} PSI</strong>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         );
@@ -223,7 +269,7 @@ export default function TireSizeSelection({
         <div className="tire-size-selection">
             <div className="row">
                 {/* Sol Panel - Araç Bilgisi + Filtreler */}
-                <div className="col-md-3">
+                <div className="d-none d-md-block col-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Araç Bilgisi
                     </Typography>
