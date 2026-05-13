@@ -173,28 +173,46 @@ router.get('/results', async (req, res) => {
         const limitNum = parseInt(limit);
         const { getProductListFilters } = require('../../../config/diaFilters');
         const filter = getProductListFilters();
-        /* Fiyatsızları Göster - Gizle */
+
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
         if (hidePricelessSetting?.value === true) {
             filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
         }
-        
+
+        const andConditions = [];
+
         const isStockCode = /^\d{5,}-\d+/.test(q.trim());
         const cleaned = q.replace(/[\s\-]+/g, '').toLowerCase();
         const tireMatch = isStockCode ? null : cleaned.match(/(\d{3})\/?(\d{2})r?(\d{2})/i);
 
         if (tireMatch) {
-            const [, width, aspect, diameter] = tireMatch;
-            const sizeVariations = [
-                `${width}/${aspect}R${diameter}`,
-                `${width}/${aspect}/${diameter}`,
-                `${width} ${aspect} ${diameter}`,
-                `${width}${aspect}R${diameter}`
-            ];
-            const sizeRegexes = sizeVariations.map(v =>
-                new RegExp(v.replace(/[\/\s]/g, '[/\\s]*'), 'i')
-            );
-            filter.$or = sizeRegexes.map(r => ({ 'diaData.aciklama': r }));
+            const [, queryWidth, queryAspect, queryDiameter] = tireMatch;
+
+            // URL'den gelen sidebar filtreleri query'deki ebatı override eder
+            const { genislik, yanak, yukseklik, jant, cap } = req.query;
+            const finalWidth = genislik || queryWidth;
+            const finalAspect = yanak || yukseklik || queryAspect;
+            const finalDiameter = jant || cap || queryDiameter;
+
+            // Ebatı m_urunOzellikleri üzerinden filtrele
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: finalWidth }
+                }
+            });
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: { ozellikadi: 'Yanak', detayaciklama: finalAspect }
+                }
+            });
+            andConditions.push({
+                'diaData.m_urunOzellikleri': {
+                    $elemMatch: {
+                        ozellikadi: 'Jant Çapı',
+                        detayaciklama: { $regex: new RegExp(`^R?${finalDiameter}C?$|^${finalDiameter}\\s*İnç$`, 'i') }
+                    }
+                }
+            });
 
             // Ebat dışında kalan metni çıkar (marka veya model olabilir)
             const extraText = q
@@ -202,7 +220,6 @@ router.get('/results', async (req, res) => {
                 .trim();
 
             if (extraText.length >= 2) {
-                // Önce WebBrand koleksiyonunda ara
                 const brandMatch = await WebBrand.findOne({
                     $or: [
                         { diaMarkaAck: { $regex: new RegExp(`^${extraText}$`, 'i') } },
@@ -213,18 +230,10 @@ router.get('/results', async (req, res) => {
                 }).select('diaMarkaAck').lean();
 
                 if (brandMatch) {
-                    // Marka bulundu, diaData.marka alanında filtrele
-                    filter['diaData.marka'] = brandMatch.diaMarkaAck;
+                    andConditions.push({ 'diaData.marka': brandMatch.diaMarkaAck });
                 } else {
-                    // Marka bulunamadı, aciklama alanında ek arama yap
-                    filter.$or = filter.$or.map(condition => {
-                        const field = Object.keys(condition)[0];
-                        return {
-                            $and: [
-                                condition,
-                                { [field]: { $regex: new RegExp(extraText, 'i') } }
-                            ]
-                        };
+                    andConditions.push({
+                        'diaData.aciklama': { $regex: new RegExp(extraText, 'i') }
                     });
                 }
             }
@@ -237,15 +246,17 @@ router.get('/results', async (req, res) => {
                 { 'diaData.anabarkod': regex }
             ];
         }
-        const andConditions = [];
 
         if (marka) {
             const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
             if (markaList.length > 0) andConditions.push({ 'diaData.marka': { $in: markaList } });
         }
         if (mevsim) {
-            const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
-            if (mevsimList.length > 0) andConditions.push({ 'diaData.ozelkod1kodu': { $in: mevsimList } });
+            const mevsimList = mevsim.split(',').map(m => m.trim()).filter(Boolean);
+            if (mevsimList.length > 0) {
+                const mevsimRegexList = mevsimList.map(m => new RegExp(`^${m}$`, 'i'));
+                andConditions.push({ 'diaData.ozelkod1kodu': { $in: mevsimRegexList } });
+            }
         }
         if (arac && arac !== 'all') {
             andConditions.push({ 'diaData.ozelkod2kodu': arac });
@@ -285,6 +296,7 @@ router.get('/results', async (req, res) => {
                 filter.$and = andConditions;
             }
         }
+
         let sortQuery = {};
         if (sortBy === 'price') {
             sortQuery = { 'diaData.m_birimler.0.fiyat4': sortOrder === 'asc' ? 1 : -1 };
@@ -319,7 +331,7 @@ router.get('/results', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Search results error:', error);
+        console.error('Search results hatası:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

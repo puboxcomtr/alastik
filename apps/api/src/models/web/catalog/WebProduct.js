@@ -117,6 +117,7 @@ const diaDataSchema = new mongoose.Schema({
     // Stok bilgileri
     gercek_stok: { type: Number, default: 0 },
 
+    anabirimdesi: { type: Number, default: 0 },
     // Marka ve menşei
     marka: String,
     menseiulkeadi: String,
@@ -203,6 +204,10 @@ const customDataSchema = new mongoose.Schema({
     originalPrice: Number,
     webDiscount: { type: Number, default: 0 },
     discountType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+
+    // Kargo Dahil Fiyat (Sadece XML ürünleri için)
+    shippingIncludedPrice: { type: Number, default: 0 },
+    shippingPerUnit: { type: Number, default: 0 },
 
     // Stok ve satış bilgileri
     minOrderQuantity: { type: Number, default: 1 },

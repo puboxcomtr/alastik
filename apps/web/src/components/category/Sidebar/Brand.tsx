@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { formatBrandName, normalizeForSearch } from '@/src/hooks/Products/brandHelpers';
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 import {
     Grid,
     Accordion,
@@ -35,9 +36,7 @@ export default function Brand({ categorySlug, brands = [] }: BrandProps) {
     const [search, setSearch] = useState("");
     const selectedBrands = searchParams.get('marka')?.split(',').filter(Boolean) || [];
 
-    const handleToggle = (brandValue: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-
+    const handleToggle = async (brandValue: string) => {
         let newSelected: string[];
         if (selectedBrands.includes(brandValue)) {
             newSelected = selectedBrands.filter(b => b !== brandValue);
@@ -45,25 +44,27 @@ export default function Brand({ categorySlug, brands = [] }: BrandProps) {
             newSelected = [...selectedBrands, brandValue];
         }
 
-        if (newSelected.length > 0) {
-            params.set('marka', newSelected.join(','));
-        } else {
-            params.delete('marka');
-        }
+        const newValue = newSelected.length > 0 ? newSelected.join(',') : 'all';
 
-        params.delete('page');
-        const queryString = params.toString();
-        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
-        router.push(newURL);
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'marka',
+            newValue,
+            { categorySlug }
+        );
+        const queryString = cleaned.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    const clearBrands = () => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete('marka');
-        params.delete('page');
-        const queryString = params.toString();
-        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
-        router.push(newURL);
+    const clearBrands = async () => {
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'marka',
+            'all',
+            { categorySlug }
+        );
+        const queryString = cleaned.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
     // Arama filtresi

@@ -56,18 +56,27 @@ const webMemberSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    lockedUntil: Date
+    lockedUntil: Date,
+
+    // Şifre Sıfırlama
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+
+    // E-posta Aktivasyonu
+    activationToken: String,
+    activationTokenExpire: Date
 
 }, {
     timestamps: true,
     collection: 'webmembers'
 });
-
 // Index'ler
 webMemberSchema.index({ email: 1 }, { unique: true });
 webMemberSchema.index({ phone: 1 });
 webMemberSchema.index({ status: 1 });
 webMemberSchema.index({ createdAt: -1 });
+webMemberSchema.index({ resetPasswordToken: 1 });
+webMemberSchema.index({ activationToken: 1 });
 
 // Şifre hashleme
 webMemberSchema.pre('save', async function (next) {

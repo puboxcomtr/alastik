@@ -19229,7 +19229,7 @@ span.flatpickr-weekday {
     #breadcumb {
         background: var(--cz-light-rgb) !important;
         padding: 1.5rem 0;
-        margin-top:0 !important
+        margin-top: 0 !important
     }
 
     #breadcumb ol {
@@ -19460,5 +19460,94 @@ span.flatpickr-weekday {
         font-size: 18px !important;
         padding-right: 4px;
         padding-left: 2px;
+    }
+}
+
+
+.bank-info-intro {
+    color: #6c757d;
+    margin-bottom: 20px;
+}
+
+.bank-account-card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.bank-account-header {
+    padding: 14px 20px;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1a1a1a;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.bank-account-body {
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+}
+
+.bank-account-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.bank-info-label {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 4px;
+}
+
+.bank-info-value {
+    font-weight: 600;
+    color: #1a1a1a;
+    font-size: 14px;
+}
+
+.bank-iban {
+    letter-spacing: 0.5px;
+}
+
+.bank-copy-btn {
+    background: #fff;
+    color: #495057;
+    border: 1px solid #ced4da;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.bank-copy-btn:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.bank-info-warning {
+    background: #fff8e1;
+    border-left: 4px solid #ffc107;
+    padding: 14px 18px;
+    border-radius: 4px;
+    color: #5d4e00;
+    margin-top: 20px;
+}
+
+@media (max-width: 576px) {
+    .bank-account-body {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bank-copy-btn {
+        width: 100%;
     }
 }

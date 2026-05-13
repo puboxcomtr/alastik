@@ -170,6 +170,7 @@ export default function Cart({ product }: CartProps) {
                                             )}
                                         </div>
                                     </div>
+                                    <hr className="m-0 p-2" />
                                     {/* Kampanyalar */}
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
@@ -181,6 +182,20 @@ export default function Cart({ product }: CartProps) {
                                         <div className="d-flex align-items-center gap-1 mt-1">
                                             <p>
                                                 Vade farksız 4 Taksit fırsatını kaçırma
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <hr className="m-0 p-2" />
+                                    <div>
+                                        <div className="d-flex align-items-center gap-1">
+                                            <i className="ri-bank-card-fill text-black"></i>
+                                            <p className='m-0 fw-bold text-black'>
+                                                Türkiye'nin 81 İlinde Montaj Hizmeti
+                                            </p>
+                                        </div>
+                                        <div className="d-flex align-items-center gap-1 mt-1">
+                                            <p>
+                                                Montaj işlemi gerçekleştirmek için bizimle iletişime geçebilirsiniz.
                                             </p>
                                         </div>
                                     </div>

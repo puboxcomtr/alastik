@@ -1,62 +1,48 @@
 "use client";
 
-import {
-    Grid, TextField, MenuItem, Tooltip, Typography,
-    Accordion, AccordionSummary, AccordionDetails,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
+import { Offcanvas } from "react-bootstrap";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 
 interface OemOption {
     value: string;
+    label?: string;
     count: number;
 }
-
 interface OemProps {
     oemOptions?: OemOption[];
+    categorySlug?: string;
+    tagSlug?: string;
 }
 
-export default function Oem({ oemOptions = [] }: OemProps) {
+export default function Oem({ oemOptions = [], categorySlug, tagSlug }: OemProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const currentOem = searchParams.get('oem') || 'all';
 
-    const handleChange = (value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-
-        if (value === 'all') {
-            params.delete('oem');
-        } else {
-            params.set('oem', value);
-        }
-        params.delete('sayfa');
-
-        const queryString = params.toString();
+    const handleChange = async (value: string) => {
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'oem',
+            value,
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
+
     if (!oemOptions || oemOptions.length === 0) {
         return null;
     }
 
     return (
-        <Grid sx={{ borderBottom: "1px solid #ddd", paddingBottom: "20px" }}>
-            <Accordion
-                defaultExpanded
-                sx={{
-                    boxShadow: "none",
-                    marginTop: "10px",
-                    "&:before": { display: "none" },
-                }}
-            >
-                <AccordionSummary
-                    expandIcon={<ExpandMoreIcon />}
-                    sx={{ borderBottom: "none", p: 0 }}
-                >
-                    <Typography variant="subtitle1" fontWeight="bold">
-                        Orjinal Ekipman
-                    </Typography>
+        <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
+            <Grid size={12} sx={{ mb: 2, mt: 1 }}>
+                <Offcanvas.Title className="mb-2" as="h6">
+                    Orjinal Ekipman
                     <Tooltip
                         title={
                             <Typography variant="body2" sx={{ maxWidth: 300 }}>
@@ -66,37 +52,42 @@ export default function Oem({ oemOptions = [] }: OemProps) {
                         arrow
                         placement="right"
                     >
-                        <i
-                            className="ri-information-line"
-                            style={{ fontSize: 18, cursor: "pointer", color: "#555", marginLeft: 5 }}
-                        />
+                        <i className="ri-information-line" style={{ fontSize: 18, cursor: "pointer", color: "#555", marginLeft: 5 }} />
                     </Tooltip>
-                </AccordionSummary>
-
-                <AccordionDetails sx={{ padding: 0 }}>
+                </Offcanvas.Title>
+                <FormControl fullWidth>
                     <TextField
                         select
                         fullWidth
                         size="small"
+                        variant="outlined"
                         value={currentOem}
                         onChange={(e) => handleChange(e.target.value)}
+                        SelectProps={{
+                            MenuProps: { PaperProps: { style: { maxHeight: 200, overflowY: "auto" } } },
+                            IconComponent: (props) => <i {...props} className="ri-arrow-down-s-line" style={{ color: "#555", fontSize: 20 }} />
+                        }}
+                        sx={{ backgroundColor: "#f5f5f5", borderRadius: 1 }}
                     >
-                        <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>Tümü</MenuItem>
+                        <MenuItem value="all" sx={{ fontSize: '13px', borderBottom: '1px solid #eee' }}>
+                            Tümü
+                        </MenuItem>
                         {oemOptions.map((oem, index) => (
                             <MenuItem
                                 key={index}
                                 value={oem.value}
                                 sx={{
                                     fontSize: '13px',
-                                    borderBottom: '1px solid #eee'
+                                    borderBottom: '1px solid #eee',
+                                    '&:last-child': { borderBottom: 'none' }
                                 }}
                             >
                                 {oem.label || oem.value}
                             </MenuItem>
                         ))}
                     </TextField>
-                </AccordionDetails>
-            </Accordion>
+                </FormControl>
+            </Grid>
         </Grid>
     );
 }

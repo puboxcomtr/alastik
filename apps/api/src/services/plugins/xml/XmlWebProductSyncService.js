@@ -95,6 +95,7 @@ class XmlWebProductSyncService {
         for (const xp of candidates) {
             const intg = integrationMap[xp.source];
             if (!intg || intg.isActive === false) continue;
+            if (intg.excludeFromWebSync === true) continue;
 
             const fm = intg?.rules?.fieldMappings || [];
             const rd = xp.rawData || {};
@@ -292,6 +293,7 @@ class XmlWebProductSyncService {
                     const transformedDiaData = {
                         ...diaData,
                         gercek_stok: gercekStok,
+                        anabirimdesi: parseFloat(diaData.anabirimdesi) || 0,
                         ozelkod11: 'E (E)',
                         ozelkod11kodu: 'E',
                         m_birimler: diaData.m_birimler?.length > 0 ? [{
@@ -385,6 +387,7 @@ class XmlWebProductSyncService {
                             update: {
                                 $set: {
                                     'diaData.gercek_stok': gercekStok,
+                                    'diaData.anabirimdesi': parseFloat(diaData.anabirimdesi) || 0,
                                     'diaData.ozelkod11': 'E (E)',
                                     'diaData.ozelkod11kodu': 'E',
                                     'diaData.m_birimler': guncelBirimler.map((b, i) => i === 0 ? { ...b, fiyat1: hamFiyat, fiyat4: pricing.alastikPrice } : b),
@@ -422,6 +425,16 @@ class XmlWebProductSyncService {
         }
 
         console.log(`[XmlWebProductSync] Tam aktarım tamamlandı — oluşturulan: ${created}, güncellenen: ${updated}, filtrelenen: ${filtered}, hata: ${errors}`);
+
+        // Kargo dahil fiyatları güncelle
+        try {
+            const XmlShippingPriceUpdaterService = require('../../web/cargo/XmlShippingPriceUpdaterService');
+            const shippingResult = await XmlShippingPriceUpdaterService.updateAll();
+            console.log(`[XmlWebProductSync] Kargo dahil fiyatlar güncellendi: ${shippingResult.updated} ürün`);
+        } catch (shipErr) {
+            console.error('[XmlWebProductSync] Kargo fiyat güncelleme hatası:', shipErr.message);
+        }
+
         return { success: true, created, updated, filtered, errors };
     }
 
@@ -597,6 +610,16 @@ class XmlWebProductSyncService {
         }
 
         console.log(`[XmlWebProductSync] Hızlı sync tamamlandı — güncellenen: ${updated}, filtrelenen: ${filtered}, hata: ${errors}`);
+
+        // Kargo dahil fiyatları güncelle
+        try {
+            const XmlShippingPriceUpdaterService = require('../../web/cargo/XmlShippingPriceUpdaterService');
+            const shippingResult = await XmlShippingPriceUpdaterService.updateAll();
+            console.log(`[XmlWebProductSync] Kargo dahil fiyatlar güncellendi: ${shippingResult.updated} ürün`);
+        } catch (shipErr) {
+            console.error('[XmlWebProductSync] Kargo fiyat güncelleme hatası:', shipErr.message);
+        }
+
         return { success: true, updated, filtered, errors };
     }
     // Silinen xmlproduct'ların hedefStokKodu'larını yeniden değerlendir
@@ -606,18 +629,34 @@ class XmlWebProductSyncService {
     async cleanupInactiveSources() {
         console.log('[XmlWebProductSync] Pasif kaynak temizliği başladı');
 
-        const inactiveIntegrations = await WebXml.find({ isActive: false }, { code: 1, name: 1 }).lean();
+        // Pasif olan VEYA excludeFromWebSync olan kaynakları topla
+        const inactiveIntegrations = await WebXml.find(
+            { $or: [{ isActive: false }, { excludeFromWebSync: true }] },
+            { code: 1, name: 1, excludeFromWebSync: 1, isActive: 1 }
+        ).lean();
         if (inactiveIntegrations.length === 0) {
-            console.log('[XmlWebProductSync] Pasif entegrasyon yok');
+            console.log('[XmlWebProductSync] Pasif/dışlanan entegrasyon yok');
             return { inactiveCount: 0, deletedXmlProducts: 0, reconsolidateStats: null };
         }
 
-        const inactiveCodes = inactiveIntegrations.map(i => i.code);
-        console.log(`[XmlWebProductSync] Pasif entegrasyonlar: ${inactiveCodes.join(', ')}`);
+        // Pasif olanların xmlproducts'ları silinmeli, excludeFromWebSync'lerin xmlproducts'ı korunur (XML export için lazım)
+        const trulyInactive = inactiveIntegrations.filter(i => i.isActive === false).map(i => i.code);
+        const excludedCodes = inactiveIntegrations.map(i => i.code);
 
-        // Pasif kaynaklardaki xmlproducts'ları çek
+        console.log(`[XmlWebProductSync] Tamamen pasif: ${trulyInactive.join(', ') || 'yok'}`);
+        console.log(`[XmlWebProductSync] Web sync'ten dışlanan: ${excludedCodes.join(', ')}`);
+
+        // Sadece tamamen pasif olanların xmlproducts kayıtlarını sil
+        let deletedCount = 0;
+        if (trulyInactive.length > 0) {
+            const deleteResult = await XmlProduct.deleteMany({ source: { $in: trulyInactive } });
+            deletedCount = deleteResult.deletedCount;
+            console.log(`[XmlWebProductSync] ${deletedCount} pasif kaynak xmlproduct silindi`);
+        }
+
+        // Tüm dışlanan kaynaklardaki ürünlerin hedefStokKodu'larını topla (reconsolidate için)
         const staleProducts = await XmlProduct.find(
-            { source: { $in: inactiveCodes } },
+            { source: { $in: excludedCodes } },
             { mappedData: 1 }
         ).lean();
 
@@ -625,11 +664,7 @@ class XmlWebProductSyncService {
             .map(p => p.mappedData?.hedefStokKodu)
             .filter(Boolean);
 
-        // Pasif kaynaklardaki xmlproducts'ları sil
-        const deleteResult = await XmlProduct.deleteMany({
-            source: { $in: inactiveCodes }
-        });
-        console.log(`[XmlWebProductSync] ${deleteResult.deletedCount} pasif kaynak xmlproduct silindi`);
+        const deleteResult = { deletedCount };
 
         // Ayrıca webproducts'ta pasif xmlSource'lu ürünlerin hedefStokKodu'larını da topla
         const orphanWebProducts = await WebProduct.find(

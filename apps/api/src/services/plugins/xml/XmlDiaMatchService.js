@@ -157,6 +157,9 @@ class XmlDiaMatchService {
                     const intg = integrationMap[xmlProduct.source];
                     if (!intg) return true;
 
+                    // excludeFromWebSync kaynakları DIA match'e tabi tutma
+                    if (intg.excludeFromWebSync === true) { filtered++; return false; }
+
                     const rules = intg.rules || {};
                     const fieldMappings = rules.fieldMappings || [];
                     const rd = xmlProduct.rawData || {};

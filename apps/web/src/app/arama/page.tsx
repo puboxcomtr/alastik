@@ -48,7 +48,7 @@ export default async function SearchPage({ searchParams }: Props) {
     queryParams.set('page', String(currentPage));
     queryParams.set('limit', String(perPage));
 
-    const filterKeys = ['marka', 'mevsim', 'ozellik', 'yukEndeksi', 'hizEndeksi', 'uretim', 'fiyatMin', 'fiyatMax', 'arac', 'oem', 'sortBy', 'sortOrder'];
+    const filterKeys = ['marka', 'mevsim', 'ozellik', 'yukEndeksi', 'hizEndeksi', 'uretim', 'fiyatMin', 'fiyatMax', 'arac', 'oem', 'sortBy', 'sortOrder', 'genislik', 'yanak', 'yukseklik', 'jant', 'cap'];
     filterKeys.forEach(key => {
         const val = params[key];
         if (val) queryParams.set(key, val);
@@ -84,7 +84,7 @@ export default async function SearchPage({ searchParams }: Props) {
                         <div className="row-fluid">
                             <Row>
                                 <Col lg={3}>
-                                    <Sidebar categorySlug="lastik" />
+                                    <Sidebar searchQuery={q} />
                                 </Col>
                                 <Col lg={9}>
                                     <Row>

@@ -38,24 +38,46 @@ export interface TireFilterOptions {
 export async function getTireFilterOptions(
     categorySlug?: string,
     tagSlug?: string,
-    brandSlug?: string
+    brandSlug?: string,
+    activeFilters?: Record<string, string | undefined>,
+    searchQuery?: string
 ): Promise<TireFilterOptions | null> {
     try {
         const params = new URLSearchParams();
         if (categorySlug) params.append('category', categorySlug);
         if (tagSlug) params.append('tag', tagSlug);
         if (brandSlug) params.append('brand', brandSlug);
+        if (searchQuery) params.append('q', searchQuery);
+
+        // Cascading için aktif filtreleri ekle
+        if (activeFilters) {
+            const filterKeys = [
+                // Lastik
+                'genislik', 'yanak', 'jant', 'arac', 'marka',
+                'mevsim', 'oem', 'yukEndeksi', 'hizEndeksi',
+                'ozellik', 'uretim',
+                // Jant
+                'jantGenisligi', 'jantCap', 'bijonSayisi', 'bijon',
+                'gobekCapi', 'et', 'renk'
+            ];
+            filterKeys.forEach(key => {
+                const value = activeFilters[key];
+                if (value && value !== 'all') {
+                    params.append(key, value);
+                }
+            });
+        }
 
         const queryString = params.toString();
         const url = `${API_ENDPOINTS.filters.tireOptions()}${queryString ? `?${queryString}` : ''}`;
-
+        
         const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) return null;
 
         const result = await res.json();
         return result.success ? result.data : null;
     } catch (error) {
-        console.error('[filterService] getTireFilterOptions error:', error);
+        console.error('[filterService] getTireFilterOptions hatası:', error);
         return null;
     }
 }

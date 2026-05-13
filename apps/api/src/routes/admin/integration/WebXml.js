@@ -926,7 +926,7 @@ router.get('/webproducts/export.xml', async (req, res) => {
             xml += `  <FiyatlandirmaTipi>XML</FiyatlandirmaTipi>\n`;
             xml += `  <OzelKod10>${escape(d.ozelkod11kodu)}</OzelKod10>\n`;
             xml += `  <Baslik>${escape(d.ekalan1)}</Baslik>\n`;
-            xml += `  <MetaTitle>${escape(d.ekalan2)}</MetaTitle>\n`;
+            xml += `  <MetaTitle>${escape(type === 'jant' ? (p.customData?.seoTitle || d.ekalan1 || d.aciklama || '') : d.ekalan2)}</MetaTitle>\n`;
             xml += `  <Tags>${escape(d.ekalan3)}</Tags>\n`;
             xml += `  <HizliAramaKelimeleri>${escape(d.ekalan4)}</HizliAramaKelimeleri>\n`;
             xml += `  <UretimTarihi>${escape(d.ekalan5)}</UretimTarihi>\n`;

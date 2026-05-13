@@ -71,19 +71,11 @@ export default function PaymentPage() {
                 guestShippingAddress: checkoutData.isGuest
                     ? (checkoutData.useSameAddress ? checkoutData.billing : checkoutData.shipping)
                     : null,
+                // Backend items ve pricing'i kendi hesaplayacak (güvenlik)
                 items: items.map(item => ({
                     productKey: item.productKey,
-                    name: item.productName,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    totalPrice: item.unitPrice * item.quantity
+                    quantity: item.quantity
                 })),
-                pricing: {
-                    subtotal: totalAmount,
-                    shippingCost: 0,
-                    discountAmount: 0,
-                    total: totalAmount
-                },
                 paymentMethod: cardData ? 'credit_card' : 'bank_transfer',
                 customerNote: ''
             };

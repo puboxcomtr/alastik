@@ -1,0 +1,803 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Sipariş Dekontu</title>
+    <style type="text/css">
+        @media only screen and (min-device-width: 601px) {
+            .content {
+                width: 600px !important;
+            }
+        }
+
+        @media only screen and (max-device-width: 600px) and (max-width:600px) {
+            .hidden {
+                display: none;
+            }
+
+            .order-item-list,
+            .order-amount-list {
+                font-size: 13px;
+            }
+
+            .overflow-note {
+                height: 100px !important;
+                overflow: auto !important;
+            }
+
+            .overflow-condition {
+                height: 200px !important;
+                overflow: auto !important;
+            }
+        }
+    </style>
+</head>
+
+<body
+    style="margin: 0; padding: 0; min-width: 100%!important;font-family: Arial, Helvetica, sans-serif;font-size:14px;line-height:20px;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td>
+                <!--[if (gte mso 9)|(IE)]>
+            <table width="600" align="center" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td>
+            <![endif]-->
+                <table class="content" align="center" cellpadding="0" cellspacing="0" border="0"
+                    style="width: 100%; max-width: 600px;">
+                    <tr>
+                        <td style="padding:20px 0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left">
+                                        <a href="{{ data.siteUrl }}" style="text-decoration: none;color:#000000;">
+                                            {% if data.logo %}
+                                            <img src="{{ data.logo }}" style="max-width:140px;max-height:100px;" alt="">
+                                            {% else %}
+                                            <span>{{ data.companyName }}</span>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td align="right">
+                                        <a href="{{ data.siteUrl }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/website.png') }}"
+                                                alt="">
+                                        </a>
+                                        <a href="{{ data.siteUrl ~ '/iletisim' }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/contact.png') }}"
+                                                alt="">
+                                        </a>
+                                        <a href="{{ data.siteUrl ~ '/rss' }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/rss.png') }}" alt="">
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td>
+                                                    <h2 style="font-size:24px;font-weight:bold;padding:0;margin:0;">
+                                                        Sipariş Dekontu</h2>
+                                                </td>
+                                                <td align="right">
+                                                    {{ data.createdAt | date("d.m.Y H:i:s" ) }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:30px 0;">
+                                        <div style="padding-bottom:20px;">Merhaba <b>{{ data.customer.firstname}} {{
+                                                data.customer.surname }}</b>,</div>
+                                        {{ data.body }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <table cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Sipariş No</b>
+                                                </td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">{{ data.transactionId }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Ödeme Türü</b>
+                                                </td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">{{ data.paymentProviderName }}</td>
+                                            </tr>
+                                            {% if data.paymentGatewayName %}
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Ödeme
+                                                        Bilgisi</b></td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">{{ data.paymentGatewayName }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if data.hasInstallment %}
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Taksit</b></td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">{{ data.installmentInfo }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if data.shippingCompanyName %}
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Kargo
+                                                        Firması</b></td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">{{ data.shippingCompanyName }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if data.shippingTrackingUrl %}
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Kargo Takip
+                                                        Adresi</b></td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">
+                                                    <a href="{{ data.shippingTrackingUrl }}"
+                                                        style="text-decoration: none;color:#000000;" target="_blank">
+                                                        Kargo takibi için tıklayınız.
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if data.giftNote %}
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Hediye Notu</b>
+                                                </td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">
+                                                    <div class="overflow-note"
+                                                        style="max-height:100px !important;overflow-y:auto!important;">
+                                                        {{ data.giftNote }}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if data.customer.note %}
+                                            <tr>
+                                                <td valign="top" style="padding:5px 0;width: 100px;"><b>Ödeme Notu</b>
+                                                </td>
+                                                <td valign="top" width="10" align="center" style="padding:5px 0;">:</td>
+                                                <td style="padding:5px 0;">
+                                                    <div class="overflow-note"
+                                                        style="max-height:100px !important;overflow-y:auto!important;">
+                                                        {{ data.customer.note }}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 20px 0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                                style="border-collapse:collapse;">
+                                <thead>
+                                    <tr>
+                                        <th width="60" class="order-item-list hidden"
+                                            style="padding:10px 5px;border-bottom:1px solid #eeeeee;"></th>
+                                        <th width="200" class="order-item-list" align="left"
+                                            style="padding:10px 5px;border-bottom:1px solid #eeeeee;">Ürün</th>
+                                        <th width="100" class="order-item-list" align="right"
+                                            style="padding:10px 5px;border-bottom:1px solid #eeeeee;">Fiyat</th>
+                                        <th class="order-item-list" align="right"
+                                            style="padding:10px 5px;border-bottom:1px solid #eeeeee;">Miktar</th>
+                                        <th width="100" class="order-item-list" align="right"
+                                            style="padding:10px 5px;border-bottom:1px solid #eeeeee;">Toplam</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in data.orderItems %}
+                                    <tr{% if loop.index is even %} bgcolor="#fafafa" {% endif %}>
+                                        <td class="order-item-list hidden"
+                                            style="padding:10px 5px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                            <a href="{{ item.productUrl }}" target="_blank">
+                                                <img src="{{ item.productImage }}" width="60" alt="">
+                                            </a>
+                                        </td>
+                                        <td class="order-item-list"
+                                            style="padding:10px 5px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                            <a href="{{ item.productUrl }}"
+                                                style="text-decoration: none; color:#000000;" target='_blank'>
+                                                <div>
+                                                    {{ item.productName }}
+                                                    {% if item.isProductPromotional %}
+                                                    (Promosyon)
+                                                    {% endif %}
+                                                    {% if item.hasSubscription %}
+                                                    (Abonelikli)
+                                                    {% endif %}
+                                                </div>
+                                            </a>
+                                            {% if item.isDigitalProduct and item.digitalProductDownloadUrl %}
+                                            <a href="https://{{ item.digitalProductDownloadUrl }}"
+                                                target="_blank">İndir</a>
+                                            {% endif %}
+                                        </td>
+                                        <td class="order-item-list" align="right"
+                                            style="padding:10px 5px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                            {{ item.unitPrice }} {{ data.currency }}
+                                        </td>
+                                        <td class="order-item-list" align="right"
+                                            style="padding:10px 5px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                            x{{ item.quantity }}
+                                        </td>
+                                        <td class="order-item-list" align="right"
+                                            style="padding:10px 5px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                            <div>{{ item.totalPrice }} {{ data.currency }}</div>
+                                            {% if item.moneyOrderTotalPrice > 0 %}
+                                            <u>Havale ile</u>
+                                            <div>{{ item.moneyOrderTotalPrice }} {{ data.currency }}</div>
+                                            {% endif %}
+                                        </td>
+                    </tr>
+                    {% if item.customizations | length > 0 %}
+                    <tr{% if loop.index is even %} bgcolor="#fafafa" {% endif %}>
+                        <td class="order-item-list hidden"></td>
+                        <td class="order-item-list" colspan="4"
+                            style="padding:10px 5px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                            <ul style="padding:0;margin:0;list-style-position: inside;">
+                                {% for customization in item.customizations %}
+                                <li>
+                                    <b>{{ customization.fieldName }}</b> :
+                                    {% if customization.fieldType == 'file' %}
+                                    <a href="{{ customization.filePath }}" style="text-decoration: none;color:#000000;"
+                                        target="_blank">{{ customization.fieldValue }}</a>
+                                    {% else %}
+                                    {{ customization.fieldValue }}
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 10px 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 10px 5px;"><b>Ara Toplam :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 10px 5px;">{{ data.amount }} {{ data.currency }}
+            </td>
+        </tr>
+        {% if data.couponDiscount > 0 %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Hediye Çeki İndirimi :</b>
+            </td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.couponDiscount }} {{ data.currency
+                }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>KDV :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.taxAmount }} {{ data.currency }}
+            </td>
+        </tr>
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>KDV Dahil :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.amountWithTax }} {{ data.currency
+                }}</td>
+        </tr>
+        {% if data.promotionDiscount > 0 %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Promosyon İndirimi :</b>
+            </td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.promotionDiscount }} {{
+                data.currency }}</td>
+        </tr>
+        {% endif %}
+        {% if data.shippingAmount > 0 %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Kargo Ücreti :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.shippingAmount }} {{ data.currency
+                }}</td>
+        </tr>
+        {% endif %}
+        {% if data.giftAmount > 0 %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Hediye Paketi Ücreti :</b>
+            </td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.giftAmount }} {{ data.currency }}
+            </td>
+        </tr>
+        {% endif %}
+        {% if data.orderCustomTaxLines|length > 0 %}
+        {% for orderCustomTaxLine in data.orderCustomTaxLines %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>{{ orderCustomTaxLine.name
+                    }} :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ orderCustomTaxLine.value }} {{
+                data.currency }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Genel Toplam :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.generalAmount }} {{ data.currency
+                }}</td>
+        </tr>
+        {% if data.additionalServiceAmount > 0 %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Ek Hizmet Bedeli :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.additionalServiceAmount }} {{
+                data.currency }}</td>
+        </tr>
+        {% endif %}
+        {% if data.hasInstallment %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Taksitli Fiyatı ({{
+                    data.installment }}x{{ data.installmentAmount }} {{ data.currency }}) :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.finalAmount }} {{ data.currency }}
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td class="order-amount-list hidden" style="padding: 5px;"></td>
+            <td class="order-amount-list" colspan="3" align="right" style="padding: 5px;"><b>Toplam :</b></td>
+            <td class="order-amount-list" align="right" style="padding: 5px;">{{ data.finalAmount }} {{ data.currency }}
+            </td>
+        </tr>
+        {% endif %}
+        </tbody>
+    </table>
+    </td>
+    </tr>
+    <tr>
+        <td style="padding-bottom:20px"></td>
+    </tr>
+    {% if data.orderFastCommentUrl %}
+    <tr>
+        <td style="background: #f1f7ff;padding:30px 20px;border: 2px dashed #c7d5e8;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tbody>
+                    <tr>
+                        <td>
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tbody>
+                                    {% if data.pointPerComment %}
+                                    <tr>
+                                        <td>
+                                            <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0">Yorumlayın,
+                                                Kazanın!</h3>
+                                            <p>Birkaç dakikanızı ayırarak aşağıdaki linkten ürün değerlendirme(leri)nizi
+                                                ekleyebilir, yaptığınız her bir ürün yorumu için <strong>{{
+                                                    data.pointPerComment }}</strong> indirim puanı kazanabilirsiniz.</p>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td>
+                                            <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0">Ürün
+                                                Yorumlarınızı Bekliyoruz!</h3>
+                                            <p>Birkaç dakikanızı ayırarak aşağıdaki linkten ürün değerlendirmenizi
+                                                ekleyin.</p>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tbody>
+                                    <tr>
+                                        <td style="background:#ffffff;padding:10px;">
+                                            {{data.orderFastCommentUrl }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </td>
+    </tr>
+    {% endif %}
+    <tr>
+        <td style="padding-bottom:20px"></td>
+    </tr>
+    <tr>
+        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0;">Teslimat Bilgileri
+                                    </h3>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table width="100%" cellspacing="0" cellpadding="0" border="0"
+                            style="border-collapse:collapse;background:#ffffff;">
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Adı Soyadı</b> : {{ data.shippingAddress.firstname }}&nbsp;{{
+                                    data.shippingAddress.surname }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Telefon</b> : {{ data.shippingAddress.phoneNumber }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Cep Telefonu</b> : {{ data.shippingAddress.mobilePhoneNumber }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Adres</b> : {{ data.shippingAddress.combinedAddress }}
+                                </td>
+                            </tr>
+                            {% if data.deliveryDetail %}
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Teslimat Tarihi</b> : {{ data.deliveryDetail.date }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Teslimat Saati</b> : {{ data.deliveryDetail.time }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding-bottom:20px;"></td>
+    </tr>
+    <tr>
+        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0;">Fatura Bilgileri
+                                    </h3>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table width="100%" cellspacing="0" cellpadding="0" border="0"
+                            style="border-collapse:collapse;background:#ffffff;">
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    {% if data.billingAddress.invoiceType == 'corporate' %}
+                                    <b>Ticari Ünvan</b>
+                                    {% else %}
+                                    <b>Adı Soyadı</b>
+                                    {% endif %}
+                                    : {{ data.billingAddress.firstname }}&nbsp;{{ data.billingAddress.surname }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Email</b> : {{ data.customer.email }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Telefon</b> : {{ data.billingAddress.phoneNumber }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Cep Telefonu</b> : {{ data.billingAddress.mobilePhoneNumber }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Adres</b> : {{ data.billingAddress.combinedAddress }}
+                                </td>
+                            </tr>
+                            {% if data.billingAddress.invoiceType == 'corporate' %}
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Vergi Dairesi</b> : {{ data.billingAddress.taxOffice }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>Vergi Numarası</b> : {{ data.billingAddress.taxNumber }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    <b>T.C Kimlik No</b> : {{ data.billingAddress.identityRegistrationNumber }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    {% if data.bankAccounts | length > 0 %}
+    <tr>
+        <td style="padding-bottom:20px;"></td>
+    </tr>
+    <tr>
+        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0;">Banka Bilgileri</h3>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table width="100%" cellspacing="0" cellpadding="0" border="0"
+                            style="border-collapse:collapse;background:#ffffff;">
+                            {% for bankAccount in data.bankAccounts %}
+                            <tr>
+                                <td style="padding:10px;border-bottom:1px solid #eeeeee;">
+                                    <b>{{ bankAccount.bankName }}{% if bankAccount.selected %} (Seçili){% endif %} </b>
+                                    {% if bankAccount.usesIban %}
+                                    <div>IBAN : {{ bankAccount.accountCode }}</div>
+                                    {% if bankAccount.swiftCode %}
+                                    Swift : {{ bankAccount.swiftCode }}
+                                    {% endif %}
+                                    {% if bankAccount.accountName %}
+                                    Hesap Sahibi : {{ bankAccount.accountName }}
+                                    {% endif %}
+                                    {% if bankAccount.accountType %}
+                                    , Hesap Türü : {{ bankAccount.accountType }}
+                                    {% endif %}
+                                    {% else %}
+                                    <div>Hesap No : {{ bankAccount.accountCode }}</div>
+                                    {% if bankAccount.swiftCode %}
+                                    Swift : {{ bankAccount.swiftCode }}
+                                    {% endif %}
+                                    {% if bankAccount.branchName %}
+                                    Şube Adı : {{ bankAccount.branchName }}
+                                    {% endif %}
+                                    {% if bankAccount.branchCode %}
+                                    , Şube Kodu : {{ bankAccount.branchCode }}
+                                    {% endif %}
+                                    {% if bankAccount.accountName %}
+                                    , Hesap Sahibi : {{ bankAccount.accountName }}
+                                    {% endif %}
+                                    {% if bankAccount.accountType %}
+                                    , Hesap Türü : {{ bankAccount.accountType }}
+                                    {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    {% endif %}
+    {% if data.customer.hasRepresentative %}
+    <tr>
+        <td style="padding-bottom:20px;"></td>
+    </tr>
+    <tr>
+        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0;">Müşteri Temsilcisi
+                                    </h3>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table width="100%" cellspacing="0" cellpadding="0" border="0"
+                            style="border-collapse:collapse;background:#ffffff;">
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    Adı Soyadı
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;"
+                                    width="5">
+                                    :
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    {{ data.customer.representativeFirstname }} {{ data.customer.representativeSurname
+                                    }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    E-posta
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;"
+                                    width="5">
+                                    :
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">
+                                    {{ data.customer.representativeEmail }}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    {% endif %}
+    <tr>
+        <td style="padding-bottom:20px;"></td>
+    </tr>
+    <tr>
+        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0;">İade ve İptal
+                                        Prosedürü</h3>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                                <td style="border:1px solid #eeeeee;background:#ffffff;border-radius:4px;padding:20px;">
+                                    <div class="overflow-condition"
+                                        style="max-height:200px!important;overflow-y:auto!important;">
+                                        {{ data.refundProcedure | raw }}
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding-bottom:20px;"></td>
+    </tr>
+    <tr>
+        <td style="background:#f9f9f9;padding:30px 20px;border:1px solid #eeeeee;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <h3 style="font-size:16px;font-weight:bold;padding:0;margin:0;">Satış Koşulları</h3>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                                <td style="border:1px solid #eeeeee;background:#ffffff;border-radius:4px;padding:20px;">
+                                    <div class="overflow-condition"
+                                        style="max-height:200px!important;overflow-y:auto!important;">
+                                        {{ data.salesCondition | raw }}
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="padding:20px 10px;">
+            <div style="padding-bottom:10px;"><b>{{ data.companyName }}</b></div>
+            <div style="padding-bottom:10px;">{{ data.companyAddress }}</div>
+            <div style="padding-bottom:10px;">
+                <a href="tel:+{{ data.companyPhone1 }}" style="color:#000000;">{{ data.companyPhone1 }}</a>
+                {% if data.companyPhone2 %}
+                <span>-</span>
+                <a href="tel:+{{ data.companyPhone2 }}" style="color:#000000;">{{ data.companyPhone2 }}</a>
+                {% endif %}
+            </div>
+            <div style="padding-bottom:10px;">
+                <a href="{{ data.siteUrl }}" style="text-decoration: none;color:#000000;" target="_blank">{{
+                    data.companyWebsite }}</a>
+            </div>
+        </td>
+    </tr>
+    </table>
+    <!--[if (gte mso 9)|(IE)]>
+            </td>
+            </tr>
+            </table>
+            <![endif]-->
+    </td>
+    </tr>
+    </table>
+</body>
+
+</html>

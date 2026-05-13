@@ -215,13 +215,7 @@ router.get('/filter', async (req, res) => {
                     });
                 }
             }
-            if (virtualSeasonFilter) {
-                andConditions.push({
-                    'diaData.ozelkod1kodu': virtualSeasonFilter
-                });
-            }
-
-            // Mevsim filtresi
+            // Mevsim filtresi (kullanıcı seçimi virtualSeasonFilter'ı override eder)
             if (mevsim) {
                 const mevsimList = mevsim.split(',').map(m => m.trim()).filter(Boolean);
                 if (mevsimList.length > 0) {
@@ -231,6 +225,10 @@ router.get('/filter', async (req, res) => {
                         }
                     });
                 }
+            } else if (virtualSeasonFilter) {
+                andConditions.push({
+                    'diaData.ozelkod1kodu': virtualSeasonFilter
+                });
             }
             if (ozellik) {
                 const ozellikList = ozellik.split(',').map(o => o.trim()).filter(Boolean);

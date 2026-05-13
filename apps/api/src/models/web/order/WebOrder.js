@@ -34,14 +34,18 @@ const memberSnapshotSchema = new mongoose.Schema({
 }, { _id: false });
 
 // Sipariş Ürün Schema
+// Sipariş Ürün Schema
 const orderItemSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'WebProduct' },
     productKey: String,           // DIA _key
     stockCode: String,            // stokkartkodu
     name: String,
     quantity: { type: Number, required: true },
-    unitPrice: { type: Number, required: true },
-    totalPrice: { type: Number, required: true },
+    unitPrice: { type: Number, required: true },          // Kargosuz birim fiyat (gerçek webPrice)
+    totalPrice: { type: Number, required: true },          // unitPrice × quantity (kargosuz)
+    shippingPerUnit: { type: Number, default: 0 },         // 1 adetlik kargo (XML için, DIA'da 0)
+    shippingTotal: { type: Number, default: 0 },           // Toplam kargo (shippingPerUnit × quantity)
+    isXml: { type: Boolean, default: false },              // XML kaynaklı ürün mü?
     vatRate: { type: Number, default: 20 },
     vatAmount: { type: Number, default: 0 }
 }, { _id: false });

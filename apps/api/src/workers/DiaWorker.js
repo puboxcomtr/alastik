@@ -272,6 +272,28 @@ class DiaWorker {
             return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
         }
 
+        // MongoDB bağlantı kontrolü — bağlı değilse 30 saniyeye kadar bekle
+        const mongoose = require('mongoose');
+        const waitForConnection = async () => {
+            const maxWaitMs = 30000;
+            const checkInterval = 500;
+            let waited = 0;
+            while (mongoose.connection.readyState !== 1 && waited < maxWaitMs) {
+                await new Promise(r => setTimeout(r, checkInterval));
+                waited += checkInterval;
+            }
+            return mongoose.connection.readyState === 1;
+        };
+
+        const isConnected = await waitForConnection();
+        if (!isConnected) {
+            this.logger.error('MongoDB bağlantısı kurulamadı, XML sync atlanıyor', {
+                jobId: job.id,
+                readyState: mongoose.connection.readyState
+            });
+            throw new Error('MongoDB bağlantısı kurulamadı (30s timeout)');
+        }
+
         try {
             this.logger.info('=== XML FULL SYNC BAŞLANGICI ===', {
                 jobId: job.id,
@@ -554,15 +576,47 @@ class DiaWorker {
     }
 
     /**
+      * Graceful shutdown — çalışan job'un bitmesini bekle, sonra kapat
+      */
+    async gracefulShutdown(timeoutMs = 60000) {
+        try {
+            this.logger.info(`Graceful shutdown başladı (timeout: ${timeoutMs}ms)`);
+
+            // 1. Yeni job almayı durdur (tüm queue'lar)
+            await Promise.all(Object.values(this.queues).map(q => q.pause(true).catch(() => null)));
+            this.logger.info('Tüm queue\'lar pause edildi');
+
+            // 2. Aktif çalışan job var mı kontrol et, bitmesini bekle
+            const startedAt = Date.now();
+            while (Date.now() - startedAt < timeoutMs) {
+                const activeCounts = await Promise.all(
+                    Object.values(this.queues).map(q => q.getActiveCount().catch(() => 0))
+                );
+                const totalActive = activeCounts.reduce((a, b) => a + b, 0);
+
+                if (totalActive === 0) {
+                    this.logger.info('Tüm aktif job\'lar tamamlandı');
+                    break;
+                }
+
+                this.logger.info(`${totalActive} aktif job bekleniyor...`);
+                await new Promise(r => setTimeout(r, 2000));
+            }
+
+            // 3. Tüm queue'ları kapat
+            await this.close();
+
+        } catch (error) {
+            this.logger.error('Graceful shutdown hatası:', error);
+        }
+    }
+
+    /**
      * Worker'ı kapat
      */
     async close() {
         try {
-            await Promise.all([
-                this.queues.fullSync.close(),
-                this.queues.lightSync.close()
-            ]);
-
+            await Promise.all(Object.values(this.queues).map(q => q.close().catch(() => null)));
             this.logger.info('DIA Worker kapatıldı');
         } catch (error) {
             this.logger.error('Worker kapatma hatası:', error);

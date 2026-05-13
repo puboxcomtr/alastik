@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const Cargo = require('../../../models/admin/settings/Cargo');
+const XmlShippingPriceUpdaterService = require('../../../services/web/cargo/XmlShippingPriceUpdaterService');
+
+// XML kargo değişince ürünlerin kargo dahil fiyatlarını güncelle (fire-and-forget)
+const triggerShippingUpdate = (cargo) => {
+    if (cargo?.productType !== 'xml_integration') return;
+    XmlShippingPriceUpdaterService.updateAll()
+        .then(r => console.log('[Cargo] Kargo dahil fiyatlar güncellendi:', r.updated))
+        .catch(e => console.error('[Cargo] Fiyat güncelleme hatası:', e.message));
+};
 
 // Liste
 router.get('/', async (req, res) => {
@@ -175,6 +184,7 @@ router.post('/', async (req, res) => {
             freeShippingDesiLimit: Number(freeShippingDesiLimit) || 0
         });
 
+        triggerShippingUpdate(cargo);
         res.status(201).json({
             success: true,
             message: 'Kargo firması başarıyla eklendi',
@@ -295,6 +305,8 @@ router.put('/:id', async (req, res) => {
 
         await cargo.save();
 
+        triggerShippingUpdate(cargo);
+
         res.json({
             success: true,
             message: 'Kargo firması güncellendi',
@@ -323,6 +335,8 @@ router.patch('/:id/status', async (req, res) => {
         cargo.isActive = !cargo.isActive;
         await cargo.save();
 
+        triggerShippingUpdate(cargo);
+
         res.json({
             success: true,
             message: cargo.isActive ? 'Kargo firması aktifleştirildi' : 'Kargo firması pasifleştirildi',
@@ -348,7 +362,7 @@ router.delete('/:id', async (req, res) => {
                 message: 'Kargo firması bulunamadı'
             });
         }
-
+        triggerShippingUpdate(cargo);
         res.json({
             success: true,
             message: 'Kargo firması silindi'

@@ -37,6 +37,8 @@ export interface CustomData {
     seoKeywords?: string[];
     webPrice?: number;
     originalPrice?: number;
+    shippingIncludedPrice?: number;
+    shippingPerUnit?: number;
     featuredImage?: string;
     webVisible?: boolean;
     webOrder?: number;

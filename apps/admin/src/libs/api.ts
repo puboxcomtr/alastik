@@ -50,6 +50,13 @@ export const API_ENDPOINTS = {
         update: (id: string) => `${getBaseUrl()}/admin/mail-accounts/${id}`,
         test: (id: string) => `${getBaseUrl()}/admin/mail-accounts/${id}/test`,
     },
+    mailTemplates: {
+        list: () => `${getBaseUrl()}/admin/mail-templates`,
+        detail: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}`,
+        update: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}`,
+        reset: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}/reset`,
+        preview: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}/preview`,
+    },
     smtpSettings: {
         get: () => `${getBaseUrl()}/admin/smtp-settings`,
         update: () => `${getBaseUrl()}/admin/smtp-settings`,
@@ -72,6 +79,7 @@ export const API_ENDPOINTS = {
         update: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}`,
         delete: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}`,
         apply: (id: string) => `${getBaseUrl()}/admin/description-templates/${id}/apply`,
+        applyAll: () => `${getBaseUrl()}/admin/description-templates/apply-all`,
     },
     features: {
         list: () => `${getBaseUrl()}/admin/features`,

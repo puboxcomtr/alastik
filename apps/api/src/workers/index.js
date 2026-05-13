@@ -78,15 +78,25 @@ async function startWorker() {
 async function shutdown(signal) {
     logger.info(`\n${signal} sinyali alındı, worker kapatılıyor...`);
 
+    const shutdownTimeoutMs = parseInt(process.env.WORKER_SHUTDOWN_TIMEOUT) || 60000;
+
+    // Zorla kapatma timer'ı — hiçbir koşulda asılı kalmasın
+    const forceExitTimer = setTimeout(() => {
+        logger.error(`⏱️ Shutdown ${shutdownTimeoutMs}ms içinde tamamlanmadı, zorla kapatılıyor`);
+        process.exit(1);
+    }, shutdownTimeoutMs + 5000);
+
     try {
         if (worker) {
-            await worker.close();
+            await worker.gracefulShutdown(shutdownTimeoutMs);
         }
         await mongoose.connection.close();
+        clearTimeout(forceExitTimer);
         logger.info('✅ Worker başarıyla kapatıldı');
         process.exit(0);
 
     } catch (error) {
+        clearTimeout(forceExitTimer);
         logger.error('❌ Shutdown hatası:', error);
         process.exit(1);
     }

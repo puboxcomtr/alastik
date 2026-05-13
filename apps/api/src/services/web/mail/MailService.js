@@ -70,6 +70,15 @@ const sendMail = async ({ to, subject, html, text, from, attachments }, override
         attachments
     })
 
+    console.log('[MailService] Gönderim sonucu:', {
+        to,
+        subject,
+        messageId: info.messageId,
+        accepted: info.accepted,
+        rejected: info.rejected,
+        response: info.response
+    })
+
     return info
 }
 

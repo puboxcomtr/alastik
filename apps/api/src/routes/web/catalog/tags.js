@@ -238,10 +238,11 @@ router.get('/:slug/products', async (req, res) => {
             }
         }
         if (mevsim) {
-            const mevsimList = mevsim.split(',').map(m => m.trim().toUpperCase()).filter(Boolean);
+            const mevsimList = mevsim.split(',').map(m => m.trim()).filter(Boolean);
             if (mevsimList.length > 0) {
+                const mevsimRegexList = mevsimList.map(m => new RegExp(`^${m}$`, 'i'));
                 andConditions.push({
-                    'diaData.ozelkod1kodu': { $in: mevsimList }
+                    'diaData.ozelkod1kodu': { $in: mevsimRegexList }
                 });
             }
         }

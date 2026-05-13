@@ -2,9 +2,10 @@
 
 import { Grid, TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
 import { Offcanvas } from "react-bootstrap";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 
 interface TireFiltersProps {
     hideEbatFilters?: boolean;
@@ -24,19 +25,34 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
     const [rim, setRim] = useState(searchParams.get('jant') || 'all');
     const [vehicleType, setVehicleType] = useState(searchParams.get('arac') || 'all');
 
+   const searchParamsString = searchParams.toString();
+
     useEffect(() => {
         const loadOptions = async () => {
             try {
-                const data = await getTireFilterOptions(categorySlug, tagSlug);
+                const activeFilters: Record<string, string | undefined> = {
+                    genislik: searchParams.get('genislik') || undefined,
+                    yanak: searchParams.get('yanak') || undefined,
+                    jant: searchParams.get('jant') || undefined,
+                    arac: searchParams.get('arac') || undefined,
+                    marka: searchParams.get('marka') || undefined,
+                    mevsim: searchParams.get('mevsim') || undefined,
+                    oem: searchParams.get('oem') || undefined,
+                    yukEndeksi: searchParams.get('yukEndeksi') || undefined,
+                    hizEndeksi: searchParams.get('hizEndeksi') || undefined,
+                    ozellik: searchParams.get('ozellik') || undefined,
+                    uretim: searchParams.get('uretim') || undefined
+                };
+                const data = await getTireFilterOptions(categorySlug, tagSlug, undefined, activeFilters);
                 if (data) {
                     setOptions(data);
                 }
             } catch (error) {
-                console.error('TireFilter error:', error);
+                console.error('TireFilter hatası:', error);
             }
         };
         loadOptions();
-    }, [categorySlug, tagSlug]);
+    }, [categorySlug, tagSlug, searchParamsString]);
 
     useEffect(() => {
         setWidth(searchParams.get('genislik') || 'all');
@@ -45,54 +61,21 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
         setVehicleType(searchParams.get('arac') || 'all');
     }, [searchParams]);
 
-    // URL'deki değerleri options'a ekle (eğer yoksa)
-    const enhancedWidths = useMemo(() => {
-        if (!options?.widths) return [];
-        const widths = [...options.widths];
-        if (width !== 'all' && !widths.some(w => w.value === width)) {
-            widths.unshift({ value: width, label: width, count: 0 });
-        }
-        return widths;
-    }, [options?.widths, width]);
+    // Backend ne döndürürse o göster (cascading sonucu)
+    const enhancedWidths = options?.widths || [];
+    const enhancedAspects = options?.aspects || [];
+    const enhancedRims = options?.rims || [];
+    const enhancedVehicleTypes = options?.vehicleTypes || [];
 
-    const enhancedAspects = useMemo(() => {
-        if (!options?.aspects) return [];
-        const aspects = [...options.aspects];
-        if (height !== 'all' && !aspects.some(a => a.value === height)) {
-            aspects.unshift({ value: height, label: height, count: 0 });
-        }
-        return aspects;
-    }, [options?.aspects, height]);
-
-    const enhancedRims = useMemo(() => {
-        if (!options?.rims) return [];
-        const rims = [...options.rims];
-        if (rim !== 'all' && !rims.some(r => r.value === rim)) {
-            rims.unshift({ value: rim, label: `R${rim}`, count: 0 });
-        }
-        return rims;
-    }, [options?.rims, rim]);
-
-    const enhancedVehicleTypes = useMemo(() => {
-        if (!options?.vehicleTypes) return [];
-        const types = [...options.vehicleTypes];
-        if (vehicleType !== 'all' && !types.some(v => v.value === vehicleType)) {
-            types.unshift({ value: vehicleType, label: vehicleType, count: 0 });
-        }
-        return types;
-    }, [options?.vehicleTypes, vehicleType]);
-
-    const updateURL = (key: string, value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (value === 'all') {
-            params.delete(key);
-        } else {
-            params.set(key, value);
-        }
-        params.delete('page');
-        const queryString = params.toString();
-        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
-        router.push(newURL);
+    const updateURL = async (key: string, value: string) => {
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            key,
+            value,
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
     const handleWidthChange = (value: string) => {

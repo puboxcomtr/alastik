@@ -402,6 +402,10 @@ app.use('/api/order', webOrderRoutes);
 const webFavouritesRoutes = require('./routes/web/user/favourites');
 app.use('/api/favourites', webFavouritesRoutes);
 
+/* Kargo Hesaplama */
+const webCargoCalculateRoutes = require('./routes/web/cargo/calculate');
+app.use('/api/cargo', webCargoCalculateRoutes);
+
 /* Satın Alma Limit Kontrolü */
 const webPurchaseLimitsRoutes = require('./routes/web/campaign/purchase-limits');
 app.use('/api/campaign/purchase-limits', webPurchaseLimitsRoutes);
@@ -409,6 +413,10 @@ app.use('/api/campaign/purchase-limits', webPurchaseLimitsRoutes);
 /* İletişim Formu */
 const contactRoutes = require('./routes/web/content/contact');
 app.use('/api/contact', contactRoutes);
+
+/* WheelSize Lastik Hesaplama */
+const webCalculatorRoutes = require('./routes/plugins/wheelsize/calculator');
+app.use('/api/plugins/wheelsize/calculator', webCalculatorRoutes);
 
 /* Görsel Listeleme */
 const mediaFolders = Object.keys(paths.mediaFolders);

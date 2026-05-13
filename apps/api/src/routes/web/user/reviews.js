@@ -57,48 +57,65 @@ router.get('/my', authMiddleware, async (req, res) => {
 router.get('/top', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
-
         const reviews = await WebReview.find({
             status: 'active',
             overallRating: { $gte: 4 }
         })
             .sort({ createdAt: -1 })
-            .limit(limit)
+            .limit(limit * 3)
             .select('displayName overallRating comment tireSize productKey createdAt')
             .lean();
 
         const productKeys = reviews.map(r => r.productKey).filter(Boolean);
+
+        // Sadece aktif ürünleri çek
         const products = await WebProduct.find({
-            _key: { $in: productKeys }
+            _key: { $in: productKeys },
+            'diaData.durum': 'A'
         })
-            .select('_key diaData.aciklama diaData.marka diaData.m_resimler customData.seoUrl')
+            .select('_key diaData.aciklama diaData.marka diaData.m_resimler customData.seoUrl customData.featuredImage customData.customImages')
             .lean();
 
         const productMap = {};
         products.forEach(p => {
-            const img = p.diaData?.m_resimler?.[0]?.aws_url || null;
+            let image = null;
+            if (p.customData?.customImages?.length > 0) {
+                const sorted = [...p.customData.customImages].sort((a, b) => (a.order || 0) - (b.order || 0));
+                if (sorted[0]?.url) image = sorted[0].url;
+            }
+            if (!image && p.customData?.featuredImage) image = p.customData.featuredImage;
+            if (!image && p.diaData?.m_resimler?.length > 0) {
+                const sorted = [...p.diaData.m_resimler].sort((a, b) =>
+                    parseInt(a.order_id || '999') - parseInt(b.order_id || '999')
+                );
+                if (sorted[0]?.aws_url) image = sorted[0].aws_url;
+            }
             productMap[p._key] = {
                 name: p.diaData?.aciklama || '',
                 brand: p.diaData?.marka || '',
-                image: img,
+                image,
                 seoUrl: p.customData?.seoUrl || ''
             };
         });
 
-        const data = reviews.map(r => ({
-            _id: r._id,
-            displayName: r.displayName,
-            overallRating: r.overallRating,
-            comment: r.comment,
-            tireSize: r.tireSize,
-            createdAt: r.createdAt,
-            product: productMap[r.productKey] || null
-        }));
+        // Sadece aktif ürünü olan yorumları döndür, limit'e göre kes
+        const data = reviews
+            .filter(r => productMap[r.productKey])
+            .slice(0, limit)
+            .map(r => ({
+                _id: r._id,
+                displayName: r.displayName,
+                overallRating: r.overallRating,
+                comment: r.comment,
+                tireSize: r.tireSize,
+                createdAt: r.createdAt,
+                product: productMap[r.productKey]
+            }));
 
         res.json({ success: true, data });
     } catch (error) {
-        console.error('Top reviews hatasi:', error);
-        res.status(500).json({ success: false, message: 'Yorumlar yuklenemedi' });
+        console.error('Top reviews hatası:', error);
+        res.status(500).json({ success: false, message: 'Yorumlar yüklenemedi' });
     }
 });
 

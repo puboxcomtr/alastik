@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
         detail: (slug: string) => `${getBaseUrl()}/tags/${slug}`,
         products: (slug: string) => `${getBaseUrl()}/tags/${slug}/products`,
         tireSize: () => `${getBaseUrl()}/tags/tire-size`,
+        RimSize: () => `${getBaseUrl()}/tags/rim-size`,
         rimPcd: () => `${getBaseUrl()}/tags/rim-pcd`,
         chainSize: () => `${getBaseUrl()}/tags/chain-size`,
     },
@@ -67,6 +68,7 @@ export const API_ENDPOINTS = {
         years: () => `${getBaseUrl()}/wheelsize/years`,
         generations: () => `${getBaseUrl()}/wheelsize/generations`,
         modifications: () => `${getBaseUrl()}/wheelsize/modifications`,
+        calculatorSizes: () => `${getBaseUrl()}/plugins/wheelsize/calculator/sizes`,
     },
     blogs: {
         homepage: () => `${getBaseUrl()}/blogs/homepage`,

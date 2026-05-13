@@ -2,10 +2,10 @@ const mongoose = require('mongoose')
 
 const smtpSettingsSchema = new mongoose.Schema(
     {
-        host: { type: String, required: true, trim: true },
-        port: { type: Number, required: true, default: 587 },
-        username: { type: String, required: true, trim: true },
-        password: { type: String, required: true },
+        host: { type: String, default: '', trim: true },
+        port: { type: Number, default: 587 },
+        username: { type: String, default: '', trim: true },
+        password: { type: String, default: '' },
         provider: { type: String, enum: ['smtp', 'mailgun'], default: 'smtp' },
         senderEmail: { type: String, trim: true },
         isSingleton: { type: Boolean, default: true, unique: true }

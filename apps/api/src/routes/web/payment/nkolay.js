@@ -10,6 +10,7 @@ const express = require('express');
 const router = express.Router();
 const NkolayService = require('../../../services/plugins/payment/NKolayService');
 const WebOrder = require('../../../models/web/order/WebOrder');
+const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alastik.com';
 const API_URL = process.env.API_URL || 'https://api.alastik.com';
@@ -187,6 +188,30 @@ router.post('/3d-callback/success', async (req, res) => {
             await order.save();
 
             console.log('[Nkolay Route] Ödeme başarılı, sipariş güncellendi:', order.orderNumber);
+
+            // Ödeme başarılı → mail tetikle (fire-and-forget)
+            if (order.payment.status === 'paid') {
+                const customerMail = order.isGuest
+                    ? (order.guestBillingAddress?.email || order.customerEmail)
+                    : (order.memberSnapshot?.email || order.customerEmail);
+
+                sendTemplateMail({
+                    templateKey: order.isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
+                    context: { orderId: order._id.toString() },
+                    to: customerMail,
+                    alsoSendToAdmin: true,
+                    adminPurpose: 'order'
+                }).then((mailResult) => {
+                    if (!mailResult.success) {
+                        console.warn('[nkolay:3d-callback-success] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
+                    } else {
+                        console.log('[nkolay:3d-callback-success] Mail gönderildi:', order.orderNumber);
+                    }
+                }).catch((err) => {
+                    console.error('[nkolay:3d-callback-success] Mail hatası:', order.orderNumber, err.message);
+                });
+            }
+
             return res.redirect(`${FRONTEND_URL}/siparis-basarili?order=${order.orderNumber}`);
         }
 

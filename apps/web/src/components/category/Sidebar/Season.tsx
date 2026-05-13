@@ -1,4 +1,3 @@
-// apps/web/src/components/category/Sidebar/Season.tsx
 "use client";
 
 import {
@@ -7,6 +6,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 
 interface SeasonOption {
     value: string;
@@ -16,9 +16,11 @@ interface SeasonOption {
 
 interface SeasonProps {
     seasonOptions?: SeasonOption[];
+    categorySlug?: string;
+    tagSlug?: string;
 }
 
-export default function Season({ seasonOptions = [] }: SeasonProps) {
+export default function Season({ seasonOptions = [], categorySlug, tagSlug }: SeasonProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -26,33 +28,28 @@ export default function Season({ seasonOptions = [] }: SeasonProps) {
     // URL'den mevcut seçimleri al
     const currentSeasons = searchParams.get('mevsim')?.split(',').filter(Boolean) || [];
 
-    const handleToggle = (value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-
+    const handleToggle = async (value: string) => {
         let newSeasons: string[];
         if (currentSeasons.includes(value)) {
-            // Zaten seçili, kaldır
             newSeasons = currentSeasons.filter(s => s !== value);
         } else {
-            // Seçili değil, ekle
             newSeasons = [...currentSeasons, value];
         }
 
-        if (newSeasons.length > 0) {
-            params.set('mevsim', newSeasons.join(','));
-        } else {
-            params.delete('mevsim');
-        }
+        const newValue = newSeasons.length > 0 ? newSeasons.join(',') : 'all';
 
-        // Sayfa parametresini sıfırla
-        params.delete('sayfa');
-
-        const queryString = params.toString();
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'mevsim',
+            newValue,
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    // Seçenekler yoksa gösterme
-    if (!seasonOptions || seasonOptions.length === 0) {
+    // Seçenek yoksa veya tek seçenek varsa gösterme (filtrelemeye gerek yok)
+    if (!seasonOptions || seasonOptions.length <= 1) {
         return null;
     }
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const WebTag = require('../../../models/web/catalog/WebTag');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const TagMatchingService = require('../../../services/web/products/TagMatching');
+const { revalidateWebTag } = require('../../../utils/revalidateWeb');
 
 /**
  * Etiket Listeleme -
@@ -422,6 +423,9 @@ router.put('/:id', async (req, res) => {
             }
         }
 
+        // Eski slug'ı sakla (cache invalidate için)
+        const oldSeoUrl = tag.seoUrl;
+
         if (title) tag.title = title;
         if (description !== undefined) tag.description = description;
         if (seoTitle !== undefined) tag.seoTitle = seoTitle;
@@ -437,6 +441,14 @@ router.put('/:id', async (req, res) => {
         }
 
         await tag.save();
+
+        // Web cache'ini temizle (fire-and-forget)
+        if (oldSeoUrl) {
+            revalidateWebTag(`tag-${oldSeoUrl}`).catch(() => { });
+        }
+        if (tag.seoUrl && tag.seoUrl !== oldSeoUrl) {
+            revalidateWebTag(`tag-${tag.seoUrl}`).catch(() => { });
+        }
 
         res.json({
             success: true,
@@ -466,6 +478,11 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
+        // Web cache'ini temizle (fire-and-forget)
+        if (tag.seoUrl) {
+            revalidateWebTag(`tag-${tag.seoUrl}`).catch(() => { });
+        }
+
         res.json({
             success: true,
             message: 'Etiket başarıyla silindi'
@@ -480,7 +497,6 @@ router.delete('/:id', async (req, res) => {
         });
     }
 });
-
 
 
 // Etikete Ürün Ekleme/Çıkarma

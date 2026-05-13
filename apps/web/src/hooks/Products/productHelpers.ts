@@ -36,8 +36,13 @@ export const getProductFeature = (product: Product, featureName: string): string
 
 /**
  * Ürün fiyatını hesapla
+ * XML ürünleri için kargo dahil fiyat (shippingIncludedPrice) öncelikli kullanılır
  */
 export const getProductPrice = (product: Product): number => {
+    const shippingIncluded = product.customData?.shippingIncludedPrice;
+    if (shippingIncluded && shippingIncluded > 0) {
+        return shippingIncluded;
+    }
     return product.customData?.webPrice ||
         product.diaData?.m_birimler?.[0]?.fiyat4 ||
         0;

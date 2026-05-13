@@ -1,4 +1,3 @@
-// apps/web/src/components/category/Sidebar/Properties.tsx
 "use client";
 
 import {
@@ -7,6 +6,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 
 interface PropertyOption {
     value: string;
@@ -16,9 +16,11 @@ interface PropertyOption {
 
 interface PropertiesProps {
     propertyOptions?: PropertyOption[];
+    categorySlug?: string;
+    tagSlug?: string;
 }
 
-export default function Properties({ propertyOptions = [] }: PropertiesProps) {
+export default function Properties({ propertyOptions = [], categorySlug, tagSlug }: PropertiesProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -26,9 +28,7 @@ export default function Properties({ propertyOptions = [] }: PropertiesProps) {
     // URL'den mevcut seçimleri al
     const currentProperties = searchParams.get('ozellik')?.split(',').filter(Boolean) || [];
 
-    const handleToggle = (value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-
+    const handleToggle = async (value: string) => {
         let newProperties: string[];
         if (currentProperties.includes(value)) {
             newProperties = currentProperties.filter(p => p !== value);
@@ -36,18 +36,17 @@ export default function Properties({ propertyOptions = [] }: PropertiesProps) {
             newProperties = [...currentProperties, value];
         }
 
-        if (newProperties.length > 0) {
-            params.set('ozellik', newProperties.join(','));
-        } else {
-            params.delete('ozellik');
-        }
+        const newValue = newProperties.length > 0 ? newProperties.join(',') : 'all';
 
-        params.delete('sayfa');
-
-        const queryString = params.toString();
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'ozellik',
+            newValue,
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
-
     // Seçenekler yoksa gösterme
     if (!propertyOptions || propertyOptions.length === 0) {
         return null;

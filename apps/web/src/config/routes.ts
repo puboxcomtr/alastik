@@ -4,6 +4,7 @@ export const ROUTES = {
     LOGIN: '/giris-yap',
     REGISTER: '/kayit-ol',
     FORGOT_PASSWORD: '/sifremi-unuttum',
+    RESET_PASSWORD: '/sifre-sifirla',
     ACCOUNT: '/hesabim',
     ACCOUNT_INFORMATIONS: '/hesabim/kisisel-bilgilerim',
     ACCOUNT_VEHICLES: '/hesabim/araclarim',

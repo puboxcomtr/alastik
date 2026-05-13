@@ -551,6 +551,7 @@ class DiaStockService {
       ekalan10: diaProduct.ekalan10,
 
       gercek_stok: diaProduct.gercek_stok ?? 0,
+      anabirimdesi: diaProduct.anabirimdesi ?? 0,
       marka: diaProduct.marka,
       menseiulkeadi: diaProduct.menseiulkeadi,
 

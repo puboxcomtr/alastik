@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const WebContact = require('../../../models/web/content/WebContact');
+const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
+
 
 router.post('/', async (req, res) => {
     try {
@@ -13,8 +15,32 @@ router.post('/', async (req, res) => {
         const contact = new WebContact({ name, surname, email, phone, subject, message });
         await contact.save();
 
+        // Mail tetikle (fire-and-forget)
+        // Hem gönderene hem admin'e aynı şablon gider
+        sendTemplateMail({
+            templateKey: 'iletisim_formu',
+            context: {
+                formData: { name, surname, email, phone, subject, message }
+            },
+            to: email,
+            alsoSendToAdmin: true,
+            adminPurpose: 'general'
+        }).then((mailResult) => {
+            if (!mailResult.success) {
+                console.warn('[contact] Mail gönderilemedi:', email, mailResult.errors);
+            } else {
+                console.log('[contact] Mail gönderildi:', email, {
+                    customer: mailResult.customerSent,
+                    admin: mailResult.adminSent
+                });
+            }
+        }).catch((err) => {
+            console.error('[contact] Mail hatası:', email, err.message);
+        });
+
         res.json({ success: true, message: 'Mesajınız iletildi' });
     } catch (err) {
+        console.error('[contact] Kayıt hatası:', err.message);
         res.status(500).json({ success: false, message: 'Sunucu hatası' });
     }
 });

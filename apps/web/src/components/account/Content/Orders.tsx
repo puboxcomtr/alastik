@@ -56,7 +56,7 @@ export default function OrdersContent({ orders, showAllLink, onOrderClick }: Pro
     if (!orders || orders.length === 0) {
         return (
             <div className="ps-lg-3 ps-xl-0">
-                <h2 className="h5 mb-0 text-primary">Siparişlerim</h2>
+                <h2 className="h5 mb-0 text-primary my-3">Siparişlerim</h2>
                 <div className="text-center py-4">
                     Henüz siparişiniz bulunmamaktadır.
                 </div>

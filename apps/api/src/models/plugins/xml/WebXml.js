@@ -118,6 +118,10 @@ const webXmlSchema = new mongoose.Schema({
     notes: {
         type: String,
         default: ''
+    },
+    excludeFromWebSync: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true,

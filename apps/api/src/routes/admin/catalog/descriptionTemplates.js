@@ -220,4 +220,87 @@ router.post('/:id/apply', maybeAuth, async (req, res) => {
     }
 });
 
+
+/**
+ * Tüm aktif şablonları toplu uygula
+ * Body: { overrideExisting: bool }
+ */
+router.post('/apply-all', maybeAuth, async (req, res) => {
+    try {
+        const overrideExisting = Boolean(req.body.overrideExisting);
+
+        const templates = await DescriptionTemplate.find({
+            isActive: true,
+            'models.0': { $exists: true }
+        });
+
+        if (templates.length === 0) {
+            return res.json({
+                success: true,
+                message: 'Uygulanacak aktif şablon bulunamadı',
+                data: { totalTemplates: 0, totalModified: 0, results: [] }
+            });
+        }
+
+        const results = [];
+        let totalModified = 0;
+
+        for (const template of templates) {
+            try {
+                const filter = {
+                    'diaData.ozelkod5kodu': { $in: template.models }
+                };
+
+                if (!overrideExisting) {
+                    filter.$or = [
+                        { 'customData.customDescription': null },
+                        { 'customData.customDescription': '' },
+                        { 'customData.customDescription': { $exists: false } }
+                    ];
+                }
+
+                const updateResult = await WebProduct.updateMany(filter, {
+                    $set: {
+                        'customData.customDescription': template.content,
+                        'syncInfo.lastWebUpdate': new Date()
+                    }
+                });
+
+                template.lastAppliedAt = new Date();
+                template.appliedCount = (template.appliedCount || 0) + updateResult.modifiedCount;
+                await template.save();
+
+                totalModified += updateResult.modifiedCount;
+
+                results.push({
+                    templateId: template._id,
+                    name: template.name,
+                    matched: updateResult.matchedCount,
+                    modified: updateResult.modifiedCount
+                });
+            } catch (err) {
+                console.error(`Şablon uygulama hatası (${template.name}):`, err);
+                results.push({
+                    templateId: template._id,
+                    name: template.name,
+                    error: err.message
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `${templates.length} şablon işlendi, ${totalModified} ürün güncellendi`,
+            data: {
+                totalTemplates: templates.length,
+                totalModified,
+                results
+            }
+        });
+    } catch (error) {
+        console.error('Toplu şablon uygulama hatası:', error);
+        res.status(500).json({ success: false, message: 'Toplu uygulama yapılamadı' });
+    }
+});
+
 module.exports = router;

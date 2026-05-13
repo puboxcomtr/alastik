@@ -4,6 +4,87 @@ const WebOrder = require('../../../models/web/order/WebOrder');
 const WebAddress = require('../../../models/web/address/WebAddress');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
+const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
+
+/**
+ * Sepet ürünleri için backend'de items + pricing hesapla
+ * Her ürün DB'den çekilir, gerçek webPrice ve shippingPerUnit ayrı kaydedilir
+ */
+const calculateOrderPricing = async (cartItems) => {
+    if (!Array.isArray(cartItems) || cartItems.length === 0) {
+        throw new Error('Sepet boş');
+    }
+
+    const keys = cartItems.map(i => String(i.productKey));
+    const products = await WebProduct.find(
+        { _key: { $in: keys } },
+        {
+            _key: 1,
+            'diaData.stokkartkodu': 1,
+            'diaData.aciklama': 1,
+            'diaData.m_birimler': 1,
+            'customData.webPrice': 1,
+            'customData.shippingPerUnit': 1,
+            'syncInfo.syncSource': 1
+        }
+    ).lean();
+
+    const productMap = {};
+    for (const p of products) {
+        productMap[p._key] = p;
+    }
+
+    const items = [];
+    let subtotal = 0;
+    let shippingCost = 0;
+
+    for (const cartItem of cartItems) {
+        const product = productMap[String(cartItem.productKey)];
+        if (!product) continue;
+
+        const quantity = parseInt(cartItem.quantity) || 1;
+        const isXml = product.syncInfo?.syncSource === 'xml_integration';
+
+        // Kargosuz birim fiyat
+        const unitPrice = product.customData?.webPrice ||
+            product.diaData?.m_birimler?.[0]?.fiyat4 ||
+            0;
+
+        // Kargo payı (sadece XML için)
+        const shippingPerUnit = isXml ? (product.customData?.shippingPerUnit || 0) : 0;
+
+        const totalPrice = Math.round(unitPrice * quantity * 100) / 100;
+        const shippingTotal = Math.round(shippingPerUnit * quantity * 100) / 100;
+
+        items.push({
+            productKey: product._key,
+            stockCode: product.diaData?.stokkartkodu || '',
+            name: product.diaData?.aciklama || '',
+            quantity,
+            unitPrice: Math.round(unitPrice * 100) / 100,
+            totalPrice,
+            shippingPerUnit: Math.round(shippingPerUnit * 100) / 100,
+            shippingTotal,
+            isXml,
+            vatRate: 20,
+            vatAmount: 0
+        });
+
+        subtotal += totalPrice;
+        shippingCost += shippingTotal;
+    }
+
+    const pricing = {
+        subtotal: Math.round(subtotal * 100) / 100,
+        vatAmount: 0,
+        shippingCost: Math.round(shippingCost * 100) / 100,
+        discountAmount: 0,
+        total: Math.round((subtotal + shippingCost) * 100) / 100,
+        currency: 'TRY'
+    };
+
+    return { items, pricing };
+};
 
 // POST - Yeni sipariş oluştur
 router.post('/', async (req, res) => {
@@ -18,11 +99,13 @@ router.post('/', async (req, res) => {
             shippingAddressId,
             guestBillingAddress,
             guestShippingAddress,
-            items,
-            pricing,
+            items: rawItems,
             paymentMethod,
             customerNote
         } = req.body;
+
+        // Backend'de items ve pricing hesapla (frontend'den gelene güvenme)
+        const { items, pricing } = await calculateOrderPricing(rawItems);
 
         // Sipariş numarası oluştur
         const orderNumber = await WebOrder.generateOrderNumber();
@@ -213,6 +296,38 @@ router.post('/', async (req, res) => {
 
         await order.save();
 
+        // Mail gönderim koşulu:
+        // - Havale (bank_transfer) ve kapıda ödeme: hemen mail gönder
+        // - Kart (3D ödeme): commit endpoint'inden tetiklenecek (burada gönderme)
+        const shouldSendMailNow = ['bank_transfer', 'cash_on_delivery'].includes(paymentMethod);
+
+        if (shouldSendMailNow) {
+            // Müşteri mail adresini belirle
+            const customerMail = isGuest
+                ? (guestBillingAddress?.email || customerEmail)
+                : (memberSnapshot?.email || customerEmail);
+
+            // Senkron + try/catch — mail patlasa sipariş etkilenmez
+            sendTemplateMail({
+                templateKey: isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
+                context: { orderId: order._id.toString() },
+                to: customerMail,
+                alsoSendToAdmin: true,
+                adminPurpose: 'order'
+            }).then((mailResult) => {
+                if (!mailResult.success) {
+                    console.warn('[order] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
+                } else {
+                    console.log('[order] Mail gönderildi:', order.orderNumber, {
+                        customer: mailResult.customerSent,
+                        admin: mailResult.adminSent
+                    });
+                }
+            }).catch((err) => {
+                console.error('[order] Mail orchestrator hatası:', order.orderNumber, err.message);
+            });
+        }
+
         res.json({
             success: true,
             data: order,
@@ -401,6 +516,27 @@ router.put('/:id/payment', async (req, res) => {
 
         if (!order) {
             return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
+        }
+
+        // Havale onaylandıysa müşteriye + admine bilgilendirme maili
+        if (paymentStatus === 'paid') {
+            const customerMail = order.isGuest
+                ? (order.guestBillingAddress?.email || order.customerEmail)
+                : (order.memberSnapshot?.email || order.customerEmail);
+
+            sendTemplateMail({
+                templateKey: order.isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
+                context: { orderId: order._id.toString() },
+                to: customerMail,
+                alsoSendToAdmin: true,
+                adminPurpose: 'order'
+            }).then((mailResult) => {
+                if (!mailResult.success) {
+                    console.warn('[order:payment-approved] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
+                }
+            }).catch((err) => {
+                console.error('[order:payment-approved] Mail hatası:', order.orderNumber, err.message);
+            });
         }
 
         res.json({ success: true, data: order });

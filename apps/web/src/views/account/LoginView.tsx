@@ -33,6 +33,11 @@ export default function LoginView() {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [guestCheckoutEnabled, setGuestCheckoutEnabled] = useState(false);
+
+    /* Şifremi Unuttum Modal */
+    const [forgotModalOpen, setForgotModalOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
     const searchParams = useSearchParams();
     const { items, loading: cartLoading } = useCart();
     const isFromCheckout = searchParams.get('from') === 'checkout' && items.length > 0;
@@ -84,6 +89,35 @@ export default function LoginView() {
             toast.error('Bir hata oluştu');
         } finally {
             setLoading(false);
+        }
+    };
+
+    /* Şifremi Unuttum Submit */
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!forgotEmail) {
+            toast.error('Lütfen e-posta adresinizi giriniz');
+            return;
+        }
+
+        setForgotLoading(true);
+
+        try {
+            const result = await api.post('/auth/forgot-password', { email: forgotEmail });
+
+            if (result.success) {
+                toast.success(result.message || 'Şifre sıfırlama bağlantısı gönderildi');
+                setForgotEmail('');
+                setForgotModalOpen(false);
+            } else {
+                toast.error(result.message || 'İşlem başarısız');
+            }
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            toast.error('Bir hata oluştu');
+        } finally {
+            setForgotLoading(false);
         }
     };
 
@@ -152,9 +186,14 @@ export default function LoginView() {
                                             </button>
                                         </div>
                                         <div>
-                                            <Link href="#" className="fs-sm text-muted">
+                                            <button
+                                                type="button"
+                                                onClick={() => setForgotModalOpen(true)}
+                                                className="btn btn-link p-0 fs-sm text-muted"
+                                                style={{ textDecoration: 'none' }}
+                                            >
                                                 {t('forgot_password')}
-                                            </Link>
+                                            </button>
                                         </div>
                                     </div>
                                 </form>
@@ -214,11 +253,80 @@ export default function LoginView() {
                                     </div>
                                 </div>
                             )}
-
                         </div>
                     </div>
                 </div>
             </div>
+            {/* Şifremi Unuttum Modal */}
+            {forgotModalOpen && (
+                <>
+                    <div
+                        className="modal fade show d-block"
+                        tabIndex={-1}
+                        style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                        onClick={() => !forgotLoading && setForgotModalOpen(false)}
+                    >
+                        <div
+                            className="modal-dialog modal-dialog-centered"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Şifremi Unuttum</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => !forgotLoading && setForgotModalOpen(false)}
+                                        disabled={forgotLoading}
+                                    ></button>
+                                </div>
+                                <form onSubmit={handleForgotSubmit}>
+                                    <div className="modal-body">
+                                        <p className="text-muted mb-3">
+                                            Kayıtlı e-posta adresinizi giriniz. Şifre sıfırlama bağlantısı tarafınıza gönderilecektir.
+                                        </p>
+                                        <div className="mb-3">
+                                            <label className="form-label">E-posta Adresi</label>
+                                            <input
+                                                type="email"
+                                                value={forgotEmail}
+                                                onChange={(e) => setForgotEmail(e.target.value)}
+                                                className="form-control"
+                                                placeholder="ornek@mail.com"
+                                                style={{
+                                                    borderRadius: '0.375rem',
+                                                    border: '1px solid black',
+                                                    padding: '0.75rem'
+                                                }}
+                                                required
+                                                autoFocus
+                                                disabled={forgotLoading}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-secondary"
+                                            onClick={() => setForgotModalOpen(false)}
+                                            disabled={forgotLoading}
+                                        >
+                                            Vazgeç
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary"
+                                            disabled={forgotLoading}
+                                        >
+                                            {forgotLoading ? 'Gönderiliyor...' : 'Bağlantı Gönder'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

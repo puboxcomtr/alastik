@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const NetahsilatService = require('../../../services/plugins/payment/NetahsilatService');
 const WebOrder = require('../../../models/web/order/WebOrder');
+const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alastik.com';
 
@@ -189,6 +190,29 @@ router.post('/3d-commit', async (req, res) => {
                 order.payment.authCode = commitResult.authCode;
                 order.payment.paymentGuid = paymentGuid;
                 await order.save();
+
+                // Ödeme başarılı → mail tetikle (fire-and-forget)
+                if (order.payment.status === 'paid') {
+                    const customerMail = order.isGuest
+                        ? (order.guestBillingAddress?.email || order.customerEmail)
+                        : (order.memberSnapshot?.email || order.customerEmail);
+
+                    sendTemplateMail({
+                        templateKey: order.isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
+                        context: { orderId: order._id.toString() },
+                        to: customerMail,
+                        alsoSendToAdmin: true,
+                        adminPurpose: 'order'
+                    }).then((mailResult) => {
+                        if (!mailResult.success) {
+                            console.warn('[netahsilat:3d-commit] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
+                        } else {
+                            console.log('[netahsilat:3d-commit] Mail gönderildi:', order.orderNumber);
+                        }
+                    }).catch((err) => {
+                        console.error('[netahsilat:3d-commit] Mail hatası:', order.orderNumber, err.message);
+                    });
+                }
 
                 return res.json({
                     success: true,

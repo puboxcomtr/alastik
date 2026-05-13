@@ -44,8 +44,15 @@ export interface TagFilterParams {
 async function getTagBySlug(slug: string): Promise<WebTag | null> {
     try {
         const response = await fetch(API_ENDPOINTS.tags.detail(slug), {
-            next: { revalidate: 60 }
+            next: {
+                revalidate: 300,
+                tags: [`tag-${slug}`]
+            }
         });
+
+        if (response.status === 404) {
+            return null;
+        }
 
         if (!response.ok) return null;
 
@@ -56,7 +63,6 @@ async function getTagBySlug(slug: string): Promise<WebTag | null> {
         return null;
     }
 }
-
 async function getTagProducts(
     slug: string,
     page: number = 1,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Offcanvas, Button } from "react-bootstrap";
 import { Grid } from "@mui/material";
 
@@ -25,11 +26,16 @@ interface SidebarProps {
     tagSlug?: string;
     tagType?: string;
     brandSlug?: string;
+    searchQuery?: string;
 }
 
-export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug }: SidebarProps) {
+export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug, searchQuery }: SidebarProps) {
+    const searchParams = useSearchParams();
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
     const [productType, setProductType] = useState<string>('LASTİK');
+
+    // searchParams değişikliklerini izlemek için dependency
+    const searchParamsString = searchParams.toString();
 
     useEffect(() => {
         if (tagType) {
@@ -37,7 +43,22 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
             setProductType(type);
         }
         const loadOptions = async () => {
-            const data = await getTireFilterOptions(categorySlug, tagSlug, brandSlug);
+            // Aktif filtreleri searchParams'tan al
+            const activeFilters: Record<string, string | undefined> = {
+                genislik: searchParams.get('genislik') || undefined,
+                yanak: searchParams.get('yanak') || undefined,
+                jant: searchParams.get('jant') || undefined,
+                arac: searchParams.get('arac') || undefined,
+                marka: searchParams.get('marka') || undefined,
+                mevsim: searchParams.get('mevsim') || undefined,
+                oem: searchParams.get('oem') || undefined,
+                yukEndeksi: searchParams.get('yukEndeksi') || undefined,
+                hizEndeksi: searchParams.get('hizEndeksi') || undefined,
+                ozellik: searchParams.get('ozellik') || undefined,
+                uretim: searchParams.get('uretim') || undefined
+            };
+
+            const data = await getTireFilterOptions(categorySlug, tagSlug, brandSlug, activeFilters, searchQuery);
             if (data) {
                 setOptions(data);
                 if (!tagType) {
@@ -46,7 +67,7 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
             }
         };
         loadOptions();
-    }, [categorySlug, tagSlug, tagType, brandSlug]);
+    }, [categorySlug, tagSlug, tagType, brandSlug, searchParamsString, searchQuery]);
 
     const isJant = productType === 'JANT';
 
@@ -85,8 +106,8 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                         {/* Lastik Filtreleri */}
                         {!isJant && (
                             <>
-                                <Season seasonOptions={options?.seasons || []} />
-                                <Properties propertyOptions={options?.properties || []} />
+                                <Season seasonOptions={options?.seasons || []} categorySlug={categorySlug} tagSlug={tagSlug} />
+                                <Properties propertyOptions={options?.properties || []} categorySlug={categorySlug} tagSlug={tagSlug} />
                                 <TireFilter
                                     hideEbatFilters={hideEbatFilters}
                                     categorySlug={categorySlug}
@@ -95,9 +116,11 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                                 <SpeedIndex
                                     loadIndexOptions={options?.loadIndex || []}
                                     speedIndexOptions={options?.speedIndex || []}
+                                    categorySlug={categorySlug}
+                                    tagSlug={tagSlug}
                                 />
-                                <Oem oemOptions={options?.oem || []} />
-                                <ProductionYear productionYears={options?.productionYears} />
+                                <Oem oemOptions={options?.oem || []} categorySlug={categorySlug} tagSlug={tagSlug} />
+                                <ProductionYear productionYears={options?.productionYears} categorySlug={categorySlug} tagSlug={tagSlug} />
                             </>
                         )}
                     </Grid>

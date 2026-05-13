@@ -26,3 +26,6 @@ apps/*/package-lock.json
 # NPM config (local only)
 .npmrc
 apps/api/src/config/alastik-service-account.json
+backups/
+.next/
+node_modules/

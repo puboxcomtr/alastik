@@ -2,9 +2,10 @@
 
 import { Grid, TextField, MenuItem, Typography, FormControl } from "@mui/material";
 import { Offcanvas } from "react-bootstrap";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { getTireFilterOptions, type TireFilterOptions, type FilterOption } from "@/src/services/filterService";
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 
 interface RimsFilterProps {
     categorySlug?: string;
@@ -42,17 +43,29 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
         return initial;
     });
 
+    const searchParamsString = searchParams.toString();
+
     useEffect(() => {
         const loadOptions = async () => {
             try {
-                const data = await getTireFilterOptions(categorySlug, tagSlug);
+                const activeFilters: Record<string, string | undefined> = {
+                    jantGenisligi: searchParams.get('jantGenisligi') || undefined,
+                    jantCap: searchParams.get('jantCap') || undefined,
+                    bijonSayisi: searchParams.get('bijonSayisi') || undefined,
+                    bijon: searchParams.get('bijon') || undefined,
+                    gobekCapi: searchParams.get('gobekCapi') || undefined,
+                    et: searchParams.get('et') || undefined,
+                    renk: searchParams.get('renk') || undefined,
+                    marka: searchParams.get('marka') || undefined
+                };
+                const data = await getTireFilterOptions(categorySlug, tagSlug, undefined, activeFilters);
                 if (data) setOptions(data);
             } catch (error) {
-                console.error('RimsFilter error:', error);
+                console.error('RimsFilter hatası:', error);
             }
         };
         loadOptions();
-    }, [categorySlug, tagSlug]);
+    }, [categorySlug, tagSlug, searchParamsString]);
 
     useEffect(() => {
         const next: Record<string, string> = {};
@@ -62,15 +75,14 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
         setValues(next);
     }, [searchParams]);
 
-    const updateURL = (paramName: string, value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (value === 'all') {
-            params.delete(paramName);
-        } else {
-            params.set(paramName, value);
-        }
-        params.delete('page');
-        const queryString = params.toString();
+    const updateURL = async (paramName: string, value: string) => {
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            paramName,
+            value,
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
@@ -87,13 +99,7 @@ export default function RimsFilter({ categorySlug, tagSlug }: RimsFilterProps) {
     };
 
     const getEnhancedOptions = (field: RimFilterField): FilterOption[] => {
-        const rawOptions = (options?.[field.optionsKey] as FilterOption[] | undefined) || [];
-        const currentValue = values[field.key];
-        const list = [...rawOptions];
-        if (currentValue !== 'all' && !list.some(o => o.value === currentValue)) {
-            list.unshift({ value: currentValue, label: currentValue, count: 0 });
-        }
-        return list;
+        return (options?.[field.optionsKey] as FilterOption[] | undefined) || [];
     };
 
     if (!options) {

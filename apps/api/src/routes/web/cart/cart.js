@@ -3,8 +3,43 @@ const router = express.Router();
 const WebCart = require('../../../models/web/cart/WebCart');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
+/**
+ * Sepette gösterilecek birim fiyat
+ * XML ürünleri için kargo dahil fiyat (shippingIncludedPrice), 
+ * diğerleri için fiyat4 kullanılır
+ */
+const getCartUnitPrice = (product) => {
+    const isXml = product.syncInfo?.syncSource === 'xml_integration';
+    if (isXml && product.customData?.shippingIncludedPrice > 0) {
+        return product.customData.shippingIncludedPrice;
+    }
+    return product.diaData?.m_birimler?.[0]?.fiyat4 || 0;
+};
+
+/**
+ * Ürün görselini öncelik sırasıyla getir
+ * Frontend getProductImage helper'ı ile aynı mantık:
+ */
+const getCartProductImage = (product) => {
+    const customImages = product.customData?.customImages;
+    if (customImages && customImages.length > 0) {
+        const sorted = [...customImages].sort((a, b) => (a.order || 0) - (b.order || 0));
+        if (sorted[0]?.url) return sorted[0].url;
+    }
+    if (product.customData?.featuredImage) {
+        return product.customData.featuredImage;
+    }
+    const resimler = product.diaData?.m_resimler;
+    if (resimler && resimler.length > 0) {
+        const sorted = [...resimler].sort((a, b) =>
+            parseInt(a.order_id || '999') - parseInt(b.order_id || '999')
+        );
+        if (sorted[0]?.aws_url) return sorted[0].aws_url;
+    }
+    return null;
+};
+
 // Sepeti getir
-// Sepeti getir (fiyatları DB'den güncel çeker)
 router.get('/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -31,9 +66,9 @@ router.get('/:sessionId', async (req, res) => {
                 continue;
             }
 
-            const currentPrice = product.diaData?.m_birimler?.[0]?.fiyat4 || 0;
+            const currentPrice = getCartUnitPrice(product);
             const currentOriginalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
-            const currentImage = product.diaData?.m_resimler?.[0]?.aws_url || null;
+            const currentImage = getCartProductImage(product);
             const currentName = product.diaData?.aciklama || '';
             const currentBrand = product.diaData?.marka || '';
             const currentSlug = product.customData?.seoUrl || item.productKey;
@@ -91,7 +126,7 @@ router.post('/add', async (req, res) => {
         }
 
         // Fiyat al (fiyat4)
-        const unitPrice = product.diaData?.m_birimler?.[0]?.fiyat4 || 0;
+        const unitPrice = getCartUnitPrice(product);
         if (unitPrice <= 0) {
             return res.status(400).json({ success: false, message: 'Urun fiyati bulunamadi' });
         }
@@ -110,7 +145,7 @@ router.post('/add', async (req, res) => {
             cart.items[existingIndex].quantity += quantity;
         } else {
             // Resim al
-            const productImage = product.diaData?.m_resimler?.[0]?.aws_url || null;
+            const productImage = getCartProductImage(product);
 
             cart.items.push({
                 productKey,

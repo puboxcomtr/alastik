@@ -13,6 +13,7 @@ import {
     Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { applyFilterWithCascade } from "@/src/utils/filterCascade";
 
 interface YearOption {
     value: string;
@@ -22,18 +23,18 @@ interface YearOption {
 
 interface ProductionYearProps {
     productionYears?: YearOption[];
+    categorySlug?: string;
+    tagSlug?: string;
 }
 
-export default function ProductionYear({ productionYears = [] }: ProductionYearProps) {
+export default function ProductionYear({ productionYears = [], categorySlug, tagSlug }: ProductionYearProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [search, setSearch] = useState("");
     const selectedYears = searchParams.get('uretim')?.split(',').filter(Boolean) || [];
 
-    const handleToggle = (yearValue: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-
+    const handleToggle = async (yearValue: string) => {
         let newSelected: string[];
         if (selectedYears.includes(yearValue)) {
             newSelected = selectedYears.filter(y => y !== yearValue);
@@ -41,25 +42,27 @@ export default function ProductionYear({ productionYears = [] }: ProductionYearP
             newSelected = [...selectedYears, yearValue];
         }
 
-        if (newSelected.length > 0) {
-            params.set('uretim', newSelected.join(','));
-        } else {
-            params.delete('uretim');
-        }
+        const newValue = newSelected.length > 0 ? newSelected.join(',') : 'all';
 
-        params.delete('sayfa');
-        const queryString = params.toString();
-        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
-        router.push(newURL);
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'uretim',
+            newValue,
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    const clearYears = () => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete('uretim');
-        params.delete('sayfa');
-        const queryString = params.toString();
-        const newURL = queryString ? `${pathname}?${queryString}` : pathname;
-        router.push(newURL);
+    const clearYears = async () => {
+        const cleaned = await applyFilterWithCascade(
+            new URLSearchParams(searchParams.toString()),
+            'uretim',
+            'all',
+            { categorySlug, tagSlug }
+        );
+        const queryString = cleaned.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
     // Arama filtresi

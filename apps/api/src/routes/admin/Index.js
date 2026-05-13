@@ -156,4 +156,7 @@ router.use('/mail-management', mailManagementRoutes);
 const smtpSettingsRoutes = require('./mail/smtp');
 router.use('/smtp-settings', smtpSettingsRoutes);
 
+const mailTemplatesRoutes = require('./mail/templates');
+router.use('/mail-templates', mailTemplatesRoutes);
+
 module.exports = router;

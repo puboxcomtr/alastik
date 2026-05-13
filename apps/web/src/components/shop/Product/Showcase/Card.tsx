@@ -178,6 +178,24 @@ export default function ProductCard({ product }: ProductCardProps) {
                         </Link>
                     </h3>
 
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="fs-xs text-body-secondary">
+                            Üretim Tarihi {product.diaData?.ekalan5 || '-'}
+                        </span>
+                        <span className="fs-xs fw-semibold">
+                            {product.diaData?.gercek_stok > 0 ? (
+                                <>
+                                    <span className="text-body-secondary">Stok:</span>
+                                    <span className="text-success ms-1">
+                                        {product.diaData.gercek_stok > 20 ? '+20' : product.diaData.gercek_stok} Adet
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="text-danger">Stok Sorunuz</span>
+                            )}
+                        </span>
+                    </div>
+
                     <div className="product__price border-top pt-3">
                         {isSetLastik(product) && (
                             <div className="d-flex justify-content-end">

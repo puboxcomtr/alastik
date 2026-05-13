@@ -144,9 +144,9 @@ export default function FooterTop() {
                                 { key: 'trendyol', href: theme.trendyol, src: '/assets/img/pazaryeri/trendyol-logo.png', alt: 'Trendyol Pazaryeri', title: 'ALastik - Trendyol Pazaryeri', bg: '#f27a1a' },
                                 { key: 'n11', href: theme.n11, src: '/assets/img/pazaryeri/n11-logo.png', alt: 'N11 Pazaryeri', title: 'ALastik - N11 Pazaryeri', bg: '#FFF' },
                                 { key: 'hepsiburada', href: theme.hepsiburada, src: '/assets/img/pazaryeri/hepsiburada-logo.png', alt: 'Hepsiburada Pazaryeri', title: 'ALastik - Hepsiburada Pazaryeri', bg: '#ff6000' },
-                                { key: 'pttavm', href: theme.pttavm, src: '/assets/img/pazaryeri/trendyol-logo.png', alt: 'PttAVM Pazaryeri', title: 'ALastik - PttAVM Pazaryeri', bg: '#ffc107' },
+                                { key: 'pttavm', href: theme.pttavm, src: '/assets/img/pazaryeri/pttavm-logo.png', alt: 'PttAVM Pazaryeri', title: 'ALastik - PttAVM Pazaryeri', bg: '#ffc107' },
                                 { key: 'pazarama', href: theme.pazarama, src: '/assets/img/pazaryeri/pazarama-logo.png', alt: 'Pazarama Pazaryeri', title: 'ALastik - Pazarama Pazaryeri', bg: '#f27a1a' },
-                                { key: 'idefix', href: theme.idefix, src: '/assets/img/pazaryeri/trendyol-logo.png', alt: 'İdefix Pazaryeri', title: 'ALastik - İdefix Pazaryeri', bg: '#f27a1a' },
+                                { key: 'idefix', href: theme.idefix, src: '/assets/img/pazaryeri/idefix-logo.png', alt: 'İdefix Pazaryeri', title: 'ALastik - İdefix Pazaryeri', bg: '#f27a1a' },
                             ].filter(item => item.href).map((item) => (
                                 <li key={item.key} style={{ borderRadius: '4px' }}>
                                     <Link className="nav-link" href={item.href} target="_blank" rel="nofollow">
@@ -225,7 +225,7 @@ export default function FooterTop() {
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href="/kampanyalar"
+                                                href="/sayfa/kampanyalar"
                                                 className="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0">
                                                 Kampanyalar
                                             </Link>

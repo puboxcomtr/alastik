@@ -1,0 +1,142 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Hesap Aktivasyonu</title>
+    <style type="text/css">
+        @media only screen and (min-device-width: 601px) {
+            .content {
+                width: 600px !important;
+            }
+        }
+    </style>
+</head>
+
+<body
+    style="margin: 0; padding: 0; min-width: 100%!important;font-family: Arial, Helvetica, sans-serif;font-size:14px;line-height:20px;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td>
+                <!--[if (gte mso 9)|(IE)]>
+            <table width="600" align="center" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td>
+            <![endif]-->
+                <table class="content" align="center" cellpadding="0" cellspacing="0" border="0"
+                    style="width: 100%; max-width: 600px;">
+                    <tr>
+                        <td style="padding:20px 0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left">
+                                        <a href="{{ data.siteUrl }}" style="text-decoration: none;color:#000000;">
+                                            {% if data.logo %}
+                                            <img src="{{ data.logo }}" style="max-width:140px;max-height:100px;" alt="">
+                                            {% else %}
+                                            <span>{{ data.companyName }}</span>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td align="right">
+                                        <a href="{{ data.siteUrl }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/website.png') }}"
+                                                alt="">
+                                        </a>
+                                        <a href="{{ data.siteUrl ~ '/iletisim' }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/contact.png') }}"
+                                                alt="">
+                                        </a>
+                                        <a href="{{ data.siteUrl ~ '/rss' }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/rss.png') }}" alt="">
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background: #fafafa;padding: 30px 20px;border: 1px solid #eeeeee;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="border-bottom:1px solid #dddddd;padding-bottom:10px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td>
+                                                    <h2 style="font-size:20px;font-weight:bold;padding:0;margin:0;">
+                                                        Hesap Aktivasyonu</h2>
+                                                </td>
+                                                <td align="right"></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:30px 0;">
+                                        <div style="padding-bottom:10px;">Sayın {{ data.fullName }},</div>
+                                        <a href="{{ data.siteUrl }}" style="color:#000000;">{{ data.siteUrl }}</a>
+                                        üyeliğiniz başarıyla gerçekleşmiştir. Üyeliğinizin kullanıma açılması için
+                                        aşağıdaki aktivasyon linkine tıklayarak, üyeliğinizi aktive etmeniz
+                                        gerekmektedir.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding-bottom:30px;">
+                                        <a href="{{ data.activationUrl }}"
+                                            style="width:200px;height:40px;line-height:40px;text-align:center;color:#ffffff;background:#337ab7;display:inline-block;border-radius:4px;text-decoration: none;">Aktive
+                                            Et</a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td
+                                        style="border:1px solid #eeeeee;background:#ffffff;border-radius:4px;padding:20px;">
+                                        <div style="padding-bottom:20px;">Eğer yukarıdaki butona tıklayamıyorsanız,
+                                            aşağıdaki adresi kopyalayarak tarayıcınızın adres çubuğuna yapıştırıp erişim
+                                            sağlayabilirsiniz.</div>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="padding:10px;border-radius:4px;border:1px dashed #cccccc;background:#fafafa;"
+                                                    align="center">
+                                                    <a href="{{ data.activationUrl }}"
+                                                        style="text-decoration: none;color:#000000;">{{
+                                                        data.activationUrl }}</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding:20px 10px;">
+                            <div style="padding-bottom:10px;"><b>{{ data.companyName }}</b></div>
+                            <div style="padding-bottom:10px;">{{ data.companyAddress }}</div>
+                            <div style="padding-bottom:10px;">
+                                <a href="tel:+{{ data.companyPhone1 }}" style="color:#000000;">{{ data.companyPhone1
+                                    }}</a>
+                                {% if data.companyPhone2 %}
+                                <span>-</span>
+                                <a href="tel:+{{ data.companyPhone2 }}" style="color:#000000;">{{ data.companyPhone2
+                                    }}</a>
+                                {% endif %}
+                            </div>
+                            <div style="padding-bottom:10px;">
+                                <a href="{{ data.siteUrl }}" style="text-decoration: none;color:#000000;"
+                                    target="_blank">{{ data.companyWebsite }}</a>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <!--[if (gte mso 9)|(IE)]>
+            </td>
+            </tr>
+            </table>
+            <![endif]-->
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>
