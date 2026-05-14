@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev -p 3080",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev -p 5080",
     "build": "next build",
-    "start": "next start -p 3080",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {

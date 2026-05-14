@@ -89,7 +89,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
                 <div className="position-relative">
                     {/* Favorite button */}
-                    <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-0 mt-3 me-3">
+                    <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-1 mt-3 me-3">
                         <div className="d-flex flex-column gap-2">
                             <button
                                 type="button"

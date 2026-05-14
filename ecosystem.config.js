@@ -1,15 +1,52 @@
 module.exports = {
   apps: [
     {
-      name: 'alastik-api',
+      name: 'alastik-api-dev',
       script: 'src/server.js',
-      cwd: '/var/www/alastik/apps/api',
+      cwd: './apps/api',
       instances: 1,
-      exec_mode: 'cluster',
-      env_production: { NODE_ENV: 'production', PORT: 3082 }
+      exec_mode: 'fork',
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 5082
+      },
+      error_file: './logs/api-error.log',
+      out_file: './logs/api-out.log',
+      time: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      node_args: ['--max-old-space-size=1024']
     },
     {
-      name: 'alastik-admin',
+      name: 'alastik-web-dev',
+      script: 'npm',
+      args: 'start',
+      cwd: './apps/web',
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 5080
+      },
+      error_file: './logs/web-error.log',
+      out_file: './logs/web-out.log',
+      time: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      node_args: ['--max-old-space-size=512']
+    },
+    {
+      name: 'alastik-admin-dev',
       script: 'npm',
       args: 'start',
       cwd: './apps/admin',
@@ -20,37 +57,16 @@ module.exports = {
       max_restarts: 10,
       min_uptime: '10s',
       max_memory_restart: '768M',
-      env_production: {
+      env: {
         NODE_ENV: 'production',
-        PORT: 3081
+        PORT: 5081
       },
-    },
-    {
-      name: 'alastik-web',
-      script: 'npm',
-      args: 'start',
-      cwd: './apps/web',
-      exec_mode: 'fork',
-      instances: 1,
-      env_production: { NODE_ENV: 'production', PORT: 3080 }
-    },
-    {
-      name: 'alastik-dia-worker',
-      cwd: './apps/api',
-      script: 'src/workers/index.js',
-      instances: 1,
-      exec_mode: 'fork',
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '512M',
-      kill_timeout: 70000,
-      wait_ready: false,
-      env_production: {
-        NODE_ENV: 'production'
-      },
-      error_file: './logs/worker-error.log',
-      out_file: './logs/worker-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss'
+      error_file: './logs/admin-error.log',
+      out_file: './logs/admin-out.log',
+      time: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      node_args: ['--max-old-space-size=768']
     }
   ]
 };

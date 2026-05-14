@@ -66,6 +66,12 @@ const nextConfig = {
         hostname: 'images.wheel-size.com',
         pathname: '/**',
       },
+       {
+        protocol: 'https',
+        hostname: 'dev.alastik.com',
+        port: '4082',
+        pathname: '/**',
+      },
     ],
   },
   env: {

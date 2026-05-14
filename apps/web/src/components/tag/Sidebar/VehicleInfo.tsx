@@ -72,25 +72,21 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
 
     useEffect(() => {
         if (!mounted) return;
-        try {
-            const stored = localStorage.getItem('selectedVehicle');
 
-            if (stored) {
-                const data = JSON.parse(stored) as VehicleData;
-                const isValid = data.timestamp && (Date.now() - data.timestamp) < 2 * 60 * 60 * 1000;
+        console.log('[VehicleInfo Debug]', {
+            mounted,
+            isLoggedIn,
+            vehiclesLoading,
+            vehiclesCount: vehicles?.length,
+            vehicles,
+            localStorageRaw: typeof window !== 'undefined' ? localStorage.getItem('selectedVehicle') : null
+        });
 
-                if (isValid && data.make && data.source === 'search') {
-                    setVehicle(data);
-                    return;
-                } else {
-                    localStorage.removeItem('selectedVehicle');
-                }
-            }
-        } catch (error) {
-            console.error('[VehicleInfo] localStorage read error:', error);
-        }
-        if (isLoggedIn && !vehiclesLoading) {
+        if (isLoggedIn) {
+            if (vehiclesLoading) return;
+
             const primaryVehicle = vehicles.find(v => v.isPrimary);
+            console.log('[VehicleInfo Debug] primaryVehicle:', primaryVehicle);
 
             if (primaryVehicle) {
                 setVehicle({
@@ -104,10 +100,33 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                     vehicleImage: primaryVehicle.image?.url || '',
                     source: 'garage'
                 });
-            } else {
-                setVehicle(null);
+                return;
             }
         }
+
+        // 2. FALLBACK: Giriş yok veya garaj boş → localStorage (search)
+        try {
+            const stored = localStorage.getItem('selectedVehicle');
+
+            if (stored) {
+                const data = JSON.parse(stored) as VehicleData;
+                const isValid = data.timestamp && (Date.now() - data.timestamp) < 2 * 60 * 60 * 1000;
+
+                // source alanı eksikse 'search' varsayılır
+                if (isValid && data.make) {
+                    setVehicle({ ...data, source: data.source || 'search' });
+                    return;
+                } else if (data.timestamp && !isValid) {
+                    // Sadece süresi gerçekten dolmuşsa temizle
+                    localStorage.removeItem('selectedVehicle');
+                }
+            }
+        } catch (error) {
+            console.error('[VehicleInfo] localStorage read error:', error);
+        }
+
+        // 3. Hiçbiri yoksa araç gösterme
+        setVehicle(null);
     }, [mounted, isLoggedIn, vehicles, vehiclesLoading]);
 
     useEffect(() => {

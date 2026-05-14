@@ -9,6 +9,7 @@ import { Product } from '@/src/types/products';
 
 import { useBrands } from '@/src/context/BrandsContext';
 import { useCart } from '@/src/context/CartContext';
+import { useFavourites } from '@/src/context/FavouritesContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
 import { getProductPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
@@ -28,6 +29,7 @@ export default function Cart({ product }: CartProps) {
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
+    const { toggleFavourite, isFavourite } = useFavourites();
     const { definition } = useDefinition();
     const getWhatsAppUrl = () => {
         const phone = definition?.companyInfo?.phone || '0539 825 71 01';
@@ -211,12 +213,18 @@ export default function Cart({ product }: CartProps) {
                                                 {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
                                             </button>
                                         </Tooltip>
-                                        <Tooltip title="Favorilere Ekle">
-                                            <button type="button" className="btn btn-md animate-shake">
-                                                <i className="ri-heart-add-line"
-                                                    style={{
-                                                        fontSize: '24px'
-                                                    }}></i>
+                                        <Tooltip title={isFavourite(product._key) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-md animate-shake"
+                                                onClick={() => toggleFavourite(product._key)}
+                                                aria-label="Favorilere Ekle"
+                                            >
+                                                {isFavourite(product._key) ? (
+                                                    <i className="ri-heart-fill text-danger" style={{ fontSize: '24px' }}></i>
+                                                ) : (
+                                                    <i className="ri-heart-add-line" style={{ fontSize: '24px' }}></i>
+                                                )}
                                             </button>
                                         </Tooltip>
                                     </div>

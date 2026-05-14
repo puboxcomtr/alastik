@@ -23,6 +23,7 @@ import { getRelatedBlogs } from '@/src/services/productService';
    Layout Components
    ======================================== */
 import AlternativeSizesModal from '@/src/components/layout/Modals/AlternativeSizesModal';
+import ShareProductModal from '@/src/components/layout/Modals/ShareProductModal';
 
 /* @import Page */
 interface MiddleProps {
@@ -37,6 +38,7 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
     const rating = reviews?.stats?.averageOverall || 0;
     const reviewCount = reviews?.stats?.total || 0;
     const [ebatDialogOpen, setEbatDialogOpen] = useState(false);
+    const [shareDialogOpen, setShareDialogOpen] = useState(false);
     const [showAlternativeLink, setShowAlternativeLink] = useState(false);
     const season = getProductSeason(product);
     const categoryName = getCategory(product);
@@ -288,6 +290,19 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                 ))}
                             </ul>
 
+                            {/* Ürünü Paylaş */}
+                            <div className="mt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShareDialogOpen(true)}
+                                    className="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-1"
+                                    style={{ color: 'var(--cz-primary)', fontSize: '14px', fontWeight: 600 }}
+                                >
+                                    <i className="ri-share-line" style={{ fontSize: '18px' }}></i>
+                                    <span>Ürünü Paylaş</span>
+                                </button>
+                            </div>
+
                         </Grid>
                     </Grid>
                 </Grid>
@@ -295,6 +310,11 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
             <AlternativeSizesModal
                 open={ebatDialogOpen}
                 onClose={() => setEbatDialogOpen(false)}
+                product={product}
+            />
+            <ShareProductModal
+                open={shareDialogOpen}
+                onClose={() => setShareDialogOpen(false)}
                 product={product}
             />
         </>

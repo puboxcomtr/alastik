@@ -27,6 +27,11 @@ import Footer from "@components/layout/Footer/Footer";
 import { BrandsProvider } from '@/src/context/BrandsContext';
 import { CartProvider } from '@/src/context/CartContext';
 import { FavouritesProvider } from '@/src/context/FavouritesContext';
+import { LoadingProvider } from '@/src/context/LoadingContext';
+
+// Global Loading Overlay
+import GlobalLoadingOverlay from '@components/common/GlobalLoadingOverlay';
+
 
 /* Modal */
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
@@ -86,18 +91,21 @@ export default async function RootLayout({
       <body className={inter.variable}>
         <SettingsProvider initialTheme={themeSettings}>
           <ThemeRegistry>
-            <BrandsProvider>
-              <CartProvider>
-                <FavouritesProvider>
-                  <Header />
-                  {children}
-                  <Footer />
-                  <Modal />
-                  <TireSearchClient />
-                  <TireSize />
-                </FavouritesProvider>
-              </CartProvider>
-            </BrandsProvider>
+            <LoadingProvider>
+              <BrandsProvider>
+                <CartProvider>
+                  <FavouritesProvider>
+                    <GlobalLoadingOverlay />
+                    <Header />
+                    {children}
+                    <Footer />
+                    <Modal />
+                    <TireSearchClient />
+                    <TireSize />
+                  </FavouritesProvider>
+                </CartProvider>
+              </BrandsProvider>
+            </LoadingProvider>
           </ThemeRegistry>
         </SettingsProvider>
         <ToastContainer
