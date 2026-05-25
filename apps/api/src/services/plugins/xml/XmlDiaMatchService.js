@@ -104,7 +104,13 @@ class XmlDiaMatchService {
             ozelkod2kodu: diaData.ozelkod2kodu || '',
             ozelkod3kodu: diaData.ozelkod3kodu || '',
             ozelkod4kodu: diaData.ozelkod4kodu || '',
+            ozelkod5kodu: diaData.ozelkod5kodu || '',
             ozelkod6kodu: diaData.ozelkod6kodu || '',
+            ozelkod7kodu: diaData.ozelkod7kodu || '',
+            ozelkod8kodu: diaData.ozelkod8kodu || '',
+            ozelkod9kodu: diaData.ozelkod9kodu || '',
+            ozelkod10kodu: diaData.ozelkod10kodu || '',
+            ozelkod11kodu: diaData.ozelkod11kodu || '',
             m_kategoriler: JSON.stringify((diaData.m_kategoriler || []).map(k => ({
                 k1: k.kategori_aciklama_1, k2: k.kategori_aciklama_2
             }))),

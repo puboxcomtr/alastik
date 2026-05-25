@@ -29,14 +29,14 @@ export default function TabHeader({ activeTab, setActiveTab }: TabHeaderProps) {
                 <i className="ri-steering-2-fill"></i>
                 Jant
             </span>
-            <span
+            {/* <span
                 className="search_icon cursor-pointer d-none d-md-flex"
                 onClick={() => setActiveTab('chain')}
                 style={{ ...(activeTab === 'chain' ? activeStyle : {}) }}
             >
                 <i className="ri-snowflake-line"></i>
                 Kar Paleti ve Zincir
-            </span>
+            </span> */}
         </div>
     );
 }

@@ -388,6 +388,8 @@ class XmlWebProductSyncService {
                                 $set: {
                                     'diaData.gercek_stok': gercekStok,
                                     'diaData.anabirimdesi': parseFloat(diaData.anabirimdesi) || 0,
+                                    'diaData.ozelkod5': diaData.ozelkod5 || '',
+                                    'diaData.ozelkod5kodu': diaData.ozelkod5kodu || '',
                                     'diaData.ozelkod11': 'E (E)',
                                     'diaData.ozelkod11kodu': 'E',
                                     'diaData.m_birimler': guncelBirimler.map((b, i) => i === 0 ? { ...b, fiyat1: hamFiyat, fiyat4: pricing.alastikPrice } : b),
