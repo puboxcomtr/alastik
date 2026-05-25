@@ -9,6 +9,41 @@ const Setting = require('../../../models/admin/settings/Setting');
 
 
 // POST /api/search/autocomplete
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const detectTireSize = (input) => {
+    const cleaned = input.replace(/\s+/g, '').toLowerCase();
+    const match = cleaned.match(/(\d{3})[\/\s]*(\d{2})[\/\s]*r?(\d{2})/i);
+    if (!match) return null;
+    const [fullMatch, width, aspect, diameter] = match;
+
+    // Geçerli lastik ebat aralıklarını doğrula
+    const widthNum = parseInt(width);
+    const aspectNum = parseInt(aspect);
+    const diameterNum = parseInt(diameter);
+
+    if (widthNum < 125 || widthNum > 355) return null;
+    if (aspectNum < 25 || aspectNum > 85) return null;
+    if (diameterNum < 12 || diameterNum > 24) return null;
+
+    return {
+        width,
+        aspect,
+        diameter,
+        variations: [
+            `${width}/${aspect}R${diameter}`,
+            `${width}/${aspect}/${diameter}`,
+            `${width} ${aspect} ${diameter}`,
+            `${width} ${aspect} R${diameter}`,
+            `${width}${aspect}${diameter}`,
+            `${width}${aspect}R${diameter}`,
+        ],
+        remainder: input.replace(/(\d{3})[\s\/\-]*(\d{2})[\s\/\-]*r?(\d{2})/i, '').trim()
+    };
+};
+
+
+// POST /api/search/autocomplete
 router.post('/autocomplete', async (req, res) => {
     try {
         const { query, limit = 10 } = req.body;
@@ -17,60 +52,25 @@ router.post('/autocomplete', async (req, res) => {
             return res.json({ success: true, data: [] });
         }
 
-        // Lastik ebatı mı yoksa genel arama mı?
-        const isTireSize = /\d{3}/.test(query) && /\d{2}/.test(query);
-
-        // Lastik ebatı parser
-        const parseTireSize = (input) => {
-            const cleaned = input.replace(/\s+/g, '').toLowerCase();
-            const match = cleaned.match(/(\d{3})[\/\s]*(\d{2})[\/\s]*r?(\d{2})/i);
-
-            if (match) {
-                const [, width, aspect, diameter] = match;
-                return {
-                    found: true,
-                    variations: [
-                        `${width}/${aspect}R${diameter}`,
-                        `${width}/${aspect}/${diameter}`,
-                        `${width} ${aspect} ${diameter}`,
-                        `${width} ${aspect} R${diameter}`,
-                        `${width}${aspect}${diameter}`,
-                        `${width}${aspect}R${diameter}`,
-                    ]
-                };
-            }
-            return { found: false, variations: [input] };
-        };
-
-        const tireSize = parseTireSize(query);
-        const searchPatterns = tireSize.variations.map(v =>
-            new RegExp(v.replace(/[\/\s]/g, '[/\\s]*'), 'i')
-        );
-
         const results = { tags: [], products: [], categories: [], brands: [] };
 
-        if (isTireSize) {
-            // Lastik ebatı araması - sadece etiket ve ürün
-            const tags = await WebTag.find({
-                $and: [
-                    { isActive: true },
-                    { $or: searchPatterns.map(p => ({ title: p })) }
-                ]
-            }).limit(10);
+        const trimmedQuery = query.trim();
+        const hasHyphen = trimmedQuery.includes('-');
 
-            results.tags = tags.map(t => ({
-                type: 'tag',
-                title: t.title,
-                url: `/etiket/${t.seoUrl}`
-            }));
+        // Tire içeren stok kodu (4433500-24-XML gibi) - kesin stok kodu
+        const definiteStockCode = hasHyphen && /^\d{5,}(-[\w]+)*$/.test(trimmedQuery) ? trimmedQuery : null;
 
+        // 1) STOK KODU (kesin, tire içerenler önce)
+        if (definiteStockCode) {
+            const stockRegex = new RegExp(escapeRegex(definiteStockCode), 'i');
             const products = await WebProduct.find({
-                $and: [
-                    { 'syncInfo.diaStatus': 'synced' },
-                    { 'customData.webVisible': true },
-                    { $or: searchPatterns.map(p => ({ 'diaData.aciklama': p })) }
+                'syncInfo.diaStatus': 'synced',
+                'customData.webVisible': true,
+                $or: [
+                    { 'diaData.stokkartkodu': stockRegex },
+                    { 'diaData.anabarkod': stockRegex }
                 ]
-            }).limit(20);
+            }).limit(20).lean();
 
             results.products = products.map(p => ({
                 type: 'product',
@@ -78,76 +78,187 @@ router.post('/autocomplete', async (req, res) => {
                 url: `/urun/${p.customData.seoUrl || p._key}`
             }));
 
-        } else {
-            // Genel arama - Öncelik: Marka > Kategori > Etiket > Ürün
-            const regex = new RegExp(query, 'i');
-
-            const brands = await WebBrand.find({
-                webVisible: true,
-                diaMarkaAck: regex
-            }).limit(5);
-
-            results.brands = brands.map(b => ({
-                type: 'brand',
-                title: b.diaMarkaAck,
-                url: `/marka/${b.seoUrl}`
-            }));
-
-            const categories = await WebCategory.find({
-                isActive: true,
-                name: regex
-            }).limit(5);
-
-            results.categories = categories.map(c => ({
-                type: 'category',
-                title: c.name,
-                url: `/kategori/${c.slug}`
-            }));
-
-            const tags = await WebTag.find({
-                isActive: true,
-                title: regex
-            }).limit(10);
-
-            results.tags = tags.map(t => ({
-                type: 'tag',
-                title: t.title,
-                url: `/etiket/${t.seoUrl}`
-            }));
-
-            const products = await WebProduct.find({
-                $and: [
-                    { 'syncInfo.diaStatus': 'synced' },
-                    { 'customData.webVisible': true },
-                    {
-                        $or: [
-                            { 'diaData.aciklama': regex },
-                            { 'diaData.anabarkod': regex },
-                            { 'diaData.stokkartkodu': regex }
-                        ]
-                    }
-                ]
-            }).limit(20);
-
-            results.products = products.map(p => ({
-                type: 'product',
-                title: p.diaData.aciklama,
-                url: `/urun/${p.customData.seoUrl || p._key}`
-            }));
+            return res.json({
+                success: true,
+                data: results.products.slice(0, limit)
+            });
         }
 
-        // Dağılım
-        const mixed = [];
+        // 2) EBAT TESPİTİ
+        const tireSize = detectTireSize(query);
 
-        if (isTireSize) {
+        // 3) Ebat değilse ve sadece sayıysa stok kodu olarak değerlendir
+        const stockCode = !tireSize && /^\d{5,}$/.test(trimmedQuery) ? trimmedQuery : null;
+        if (stockCode) {
+            const stockRegex = new RegExp(escapeRegex(stockCode), 'i');
+            const products = await WebProduct.find({
+                'syncInfo.diaStatus': 'synced',
+                'customData.webVisible': true,
+                $or: [
+                    { 'diaData.stokkartkodu': stockRegex },
+                    { 'diaData.anabarkod': stockRegex }
+                ]
+            }).limit(20).lean();
+
+            results.products = products.map(p => ({
+                type: 'product',
+                title: p.diaData.aciklama,
+                url: `/urun/${p.customData.seoUrl || p._key}`
+            }));
+
+            return res.json({
+                success: true,
+                data: results.products.slice(0, limit)
+            });
+        }
+
+        if (tireSize) {
+            // Ebat regex'leri
+            const sizePatterns = tireSize.variations.map(v =>
+                new RegExp(escapeRegex(v).replace(/[\/\s]/g, '[/\\s]*'), 'i')
+            );
+
+            const productAndConditions = [
+                { 'syncInfo.diaStatus': 'synced' },
+                { 'customData.webVisible': true },
+                { $or: sizePatterns.map(p => ({ 'diaData.aciklama': p })) }
+            ];
+
+            // Ebat dışında ekstra metin varsa (marka/model adı), AND mantığıyla aciklama'da ara
+            if (tireSize.remainder && tireSize.remainder.length >= 2) {
+                const remainderWords = tireSize.remainder.split(/\s+/).filter(w => w.length >= 2);
+                remainderWords.forEach(word => {
+                    productAndConditions.push({
+                        'diaData.aciklama': new RegExp(escapeRegex(word), 'i')
+                    });
+                });
+            }
+
+            // Etiketleri ebat ile bul
+            // Etiketleri ebat ile bul (ebat dışı kelime varsa onu da etikette ara)
+            const tagAndConditions = [
+                { isActive: true },
+                { $or: sizePatterns.map(p => ({ title: p })) }
+            ];
+
+            if (tireSize.remainder && tireSize.remainder.length >= 2) {
+                const remainderWords = tireSize.remainder.split(/\s+/).filter(w => w.length >= 2);
+                remainderWords.forEach(word => {
+                    tagAndConditions.push({
+                        title: new RegExp(escapeRegex(word), 'i')
+                    });
+                });
+            }
+
+            const tags = await WebTag.find({
+                $and: tagAndConditions
+            }).limit(10).lean();
+
+            results.tags = tags.map(t => ({
+                type: 'tag',
+                title: t.title,
+                url: `/etiket/${t.seoUrl}`
+            }));
+
+            const products = await WebProduct.find({
+                $and: productAndConditions
+            }).limit(20).lean();
+
+            results.products = products.map(p => ({
+                type: 'product',
+                title: p.diaData.aciklama,
+                url: `/urun/${p.customData.seoUrl || p._key}`
+            }));
+
+            const mixed = [];
             mixed.push(...results.tags);
             const remaining = limit - mixed.length;
             mixed.push(...results.products.slice(0, remaining));
-        } else {
-            mixed.push(...results.brands);
-            mixed.push(...results.categories);
-            mixed.push(...results.tags);
-            const remaining = limit - mixed.length;
+
+            return res.json({
+                success: true,
+                data: mixed.slice(0, limit)
+            });
+        }
+
+        // 3) GENEL ARAMA (Marka, kategori, etiket, ürün) - AND mantığı
+        const words = query.trim().split(/\s+/).filter(w => w.length >= 2);
+
+        if (words.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const wordRegexes = words.map(w => new RegExp(escapeRegex(w), 'i'));
+
+        // Marka: tek kelimeyle eşleşme (marka adı genelde tek kelimedir)
+        const fullQueryRegex = new RegExp(escapeRegex(query.trim()), 'i');
+        const brands = await WebBrand.find({
+            webVisible: true,
+            diaMarkaAck: fullQueryRegex
+        }).limit(5).lean();
+
+        results.brands = brands.map(b => ({
+            type: 'brand',
+            title: b.diaMarkaAck,
+            url: `/marka/${b.seoUrl}`
+        }));
+
+        const categories = await WebCategory.find({
+            isActive: true,
+            name: fullQueryRegex
+        }).limit(5).lean();
+
+        results.categories = categories.map(c => ({
+            type: 'category',
+            title: c.name,
+            url: `/kategori/${c.slug}`
+        }));
+
+        const tags = await WebTag.find({
+            isActive: true,
+            title: fullQueryRegex
+        }).limit(10).lean();
+
+        results.tags = tags.map(t => ({
+            type: 'tag',
+            title: t.title,
+            url: `/etiket/${t.seoUrl}`
+        }));
+
+        // Ürün: Tüm kelimeler aciklama veya stokkartkodu/anabarkod'da AND mantığıyla geçmeli
+        const productConditions = [
+            { 'syncInfo.diaStatus': 'synced' },
+            { 'customData.webVisible': true }
+        ];
+
+        wordRegexes.forEach(rgx => {
+            productConditions.push({
+                $or: [
+                    { 'diaData.aciklama': rgx },
+                    { 'diaData.marka': rgx },
+                    { 'diaData.stokkartkodu': rgx },
+                    { 'diaData.anabarkod': rgx }
+                ]
+            });
+        });
+
+        const products = await WebProduct.find({
+            $and: productConditions
+        }).limit(20).lean();
+
+        results.products = products.map(p => ({
+            type: 'product',
+            title: p.diaData.aciklama,
+            url: `/urun/${p.customData.seoUrl || p._key}`
+        }));
+
+        // Dağılım: Marka > Kategori > Etiket > Ürün
+        const mixed = [];
+        mixed.push(...results.brands);
+        mixed.push(...results.categories);
+        mixed.push(...results.tags);
+        const remaining = limit - mixed.length;
+        if (remaining > 0) {
             mixed.push(...results.products.slice(0, remaining));
         }
 
@@ -156,6 +267,7 @@ router.post('/autocomplete', async (req, res) => {
             data: mixed.slice(0, limit)
         });
     } catch (error) {
+        console.error('Autocomplete hatası:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -172,29 +284,48 @@ router.get('/results', async (req, res) => {
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const { getProductListFilters } = require('../../../config/diaFilters');
-        const filter = getProductListFilters();
+
+        const cleaned = q.replace(/[\s\-]+/g, '').toLowerCase();
+        const rawTireMatch = cleaned.match(/(\d{3})\/?(\d{2})r?(\d{2})/i);
+
+        let tireMatch = null;
+        if (rawTireMatch) {
+            const w = parseInt(rawTireMatch[1]);
+            const a = parseInt(rawTireMatch[2]);
+            const d = parseInt(rawTireMatch[3]);
+            if (w >= 125 && w <= 355 && a >= 25 && a <= 85 && d >= 12 && d <= 24) {
+                tireMatch = rawTireMatch;
+            }
+        }
+
+        const isStockCode = !tireMatch && /^\d{5,}(-[\w]+)*$/.test(q.trim());
+
+        // Stok kodu aramasında katı filtre uygulamayalım, sadece görünür ürünler
+        const filter = isStockCode
+            ? { 'syncInfo.diaStatus': 'synced', 'customData.webVisible': true }
+            : getProductListFilters();
 
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
-        if (hidePricelessSetting?.value === true) {
+        if (hidePricelessSetting?.value === true && !isStockCode) {
             filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
         }
 
         const andConditions = [];
 
-        const isStockCode = /^\d{5,}-\d+/.test(q.trim());
-        const cleaned = q.replace(/[\s\-]+/g, '').toLowerCase();
-        const tireMatch = isStockCode ? null : cleaned.match(/(\d{3})\/?(\d{2})r?(\d{2})/i);
-
-        if (tireMatch) {
+        if (isStockCode) {
+            const stockRegex = new RegExp(escapeRegex(q.trim()), 'i');
+            andConditions.push({
+                $or: [
+                    { 'diaData.stokkartkodu': stockRegex },
+                    { 'diaData.anabarkod': stockRegex }
+                ]
+            });
+        } else if (tireMatch) {
             const [, queryWidth, queryAspect, queryDiameter] = tireMatch;
-
-            // URL'den gelen sidebar filtreleri query'deki ebatı override eder
             const { genislik, yanak, yukseklik, jant, cap } = req.query;
             const finalWidth = genislik || queryWidth;
             const finalAspect = yanak || yukseklik || queryAspect;
             const finalDiameter = jant || cap || queryDiameter;
-
-            // Ebatı m_urunOzellikleri üzerinden filtrele
             andConditions.push({
                 'diaData.m_urunOzellikleri': {
                     $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: finalWidth }
@@ -213,40 +344,40 @@ router.get('/results', async (req, res) => {
                     }
                 }
             });
-
-            // Ebat dışında kalan metni çıkar (marka veya model olabilir)
             const extraText = q
                 .replace(/[\d]{3}[\s\/\-]*[\d]{2}[\s\/\-]*r?[\d]{2}/i, '')
                 .trim();
 
             if (extraText.length >= 2) {
-                const brandMatch = await WebBrand.findOne({
-                    $or: [
-                        { diaMarkaAck: { $regex: new RegExp(`^${extraText}$`, 'i') } },
-                        { diaBrand: { $regex: new RegExp(`^${extraText}$`, 'i') } },
-                        { name: { $regex: new RegExp(`^${extraText}$`, 'i') } }
-                    ],
-                    webVisible: true
-                }).select('diaMarkaAck').lean();
+                const words = extraText.split(/\s+/).filter(w => w.length >= 2);
 
-                if (brandMatch) {
-                    andConditions.push({ 'diaData.marka': brandMatch.diaMarkaAck });
-                } else {
+                for (const word of words) {
+                    const wordRegex = new RegExp(escapeRegex(word), 'i');
                     andConditions.push({
-                        'diaData.aciklama': { $regex: new RegExp(extraText, 'i') }
+                        $or: [
+                            { 'diaData.aciklama': wordRegex },
+                            { 'diaData.marka': wordRegex }
+                        ]
                     });
                 }
             }
         } else {
-            const regex = new RegExp(q, 'i');
-            filter.$or = [
-                { 'diaData.aciklama': regex },
-                { 'diaData.marka': regex },
-                { 'diaData.stokkartkodu': regex },
-                { 'diaData.anabarkod': regex }
-            ];
-        }
+            const words = q.trim().split(/\s+/).filter(w => w.length >= 2);
 
+            if (words.length > 0) {
+                for (const word of words) {
+                    const wordRegex = new RegExp(escapeRegex(word), 'i');
+                    andConditions.push({
+                        $or: [
+                            { 'diaData.aciklama': wordRegex },
+                            { 'diaData.marka': wordRegex },
+                            { 'diaData.stokkartkodu': wordRegex },
+                            { 'diaData.anabarkod': wordRegex }
+                        ]
+                    });
+                }
+            }
+        }
         if (marka) {
             const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
             if (markaList.length > 0) andConditions.push({ 'diaData.marka': { $in: markaList } });
