@@ -45,6 +45,27 @@ module.exports = {
       merge_logs: true,
       node_args: ['--max-old-space-size=512']
     },
+    , {
+      name: 'alastik-dia-worker',
+      script: 'src/workers/index.js',
+      cwd: './apps/api',
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '512M',
+      kill_timeout: 70000,
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: './logs/worker-error.log',
+      out_file: './logs/worker-out.log',
+      time: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true
+    },
     {
       name: 'alastik-admin-dev',
       script: 'npm',

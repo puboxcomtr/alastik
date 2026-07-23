@@ -23,7 +23,7 @@ export default function LazyImage({
   height,
   className = '',
   style = {},
-  placeholder = '/assets/img/shop/tire-placeholder.jpg',
+  placeholder = '/alastik/assets/img/shop/tire-placeholder.jpg',
   priority = false,
   onLoad,
   onError

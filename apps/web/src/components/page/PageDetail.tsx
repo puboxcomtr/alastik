@@ -29,9 +29,6 @@ export default function PageDetail({ page }: PageDetailProps) {
                 <div className="row-fluid">
                     <Row>
                         <Col lg={12}>
-                            <h3 className="page__title">
-                                {page.title}
-                            </h3>
                             <div
                                 className="page-content"
                                 dangerouslySetInnerHTML={{ __html: page.content }}

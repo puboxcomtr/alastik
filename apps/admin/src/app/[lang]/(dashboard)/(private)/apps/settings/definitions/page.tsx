@@ -13,6 +13,7 @@ import ImagesSettings from '@/views/settings/definitions/ImagesSettings'
 
 // Context
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext'
+import { getSiteHeader } from '@/utils/activeSite'
 
 function SettingsHeader() {
     const { hasChanges, isLoading, saveChanges } = useSettings()
@@ -78,7 +79,10 @@ export default function DefinitionsPage() {
     useEffect(() => {
         async function fetchSettings() {
             try {
-                const res = await fetch('http://localhost:3082/api/admin/settings/general', { cache: 'no-store' })
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/settings/general`, {
+                    cache: 'no-store',
+                    headers: { ...getSiteHeader() }
+                })
                 if (res.ok) {
                     const data = await res.json()
                     setSettings(data.success ? data.data : null)

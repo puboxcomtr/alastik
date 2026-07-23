@@ -1,3 +1,4 @@
+import { getSiteHeader } from '@/utils/activeSite'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 export type SeoHomepageType = {
     title: string
@@ -23,7 +24,8 @@ export type SeoSettingsType = {
 
 export async function getSeoSettings() {
     const response = await fetch(`${API_URL}/admin/settings/seo`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -43,7 +45,8 @@ export async function updateSeoSettings(data: Partial<SeoSettingsType>) {
     const response = await fetch(`${API_URL}/admin/settings/seo`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getSiteHeader()
         },
         body: JSON.stringify(data)
     })

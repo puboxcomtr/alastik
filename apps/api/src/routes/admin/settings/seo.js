@@ -3,9 +3,10 @@ const router = express.Router();
 const SeoSettings = require('../../../models/admin/settings/SeoSettings');
 router.get('/', async (req, res) => {
     try {
-        let settings = await SeoSettings.findOne();
+        let settings = await SeoSettings.findOne({ site: req.site });
         if (!settings) {
             settings = await SeoSettings.create({
+                site: req.site,
                 homepage: { title: '', description: '', keywords: '' },
                 category: {
                     titleTemplate: '{kategori-adi}',
@@ -40,23 +41,24 @@ router.get('/', async (req, res) => {
 });
 router.put('/', async (req, res) => {
     try {
-        const { homepage, category, brand, product } = req.body;
+        const { homepage, category, brand, product, other } = req.body;
 
-        let settings = await SeoSettings.findOne();
-
+        let settings = await SeoSettings.findOne({ site: req.site });
         if (!settings) {
             settings = await SeoSettings.create({
+                site: req.site,
                 homepage,
                 category,
                 brand,
-                product
+                product,
+                other
             });
         } else {
             if (homepage) settings.homepage = homepage;
             if (category) settings.category = category;
             if (brand) settings.brand = brand;
             if (product) settings.product = product;
-
+            if (other) settings.other = other;
             await settings.save();
         }
         res.json({

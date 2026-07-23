@@ -1,12 +1,11 @@
 import { Metadata } from 'next';
 import RegisterView from '@/src/views/account/RegisterView';
 
-export const metadata: Metadata = {
-    title: 'Üye Ol | ALastik.com',
-    description: 'ALastik.com üye olun, özel fırsatlardan yararlanın.',
-    robots: { index: false, follow: false }
-};
+import { getOtherSeo } from '@/src/services/seoService';
 
+export async function generateMetadata(): Promise<Metadata> {
+    return await getOtherSeo('register', true);
+}
 export default function RegisterPage() {
     return <RegisterView />;
 }

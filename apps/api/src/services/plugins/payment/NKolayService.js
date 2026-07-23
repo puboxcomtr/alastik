@@ -256,6 +256,79 @@ class NkolayService {
         }
     }
 
+    // ========== İŞLEM DURUMU SORGULAMA (PaymentList) ==========
+    // clientRefCode (orderNumber) ile Nkolay'dan gerçek işlem durumunu sorgular.
+    // Callback gelmese bile ödeme durumunu doğrular.
+    // Hash: sx + startDate + endDate + clientRefCode + secretkey -> sha1 -> base64
+    async checkPaymentStatus({ clientRefCode, startDate, endDate }) {
+        try {
+            const creds = await this.getCredentials();
+
+            if (!creds.sxList) {
+                return { success: false, message: '[Nkolay] sxList credential tanimli degil' };
+            }
+
+            const formatDate = (d) => {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${dd}.${mm}.${yyyy}`;
+            };
+
+            const sDate = startDate || formatDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+            const eDate = endDate || formatDate(new Date());
+
+            const hashStr = creds.sxList + sDate + eDate + (clientRefCode || '') + creds.merchantSecretKey;
+            const hashData = crypto.createHash('sha1').update(hashStr).digest('base64');
+
+            const form = new FormData();
+            form.append('sx', creds.sxList);
+            form.append('startDate', sDate);
+            form.append('endDate', eDate);
+            form.append('clientRefCode', clientRefCode || '');
+            form.append('hashData', hashData);
+
+            const url = `${creds.baseUrl}/Vpos/Payment/PaymentList`;
+
+            console.log('[Nkolay] checkPaymentStatus istegi:', { clientRefCode, sDate, eDate });
+
+            const response = await axios.post(url, form, {
+                headers: { ...form.getHeaders() },
+                maxBodyLength: Infinity,
+                timeout: 30000
+            });
+
+            const data = response.data;
+            console.log('[Nkolay] checkPaymentStatus yanit:', JSON.stringify(data).substring(0, 800));
+
+            // LIST icinden clientRefCode eslesen kaydi bul
+            const list = (data && data.result && Array.isArray(data.result.LIST)) ? data.result.LIST : [];
+            const match = list.find(t => t.CLIENT_REFERENCE_CODE === clientRefCode);
+
+            if (!match) {
+                return { success: true, found: false, status: null, raw: data };
+            }
+
+            return {
+                success: true,
+                found: true,
+                status: match.STATUS,                         // SUCCESS | ERROR | NEW
+                isPaid: match.STATUS === 'SUCCESS',
+                referenceCode: match.REFERENCE_CODE,
+                authCode: match.AUTH_CODE,
+                transactionAmount: match.TRANSACTION_AMOUNT,
+                transactionType: match.TRANSACTION_TYPE,
+                trxDate: match.TRX_DATE,
+                cardBankName: match.CARD_BANK_NAME,
+                raw: match
+            };
+
+        } catch (error) {
+            console.error('[Nkolay] checkPaymentStatus hatasi:', error.message);
+            return { success: false, message: error.message };
+        }
+    }
+
     // ========== İPTAL ==========
 
     async cancelPayment({ referenceCode, amount, trxDate }) {

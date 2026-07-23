@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
     try {
         const { search, is_active, sort_by = 'order', sort_order = 'asc' } = req.query;
 
-        const filter = {};
+        const filter = { site: req.site };
 
         if (search) {
             filter.title = { $regex: search, $options: 'i' };
@@ -159,8 +159,8 @@ router.post('/', async (req, res) => {
                 order: index
             }));
         }
-
         const showcase = new WebShowcase({
+            site: req.site,
             title: title.trim(),
             order: parseInt(order) || 0,
             itemsPerRow: parseInt(itemsPerRow) || 4,
@@ -306,8 +306,7 @@ router.patch('/:id/toggle', async (req, res) => {
 // Frontend için aktif vitrinleri getir (public)
 router.get('/public/active', async (req, res) => {
     try {
-        const showcases = await WebShowcase.find({ isActive: true }).sort({ order: 1 });
-
+        const showcases = await WebShowcase.find({ site: req.site, isActive: true }).sort({ order: 1 });
         // Tüm ürün key'lerini topla
         const allProductKeys = [];
         showcases.forEach(s => {
@@ -361,7 +360,7 @@ router.get('/public/homepage', async (req, res) => {
     try {
         const SiteSetting = require('../../../models/admin/settings/SiteSetting');
 
-        const themeSetting = await SiteSetting.findOne({ key: 'theme' });
+        const themeSetting = await SiteSetting.findOne({ key: 'theme', site: req.site });
         const themeValue = themeSetting?.value || {};
 
         // 5 vitrin konfigürasyonu
@@ -407,6 +406,7 @@ router.get('/public/homepage', async (req, res) => {
         }
 
         const showcases = await WebShowcase.find({
+            site: req.site,
             _id: { $in: showcaseIds },
             isActive: true
         });

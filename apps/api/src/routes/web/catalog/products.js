@@ -5,10 +5,89 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
+const WebOrder = require('../../../models/web/order/WebOrder');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
-const { getProductListFilters } = require('../../../config/diaFilters');
+const { getProductListFilters, MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 const Setting = require('../../../models/admin/settings/Setting');
+/**
+ * GET /api/products/similar-by-order/:orderNumber
+ * Sipariş edilen lastiklerin: Aynı ebat + Farklı mevsim + Stokta olan benzer ürünleri
+ */
+router.get('/similar-by-order/:orderNumber', async (req, res) => {
+    try {
+        const { orderNumber } = req.params;
+        const limit = parseInt(req.query.limit) || 8;
 
+        // Siparişi bul
+        const order = await WebOrder.findOne({ orderNumber }).lean();
+        if (!order || !order.items || order.items.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // Sipariş edilen ürünlerin keylerini al
+        const orderedKeys = order.items.map(i => String(i.productKey)).filter(Boolean);
+
+        // Sipariş ürünlerinin DIA verilerini çek (ebat + mevsim bilgisi için)
+        const orderedProducts = await WebProduct.find(
+            { _key: { $in: orderedKeys } },
+            { _key: 1, 'diaData.m_urunOzellikleri': 1, 'diaData.ozelkod1kodu': 1 }
+        ).lean();
+
+        // Her ürün için ebat + mevsim çıkar
+        const orConditions = [];
+        for (const p of orderedProducts) {
+            const ozellikler = p.diaData?.m_urunOzellikleri || [];
+            const genislik = ozellikler.find(o => o.ozellikadi === 'Genişlik')?.detayaciklama;
+            const yanak = ozellikler.find(o => o.ozellikadi === 'Yanak')?.detayaciklama;
+            const jant = ozellikler.find(o => o.ozellikadi === 'Jant Çapı')?.detayaciklama;
+            const mevsim = p.diaData?.ozelkod1kodu;
+
+            if (!genislik || !yanak || !jant) continue;
+
+            orConditions.push({
+                $and: [
+                    { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: genislik } } },
+                    { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Yanak', detayaciklama: yanak } } },
+                    { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Jant Çapı', detayaciklama: jant } } },
+                    // Farklı mevsim: sipariş mevsimi hariç (case-insensitive)
+                    ...(mevsim ? [{ 'diaData.ozelkod1kodu': { $not: new RegExp(`^${mevsim}$`, 'i') } }] : [])
+                ]
+            });
+        }
+
+        if (orConditions.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // Base filter
+        const filter = {
+            'syncInfo.diaStatus': 'synced',
+            'customData.webVisible': true,
+            'diaData.durum': 'A',
+            'diaData.gercek_stok': { $gt: 0 },
+            _key: { $nin: orderedKeys },
+            $or: orConditions
+        };
+
+        // Merkezi DIA filtrelerini uygula
+        MAIN_DIA_FILTERS.forEach(f => {
+            if (f.operator === '=') {
+                filter[`diaData.${f.field}`] = f.value;
+            }
+        });
+
+        const products = await WebProduct.aggregate([
+            { $match: filter },
+            { $sample: { size: limit } },
+            { $project: { _key: 1, customData: 1, diaData: 1 } }
+        ]);
+
+        res.json({ success: true, data: products });
+    } catch (error) {
+        console.error('[Similar API] error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 router.get('/filter', async (req, res) => {
     try {
         const {
@@ -365,26 +444,83 @@ router.get('/filter', async (req, res) => {
         const totalProducts = await WebProduct.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limitNum);
 
-        // Sıralama 
-        let sortQuery = {};
+        // Sıralama mantığı:
+        // - Default (sortBy yok): 4 katmanlı (Bizim Stoklu > XML Stoklu > Bizim Stoksuz > XML Stoksuz)
+        // - sortBy belirtildiyse: 4 katman tamamen iptal, sadece kullanıcı seçimine göre sırala
+        // - Fiyat sıralamasında frontend ile aynı mantık: shippingIncludedPrice > webPrice > fiyat4
+        const aggregatePipeline = [{ $match: filter }];
+
         if (sortBy === 'price') {
-            sortQuery = { 'diaData.m_birimler.0.fiyat4': sortOrder === 'asc' ? 1 : -1 };
+            // Fiyata göre — 2 katman: önce stoklular, sonra stoksuzlar
+            aggregatePipeline.push({
+                $addFields: {
+                    _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
+                    _sortPrice: {
+                        $let: {
+                            vars: {
+                                shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
+                                webPrice: { $ifNull: ['$customData.webPrice', 0] },
+                                fiyat4: { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] }
+                            },
+                            in: {
+                                $cond: [
+                                    { $gt: ['$$shipPrice', 0] },
+                                    '$$shipPrice',
+                                    { $cond: [{ $gt: ['$$webPrice', 0] }, '$$webPrice', '$$fiyat4'] }
+                                ]
+                            }
+                        }
+                    }
+                }
+            });
+            aggregatePipeline.push({
+                $addFields: {
+                    sortPriority: { $cond: ['$_hasStock', 1, 2] }
+                }
+            });
+            aggregatePipeline.push({
+                $sort: { sortPriority: 1, _sortPrice: sortOrder === 'asc' ? 1 : -1 }
+            });
         } else if (sortBy === 'sales') {
-            sortQuery = { 'customData.salesCount': -1, 'diaData.gercek_stok': -1 };
+            aggregatePipeline.push({ $sort: { 'customData.salesCount': -1, 'diaData.gercek_stok': -1 } });
         } else if (sortBy === 'rating') {
-            sortQuery = { 'customData.reviewStats.averageRating': -1, 'customData.reviewStats.reviewCount': -1 };
+            aggregatePipeline.push({ $sort: { 'customData.reviewStats.averageRating': -1, 'customData.reviewStats.reviewCount': -1 } });
         } else if (sortBy === 'reviews') {
-            sortQuery = { 'customData.reviewStats.reviewCount': -1, 'customData.reviewStats.averageRating': -1 };
+            aggregatePipeline.push({ $sort: { 'customData.reviewStats.reviewCount': -1, 'customData.reviewStats.averageRating': -1 } });
         } else {
-            sortQuery = { 'syncInfo.syncSource': 1, 'diaData.gercek_stok': -1, 'createdAt': -1 };
+            // Default 4 katmanlı sıralama
+            aggregatePipeline.push({
+                $addFields: {
+                    _isXml: { $eq: ['$syncInfo.syncSource', 'xml_integration'] },
+                    _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] }
+                }
+            });
+            aggregatePipeline.push({
+                $addFields: {
+                    sortPriority: {
+                        $switch: {
+                            branches: [
+                                { case: { $and: ['$_hasStock', { $not: '$_isXml' }] }, then: 1 },
+                                { case: { $and: ['$_hasStock', '$_isXml'] }, then: 2 },
+                                { case: { $and: [{ $not: '$_hasStock' }, { $not: '$_isXml' }] }, then: 3 }
+                            ],
+                            default: 4
+                        }
+                    }
+                }
+            });
+            aggregatePipeline.push({
+                $sort: { sortPriority: 1, 'diaData.gercek_stok': -1, 'createdAt': -1 }
+            });
         }
 
-        const products = await WebProduct.find(filter)
-            .select('_key customData diaData')
-            .sort(sortQuery)
-            .skip(skip)
-            .limit(limitNum)
-            .lean();
+        aggregatePipeline.push(
+            { $skip: skip },
+            { $limit: limitNum },
+            { $project: { _key: 1, customData: 1, diaData: 1 } }
+        );
+
+        const products = await WebProduct.aggregate(aggregatePipeline);
 
         res.json({
             success: true,

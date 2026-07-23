@@ -3,27 +3,39 @@ import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 
 /* Services */
 import { getBrandDetail } from '@/src/services/brandService';
 import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
+import { getSeo } from '@/src/services/seoService';
+import { applyTemplate } from '@/src/utils/seoTemplate';
 
-/* Components */
-import Sidebar from '@/src/components/category/Sidebar/Content';
+
+/* Components - ALastik */
+import AlastikSidebar from '@components/alastik/category/Sidebar/Content';
+import AlastikCategoryTop from '@components/alastik/category/Top/Content';
+import AlastikCategoryTireSearch from '@components/alastik/category/Top/CategoryTireSearch';
+import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
+import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
+
+/* Components - LastikJantAVM */
+import LjaSidebar from '@components/lastikjantavm/category/Sidebar/Content';
+import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
+import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/CategoryTireSearch';
+import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
+import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPagination';
+
 import Breadcrumb from '@/src/components/brand/Header/Breadcrumb';
 
-import CategoryTop from '@/src/components/category/Top/Content';
-import CategoryTireSearch from '@/src/components/category/Top/CategoryTireSearch';
-import MobileFilterSort from '@/src/components/category/Top/MobileFilterSort';
-import Pagination from '@/src/components/category/Pagination/MainPagination';
 
 /* Context */
 import { ViewModeProvider } from '@/src/context/ViewModeContext';
 
 /* Product Mode */
-import ViewModeProductList from '@/src/components/shop/Product/Showcase/Mode';
-
+import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
+import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
 interface Props {
     params: Promise<{ slug: string }>;
     searchParams: Promise<{ [key: string]: string | undefined }>;
@@ -32,24 +44,47 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
     const result = await getBrandDetail(slug);
-
     if (!result.success || !result.data) {
         return {
-            title: 'Marka Bulunamadı | ALastik.com',
+            title: 'Marka Bulunamadı',
             description: 'Aradığınız marka bulunamadı.'
         };
     }
-
     const brand = result.data;
 
+    const seo = await getSeo();
+    const tpl = seo?.brand;
+    const vars = {
+        'marka-adi': brand.name,
+        'marka-aciklamasi': brand.seoDescription || `${brand.name} lastik modellerini inceleyin.`
+    };
+
+    // Custom seoTitle varsa sablonu atla, dogrudan goster
+    const title = brand.seoTitle
+        ? brand.seoTitle
+        : (applyTemplate(tpl?.titleTemplate, vars) || brand.name);
+
+    // Custom seoDescription varsa sablonu atla
+    const description = brand.seoDescription
+        ? brand.seoDescription
+        : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['marka-aciklamasi']);
+
     return {
-        title: `${brand.seoTitle || brand.name} | ALastik.com`,
-        description: brand.seoDescription || `${brand.name} lastik modellerini inceleyin.`,
-        keywords: brand.seoKeywords?.join(', ')
+        title,
+        description,
+        keywords: applyTemplate(tpl?.keywordsTemplate, vars) || brand.seoKeywords?.join(', ')
     };
 }
 
 export default async function BrandPage({ params, searchParams }: Props) {
+    const site = headers().get('x-site') || 'alastik';
+    const Sidebar = site === 'lastikjantavm' ? LjaSidebar : AlastikSidebar;
+    const CategoryTop = site === 'lastikjantavm' ? LjaCategoryTop : AlastikCategoryTop;
+    const CategoryTireSearch = site === 'lastikjantavm' ? LjaCategoryTireSearch : AlastikCategoryTireSearch;
+    const MobileFilterSort = site === 'lastikjantavm' ? LjaMobileFilterSort : AlastikMobileFilterSort;
+    const Pagination = site === 'lastikjantavm' ? LjaPagination : AlastikPagination;
+    const ViewModeProductList = site === 'lastikjantavm' ? LjaViewModeProductList : AlastikViewModeProductList;
+
     const { slug } = await params;
     const filters = await searchParams;
 

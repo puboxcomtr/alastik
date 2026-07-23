@@ -1,3 +1,5 @@
+import { getSiteHeader } from '@/utils/activeSite'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 export type SliderItemType = {
@@ -33,9 +35,9 @@ export type SliderType = {
 
 export async function fetchSliders() {
     const response = await fetch(`${API_URL}/admin/design/slider`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
-
     if (!response.ok) {
         throw new Error('Sliderlar yüklenemedi')
     }
@@ -45,25 +47,23 @@ export async function fetchSliders() {
 
 export async function fetchSlider(id: string) {
     const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
-
     if (!response.ok) {
         throw new Error('Slider bulunamadı')
     }
-
     return response.json()
 }
 
 export async function getSliderById(id: string) {
     const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
-
     if (!response.ok) {
         throw new Error('Slider bulunamadı')
     }
-
     const result = await response.json()
 
     if (!result.success) {
@@ -76,6 +76,7 @@ export async function getSliderById(id: string) {
 export async function createSlider(formData: FormData) {
     const response = await fetch(`${API_URL}/admin/design/slider`, {
         method: 'POST',
+        headers: { ...getSiteHeader() },
         body: formData
     })
 
@@ -90,6 +91,7 @@ export async function createSlider(formData: FormData) {
 export async function updateSlider(id: string, formData: FormData) {
     const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
         method: 'PUT',
+        headers: { ...getSiteHeader() },
         body: formData
     })
 
@@ -103,7 +105,8 @@ export async function updateSlider(id: string, formData: FormData) {
 
 export async function deleteSlider(id: string) {
     const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {

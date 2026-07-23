@@ -2,18 +2,30 @@ import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
 import { fetchAPI, API_ENDPOINTS } from '@/src/config/api';
 import { getShowcaseSettings } from '@/src/services/settingsService';
 
+import { getOtherSeo } from '@/src/services/seoService';
 
 import Breadcrumb from "@components/search/Header/Breadcrumb";
-import Sidebar from "@/src/components/category/Sidebar/Content";
-import CategoryTop from '@components/category/Top/Content';
-import MobileFilterSort from '@components/category/Top/MobileFilterSort';
-import Pagination from '@/src/components/category/Pagination/MainPagination';
+
+/* Components - ALastik */
+import AlastikSidebar from '@components/alastik/category/Sidebar/Content';
+import AlastikCategoryTop from '@components/alastik/category/Top/Content';
+import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
+import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
+
+/* Components - LastikJantAVM */
+import LjaSidebar from '@components/lastikjantavm/category/Sidebar/Content';
+import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
+import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
+import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPagination';
+
 import { ViewModeProvider } from '@/src/context/ViewModeContext';
-import ViewModeProductList from '@components/shop/Product/Showcase/Mode';
+import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
+import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
 
 interface Props {
     searchParams: Promise<{ [key: string]: string | undefined }>;
@@ -22,15 +34,28 @@ interface Props {
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
     const params = await searchParams;
     const q = params.q || '';
+    if (q) {
+        const base = await getOtherSeo('productSearch', true);
+        const siteName = base.title?.split('|').pop()?.trim() || '';
+        return {
+            ...base,
+            title: siteName ? `"${q}" Arama Sonuçları | ${siteName}` : `"${q}" Arama Sonuçları`,
+            description: `${q} ile ilgili lastik, jant ve aksesuar arama sonuçları.`,
+        };
+    }
 
-    return {
-        title: q ? `"${q}" Arama Sonuçları | ALastik.com` : 'Arama | ALastik.com',
-        description: q ? `${q} ile ilgili lastik, jant ve aksesuar arama sonuçları.` : 'Ürün arama sayfası',
-        robots: { index: false, follow: false }
-    };
+    return await getOtherSeo('productSearch', true);
 }
 
 export default async function SearchPage({ searchParams }: Props) {
+    const site = headers().get('x-site') || 'alastik';
+    const Sidebar = site === 'lastikjantavm' ? LjaSidebar : AlastikSidebar;
+    const CategoryTop = site === 'lastikjantavm' ? LjaCategoryTop : AlastikCategoryTop;
+    const MobileFilterSort = site === 'lastikjantavm' ? LjaMobileFilterSort : AlastikMobileFilterSort;
+    const Pagination = site === 'lastikjantavm' ? LjaPagination : AlastikPagination;
+    const ViewModeProductList = site === 'lastikjantavm' ? LjaViewModeProductList : AlastikViewModeProductList;
+
+
     const params = await searchParams;
     const q = params.q || '';
 

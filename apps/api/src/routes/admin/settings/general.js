@@ -5,7 +5,7 @@ const WebSettings = require('../../../models/web/settings/WebSettings');
 // GET /api/admin/settings/general - Ayarları getir
 router.get('/', async (req, res) => {
     try {
-        const settings = await WebSettings.getSettings();
+        const settings = await WebSettings.getSettings(req.site);
 
         res.json({
             success: true,
@@ -28,7 +28,7 @@ router.put('/', async (req, res) => {
         const updateData = req.body;
 
         // Mevcut settings'i al veya oluştur
-        let settings = await WebSettings.getSettings();
+        let settings = await WebSettings.getSettings(req.site);
 
         // Her kategoriyi güncelle
         if (updateData.companyInfo) {

@@ -210,7 +210,7 @@ export default function MakeSelection({ selectedMake, onSelect }: MakeSelectionP
                                 </Tooltip>
                             </Typography>
                             <div className='d-flex'>
-                                <Link href={ROUTES.REGISTER} className="btn btn-outline-primary animate-slide-end w-100 text-decoration-none">
+                                <Link href={ROUTES.REGISTER} className="btn btn-dark animate-slide-end w-100 text-decoration-none">
                                     {t('login_to_garage')}
                                 </Link>
                             </div>

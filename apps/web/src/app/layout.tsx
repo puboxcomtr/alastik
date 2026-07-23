@@ -1,6 +1,8 @@
 // Types
 import type { Metadata } from "next";
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+
+import { getSiteBySlug, DEFAULT_SITE } from '@src/config/siteConfig';
 
 // Font
 import { Inter } from "next/font/google";
@@ -20,8 +22,8 @@ import Script from "next/script";
 
 // @import
 import MetaHead from "@components/layout/MetaHead";
-import Header from "@components/layout/Header/Header";
-import Footer from "@components/layout/Footer/Footer";
+import SiteHeader from "@src/views/SiteHeader";
+import SiteFooter from "@src/views/SiteFooter";
 
 // Context
 import { BrandsProvider } from '@/src/context/BrandsContext';
@@ -53,10 +55,16 @@ const inter = Inter({
 });
 
 /* Meta */
-export const metadata: Metadata = {
-  title: "A Lastik.com | Online Lastik Satışı – En Uygun Fiyatlı Lastikler",
-  description: "Binek, SUV ve ticari araçlar için geniş lastik seçenekleri ALastik.com'da. Uygun fiyat, güvenilir alışveriş ve hızlı sipariş avantajlarını keşfedin.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const siteSlug = headersList.get('x-site') || DEFAULT_SITE;
+  const site = getSiteBySlug(siteSlug) || getSiteBySlug(DEFAULT_SITE)!;
+  return {
+    title: site.metaTitle,
+    description: site.metaDescription,
+    icons: { icon: site.favicon },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -83,12 +91,22 @@ export default async function RootLayout({
       </html>
     );
   }
-  const themeSettings = await getThemeSettings();
+  const site = cookieStore.get('site')?.value || 'alastik';
+  const themeSettings = await getThemeSettings(site);
 
   return (
     <html lang="tr">
       <MetaHead />
       <body className={inter.variable}>
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-NVV296LW"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
         <SettingsProvider initialTheme={themeSettings}>
           <ThemeRegistry>
             <LoadingProvider>
@@ -96,9 +114,9 @@ export default async function RootLayout({
                 <CartProvider>
                   <FavouritesProvider>
                     <GlobalLoadingOverlay />
-                    <Header />
+                    <SiteHeader />
                     {children}
-                    <Footer />
+                    <SiteFooter />
                     <Modal />
                     <TireSearchClient />
                     <TireSize />

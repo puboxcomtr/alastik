@@ -90,7 +90,7 @@ export default function GaragePage() {
             <div className="card-body">
               {garage.length === 0 ? (
                 <div className="text-center text-muted py-5">
-                  <img src="/assets/img/cars/car-not-found.jpg" width={260} className="mb-3" alt="Boş garaj" />
+                  <img src="/alastik/assets/img/cars/car-not-found.jpg" width={260} className="mb-3" alt="Boş garaj" />
                   <p>Garajınız boş. Araç ekleyerek hızlı lastik araması yapabilirsiniz.</p>
                 </div>
               ) : (

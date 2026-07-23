@@ -1,5 +1,6 @@
 // src/lib/api.ts
 import { getSession } from 'next-auth/react'
+import { getSiteHeader } from '@/utils/activeSite'
 
 // MEDIA
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
@@ -90,6 +91,7 @@ export const API_ENDPOINTS = {
         detail: (id: string) => `${getBaseUrl()}/admin/orders/${id}`,
         updateStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/status`,
         updatePaymentStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/payment-status`,
+        verifyPayment: (id: string) => `${getBaseUrl()}/admin/orders/${id}/verify-payment`,
     },
     webxml: {
         list: () => `${getBaseUrl()}/admin/integration/xml`,
@@ -164,6 +166,13 @@ export const API_ENDPOINTS = {
         priceFields: () => `${getBaseUrl()}/admin/modules/merchant/price-fields`,
         textFields: () => `${getBaseUrl()}/admin/modules/merchant/text-fields`,
     },
+    akakceSettings: {
+        get: () => `${getBaseUrl()}/admin/modules/akakce`,
+        update: () => `${getBaseUrl()}/admin/modules/akakce`,
+        priceFields: () => `${getBaseUrl()}/admin/modules/akakce/price-fields`,
+        textFields: () => `${getBaseUrl()}/admin/modules/akakce/text-fields`,
+        feedUrl: () => `${getBaseUrl()}/admin/modules/akakce/feed`,
+    },
     purchaseLimits: {
         list: () => `${getBaseUrl()}/admin/campaign/purchase-limits`,
         detail: (id: string) => `${getBaseUrl()}/admin/campaign/purchase-limits/${id}`,
@@ -207,6 +216,7 @@ export async function fetchAPI(url: string, options?: RequestInit) {
     const response = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
+            ...getSiteHeader(),
             ...(token && { 'Authorization': `Bearer ${token}` }),
             ...options?.headers,
         },

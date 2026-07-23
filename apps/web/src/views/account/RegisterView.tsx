@@ -93,6 +93,19 @@ export default function RegisterView() {
             if (result.success) {
                 toast.success(result.message || 'Üyeliğiniz başarıyla oluşturuldu');
 
+                // Google Ads conversion — kaydolma başarılı
+                if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+                    const memberId = (result.data?.member as { _id?: string; id?: string })?._id
+                        ?? (result.data?.member as { id?: string })?.id
+                        ?? '';
+                    window.gtag('event', 'conversion', {
+                        send_to: 'AW-18022245202/Pp35COy98bscENLG1pFD',
+                        value: 1.0,
+                        currency: 'TRY',
+                        transaction_id: String(memberId)
+                    });
+                }
+
                 if (result.data?.token && result.data?.member) {
                     setAuth(result.data.token, result.data.member);
                     router.replace(ROUTES.ACCOUNT);

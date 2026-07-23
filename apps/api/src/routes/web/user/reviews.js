@@ -4,6 +4,7 @@ const WebReview = require('../../../models/web/user/WebReview');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const authMiddleware = require('../../../middleware/authMiddleware');
+const { getSiteBySlug } = require('../../../config/sites');
 
 router.get('/my', authMiddleware, async (req, res) => {
     try {
@@ -58,6 +59,7 @@ router.get('/top', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
         const reviews = await WebReview.find({
+            site: req.site,
             status: 'active',
             overallRating: { $gte: 4 }
         })
@@ -127,12 +129,13 @@ router.get('/:productKey', async (req, res) => {
 
         // Toplam yorum sayısı
         const totalReviews = await WebReview.countDocuments({
+            site: req.site,
             productKey,
             status
         });
 
         // Yorumları getir (kullanıcı bilgileriyle birlikte)
-        const reviews = await WebReview.find({ productKey, status })
+        const reviews = await WebReview.find({ site: req.site, productKey, status })
             .populate('userId', 'firstName lastName')
             .sort({ createdAt: -1 })
             .skip((parseInt(page) - 1) * parseInt(limit))
@@ -141,7 +144,7 @@ router.get('/:productKey', async (req, res) => {
 
         // İstatistik hesapla
         const stats = await WebReview.aggregate([
-            { $match: { productKey, status } },
+            { $match: { site: req.site, productKey, status } },
             {
                 $group: {
                     _id: null,
@@ -165,7 +168,7 @@ router.get('/:productKey', async (req, res) => {
 
         // Yıldız dağılımı (1-5)
         const ratingDistribution = await WebReview.aggregate([
-            { $match: { productKey, status } },
+            { $match: { site: req.site, productKey, status } },
             {
                 $group: {
                     _id: '$overallRating',
@@ -279,6 +282,7 @@ router.post('/', async (req, res) => {
 
         // Yeni yorum oluştur
         const newReview = new WebReview({
+            site: req.site,
             productKey,
             userId,
             overallRating,
@@ -298,7 +302,7 @@ router.post('/', async (req, res) => {
             chainQuality,
             // Diğer
             comment,
-            source: source || 'ALastik',
+            source: source || getSiteBySlug(req.site)?.name || req.site,
             tireSize,
             mileage,
             status: 'pending'

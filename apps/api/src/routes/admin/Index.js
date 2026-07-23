@@ -69,11 +69,12 @@ router.use('/settings/translations', translationsRoutes);
 const generalSettingsRoutes = require('./settings/general');
 router.use('/settings/general', generalSettingsRoutes);
 
+const seoRoutes = require('./settings/seo');
+router.use('/settings/seo', seoRoutes);
+
 const settingRoutes = require('./settings/settings');
 router.use('/settings', settingRoutes);
 
-const seoRoutes = require('./settings/seo');
-router.use('/settings/seo', seoRoutes);
 
 // ============================================
 // SETTINGS CARGO ROUTES
@@ -140,6 +141,12 @@ router.use('/modules/merchant', merchantSettingsRoutes);
 
 const merchantFeedRoutes = require('../plugins/merchant/feed');
 router.use('/modules/merchant/feed', merchantFeedRoutes);
+
+// ============================================
+// AKAKCE ROUTES
+// ============================================
+const akakceSettingsRoutes = require('../plugins/akakce/settings');
+router.use('/modules/akakce', akakceSettingsRoutes);
 
 // ============================================
 // TIRE Tag SYNC ROUTES

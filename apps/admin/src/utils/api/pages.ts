@@ -1,3 +1,5 @@
+import { getSiteHeader } from '@/utils/activeSite'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 export type PageType = {
@@ -23,7 +25,8 @@ export type PageType = {
 
 export async function fetchPages() {
     const response = await fetch(`${API_URL}/admin/pages`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -35,7 +38,8 @@ export async function fetchPages() {
 
 export async function fetchPage(id: string) {
     const response = await fetch(`${API_URL}/admin/pages/${id}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -47,7 +51,8 @@ export async function fetchPage(id: string) {
 
 export async function getPageById(id: string) {
     const response = await fetch(`${API_URL}/admin/pages/${id}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -67,7 +72,8 @@ export async function createPage(data: Partial<PageType>) {
     const response = await fetch(`${API_URL}/admin/pages`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getSiteHeader()
         },
         body: JSON.stringify(data)
     })
@@ -84,7 +90,8 @@ export async function updatePage(id: string, data: Partial<PageType>) {
     const response = await fetch(`${API_URL}/admin/pages/${id}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getSiteHeader()
         },
         body: JSON.stringify(data)
     })
@@ -99,7 +106,8 @@ export async function updatePage(id: string, data: Partial<PageType>) {
 
 export async function deletePage(id: string) {
     const response = await fetch(`${API_URL}/admin/pages/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {

@@ -34,9 +34,14 @@ router.get('/', async (req, res) => {
             page = 1,
             limit = 20,
             search = '',
+            orderNumber = '',
             status = '',
             paymentStatus = '',
             paymentMethod = '',
+            stockCode = '',
+            phone = '',
+            startDate = '',
+            endDate = '',
             sortBy = 'createdAt',
             sortOrder = 'desc'
         } = req.query;
@@ -44,9 +49,9 @@ router.get('/', async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         // Filtre oluştur
-        let filter = { isActive: true };
+        let filter = { isActive: true, site: req.site };
 
-        // Arama
+        // Genel arama
         if (search) {
             filter.$or = [
                 { orderNumber: { $regex: search, $options: 'i' } },
@@ -59,16 +64,73 @@ router.get('/', async (req, res) => {
             ];
         }
 
+        // Sipariş No (ID)
+        if (orderNumber) {
+            filter.orderNumber = { $regex: orderNumber, $options: 'i' };
+        }
+
+        // Sipariş durumu
         if (status) {
             filter.status = status;
         }
 
-        if (paymentStatus) {
-            filter['payment.status'] = paymentStatus;
+        if (paymentStatus === 'all') {
+            // Tümü - payment.status filtresi yok
+        } else if (paymentStatus) {
+            const statusList = paymentStatus.split(',').map(s => s.trim()).filter(Boolean);
+            if (statusList.length > 1) {
+                filter['payment.status'] = { $in: statusList };
+            } else if (statusList.length === 1) {
+                filter['payment.status'] = statusList[0];
+            }
+        } else {
+            // Varsayılan: ödenmiş siparişler VEYA banka havalesi (durumu ne olursa olsun)
+            filter.$and = [
+                ...(filter.$and || []),
+                {
+                    $or: [
+                        { 'payment.status': 'paid' },
+                        { 'payment.method': 'bank_transfer' }
+                    ]
+                }
+            ];
         }
 
+        // Ödeme yöntemi
         if (paymentMethod) {
             filter['payment.method'] = paymentMethod;
+        }
+
+        // Ürün stok kodu (items içinde)
+        if (stockCode) {
+            filter['items.stockCode'] = { $regex: stockCode, $options: 'i' };
+        }
+
+        // Telefon (snapshot alanlarında)
+        if (phone) {
+            const phoneRegex = phone.replace(/\D/g, '');
+            if (phoneRegex) {
+                filter.$or = [
+                    ...(filter.$or || []),
+                    { customerPhone: { $regex: phoneRegex } },
+                    { 'memberSnapshot.phone': { $regex: phoneRegex } },
+                    { 'billingSnapshot.phone': { $regex: phoneRegex } },
+                    { 'shippingSnapshot.phone': { $regex: phoneRegex } }
+                ];
+            }
+        }
+
+        // Tarih aralığı
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) {
+                filter.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
         }
 
         const sort = {};
@@ -154,7 +216,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const order = await WebOrder.findById(id).lean();
+        const order = await WebOrder.findOne({ _id: id, site: req.site }).lean();
 
         if (!order) {
             return res.status(404).json({
@@ -241,6 +303,7 @@ router.get('/:id', async (req, res) => {
         const formattedOrder = {
             id: order._id.toString(),
             orderNumber: order.orderNumber,
+            site: order.site || 'alastik',
             isGuest: order.isGuest,
             memberId: order.memberId?.toString() || null,
             memberInfo: memberInfo,
@@ -406,6 +469,94 @@ router.put('/:id/payment-status', async (req, res) => {
             message: 'Ödeme durumu güncellenirken hata oluştu',
             error: error.message
         });
+    }
+});
+
+// POST /api/admin/orders/:id/verify-payment - Nkolay ödeme durumunu sorgula, ödendiyse onayla
+router.post('/:id/verify-payment', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const order = await WebOrder.findOne({ _id: id, site: req.site });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
+        }
+
+        // Sadece Nkolay ve henüz ödenmemiş siparişler
+        if (order.payment?.gateway !== 'nkolay') {
+            return res.json({ success: true, updated: false, reason: 'not_nkolay', paymentStatus: order.payment?.status });
+        }
+        if (order.payment?.status === 'paid') {
+            return res.json({ success: true, updated: false, reason: 'already_paid', paymentStatus: 'paid' });
+        }
+
+        const NkolayService = require('../../../services/plugins/payment/NKolayService');
+        const result = await NkolayService.checkPaymentStatus({ clientRefCode: order.orderNumber });
+
+        if (!result.success || !result.found) {
+            return res.json({ success: true, updated: false, reason: 'not_found_in_nkolay', paymentStatus: order.payment?.status });
+        }
+
+        // Ödenmemiş (NEW/ERROR) ise dokunma
+        if (!result.isPaid) {
+            return res.json({ success: true, updated: false, reason: 'not_paid', nkolayStatus: result.status, paymentStatus: order.payment?.status });
+        }
+
+        // Tutar doğrulama - yanlış onayı engelle
+        const nkolayAmount = parseFloat(result.transactionAmount);
+        const orderAmount = parseFloat(order.pricing?.total);
+        if (isNaN(nkolayAmount) || isNaN(orderAmount) || Math.abs(nkolayAmount - orderAmount) > 0.01) {
+            return res.json({
+                success: true,
+                updated: false,
+                reason: 'amount_mismatch',
+                nkolayAmount: result.transactionAmount,
+                orderAmount: order.pricing?.total
+            });
+        }
+
+        // Ödeme doğrulandı - siparişi onayla
+        order.payment.status = 'paid';
+        order.status = 'confirmed';
+        order.payment.method = 'credit_card_3d';
+        order.payment.paidAt = new Date();
+        order.payment.authCode = result.authCode;
+        order.payment.referenceCode = result.referenceCode || order.payment.referenceCode;
+        order.payment.bankMessage = `Otomatik dogrulama - Nkolay STATUS=SUCCESS (${result.cardBankName || ''})`;
+        order.updatedAt = new Date();
+        await order.save();
+
+        console.log('[verify-payment] Odeme dogrulandi ve onaylandi:', order.orderNumber);
+
+        // Ödeme başarılı maili tetikle (fire-and-forget)
+        try {
+            const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
+            const customerMail = order.isGuest
+                ? (order.guestBillingAddress?.email || order.customerEmail)
+                : (order.memberSnapshot?.email || order.customerEmail);
+
+            sendTemplateMail({
+                templateKey: order.isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
+                context: { orderId: order._id.toString() },
+                to: customerMail,
+                alsoSendToAdmin: true,
+                adminPurpose: 'order'
+            }).catch(err => console.error('[verify-payment] Mail hatasi:', order.orderNumber, err.message));
+        } catch (mailErr) {
+            console.error('[verify-payment] Mail tetikleme hatasi:', mailErr.message);
+        }
+
+        return res.json({
+            success: true,
+            updated: true,
+            paymentStatus: 'paid',
+            orderStatus: 'confirmed',
+            authCode: result.authCode
+        });
+
+    } catch (error) {
+        console.error('[verify-payment] Hata:', error);
+        return res.status(500).json({ success: false, message: 'Ödeme doğrulama hatası', error: error.message });
     }
 });
 

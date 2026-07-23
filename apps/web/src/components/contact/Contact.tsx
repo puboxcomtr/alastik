@@ -64,6 +64,17 @@ export default function Contact() {
                     </div>
                 </Container>
             </section>
+            <section id="breadcumb">
+                <Container>
+                    <div className='row-fluid'>
+                        <Row>
+                            <Col lg={12}>
+                                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3007.6651501938386!2d28.99315467642768!3d41.07631151523231!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab7a65d413159%3A0xd315e651e897ac47!2sA%20Lastik!5e0!3m2!1str!2str!4v1782396532939!5m2!1str!2str" width="100%" height="450" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin"></iframe>
+                            </Col>
+                        </Row>
+                    </div>
+                </Container>
+            </section>
             <section id="contact">
                 <Container>
                     <div className='row-fluid'>

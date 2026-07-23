@@ -188,6 +188,10 @@ const customDataSchema = new mongoose.Schema({
 
     // İçerik
     customDescription: String,
+    siteDescriptions: {
+        alastik: { type: String, default: '' },
+        lastikjantavm: { type: String, default: '' }
+    },
     shortDescription: String,
 
     // Etiketler ve kategoriler

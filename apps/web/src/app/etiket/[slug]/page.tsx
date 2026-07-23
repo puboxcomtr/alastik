@@ -3,25 +3,37 @@ import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 
 /* Services */
 import tagService from '@/src/services/tagService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
+import { getOtherSeo } from '@/src/services/seoService';
 
 /* Components */
-import Sidebar from "@/src/components/category/Sidebar/Content";
 import VehicleInfo from "@/src/components/tag/Sidebar/VehicleInfo";
 import Breadcrumb from "@/src/components/tag/Header/Breadcrumb";
-import CategoryTop from '@components/category/Top/Content';
-import CategoryTireSearch from '@components/category/Top/CategoryTireSearch';
-import MobileFilterSort from '@components/category/Top/MobileFilterSort';
-import Pagination from '@/src/components/category/Pagination/MainPagination';
+
+/* Components - ALastik */
+import AlastikSidebar from '@components/alastik/category/Sidebar/Content';
+import AlastikCategoryTop from '@components/alastik/category/Top/Content';
+import AlastikCategoryTireSearch from '@components/alastik/category/Top/CategoryTireSearch';
+import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
+import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
+
+/* Components - LastikJantAVM */
+import LjaSidebar from '@components/lastikjantavm/category/Sidebar/Content';
+import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
+import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/CategoryTireSearch';
+import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
+import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPagination';
 
 /* Context */
 import { ViewModeProvider } from '@/src/context/ViewModeContext';
 
 /* Product Mode */
-import ViewModeProductList from '@components/shop/Product/Showcase/Mode';
+import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
+import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
 
 interface Props {
     params: Promise<{ slug: string }>;
@@ -33,9 +45,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const tag = await tagService.getTagBySlug(slug);
 
     if (!tag) {
+        const base = await getOtherSeo('seoTag');
+        const siteName = base.title?.split('|').pop()?.trim() || '';
+
         return {
-            title: 'Etiket Bulunamadı | ALastik.com',
-            description: 'Aradığınız etiket bulunamadı.'
+            title: tag.seoTitle
+                ? tag.seoTitle
+                : (siteName ? `${tag.title} | ${siteName}` : tag.title),
+            description: tag.seoDescription || `${tag.title} - En uygun lastik fiyatları ve modelleri.`,
         };
     }
 
@@ -46,6 +63,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TagPage({ params, searchParams }: Props) {
+    const site = headers().get('x-site') || 'alastik';
+    const Sidebar = site === 'lastikjantavm' ? LjaSidebar : AlastikSidebar;
+    const CategoryTop = site === 'lastikjantavm' ? LjaCategoryTop : AlastikCategoryTop;
+    const CategoryTireSearch = site === 'lastikjantavm' ? LjaCategoryTireSearch : AlastikCategoryTireSearch;
+    const MobileFilterSort = site === 'lastikjantavm' ? LjaMobileFilterSort : AlastikMobileFilterSort;
+    const Pagination = site === 'lastikjantavm' ? LjaPagination : AlastikPagination;
+    const ViewModeProductList = site === 'lastikjantavm' ? LjaViewModeProductList : AlastikViewModeProductList;
+
     const { slug } = await params;
     const filters = await searchParams;
 
@@ -73,7 +98,9 @@ export default async function TagPage({ params, searchParams }: Props) {
             hizEndeksi: filters.hizEndeksi,
             uretim: filters.uretim,
             fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
-            fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined
+            fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined,
+            sortBy: filters.sortBy,
+            sortOrder: filters.sortOrder
         }
     );
 

@@ -20,6 +20,7 @@ export interface Category {
     seoTitle: string;
     seoUrl: string;
     seoKeywords: string[];
+    siteContentHtml?: string;
     productCount: number;
     activeProductCount: number;
     filteredProductCount?: number;

@@ -158,7 +158,7 @@ router.get('/:slug', async (req, res) => {
 router.get('/:slug/products', async (req, res) => {
     try {
         const { slug } = req.params;
-        const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax } = req.query;
+        const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax, sortBy, sortOrder } = req.query;
 
         // Tag'i bul
         const tag = await WebTag.findOne({
@@ -323,13 +323,77 @@ router.get('/:slug/products', async (req, res) => {
         const totalProducts = await WebProduct.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limitNum);
 
-        // Ürünleri getir
-        const products = await WebProduct.find(filter)
-            .select('_key customData diaData')
-            .sort({ 'syncInfo.syncSource': 1, 'diaData.gercek_stok': -1 })
-            .skip(skip)
-            .limit(limitNum)
-            .lean();
+        // Sıralama:
+        // - Default: 4 katmanlı (Bizim Stoklu > XML Stoklu > Bizim Stoksuz > XML Stoksuz)
+        // - sortBy belirtildiyse: Sadece o sıralama uygulanır (4 katman devre dışı)
+        const aggregatePipeline = [{ $match: filter }];
+
+        if (sortBy === 'price') {
+            // Fiyata göre sırala — 2 katman: önce stoklular, sonra stoksuzlar
+            // Frontend ile aynı fiyat mantığı: shippingIncludedPrice > webPrice > fiyat4
+            aggregatePipeline.push({
+                $addFields: {
+                    _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
+                    _sortPrice: {
+                        $let: {
+                            vars: {
+                                shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
+                                webPrice: { $ifNull: ['$customData.webPrice', 0] },
+                                fiyat4: { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] }
+                            },
+                            in: {
+                                $cond: [
+                                    { $gt: ['$$shipPrice', 0] },
+                                    '$$shipPrice',
+                                    { $cond: [{ $gt: ['$$webPrice', 0] }, '$$webPrice', '$$fiyat4'] }
+                                ]
+                            }
+                        }
+                    }
+                }
+            });
+            aggregatePipeline.push({
+                $addFields: {
+                    sortPriority: { $cond: ['$_hasStock', 1, 2] }
+                }
+            });
+            aggregatePipeline.push({
+                $sort: { sortPriority: 1, 'diaData.gercek_stok': -1, 'createdAt': -1 }
+            });
+        } else {
+            // Default 4 katmanlı sıralama
+            aggregatePipeline.push({
+                $addFields: {
+                    _isXml: { $eq: ['$syncInfo.syncSource', 'xml_integration'] },
+                    _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] }
+                }
+            });
+            aggregatePipeline.push({
+                $addFields: {
+                    sortPriority: {
+                        $switch: {
+                            branches: [
+                                { case: { $and: ['$_hasStock', { $not: '$_isXml' }] }, then: 1 },
+                                { case: { $and: ['$_hasStock', '$_isXml'] }, then: 2 },
+                                { case: { $and: [{ $not: '$_hasStock' }, { $not: '$_isXml' }] }, then: 3 }
+                            ],
+                            default: 4
+                        }
+                    }
+                }
+            });
+            aggregatePipeline.push({
+                $sort: { sortPriority: 1, 'diaData.gercek_stok': -1 }
+            });
+        }
+
+        aggregatePipeline.push(
+            { $skip: skip },
+            { $limit: limitNum },
+            { $project: { _key: 1, customData: 1, diaData: 1 } }
+        );
+
+        const products = await WebProduct.aggregate(aggregatePipeline);
 
         res.json({
             success: true,

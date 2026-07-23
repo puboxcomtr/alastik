@@ -177,8 +177,7 @@ export default function ReviewModal() {
                     ...(isZincir && {
                         ...zincirRatings
                     }),
-                    comment: comment.trim(),
-                    source: 'ALastik'
+                    comment: comment.trim()
                 })
             });
 
@@ -220,10 +219,7 @@ export default function ReviewModal() {
                                                 value={ratings[cat.key as keyof typeof ratings]}
                                                 onChange={(_, value) => setRatings(prev => ({ ...prev, [cat.key]: value || 0 }))}
                                                 size="medium"
-                                                sx={{
-                                                    '& .MuiRating-iconFilled': { color: '#dc3545' },
-                                                    '& .MuiRating-iconHover': { color: '#dc3545' }
-                                                }}
+                                                className="site-rating"
                                             />
                                         </div>
                                     </div>
@@ -244,10 +240,7 @@ export default function ReviewModal() {
                                                 value={zincirRatings[cat.key as keyof typeof zincirRatings]}
                                                 onChange={(_, value) => setZincirRatings(prev => ({ ...prev, [cat.key]: value || 0 }))}
                                                 size="medium"
-                                                sx={{
-                                                    '& .MuiRating-iconFilled': { color: '#dc3545' },
-                                                    '& .MuiRating-iconHover': { color: '#dc3545' }
-                                                }}
+                                                className="site-rating"
                                             />
                                         </div>
                                     </div>
@@ -263,10 +256,7 @@ export default function ReviewModal() {
                                 value={generalRating}
                                 onChange={(_, value) => setGeneralRating(value || 0)}
                                 size="large"
-                                sx={{
-                                    '& .MuiRating-iconFilled': { color: '#dc3545' },
-                                    '& .MuiRating-iconHover': { color: '#dc3545' }
-                                }}
+                                className="site-rating"
                             />
                             <span className="fs-5 fw-semibold">{generalRating}/5</span>
                         </div>

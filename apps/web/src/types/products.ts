@@ -45,6 +45,7 @@ export interface CustomData {
     delivery?: string;
     customDescription?: string;
     shortDescription?: string;
+    siteDescriptions?: { alastik?: string; lastikjantavm?: string };
     webTags?: string[];
     webCategory?: string;
     webSubCategory?: string;

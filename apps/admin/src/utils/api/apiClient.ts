@@ -1,3 +1,5 @@
+import { getSiteHeader } from '@/utils/activeSite'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 interface FetchOptions extends RequestInit {
@@ -9,6 +11,7 @@ export async function apiClient(endpoint: string, options: FetchOptions = {}) {
         credentials: 'include', 
         headers: {
             'Content-Type': 'application/json',
+            ...getSiteHeader(),
             ...options.headers
         },
         ...options

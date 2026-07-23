@@ -22,6 +22,8 @@ const sliderItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const sliderSchema = new mongoose.Schema({
+    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
     name: {
         type: String,
         required: true

@@ -69,8 +69,7 @@ router.get('/:id', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const { status } = req.query;
-
-        const filter = {};
+        const filter = { site: req.site };
         if (status) filter.status = status;
 
         const banners = await Banner.find(filter)
@@ -126,6 +125,7 @@ router.post('/', upload.single('image'), async (req, res) => {
         }
 
         const newBanner = new Banner({
+            site: req.site,
             description: description.trim(),
             redirectUrl: redirectUrl?.trim() || '',
             altTag: altTag?.trim() || '',

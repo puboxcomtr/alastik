@@ -5,7 +5,7 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination } from 'swiper/modules'
 
 // Components
-import ProductCard from '@components/shop/Product/Showcase/Card'
+import ProductCard from '@components/alastik/shop/Product/Showcase/Card'
 import { API_ENDPOINTS } from '@/src/config/api';
 
 // Swiper

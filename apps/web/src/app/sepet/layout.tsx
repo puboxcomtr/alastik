@@ -1,13 +1,8 @@
 import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-    title: 'Sepet - ALastik.com',
-    robots: {
-        index: false,
-        follow: false
-    }
-};
-
+import { getOtherSeo } from '@/src/services/seoService';
+export async function generateMetadata(): Promise<Metadata> {
+    return await getOtherSeo('cart', true);
+}
 export default function CartLayout({
     children
 }: {

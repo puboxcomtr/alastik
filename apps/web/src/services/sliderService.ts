@@ -26,12 +26,12 @@ export async function getSliderById(id: string): Promise<Slider | null> {
 /**
  * Key ile slider getir (placeholder sistemi için)
  */
-export async function getSliderByKey(key: string): Promise<Slider | null> {
+export async function getSliderByKey(key: string, site?: string): Promise<Slider | null> {
     try {
         if (!key) return null;
-
         const response = await fetch(API_ENDPOINTS.slider.byKey(key), {
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            headers: site ? { 'X-Site': site } : undefined
         });
 
         if (!response.ok) return null;

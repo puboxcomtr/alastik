@@ -14,6 +14,8 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import { toast } from 'react-toastify'
 import type { ThemeSettings as ThemeSettingsType } from '@/types/apps/themeTypes'
+import { getSiteHeader } from '@/utils/activeSite'
+
 
 const menuItems = [
     { id: 'tab1', label: 'Genel Ayarlar' },
@@ -61,6 +63,7 @@ const ImageUpload = ({ title, description, type, currentImage, onUpload }: Image
             const res = await fetch(`${API_URL}/admin/design/settings/theme/upload`, {
                 method: 'POST',
                 credentials: 'include',
+                headers: { ...getSiteHeader() },
                 body: formData
             })
 
@@ -137,7 +140,8 @@ const ThemeSettings = () => {
     const fetchSettings = async () => {
         try {
             const res = await fetch(`${API_URL}/admin/design/settings/theme`, {
-                credentials: 'include'
+                credentials: 'include',
+                headers: { ...getSiteHeader() }
             })
             const data = await res.json()
             if (data.success && data.data) {
@@ -152,7 +156,8 @@ const ThemeSettings = () => {
         try {
             setLoadingSliders(true)
             const res = await fetch(`${API_URL}/admin/design/slider`, {
-                credentials: 'include'
+                credentials: 'include',
+                headers: { ...getSiteHeader() }
             })
             const data = await res.json()
             if (data.success && data.data) {
@@ -169,7 +174,8 @@ const ThemeSettings = () => {
         try {
             setLoadingShowcases(true)
             const res = await fetch(`${API_URL}/showcases?is_active=true`, {
-                credentials: 'include'
+                credentials: 'include',
+                headers: { ...getSiteHeader() }
             })
             const data = await res.json()
             if (data.success && data.data) {
@@ -191,7 +197,7 @@ const ThemeSettings = () => {
         try {
             const res = await fetch(`${API_URL}/admin/design/settings/theme`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getSiteHeader() },
                 credentials: 'include',
                 body: JSON.stringify({ value: settings })
             })

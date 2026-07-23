@@ -191,15 +191,15 @@ export const getProductSeason = (product: Product): { text: string; icon: string
     const seasonMap: Record<string, { text: string; icon: string }> = {
         'Kış': {
             text: 'Kış',
-            icon: '/assets/icons/sezon-kis.svg'
+            icon: '/alastik/assets/icons/sezon-kis.svg'
         },
         'Yaz': {
             text: 'Yaz',
-            icon: '/assets/icons/sezon-yaz.svg'
+            icon: '/alastik/assets/icons/sezon-yaz.svg'
         },
         '4 Mevsim': {
             text: '4 Mevsim',
-            icon: '/assets/icons/sezon-dort-mevsim.svg'
+            icon: '/alastik/assets/icons/sezon-dort-mevsim.svg'
         }
     };
 

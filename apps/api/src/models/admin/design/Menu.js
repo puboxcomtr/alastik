@@ -49,6 +49,13 @@ const menuSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    site: {
+        type: String,
+        required: true,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
     }
 }, {
     timestamps: true,
@@ -56,10 +63,10 @@ const menuSchema = new mongoose.Schema({
 });
 
 // Index'ler
-menuSchema.index({ displayArea: 1, order: 1 });
-menuSchema.index({ parentId: 1 });
-menuSchema.index({ rowLevel: 1, displayArea: 1 });
-menuSchema.index({ isActive: 1 });
+menuSchema.index({ site: 1, displayArea: 1, order: 1 });
+menuSchema.index({ site: 1, parentId: 1 });
+menuSchema.index({ site: 1, rowLevel: 1, displayArea: 1 });
+menuSchema.index({ site: 1, isActive: 1 });
 
 // Virtual - Alt menüleri getir
 menuSchema.virtual('children', {

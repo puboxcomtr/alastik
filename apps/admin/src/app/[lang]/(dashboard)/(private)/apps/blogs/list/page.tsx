@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import classnames from 'classnames'
 
 /* API */
@@ -102,7 +102,18 @@ const BlogListTable = () => {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [blogToDelete, setBlogToDelete] = useState<BlogType | null>(null)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const pathname = usePathname()
+    const allowedSizes = [50, 100, 200, 500]
     const [rowSelection, setRowSelection] = useState({})
+    const [pagination, setPagination] = useState<{ pageIndex: number; pageSize: number }>(() => {
+        const page = parseInt(searchParams.get('page') || '1', 10)
+        const limit = parseInt(searchParams.get('limit') || '50', 10)
+        return {
+            pageIndex: page > 0 ? page - 1 : 0,
+            pageSize: allowedSizes.includes(limit) ? limit : 50
+        }
+    })
     const [data, setData] = useState<BlogType[]>([])
     const [globalFilter, setGlobalFilter] = useState('')
     const [loading, setLoading] = useState(true)
@@ -111,6 +122,13 @@ const BlogListTable = () => {
     useEffect(() => {
         loadBlogs()
     }, [])
+
+    useEffect(() => {
+        const params = new URLSearchParams(Array.from(searchParams.entries()))
+        params.set('page', String(pagination.pageIndex + 1))
+        params.set('limit', String(pagination.pageSize))
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    }, [pagination])
 
     const handleDeleteClick = (blog: BlogType) => {
         setBlogToDelete(blog)
@@ -282,7 +300,10 @@ const BlogListTable = () => {
                         <Tooltip title='Düzenle'>
                             <IconButton
                                 size='small'
-                                onClick={() => router.push(`/tr/apps/blogs/edit/${row.original._id}`)}
+                                component='a'
+                                href={`/tr/apps/blogs/edit/${row.original._id}`}
+                                target='_blank'
+                                rel='noopener noreferrer'
                             >
                                 <i className='ri-edit-box-line text-[22px] text-textSecondary' />
                             </IconButton>
@@ -304,11 +325,11 @@ const BlogListTable = () => {
         data,
         columns,
         filterFns: { fuzzy: fuzzyFilter },
-        state: { rowSelection, globalFilter },
-        initialState: { pagination: { pageSize: 10 } },
+        state: { rowSelection, globalFilter, pagination },
         enableRowSelection: true,
         globalFilterFn: fuzzyFilter,
         onRowSelectionChange: setRowSelection,
+        onPaginationChange: setPagination,
         getCoreRowModel: getCoreRowModel(),
         onGlobalFilterChange: setGlobalFilter,
         getFilteredRowModel: getFilteredRowModel(),
@@ -411,7 +432,7 @@ const BlogListTable = () => {
                     </table>
                 </div>
                 <TablePagination
-                    rowsPerPageOptions={[10, 15, 25]}
+                    rowsPerPageOptions={[50, 100, 200, 500]}
                     component='div'
                     className='border-bs'
                     count={table.getFilteredRowModel().rows.length}

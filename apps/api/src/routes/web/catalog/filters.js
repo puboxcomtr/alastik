@@ -326,7 +326,7 @@ router.get('/tire-options', async (req, res) => {
                         max: Math.ceil(priceRange[0].maxPrice)
                     } : { min: 0, max: 10000 },
                     jantGenislikleri: sortNumeric(jantGenislikleri.map(j => ({ value: j._id, label: j._id, count: j.count }))),
-                    jantCaplari: sortNumeric(jantCaplari.map(j => ({ value: j._id, label: j._id, count: j.count }))),
+                    jantCaplari: sortNumeric(jantCaplari.map(j => ({ value: String(j._id).replace(/[^\d]/g, ''), label: j._id, count: j.count }))),
                     bijonSayilari: sortNumeric(bijonSayilari.map(b => ({ value: b._id, label: b._id, count: b.count }))),
                     bijonAraliklari: sortNumeric(bijonAraliklari.map(b => ({ value: b._id, label: b._id, count: b.count }))),
                     gobekCaplari: sortNumeric(gobekCaplari.map(g => ({ value: g._id, label: g._id, count: g.count }))),

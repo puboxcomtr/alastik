@@ -14,6 +14,7 @@ const showcaseProductSchema = new mongoose.Schema({
 
 // Ana WebShowcase Schema
 const webShowcaseSchema = new mongoose.Schema({
+  site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
   title: {
     type: String,
     required: true,

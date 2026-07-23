@@ -7,7 +7,8 @@ router.get('/', async (req, res) => {
     try {
         const themeSetting = await SiteSetting.findOne({
             key: 'theme',
-            category: 'theme'
+            category: 'theme',
+            site: req.site
         }).lean();
 
         if (!themeSetting || !themeSetting.value) {

@@ -103,6 +103,14 @@ const seoSettingsSchema = new mongoose.Schema({
             title: { type: String, default: '' },
             description: { type: String, default: '' }
         }
+    },
+
+    site: {
+        type: String,
+        required: true,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
     }
 
 }, {

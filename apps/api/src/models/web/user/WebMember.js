@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const webMemberSchema = new mongoose.Schema({
+
+    site: {
+        type: String,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
+    },
+
     // Kişisel Bilgiler
     firstName: {
         type: String,
@@ -15,9 +23,8 @@ const webMemberSchema = new mongoose.Schema({
     },
     email: {
         type: String,
+        lowercase: true,    
         required: true,
-        unique: true,
-        lowercase: true,
         trim: true
     },
     phone: {
@@ -71,7 +78,7 @@ const webMemberSchema = new mongoose.Schema({
     collection: 'webmembers'
 });
 // Index'ler
-webMemberSchema.index({ email: 1 }, { unique: true });
+webMemberSchema.index({ email: 1, site: 1 }, { unique: true });
 webMemberSchema.index({ phone: 1 });
 webMemberSchema.index({ status: 1 });
 webMemberSchema.index({ createdAt: -1 });

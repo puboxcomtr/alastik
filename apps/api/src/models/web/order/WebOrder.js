@@ -98,7 +98,11 @@ const paymentSchema = new mongoose.Schema({
         approvedAt: Date,
         approvedBy: String
     },
-    paidAt: Date
+    paidAt: Date,
+
+    // Mail durumu (mükerrer mail koruması)
+    mailSent: { type: Boolean, default: false },
+    mailSentAt: Date
 }, { _id: false });
 
 // DIA Entegrasyon Schema
@@ -117,6 +121,7 @@ const diaIntegrationSchema = new mongoose.Schema({
 
 // Ana WebOrder Schema
 const webOrderSchema = new mongoose.Schema({
+    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
     // Sipariş Numarası
     orderNumber: {
         type: String,

@@ -173,8 +173,7 @@ export default function TireSelector({
 
             <div className="d-flex justify-content-center gap-2 p-3 border-top">
                 <Button
-                    className="border-0 px-4"
-                    style={{ backgroundColor: '#f2223b' }}
+                    className="border-0 px-4 site-bg-primary"
                     onClick={onCalculate}
                 >
                     <i className="ri-calculator-line me-1"></i> Hesapla

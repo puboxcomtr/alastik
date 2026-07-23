@@ -170,7 +170,7 @@ export default function VehicleCard({ vehicle, onEdit, onRefresh }: VehicleCardP
                     </div>
                 )}
                 <Image
-                    src={vehicle.image?.url || '/assets/img/default-car.png'}
+                    src={vehicle.image?.url || '/alastik/assets/img/default-car.png'}
                     alt={`${vehicle.wheelSizeData.makeName} ${vehicle.wheelSizeData.modelName}`}
                     fill
                     style={{ objectFit: 'cover' }}

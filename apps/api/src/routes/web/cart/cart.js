@@ -141,6 +141,17 @@ router.post('/add', async (req, res) => {
         // Ürün zaten sepette mi?
         const existingIndex = cart.items.findIndex(item => item.productKey === productKey);
         const originalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
+
+        // Stok tavanı kontrolü: sepetteki mevcut + eklenecek adet stoğu aşamaz
+        const stock = product.diaData?.gercek_stok ?? 0;
+        const currentQty = existingIndex > -1 ? cart.items[existingIndex].quantity : 0;
+        if (currentQty + quantity > stock) {
+            return res.status(400).json({
+                success: false,
+                message: `En fazla ${stock} adet ekleyebilirsiniz`
+            });
+        }
+
         if (existingIndex > -1) {
             cart.items[existingIndex].quantity += quantity;
         } else {
@@ -189,6 +200,16 @@ router.put('/update', async (req, res) => {
         const itemIndex = cart.items.findIndex(item => item.productKey === productKey);
         if (itemIndex === -1) {
             return res.status(404).json({ success: false, message: 'Urun sepette bulunamadi' });
+        }
+
+        // Stok tavanı kontrolü: güncellenen adet stoğu aşamaz
+        const product = await WebProduct.findOne({ _key: productKey });
+        const stock = product?.diaData?.gercek_stok ?? 0;
+        if (quantity > stock) {
+            return res.status(400).json({
+                success: false,
+                message: `En fazla ${stock} adet ekleyebilirsiniz`
+            });
         }
 
         cart.items[itemIndex].quantity = quantity;

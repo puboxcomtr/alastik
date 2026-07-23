@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSiteHeader } from '@/utils/activeSite'
 import classnames from 'classnames'
 
 /* MUI */
@@ -107,7 +108,7 @@ const columnHelper = createColumnHelper<ShowcaseWithActionsType>()
 const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 type Props = {
-    showcaseData: ShowcaseType[]
+    showcaseData?: ShowcaseType[]
 }
 
 const ShowcaseListTable = ({ showcaseData }: Props) => {
@@ -119,6 +120,36 @@ const ShowcaseListTable = ({ showcaseData }: Props) => {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [showcaseToDelete, setShowcaseToDelete] = useState<ShowcaseType | null>(null)
 
+    useEffect(() => {
+        const fetchShowcases = async () => {
+            try {
+                setLoading(true)
+                const res = await fetch(`${baseUrl}/showcases`, {
+                    cache: 'no-store',
+                    headers: { ...getSiteHeader() }
+                })
+                if (!res.ok) return
+                const json = await res.json()
+                const list = (json.data || []).map((s: any) => ({
+                    id: s.id,
+                    title: s.title,
+                    order: s.order,
+                    itemsPerRow: s.itemsPerRow,
+                    isActive: s.isActive,
+                    productCount: s.productCount,
+                    createdAt: s.createdAt,
+                    updatedAt: s.updatedAt
+                }))
+                setData(list)
+            } catch (err) {
+                console.error('Vitrin listesi yüklenemedi:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchShowcases()
+    }, [])
+
     const handleDeleteClick = (showcase: ShowcaseType) => {
         setShowcaseToDelete(showcase)
         setDeleteConfirmOpen(true)
@@ -129,7 +160,8 @@ const ShowcaseListTable = ({ showcaseData }: Props) => {
 
         try {
             const response = await fetch(`${baseUrl}/showcases/${showcaseToDelete.id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { ...getSiteHeader() }
             })
 
             if (!response.ok) throw new Error('Vitrin silinemedi')
@@ -151,7 +183,8 @@ const ShowcaseListTable = ({ showcaseData }: Props) => {
     const handleToggleStatus = async (showcase: ShowcaseType) => {
         try {
             const response = await fetch(`${baseUrl}/showcases/${showcase.id}/toggle`, {
-                method: 'PATCH'
+                method: 'PATCH',
+                headers: { ...getSiteHeader() }
             })
 
             if (!response.ok) throw new Error('Durum değiştirilemedi')

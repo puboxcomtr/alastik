@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
         detail: (slug: string) => `${getBaseUrl()}/products/${encodeURIComponent(slug)}`,
         wheelSize: (slug: string) => `${getBaseUrl()}/products/${slug}/wheelsize`,
         championships: (productKey: string) => `${getBaseUrl()}/products/championships/${productKey}`,
+        similarByOrder: (orderNumber: string) => `${getBaseUrl()}/products/similar-by-order/${orderNumber}`,
     },
     lastik: {
         kesitGenislikleri: () => `${getBaseUrl()}/lastik/kesit-genislikleri`,
@@ -108,6 +109,9 @@ export const API_ENDPOINTS = {
     filters: {
         tireOptions: () => `${getBaseUrl()}/filters/tire-options`,
         chainOptions: () => `${getBaseUrl()}/filters/chain-options`,
+    },
+    seo: {
+        get: () => `${getBaseUrl()}/seo`,
     },
     definition: {
         get: () => `${getBaseUrl()}/definition`,

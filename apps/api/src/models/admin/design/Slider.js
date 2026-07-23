@@ -28,11 +28,12 @@ const sliderSettingsSchema = new mongoose.Schema({
 }, { _id: false });
 
 const sliderSchema = new mongoose.Schema({
+    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
     name: { type: String, required: true },
     key: {
         type: String,
         unique: true,
-        immutable: true, 
+        immutable: true,
         index: true
     },
     sliders: [sliderItemSchema],

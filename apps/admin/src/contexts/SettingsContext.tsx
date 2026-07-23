@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import { toast } from 'react-toastify'
+import { getSiteHeader } from '@/utils/activeSite'
 
 // Settings veri tipi
 interface SettingsData {
@@ -87,9 +88,9 @@ export function SettingsProvider({
         setIsLoading(true)
 
         try {
-            const response = await fetch('http://localhost:3082/api/admin/settings/general', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/settings/general`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getSiteHeader() },
                 body: JSON.stringify(updateData)
             })
 

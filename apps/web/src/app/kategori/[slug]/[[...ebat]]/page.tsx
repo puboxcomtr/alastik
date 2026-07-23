@@ -1,23 +1,34 @@
-// apps/web/src/app/kategori/[slug]/[[...ebat]]/page.tsx
 /* Library */
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 
 /* Services */
 import { getCategory, getCategoryWithSize, getParentCategory } from '@/src/services/categoryService';
 import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
+import { getSeo } from '@/src/services/seoService';
+import { applyTemplate } from '@/src/utils/seoTemplate';
 
-/* Components */
-import Sidebar from "@/src/components/category/Sidebar/Content";
-import Breadcrumb from "@/src/components/category/Header/Breadcrumb";
-import CategorySlider from '@components/category/Top/Slider';
-import CategoryTop from '@components/category/Top/Content';
-import CategoryTireSearch from '@components/category/Top/CategoryTireSearch';
-import MobileFilterSort from '@components/category/Top/MobileFilterSort';
-import Pagination from '@/src/components/category/Pagination/MainPagination';
+/* Components - ALastik */
+import AlastikSidebar from "@components/alastik/category/Sidebar/Content";
+import AlastikBreadcrumb from "@components/alastik/category/Header/Breadcrumb";
+import AlastikCategorySlider from '@components/alastik/category/Top/Slider';
+import AlastikCategoryTop from '@components/alastik/category/Top/Content';
+import AlastikCategoryTireSearch from '@components/alastik/category/Top/CategoryTireSearch';
+import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
+import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
+
+/* Components - LastikJantAVM */
+import LjaSidebar from "@components/lastikjantavm/category/Sidebar/Content";
+import LjaBreadcrumb from "@components/lastikjantavm/category/Header/Breadcrumb";
+import LjaCategorySlider from '@components/lastikjantavm/category/Top/Slider';
+import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
+import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/CategoryTireSearch';
+import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
+import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPagination';
 
 /* Utils */
 import { parseTireSize } from '@/src/config/routes';
@@ -25,9 +36,9 @@ import { parseTireSize } from '@/src/config/routes';
 /* Context */
 import { ViewModeProvider } from '@/src/context/ViewModeContext';
 
-/* Product Mode */ 
-import ViewModeProductList from '@components/shop/Product/Showcase/Mode';
-
+/* Product Mode */
+import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
+import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
 
 interface Props {
     params: Promise<{
@@ -43,30 +54,57 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!category) {
         return {
-            title: 'Kategori Bulunamadı | ALastik.com',
+            title: 'Kategori Bulunamadı',
             description: 'Aradığınız kategori bulunamadı.'
         };
     }
 
+    const seo = await getSeo();
+    const tpl = seo?.category;
+
     if (!ebat || ebat.length === 0) {
+        const vars = {
+            'kategori-adi': category.name,
+            'kategori-aciklamasi': category.description || `${category.name} kategorisinde en uygun lastik modellerini keşfedin.`
+        };
+        const title = category.seoTitle
+            ? category.seoTitle
+            : (applyTemplate(tpl?.titleTemplate, vars) || category.name);
+        const description = category.description
+            ? category.description
+            : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['kategori-aciklamasi']);
         return {
-            title: `${category.seoTitle || category.name} | ALastik.com`,
-            description: category.description || `${category.name} kategorisinde en uygun lastik modellerini keşfedin.`,
-            keywords: category.seoKeywords?.join(', ')
+            title,
+            description,
+            keywords: applyTemplate(tpl?.keywordsTemplate, vars) || category.seoKeywords?.join(', ')
         };
     }
 
+    // Ebatli kategori
     const ebatSlug = ebat[0];
     const { formatted } = parseTireSize(ebatSlug);
-
+    const varsEbat = {
+        'kategori-adi': `${category.name} ${formatted}`,
+        'kategori-aciklamasi': `${category.name} kategorisinde ${formatted} ebadında lastik modellerini inceleyin.`
+    };
     return {
-        title: `${category.name} ${formatted} | ALastik.com`,
-        description: `${category.name} kategorisinde ${formatted} ebadında lastik modellerini inceleyin.`,
-        keywords: [...(category.seoKeywords || []), formatted, 'lastik'].join(', ')
+        title: applyTemplate(tpl?.titleTemplate, varsEbat) || `${category.name} ${formatted}`,
+        description: applyTemplate(tpl?.descriptionTemplate, varsEbat) || varsEbat['kategori-aciklamasi'],
+        keywords: applyTemplate(tpl?.keywordsTemplate, varsEbat) || [...(category.seoKeywords || []), formatted, 'lastik'].join(', ')
     };
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {
+    const site = headers().get('x-site') || 'alastik';
+    const Sidebar = site === 'lastikjantavm' ? LjaSidebar : AlastikSidebar;
+    const Breadcrumb = site === 'lastikjantavm' ? LjaBreadcrumb : AlastikBreadcrumb;
+    const CategorySlider = site === 'lastikjantavm' ? LjaCategorySlider : AlastikCategorySlider;
+    const CategoryTop = site === 'lastikjantavm' ? LjaCategoryTop : AlastikCategoryTop;
+    const CategoryTireSearch = site === 'lastikjantavm' ? LjaCategoryTireSearch : AlastikCategoryTireSearch;
+    const MobileFilterSort = site === 'lastikjantavm' ? LjaMobileFilterSort : AlastikMobileFilterSort;
+    const Pagination = site === 'lastikjantavm' ? LjaPagination : AlastikPagination;
+    const ViewModeProductList = site === 'lastikjantavm' ? LjaViewModeProductList : AlastikViewModeProductList;
+
     const { slug, ebat } = await params;
     const filters = await searchParams;
 
@@ -145,7 +183,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                 <Col lg={3}>
                                     <Sidebar hideEbatFilters={false} categorySlug={slug} />
                                 </Col>
-
                                 <Col lg={9}>
                                     <Row>
                                         <Col md={12}>
@@ -181,6 +218,19 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                                     currentPage={productsData.pagination.currentPage}
                                                     totalPages={productsData.pagination.totalPages}
                                                     totalProducts={productsData.pagination.totalProducts}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
+                                </Col>
+                                <Col lg={12}>
+                                    {/* Kategori SEO Icerigi (site bazli) */}
+                                    {category.siteContentHtml && (
+                                        <Row>
+                                            <Col md={12}>
+                                                <div
+                                                    className="category-seo-content mt-4"
+                                                    dangerouslySetInnerHTML={{ __html: category.siteContentHtml }}
                                                 />
                                             </Col>
                                         </Row>

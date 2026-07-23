@@ -8,7 +8,7 @@ router.get('/:slug', async (req, res) => {
         const { slug } = req.params;
 
         const page = await WebPage.findOneAndUpdate(
-            { slug, status: 'published' },
+            { site: req.site, slug, status: 'published' },
             { $inc: { viewCount: 1 } },
             { new: true }
         ).lean();

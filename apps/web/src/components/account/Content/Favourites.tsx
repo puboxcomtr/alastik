@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Col, Row } from 'react-bootstrap';
-import ProductCard from '@/src/components/shop/Product/Showcase/Card';
+import AlastikProductCard from '@components/alastik/shop/Product/Showcase/Card';
+import LjaProductCard from '@components/lastikjantavm/shop/Product/Showcase/Card';
 
 type Props = {
     items: any[];
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export default function FavouritesContent({ items, loading }: Props) {
+    const site = typeof document !== 'undefined' && document.cookie.includes('site=lastikjantavm') ? 'lastikjantavm' : 'alastik';
+    const ProductCard = site === 'lastikjantavm' ? LjaProductCard : AlastikProductCard;
     return (
         <div className="border-bottom my-3 py-4">
             <div className="nav flex-nowrap align-items-center justify-content-between pb-1 mb-3">

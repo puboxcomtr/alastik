@@ -2,14 +2,15 @@
 import React from 'react';
 
 // Components
-import ShowCaseProduct from '@components/homepage/Showcase/Product';
+import AlastikShowCaseProduct from '@components/alastik/homepage/Showcase/Product';
+import LjaShowCaseProduct from '@components/lastikjantavm/homepage/Showcase/Product';
 
 type Props = {
     showcaseKey?: 'first' | 'second' | 'third' | 'fourth' | 'fifth';
+    site?: string;
 }
 
-export default function ProductPage({ showcaseKey = 'second' }: Props) {
-    return (
-        <ShowCaseProduct showcaseKey={showcaseKey} />
-    );
+export default function ProductPage({ showcaseKey = 'second', site = 'alastik' }: Props) {
+    const ShowCaseProduct = site === 'lastikjantavm' ? LjaShowCaseProduct : AlastikShowCaseProduct;
+    return <ShowCaseProduct showcaseKey={showcaseKey} site={site} />;
 }

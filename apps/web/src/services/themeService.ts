@@ -1,12 +1,14 @@
 // apps/web/src/services/themeService.ts
+// apps/web/src/services/themeService.ts
 import { API_ENDPOINTS, getImageUrl as baseGetImageUrl } from '@/src/config/api';
 import type { ThemeSettings } from '@/src/types/theme';
 
-export async function getThemeSettings(): Promise<ThemeSettings> {
+export async function getThemeSettings(site?: string): Promise<ThemeSettings> {
     try {
         const response = await fetch(API_ENDPOINTS.theme.get(), {
             cache: 'no-store',
-            next: { revalidate: 0 }
+            next: { revalidate: 0 },
+            headers: site ? { 'X-Site': site } : undefined
         });
 
         if (!response.ok) {
@@ -23,7 +25,7 @@ export async function getThemeSettings(): Promise<ThemeSettings> {
 
 function getDefaultThemeSettings(): ThemeSettings {
     return {
-        defaultCatalogImage: '/assets/img/shop/default-product.jpg',
+        defaultCatalogImage: '/alastik/assets/img/shop/default-product.jpg',
         brandDisplayType: 'image',
         showcaseDisplayCount: '4',
         blogDisplayCount: '6',
@@ -38,6 +40,6 @@ function getDefaultThemeSettings(): ThemeSettings {
 }
 
 export function getImageUrl(path?: string): string {
-    if (!path) return '/assets/img/shop/default-product.jpg';
+    if (!path) return '/alastik/assets/img/shop/default-product.jpg';
     return baseGetImageUrl(path);
 }

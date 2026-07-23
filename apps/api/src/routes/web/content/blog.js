@@ -22,7 +22,7 @@ router.get('/by-pattern/:pattern', async (req, res) => {
 // Anasayfa blogları
 router.get('/homepage', async (req, res) => {
     try {
-        const blogs = await WebBlog.find({ status: 'published', showOnHomepage: true })
+        const blogs = await WebBlog.find({ site: req.site, status: 'published', showOnHomepage: true })
             .select('title slug excerpt publishedAt viewCount featuredImage tags')
             .sort({ publishedAt: -1 })
             .limit(4)
@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
     try {
         const { page = 1, limit = 10, status = 'published', tag } = req.query;
 
-        const filter = { status };
+        const filter = { site: req.site, status };
         if (tag) filter.tags = tag;
 
         const blogs = await WebBlog.find(filter)

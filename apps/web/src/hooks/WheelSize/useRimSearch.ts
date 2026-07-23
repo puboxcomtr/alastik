@@ -15,41 +15,23 @@ export function useRimSearch() {
             setLoading(true);
 
             try {
-                const [capResponse, bijonResponse] = await Promise.all([
-                    fetch(`${API_ENDPOINTS.jant.caplar()}?regions=eudm`),
-                    fetch(`${API_ENDPOINTS.jant.vidaSablonlari()}?regions=eudm`)
-                ]);
+                const res = await fetch(`${API_ENDPOINTS.filters.tireOptions()}?category=jant`, { cache: 'no-store' });
+                const result = await res.json();
 
-                const capData = await capResponse.json();
-                const bijonData = await bijonResponse.json();
-
-                if (capData.basarili) {
-                    setJantCaplari(capData.veri.map((item: any) => ({
-                        value: item.value?.toString() || item.toString()
+                if (result.success && result.data) {
+                    setJantCaplari((result.data.jantCaplari || []).map((item: any) => ({
+                        value: item.value
                     })));
-                }
 
-                if (bijonData.basarili) {
-                    setBijonAraliklari(bijonData.veri.map((item: any) => ({
-                        value: item.pcd || item.value || item.toString()
+                    setBijonAraliklari((result.data.bijonAraliklari || []).map((item: any) => ({
+                        value: item.value
                     })));
                 }
 
             } catch (error) {
                 console.error('Jant ölçüleri yüklenirken hata:', error);
-
-                // Fallback
-                setJantCaplari([
-                    { value: '14' }, { value: '15' }, { value: '16' }, { value: '17' },
-                    { value: '18' }, { value: '19' }, { value: '20' }, { value: '21' },
-                    { value: '22' }
-                ]);
-
-                setBijonAraliklari([
-                    { value: '4x100' }, { value: '4x108' }, { value: '5x100' },
-                    { value: '5x108' }, { value: '5x112' }, { value: '5x114.3' },
-                    { value: '5x120' }, { value: '5x130' }
-                ]);
+                setJantCaplari([]);
+                setBijonAraliklari([]);
             } finally {
                 setLoading(false);
             }

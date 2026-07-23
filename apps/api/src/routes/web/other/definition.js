@@ -5,7 +5,7 @@ const WebSettings = require('../../../models/web/settings/WebSettings');
 // GET /api/definition
 router.get('/', async (req, res) => {
     try {
-        const settings = await WebSettings.findOne().lean();
+        const settings = await WebSettings.findOne({ site: req.site }).lean();
 
         if (!settings) {
             return res.status(404).json({

@@ -104,7 +104,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           </SubMenu>
           <SubMenu label={dictionary['navigation'].order_management} icon={<i className='ri-wallet-line' />}>
             <MenuItem href={`/${locale}/apps/order/list`}>{dictionary['navigation'].order}</MenuItem>
-            <MenuItem href={`/${locale}/apps/order/order-draft`}>{dictionary['navigation'].order_draft}</MenuItem>
+            <MenuItem href={`/${locale}/apps/order/draft`}>{dictionary['navigation'].order_draft}</MenuItem>
             <MenuItem href={`/${locale}/apps/order/payment`}>{dictionary['navigation'].payment}</MenuItem>
             <MenuItem href={`/${locale}/apps/order/cart`}>{`${dictionary['navigation'].active} ${dictionary['navigation'].cart}`}</MenuItem>
           </SubMenu>
@@ -133,6 +133,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/modules/dia`}>DİA E-Power</MenuItem>
             <MenuItem href={`/${locale}/apps/modules/netahsilat`}>Netahsilat</MenuItem>
             <MenuItem href={`/${locale}/apps/modules/wheelsize`}>Wheelsize</MenuItem>
+            <MenuItem href={`/${locale}/apps/modules/akakce`}>Akakçe</MenuItem>
           </SubMenu>
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <MenuItem icon={<i className="ri-puzzle-line"></i>} href={`/${locale}/apps/modules/xml`}>{dictionary['navigation'].xml}</MenuItem>

@@ -251,6 +251,21 @@ class XmlSyncScheduler {
                 throw new Error('Ürün listesi bulunamadı veya boş');
             }
 
+            // Unver: STOK.DEPO array'inde DEPOID=0 (Tüm Depolar) entry'sini başa al
+            if (integration.code === 'unver') {
+                products = products.map(p => {
+                    const depoList = p?.STOK?.DEPO;
+                    if (Array.isArray(depoList) && depoList.length > 1) {
+                        const tumDepolar = depoList.find(d => String(d?.DEPOID) === '0');
+                        if (tumDepolar) {
+                            const others = depoList.filter(d => String(d?.DEPOID) !== '0');
+                            p.STOK.DEPO = [tumDepolar, ...others];
+                        }
+                    }
+                    return p;
+                });
+            }
+
             // stokKodu mapping'inden ID tespiti
             const fieldMappings = integration.rules?.fieldMappings || [];
             const stokKoduMapping = fieldMappings.find(m => m.target === 'stokKodu');

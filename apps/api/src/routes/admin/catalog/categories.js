@@ -289,17 +289,15 @@ router.patch('/:id', maybeAuth, [
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, seoTitle, seoDescription, seoUrl, webOrder, sliderId } = req.body;
-
-
+    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, sliderId } = req.body;
     const updateData = {};
     if (description !== undefined) updateData.description = description;
-    if (seoTitle !== undefined) updateData.seoTitle = seoTitle?.trim();
-    if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim();
+    if (seoTitle !== undefined) updateData[`siteContent.${req.site}.seoTitle`] = seoTitle?.trim();
+    if (seoDescription !== undefined) updateData[`siteContent.${req.site}.seoDescription`] = seoDescription?.trim();
+    if (content !== undefined) updateData[`siteContent.${req.site}.content`] = content;
     if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase();
     if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0;
     if (sliderId !== undefined) updateData.sliderId = sliderId || null;
-
     updateData.updatedAt = new Date();
 
     const updatedCategory = await WebCategory.findByIdAndUpdate(
@@ -323,6 +321,32 @@ router.patch('/:id', maybeAuth, [
       success: false,
       message: 'Kategori güncellenirken hata oluştu'
     });
+  }
+});
+router.get('/:id', maybeAuth, async (req, res) => {
+  try {
+    const cat = await WebCategory.findById(req.params.id).lean();
+    if (!cat) {
+      return res.status(404).json({ success: false, message: 'Kategori bulunamadı' });
+    }
+    const sc = (cat.siteContent && cat.siteContent[req.site]) || {};
+    res.json({
+      success: true,
+      data: {
+        id: cat._id,
+        name: cat.name,
+        description: cat.description || '',
+        seoUrl: cat.seoUrl || '',
+        webOrder: cat.webOrder || 0,
+        sliderId: cat.sliderId || null,
+        content: sc.content || '',
+        seoTitle: sc.seoTitle || '',
+        seoDescription: sc.seoDescription || ''
+      }
+    });
+  } catch (error) {
+    console.error('Kategori detay hatası:', error);
+    res.status(500).json({ success: false, message: 'Kategori getirilemedi' });
   }
 });
 

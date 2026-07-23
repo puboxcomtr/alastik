@@ -71,7 +71,7 @@ export default function Testimonials() {
                                         <CardContent>
                                             <Box display="flex" alignItems="center" mb={2}>
                                                 <Avatar
-                                                    src="/assets/img/shop/pirelli.jpg"
+                                                    src="/alastik/assets/img/shop/pirelli.jpg"
                                                     alt="Ürün Adı"
                                                     sx={{ width: 64, height: 64, mr: 2 }}
                                                 />

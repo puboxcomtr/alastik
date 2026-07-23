@@ -3,20 +3,30 @@ import React from 'react';
 import { Container } from 'react-bootstrap';
 import { Grid } from "@mui/material";
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 
 
-/* @Import Page */
-import ProductBreadcrumb from "@components/product/top/Breadcrumb";
-import Gallery from '@components/product/left/Gallery';
-import Middle from '@components/product/middle/Middle';
-import AddCart from '@/src/components/product/right/AddCart';
-import Description from '@/src/components/product/bottom/Description';
+/* Components - ALastik */
+import AlastikProductBreadcrumb from "@components/alastik/product/top/Breadcrumb";
+import AlastikGallery from '@components/alastik/product/left/Gallery';
+import AlastikMiddle from '@components/alastik/product/middle/Middle';
+import AlastikAddCart from '@components/alastik/product/right/AddCart';
+import AlastikDescription from '@components/alastik/product/bottom/Description';
+
+/* Components - LastikJantAVM */
+import LjaProductBreadcrumb from "@components/lastikjantavm/product/top/Breadcrumb";
+import LjaGallery from '@components/lastikjantavm/product/left/Gallery';
+import LjaMiddle from '@components/lastikjantavm/product/middle/Middle';
+import LjaAddCart from '@components/lastikjantavm/product/right/AddCart';
+import LjaDescription from '@components/lastikjantavm/product/bottom/Description';
 
 /* Services */
 import { getProductBySlug, getProductWheelSize, getCompatibleVehicles, getRelatedBlogs } from '@src/services/productService';
 import { getCategorySlugByName } from '@src/services/categoryService';
 import { getDefinition } from '@src/services/definitionService';
+import { getSeo } from '@src/services/seoService';
+import { applyTemplate } from '@src/utils/seoTemplate';
 import { getProductReviews } from '@src/services/reviewService';
 
 export async function generateMetadata(
@@ -24,22 +34,51 @@ export async function generateMetadata(
 ): Promise<Metadata> {
     const { slug } = await params;
     const product = await getProductBySlug(slug);
-
     if (!product) {
         return {
             title: 'Ürün Bulunamadı'
         };
     }
 
+    const seo = await getSeo();
+    const tpl = seo?.product;
+    const urunAdi = product.diaData?.aciklama || 'Ürün';
+    const markaAdi = product.diaData?.marka || '';
+    const vars = {
+        'urun-adi': urunAdi,
+        'marka-adi': markaAdi,
+        'urun-aciklamasi': `${urunAdi} en uygun fiyatla.`
+    };
+
+    // Custom seoTitle varsa sablonu atla, doğrudan goster
+    const title = product.customData?.seoTitle
+        ? product.customData.seoTitle
+        : (applyTemplate(tpl?.titleTemplate, vars) || urunAdi);
+
+    // Custom seoDescription varsa şablonu atla
+    const description = product.customData?.seoDescription
+        ? product.customData.seoDescription
+        : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['urun-aciklamasi']);
+
     return {
-        title: product.customData?.seoTitle || product.diaData?.aciklama || 'Ürün Detay',
-        description: product.customData?.seoDescription || '',
-        keywords: product.customData?.seoKeywords?.join(', ') || ''
+        title,
+        description,
+        keywords: product.customData?.seoKeywords?.join(', ')
+            || applyTemplate(tpl?.keywordsTemplate, vars)
+            || ''
     };
 }
 export default async function ProductDetailPage(
+
     { params }: { params: Promise<{ slug: string }> }
 ) {
+    const site = headers().get('x-site') || 'alastik';
+    const ProductBreadcrumb = site === 'lastikjantavm' ? LjaProductBreadcrumb : AlastikProductBreadcrumb;
+    const Gallery = site === 'lastikjantavm' ? LjaGallery : AlastikGallery;
+    const Middle = site === 'lastikjantavm' ? LjaMiddle : AlastikMiddle;
+    const AddCart = site === 'lastikjantavm' ? LjaAddCart : AlastikAddCart;
+    const Description = site === 'lastikjantavm' ? LjaDescription : AlastikDescription;
+
     const { slug } = await params;
     const product = await getProductBySlug(slug);
     if (!product) {

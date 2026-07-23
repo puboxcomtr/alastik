@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     try {
         const { search, status } = req.query;
 
-        const query = {};
+        const query = { site: req.site };
 
         if (search) {
             query.$or = [
@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
     try {
-        const page = await Page.findById(req.params.id).lean();
+        const page = await Page.findOne({ _id: req.params.id, site: req.site }).lean();
 
         if (!page) {
             return res.status(404).json({
@@ -78,7 +78,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         // Slug kontrolü
-        const existingPage = await Page.findOne({ slug: req.body.slug });
+        const existingPage = await Page.findOne({ slug: req.body.slug, site: req.site });
         if (existingPage) {
             return res.status(400).json({
                 success: false,
@@ -86,7 +86,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const page = new Page(req.body);
+        const page = new Page({ ...req.body, site: req.site });
         await page.save();
 
         res.status(201).json({
@@ -128,6 +128,7 @@ router.put('/:id', async (req, res) => {
         if (req.body.slug) {
             const existingPage = await Page.findOne({
                 slug: req.body.slug,
+                site: req.site,
                 _id: { $ne: req.params.id }
             });
 
@@ -139,8 +140,8 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        const page = await Page.findByIdAndUpdate(
-            req.params.id,
+        const page = await Page.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             req.body,
             { new: true, runValidators: true }
         );
@@ -183,7 +184,7 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
     try {
-        const page = await Page.findByIdAndDelete(req.params.id);
+        const page = await Page.findOneAndDelete({ _id: req.params.id, site: req.site });
 
         if (!page) {
             return res.status(404).json({

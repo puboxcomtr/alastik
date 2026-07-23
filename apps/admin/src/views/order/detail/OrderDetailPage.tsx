@@ -25,6 +25,24 @@ const OrderDetailPage = () => {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
+  const verifyNkolayPayment = async (loadedOrder: any) => {
+    // Sadece Nkolay + henüz ödenmemiş siparişler için sessiz doğrulama
+    if (loadedOrder?.payment?.gateway !== 'nkolay') return
+    if (loadedOrder?.payment?.status === 'paid') return
+
+    try {
+      const verifyRes = await fetchAPI(API_ENDPOINTS.orders.verifyPayment(loadedOrder.id), { method: 'POST' })
+      if (verifyRes?.updated) {
+        toast.success('Ödeme doğrulandı, sipariş onaylandı')
+        // Güncel veriyi tekrar çek
+        const refreshed = await fetchAPI(API_ENDPOINTS.orders.detail(orderId))
+        if (refreshed.success) setOrder(refreshed.data)
+      }
+    } catch (error) {
+      console.error('Ödeme doğrulama hatası:', error)
+    }
+  }
+
   const loadOrder = async () => {
     try {
       setLoading(true)
@@ -32,6 +50,7 @@ const OrderDetailPage = () => {
 
       if (response.success) {
         setOrder(response.data)
+        verifyNkolayPayment(response.data)
       } else {
         toast.error('Sipariş bulunamadı')
       }
@@ -86,6 +105,7 @@ const OrderDetailPage = () => {
               shippingAddress={order.shippingAddress}
               billingAddress={order.billingAddress}
               customerNote={order.customerNote}
+              site={order.site}
             />
             <PaymentInformation
               payment={order.payment}

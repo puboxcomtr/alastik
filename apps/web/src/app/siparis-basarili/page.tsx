@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Container, Row, Col } from 'react-bootstrap';
@@ -15,6 +15,12 @@ import OrderSummary from '@/src/components/payment/Success/OrderSummary';
 import Coupon from '@/src/components/payment/Success/Coupon';
 import PaymentProducts from '@/src/components/payment/Success/PaymentProducts';
 
+declare global {
+    interface Window {
+        gtag?: (...args: unknown[]) => void;
+    }
+}
+
 
 export default function OrderSuccessPage() {
     const searchParams = useSearchParams();
@@ -22,6 +28,26 @@ export default function OrderSuccessPage() {
     const orderNumber = searchParams.get('order');
     const [order, setOrder] = useState<Order | null>(null);
     const [isValidAccess, setIsValidAccess] = useState(false);
+    const conversionSentRef = useRef(false);
+
+    // Google Ads conversion event — sipariş başarılı yüklendiğinde 1 kez tetikle
+    useEffect(() => {
+        if (!order || conversionSentRef.current) return;
+        if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+
+        conversionSentRef.current = true;
+        const orderValue = Number((order as { total?: number; totalAmount?: number; grandTotal?: number }).total
+            ?? (order as { totalAmount?: number }).totalAmount
+            ?? (order as { grandTotal?: number }).grandTotal
+            ?? 0);
+
+        window.gtag('event', 'conversion', {
+            send_to: 'AW-18022245202/qJixCKjJ8LscENLG1pFD',
+            value: orderValue,
+            currency: 'TRY',
+            transaction_id: orderNumber || ''
+        });
+    }, [order, orderNumber]);
 
     useEffect(() => {
         // Referrer kontrolü
@@ -71,7 +97,7 @@ export default function OrderSuccessPage() {
                     <Coupon />
                 </Col>
                 <Col lg="6">
-                    <PaymentProducts />
+                    <PaymentProducts orderNumber={orderNumber || undefined} />
                 </Col>
             </Row>
         </Container>

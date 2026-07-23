@@ -34,14 +34,22 @@ const descriptionTemplateSchema = new mongoose.Schema({
     appliedCount: {
         type: Number,
         default: 0
+    },
+
+    site: {
+        type: String,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        required: true,
+        index: true
     }
 }, {
     timestamps: true,
     collection: 'descriptiontemplates'
 });
 
-descriptionTemplateSchema.index({ name: 1 });
-descriptionTemplateSchema.index({ models: 1 });
-descriptionTemplateSchema.index({ isActive: 1 });
+descriptionTemplateSchema.index({ site: 1, name: 1 });
+descriptionTemplateSchema.index({ site: 1, models: 1 });
+descriptionTemplateSchema.index({ site: 1, isActive: 1 });
 
 module.exports = mongoose.model('DescriptionTemplate', descriptionTemplateSchema);

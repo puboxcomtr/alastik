@@ -265,6 +265,7 @@ router.post('/', async (req, res) => {
 
         // Sipariş oluştur
         const order = new WebOrder({
+            site: req.site,
             orderNumber,
             memberId: isGuest ? null : memberId,
             isGuest,
@@ -344,6 +345,7 @@ router.post('/', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
     try {
         const orders = await WebOrder.find({
+            site: req.site,
             memberId: req.params.userId,
             isActive: true
         }).sort({ createdAt: -1 }).lean();

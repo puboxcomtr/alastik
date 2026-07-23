@@ -196,7 +196,7 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
       {/* Sağ Görsel */}
       <div className="col position-relative d-none d-md-block" style={{ minHeight: '500px' }}>
         <img
-          src="/assets/img/contact_bg.jpg"
+          src="/alastik/assets/img/contact_bg.jpg"
           className="position-absolute top-0 start-0 w-100 h-100 object-fit-cover"
           alt="İletişim"
         />

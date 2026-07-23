@@ -11,7 +11,7 @@ const uploadThemeImage = MediaService.createUploader('theme', 'image');
 router.get('/:key', async (req, res) => {
     try {
         const { key } = req.params;
-        const setting = await SiteSetting.findOne({ key });
+        const setting = await SiteSetting.findOne({ key, site: req.site });
 
         if (!setting) {
             return res.json({
@@ -48,9 +48,10 @@ router.put('/:key', async (req, res) => {
         }
 
         const setting = await SiteSetting.findOneAndUpdate(
-            { key },
+            { key, site: req.site },
             {
                 key,
+                site: req.site,
                 value,
                 category: 'theme',
                 updatedAt: new Date()
@@ -99,7 +100,7 @@ router.post('/theme/upload', uploadThemeImage, async (req, res) => {
         const fieldName = fieldMap[type] || type;
 
         // Mevcut ayarları al
-        const setting = await SiteSetting.findOne({ key: 'theme' });
+        const setting = await SiteSetting.findOne({ key: 'theme', site: req.site });
         const currentValue = setting?.value || {};
 
         // Eski görsel URL'ini sakla
@@ -112,9 +113,10 @@ router.post('/theme/upload', uploadThemeImage, async (req, res) => {
         currentValue[fieldName] = newImageUrl;
 
         await SiteSetting.findOneAndUpdate(
-            { key: 'theme' },
+            { key: 'theme', site: req.site },
             {
                 key: 'theme',
+                site: req.site,
                 value: currentValue,
                 category: 'theme',
                 updatedAt: new Date()
@@ -162,7 +164,7 @@ router.delete('/theme/image/:type', async (req, res) => {
         };
         const fieldName = fieldMap[type] || type;
 
-        const setting = await SiteSetting.findOne({ key: 'theme' });
+        const setting = await SiteSetting.findOne({ key: 'theme', site: req.site });
         if (!setting || !setting.value[fieldName]) {
             return res.status(404).json({
                 success: false,
@@ -177,7 +179,7 @@ router.delete('/theme/image/:type', async (req, res) => {
         currentValue[fieldName] = null;
 
         await SiteSetting.findOneAndUpdate(
-            { key: 'theme' },
+            { key: 'theme', site: req.site },
             {
                 value: currentValue,
                 updatedAt: new Date()

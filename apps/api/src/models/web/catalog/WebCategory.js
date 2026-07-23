@@ -69,6 +69,18 @@ const webCategorySchema = new mongoose.Schema({
   },
   seoTitle: String,
   seoDescription: String,
+  siteContent: {
+    alastik: {
+      content: { type: String, default: '' },
+      seoTitle: { type: String, default: '' },
+      seoDescription: { type: String, default: '' }
+    },
+    lastikjantavm: {
+      content: { type: String, default: '' },
+      seoTitle: { type: String, default: '' },
+      seoDescription: { type: String, default: '' }
+    }
+  },
   seoUrl: {
     type: String,
     sparse: true,

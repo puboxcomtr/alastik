@@ -1,8 +1,10 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+import { getSiteHeader } from '@/utils/activeSite'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 export async function getSettings(group: string) {
     const response = await fetch(`${API_URL}/admin/settings/${group}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -16,7 +18,8 @@ export async function updateSettings(group: string, data: Record<string, any>) {
     const response = await fetch(`${API_URL}/admin/settings/${group}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getSiteHeader()
         },
         body: JSON.stringify(data)
     })

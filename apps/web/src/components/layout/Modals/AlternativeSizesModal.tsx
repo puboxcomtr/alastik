@@ -113,10 +113,11 @@ export default function AlternativeSizesModal({ open, onClose, product }: Altern
                                     return (
                                         <tr
                                             key={p._key}
+                                            className={isSelected ? 'site-border-left-primary' : ''}
                                             style={{
                                                 cursor: 'pointer',
                                                 backgroundColor: isSelected ? '#f8f9fa' : 'transparent',
-                                                borderLeft: isSelected ? '3px solid #f2223b' : '3px solid transparent'
+                                                borderLeft: isSelected ? undefined : '3px solid transparent'
                                             }}
                                             onClick={() => handleProductSelect(p._key)}
                                         >

@@ -6,7 +6,7 @@ const Blog = require('../../../models/admin/content/Blog');
 router.get('/', async (req, res) => {
     try {
         const { search, status } = req.query;
-        const query = {};
+        const query = { site: req.site };
 
         if (search) {
             query.$or = [
@@ -43,8 +43,8 @@ router.put('/:id/image', async (req, res) => {
         const { id } = req.params;
         const { featuredImage } = req.body;
 
-        const blog = await Blog.findByIdAndUpdate(
-            id,
+        const blog = await Blog.findOneAndUpdate(
+            { _id: id, site: req.site },
             { featuredImage },
             { new: true }
         );
@@ -64,8 +64,8 @@ router.delete('/:id/image', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const blog = await Blog.findByIdAndUpdate(
-            id,
+        const blog = await Blog.findOneAndUpdate(
+            { _id: id, site: req.site },
             { featuredImage: '' },
             { new: true }
         );
@@ -109,7 +109,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/admin/blogs
 router.post('/', async (req, res) => {
     try {
-        const existingBlog = await Blog.findOne({ slug: req.body.slug });
+        const existingBlog = await Blog.findOne({ slug: req.body.slug, site: req.site });
         if (existingBlog) {
             return res.status(400).json({
                 success: false,
@@ -117,7 +117,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const blog = new Blog(req.body);
+        const blog = new Blog({ ...req.body, site: req.site });
         await blog.save();
 
         res.status(201).json({
@@ -149,6 +149,7 @@ router.put('/:id', async (req, res) => {
         if (req.body.slug) {
             const existingBlog = await Blog.findOne({
                 slug: req.body.slug,
+                site: req.site,
                 _id: { $ne: req.params.id }
             });
 
@@ -160,8 +161,8 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        const blog = await Blog.findByIdAndUpdate(
-            req.params.id,
+        const blog = await Blog.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             req.body,
             { new: true, runValidators: true }
         );
@@ -199,7 +200,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/admin/blogs/:id
 router.delete('/:id', async (req, res) => {
     try {
-        const blog = await Blog.findByIdAndDelete(req.params.id);
+        const blog = await Blog.findOneAndDelete({ _id: req.params.id, site: req.site });
 
         if (!blog) {
             return res.status(404).json({

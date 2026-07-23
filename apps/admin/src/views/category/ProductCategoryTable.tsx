@@ -1,4 +1,5 @@
 'use client'
+import { useRouter, useParams } from 'next/navigation'
 
 // React Imports
 import { useEffect, useMemo, useState } from 'react'
@@ -42,8 +43,6 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Component Imports
-import EditCategoryDrawer from './EditCategoryDrawer'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
@@ -97,6 +96,8 @@ const DebouncedInput = ({
 const columnHelper = createColumnHelper<CategoryWithActionsType>()
 
 const ProductCategoryTable = () => {
+  const router = useRouter()
+  const params = useParams()
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null)
   const [EditCategoryOpen, setEditCategoryOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
@@ -250,10 +251,7 @@ const ProductCategoryTable = () => {
             <Tooltip title="Kategori Düzenle">
               <IconButton
                 size='small'
-                onClick={() => {
-                  setSelectedCategory(row.original)
-                  setEditCategoryOpen(true)
-                }}
+                onClick={() => router.push(`/${params.lang}/apps/category/edit/${row.original.id}`)}
               >
                 <i className='ri-edit-box-line text-[22px] text-textSecondary' />
               </IconButton>
@@ -315,7 +313,7 @@ const ProductCategoryTable = () => {
               className='max-sm:is-full is-auto'
               startIcon={<i className='ri-upload-2-line' />}
             >
-              Disari Aktar
+              Dışarı Aktar
             </Button>
           </div>
         </div>
@@ -374,7 +372,7 @@ const ProductCategoryTable = () => {
                   <tr>
                     <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
                       <Typography variant='body1' color='text.secondary'>
-                        {globalFilter ? 'Arama kriterlerinize uygun kategori bulunamadi' : 'Kategori bulunamadi'}
+                        {globalFilter ? 'Arama kriterlerinize uygun kategori bulunamadı' : 'Kategori bulunamadı'}
                       </Typography>
                     </td>
                   </tr>
@@ -410,14 +408,6 @@ const ProductCategoryTable = () => {
           }}
         />
       </Card>
-
-      <EditCategoryDrawer
-        open={EditCategoryOpen}
-        categoryData={data}
-        selectedCategory={selectedCategory}
-        setData={setData}
-        handleClose={() => setEditCategoryOpen(false)}
-      />
     </>
   )
 }

@@ -11,14 +11,14 @@ export default function Banner() {
                             <div className="col-md-6 pe-2">
                                 <img
                                     className="w-100 rounded mb-3"
-                                    src="/assets/img/slider/banner-3.png"
+                                    src="/alastik/assets/img/slider/banner-3.png"
                                     alt="Banner Adı - Site Adı"
                                 />
                             </div>
                             <div className="col-md-6">
                                 <img
                                     className="w-100 rounded mb-3"
-                                    src="/assets/img/slider/banner-4.png"
+                                    src="/alastik/assets/img/slider/banner-4.png"
                                     alt="Banner Adı - Site Adı"
                                 />
                             </div>

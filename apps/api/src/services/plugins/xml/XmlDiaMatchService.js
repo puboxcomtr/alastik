@@ -100,6 +100,7 @@ class XmlDiaMatchService {
             aciklama: diaData.aciklama || '',
             marka: diaData.marka || '',
             anabarkod: diaData.anabarkod || '',
+            anabirimdesi: diaData.anabirimdesi || '',
             ozelkod1kodu: diaData.ozelkod1kodu || '',
             ozelkod2kodu: diaData.ozelkod2kodu || '',
             ozelkod3kodu: diaData.ozelkod3kodu || '',

@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const pageSchema = new mongoose.Schema({
+    site: {
+        type: String,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
+    },
     title: {
         type: String,
         required: true,
@@ -9,7 +15,6 @@ const pageSchema = new mongoose.Schema({
     slug: {
         type: String,
         required: true,
-        unique: true,
         lowercase: true,
         trim: true
     },
@@ -68,7 +73,7 @@ const pageSchema = new mongoose.Schema({
 });
 
 // Indexes
-pageSchema.index({ slug: 1 });
+pageSchema.index({ slug: 1, site: 1 }, { unique: true });
 pageSchema.index({ status: 1 });
 pageSchema.index({ publishedAt: -1 });
 

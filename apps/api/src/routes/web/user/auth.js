@@ -63,7 +63,7 @@ router.post('/register', async (req, res) => {
         }
 
         // Email kontrolü
-        const existingMember = await WebMember.findOne({ email: email.toLowerCase() });
+        const existingMember = await WebMember.findOne({ email: email.toLowerCase(), site: req.site });
         if (existingMember) {
             return res.status(400).json({
                 success: false,
@@ -87,6 +87,7 @@ router.post('/register', async (req, res) => {
         }
         // Üye oluştur
         const member = new WebMember({
+            site: req.site,
             firstName,
             lastName,
             email: email.toLowerCase(),
@@ -161,7 +162,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Üyeyi bul
-        const member = await WebMember.findOne({ email: email.toLowerCase() });
+        const member = await WebMember.findOne({ email: email.toLowerCase(), site: req.site });
         if (!member) {
             return res.status(401).json({
                 success: false,
@@ -371,6 +372,7 @@ router.post('/forgot-password', async (req, res) => {
 
         const member = await WebMember.findOne({
             email: email.toLowerCase().trim(),
+            site: req.site,
             status: { $ne: 'deleted' }
         });
 

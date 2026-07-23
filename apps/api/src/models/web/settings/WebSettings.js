@@ -36,16 +36,23 @@ const webSettingsSchema = new mongoose.Schema({
     images: {
         mailLogo: { type: String, default: '' },
         favicon: { type: String, default: '' }
+    },
+    site: {
+        type: String,
+        required: true,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
     }
 }, {
     timestamps: true,
     collection: 'websettings'
 });
 
-webSettingsSchema.statics.getSettings = async function () {
-    let settings = await this.findOne();
+webSettingsSchema.statics.getSettings = async function (site = 'alastik') {
+    let settings = await this.findOne({ site });
     if (!settings) {
-        settings = await this.create({});
+        settings = await this.create({ site });
     }
     return settings;
 };

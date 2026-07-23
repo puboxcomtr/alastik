@@ -30,11 +30,7 @@ interface AddressSnapshot {
     addressNote?: string
 }
 
-interface CustomerInformationProps {
-    shippingAddress: AddressSnapshot
-    billingAddress: AddressSnapshot
-    customerNote?: string
-}
+import { getSiteLabel } from '@/utils/activeSite'
 
 const listItemSx = {
     display: 'flex',
@@ -44,7 +40,7 @@ const listItemSx = {
     '& .MuiListItemText-secondary': { fontWeight: 'normal', color: 'black' }
 }
 
-const CustomerInformation = ({ shippingAddress, billingAddress, customerNote }: CustomerInformationProps) => {
+const CustomerInformation = ({ shippingAddress, billingAddress, customerNote, site }: CustomerInformationProps) => {
 
     const formatAddress = (address: AddressSnapshot) => {
         if (!address) return '-'
@@ -135,6 +131,21 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote }: 
                                     <ListItemText
                                         primary='Sipariş Notu:'
                                         secondary={customerNote}
+                                        sx={listItemSx}
+                                    />
+                                </ListItem>
+                            </>
+                        )}
+                        {site && (
+                            <>
+                                <Divider />
+                                <ListItem>
+                                    <ListItemIcon>
+                                        <i className="ri-global-line text-xl"></i>
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary='Kaynak:'
+                                        secondary={getSiteLabel(site)}
                                         sx={listItemSx}
                                     />
                                 </ListItem>

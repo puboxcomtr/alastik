@@ -2,11 +2,11 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Contact from '@/src/components/contact/Contact';
 
-export const metadata: Metadata = {
-    title: 'İletişim - ALastik.com',
-    description: 'ALastik.com iletişim sayfası. Bize ulaşın.',
-};
+import { getOtherSeo } from '@/src/services/seoService';
 
+export async function generateMetadata(): Promise<Metadata> {
+    return await getOtherSeo('contact');
+}
 export default function ContactPage() {
     return <Contact />;
 }

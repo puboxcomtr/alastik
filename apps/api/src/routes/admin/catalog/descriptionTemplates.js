@@ -14,7 +14,7 @@ const maybeAuth = process.env.DISABLE_AUTH === 'true'
 router.get('/', maybeAuth, async (req, res) => {
     try {
         const { search, page = 1, limit = 50 } = req.query;
-        const filter = {};
+        const filter = { site: req.site };
 
         if (search && String(search).trim() !== '') {
             filter.name = { $regex: String(search).trim(), $options: 'i' };
@@ -61,7 +61,7 @@ router.get('/', maybeAuth, async (req, res) => {
  */
 router.get('/:id', maybeAuth, async (req, res) => {
     try {
-        const template = await DescriptionTemplate.findById(req.params.id).lean();
+        const template = await DescriptionTemplate.findOne({ _id: req.params.id, site: req.site }).lean();
         if (!template) {
             return res.status(404).json({ success: false, message: 'Şablon bulunamadı' });
         }
@@ -101,7 +101,8 @@ router.post('/', maybeAuth, async (req, res) => {
             name: String(name).trim(),
             content: content || '',
             models: Array.isArray(models) ? models : [],
-            isActive: isActive !== undefined ? Boolean(isActive) : true
+            isActive: isActive !== undefined ? Boolean(isActive) : true,
+            site: req.site
         });
 
         res.json({
@@ -128,8 +129,8 @@ router.patch('/:id', maybeAuth, async (req, res) => {
         if (models !== undefined) updateData.models = Array.isArray(models) ? models : [];
         if (isActive !== undefined) updateData.isActive = Boolean(isActive);
 
-        const updated = await DescriptionTemplate.findByIdAndUpdate(
-            req.params.id,
+        const updated = await DescriptionTemplate.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             { $set: updateData },
             { new: true }
         );
@@ -150,7 +151,7 @@ router.patch('/:id', maybeAuth, async (req, res) => {
  */
 router.delete('/:id', maybeAuth, async (req, res) => {
     try {
-        const deleted = await DescriptionTemplate.findByIdAndDelete(req.params.id);
+        const deleted = await DescriptionTemplate.findOneAndDelete({ _id: req.params.id, site: req.site });
         if (!deleted) {
             return res.status(404).json({ success: false, message: 'Şablon bulunamadı' });
         }
@@ -167,7 +168,7 @@ router.delete('/:id', maybeAuth, async (req, res) => {
  */
 router.post('/:id/apply', maybeAuth, async (req, res) => {
     try {
-        const template = await DescriptionTemplate.findById(req.params.id);
+        const template = await DescriptionTemplate.findOne({ _id: req.params.id, site: req.site });
         if (!template) {
             return res.status(404).json({ success: false, message: 'Şablon bulunamadı' });
         }
@@ -187,16 +188,17 @@ router.post('/:id/apply', maybeAuth, async (req, res) => {
         };
 
         if (!overrideExisting) {
+            const descField = `customData.siteDescriptions.${req.site}`;
             filter.$or = [
-                { 'customData.customDescription': null },
-                { 'customData.customDescription': '' },
-                { 'customData.customDescription': { $exists: false } }
+                { [descField]: null },
+                { [descField]: '' },
+                { [descField]: { $exists: false } }
             ];
         }
 
         const result = await WebProduct.updateMany(filter, {
             $set: {
-                'customData.customDescription': template.content,
+                [`customData.siteDescriptions.${req.site}`]: template.content,
                 'syncInfo.lastWebUpdate': new Date()
             }
         });
@@ -230,6 +232,7 @@ router.post('/apply-all', maybeAuth, async (req, res) => {
         const overrideExisting = Boolean(req.body.overrideExisting);
 
         const templates = await DescriptionTemplate.find({
+            site: req.site,
             isActive: true,
             'models.0': { $exists: true }
         });
@@ -252,16 +255,17 @@ router.post('/apply-all', maybeAuth, async (req, res) => {
                 };
 
                 if (!overrideExisting) {
+                    const descField = `customData.siteDescriptions.${req.site}`;
                     filter.$or = [
-                        { 'customData.customDescription': null },
-                        { 'customData.customDescription': '' },
-                        { 'customData.customDescription': { $exists: false } }
+                        { [descField]: null },
+                        { [descField]: '' },
+                        { [descField]: { $exists: false } }
                     ];
                 }
 
                 const updateResult = await WebProduct.updateMany(filter, {
                     $set: {
-                        'customData.customDescription': template.content,
+                        [`customData.siteDescriptions.${req.site}`]: template.content,
                         'syncInfo.lastWebUpdate': new Date()
                     }
                 });

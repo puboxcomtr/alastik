@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 
 // Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -13,72 +12,55 @@ import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-// Services
-import { getSliderById } from '@/src/services/sliderService';
+// API
+import { API_ENDPOINTS } from '@/src/config/api';
 
-// Types
-import type { Slider } from '@/src/types/slider';
+// ProductCard
+import AlastikProductCard from '@components/alastik/shop/Product/Showcase/Card';
+import LjaProductCard from '@components/lastikjantavm/shop/Product/Showcase/Card';
 
-const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
-
-const getImageUrl = (url: string | undefined | null): string => {
-    if (!url) return '/images/slider/gorsel-bulunamadi.jpg';
-    if (url.startsWith('http')) return url;
-    return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`;
-};
-
-// Statik ürünler (sliderId olmadığında kullanılır)
-const staticProducts = [
-    {
-        image: '/images/products/lastik-1.jpg',
-        description: 'Pirelli Cinturato P7 205/55R16',
-        link: '/urun/pirelli-cinturato-p7',
-    },
-    {
-        image: '/images/products/lastik-2.jpg',
-        description: 'Michelin Primacy 4 195/65R15',
-        link: '/urun/michelin-primacy-4',
-    },
-    {
-        image: '/images/products/lastik-3.jpg',
-        description: 'Continental EcoContact 6 185/60R15',
-        link: '/urun/continental-ecocontact-6',
-    },
-    {
-        image: '/images/products/lastik-4.jpg',
-        description: 'Goodyear EfficientGrip 205/60R16',
-        link: '/urun/goodyear-efficientgrip',
-    },
-];
-
-interface RecommendedProductsProps {
-    sliderId?: string;
+interface PaymentProductsProps {
+    orderNumber?: string;
 }
 
-export default function PaymentProducts({ sliderId }: RecommendedProductsProps) {
-    const [slider, setSlider] = useState<Slider | null>(null);
+export default function PaymentProducts({ orderNumber }: PaymentProductsProps) {
+    const site = typeof document !== 'undefined' && document.cookie.includes('site=lastikjantavm') ? 'lastikjantavm' : 'alastik';
+    const ProductCard = site === 'lastikjantavm' ? LjaProductCard : AlastikProductCard;
+    const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const swiperRef = useRef<SwiperType | null>(null);
 
     useEffect(() => {
-        const fetchSlider = async () => {
-            if (!sliderId) {
+        const fetchSimilar = async () => {
+            if (!orderNumber) {
                 setLoading(false);
                 return;
             }
 
             try {
-                const sliderData = await getSliderById(sliderId);
-                setSlider(sliderData);
+                const res = await fetch(
+                    `${API_ENDPOINTS.products.similarByOrder(orderNumber)}?limit=8`,
+                    { cache: 'no-store' }
+                );
+
+                if (!res.ok) {
+                    setLoading(false);
+                    return;
+                }
+
+                const result = await res.json();
+                if (result.success && result.data) {
+                    setProducts(result.data);
+                }
             } catch (error) {
-                console.error('Slider yüklenemedi:', error);
+                console.error('Benzer ürünler yüklenemedi:', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchSlider();
-    }, [sliderId]);
+        fetchSimilar();
+    }, [orderNumber]);
 
     if (loading) {
         return (
@@ -90,14 +72,22 @@ export default function PaymentProducts({ sliderId }: RecommendedProductsProps) 
         );
     }
 
-    // Slider varsa slider datası, yoksa statik ürünler
-    const products = slider && slider.sliders.length > 0
-        ? slider.sliders.map(s => ({ image: s.image, description: s.description, link: s.link, openNewTab: s.openNewTab }))
-        : staticProducts;
-
-    const settings = slider?.settings || {};
-    const changeSpeed = parseInt(settings.changeSpeed) || 5000;
-    const autoStart = settings.autoStart !== false;
+    if (!products || products.length === 0) {
+        return (
+            <div className="position-relative d-flex align-items-center h-100 py-5 px-3 px-sm-4 px-xl-5">
+                <span className="position-absolute top-0 start-0 w-100 h-100 bg-body-tertiary rounded-5 d-none d-md-block"></span>
+                <span className="position-absolute top-0 start-0 w-100 h-100 bg-body-tertiary d-md-none"></span>
+                <div className="position-relative w-100 z-2 mx-auto text-center" style={{ maxWidth: '636px' }}>
+                    <h2 className="h4 pb-3">Bunları da Beğenebilirsiniz</h2>
+                    <p className="text-muted mb-4">Şu anda önerilecek benzer ürün bulunamadı.</p>
+                    <Link className="btn btn-lg btn-primary w-100" href="/">
+                        Alışverişe Devam Et
+                        <i className="ri-arrow-right-s-line fs-lg ms-1"></i>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="position-relative d-flex align-items-center h-100 py-5 px-3 px-sm-4 px-xl-5">
@@ -113,48 +103,16 @@ export default function PaymentProducts({ sliderId }: RecommendedProductsProps) 
                     slidesPerView={2}
                     spaceBetween={16}
                     loop={products.length > 2}
-                    autoplay={autoStart ? {
-                        delay: changeSpeed,
+                    autoplay={{
+                        delay: 5000,
                         disableOnInteraction: false,
-                    } : undefined}
+                    }}
                     onSwiper={(swiper) => { swiperRef.current = swiper; }}
                     className="mb-4"
                 >
-                    {products.map((product, index) => (
-                        <SwiperSlide key={index}>
-                            <div className="product-card bg-body rounded overflow-hidden">
-                                {product.link ? (
-                                    <Link
-                                        href={product.link}
-                                        target={(product as any).openNewTab ? '_blank' : '_self'}
-                                        rel={(product as any).openNewTab ? 'noopener noreferrer' : undefined}
-                                        className="d-block"
-                                    >
-                                        <Image
-                                            className="w-100 rounded"
-                                            src="https://www.artvinticaret.com.tr/gecici/lassa/Lassa-Revola.jpg"
-                                            alt={product.description || `Ürün ${index + 1}`}
-                                            width={300}
-                                            height={300}
-                                            style={{ objectFit: 'cover' }}
-                                        />
-                                    </Link>
-                                ) : (
-                                    <Image
-                                        className="w-100 rounded"
-                                        src="https://www.artvinticaret.com.tr/gecici/lassa/Lassa-Revola.jpg"
-                                        alt={product.description || `Ürün ${index + 1}`}
-                                        width={300}
-                                        height={300}
-                                        style={{ objectFit: 'cover' }}
-                                    />
-                                )}
-                                {product.description && (
-                                    <div className="p-3">
-                                        <p className="fs-sm text-truncate mb-0">{product.description}</p>
-                                    </div>
-                                )}
-                            </div>
+                    {products.map((product) => (
+                        <SwiperSlide key={product._key}>
+                            <ProductCard product={product} />
                         </SwiperSlide>
                     ))}
                 </Swiper>

@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const webReviewSchema = new mongoose.Schema({
+    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+
     // Ürün
     productKey: {
         type: String,

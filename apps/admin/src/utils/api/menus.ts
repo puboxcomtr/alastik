@@ -1,3 +1,4 @@
+import { getSiteHeader } from '@/utils/activeSite'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 export type MenuLinkDataType = {
@@ -53,7 +54,8 @@ export async function fetchMenus(params?: {
     if (params?.isActive !== undefined) queryParams.append('isActive', params.isActive.toString())
 
     const response = await fetch(`${API_URL}/admin/design/menu?${queryParams.toString()}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -66,7 +68,8 @@ export async function fetchMenus(params?: {
 // Tek menü getir
 export async function fetchMenu(id: string) {
     const response = await fetch(`${API_URL}/admin/design/menu/${id}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -80,7 +83,8 @@ export async function fetchMenu(id: string) {
 export async function fetchCategories(level?: 1 | 2) {
     const queryParams = level ? `?level=${level}` : ''
     const response = await fetch(`${API_URL}/admin/design/menu/options/categories${queryParams}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -93,7 +97,8 @@ export async function fetchCategories(level?: 1 | 2) {
 // Sayfaları getir (dropdown için)
 export async function fetchPages() {
     const response = await fetch(`${API_URL}/admin/design/menu/options/pages`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -107,7 +112,8 @@ export async function fetchPages() {
 export async function fetchParentMenus(displayArea?: string) {
     const queryParams = displayArea ? `?displayArea=${displayArea}` : ''
     const response = await fetch(`${API_URL}/admin/design/menu/options/parent-menus${queryParams}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {
@@ -122,7 +128,8 @@ export async function createMenu(data: Partial<MenuType>) {
     const response = await fetch(`${API_URL}/admin/design/menu`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getSiteHeader()
         },
         body: JSON.stringify(data)
     })
@@ -140,7 +147,8 @@ export async function updateMenu(id: string, data: Partial<MenuType>) {
     const response = await fetch(`${API_URL}/admin/design/menu/${id}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getSiteHeader()
         },
         body: JSON.stringify(data)
     })
@@ -156,7 +164,8 @@ export async function updateMenu(id: string, data: Partial<MenuType>) {
 // Menü sil
 export async function deleteMenu(id: string) {
     const response = await fetch(`${API_URL}/admin/design/menu/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...getSiteHeader() }
     })
 
     if (!response.ok) {

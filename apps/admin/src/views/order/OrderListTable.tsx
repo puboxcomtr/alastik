@@ -25,6 +25,9 @@ import FormControl from '@mui/material/FormControl'
 
 import { toast } from 'react-toastify'
 
+// Component Imports
+import TableFilters from './TableFilters'
+
 // Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
@@ -156,19 +159,25 @@ const OrderListTable = () => {
     const router = useRouter()
     const { lang: locale } = useParams()
     const [data, setData] = useState<OrderType[]>([])
-    const [searchValue, setSearchValue] = useState('')
-    const [debouncedSearch, setDebouncedSearch] = useState('')
     const [loading, setLoading] = useState(true)
+    const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
 
     // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(20)
     const [totalCount, setTotalCount] = useState(0)
 
-    const loadOrders = async (searchTerm: string, currentPage: number, currentLimit: number) => {
+    const loadOrders = async (currentFilters: Record<string, string>, currentPage: number, currentLimit: number) => {
         setLoading(true)
         try {
-            const url = `${API_ENDPOINTS.orders.list()}?page=${currentPage}&limit=${currentLimit}${searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''}`
+            const params = new URLSearchParams()
+            params.set('page', String(currentPage))
+            params.set('limit', String(currentLimit))
+            Object.entries(currentFilters).forEach(([key, value]) => {
+                if (value) params.set(key, value)
+            })
+
+            const url = `${API_ENDPOINTS.orders.list()}?${params.toString()}`
 
             const response = await fetchAPI(url, { cache: 'no-store' })
 
@@ -206,19 +215,15 @@ const OrderListTable = () => {
                 body: JSON.stringify({ status: newStatus })
             })
             toast.success('Sipariş durumu güncellendi')
-            loadOrders(debouncedSearch, page, limit)
+            loadOrders(activeFilters, page, limit)
         } catch (error) {
             toast.error('Sipariş durumu güncellenirken hata oluştu')
         }
     }
 
     useEffect(() => {
-        loadOrders(debouncedSearch, page, limit)
-    }, [page, limit, debouncedSearch])
-
-    useEffect(() => {
-        setPage(1)
-    }, [debouncedSearch])
+        loadOrders(activeFilters, page, limit)
+    }, [page, limit, activeFilters])
 
     const columns = useMemo<ColumnDef<OrderWithActionsType, any>[]>(
         () => [
@@ -348,23 +353,12 @@ const OrderListTable = () => {
         <Card>
             <CardHeader title='Siparişler' className='pbe-4' />
             <Divider />
-            <div className='flex items-start justify-between max-sm:flex-col sm:items-center gap-y-4 p-5'>
-
-                <div className='flex flex-col gap-2'>
-                    <DebouncedInput
-                        value={searchValue}
-                        onChange={value => {
-                            setSearchValue(String(value))
-                            setDebouncedSearch(String(value))
-                        }}
-                        placeholder='Sipariş no, ad soyad veya email ile ara...'
-                        debounce={500}
-                        sx={{ minWidth: 300 }}
-                    />
-                    <Typography variant='body2' color='text.secondary'>
-                        Toplam <strong>{totalCount} Sipariş</strong> bulundu
-                    </Typography>
-                </div>
+            <TableFilters onFilterChange={(params) => { setActiveFilters(params); setPage(1) }} />
+            <Divider />
+            <div className='p-5'>
+                <Typography variant='body2' color='text.secondary'>
+                    Toplam <strong>{totalCount} Sipariş</strong> bulundu
+                </Typography>
             </div>
 
             <div style={{ position: 'relative' }}>
@@ -421,7 +415,7 @@ const OrderListTable = () => {
                                 <tr>
                                     <td colSpan={table.getVisibleFlatColumns().length} className='text-center py-4'>
                                         <Typography variant='body1' color='text.secondary'>
-                                            {searchValue ? 'Arama kriterlerinize uygun sipariş bulunamadı' : 'Sipariş bulunamadı'}
+                                            {Object.keys(activeFilters).length > 0 ? 'Arama kriterlerinize uygun sipariş bulunamadı' : 'Sipariş bulunamadı'}
                                         </Typography>
                                     </td>
                                 </tr>

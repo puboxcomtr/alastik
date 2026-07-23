@@ -14,9 +14,9 @@ const uploadSlider = MediaService.createUploader('slider', 'images', 10);
 router.get('/key/:key', async (req, res) => {
     try {
         const { key } = req.params;
-
         const slider = await Slider.findOne({
-            key: key
+            key: key,
+            site: req.site
         }).lean();
 
         if (!slider) {
@@ -84,7 +84,7 @@ router.get('/:id', async (req, res) => {
  */
 router.get('/', async (req, res) => {
     try {
-        const sliders = await Slider.find()
+        const sliders = await Slider.find({ site: req.site })
             .sort({ createdAt: -1 })
             .lean();
 
@@ -117,7 +117,7 @@ router.post('/', uploadSlider, async (req, res) => {
         }
 
         if (key) {
-            const existingKey = await Slider.findOne({ key: key });
+            const existingKey = await Slider.findOne({ key: key, site: req.site });
             if (existingKey) {
                 return res.status(400).json({
                     success: false,
@@ -155,6 +155,7 @@ router.post('/', uploadSlider, async (req, res) => {
         }
 
         const newSlider = new Slider({
+            site: req.site,
             name: name.trim(),
             key: key || undefined,
             sliders: parsedSliders,

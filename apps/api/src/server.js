@@ -23,6 +23,7 @@ require('dotenv').config({
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { DOMAIN_TO_SLUG } = require('./config/sites');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -178,13 +179,35 @@ try {
 }
 
 // CORS configuration
+// Izinli origin'ler: sites.js domain'lerinden (https+http) turetilir + env URL'leri.
+// Hardcode yok; yeni site eklenince otomatik kapsanir.
+const buildAllowedOrigins = () => {
+  const fromSites = Object.keys(DOMAIN_TO_SLUG).flatMap((d) => [
+    `https://${d}`,
+    `http://${d}`,
+  ]);
+  const fromEnv = [process.env.FRONTEND_URL, process.env.ADMIN_URL].filter(Boolean);
+  const devLocal = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3080', 'http://localhost:3081'];
+  // Odeme gateway callback domain'leri (server-to-server 3D donus POST'lari).
+  const paymentGateways = [
+    'https://reverseprj-pgwapi.ecozum.com',
+    'https://iksirext.nkolayislem.com.tr',
+    'https://paynkolay.nkolayislem.com.tr',
+    'https://otopirpossv2.netahsilatservice.com'
+  ];
+  return [...new Set([...fromSites, ...fromEnv, ...devLocal, ...paymentGateways])];
+};
+const allowedOrigins = buildAllowedOrigins();
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL, process.env.ADMIN_URL]
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3080', 'http://localhost:3081'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS engellendi: ' + origin));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Site']
 };
 
 app.use(cors(corsOptions));
@@ -201,6 +224,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Security middleware
 app.use(mongoSanitize());
 app.use(hpp());
+
+// Site cozumleme (multi-tenant) - req.site set eder
+const { siteMiddleware } = require('./middleware/site');
+app.use(siteMiddleware);
 
 // Compression middleware
 app.use(compression({
@@ -352,6 +379,9 @@ app.use('/api/tags', webTagsRoutes);
 /* Tanımlamalar */
 const definitionRouter = require('./routes/web/other/definition');
 app.use('/api/definition', definitionRouter);
+
+const seoRouter = require('./routes/web/other/seo');
+app.use('/api/seo', seoRouter);
 
 /* Sayfa */
 const webPageRoutes = require('./routes/web/content/pages');

@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const blogSchema = new mongoose.Schema({
+    site: {
+        type: String,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
+    },
     title: {
         type: String,
         required: true,
@@ -9,7 +15,6 @@ const blogSchema = new mongoose.Schema({
     slug: {
         type: String,
         required: true,
-        unique: true,
         lowercase: true,
         trim: true
     },
@@ -79,7 +84,7 @@ const blogSchema = new mongoose.Schema({
     timestamps: true
 });
 
-blogSchema.index({ slug: 1 });
+blogSchema.index({ slug: 1, site: 1 }, { unique: true });
 blogSchema.index({ status: 1 });
 blogSchema.index({ publishedAt: -1 });
 

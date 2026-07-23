@@ -1122,6 +1122,7 @@ class DiaStockService {
       ozelkod11kodu: product.ozelkod11kodu || '',
       durum: product.durum || '',
       gercek_stok: product.gercek_stok ?? 0,
+      anabirimdesi: product.anabirimdesi ?? 0,
       fiyat1: product.fiyat1 || 0,
       fiyat2: product.fiyat2 || 0,
       fiyat3: product.fiyat3 || 0,

@@ -2,15 +2,12 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import ResetPasswordView from '@/src/views/account/ResetPasswordView';
 
-export const metadata: Metadata = {
-    title: 'Şifre Sıfırla | ALastik.com',
-    description: 'Şifrenizi güvenli şekilde sıfırlayın.',
-    robots: {
-        index: false,
-        follow: false
-    }
-};
+import { getOtherSeo } from '@/src/services/seoService';
 
+
+export async function generateMetadata(): Promise<Metadata> {
+    return await getOtherSeo('forgotPassword', true);
+}
 export default function ResetPasswordPage() {
     return (
         <Suspense fallback={<div className="container py-5 text-center">Yükleniyor...</div>}>

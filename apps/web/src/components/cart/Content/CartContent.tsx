@@ -141,9 +141,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                         <div className="col-12 col-md-auto">
                             <Link
                                 href="/iletisim"
-                                className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none"
-                                style={{ backgroundColor: '#f2223b' }}
-                            >
+                                className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none">
                                 <i className="ri-phone-fill"></i>
                                 İletişime Geç
                             </Link>

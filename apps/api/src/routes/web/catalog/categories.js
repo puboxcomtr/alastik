@@ -54,6 +54,10 @@ router.get('/slug/:slug/size/:size', async (req, res) => {
                 message: 'Kategori bulunamadı'
             });
         }
+        const sc = category.siteContent?.[req.site] || {};
+        category.seoTitle = sc.seoTitle || category.seoTitle;
+        category.seoDescription = sc.seoDescription || category.seoDescription;
+        category.siteContentHtml = sc.content || '';
         res.json({
             success: true,
             data: category
@@ -82,6 +86,10 @@ router.get('/slug/:slug', async (req, res) => {
                 message: 'Kategori bulunamadı'
             });
         }
+        const sc = category.siteContent?.[req.site] || {};
+        category.seoTitle = sc.seoTitle || category.seoTitle;
+        category.seoDescription = sc.seoDescription || category.seoDescription;
+        category.siteContentHtml = sc.content || '';
         res.json({
             success: true,
             data: category

@@ -10,6 +10,7 @@ const Page = require('../../../models/admin/content/Page');
 router.get('/header', async (req, res) => {
     try {
         const menus = await Menu.find({
+            site: req.site,
             displayArea: 'header',
             isActive: true
         })

@@ -3,15 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, IconButton, Typography, Box } from '@mui/material';
 import Image from "next/image";
+import { resolveSiteFromHost, SITES, DEFAULT_SITE, type SiteSlug } from '@/src/config/siteConfig';
 
 export default function TireSize() {
     const [open, setOpen] = useState(false);
+    const [siteSlug, setSiteSlug] = useState<SiteSlug>(DEFAULT_SITE);
 
     useEffect(() => {
+        setSiteSlug(resolveSiteFromHost(window.location.hostname));
         const handleOpen = () => setOpen(true);
         window.addEventListener('openTireSizeModal', handleOpen);
         return () => window.removeEventListener('openTireSizeModal', handleOpen);
     }, []);
+
+    const site = SITES[siteSlug];
 
     return (
         <Dialog
@@ -38,11 +43,10 @@ export default function TireSize() {
             </DialogTitle>
             <DialogContent dividers sx={{ maxHeight: '650px', overflowY: 'auto' }}>
                 <Typography className='mb-3' variant="body2">
-                    <strong>ALastik.com</strong>'dan lastik satın alırken ihtiyacınız olan doğru lastik ebatını kolayca kendiniz öğrenebilirsiniz. Aracınızda takılı olan lastiklerin yan yüzeyinde ihtiyacınız olan tüm bilgiler yer almaktadır.
-                </Typography>
+                    <strong>{site.name}</strong> sitesinden lastik satın alırken ihtiyacınız olan doğru lastik ebatını kolayca kendiniz öğrenebilirsiniz. Aracınızda takılı olan lastiklerin yan yüzeyinde ihtiyacınız olan tüm bilgiler yer almaktadır.                </Typography>
                 <Image
-                    src={'/assets/img/alastik-lastik-ebati-ogrenme.jpg'}
-                    alt={'Lastik ebatı nasıl öğrenilir - ALastik.com'}
+                    src={`${site.theme.assetsBase}/img/lastik-ebati-ogrenme.jpg`}
+                    alt={`Lastik ebatı nasıl öğrenilir - ${site.name}`}
                     width={800}
                     height={400}
                     className="w-100 h-auto mb-2"
@@ -81,7 +85,7 @@ export default function TireSize() {
                         </tbody>
                     </table>
                 </div>
-                <Typography variant="body2" className="mt-2 mb-2">Yük endeksi (Lastindex veya Tragfähigkeitsindex olarak da bilinir), araç lastiklerinde lastik başına izin verilen maksimum yükü belirtir.</Typography>
+                <Typography variant="body2" className="mt-2 mb-2">Yük endeksi, araç lastiklerinde lastik başına izin verilen maksimum yükü belirtir.</Typography>
                 <Typography variant="subtitle2" className="mt-4 mb-2">Yük Endeksi Tablosu</Typography>
                 <div className="table-responsive">
                     <table className="table table-bordered table-sm align-middle w-100 mb-0" style={{ fontSize: '13px' }}>

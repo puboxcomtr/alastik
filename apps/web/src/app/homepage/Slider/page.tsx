@@ -1,65 +1,11 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import AlastikSlider from '@components/alastik/homepage/Slider/Main';
+import LjaSlider from '@components/lastikjantavm/homepage/Slider/Main';
 
-// Components
-import SliderComponent from '@components/homepage/Slider/Slider';
+type Props = { site?: string };
 
-// Services
-import { getSliderById } from '@/src/services/sliderService';
-
-// Context
-import { useSettings } from '@/src/context/SettingsContext';
-
-// Types
-import type { Slider } from '@/src/types/slider';
-
-export default function HomeSlider() {
-    const [slider, setSlider] = useState<Slider | null>(null);
-    const [mobileSlider, setMobileSlider] = useState<Slider | null>(null);
-    const [isMobile, setIsMobile] = useState(false);
-    const { theme } = useSettings();
-
-    useEffect(() => {
-        const fetchSlider = async () => {
-            if (!theme?.sliderSelect) {
-                return;
-            }
-
-            try {
-                const sliderData = await getSliderById(theme.sliderSelect);
-                setSlider(sliderData);
-            } catch (error) {
-                console.error('Slider yüklenemedi:', error);
-            }
-        };
-
-        fetchSlider();
-    }, [theme?.sliderSelect]);
-    useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 992);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
-    }, []);
-
-    useEffect(() => {
-        const fetchMobileSlider = async () => {
-            if (!theme?.mobileSelect) return;
-            try {
-                const data = await getSliderById(theme.mobileSelect);
-                setMobileSlider(data);
-            } catch (error) {
-                console.error('Mobil slider yüklenemedi:', error);
-            }
-        };
-        fetchMobileSlider();
-    }, [theme?.mobileSelect]);
-    if (isMobile && mobileSlider && mobileSlider.sliders.length > 0) {
-        return <SliderComponent slider={mobileSlider} />;
-    }
-
-    if (!slider || slider.sliders.length === 0) {
-        return null;
-    }
-    return <SliderComponent slider={slider} />;
+export default function HomeSlider({ site = 'alastik' }: Props) {
+    const Slider = site === 'lastikjantavm' ? LjaSlider : AlastikSlider;
+    return <Slider />;
 }

@@ -39,6 +39,8 @@ export interface TagFilterParams {
     uretim?: string;
     fiyatMin?: number;
     fiyatMax?: number;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 async function getTagBySlug(slug: string): Promise<WebTag | null> {
@@ -84,12 +86,13 @@ async function getTagProducts(
         if (filters?.uretim) params.append('uretim', filters.uretim);
         if (filters?.fiyatMin) params.append('fiyatMin', filters.fiyatMin.toString());
         if (filters?.fiyatMax) params.append('fiyatMax', filters.fiyatMax.toString());
+        if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+        if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
 
         const response = await fetch(
             `${API_ENDPOINTS.tags.products(slug)}?${params.toString()}`,
-            { next: { revalidate: 60 } }
+            { cache: 'no-store' }
         );
-
         if (!response.ok) return null;
 
         const result = await response.json();

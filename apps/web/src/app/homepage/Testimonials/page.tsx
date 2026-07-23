@@ -1,25 +1,11 @@
 'use client';
 import React from 'react';
-import Link from 'next/link';
+import AlastikTestimonials from '@components/alastik/homepage/Testimonials/Testimonials';
+import LjaTestimonials from '@components/lastikjantavm/homepage/Testimonials/Testimonials';
 
-/* Metarial IO */
-import { Card, CardContent, Typography, IconButton, Box, Avatar } from '@mui/material';
-import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
+type Props = { site?: string };
 
-// Swiper
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
-
-/* Library */
-import Testimonials from '@components/homepage/Testimonials/Testimonials';
-
-// Swiper CSS
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-
-export default function TestimonialsPage() {
-    return (
-        <Testimonials />
-    )
+export default function TestimonialsPage({ site = 'alastik' }: Props) {
+    const Testimonials = site === 'lastikjantavm' ? LjaTestimonials : AlastikTestimonials;
+    return <Testimonials site={site} />;
 }

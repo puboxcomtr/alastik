@@ -137,6 +137,32 @@ router.post('/3d-callback', async (req, res) => {
                     order.payment.paymentGuid = paymentGuid;
                     await order.save();
 
+                    // Ödeme başarılı → mail tetikle (fire-and-forget)
+                    if (order.payment.status === 'paid' && !order.payment.mailSent) {
+                        order.payment.mailSent = true;
+                        await order.save();
+
+                        const customerMail = order.isGuest
+                            ? (order.guestBillingAddress?.email || order.customerEmail)
+                            : (order.memberSnapshot?.email || order.customerEmail);
+
+                        sendTemplateMail({
+                            templateKey: order.isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
+                            context: { orderId: order._id.toString() },
+                            to: customerMail,
+                            alsoSendToAdmin: true,
+                            adminPurpose: 'order'
+                        }).then((mailResult) => {
+                            if (!mailResult.success) {
+                                console.warn('[netahsilat:3d-callback] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
+                            } else {
+                                console.log('[netahsilat:3d-callback] Mail gönderildi:', order.orderNumber);
+                            }
+                        }).catch((err) => {
+                            console.error('[netahsilat:3d-callback] Mail hatası:', order.orderNumber, err.message);
+                        });
+                    }
+
                     return res.redirect(`${FRONTEND_URL}/siparis-basarili?order=${order.orderNumber}`);
                 }
 
@@ -192,7 +218,10 @@ router.post('/3d-commit', async (req, res) => {
                 await order.save();
 
                 // Ödeme başarılı → mail tetikle (fire-and-forget)
-                if (order.payment.status === 'paid') {
+                if (order.payment.status === 'paid' && !order.payment.mailSent) {
+                    order.payment.mailSent = true;
+                    await order.save();
+
                     const customerMail = order.isGuest
                         ? (order.guestBillingAddress?.email || order.customerEmail)
                         : (order.memberSnapshot?.email || order.customerEmail);

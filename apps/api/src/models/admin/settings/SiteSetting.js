@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 
 const siteSettingSchema = new mongoose.Schema({
+    site: {
+        type: String,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
+    },
     key: {
         type: String,
         required: true,
-        unique: true,
-        index: true,
         trim: true
     },
     value: {
@@ -28,5 +32,5 @@ const siteSettingSchema = new mongoose.Schema({
     timestamps: true,
     collection: 'sitesettings'
 });
-
+siteSettingSchema.index({ key: 1, site: 1 }, { unique: true });
 module.exports = mongoose.model('SiteSetting', siteSettingSchema);

@@ -68,6 +68,7 @@ router.get('/options/parent-menus', async (req, res) => {
     try {
         const { displayArea } = req.query;
         const filter = {
+            site: req.site,
             rowLevel: 1,
             isActive: true
         };
@@ -99,7 +100,7 @@ router.get('/', async (req, res) => {
     try {
         const { displayArea, rowLevel, isActive } = req.query;
 
-        const filter = {};
+        const filter = { site: req.site };
         if (displayArea) filter.displayArea = displayArea;
         if (rowLevel) filter.rowLevel = parseInt(rowLevel);
         if (isActive !== undefined) filter.isActive = isActive === 'true';
@@ -195,7 +196,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const menu = await Menu.findById(id)
+        const menu = await Menu.findOne({ _id: id, site: req.site })
             .populate('parentId', 'name')
             .lean();
 
@@ -285,7 +286,8 @@ router.post('/', async (req, res) => {
             rowLevel: rowLevel || 1,
             parentId: rowLevel === 2 ? parentId : null,
             order: order || 0,
-            isActive: isActive !== undefined ? isActive : true
+            isActive: isActive !== undefined ? isActive : true,
+            site: req.site
         });
 
         await newMenu.save();
@@ -310,7 +312,7 @@ router.put('/:id', async (req, res) => {
         const { id } = req.params;
         const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive } = req.body;
 
-        const menu = await Menu.findById(id);
+        const menu = await Menu.findOne({ _id: id, site: req.site });
         if (!menu) {
             return res.status(404).json({
                 success: false,
@@ -394,7 +396,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const menu = await Menu.findById(id);
+        const menu = await Menu.findOne({ _id: id, site: req.site });
         if (!menu) {
             return res.status(404).json({
                 success: false,
@@ -404,7 +406,7 @@ router.delete('/:id', async (req, res) => {
 
         // Eğer ana menü ise, alt menüleri kontrol et
         if (menu.rowLevel === 1) {
-            const childCount = await Menu.countDocuments({ parentId: id });
+            const childCount = await Menu.countDocuments({ parentId: id, site: req.site });
             if (childCount > 0) {
                 return res.status(400).json({
                     success: false,

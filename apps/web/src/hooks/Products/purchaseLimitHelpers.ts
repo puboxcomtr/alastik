@@ -42,6 +42,60 @@ export const getCategoryNamesFromProduct = (product: Product): string[] => {
 }
 
 /**
+ * Ürünün mevcut stok adedini döndürür
+ */
+export const getProductStock = (product: Product): number => {
+    return product.diaData?.gercek_stok ?? 0
+}
+
+/**
+ * Sepetteki mevcut adet + eklenecek adet stok sınırını aşıyor mu kontrol eder.
+ * Adet seçici olmayan (tek tıkla ekle) kartlar için kullanılır.
+ * allowed: eklemeye izin var mı
+ * maxStock: ürünün toplam stok adedi
+ * remaining: sepete daha eklenebilecek adet
+ */
+export const canAddToCartStock = (
+    product: Product,
+    currentInCart: number,
+    addQty: number = 1
+): { allowed: boolean; maxStock: number; remaining: number } => {
+    const maxStock = getProductStock(product)
+    const remaining = Math.max(0, maxStock - currentInCart)
+
+    if (maxStock <= 0) {
+        return { allowed: false, maxStock: 0, remaining: 0 }
+    }
+    if (currentInCart + addQty > maxStock) {
+        return { allowed: false, maxStock, remaining }
+    }
+    return { allowed: true, maxStock, remaining }
+}
+
+/**
+ * Girilen adedi stok ve minimum sınırına göre kısıtlar.
+ * clamped: sınıra çekilmiş güvenli adet
+ * exceeded: kullanıcı stok sınırını aşmaya çalıştı mı
+ * maxStock: ürünün seçilebilir maksimum adedi
+ */
+export const clampQuantityToStock = (
+    product: Product,
+    quantity: number
+): { clamped: number; exceeded: boolean; maxStock: number } => {
+    const maxStock = getProductStock(product)
+
+    if (maxStock <= 0) {
+        return { clamped: 0, exceeded: false, maxStock: 0 }
+    }
+    if (quantity < 1) {
+        return { clamped: 1, exceeded: false, maxStock }
+    }
+    if (quantity > maxStock) {
+        return { clamped: maxStock, exceeded: true, maxStock }
+    }
+    return { clamped: quantity, exceeded: false, maxStock }
+}
+/**
  * Ürünü limit check item'a çevir
  */
 export const productToLimitCheckItem = (product: Product, quantity: number): LimitCheckItem => ({

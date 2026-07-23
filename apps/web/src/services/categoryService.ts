@@ -1,4 +1,6 @@
 // apps/web/src/services/categoryService.ts
+import { headers } from 'next/headers';
+
 import { API_ENDPOINTS } from '@/src/config/api';
 import { Category, ParentCategory } from '@src/types/category';
 
@@ -21,8 +23,10 @@ export async function getCategory(slug: string): Promise<Category | null> {
     }
 
     try {
+        const site = headers().get('x-site') || 'alastik';
         const response = await fetch(API_ENDPOINTS.categories.bySlug(slug), {
-            cache: 'no-store'
+            cache: 'no-store',
+            headers: { 'X-Site': site }
         });
 
         if (!response.ok) return null;

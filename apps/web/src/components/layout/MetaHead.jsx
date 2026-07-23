@@ -1,6 +1,12 @@
 import Script from "next/script";
+import { headers } from "next/headers";
+import { getSiteBySlug, DEFAULT_SITE } from "@/src/config/siteConfig";
 
-export default function MetaHead() {
+export default async function MetaHead() {
+  const hdrs = await headers();
+  const siteSlug = hdrs.get("x-site") || DEFAULT_SITE;
+  const site = getSiteBySlug(siteSlug) || getSiteBySlug(DEFAULT_SITE);
+  const themeCss = site.theme.themeCss;
   return (
     <>
       <head>
@@ -14,14 +20,14 @@ export default function MetaHead() {
         {/* Preload fonts */}
         <link
           rel="preload"
-          href="/assets/fonts/inter-variable-latin.woff2"
+          href="/alastik/assets/fonts/inter-variable-latin.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
         <link
           rel="preload"
-          href="/assets/icons/cartzilla-icons.woff2"
+          href="/alastik/assets/icons/cartzilla-icons.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
@@ -29,9 +35,9 @@ export default function MetaHead() {
         <meta name="google-site-verification" content="yubc1j2taIzdyUWWFlVWkSAYzwU8L_q-aEKtX1zdGh4" />
 
         {/* CSS Files */}
-        <link rel="stylesheet" href="/assets/icons/cartzilla-icons.min.css" />
-        <link rel="preload" href="/assets/css/theme.min.css" as="style" />
-        <link rel="stylesheet" href="/assets/css/theme.min.css" id="theme-styles" />
+        <link rel="stylesheet" href="/alastik/assets/icons/cartzilla-icons.min.css" />
+        <link rel="preload" href={themeCss} as="style" />
+        <link rel="stylesheet" href={themeCss} id="theme-styles" />
       </head>
       {/* Google Ads (gtag.js) */}
       <Script
@@ -47,21 +53,14 @@ export default function MetaHead() {
         `}
       </Script>
 
-      {/* Smartlook */}
-      <Script id="smartlook-init" strategy="afterInteractive">
+      {/* Google Tag Manager */}
+      <Script id="gtm-init" strategy="afterInteractive">
         {`
-          (function(d) {
-            var o=window.smartlook=function(){o.api.push(arguments)};
-            var h=d.getElementsByTagName('head')[0];
-            var c=d.createElement('script');
-            o.api=[];
-            c.async=true;
-            c.type='text/javascript';
-            c.charset='utf-8';
-            c.src='https://web-sdk.smartlook.com/recorder.js';
-            h.appendChild(c);
-          })(document);
-          window.smartlook('init','360f1f6a6a1e2514b15e7cff88b12c23f33f5088',{region:'eu'});
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-NVV296LW');
         `}
       </Script>
     </>

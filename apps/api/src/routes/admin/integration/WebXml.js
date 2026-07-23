@@ -236,7 +236,8 @@ router.get('/products/export', async (req, res) => {
 
         const getNestedValue = (obj, path) => {
             if (!path) return '';
-            return path.split('.').reduce((acc, key) => acc?.[key] ?? '', obj);
+            const parts = path.match(/[^.\[\]]+/g) || [];
+            return parts.reduce((acc, key) => acc?.[key] ?? '', obj);
         };
 
         const isFiltered = (item, intg) => {
@@ -368,7 +369,8 @@ router.get('/mapping/export', async (req, res) => {
 
         const getNestedValue = (obj, path) => {
             if (!path) return '';
-            return path.split('.').reduce((acc, key) => acc?.[key] ?? '', obj);
+            const parts = path.match(/[^.\[\]]+/g) || [];
+            return parts.reduce((acc, key) => acc?.[key] ?? '', obj);
         };
 
         const rows = items.map(item => {
@@ -423,7 +425,8 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
 
         const getNestedValue = (obj, path) => {
             if (!path) return '';
-            return path.split('.').reduce((acc, key) => acc?.[key] ?? '', obj);
+            const parts = path.match(/[^.\[\]]+/g) || [];
+            return parts.reduce((acc, key) => acc?.[key] ?? '', obj);
         };
 
         let guncellenen = 0, atilan = 0;
@@ -433,7 +436,8 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
             const hedefStokKodu = String(row['Hedef Stok Kodu'] || '').trim();
             const kaynak = String(row['Kaynak'] || '').trim();
 
-            if (!xmlStokKodu || !hedefStokKodu) { atilan++; continue; }
+            if (!xmlStokKodu) { atilan++; continue; }
+            const hedefBos = hedefStokKodu === '';
 
             const query = {};
             if (kaynak) query.source = kaynak;
@@ -441,9 +445,31 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
             // Önce sourceProductId ile dene
             const byId = await XmlProduct.findOne({ ...query, sourceProductId: xmlStokKodu });
             if (byId) {
+                let setData;
+                if (hedefBos) {
+                    // Hedef boş — eşleşmeyi tamamen sil
+                    setData = {
+                        mappedData: null,
+                        status: 'pending',
+                        lastMappedAt: null,
+                        diaKey: null,
+                        diaData: null,
+                        diaDataHash: null
+                    };
+                } else {
+                    const eskiHedef = byId.mappedData?.hedefStokKodu || '';
+                    const degisti = eskiHedef !== hedefStokKodu;
+                    setData = { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() };
+                    // Hedef değiştiyse (veya eski boşsa) DIA eşleşmesini sıfırla
+                    if (degisti) {
+                        setData.diaKey = null;
+                        setData.diaData = null;
+                        setData.diaDataHash = null;
+                    }
+                }
                 await XmlProduct.updateOne(
                     { _id: byId._id },
-                    { $set: { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() } }
+                    { $set: setData }
                 );
                 guncellenen++;
                 continue;
@@ -460,9 +486,31 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
                         [`rawData.${stokKoduField}`]: xmlStokKodu
                     });
                     if (byRaw) {
+                        let setData;
+                        if (hedefBos) {
+                            // Hedef boş — eşleşmeyi tamamen sil
+                            setData = {
+                                mappedData: null,
+                                status: 'pending',
+                                lastMappedAt: null,
+                                diaKey: null,
+                                diaData: null,
+                                diaDataHash: null
+                            };
+                        } else {
+                            const eskiHedef = byRaw.mappedData?.hedefStokKodu || '';
+                            const degisti = eskiHedef !== hedefStokKodu;
+                            setData = { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() };
+                            // Hedef değiştiyse (veya eski boşsa) DIA eşleşmesini sıfırla
+                            if (degisti) {
+                                setData.diaKey = null;
+                                setData.diaData = null;
+                                setData.diaDataHash = null;
+                            }
+                        }
                         await XmlProduct.updateOne(
                             { _id: byRaw._id },
-                            { $set: { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() } }
+                            { $set: setData }
                         );
                         guncellenen++;
                         continue;
@@ -529,7 +577,9 @@ router.get('/all-products', async (req, res) => {
 
         const getNestedValue = (obj, path) => {
             if (!path) return '';
-            return path.split('.').reduce((acc, key) => {
+            // Array index'leri (STOK.DEPO[0].X) parçalara ayır
+            const parts = path.match(/[^.\[\]]+/g) || [];
+            return parts.reduce((acc, key) => {
                 if (acc === null || acc === undefined) return '';
                 return acc[key] ?? '';
             }, obj);
@@ -624,7 +674,9 @@ router.get('/products', async (req, res) => {
 
         const getNestedValue = (obj, path) => {
             if (!path) return '';
-            return path.split('.').reduce((acc, key) => {
+            // Array index'leri (STOK.DEPO[0].X) parçalara ayır
+            const parts = path.match(/[^.\[\]]+/g) || [];
+            return parts.reduce((acc, key) => {
                 if (acc === null || acc === undefined) return '';
                 return acc[key] ?? '';
             }, obj);
@@ -648,17 +700,22 @@ router.get('/products', async (req, res) => {
         // Kuralları uygula
         const rules = webXml?.rules || {};
 
-        if (rules.minStock > 0 && stokAdetiField) {
-            query[`rawData.${stokAdetiField}`] = { $gte: String(rules.minStock) };
+        // [N] → .N dönüştür (MongoDB dot notation)
+        const toMongoPath = (p) => p ? p.replace(/\[(\d+)\]/g, '.$1') : p;
+        const stokAdetiMongoField = toMongoPath(stokAdetiField);
+        const hamFiyatMongoField = toMongoPath(hamFiyatField);
+
+        if (rules.minStock > 0 && stokAdetiMongoField) {
+            query[`rawData.${stokAdetiMongoField}`] = { $gte: String(rules.minStock) };
         }
-        if (rules.filters?.onlyInStock && stokAdetiField) {
-            query[`rawData.${stokAdetiField}`] = { $gt: '0', $exists: true };
+        if (rules.filters?.onlyInStock && stokAdetiMongoField) {
+            query[`rawData.${stokAdetiMongoField}`] = { $gt: '0', $exists: true };
         }
         if (rules.filters?.onlyWithImage && gorselField) {
             query[`rawData.${gorselField}`] = { $ne: '', $exists: true };
         }
-        if (rules.filters?.onlyWithPrice && hamFiyatField) {
-            query[`rawData.${hamFiyatField}`] = { $ne: '', $ne: '0', $exists: true };
+        if (rules.filters?.onlyWithPrice && hamFiyatMongoField) {
+            query[`rawData.${hamFiyatMongoField}`] = { $ne: '', $ne: '0', $exists: true };
         }
         if (rules.excludedBrands?.length > 0 && brandField) {
             query[`rawData.${brandField}`] = { $nin: rules.excludedBrands };

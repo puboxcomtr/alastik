@@ -254,10 +254,10 @@ export default function ModificationSelection({
                                             <tr
                                                 key={mod.slug}
                                                 onClick={() => onSelect(mod.slug, mod.name)}
-                                                className={selectedModification === mod.slug ? 'table-active' : ''}
+                                                className={selectedModification === mod.slug ? 'table-active site-border-left-primary' : ''}
                                                 style={{
                                                     cursor: 'pointer',
-                                                    borderLeft: selectedModification === mod.slug ? '3px solid #dc3545' : '3px solid transparent'
+                                                    borderLeft: selectedModification === mod.slug ? undefined : '3px solid transparent'
                                                 }}
                                             >
                                                 <td><strong>{mod.name}</strong></td>
@@ -297,10 +297,10 @@ export default function ModificationSelection({
                                         <div
                                             key={mod.slug}
                                             onClick={() => onSelect(mod.slug, mod.name)}
-                                            className="mb-2 p-3 border rounded"
+                                            className={`mb-2 p-3 border rounded ${isSelected ? 'site-border-primary' : ''}`}
                                             style={{
                                                 cursor: 'pointer',
-                                                borderColor: isSelected ? '#dc3545' : '#dee2e6',
+                                                borderColor: isSelected ? undefined : '#dee2e6',
                                                 borderWidth: isSelected ? '2px' : '1px',
                                                 backgroundColor: isSelected ? '#fff5f5' : '#fff'
                                             }}
