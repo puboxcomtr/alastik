@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getSiteUrl } from '@/utils/activeSite'
 import { useRouter } from 'next/navigation'
 
 /* MUI */
@@ -828,7 +829,7 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                                 fontSize: '0.9rem'
                                                             }}
                                                         >
-                                                            https://alastik.com/sayfa/
+                                                            {getSiteUrl()}/sayfa/
                                                         </InputAdornment>
                                                     ),
                                                     endAdornment: (

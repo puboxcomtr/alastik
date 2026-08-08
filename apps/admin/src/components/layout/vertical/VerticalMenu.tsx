@@ -137,6 +137,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/modules/akakce`}>Akakçe</MenuItem>
           </SubMenu>
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
+          <MenuItem icon={<i className="ri-image-2-line"></i>} href={`/${locale}/apps/media`}>Ortam Kütüphanesi</MenuItem>
+          <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <MenuItem icon={<i className="ri-puzzle-line"></i>} href={`/${locale}/apps/modules/xml`}>{dictionary['navigation'].xml}</MenuItem>
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <SubMenu label={dictionary['navigation'].settings} icon={<i className="ri-settings-2-line" />}>

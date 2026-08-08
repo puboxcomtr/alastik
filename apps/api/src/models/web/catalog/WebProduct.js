@@ -55,7 +55,10 @@ const diaCategorySchema = new mongoose.Schema({
 const diaImageSchema = new mongoose.Schema({
     _key: String,
     _key_kayit: String,
+    // aws_url: vitrinin kullandığı adres (kendi sunucumuza indirildiyse /urun/... olur)
     aws_url: String,
+    // source_url: görselin geldiği özgün adres — kaynağa dönebilmek için saklanır
+    source_url: String,
     content_type: String,
     is_aws: String,
     kayitturu: String,
@@ -164,6 +167,8 @@ const diaDataSchema = new mongoose.Schema({
 const customImageSchema = new mongoose.Schema({
     order: { type: Number, required: true },
     url: { type: String, required: true },
+    // Dış adresten indirildiyse özgün adres burada saklanır
+    sourceUrl: String,
     alt: String,
     title: String
 }, { _id: false });

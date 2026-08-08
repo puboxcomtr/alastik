@@ -22,7 +22,7 @@ import MenuItem from '@mui/material/MenuItem'
 
 import tableStyles from '@core/styles/table.module.css'
 import { toast } from 'react-toastify'
-import { fetchMenus, deleteMenu, createMenu, type MenuType } from '@/utils/api/menus'
+import { fetchMenus, deleteMenu, createMenu, updateMenuOrder, type MenuType } from '@/utils/api/menus'
 
 const AREA_LABELS: Record<MenuType['displayArea'], string> = {
     header: 'Üst Menü (Header)',
@@ -41,6 +41,11 @@ const MenuTable = () => {
     const [selectedMenu, setSelectedMenu] = useState<MenuType | null>(null)
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [menuToDelete, setMenuToDelete] = useState<MenuType | null>(null)
+    // Sürükle-bırak sıralama
+    const [suruklenen, setSuruklenen] = useState<string | null>(null)
+    const [uzerinde, setUzerinde] = useState<string | null>(null)
+    const [siraKaydediliyor, setSiraKaydediliyor] = useState(false)
+
     // Yeni menü oluşturma dialogu
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [newMenuName, setNewMenuName] = useState('')
@@ -177,6 +182,49 @@ const MenuTable = () => {
             : [],
         [selectedMenu, childrenOf]
     )
+
+    /**
+     * Sürükle-bırak: yalnızca AYNI üst menü altındaki öğeler kendi arasında sıralanır.
+     * Üst bar öğesi taşınırsa altındaki açılır öğeler onunla birlikte hareket eder.
+     */
+    const birakildi = async (hedefId: string) => {
+        const kaynakId = suruklenen
+        setSuruklenen(null)
+        setUzerinde(null)
+        if (!kaynakId || kaynakId === hedefId || !selectedMenu) return
+
+        const ustId = (m: MenuType) => (typeof m.parentId === 'string' ? m.parentId : (m.parentId as any)?._id)
+        const kaynak = data.find(m => m._id === kaynakId)
+        const hedef = data.find(m => m._id === hedefId)
+        if (!kaynak || !hedef || ustId(kaynak) !== ustId(hedef)) {
+            toast.info('Öğeler yalnızca kendi menüsü içinde sıralanabilir')
+            return
+        }
+
+        const kardesler = childrenOf(ustId(kaynak) as string)
+        const yeni = kardesler.filter(m => m._id !== kaynakId)
+        const hedefIndex = yeni.findIndex(m => m._id === hedefId)
+        yeni.splice(hedefIndex, 0, kaynak)
+
+        const guncel = yeni.map((m, i) => ({ id: m._id, order: i + 1 }))
+
+        // Ekranda hemen uygula
+        setData(prev => prev.map(m => {
+            const bulunan = guncel.find(g => g.id === m._id)
+            return bulunan ? { ...m, order: bulunan.order } : m
+        }))
+
+        try {
+            setSiraKaydediliyor(true)
+            await updateMenuOrder(guncel)
+            toast.success('Sıralama kaydedildi')
+        } catch (error: any) {
+            toast.error(error.message || 'Sıralama kaydedilemedi')
+            loadMenus(true)
+        } finally {
+            setSiraKaydediliyor(false)
+        }
+    }
 
     // Öğenin nereye yönlendirdiğini metne çevirir
     const linkTargetOf = (menu: MenuType) => {
@@ -364,7 +412,7 @@ const MenuTable = () => {
             <Card>
                 <CardHeader
                     title={selectedMenu.name}
-                    subheader={AREA_LABELS[selectedMenu.displayArea]}
+                    subheader={siraKaydediliyor ? 'Sıralama kaydediliyor...' : `${AREA_LABELS[selectedMenu.displayArea]} — satırları sürükleyerek sıralayabilirsiniz`}
                     className='pbe-4'
                     action={
                         <div className='flex gap-2'>
@@ -394,7 +442,7 @@ const MenuTable = () => {
                     <table className={tableStyles.table}>
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th style={{ width: 48 }}></th>
                                 <th>Öğe Adı</th>
                                 <th>Yönlendirilecek Yer</th>
                                 <th>Sıra</th>
@@ -415,8 +463,32 @@ const MenuTable = () => {
                                     const isSub = (item as any).__sub
 
                                     return (
-                                        <tr key={item._id}>
-                                            <td><Typography variant='body2'>{index + 1}</Typography></td>
+                                        <tr
+                                            key={item._id}
+                                            draggable
+                                            onDragStart={() => setSuruklenen(item._id)}
+                                            onDragOver={e => { e.preventDefault(); if (uzerinde !== item._id) setUzerinde(item._id) }}
+                                            onDragLeave={() => setUzerinde(prev => (prev === item._id ? null : prev))}
+                                            onDrop={() => birakildi(item._id)}
+                                            onDragEnd={() => { setSuruklenen(null); setUzerinde(null) }}
+                                            style={{
+                                                // Taşınan satır soluklaşır, bırakılacak yer çizgiyle işaretlenir
+                                                opacity: suruklenen === item._id ? 0.35 : 1,
+                                                cursor: suruklenen ? 'grabbing' : 'grab',
+                                                backgroundColor: uzerinde === item._id && suruklenen && suruklenen !== item._id
+                                                    ? 'var(--mui-palette-action-hover)'
+                                                    : undefined,
+                                                boxShadow: uzerinde === item._id && suruklenen && suruklenen !== item._id
+                                                    ? 'inset 0 3px 0 0 var(--mui-palette-primary-main)'
+                                                    : undefined,
+                                                transition: 'background-color .15s ease, opacity .15s ease'
+                                            }}
+                                        >
+                                            <td>
+                                                <Tooltip title='Sıralamak için sürükleyin'>
+                                                    <i className='ri-drag-move-2-line text-textSecondary' style={{ fontSize: '1.15rem' }} />
+                                                </Tooltip>
+                                            </td>
                                             <td>
                                                 <div className='flex items-center gap-2'>
                                                     {isSub && <i className='ri-arrow-right-s-line text-gray-400' />}

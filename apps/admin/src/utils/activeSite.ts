@@ -30,6 +30,34 @@ export function getSiteHeader(): Record<string, string> {
 
 export const ADMIN_SITES = VALID_SITES;
 
+/**
+ * Aktif sitenin medya adresi. Site basina NEXT_PUBLIC_MEDIA_URL_<SLUG> tanimliysa o,
+ * degilse ortak NEXT_PUBLIC_MEDIA_URL kullanilir. Boylece panelde LastikJantAVM
+ * secildiginde gorsel adresleri o sitenin alan adiyla gosterilir.
+ */
+const SITE_MEDIA_URLS: Record<string, string | undefined> = {
+    alastik: process.env.NEXT_PUBLIC_MEDIA_URL_ALASTIK,
+    lastikjantavm: process.env.NEXT_PUBLIC_MEDIA_URL_LASTIKJANTAVM,
+};
+
+export function getSiteMediaUrl(): string {
+    const ortak = process.env.NEXT_PUBLIC_MEDIA_URL || ''
+    return SITE_MEDIA_URLS[getActiveSite()] || ortak
+}
+
+/**
+ * Aktif sitenin VITRIN adresi (urun/blog/sayfa onizleme baglantilari icin).
+ * Site basina NEXT_PUBLIC_SITE_URL_<SLUG> tanimliysa o kullanilir.
+ */
+const SITE_URLS: Record<string, string | undefined> = {
+    alastik: process.env.NEXT_PUBLIC_SITE_URL_ALASTIK,
+    lastikjantavm: process.env.NEXT_PUBLIC_SITE_URL_LASTIKJANTAVM,
+};
+
+export function getSiteUrl(): string {
+    return SITE_URLS[getActiveSite()] || process.env.NEXT_PUBLIC_SITE_URL || ''
+}
+
 export function getSiteLabel(slug: string): string {
     return SITE_DEFINITIONS[slug]?.label || slug;
 }

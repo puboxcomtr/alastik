@@ -229,8 +229,17 @@ export async function fetchAPI<T = any>(
 /**
  * Gorsel URL helper
  */
+// Her iki sitede de kendi alan adından servis edilen medya yolları
+const MEDIA_PATH_PREFIXES = [
+    '/urun/', '/blog/', '/kategori/', '/marka/', '/sliders/',
+    '/theme/', '/uploads/', '/general/', '/genel/', '/banners/', '/montage/'
+];
+
 export function getImageUrl(path?: string | null): string {
     if (!path) return '';
     if (path.startsWith('http')) return path;
+    // Medya her sitenin KENDİ alan adından servis edilir (nginx karşılar):
+    // göreli bırakılır ki adres alastik'e sabitlenmesin
+    if (MEDIA_PATH_PREFIXES.some(prefix => path.startsWith(prefix))) return path;
     return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`;
 }

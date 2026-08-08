@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getSiteUrl } from '@/utils/activeSite'
 import { useRouter } from 'next/navigation'
 
 /* MUI */
@@ -826,7 +827,7 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                                                                 fontSize: '0.9rem'
                                                             }}
                                                         >
-                                                            https://alastik.com/blog/
+                                                            {getSiteUrl()}/blog/
                                                         </InputAdornment>
                                                     ),
                                                     endAdornment: (

@@ -186,6 +186,18 @@ export async function updateMenu(id: string, data: Partial<MenuType>) {
     }
 }
 
+// Sıralamayı toplu güncelle (sürükle-bırak)
+export async function updateMenuOrder(items: { id: string; order: number }[]) {
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/order`, {
+            method: 'PATCH',
+            body: JSON.stringify({ items })
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Sıralama güncellenemedi')
+    }
+}
+
 // Menü sil
 export async function deleteMenu(id: string) {
     try {

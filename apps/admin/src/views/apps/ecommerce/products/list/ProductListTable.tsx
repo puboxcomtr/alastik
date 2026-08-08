@@ -1,6 +1,7 @@
 'use client'
 // React Imports
 import { useEffect, useMemo, useState } from 'react'
+import { getSiteUrl } from '@/utils/activeSite'
 
 // Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
@@ -158,7 +159,7 @@ const ProductListTable = () => {
               <Tooltip title="Ürün Ziyaret Et">
                 <Link
                   href={row.original.seoUrl
-                    ? `https://alastik.com/urun/${row.original.seoUrl}`
+                    ? `${getSiteUrl()}/urun/${row.original.seoUrl}`
                     : `/${locale}/apps/products/edit/${row.original.id}`
                   }
                   target="_blank"

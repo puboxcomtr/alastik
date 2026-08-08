@@ -72,7 +72,7 @@ router.get('/group/:id', async (req, res) => {
         }
 
         const members = await Menu.find({ site: req.site, isActive: true })
-            .sort({ order: 1, name: 1 })
+            .sort({ order: 1, createdAt: 1 })
             .lean();
         const enriched = await enrichMenus(members);
 
@@ -109,7 +109,7 @@ router.get('/header', async (req, res) => {
             isActive: true
         })
             .populate('parentId', 'name')
-            .sort({ order: 1, name: 1 })
+            .sort({ order: 1, createdAt: 1 })
             .lean();
         const enrichedMenus = await enrichMenus(menus);
 

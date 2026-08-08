@@ -2,6 +2,7 @@
 
 // React Imports
 import { useState, useEffect } from 'react'
+import { getSiteUrl } from '@/utils/activeSite'
 import type { SyntheticEvent } from 'react'
 
 // MUI Imports
@@ -186,7 +187,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                               }}
                               position='start'
                             >
-                              {process.env.NEXT_PUBLIC_SITE_URL || 'https://alastik.com'}/urun/
+                              {getSiteUrl()}/urun/
                             </InputAdornment>
                           )
                         }}

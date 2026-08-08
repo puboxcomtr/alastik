@@ -54,6 +54,7 @@ const upload = multer({
 });
 
 router.post('/upload', upload.array('files', paths.config.maxFileCount), async (req, res) => {
+    clearFolderCache(req.query.folder || req.body?.folder || 'general');
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({
@@ -104,6 +105,58 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
     }
 });
 
+// Galeride gösterilecek görsel türleri
+const GALLERY_IMAGE_EXTENSIONS = ['.webp', '.jpg', '.jpeg', '.png', '.gif', '.avif', '.svg'];
+
+// Klasör taraması 6 binden fazla dosya içerebildiği için kısa süreli önbelleğe alınır
+const FOLDER_CACHE_TTL_MS = 5 * 60 * 1000;
+const folderCache = new Map();
+
+/**
+ * Klasörü (alt klasörleriyle birlikte) tarar; her dosya için göreli yol, boyut ve tarih döndürür.
+ * Aynalanan ürün görselleri urun/<önek>/<dosya> düzeninde durduğu için 2 seviye taranır.
+ */
+async function scanFolder(uploadPath, depth = 2) {
+    const entries = await fs.readdir(uploadPath, { withFileTypes: true });
+    const results = [];
+
+    for (const entry of entries) {
+        const full = path.join(uploadPath, entry.name);
+
+        if (entry.isDirectory()) {
+            if (depth <= 0) continue;
+            const nested = await scanFolder(full, depth - 1);
+            nested.forEach(item => results.push({ ...item, relPath: path.join(entry.name, item.relPath) }));
+            continue;
+        }
+
+        if (!GALLERY_IMAGE_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) continue;
+
+        try {
+            const stats = await fs.stat(full);
+            results.push({ relPath: entry.name, size: stats.size, mtime: stats.mtime });
+        } catch {
+            // okunamayan dosya atlanır
+        }
+    }
+
+    return results;
+}
+
+async function getFolderFiles(folder, uploadPath) {
+    const cached = folderCache.get(folder);
+    if (cached && Date.now() - cached.at < FOLDER_CACHE_TTL_MS) return cached.files;
+
+    const files = await scanFolder(uploadPath);
+    folderCache.set(folder, { at: Date.now(), files });
+    return files;
+}
+
+/** Yükleme/silme sonrası listenin tazelenmesi için önbelleği düşürür */
+function clearFolderCache(folder) {
+    if (folder) folderCache.delete(folder); else folderCache.clear();
+}
+
 router.get('/list', async (req, res) => {
     try {
         const {
@@ -123,54 +176,55 @@ router.get('/list', async (req, res) => {
         }
         const uploadPath = getUploadPath(folder);
         try {
-            const files = await fs.readdir(uploadPath);
+            const scanned = await getFolderFiles(folder, uploadPath);
+            const term = String(search).toLowerCase();
 
-            const fileList = await Promise.all(
-                files
-                    .filter(file => {
-                        const ext = path.extname(file).toLowerCase();
-                        if (ext !== '.webp') {
-                            return false;
-                        }
-                        const matchesSearch = file.toLowerCase().includes(search.toLowerCase());
-                        return matchesSearch;
-                    })
-                    .filter((file, index, array) => {
-                        const baseName = path.basename(file, path.extname(file));
-                        const firstIndex = array.findIndex(f => {
-                            const fBaseName = path.basename(f, path.extname(f));
-                            return fBaseName === baseName;
-                        });
-                        return index === firstIndex;
-                    })
-                    .map(async (file) => {
-                        try {
-                            const filePath = path.join(uploadPath, file);
-                            const stats = await fs.stat(filePath);
-                            return {
-                                id: file,
-                                filename: file,
-                                url: generateFileUrl(file, folder),
-                                // WebP URL'leri de liste için ekle
-                                urls: SimpleImageProcessor.generateImageUrls(file, folder, generateFileUrl),
-                                size: stats.size,
-                                uploadDate: stats.mtime.toISOString(),
-                                folder: folder
-                            };
-                        } catch (error) {
-                            return null;
-                        }
-                    })
-            );
-            const validFiles = fileList.filter(file => file !== null);
+            // Aynı görselin farklı türleri tek satır gösterilir; webp tercih edilir
+            const byBaseName = new Map();
+            for (const item of scanned) {
+                if (term && !item.relPath.toLowerCase().includes(term)) continue;
+
+                const key = path.join(path.dirname(item.relPath), path.basename(item.relPath, path.extname(item.relPath)));
+                const current = byBaseName.get(key);
+                const isWebp = path.extname(item.relPath).toLowerCase() === '.webp';
+
+                if (!current || (isWebp && path.extname(current.relPath).toLowerCase() !== '.webp')) {
+                    byBaseName.set(key, item);
+                }
+            }
+
+            const validFiles = [...byBaseName.values()].map(item => ({
+                id: item.relPath,
+                filename: path.basename(item.relPath),
+                url: generateFileUrl(item.relPath, folder),
+                size: item.size,
+                uploadDate: item.mtime.toISOString(),
+                folder: folder
+            }));
+
+            // Kayıtlı açıklama bilgilerini ekle (alt, başlık vb.)
+            try {
+                const MediaMeta = require('../../../models/admin/design/MediaMeta');
+                const metas = await MediaMeta.find({ folder, filename: { $in: validFiles.map(f => f.id) } }).lean();
+                const metaMap = new Map(metas.map(m => [m.filename, m]));
+                validFiles.forEach(f => {
+                    const m = metaMap.get(f.id);
+                    f.alt = m?.alt || '';
+                    f.title = m?.title || '';
+                    f.caption = m?.caption || '';
+                    f.description = m?.description || '';
+                });
+            } catch (error) {
+                console.error('Medya bilgileri okunamadı:', error.message);
+            }
+
             validFiles.sort((a, b) => {
                 if (sortBy === 'name') {
                     const comparison = a.filename.localeCompare(b.filename);
                     return sortOrder === 'asc' ? comparison : -comparison;
-                } else {
-                    const comparison = new Date(a.uploadDate) - new Date(b.uploadDate);
-                    return sortOrder === 'asc' ? comparison : -comparison;
                 }
+                const comparison = new Date(a.uploadDate) - new Date(b.uploadDate);
+                return sortOrder === 'asc' ? comparison : -comparison;
             });
 
             const startIndex = (parseInt(page) - 1) * parseInt(limit);
@@ -207,7 +261,42 @@ router.get('/list', async (req, res) => {
     }
 });
 
-router.delete('/:fileId', async (req, res) => {
+/**
+ * Dosya bilgilerini güncelle (alt metin, başlık, açıklama).
+ * Dosyanın kendisi değişmez; yalnızca açıklama bilgileri kaydedilir.
+ */
+router.patch('/meta', async (req, res) => {
+    try {
+        const { folder, filename, alt, title, caption, description } = req.body;
+
+        if (!folder || !filename) {
+            return res.status(400).json({ success: false, message: 'Klasör ve dosya adı zorunludur' });
+        }
+        if (!MEDIA_FOLDERS[folder]) {
+            return res.status(400).json({ success: false, message: `Geçersiz klasör: ${folder}` });
+        }
+
+        const MediaMeta = require('../../../models/admin/design/MediaMeta');
+        const set = {};
+        if (alt !== undefined) set.alt = String(alt).trim();
+        if (title !== undefined) set.title = String(title).trim();
+        if (caption !== undefined) set.caption = String(caption).trim();
+        if (description !== undefined) set.description = String(description).trim();
+
+        const kayit = await MediaMeta.findOneAndUpdate(
+            { folder, filename },
+            { $set: set },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        ).lean();
+
+        res.json({ success: true, message: 'Dosya bilgileri güncellendi', data: kayit });
+    } catch (error) {
+        console.error('Medya bilgisi güncelleme hatası:', error);
+        res.status(500).json({ success: false, message: 'Dosya bilgileri güncellenemedi' });
+    }
+});
+
+router.delete('/:fileId(*)', async (req, res) => {
     try {
         const { fileId } = req.params;
 
@@ -221,11 +310,17 @@ router.delete('/:fileId', async (req, res) => {
             const uploadPath = getUploadPath(folder);
             const filePath = path.join(uploadPath, filename);
 
+            // Güvenlik: hedef dosya klasörün dışına çıkamaz (../ denemeleri)
+            if (!path.resolve(filePath).startsWith(path.resolve(uploadPath) + path.sep)) {
+                continue;
+            }
+
             try {
                 await fs.access(filePath);
                 await fs.unlink(filePath);
                 deleted = true;
                 deletedFolder = folder;
+                clearFolderCache(folder);
                 break;
             } catch (error) {
                 continue;

@@ -1,6 +1,6 @@
 // src/lib/api.ts
 import { getSession } from 'next-auth/react'
-import { getSiteHeader } from '@/utils/activeSite'
+import { getSiteHeader, getSiteMediaUrl } from '@/utils/activeSite'
 
 // MEDIA
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
@@ -231,7 +231,8 @@ export const API_ENDPOINTS = {
         },
         upload: (folder: string) => `${getBaseUrl()}/admin/media/upload?folder=${folder}`,
         folders: () => `${getBaseUrl()}/admin/media/folders`,
-        delete: (fileId: string) => `${getBaseUrl()}/admin/media/${fileId}`,
+        delete: (fileId: string) => `${getBaseUrl()}/admin/media/${encodeURIComponent(fileId)}`,
+        updateMeta: () => `${getBaseUrl()}/admin/media/meta`,
     },
 }
 
@@ -272,7 +273,9 @@ export async function fetchAPI(url: string, options?: RequestInit) {
 export function getImageUrl(path?: string): string {
     if (!path) return ''
     if (path.startsWith('http')) return path
-    return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`
+    // Panelde secili siteye gore medya alan adi kullanilir
+    const base = getSiteMediaUrl() || MEDIA_URL
+    return `${base}${path.startsWith('/') ? path : '/' + path}`
 }
 
 export async function getThemeSettings() {

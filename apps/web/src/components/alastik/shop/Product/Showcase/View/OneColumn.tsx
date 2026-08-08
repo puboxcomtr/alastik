@@ -96,7 +96,7 @@ export default function OneColumn({ product }: ProductCardProps) {
     const brandName = product.diaData.marka || '';
     const brandInfo = getBrand(brandName);
     const brandLogo = brandInfo?.logo && !brandInfo.logo.includes('gorsel-bulunamadi')
-        ? `https://api.alastik.com${brandInfo.logo}`
+        ? brandInfo.logo
         : null;
 
     return (

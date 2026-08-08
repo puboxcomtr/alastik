@@ -32,3 +32,15 @@ node_modules/
 
 # Hassas evraklar (montaj sozlesmeleri vb.)
 apps/api/private/
+
+# Aynalanan urun gorselleri (sunucuda uretilir, depoda tutulmaz)
+apps/api/src/public/urun-gorselleri/
+# Aynalanan urun gorselleri (senkron uretir, 3.6 GB — depoda tutulmaz)
+apps/api/public/urun/
+
+# Blog icerik gorselleri (dis kaynaklardan indirildi, 155 MB)
+apps/api/public/blog/
+
+# Icerik yedekleri (depo disinda /var/www/backups altinda tutulur)
+apps/api/blog-*yedek*.json
+

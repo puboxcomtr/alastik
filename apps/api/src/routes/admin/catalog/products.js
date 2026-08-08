@@ -761,11 +761,27 @@ router.patch('/:id', maybeAuth, [
     if (hideProductionDate !== undefined) updateData['customData.hideProductionDate'] = Boolean(hideProductionDate);
     if (hideStock !== undefined) updateData['customData.hideStock'] = Boolean(hideStock);
 
-    // Görseller
+    // Görseller — dış adresli görseller kendi sunucumuza indirilir
     if (req.body.customImages !== undefined) {
-      updateData['customData.customImages'] = req.body.customImages;
-      if (req.body.customImages.length > 0) {
-        updateData['customData.featuredImage'] = req.body.customImages[0].url;
+      const incoming = Array.isArray(req.body.customImages) ? req.body.customImages : [];
+      let images = incoming;
+
+      try {
+        const imageMirror = require('../../../services/media/ImageMirrorService');
+        const urunAdi = existingProduct?.diaData?.aciklama || existingProduct?.diaData?.stokkartkodu;
+        const map = await imageMirror.mirrorMany(incoming.map(img => img && img.url), urunAdi);
+        images = incoming.map(img => {
+          if (!img || !img.url) return img;
+          const local = map[img.url] || imageMirror.findExisting(img.url);
+          return local ? { ...img, url: local, sourceUrl: img.sourceUrl || img.url } : img;
+        });
+      } catch (error) {
+        console.error('Görsel aynalama atlandı:', error.message);
+      }
+
+      updateData['customData.customImages'] = images;
+      if (images.length > 0) {
+        updateData['customData.featuredImage'] = images[0].url;
       }
     }
     // Sync bilgilerini güncelle

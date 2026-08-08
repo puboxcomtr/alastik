@@ -127,6 +127,8 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
     // Ürün araması: yazarken sunucuda aranır (katalog büyük)
     useEffect(() => {
         if (menuType !== 'product') return
+        // İlk yüklemede seçili ürün listeye konur; arama yalnızca kullanıcı yazınca çalışır
+        if (initialLoading || !productQuery) return
 
         const timer = setTimeout(async () => {
             try {
@@ -188,8 +190,16 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                     await loadBlogs()
                 } else if (menu.menuType === 'product') {
                     setProductId(menu.linkData?.productId || '')
-                    // Seçili ürünün etikette görünmesi için başlığıyla arat
-                    setProductQuery(menu.linkData?.productTitle || '')
+
+                    // Seçili ürün arama sonuçlarında olmayabilir; listeye doğrudan eklenir
+                    if (menu.linkData?.productId) {
+                        setProducts([{
+                            _id: menu.linkData.productId,
+                            title: menu.linkData.productTitle || menu.linkData.productId,
+                            sku: menu.linkData.productSku || '',
+                            slug: menu.linkData.productUrl || ''
+                        }])
+                    }
                 } else if (menu.menuType === 'heading') {
                     setHeadingText(menu.linkData?.heading || '')
                 }

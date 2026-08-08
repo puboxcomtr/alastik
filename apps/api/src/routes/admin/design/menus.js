@@ -306,6 +306,33 @@ router.get('/:id', async (req, res) => {
             });
         }
 
+        // Hedefin adını da döndür: düzenleme formunda seçili öğe görünsün
+        try {
+            if (menu.menuType === 'category' && menu.linkData?.categoryId) {
+                const c = await WebCategory.findById(menu.linkData.categoryId).select('name seoUrl').lean();
+                if (c) menu.linkData = { ...menu.linkData, categoryName: c.name, categoryUrl: c.seoUrl };
+            } else if (menu.menuType === 'page' && menu.linkData?.pageId) {
+                const pg = await Page.findById(menu.linkData.pageId).select('title slug').lean();
+                if (pg) menu.linkData = { ...menu.linkData, pageTitle: pg.title, pageUrl: pg.slug };
+            } else if (menu.menuType === 'blog' && menu.linkData?.blogId) {
+                const WebBlog = require('../../../models/web/content/WebBlog');
+                const bl = await WebBlog.findById(menu.linkData.blogId).select('title slug').lean();
+                if (bl) menu.linkData = { ...menu.linkData, blogTitle: bl.title, blogUrl: bl.slug };
+            } else if (menu.menuType === 'product' && menu.linkData?.productId) {
+                const WebProduct = require('../../../models/web/catalog/WebProduct');
+                const pr = await WebProduct.findOne({ _key: menu.linkData.productId })
+                    .select('diaData.aciklama diaData.stokkartkodu customData.seoUrl').lean();
+                if (pr) menu.linkData = {
+                    ...menu.linkData,
+                    productTitle: pr.diaData?.aciklama,
+                    productSku: pr.diaData?.stokkartkodu,
+                    productUrl: pr.customData?.seoUrl
+                };
+            }
+        } catch (err) {
+            console.error('Menü hedefi çözümlenemedi:', err.message);
+        }
+
         res.json({
             success: true,
             data: menu
@@ -549,6 +576,40 @@ router.put('/:id', async (req, res) => {
     }
 });
 // Menü sil
+/**
+ * Sıralamayı toplu günceller (sürükle-bırak sonrası).
+ * Gövde: { items: [{ id, order }] }
+ */
+router.patch('/order', async (req, res) => {
+    try {
+        const { items } = req.body;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'Sıralama listesi boş olamaz' });
+        }
+
+        const ops = items
+            .filter(i => i && i.id)
+            .map(i => ({
+                updateOne: {
+                    filter: { _id: i.id, site: req.site },
+                    update: { $set: { order: Number(i.order) || 0 } }
+                }
+            }));
+
+        if (ops.length === 0) {
+            return res.status(400).json({ success: false, message: 'Geçerli kayıt bulunamadı' });
+        }
+
+        const sonuc = await Menu.bulkWrite(ops, { ordered: false });
+
+        res.json({ success: true, message: 'Sıralama güncellendi', updated: sonuc.modifiedCount || 0 });
+    } catch (error) {
+        console.error('Menü sıralama hatası:', error);
+        res.status(500).json({ success: false, message: 'Sıralama güncellenemedi' });
+    }
+});
+
 // Menü grubunu (görüntüleme alanı) topluca sil — sitede kullanılıyorsa engellenir
 router.delete('/area/:area', async (req, res) => {
     try {

@@ -20,6 +20,7 @@ const CacheManager = require('../../../../../../packages/cache/');
 
 /* Filter Config */
 const { getFiltersForSyncType, logFilterConfig, getBasicFilters, getDiaFields, getSyncRules, getAllSyncRules, SERVICE_VAT_RULE } = require('../../../config/diaFilters');
+const imageMirror = require('../../media/ImageMirrorService');
 
 const DiaSettings = require('../../../models/plugins/dia/DiaSettings');
 
@@ -531,6 +532,20 @@ class DiaStockService {
       return r;
     });
   }
+  /**
+   * Daha önce sunucumuza indirilmiş görselleri yerel yola çevirir (yalnızca disk kontrolü).
+   * İndirme işi processBatch/sync adımlarında toplu yapılır; burada ağ isteği yoktur.
+   */
+  mapMirroredImages(images) {
+    if (!Array.isArray(images) || images.length === 0) return images || [];
+
+    return images.map(img => {
+      if (!img || !img.aws_url) return img;
+      const local = imageMirror.findExisting(img.aws_url);
+      if (!local) return img;
+      return { ...img, aws_url: local, source_url: img.source_url || img.aws_url };
+    });
+  }
   transformDiaDataForWeb(diaProduct) {
     return {
       _key_scf_karebarkod: diaProduct._key_scf_karebarkod,
@@ -599,7 +614,7 @@ class DiaStockService {
 
       m_birimler: diaProduct.m_birimler || [],
       m_kategoriler: diaProduct.m_kategoriler || [],
-      m_resimler: this.normalizeImageUrls(diaProduct.m_resimler),
+      m_resimler: (this._mirroredImages && this._mirroredImages.get(diaProduct._key)) || this.mapMirroredImages(this.normalizeImageUrls(diaProduct.m_resimler)),
       m_urunOzellikleri: diaProduct.m_urunOzellikleri || []
     };
   }
@@ -1657,6 +1672,19 @@ class DiaStockService {
    * Batch verilerini işle - FİLTRE KONTROLÜ İLE *
    */
   async processBatch(batch) {
+    // Görseller ürün adıyla kendi sunucumuza indirilir (indirilmişse ağ isteği yapılmaz)
+    const mirroredImages = new Map();
+    for (const item of batch) {
+      if (!item || !item.m_resimler || item.m_resimler.length === 0) continue;
+      try {
+        const normalized = this.normalizeImageUrls(item.m_resimler);
+        mirroredImages.set(item._key, await imageMirror.mirrorProductImages(normalized, item.aciklama || item.stokkartkodu));
+      } catch (error) {
+        this.logger.warn('Görsel aynalama atlandı', { key: item._key, error: error.message });
+      }
+    }
+    this._mirroredImages = mirroredImages;
+
     const diaOperations = [];
     const webOperations = [];
     const errors = [];
@@ -3311,8 +3339,15 @@ class DiaStockService {
 
     const filter = { _key: product._key };
 
+    let normalizedImages = this.normalizeImageUrls(product.m_resimler);
+    try {
+      normalizedImages = await imageMirror.mirrorProductImages(normalizedImages, product.aciklama || product.stokkartkodu);
+    } catch (error) {
+      this.logger.warn('Görsel aynalama atlandı (updateOnlyWebProductImages)', { error: error.message });
+    }
+
     const updateData = {
-      'diaData.m_resimler': this.normalizeImageUrls(product.m_resimler),
+      'diaData.m_resimler': normalizedImages,
       'syncInfo.lastDiaSync': new Date(),
       'syncInfo.diaStatus': 'synced'
     };
@@ -3840,12 +3875,22 @@ class DiaStockService {
           break;
         }
 
+        // Bu partinin görsellerini ürün adıyla kendi sunucumuza indir
+        const mirrored = new Map();
+        for (const d of diaStocks) {
+          try {
+            mirrored.set(d._key, await imageMirror.mirrorProductImages(d.m_resimler || [], d.aciklama || d.stokkartkodu));
+          } catch (error) {
+            this.logger.warn('Görsel aynalama atlandı (syncImagesToWebProducts)', { key: d._key, error: error.message });
+          }
+        }
+
         const webOps = diaStocks.map(dia => ({
           updateOne: {
             filter: { _key: dia._key },
             update: {
               $set: {
-                'diaData.m_resimler': dia.m_resimler || [],
+                'diaData.m_resimler': mirrored.get(dia._key) || dia.m_resimler || [],
                 'syncInfo.lastDiaSync': new Date()
               }
             }
