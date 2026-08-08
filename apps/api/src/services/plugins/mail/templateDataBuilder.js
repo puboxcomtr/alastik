@@ -3,6 +3,9 @@ const mongoose = require('mongoose')
 const WebOrder = require('../../../models/web/order/WebOrder')
 const WebProduct = require('../../../models/web/catalog/WebProduct')
 const PaymentMethod = require('../../../models/admin/order/PaymentMethod')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
+
+const resolveSite = (site) => (SITES[site] ? site : DEFAULT_SITE)
 
 
 const buildCombinedAddress = (addr) => {
@@ -45,27 +48,23 @@ const buildOrderTemplateData = async (options = {}) => {
             throw new Error(`Sipariş bulunamadı: ${orderId}`)
         }
     } else {
-        // Önizleme: son siparişi çek
-        const baseFilter = {
-            isActive: true,
-            'payment.status': 'paid'
-        }
+        // Önizleme: seçili sitenin son siparişi (yoksa filtreler sırayla gevşetilir)
+        const previewSite = options.site ? resolveSite(options.site) : null
+        const withSite = (f) => (previewSite ? { ...f, site: previewSite } : f)
+
+        const filters = []
 
         if (guestOnly) {
-            baseFilter.isGuest = true
+            filters.push(withSite({ isActive: true, 'payment.status': 'paid', isGuest: true }))
         }
+        filters.push(withSite({ isActive: true, 'payment.status': 'paid' }))
+        filters.push(withSite({ isActive: true }))
+        // Seçili sitede hiç sipariş yoksa herhangi bir siteninkiyle önizle
+        filters.push({ isActive: true })
 
-        order = await WebOrder.findOne(baseFilter).sort({ createdAt: -1 }).lean()
-
-        if (!order && guestOnly) {
-            order = await WebOrder.findOne({
-                isActive: true,
-                'payment.status': 'paid'
-            }).sort({ createdAt: -1 }).lean()
-        }
-
-        if (!order) {
-            order = await WebOrder.findOne({ isActive: true }).sort({ createdAt: -1 }).lean()
+        for (const filter of filters) {
+            order = await WebOrder.findOne(filter).sort({ createdAt: -1 }).lean()
+            if (order) break
         }
 
         if (!order) {
@@ -73,67 +72,11 @@ const buildOrderTemplateData = async (options = {}) => {
         }
     }
 
-    // Şirket bilgileri - websettings + sitesettings collection'lardan
-    let companyData = {
-        companyName: 'ALastik.com',
-        companyAddress: 'İstanbul, Türkiye',
-        companyPhone1: '',
-        companyPhone2: '',
-        companyWebsite: 'www.alastik.com',
-        siteUrl: 'https://alastik.com',
-        logo: ''
-    }
-
-    try {
-        const db = mongoose.connection.db
-
-        // websettings: companyInfo
-        const webSetting = await db.collection('websettings').findOne({})
-
-        // sitesettings: theme value (logo)
-        const themeSetting = await db.collection('sitesettings').findOne({ key: 'theme' })
-
-        const ci = webSetting?.companyInfo || {}
-        const themeVal = themeSetting?.value || {}
-
-        // Web sitesi URL'i (https:// dahil)
-        const websiteUrl = ci.website || companyData.siteUrl
-        const websiteHost = websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
-
-        const mediaBaseUrl = (process.env.MEDIA_URL || process.env.API_PUBLIC_URL || 'https://api.alastik.com').replace(/\/$/, '')
-
-        let logoUrl = ''
-
-        if (themeVal.logo) {
-            logoUrl = themeVal.logo.startsWith('http')
-                ? themeVal.logo
-                : `${mediaBaseUrl}${themeVal.logo.startsWith('/') ? '' : '/'}${themeVal.logo}`
-        } else if (webSetting?.images?.mailLogo) {
-            logoUrl = webSetting.images.mailLogo.startsWith('http')
-                ? webSetting.images.mailLogo
-                : `${mediaBaseUrl}${webSetting.images.mailLogo.startsWith('/') ? '' : '/'}${webSetting.images.mailLogo}`
-        }
-
-        // Adres oluştur
-        const addressParts = [
-            ci.address,
-            ci.district,
-            ci.city,
-            ci.country
-        ].filter(Boolean)
-
-        companyData = {
-            companyName: ci.name || ci.officialName || companyData.companyName,
-            companyAddress: addressParts.join(', ') || companyData.companyAddress,
-            companyPhone1: ci.phone || companyData.companyPhone1,
-            companyPhone2: ci.phone2 || '',
-            companyWebsite: websiteHost,
-            siteUrl: websiteUrl,
-            logo: logoUrl
-        }
-    } catch (e) {
-        console.error('[templateDataBuilder] Settings okuma hatası:', e.message)
-    }
+    // Şirket bilgileri — gerçek mailde siparişin sitesi, önizlemede seçili site esas alınır
+    const site = mode === 'real'
+        ? (order.site || options.site)
+        : (options.site || order.site)
+    const companyData = await buildCompanyData(site)
 
     // Müşteri bilgileri
     const member = order.memberSnapshot || {}
@@ -331,10 +274,12 @@ const getBankAccountsForMail = async (order) => {
     }
 
     try {
+        // Siparişin sitesine ait banka hesapları
         const banks = await PaymentMethod.find({
             type: 'bank_transfer',
             isActive: true,
-            isDeleted: false
+            isDeleted: false,
+            site: resolveSite(order.site)
         }).sort({ priority: 1 }).lean()
 
         return banks.map(bank => {
@@ -360,23 +305,27 @@ const getBankAccountsForMail = async (order) => {
     }
 }
 
-// templateKey'e göre uygun veri builder'ı çalıştır
-// Şirket bilgilerini DB'den çek (companyData)
-const buildCompanyData = async () => {
+// Şirket bilgilerini DB'den çek (companyData) — site bazlı
+// websettings ve sitesettings koleksiyonlarında her site için ayrı kayıt vardır
+const buildCompanyData = async (site) => {
+    const slug = resolveSite(site)
+    const siteConf = SITES[slug]
+    const siteHost = siteConf.domains[0]
+
     let companyData = {
-        companyName: 'ALastik.com',
+        companyName: siteConf.name,
         companyAddress: 'İstanbul, Türkiye',
         companyPhone1: '',
         companyPhone2: '',
-        companyWebsite: 'www.alastik.com',
-        siteUrl: 'https://alastik.com',
+        companyWebsite: `www.${siteHost}`,
+        siteUrl: `https://${siteHost}`,
         logo: ''
     }
 
     try {
         const db = mongoose.connection.db
-        const webSetting = await db.collection('websettings').findOne({})
-        const themeSetting = await db.collection('sitesettings').findOne({ key: 'theme' })
+        const webSetting = await db.collection('websettings').findOne({ site: slug })
+        const themeSetting = await db.collection('sitesettings').findOne({ key: 'theme', site: slug })
 
         const ci = webSetting?.companyInfo || {}
         const themeVal = themeSetting?.value || {}
@@ -426,7 +375,7 @@ const buildCompanyData = async () => {
 const buildContactFormData = async (options = {}) => {
     const { mode = 'preview', contactId = null, formData = null } = options
 
-    const companyData = await buildCompanyData()
+    const companyData = await buildCompanyData(options.site)
 
     let contentSubject = 'Lastik Stok Bilgisi'
     let fullName = 'Ahmet Yılmaz'
@@ -486,8 +435,8 @@ const buildGuestOrderData = async (options = {}) => {
 // templateKey'e göre uygun veri builder'ı çalıştır
 // Hesap Aktivasyon Maili için veri hazırla (son aktif üyeden örnek)
 // Hesap Aktivasyon Maili için veri hazırla (sadece yöneticilere - adminusers)
-const buildAccountActivationData = async () => {
-    const companyData = await buildCompanyData()
+const buildAccountActivationData = async (options = {}) => {
+    const companyData = await buildCompanyData(options.site)
 
     let fullName = 'Yönetici'
     let email = ''
@@ -517,8 +466,8 @@ const buildAccountActivationData = async () => {
 }
 
 // Admin Şifremi Unuttum için veri hazırla (adminusers'tan örnek + reset url)
-const buildAdminPasswordResetData = async () => {
-    const companyData = await buildCompanyData()
+const buildAdminPasswordResetData = async (options = {}) => {
+    const companyData = await buildCompanyData(options.site)
 
     let fullName = 'Yönetici'
     let email = ''
@@ -554,19 +503,21 @@ const buildAdminPasswordResetData = async () => {
 
 // İptal/İade Talebi Bilgilendirme için veri hazırla
 // (en son iade/iptal durumundaki siparişten talep kodu örneklenir)
-const buildRefundRequestData = async () => {
-    const companyData = await buildCompanyData()
+const buildRefundRequestData = async (options = {}) => {
+    const companyData = await buildCompanyData(options.site)
 
     let refundRequestCode = 'IADE-000001'
 
     try {
-        // İptal veya iade durumundaki son sipariş
-        const order = await WebOrder.findOne({
+        // İptal veya iade durumundaki son sipariş (varsa seçili siteden)
+        const filter = {
             isActive: true,
             status: { $in: ['cancelled', 'returned'] }
-        })
-            .sort({ updatedAt: -1 })
-            .lean()
+        }
+        if (options.site) filter.site = resolveSite(options.site)
+
+        const order = await WebOrder.findOne(filter).sort({ updatedAt: -1 }).lean()
+            || await WebOrder.findOne({ isActive: true, status: { $in: ['cancelled', 'returned'] } }).sort({ updatedAt: -1 }).lean()
 
         if (order?.orderNumber) {
             refundRequestCode = order.orderNumber
@@ -589,7 +540,7 @@ const buildRefundRequestData = async () => {
 const buildMemberActivationData = async (options = {}) => {
     const { mode = 'preview', memberId = null, activationToken = null } = options
 
-    const companyData = await buildCompanyData()
+    const companyData = await buildCompanyData(options.site)
 
     let fullName = 'Müşteri'
     let email = ''
@@ -645,7 +596,7 @@ const buildMemberActivationData = async (options = {}) => {
 const buildMemberPasswordResetData = async (options = {}) => {
     const { mode = 'preview', memberId = null, resetToken = null } = options
 
-    const companyData = await buildCompanyData()
+    const companyData = await buildCompanyData(options.site)
 
     let fullName = 'Müşteri'
     let email = ''
@@ -698,20 +649,22 @@ const buildMemberPasswordResetData = async (options = {}) => {
 
 // Üye İade/İptal Talebi (sonuç bildirimi) için veri hazırla
 // status: 'approved' | 'rejected'
-const buildMemberRefundResponseData = async () => {
-    const companyData = await buildCompanyData()
+const buildMemberRefundResponseData = async (options = {}) => {
+    const companyData = await buildCompanyData(options.site)
 
     let refundRequestCode = 'IADE-000001'
     let status = 'approved'
 
     try {
-        // İptal/iade durumundaki son sipariş
-        const order = await WebOrder.findOne({
+        // İptal/iade durumundaki son sipariş (varsa seçili siteden)
+        const filter = {
             isActive: true,
             status: { $in: ['cancelled', 'returned'] }
-        })
-            .sort({ updatedAt: -1 })
-            .lean()
+        }
+        if (options.site) filter.site = resolveSite(options.site)
+
+        const order = await WebOrder.findOne(filter).sort({ updatedAt: -1 }).lean()
+            || await WebOrder.findOne({ isActive: true, status: { $in: ['cancelled', 'returned'] } }).sort({ updatedAt: -1 }).lean()
 
         if (order?.orderNumber) {
             refundRequestCode = order.orderNumber
@@ -733,22 +686,23 @@ const buildMemberRefundResponseData = async () => {
 
 // Havale Bildirim Formu için veri hazırla
 // (havale ödeme yöntemli son siparişten örnek)
-const buildBankTransferNotificationData = async () => {
-    const companyData = await buildCompanyData()
+const buildBankTransferNotificationData = async (options = {}) => {
+    const companyData = await buildCompanyData(options.site)
 
-    // Havale/EFT ödeme yöntemli son sipariş
-    let order = await WebOrder.findOne({
-        isActive: true,
-        'payment.method': 'bank_transfer'
-    })
-        .sort({ createdAt: -1 })
-        .lean()
+    const previewSite = options.site ? resolveSite(options.site) : null
+    const withSite = (f) => (previewSite ? { ...f, site: previewSite } : f)
 
-    // Yoksa son sipariş
-    if (!order) {
-        order = await WebOrder.findOne({ isActive: true })
-            .sort({ createdAt: -1 })
-            .lean()
+    // Havale/EFT ödeme yöntemli son sipariş (önce seçili site, yoksa filtreler gevşetilir)
+    let order = null
+    const filters = [
+        withSite({ isActive: true, 'payment.method': 'bank_transfer' }),
+        withSite({ isActive: true }),
+        { isActive: true }
+    ]
+
+    for (const filter of filters) {
+        order = await WebOrder.findOne(filter).sort({ createdAt: -1 }).lean()
+        if (order) break
     }
 
     if (!order) {
@@ -823,14 +777,14 @@ const buildData = async (templateKey, options = {}) => {
     }
 
     if (templateKey === 'hesap_aktivasyon_maili') {
-        return await buildAccountActivationData()
+        return await buildAccountActivationData(options)
     }
     if (templateKey === 'admin_sifremi_unuttum') {
-        return await buildAdminPasswordResetData()
+        return await buildAdminPasswordResetData(options)
     }
 
     if (templateKey === 'iptal_iade_bilgilendirme') {
-        return await buildRefundRequestData()
+        return await buildRefundRequestData(options)
     }
 
     if (templateKey === 'uye_hesap_aktivasyonu') {
@@ -842,11 +796,11 @@ const buildData = async (templateKey, options = {}) => {
     }
 
     if (templateKey === 'uye_iade_iptal_talebi') {
-        return await buildMemberRefundResponseData()
+        return await buildMemberRefundResponseData(options)
     }
 
     if (templateKey === 'havale_bildirim_formu') {
-        return await buildBankTransferNotificationData()
+        return await buildBankTransferNotificationData(options)
     }
 
     // Default boş veri

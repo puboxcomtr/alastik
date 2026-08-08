@@ -3,6 +3,9 @@ const path = require('path');
 // Base paths
 const PUBLIC_DIR = path.join(__dirname, '../../public');
 
+// Statik sunulmayan hassas dosyalar (sözleşme vb.) — yalnızca auth'lu endpoint'lerle erişilir
+const PRIVATE_DIR = path.join(__dirname, '../../private');
+
 // Media kategorileri ve ayarları
 const MEDIA_CONFIG = {
     brand: {
@@ -66,6 +69,33 @@ const MEDIA_CONFIG = {
         allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
         allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
         maxSize: 5 * 1024 * 1024
+    },
+
+    montage: {
+        folder: 'montage',
+        basePath: PUBLIC_DIR,
+        urlPrefix: '/montage',
+        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+        allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp'],
+        maxSize: 5 * 1024 * 1024
+    },
+
+    // Montaj noktası sözleşme ve evrakları (PDF/Office/görsel)
+    // PRIVATE_DIR altındadır: statik sunulmaz, admin auth'lu endpoint ile indirilir
+    montageDocument: {
+        folder: 'montage-docs',
+        basePath: PRIVATE_DIR,
+        urlPrefix: '/montage-docs',
+        allowedTypes: [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'image/jpeg', 'image/jpg', 'image/png', 'image/webp'
+        ],
+        allowedExtensions: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.webp'],
+        maxSize: 10 * 1024 * 1024
     },
 
     blog: {
@@ -158,6 +188,7 @@ function getCategoryFromUrl(url) {
 module.exports = {
     MEDIA_CONFIG,
     PUBLIC_DIR,
+    PRIVATE_DIR,
     getUploadDir,
     getUrlPrefix,
     getFullPath,

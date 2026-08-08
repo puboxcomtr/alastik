@@ -16,6 +16,13 @@ interface Payment {
     gateway?: string
     installment?: number
     referenceCode?: string
+    manualCollection?: { channel: string | null } | null
+}
+
+const MANUAL_CHANNEL_LABELS: Record<string, string> = {
+    paynet: 'Paynet',
+    otopirpos: 'Otopirpos',
+    nkolay: 'NKolay'
 }
 
 interface PaymentInformationProps {
@@ -60,6 +67,18 @@ const PaymentInformation = ({ payment, isGuest, ipAddress, shippingMethod }: Pay
                             sx={listItemSx}
                         />
                     </ListItem>
+                    {payment?.manualCollection?.channel && (
+                        <>
+                            <Divider />
+                            <ListItem>
+                                <ListItemText
+                                    primary='Manuel Tahsilat:'
+                                    secondary={MANUAL_CHANNEL_LABELS[payment.manualCollection.channel] || payment.manualCollection.channel}
+                                    sx={listItemSx}
+                                />
+                            </ListItem>
+                        </>
+                    )}
                     {ipAddress && (
                         <>
                             <Divider />

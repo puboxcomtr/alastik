@@ -33,13 +33,16 @@ class DiaWorker {
         // Sync guard (aynı anda birden fazla sync çalışmasın)
         this.syncLock = {
             fullSync: false,
-            lightSync: false
+            lightSync: false,
+            stockSync: false
         };
 
         // Bull Queue'ları oluştur
         const queueSettings = {
             stalledInterval: 1800000,
-            maxStalledCount: 0
+            maxStalledCount: 2,
+            lockDuration: 600000, // uzun CPU bloklarında kilit düşmesin (10 dk)
+            lockRenewTime: 60000
         };
         this.queues = {
             fullSync: new Queue('dia-full-sync', {
@@ -49,6 +52,11 @@ class DiaWorker {
             }),
 
             lightSync: new Queue('dia-light-sync', {
+                redis: workerConfig.redis,
+                defaultJobOptions: workerConfig.queue.defaultJobOptions,
+                settings: queueSettings
+            }),
+            stockSync: new Queue('dia-stock-sync', {
                 redis: workerConfig.redis,
                 defaultJobOptions: workerConfig.queue.defaultJobOptions,
                 settings: queueSettings
@@ -93,6 +101,13 @@ class DiaWorker {
         this.queues.lightSync.process('manual-light-sync', (job) => {
             return this.processLightSync(job);
         });
+        // Stok Sync - saatlik tam stok taraması
+        this.queues.stockSync.process('scheduled-stock-sync', (job) => {
+            return this.processStockSync(job);
+        });
+        this.queues.stockSync.process('manual-stock-sync', (job) => {
+            return this.processStockSync(job);
+        });
         this.queues.xmlSync.process('manual-xml-sync', (job) => {
             return this.processXmlSync(job);
         });
@@ -135,6 +150,22 @@ class DiaWorker {
 
         this.queues.lightSync.on('failed', (job, err) => {
             this.logger.error('Light sync başarısız', {
+                jobId: job.id,
+                error: err.message
+            });
+        });
+
+        // Stok Sync Events
+        this.queues.stockSync.on('completed', (job, result) => {
+            this.logger.info('Stok sync tamamlandı', {
+                jobId: job.id,
+                duration: result.duration,
+                updated: result.updated
+            });
+        });
+
+        this.queues.stockSync.on('failed', (job, err) => {
+            this.logger.error('Stok sync başarısız', {
                 jobId: job.id,
                 error: err.message
             });
@@ -219,20 +250,16 @@ class DiaWorker {
         this.syncLock.lightSync = true;
 
         try {
-            this.logger.info('=== LIGHT SYNC BAŞLANGICI (Fiyat + Stok) ===', {
+            this.logger.info('=== LIGHT SYNC BAŞLANGICI (Tarih Filtreli Kart Senkronu) ===', {
                 jobId: job.id,
                 timestamp: new Date().toISOString()
             });
 
             await job.progress(25);
 
-            // 1. Fiyat güncelleme
-            const priceResult = await this.diaService.syncOnlyPrices();
-
-            await job.progress(75);
-
-            // 2. Stok güncelleme
-            const stockResult = await this.diaService.syncOnlyStocks();
+            // Kontör dostu: yalnızca DIA'da değişen kartlar çekilir (fiyat, ad, görsel, kategori).
+            // Stoklar kart tarihini değiştirmediği için ayrı saatlik stok taramasıyla güncellenir.
+            const result = await this.diaService.syncChangedCards();
 
             await job.progress(100);
 
@@ -241,15 +268,15 @@ class DiaWorker {
             this.logger.info('=== LIGHT SYNC TAMAMLANDI ===', {
                 jobId: job.id,
                 duration: `${duration}ms`,
-                priceUpdated: priceResult.updated,
-                stockUpdated: stockResult.updated
+                since: result.since,
+                processed: result.processed,
+                updated: result.updated
             });
 
             return {
                 success: true,
                 duration: `${duration}ms`,
-                priceResult,
-                stockResult
+                ...result
             };
 
         } catch (error) {
@@ -262,6 +289,60 @@ class DiaWorker {
 
         } finally {
             this.syncLock.lightSync = false;
+        }
+    }
+
+    /**
+     * Saatlik stok senkronu (tam tarama — stok hareketleri kart _date'ini
+     * değiştirmediği için tarih filtresiyle yakalanamaz)
+     */
+    async processStockSync(job) {
+        const startTime = Date.now();
+
+        if (this.syncLock.fullSync) {
+            this.logger.info('Full sync çalışıyor, stok sync atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
+        }
+        if (this.syncLock.lightSync) {
+            this.logger.info('Light sync çalışıyor, stok sync atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'lightSync çalışıyor' };
+        }
+        if (this.syncLock.stockSync) {
+            this.logger.info('Stok sync zaten çalışıyor, atlanıyor', { jobId: job.id });
+            return { success: true, skipped: true, reason: 'stockSync zaten çalışıyor' };
+        }
+
+        this.syncLock.stockSync = true;
+
+        try {
+            this.logger.info('=== STOK SYNC BAŞLANGICI (Saatlik Tam Tarama) ===', {
+                jobId: job.id,
+                timestamp: new Date().toISOString()
+            });
+
+            await job.progress(25);
+            const result = await this.diaService.syncOnlyStocks();
+            await job.progress(100);
+
+            const duration = Date.now() - startTime;
+            this.logger.info('=== STOK SYNC TAMAMLANDI ===', {
+                jobId: job.id,
+                duration: `${duration}ms`,
+                updated: result.updated
+            });
+
+            return { success: true, duration: `${duration}ms`, ...result };
+
+        } catch (error) {
+            this.logger.error('Stok sync hatası', {
+                jobId: job.id,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+
+        } finally {
+            this.syncLock.stockSync = false;
         }
     }
     async processXmlSync(job) {
@@ -316,9 +397,10 @@ class DiaWorker {
                 }
             }
 
-            // 2. DIA match
+            // 2. DIA match — manuel tetiklemede canlı DIA'dan, zamanlanmışta diastocks aynasından okunur
+            const useLiveDia = job.data?.type === 'manual';
             await job.progress({ percent: 40, message: 'DIA eşleştirme yapılıyor...' });
-            const matchResult = await XmlDiaMatchService.matchAll();
+            const matchResult = await XmlDiaMatchService.matchAll({ useLiveDia });
             this.logger.info('XML-DIA eşleştirme tamamlandı', matchResult);
 
             // 3. WebProducts sync
@@ -430,6 +512,10 @@ class DiaWorker {
             for (const job of existingLightRepeats) {
                 await this.queues.lightSync.removeRepeatableByKey(job.key);
             }
+            const existingStockRepeats = await this.queues.stockSync.getRepeatableJobs();
+            for (const job of existingStockRepeats) {
+                await this.queues.stockSync.removeRepeatableByKey(job.key);
+            }
 
             // Full Sync
             await this.queues.fullSync.add(
@@ -447,6 +533,17 @@ class DiaWorker {
                 { type: 'scheduled' },
                 {
                     repeat: { cron: lightSyncCron, tz: 'Europe/Istanbul' },
+                    timeout: workerConfig.worker.lightSyncTimeout
+                }
+            );
+
+            // Stok Sync — saatlik tam stok taraması (:10'da, light sync ile çakışmasın)
+            const stockSyncCron = workerConfig.sync.stockSync.schedule;
+            await this.queues.stockSync.add(
+                'scheduled-stock-sync',
+                { type: 'scheduled' },
+                {
+                    repeat: { cron: stockSyncCron, tz: 'Europe/Istanbul' },
                     timeout: workerConfig.worker.lightSyncTimeout
                 }
             );

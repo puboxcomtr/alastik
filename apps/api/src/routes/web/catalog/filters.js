@@ -4,11 +4,12 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebTag = require('../../../models/web/catalog/WebTag');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
-const { MAIN_DIA_FILTERS, getVehicleTypeLabel } = require('../../../config/diaFilters');
+const { MAIN_DIA_FILTERS, getSiteVisibilityFilter, getVehicleTypeLabel } = require('../../../config/diaFilters');
 
-function buildBaseMatch() {
+function buildBaseMatch(site) {
     const baseMatch = {
-        'syncInfo.diaStatus': 'synced'
+        'syncInfo.diaStatus': 'synced',
+        ...(site ? { sites: site } : {})
     };
     MAIN_DIA_FILTERS.forEach(filter => {
         const fieldPath = `diaData.${filter.field}`;
@@ -89,7 +90,7 @@ router.get('/tire-options', async (req, res) => {
     try {
         const { category, tag, brand, q } = req.query;
 
-        const baseMatch = buildBaseMatch();
+        const baseMatch = buildBaseMatch(req.site);
         let productType = 'LASTİK';
 
         // Arama (q) filtresi - search.js'deki mantığın aynısı
@@ -128,7 +129,7 @@ router.get('/tire-options', async (req, res) => {
                             { diaBrand: { $regex: new RegExp(`^${extraText}$`, 'i') } },
                             { name: { $regex: new RegExp(`^${extraText}$`, 'i') } }
                         ],
-                        webVisible: true
+                        [`siteSettings.${req.site}.webVisible`]: true
                     }).select('diaMarkaAck').lean();
 
                     if (brandMatch) {
@@ -174,7 +175,7 @@ router.get('/tire-options', async (req, res) => {
                 virtualSeasonFilter = seasonSlugMap[category];
                 const webCategories = await WebCategory.find({
                     slug: { $in: vehicleCategorySlugs },
-                    webVisible: true
+                    [`siteSettings.${req.site}.webVisible`]: true
                 }).lean();
 
                 const orClauses = webCategories
@@ -193,7 +194,7 @@ router.get('/tire-options', async (req, res) => {
                 // Normal kategori
                 const webCategory = await WebCategory.findOne({
                     slug: category,
-                    webVisible: true
+                    [`siteSettings.${req.site}.webVisible`]: true
                 }).lean();
 
                 if (webCategory && webCategory.diaCategory) {
@@ -219,6 +220,7 @@ router.get('/tire-options', async (req, res) => {
         // Etiket filtresi
         if (tag) {
             const webTag = await WebTag.findOne({
+                site: req.site,
                 seoUrl: tag,
                 isActive: true
             }).lean();
@@ -235,7 +237,7 @@ router.get('/tire-options', async (req, res) => {
                     { seoUrl: brand },
                     { slug: brand }
                 ],
-                webVisible: true
+                [`siteSettings.${req.site}.webVisible`]: true
             }).select('diaBrand diaMarkaAck').lean();
 
             if (webBrand) {
@@ -321,10 +323,11 @@ router.get('/tire-options', async (req, res) => {
                         const displayName = webBrand?.customName || webBrand?.name || b._id;
                         return { value: b._id, label: displayName, count: b.count };
                     })),
+                    // Hesaplanamıyorsa uydurma aralık döndürülmez; vitrin filtreyi gizler
                     priceRange: priceRange[0] ? {
                         min: Math.floor(priceRange[0].minPrice),
                         max: Math.ceil(priceRange[0].maxPrice)
-                    } : { min: 0, max: 10000 },
+                    } : null,
                     jantGenislikleri: sortNumeric(jantGenislikleri.map(j => ({ value: j._id, label: j._id, count: j.count }))),
                     jantCaplari: sortNumeric(jantCaplari.map(j => ({ value: String(j._id).replace(/[^\d]/g, ''), label: j._id, count: j.count }))),
                     bijonSayilari: sortNumeric(bijonSayilari.map(b => ({ value: b._id, label: b._id, count: b.count }))),
@@ -464,10 +467,11 @@ router.get('/tire-options', async (req, res) => {
                     const slug = o._id.split('(')[0].trim().toLowerCase().replace(/\s+/g, '-');
                     return { value: slug, label: o._id, count: o.count };
                 }),
+                // Hesaplanamıyorsa uydurma aralık döndürülmez; vitrin filtreyi gizler
                 priceRange: priceRange[0] ? {
                     min: Math.floor(priceRange[0].minPrice),
                     max: Math.ceil(priceRange[0].maxPrice)
-                } : { min: 0, max: 10000 },
+                } : null,
                 seasons: (() => {
                     const merged = {};
                     seasons.forEach(s => {
@@ -499,9 +503,11 @@ router.get('/chain-options', async (req, res) => {
 
         const baseMatch = {
             'syncInfo.diaStatus': 'synced',
-            'customData.webVisible': true,
             'diaData.durum': 'A',
-            'diaData.ozelkod7kodu': 'ZİNCİR'
+            'diaData.ozelkod7kodu': 'ZİNCİR',
+            ...(req.site ? { sites: req.site } : {}),
+            // Görünürlük: site ayarı > ortak değer
+            $and: [getSiteVisibilityFilter(req.site)]
         };
 
         MAIN_DIA_FILTERS.forEach(filter => {

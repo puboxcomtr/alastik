@@ -143,7 +143,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                 <div className="min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
                     <div className="product__information d-flex justify-content-between gap-2 mb-2">
                         <div>
-                            {brandLogo ? (
+                            {/* Marka gizle açıksa kartta marka gösterilmez */}
+                            {product.customData?.hideBrand !== true && (brandLogo ? (
                                 <Image
                                     src={brandLogo}
                                     alt={brandName || 'Marka'}
@@ -153,7 +154,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 />
                             ) : (
                                 <span className="fw-medium fs-sm">{brandInfo?.name || brandName || 'Marka Yok'}</span>
-                            )}
+                            ))}
                         </div>
                         {/* Rating */}
                         <div className='d-flex align-items-center'>
@@ -187,13 +188,14 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </h3>
 
                     <div className="d-flex justify-content-between align-items-center mb-2">
-                        {product.diaData?.ekalan5 ? (
+                        {product.diaData?.ekalan5 && product.customData?.hideProductionDate !== true ? (
                             <span className="fs-xs text-body-secondary">
                                 Üretim Tarihi {product.diaData.ekalan5}
                             </span>
                         ) : <span />}
                         <span className="fs-xs fw-semibold">
-                            {product.diaData?.gercek_stok > 0 ? (
+                            {/* Stok gizle açıksa kartta stok adedi gösterilmez */}
+                            {product.customData?.hideStock !== true && (product.diaData?.gercek_stok > 0 ? (
                                 <>
                                     <span className="text-body-secondary">Stok:</span>
                                     <span className="text-success ms-1">
@@ -202,7 +204,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 </>
                             ) : (
                                 <span className="text-danger">Stok Sorunuz</span>
-                            )}
+                            ))}
                         </span>
                     </div>
 

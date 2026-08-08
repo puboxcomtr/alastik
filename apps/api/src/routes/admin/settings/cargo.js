@@ -6,7 +6,7 @@ const XmlShippingPriceUpdaterService = require('../../../services/web/cargo/XmlS
 // XML kargo değişince ürünlerin kargo dahil fiyatlarını güncelle (fire-and-forget)
 const triggerShippingUpdate = (cargo) => {
     if (cargo?.productType !== 'xml_integration') return;
-    XmlShippingPriceUpdaterService.updateAll()
+    XmlShippingPriceUpdaterService.updateAll(cargo.site)
         .then(r => console.log('[Cargo] Kargo dahil fiyatlar güncellendi:', r.updated))
         .catch(e => console.error('[Cargo] Fiyat güncelleme hatası:', e.message));
 };
@@ -27,7 +27,8 @@ router.get('/', async (req, res) => {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
-        const filter = {};
+        // Yalnızca seçili sitenin kargoları
+        const filter = { site: req.site };
 
         if (search) {
             filter.$or = [
@@ -70,7 +71,7 @@ router.get('/', async (req, res) => {
 // Tekil
 router.get('/:id', async (req, res) => {
     try {
-        const cargo = await Cargo.findById(req.params.id).lean();
+        const cargo = await Cargo.findOne({ _id: req.params.id, site: req.site }).lean();
 
         if (!cargo) {
             return res.status(404).json({
@@ -162,7 +163,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const existing = await Cargo.findOne({ code: code.toLowerCase() });
+        const existing = await Cargo.findOne({ code: code.toLowerCase(), site: req.site });
         if (existing) {
             return res.status(400).json({
                 success: false,
@@ -171,6 +172,7 @@ router.post('/', async (req, res) => {
         }
 
         const cargo = await Cargo.create({
+            site: req.site,
             name: name.trim(),
             code: code.toLowerCase().trim(),
             logo: logo || '',
@@ -216,7 +218,7 @@ router.put('/:id', async (req, res) => {
             freeShippingDesiLimit
         } = req.body;
 
-        const cargo = await Cargo.findById(req.params.id);
+        const cargo = await Cargo.findOne({ _id: req.params.id, site: req.site });
         if (!cargo) {
             return res.status(404).json({
                 success: false,
@@ -227,6 +229,7 @@ router.put('/:id', async (req, res) => {
         if (code && code.toLowerCase() !== cargo.code) {
             const existing = await Cargo.findOne({
                 code: code.toLowerCase(),
+                site: req.site,
                 _id: { $ne: cargo._id }
             });
             if (existing) {
@@ -324,7 +327,7 @@ router.put('/:id', async (req, res) => {
 // Durum değiştir
 router.patch('/:id/status', async (req, res) => {
     try {
-        const cargo = await Cargo.findById(req.params.id);
+        const cargo = await Cargo.findOne({ _id: req.params.id, site: req.site });
         if (!cargo) {
             return res.status(404).json({
                 success: false,
@@ -354,7 +357,7 @@ router.patch('/:id/status', async (req, res) => {
 // Sil
 router.delete('/:id', async (req, res) => {
     try {
-        const cargo = await Cargo.findByIdAndDelete(req.params.id);
+        const cargo = await Cargo.findOneAndDelete({ _id: req.params.id, site: req.site });
 
         if (!cargo) {
             return res.status(404).json({

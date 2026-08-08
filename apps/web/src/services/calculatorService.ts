@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import type { TireSizeOptions } from '@/src/types/tire-calc/tire-calc';
 
 /**
@@ -8,7 +8,8 @@ import type { TireSizeOptions } from '@/src/types/tire-calc/tire-calc';
 export async function getTireSizeOptions(): Promise<TireSizeOptions | null> {
     try {
         const res = await fetch(API_ENDPOINTS.wheelsize.calculatorSizes(), {
-            next: { revalidate: 86400 }
+            next: { revalidate: 86400 },
+            headers: { ...(await getServerSiteHeaders()) }
         });
 
         if (!res.ok) return null;

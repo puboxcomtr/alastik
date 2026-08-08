@@ -1,6 +1,15 @@
 const mongoose = require('mongoose')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const mailGroupSchema = new mongoose.Schema({
+    // Her site için ayrı alıcı grupları
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     name: {
         type: String,
         required: true,

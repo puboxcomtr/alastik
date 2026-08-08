@@ -74,6 +74,9 @@ export type ProductType = {
   isNew?: boolean
   isBestSeller?: boolean
   isFeatured?: boolean
+  hideBrand?: boolean
+  hideProductionDate?: boolean
+  hideStock?: boolean
 
   // Ürün Özellikleri ve Kategoriler
   properties?: Record<string, any>

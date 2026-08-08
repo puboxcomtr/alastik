@@ -37,7 +37,7 @@ const DiaStockService = require('../../../services/plugins/dia/DiaStockService')
 // CONFIGURATION
 // ============================================
 // DIA filter configurations for stock queries
-const { getProductListFilters } = require('../../../config/diaFilters');
+const { getProductListFilters, getSiteVisibilityFilter, getSyncRules } = require('../../../config/diaFilters');
 
 // ============================================
 // ROUTER INITIALIZATION
@@ -64,7 +64,7 @@ router.get('/', maybeAuth, async (req, res) => {
       page = 1,
       limit = 100
     } = req.query;
-    const webFilter = getProductListFilters();
+    const webFilter = getProductListFilters(req.site);
 
     if (sku && sku.trim() !== '') {
       webFilter['diaData.stokkartkodu'] = sku.trim();
@@ -84,13 +84,20 @@ router.get('/', maybeAuth, async (req, res) => {
     }
 
     if (web_status && web_status.trim() !== '') {
+      const siteVisibleField = `customData.siteData.${req.site}.webVisible`;
       if (web_status.trim() === 'Published') {
         webFilter['syncInfo.webStatus'] = 'active';
-        webFilter['customData.webVisible'] = true;
+        webFilter.$and = [...(webFilter.$and || []), getSiteVisibilityFilter(req.site)];
       } else if (web_status.trim() === 'Draft') {
         webFilter['syncInfo.webStatus'] = 'draft';
       } else if (web_status.trim() === 'Hidden') {
-        webFilter['customData.webVisible'] = false;
+        // Site ayarı false ise veya ayar yokken ortak değer false ise gizli sayılır
+        webFilter.$and = [...(webFilter.$and || []), {
+          $or: [
+            { [siteVisibleField]: false },
+            { [siteVisibleField]: { $exists: false }, 'customData.webVisible': false }
+          ]
+        }];
       }
     }
 
@@ -241,14 +248,15 @@ router.get('/', maybeAuth, async (req, res) => {
       }
     });
 
-    // ozelkod11 - Aktif kontrolü (E/H)
+    // ozelkod11 - Aktif kontrolü (DB ayarındaki koda göre, varsayılan E)
+    const aktifOzelkod = getSyncRules().ozelkod11Kodu || 'E';
     if (req.query.has_ozelkod11 === 'yes') {
-      webFilter['diaData.ozelkod11kodu'] = 'E';
+      webFilter['diaData.ozelkod11kodu'] = aktifOzelkod;
     } else if (req.query.has_ozelkod11 === 'no') {
       ensureAnd().push({
         $or: [
           { 'diaData.ozelkod11kodu': { $exists: false } },
-          { 'diaData.ozelkod11kodu': { $nin: ['E'] } }
+          { 'diaData.ozelkod11kodu': { $nin: [aktifOzelkod] } }
         ]
       });
     }
@@ -272,6 +280,7 @@ router.get('/', maybeAuth, async (req, res) => {
         'customData.seoUrl': 1,
         'customData.webPrice': 1,
         'customData.webVisible': 1,
+        'customData.siteData': 1,
         'customData.featuredImage': 1,
         'customData.customImages': 1,
         'syncInfo.webStatus': 1,
@@ -330,12 +339,15 @@ router.get('/', maybeAuth, async (req, res) => {
             return acc;
           }, {});
 
+        // Seçili sitenin görünürlüğü (site ayarı yoksa ortak değer)
+        const effVisible = customData.siteData?.[req.site]?.webVisible ?? customData.webVisible;
+
         let webStatus = 'Inactive';
-        if (syncInfo.webStatus === 'active' && customData.webVisible) {
+        if (syncInfo.webStatus === 'active' && effVisible) {
           webStatus = 'Published';
         } else if (syncInfo.webStatus === 'draft') {
           webStatus = 'Draft';
-        } else if (!customData.webVisible) {
+        } else if (!effVisible) {
           webStatus = 'Hidden';
         }
 
@@ -374,7 +386,7 @@ router.get('/', maybeAuth, async (req, res) => {
           // Web özel alanları
           seoUrl: customData.seoUrl || null,
           webPrice: customData.webPrice || null,
-          webVisible: customData.webVisible !== undefined ? customData.webVisible : true,
+          webVisible: effVisible !== undefined ? effVisible : true,
 
           // Ürün özellikleri
           properties: properties,
@@ -408,7 +420,7 @@ router.get('/', maybeAuth, async (req, res) => {
 router.get('/:id', maybeAuth, async (req, res) => {
   try {
     const id = String(req.params.id);
-    const webProduct = await WebProduct.findOne({ _key: id })
+    const webProduct = await WebProduct.findOne({ _key: id, sites: req.site })
       .select({
         _key: 1,
         'diaData.aciklama': 1,
@@ -444,6 +456,17 @@ router.get('/:id', maybeAuth, async (req, res) => {
     }
 
     const { diaData = {}, customData = {}, syncInfo = {} } = webProduct;
+
+    // Seçili sitenin değerleri etkin değer olarak yansıtılır (yoksa ortak alanlar)
+    const siteData = customData.siteData?.[req.site] || {};
+    if (siteData.seoTitle !== undefined) customData.seoTitle = siteData.seoTitle;
+    if (siteData.seoDescription !== undefined) customData.seoDescription = siteData.seoDescription;
+    if (siteData.shortDescription !== undefined) customData.shortDescription = siteData.shortDescription;
+    if (siteData.webVisible !== undefined) customData.webVisible = siteData.webVisible;
+    if (siteData.webOrder !== undefined) customData.webOrder = siteData.webOrder;
+    const siteDescription = customData.siteDescriptions?.[req.site];
+    if (siteDescription) customData.customDescription = siteDescription;
+
     let images = [];
 
     if (customData.customImages && customData.customImages.length > 0) {
@@ -554,6 +577,9 @@ router.get('/:id', maybeAuth, async (req, res) => {
       isNew: customData.isNew || false,
       isBestSeller: customData.isBestSeller || false,
       isFeatured: customData.isFeatured || false,
+      hideBrand: customData.hideBrand === true,
+      hideProductionDate: customData.hideProductionDate === true,
+      hideStock: customData.hideStock === true,
 
       // Ürün özellikleri
       properties: {
@@ -601,6 +627,9 @@ router.patch('/:id', maybeAuth, [
   body('seoKeywords').optional().isArray().withMessage('SEO anahtar kelimeleri array olmalıdır'),
   body('delivery').optional().isIn(['same_day', 'next_day', 'next_week']).withMessage('Geçersiz teslimat seçeneği'),
   body('webVisible').optional().isBoolean().withMessage('Web görünürlük boolean olmalıdır'),
+  body('hideBrand').optional().isBoolean().withMessage('Marka gizleme alanı boolean olmalıdır'),
+  body('hideProductionDate').optional().isBoolean().withMessage('Üretim tarihi gizleme alanı boolean olmalıdır'),
+  body('hideStock').optional().isBoolean().withMessage('Stok gizleme alanı boolean olmalıdır'),
   body('webPrice').optional().isFloat({ min: 0 }).withMessage('Web fiyatı 0 veya daha büyük olmalıdır'),
   body('webDiscount').optional().isFloat({ min: 0, max: 100 }).withMessage('İndirim 0-100 arasında olmalıdır'),
   body('minOrderQuantity').optional().isInt({ min: 1 }).withMessage('Minimum sipariş adedi 1 veya daha büyük olmalıdır')
@@ -656,11 +685,16 @@ router.patch('/:id', maybeAuth, [
       // Etiketler
       isNew,
       isBestSeller,
-      isFeatured
+      isFeatured,
+
+      // Marka / üretim tarihi / stok gizleme (vitrin/kategori kartlarında gösterilmez)
+      hideBrand,
+      hideProductionDate,
+      hideStock
     } = req.body;
 
     // WebProduct'ı bul
-    const existingProduct = await WebProduct.findOne({ _key: productId });
+    const existingProduct = await WebProduct.findOne({ _key: productId, sites: req.site });
     if (!existingProduct) {
       return res.status(404).json({
         success: false,
@@ -685,16 +719,18 @@ router.patch('/:id', maybeAuth, [
 
     // Güncelleme objesi oluştur - sadece gönderilen alanları güncelle
     const updateData = {};
+    // Seçili siteye özel yazılan alanlar (customData.siteData.<slug>)
+    const siteDataPath = `customData.siteData.${req.site}`;
 
-    // SEO Bilgileri
-    if (seoTitle !== undefined) updateData['customData.seoTitle'] = seoTitle.trim();
-    if (seoDescription !== undefined) updateData['customData.seoDescription'] = seoDescription.trim();
+    // SEO Bilgileri (metinler siteye özel; seoUrl ortak — ürün URL kimliği tek)
+    if (seoTitle !== undefined) updateData[`${siteDataPath}.seoTitle`] = seoTitle.trim();
+    if (seoDescription !== undefined) updateData[`${siteDataPath}.seoDescription`] = seoDescription.trim();
     if (seoUrl !== undefined) updateData['customData.seoUrl'] = seoUrl.trim().toLowerCase();
     if (seoKeywords !== undefined) updateData['customData.seoKeywords'] = seoKeywords;
 
-    // Web Görünüm
-    if (webVisible !== undefined) updateData['customData.webVisible'] = Boolean(webVisible);
-    if (webOrder !== undefined) updateData['customData.webOrder'] = Number(webOrder) || 0;
+    // Web Görünüm (görünürlük ve sıra siteye özel)
+    if (webVisible !== undefined) updateData[`${siteDataPath}.webVisible`] = Boolean(webVisible);
+    if (webOrder !== undefined) updateData[`${siteDataPath}.webOrder`] = Number(webOrder) || 0;
     if (webTags !== undefined) updateData['customData.webTags'] = Array.isArray(webTags) ? webTags : [];
     if (webCategory !== undefined) updateData['customData.webCategory'] = webCategory;
     if (webSubCategory !== undefined) updateData['customData.webSubCategory'] = webSubCategory;
@@ -702,9 +738,9 @@ router.patch('/:id', maybeAuth, [
     // Kargo Süresi
     if (delivery !== undefined) updateData['customData.delivery'] = delivery;
 
-    // İçerik
-    if (customDescription !== undefined) updateData['customData.customDescription'] = customDescription;
-    if (shortDescription !== undefined) updateData['customData.shortDescription'] = shortDescription;
+    // İçerik (açıklamalar siteye özel)
+    if (customDescription !== undefined) updateData[`customData.siteDescriptions.${req.site}`] = customDescription;
+    if (shortDescription !== undefined) updateData[`${siteDataPath}.shortDescription`] = shortDescription;
 
     // Fiyatlandırma
     if (webPrice !== undefined) updateData['customData.webPrice'] = webPrice ? Number(webPrice) : null;
@@ -721,6 +757,9 @@ router.patch('/:id', maybeAuth, [
     if (isNew !== undefined) updateData['customData.isNew'] = Boolean(isNew);
     if (isBestSeller !== undefined) updateData['customData.isBestSeller'] = Boolean(isBestSeller);
     if (isFeatured !== undefined) updateData['customData.isFeatured'] = Boolean(isFeatured);
+    if (hideBrand !== undefined) updateData['customData.hideBrand'] = Boolean(hideBrand);
+    if (hideProductionDate !== undefined) updateData['customData.hideProductionDate'] = Boolean(hideProductionDate);
+    if (hideStock !== undefined) updateData['customData.hideStock'] = Boolean(hideStock);
 
     // Görseller
     if (req.body.customImages !== undefined) {
@@ -743,7 +782,7 @@ router.patch('/:id', maybeAuth, [
 
     // Güncelleme işlemini yap
     const updatedProduct = await WebProduct.findOneAndUpdate(
-      { _key: productId },
+      { _key: productId, sites: req.site },
       { $set: updateData },
       {
         new: true,
@@ -885,7 +924,7 @@ router.patch('/:id/synchronization', maybeAuth, async (req, res) => {
     const productId = String(req.params.id);
     const { synchronization } = req.body;
 
-    const product = await WebProduct.findOne({ _key: productId });
+    const product = await WebProduct.findOne({ _key: productId, sites: req.site });
     if (!product) {
       return res.status(404).json({
         success: false,

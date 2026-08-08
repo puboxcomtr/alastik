@@ -4,6 +4,14 @@ const crypto = require('crypto');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebXml = require('../../../models/plugins/xml/WebXml');
+const { getSyncRules } = require('../../../config/diaFilters');
+const { DEFAULT_SITE } = require('../../../config/sites');
+
+// XML ürünleri web listelerinde görünsün diye aktif ozelkod11 koduyla damgalanır
+function getAktifOzelkod() {
+    const kod = getSyncRules().ozelkod11Kodu || 'E';
+    return { kod, raw: `${kod} (${kod})` };
+}
 
 class XmlWebProductSyncService {
 
@@ -177,6 +185,19 @@ class XmlWebProductSyncService {
             diaKeyCandidates[diaKey].push(xmlProduct);
         }
 
+        // Hiçbir XML kaynağında kaydı kalmayan (eşleştirmesi kaldırılmış) web ürünlerini sil
+        const knownDiaKeys = Object.keys(diaKeyCandidates);
+        if (knownDiaKeys.length > 0) {
+            const keyVariants = [...knownDiaKeys, ...knownDiaKeys.map(Number).filter(n => !Number.isNaN(n))];
+            const orphanResult = await WebProduct.deleteMany({
+                'syncInfo.syncSource': 'xml_integration',
+                _key: { $nin: keyVariants }
+            });
+            if (orphanResult.deletedCount > 0) {
+                console.log(`[XmlWebProductSync] fullSync — ${orphanResult.deletedCount} sahipsiz ürün silindi (XML kaynağında kaydı yok)`);
+            }
+        }
+
         const diaKeyMap = {};
         const invalidDiaKeys = [];
         for (const [diaKey, candidates] of Object.entries(diaKeyCandidates)) {
@@ -294,8 +315,8 @@ class XmlWebProductSyncService {
                         ...diaData,
                         gercek_stok: gercekStok,
                         anabirimdesi: parseFloat(diaData.anabirimdesi) || 0,
-                        ozelkod11: 'E (E)',
-                        ozelkod11kodu: 'E',
+                        ozelkod11: getAktifOzelkod().raw,
+                        ozelkod11kodu: getAktifOzelkod().kod,
                         m_birimler: diaData.m_birimler?.length > 0 ? [{
                             ...diaData.m_birimler[0],
                             fiyat1: hamFiyat,
@@ -341,6 +362,11 @@ class XmlWebProductSyncService {
                         updateOne: {
                             filter: { _key: diaKey },
                             update: {
+                                // sites yalnızca ilk eklemede atanır; sonradan yapılan
+                                // site atamaları sync ile ezilmez
+                                $setOnInsert: {
+                                    sites: [DEFAULT_SITE]
+                                },
                                 $set: {
                                     _key: diaKey,
                                     diaData: transformedDiaData,
@@ -390,8 +416,8 @@ class XmlWebProductSyncService {
                                     'diaData.anabirimdesi': parseFloat(diaData.anabirimdesi) || 0,
                                     'diaData.ozelkod5': diaData.ozelkod5 || '',
                                     'diaData.ozelkod5kodu': diaData.ozelkod5kodu || '',
-                                    'diaData.ozelkod11': 'E (E)',
-                                    'diaData.ozelkod11kodu': 'E',
+                                    'diaData.ozelkod11': getAktifOzelkod().raw,
+                                    'diaData.ozelkod11kodu': getAktifOzelkod().kod,
                                     'diaData.m_birimler': guncelBirimler.map((b, i) => i === 0 ? { ...b, fiyat1: hamFiyat, fiyat4: pricing.alastikPrice } : b),
                                     'customData.webPrice': webPrice,
                                     'customData.webVisible': true,

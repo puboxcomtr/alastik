@@ -1,6 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateAdmin } = require('../../middleware/auth');
 
+// ============================================
+// GÜVENLİK KAPISI
+// ============================================
+// Tüm /api/admin/* uçları admin kimlik doğrulaması ister.
+// İstisnalar (kasıtlı public):
+//  - Akakçe / Google Merchant XML feed'leri (dış botlar okur)
+//  - Vitrinin okuduğu GET uçları (tema ve genel ayarlar)
+const PUBLIC_PREFIXES = [
+    '/modules/akakce/feed',
+    '/modules/merchant/feed',
+    // Giriş ucu — token bu uçtan alınır, kapıya takılmamalıdır
+    '/user/auth/login'
+];
+const PUBLIC_GET_PREFIXES = [
+    '/design/settings/theme',
+    '/settings/general',
+    // Vitrin anasayfa slider'ı buradan okur (yalnızca GET; ekleme/silme kapı arkasında kalır)
+    '/design/slider'
+];
+
+const maybeAuth = process.env.DISABLE_AUTH === 'true'
+    ? (req, res, next) => next()
+    : authenticateAdmin;
+
+router.use((req, res, next) => {
+    const path = req.path;
+    if (PUBLIC_PREFIXES.some(p => path === p || path.startsWith(p + '/'))) return next();
+    if (req.method === 'GET') {
+        if (PUBLIC_GET_PREFIXES.some(p => path === p || path.startsWith(p + '/'))) return next();
+        // XML ürün çıktıları dış sistemler tarafından okunur (örn. /integration/xml/webproducts/export.xml)
+        if (path.startsWith('/integration/xml/') && path.endsWith('/export.xml')) return next();
+    }
+    return maybeAuth(req, res, next);
+});
 
 // ============================================
 // CATALOG ROUTES
@@ -35,6 +70,12 @@ router.use('/showcases', showcaseRouter);
 const mediaRouter = require('./catalog/media');
 router.use('/media', mediaRouter);
 
+
+// ============================================
+// DASHBOARD ROUTES
+// ============================================
+const dashboardRoutes = require('./dashboard/ecommerce');
+router.use('/dashboard', dashboardRoutes);
 
 // ============================================
 // ORDERS ROUTES
@@ -145,6 +186,9 @@ router.use('/modules/merchant/feed', merchantFeedRoutes);
 // ============================================
 // AKAKCE ROUTES
 // ============================================
+const akakceFeedRoutes = require('../plugins/akakce/feed');
+router.use('/modules/akakce/feed', akakceFeedRoutes);
+
 const akakceSettingsRoutes = require('../plugins/akakce/settings');
 router.use('/modules/akakce', akakceSettingsRoutes);
 
@@ -153,6 +197,12 @@ router.use('/modules/akakce', akakceSettingsRoutes);
 // ============================================
 const tagSyncRouter = require('./catalog/tagSync');
 router.use('/tags/sync', tagSyncRouter);
+
+// ============================================
+// MONTAJ NOKTALARI ROUTES
+// ============================================
+const montageRoutes = require('./montage/montage');
+router.use('/montage', montageRoutes);
 
 // ============================================
 // MAIL ROUTES

@@ -3,6 +3,7 @@ const router = express.Router()
 
 const SmtpSettings = require('../../../models/admin/mail/smtp/SmtpSettings')
 const MailService = require('../../../services/web/mail/MailService')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const sanitize = (doc) => {
     if (!doc) return null
@@ -19,7 +20,7 @@ const sanitize = (doc) => {
 
 router.get('/', async (req, res) => {
     try {
-        const doc = await SmtpSettings.getSingleton()
+        const doc = await SmtpSettings.getForSite(req.site)
 
         return res.json({ success: true, data: sanitize(doc) })
     } catch (err) {
@@ -37,7 +38,7 @@ router.patch('/', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Zorunlu alanlar eksik' })
         }
 
-        const doc = await SmtpSettings.getSingleton()
+        const doc = await SmtpSettings.getForSite(req.site)
 
         doc.host = host.trim()
         doc.port = Number(port)
@@ -47,7 +48,7 @@ router.patch('/', async (req, res) => {
         doc.senderEmail = (senderEmail || '').trim()
 
         await doc.save()
-        MailService.invalidateCache()
+        MailService.invalidateCache(req.site)
 
         return res.json({
             success: true,
@@ -80,15 +81,16 @@ router.post('/test', async (req, res) => {
             }
             : null
 
-        await MailService.verifyConnection(overrideSettings)
+        await MailService.verifyConnection(overrideSettings, req.site)
 
-        const subject = 'ALastik SMTP Test Maili'
+        const siteName = SITES[req.site]?.name || SITES[DEFAULT_SITE].name
+        const subject = `${siteName} SMTP Test Maili`
 
         const html = `
             <div style="font-family: Arial, sans-serif; padding: 24px; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #1976d2; margin: 0 0 16px;">SMTP Bağlantısı Başarılı</h2>
                 <p style="color: #333; line-height: 1.6;">
-                    Bu mail, ALastik yönetim panelinden gönderilen bir test mailidir.
+                    Bu mail, ${siteName} yönetim panelinden gönderilen bir test mailidir.
                     Eğer bu maili görüyorsanız SMTP ayarlarınız doğru çalışıyor demektir.
                 </p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
@@ -104,7 +106,8 @@ router.post('/test', async (req, res) => {
                 to: recipientEmail.trim(),
                 subject,
                 html,
-                text: 'ALastik SMTP test maili. Bu mail bağlantı testidir.'
+                text: `${siteName} SMTP test maili. Bu mail bağlantı testidir.`,
+                site: req.site
             },
             overrideSettings
         )

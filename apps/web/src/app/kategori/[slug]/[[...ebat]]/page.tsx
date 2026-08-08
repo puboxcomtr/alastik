@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 
 /* Services */
-import { getCategory, getCategoryWithSize, getParentCategory } from '@/src/services/categoryService';
+import { getCategory, getCategoryMenus, getCategoryWithSize, getParentCategory } from '@/src/services/categoryService';
 import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
@@ -16,6 +16,7 @@ import { applyTemplate } from '@/src/utils/seoTemplate';
 import AlastikSidebar from "@components/alastik/category/Sidebar/Content";
 import AlastikBreadcrumb from "@components/alastik/category/Header/Breadcrumb";
 import AlastikCategorySlider from '@components/alastik/category/Top/Slider';
+import AlastikCategoryMenu from '@components/alastik/category/Top/CategoryMenu';
 import AlastikCategoryTop from '@components/alastik/category/Top/Content';
 import AlastikCategoryTireSearch from '@components/alastik/category/Top/CategoryTireSearch';
 import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
@@ -25,6 +26,7 @@ import AlastikPagination from '@components/alastik/category/Pagination/MainPagin
 import LjaSidebar from "@components/lastikjantavm/category/Sidebar/Content";
 import LjaBreadcrumb from "@components/lastikjantavm/category/Header/Breadcrumb";
 import LjaCategorySlider from '@components/lastikjantavm/category/Top/Slider';
+import LjaCategoryMenu from '@components/lastikjantavm/category/Top/CategoryMenu';
 import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
 import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/CategoryTireSearch';
 import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
@@ -99,6 +101,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const Sidebar = site === 'lastikjantavm' ? LjaSidebar : AlastikSidebar;
     const Breadcrumb = site === 'lastikjantavm' ? LjaBreadcrumb : AlastikBreadcrumb;
     const CategorySlider = site === 'lastikjantavm' ? LjaCategorySlider : AlastikCategorySlider;
+    const CategoryMenu = site === 'lastikjantavm' ? LjaCategoryMenu : AlastikCategoryMenu;
     const CategoryTop = site === 'lastikjantavm' ? LjaCategoryTop : AlastikCategoryTop;
     const CategoryTireSearch = site === 'lastikjantavm' ? LjaCategoryTireSearch : AlastikCategoryTireSearch;
     const MobileFilterSort = site === 'lastikjantavm' ? LjaMobileFilterSort : AlastikMobileFilterSort;
@@ -120,6 +123,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const parentCategory = category.parent ? await getParentCategory(category.parent) : null;
     const sizeInfo = hasSize ? parseTireSize(ebat[0]) : null;
     const displayName = category.name;
+
+    // Kategoriye bağlı menüler (seçilmemişse boş dizi döner)
+    const categoryMenus = await getCategoryMenus((category as any).menuIds);
 
     // Showcase ayarlarını al
     const showcaseSettings = await getShowcaseSettings();
@@ -180,7 +186,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                     <Container className="category-page-container">
                         <div className="row-fluid">
                             <Row>
-                                <Col lg={3}>
+                                <Col
+                                 lg={3} className="mt-4">
+                                    {categoryMenus.map((menu: any) => (
+                                        <CategoryMenu key={menu._id} menu={menu} />
+                                    ))}
                                     <Sidebar hideEbatFilters={false} categorySlug={slug} />
                                 </Col>
                                 <Col lg={9}>

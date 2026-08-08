@@ -83,7 +83,7 @@ router.delete('/:id/image', async (req, res) => {
 // GET /api/admin/blogs/:id
 router.get('/:id', async (req, res) => {
     try {
-        const blog = await Blog.findById(req.params.id).lean();
+        const blog = await Blog.findOne({ _id: req.params.id, site: req.site }).lean();
 
         if (!blog) {
             return res.status(404).json({
@@ -161,9 +161,12 @@ router.put('/:id', async (req, res) => {
             }
         }
 
+        // site alanı gövdeden ayıklanır; kayıt başka siteye taşınamaz
+        const { site: _ignoredSite, ...blogPayload } = req.body || {};
+
         const blog = await Blog.findOneAndUpdate(
             { _id: req.params.id, site: req.site },
-            req.body,
+            blogPayload,
             { new: true, runValidators: true }
         );
 

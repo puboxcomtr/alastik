@@ -34,6 +34,27 @@ export const API_ENDPOINTS = {
         detail: (id: string) => `${getBaseUrl()}/admin/tags/${id}`,
         manualSync: () => `${getBaseUrl()}/admin/tags/sync/manual-sync`,
     },
+    dashboard: {
+        ecommerce: () => `${getBaseUrl()}/admin/dashboard/ecommerce`,
+    },
+    montage: {
+        list: () => `${getBaseUrl()}/admin/montage`,
+        detail: (id: string) => `${getBaseUrl()}/admin/montage/${id}`,
+        create: () => `${getBaseUrl()}/admin/montage`,
+        update: (id: string) => `${getBaseUrl()}/admin/montage/${id}`,
+        toggle: (id: string) => `${getBaseUrl()}/admin/montage/${id}/toggle`,
+        delete: (id: string) => `${getBaseUrl()}/admin/montage/${id}`,
+        upload: () => `${getBaseUrl()}/admin/montage/upload`,
+        uploadDocument: () => `${getBaseUrl()}/admin/montage/upload-document`,
+        documentFile: (fileUrl: string) => `${getBaseUrl()}/admin/montage/document-file?file=${encodeURIComponent(fileUrl)}`,
+        serviceProducts: () => `${getBaseUrl()}/admin/montage/service-products`,
+        importTemplate: () => `${getBaseUrl()}/admin/montage/import/template`,
+        import: (confirm?: boolean) => `${getBaseUrl()}/admin/montage/import${confirm ? '?confirm=1' : ''}`,
+    },
+    location: {
+        cities: () => `${getBaseUrl()}/location/cities`,
+        districts: (cityId: string) => `${getBaseUrl()}/location/districts/${cityId}`,
+    },
     mailManagement: {
         list: () => `${getBaseUrl()}/admin/mail-management`,
         detail: (id: string) => `${getBaseUrl()}/admin/mail-management/${id}`,
@@ -92,6 +113,9 @@ export const API_ENDPOINTS = {
         updateStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/status`,
         updatePaymentStatus: (id: string) => `${getBaseUrl()}/admin/orders/${id}/payment-status`,
         verifyPayment: (id: string) => `${getBaseUrl()}/admin/orders/${id}/verify-payment`,
+        manualCollection: (id: string) => `${getBaseUrl()}/admin/orders/${id}/manual-collection`,
+        adminNote: (id: string) => `${getBaseUrl()}/admin/orders/${id}/admin-note`,
+        noteTemplates: () => `${getBaseUrl()}/admin/orders/templates/notes`,
     },
     webxml: {
         list: () => `${getBaseUrl()}/admin/integration/xml`,
@@ -134,6 +158,7 @@ export const API_ENDPOINTS = {
     showcases: {
         list: () => `${getBaseUrl()}/admin/showcases`,
         detail: (id: string) => `${getBaseUrl()}/admin/showcases/${id}`,
+        toggle: (id: string) => `${getBaseUrl()}/admin/showcases/${id}/toggle`,
     },
     blogs: {
         list: () => `${getBaseUrl()}/admin/blogs`,
@@ -158,6 +183,9 @@ export const API_ENDPOINTS = {
         get: () => `${getBaseUrl()}/admin/modules/dia/settings`,
         update: () => `${getBaseUrl()}/admin/modules/dia/settings`,
         testConnection: () => `${getBaseUrl()}/admin/modules/dia/test-connection`,
+        aktarimProducts: (search: string) => `${getBaseUrl()}/admin/modules/dia/aktarim/products?search=${encodeURIComponent(search)}`,
+        aktarimCategories: () => `${getBaseUrl()}/admin/modules/dia/aktarim/categories`,
+        aktarimBrands: () => `${getBaseUrl()}/admin/modules/dia/aktarim/brands`,
         fullSync: () => `${getBaseUrl()}/dia/full-sync`,
     },
     merchantSettings: {
@@ -172,6 +200,7 @@ export const API_ENDPOINTS = {
         priceFields: () => `${getBaseUrl()}/admin/modules/akakce/price-fields`,
         textFields: () => `${getBaseUrl()}/admin/modules/akakce/text-fields`,
         feedUrl: () => `${getBaseUrl()}/admin/modules/akakce/feed`,
+        importProducts: () => `${getBaseUrl()}/admin/modules/akakce/import-products`,
     },
     purchaseLimits: {
         list: () => `${getBaseUrl()}/admin/campaign/purchase-limits`,
@@ -198,11 +227,11 @@ export const API_ENDPOINTS = {
                 sortBy: params.sortBy || 'date',
                 sortOrder: params.sortOrder || 'desc'
             })
-            return `${getBaseUrl()}/media/list?${query}`
+            return `${getBaseUrl()}/admin/media/list?${query}`
         },
-        upload: (folder: string) => `${getBaseUrl()}/media/upload?folder=${folder}`,
-        folders: () => `${getBaseUrl()}/media/folders`,
-        delete: (fileId: string) => `${getBaseUrl()}/media/${fileId}`,
+        upload: (folder: string) => `${getBaseUrl()}/admin/media/upload?folder=${folder}`,
+        folders: () => `${getBaseUrl()}/admin/media/folders`,
+        delete: (fileId: string) => `${getBaseUrl()}/admin/media/${fileId}`,
     },
 }
 
@@ -213,18 +242,28 @@ export async function fetchAPI(url: string, options?: RequestInit) {
         token = session?.user?.accessToken
     }
 
+    const isFormData = options?.body instanceof FormData
+
+    // options en basta yayilir; headers en sonda birlestirilir ki
+    // cagiran tarafin verdigi ozel header'lar token ve X-Site'i ezmesin
     const response = await fetch(url, {
+        ...options,
         headers: {
-            'Content-Type': 'application/json',
+            ...(!isFormData && { 'Content-Type': 'application/json' }),
             ...getSiteHeader(),
             ...(token && { 'Authorization': `Bearer ${token}` }),
             ...options?.headers,
         },
-        ...options,
     })
 
     if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`)
+        // Backend'in döndürdüğü açıklayıcı mesajı koru (örn. "Bu menü sitede kullanılıyor")
+        let message = `API Error: ${response.statusText}`
+        try {
+            const body = await response.json()
+            if (body?.message) message = body.message
+        } catch { }
+        throw new Error(message)
     }
 
     return response.json()

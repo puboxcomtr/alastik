@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
     try {
         const { category } = req.query;
 
-        const filter = { isActive: true };
+        const filter = { isActive: true, site: req.site };
         if (category) {
             filter.category = category;
         }
@@ -42,7 +42,8 @@ router.get('/category/:category', async (req, res) => {
 
         const translations = await WebTranslation.find({
             category,
-            isActive: true
+            isActive: true,
+            site: req.site
         })
             .select('key value')
             .lean();

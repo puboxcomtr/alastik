@@ -10,7 +10,7 @@ router.get('/options/categories', async (req, res) => {
         const { level } = req.query;
 
         const filter = {
-            webVisible: true
+            [`siteSettings.${req.site}.webVisible`]: true
         };
 
         if (level) {
@@ -45,7 +45,7 @@ router.get('/options/categories', async (req, res) => {
 // Sayfaları getir (dropdown için)
 router.get('/options/pages', async (req, res) => {
     try {
-        const pages = await Page.find({ status: 'published' })
+        const pages = await Page.find({ status: 'published', site: req.site })
             .select('_id title slug')
             .sort({ title: 1 })
             .lean();
@@ -63,13 +63,72 @@ router.get('/options/pages', async (req, res) => {
         });
     }
 });
+// Blog yazılarını getir (dropdown için)
+router.get('/options/blogs', async (req, res) => {
+    try {
+        const WebBlog = require('../../../models/web/content/WebBlog');
+        const blogs = await WebBlog.find({ status: 'published' })
+            .select('_id title slug')
+            .sort({ publishedAt: -1, title: 1 })
+            .lean();
+
+        res.json({
+            success: true,
+            data: blogs
+        });
+    } catch (error) {
+        console.error('Blog listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Blog yazıları listelenemedi',
+            error: error.message
+        });
+    }
+});
+// Ürünleri ara (dropdown için — katalog büyük olduğundan sunucuda aranır)
+router.get('/options/products', async (req, res) => {
+    try {
+        const WebProduct = require('../../../models/web/catalog/WebProduct');
+        const { q } = req.query;
+        const term = String(q || '').trim();
+
+        const filter = { sites: req.site };
+        if (term) {
+            const rx = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            filter.$or = [{ 'diaData.aciklama': rx }, { 'diaData.stokkartkodu': rx }];
+        }
+
+        const products = await WebProduct.find(filter)
+            .select('_key diaData.aciklama diaData.stokkartkodu customData.seoUrl')
+            .limit(30)
+            .lean();
+
+        res.json({
+            success: true,
+            data: products.map(p => ({
+                _id: p._key,
+                title: p.diaData?.aciklama || p.diaData?.stokkartkodu || p._key,
+                sku: p.diaData?.stokkartkodu || '',
+                slug: p.customData?.seoUrl || ''
+            }))
+        });
+    } catch (error) {
+        console.error('Ürün listele hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ürünler listelenemedi',
+            error: error.message
+        });
+    }
+});
 // Ana menüleri getir (alt menü eklerken kullanılacak)
 router.get('/options/parent-menus', async (req, res) => {
     try {
         const { displayArea } = req.query;
+        // Üst menü seçenekleri: menü grupları (1) ve üst bar öğeleri (2) — açılır öğe (3) üst olamaz
         const filter = {
             site: req.site,
-            rowLevel: 1,
+            rowLevel: { $in: [1, 2] },
             isActive: true
         };
 
@@ -78,8 +137,8 @@ router.get('/options/parent-menus', async (req, res) => {
         }
 
         const parentMenus = await Menu.find(filter)
-            .select('_id name displayArea')
-            .sort({ order: 1 })
+            .select('_id name displayArea rowLevel menuType')
+            .sort({ rowLevel: 1, order: 1 })
             .lean();
 
         res.json({
@@ -134,6 +193,46 @@ router.get('/', async (req, res) => {
                     }
                 } catch (err) {
                     console.error('Kategori bulunamadı:', menu.linkData.categoryId, err);
+                }
+            }
+
+            // Ürün menüsü ise
+            if (menu.menuType === 'product' && menu.linkData?.productId) {
+                try {
+                    const WebProduct = require('../../../models/web/catalog/WebProduct');
+                    const product = await WebProduct.findOne({ _key: menu.linkData.productId })
+                        .select('diaData.aciklama customData.seoUrl')
+                        .lean();
+
+                    if (product) {
+                        enriched.linkData = {
+                            ...enriched.linkData,
+                            productTitle: product.diaData?.aciklama,
+                            productUrl: product.customData?.seoUrl
+                        };
+                    }
+                } catch (err) {
+                    console.error('Ürün bulunamadı:', menu.linkData.productId, err);
+                }
+            }
+
+            // Blog menüsü ise
+            if (menu.menuType === 'blog' && menu.linkData?.blogId) {
+                try {
+                    const WebBlog = require('../../../models/web/content/WebBlog');
+                    const blog = await WebBlog.findById(menu.linkData.blogId)
+                        .select('title slug')
+                        .lean();
+
+                    if (blog) {
+                        enriched.linkData = {
+                            ...enriched.linkData,
+                            blogTitle: blog.title,
+                            blogUrl: blog.slug
+                        };
+                    }
+                } catch (err) {
+                    console.error('Blog bulunamadı:', menu.linkData.blogId, err);
                 }
             }
 
@@ -235,14 +334,14 @@ router.post('/', async (req, res) => {
         }
 
         // 'heading' eklendi
-        if (!menuType || !['link', 'category', 'page', 'heading'].includes(menuType)) {
+        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
             });
         }
 
-        if (!displayArea || !['header', 'footer', 'mobile'].includes(displayArea)) {
+        if (!displayArea || !['header', 'footer', 'mobile', 'general'].includes(displayArea)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir gösterilecek alan seçmelisiniz'
@@ -271,20 +370,51 @@ router.post('/', async (req, res) => {
             });
         }
 
+        if (menuType === 'product' && !linkData.productId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ürün seçimi zorunludur'
+            });
+        }
+
+        if (menuType === 'blog' && !linkData.blogId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Blog yazısı seçimi zorunludur'
+            });
+        }
+
         if (menuType === 'page' && !linkData.pageId) {
             return res.status(400).json({
                 success: false,
                 message: 'Sayfa seçimi zorunludur'
             });
         }
+        // Seviye üst menüden türetilir: üst öğe seçildiyse onun bir altı olur (en fazla 3)
+        let finalRowLevel = rowLevel || 1;
+        let finalParentId = null;
+        if (parentId) {
+            const parentMenu = await Menu.findOne({ _id: parentId, site: req.site });
+            if (!parentMenu) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Seçilen üst menü bulunamadı'
+                });
+            }
+            finalParentId = parentId;
+            finalRowLevel = Math.min((parentMenu.rowLevel || 1) + 1, 3);
+        } else {
+            finalRowLevel = 1;
+        }
+
         const newMenu = new Menu({
             name: name.trim(),
             menuType,
             linkData,
             openNewTab: openNewTab || false,
             displayArea,
-            rowLevel: rowLevel || 1,
-            parentId: rowLevel === 2 ? parentId : null,
+            rowLevel: finalRowLevel,
+            parentId: finalParentId,
             order: order || 0,
             isActive: isActive !== undefined ? isActive : true,
             site: req.site
@@ -329,7 +459,7 @@ router.put('/:id', async (req, res) => {
         }
 
         // 'heading' eklendi
-        if (!menuType || !['link', 'category', 'page', 'heading'].includes(menuType)) {
+        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
@@ -358,6 +488,20 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        if (menuType === 'product' && !linkData.productId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ürün seçimi zorunludur'
+            });
+        }
+
+        if (menuType === 'blog' && !linkData.blogId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Blog yazısı seçimi zorunludur'
+            });
+        }
+
         if (menuType === 'page' && !linkData.pageId) {
             return res.status(400).json({
                 success: false,
@@ -370,8 +514,21 @@ router.put('/:id', async (req, res) => {
         menu.linkData = linkData;
         menu.openNewTab = openNewTab;
         menu.displayArea = displayArea;
-        menu.rowLevel = rowLevel;
-        menu.parentId = rowLevel === 2 ? parentId : null;
+        // Seviye üst menüden türetilir; parentId gönderilmediyse mevcut hiyerarşi korunur
+        if (parentId) {
+            const parentMenu = await Menu.findOne({ _id: parentId, site: req.site });
+            if (!parentMenu) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Seçilen üst menü bulunamadı'
+                });
+            }
+            menu.parentId = parentId;
+            menu.rowLevel = Math.min((parentMenu.rowLevel || 1) + 1, 3);
+        } else if (rowLevel === 1) {
+            menu.parentId = null;
+            menu.rowLevel = 1;
+        }
         menu.order = order;
         menu.isActive = isActive;
 
@@ -392,6 +549,51 @@ router.put('/:id', async (req, res) => {
     }
 });
 // Menü sil
+// Menü grubunu (görüntüleme alanı) topluca sil — sitede kullanılıyorsa engellenir
+router.delete('/area/:area', async (req, res) => {
+    try {
+        const { area } = req.params;
+
+        if (!['header', 'footer', 'mobile', 'general'].includes(area)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Geçersiz menü alanı'
+            });
+        }
+
+        const total = await Menu.countDocuments({ site: req.site, displayArea: area });
+        if (total === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bu menüde silinecek öğe yok'
+            });
+        }
+
+        // Aktif öğesi olan menü sitede kullanılıyor demektir — silinemez
+        const activeCount = await Menu.countDocuments({ site: req.site, displayArea: area, isActive: true });
+        if (activeCount > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Bu menü sitede kullanılıyor: ${activeCount} aktif öğe var. Silmek için önce öğeleri pasife alın.`
+            });
+        }
+
+        const result = await Menu.deleteMany({ site: req.site, displayArea: area });
+
+        res.json({
+            success: true,
+            message: `Menü silindi (${result.deletedCount} öğe kaldırıldı)`
+        });
+    } catch (error) {
+        console.error('Menü grubu silme hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Menü silinemedi',
+            error: error.message
+        });
+    }
+});
+
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;

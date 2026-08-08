@@ -26,6 +26,7 @@ export interface Category {
     filteredProductCount?: number;
     totalStock: number;
     sliderId?: string | null;
+    menuIds?: string[] | null;
     description: string | null;
     createdAt: string;
     updatedAt: string;

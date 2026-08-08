@@ -19,7 +19,8 @@ import Box from '@mui/material/Box'
 import { toast } from 'react-toastify'
 import type { DiaSettings, DiaConnectionStatus, DiaSettingsResponse, DiaTestConnectionPayload } from '@/types/apps/diaTypes'
 import { defaultDiaSettings } from '@/types/apps/diaTypes'
-import { API_ENDPOINTS } from '@libs/api'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import TransferSettingsCard from '@/views/modules/dia/TransferSettingsCard'
 
 
 export default function Settings() {
@@ -45,14 +46,14 @@ export default function Settings() {
   const fetchSettings = async () => {
     try {
       setLoading(true)
-      const res = await fetch(API_ENDPOINTS.diaSettings.get())
-      const data = await res.json()
+      const data = await fetchAPI(API_ENDPOINTS.diaSettings.get())
 
       if (data.success && data.data) {
         setSettings(prev => ({
           ...prev,
           ...data.data,
           siparis: { ...prev.siparis, ...data.data.siparis },
+          aktarim: { ...prev.aktarim, ...data.data.aktarim },
           sync: { ...prev.sync, ...data.data.sync }
         }))
       }
@@ -64,8 +65,7 @@ export default function Settings() {
   }
   const fetchSyncStats = async () => {
     try {
-      const res = await fetch(API_ENDPOINTS.diaSync.syncStats())
-      const data = await res.json()
+      const data = await fetchAPI(API_ENDPOINTS.diaSync.syncStats())
       if (data.success) setSyncStats(data.data)
     } catch {
     }
@@ -73,12 +73,10 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      const res = await fetch(API_ENDPOINTS.diaSettings.update(), {
+      const data = await fetchAPI(API_ENDPOINTS.diaSettings.update(), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
       })
-      const data = await res.json()
 
       if (data.success) {
         toast.success('Ayarlar başarıyla kaydedildi')
@@ -97,9 +95,8 @@ export default function Settings() {
     try {
       setTesting(true)
       setConnectionStatus('idle')
-      const res = await fetch(API_ENDPOINTS.diaSettings.testConnection(), {
+      const data = await fetchAPI(API_ENDPOINTS.diaSettings.testConnection(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           baseURL: settings.baseURL,
           apiKey: settings.apiKey,
@@ -109,7 +106,6 @@ export default function Settings() {
           donemKodu: settings.donemKodu
         })
       })
-      const data = await res.json()
 
       if (data.success) {
         setConnectionStatus('success')
@@ -131,11 +127,9 @@ export default function Settings() {
       setSyncing(true)
       setSyncProgress({ percent: 0, message: 'Başlatılıyor...', step: 0, totalSteps: 9 })
 
-      const res = await fetch(API_ENDPOINTS.diaSync.fullSync(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+      const data = await fetchAPI(API_ENDPOINTS.diaSync.fullSync(), {
+        method: 'POST'
       })
-      const data = await res.json()
 
       if (!data.success) {
         toast.error(data.message || 'Senkronizasyon başlatılamadı')
@@ -156,8 +150,7 @@ export default function Settings() {
 
       const pollInterval = setInterval(async () => {
         try {
-          const statusRes = await fetch(API_ENDPOINTS.diaSync.jobProgress(jobId, 'full'))
-          const statusData = await statusRes.json()
+          const statusData = await fetchAPI(API_ENDPOINTS.diaSync.jobProgress(jobId, 'full'))
 
           if (!statusData.success) return
 
@@ -204,11 +197,9 @@ export default function Settings() {
     try {
       setLightSyncing(true)
 
-      const res = await fetch(API_ENDPOINTS.diaSync.lightSync(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+      const data = await fetchAPI(API_ENDPOINTS.diaSync.lightSync(), {
+        method: 'POST'
       })
-      const data = await res.json()
 
       if (!data.success) {
         toast.error(data.message || 'Güncelleme başlatılamadı')
@@ -227,8 +218,7 @@ export default function Settings() {
 
       const pollInterval = setInterval(async () => {
         try {
-          const statusRes = await fetch(API_ENDPOINTS.diaSync.jobProgress(jobId, 'light'))
-          const statusData = await statusRes.json()
+          const statusData = await fetchAPI(API_ENDPOINTS.diaSync.jobProgress(jobId, 'light'))
 
           if (!statusData.success) return
 
@@ -581,9 +571,62 @@ export default function Settings() {
                         helperText="Dakika bazında (varsayılan: 15)"
                       />
                     </Grid>
+
+                    <Grid size={{ xs: 12 }}>
+                      <Divider sx={{ my: 1 }} />
+                    </Grid>
+
+                    <Grid size={{ xs: 4 }}>
+                      <TextField
+                        fullWidth
+                        label="Durum Filtresi (DİA)"
+                        value={settings.sync.durumFiltre}
+                        onChange={e => updateSync('durumFiltre', e.target.value)}
+                        size="small"
+                        placeholder="A"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 4 }}>
+                      <TextField
+                        fullWidth
+                        label="Özel Kod 11 Filtresi"
+                        value={settings.sync.ozelkod11Filtre}
+                        onChange={e => updateSync('ozelkod11Filtre', e.target.value)}
+                        size="small"
+                        placeholder="E"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 4 }}>
+                      <TextField
+                        fullWidth
+                        label="B2C Göster Filtresi"
+                        value={settings.sync.b2cFiltre}
+                        onChange={e => updateSync('b2cFiltre', e.target.value)}
+                        size="small"
+                        placeholder="Boş = kapalı"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={settings.sync.hashKontrol}
+                            onChange={e => updateSync('hashKontrol', e.target.checked)}
+                          />
+                        }
+                        label="Hash Kontrolü (değişmeyen ürünleri senkronda atla)"
+                      />
+                    </Grid>
                   </Grid>
                 </CardContent>
               </Card>
+            </Grid>
+            {/* Aktarım Ayarları */}
+            <Grid size={{ xs: 12 }}>
+              <TransferSettingsCard
+                value={settings.aktarim}
+                onChange={aktarim => setSettings(prev => ({ ...prev, aktarim }))}
+              />
             </Grid>
           </Grid>
           {/* Sağ Kolon */}

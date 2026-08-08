@@ -18,8 +18,12 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
 
 import { toast } from 'react-toastify'
+
+import { getActiveSite, getSiteLabel } from '@/utils/activeSite'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
@@ -43,7 +47,8 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     seoTitle: '',
     seoDescription: '',
     seoUrl: '',
-    webOrder: 0
+    webOrder: 0,
+    webVisible: true
   })
 
   useEffect(() => {
@@ -53,7 +58,8 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         seoTitle: selectedbrand.seoTitle || selectedbrand.name || '',
         seoDescription: selectedbrand.seoDescription || `${selectedbrand.name} markası ürünleri`,
         seoUrl: selectedbrand.seoUrl || '',
-        webOrder: selectedbrand.webOrder || 0
+        webOrder: selectedbrand.webOrder || 0,
+        webVisible: selectedbrand.webVisible !== false
       })
 
       // Logo preview ayarla
@@ -74,7 +80,8 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         seoTitle: '',
         seoDescription: '',
         seoUrl: '',
-        webOrder: 0
+        webOrder: 0,
+        webVisible: true
       })
       setLogoPreview(null)
       setFileName('')
@@ -135,17 +142,11 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     // API'ye yükle
     const formDataUpload = new FormData()
     formDataUpload.append('logo', file)
-    const { getSession } = await import('next-auth/react')
-    const session = await getSession()
-    const token = (session as any)?.user?.accessToken
     try {
-      const res = await fetch(`${API_URL}/admin/brands/${selectedbrand.id}/logo`, {
+      const result = await fetchAPI(`${API_URL}/admin/brands/${selectedbrand.id}/logo`, {
         method: 'POST',
-        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
         body: formDataUpload
       })
-
-      const result = await res.json()
 
       if (result.success) {
         toast.success('Logo başarıyla yüklendi')
@@ -225,7 +226,8 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
           seoTitle: formData.seoTitle,
           seoDescription: formData.seoDescription,
           seoUrl: formData.seoUrl,
-          webOrder: formData.webOrder
+          webOrder: formData.webOrder,
+          webVisible: formData.webVisible
         })
       })
 
@@ -238,7 +240,8 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
               seoTitle: formData.seoTitle,
               seoDescription: formData.seoDescription,
               seoUrl: formData.seoUrl,
-              webOrder: formData.webOrder
+              webOrder: formData.webOrder,
+              webVisible: formData.webVisible
             }
           }
           return brand
@@ -437,6 +440,17 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             onChange={(e) => setFormData({ ...formData, webOrder: Number(e.target.value) })}
             placeholder='Marka sıralamasını belirleyiniz'
             disabled={isLoading}
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.webVisible}
+                onChange={(e) => setFormData({ ...formData, webVisible: e.target.checked })}
+                disabled={isLoading}
+              />
+            }
+            label={`${getSiteLabel(getActiveSite())} sitesinde görünür`}
           />
 
           <div className='flex items-center gap-4'>

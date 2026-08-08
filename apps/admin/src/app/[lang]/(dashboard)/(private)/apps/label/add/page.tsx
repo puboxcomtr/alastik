@@ -131,17 +131,14 @@ const AddLabelPage = () => {
         setLoading(true)
 
         try {
-            const response = await fetch(API_ENDPOINTS.labels.list(), {
+            const result = await fetchAPI(API_ENDPOINTS.labels.list(), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
                     ...formData,
                     products: selectedProducts
                 })
             })
-
-            const result = await response.json()
 
             if (result.success) {
                 toast.success('Etiket başarıyla oluşturuldu')

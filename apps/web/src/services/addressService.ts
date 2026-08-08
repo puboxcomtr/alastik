@@ -1,12 +1,14 @@
 // apps/web/src/services/addressService.ts
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { Address, AddressFormData } from '@/src/types/adress';
 
 export const addressService = {
     // Kullanici adreslerini getir
     async getUserAddresses(userId: string): Promise<Address[]> {
         try {
-            const res = await fetch(API_ENDPOINTS.address.list(userId));
+            const res = await fetch(API_ENDPOINTS.address.list(userId), {
+                headers: { ...(await getServerSiteHeaders()) }
+            });
             const data = await res.json();
             return data.success ? data.data : [];
         } catch (error) {
@@ -18,7 +20,9 @@ export const addressService = {
     // Tek adres getir
     async getAddress(addressId: string): Promise<Address | null> {
         try {
-            const res = await fetch(API_ENDPOINTS.address.detail(addressId));
+            const res = await fetch(API_ENDPOINTS.address.detail(addressId), {
+                headers: { ...(await getServerSiteHeaders()) }
+            });
             const data = await res.json();
             return data.success ? data.data : null;
         } catch (error) {
@@ -32,8 +36,11 @@ export const addressService = {
         try {
             const res = await fetch(API_ENDPOINTS.address.create(), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...addressData, userId })
+                body: JSON.stringify({ ...addressData, userId }),
+                headers: {
+                    ...(await getServerSiteHeaders()),
+                    'Content-Type': 'application/json'
+                }
             });
             const data = await res.json();
             return data.success ? data.data : null;
@@ -48,8 +55,11 @@ export const addressService = {
         try {
             const res = await fetch(API_ENDPOINTS.address.update(addressId), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(addressData)
+                body: JSON.stringify(addressData),
+                headers: {
+                    ...(await getServerSiteHeaders()),
+                    'Content-Type': 'application/json'
+                }
             });
             const data = await res.json();
             return data.success ? data.data : null;
@@ -63,7 +73,8 @@ export const addressService = {
     async deleteAddress(addressId: string): Promise<boolean> {
         try {
             const res = await fetch(API_ENDPOINTS.address.delete(addressId), {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { ...(await getServerSiteHeaders()) }
             });
             const data = await res.json();
             return data.success;
@@ -78,8 +89,11 @@ export const addressService = {
         try {
             const res = await fetch(API_ENDPOINTS.address.update(addressId), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isDefault: true })
+                body: JSON.stringify({ isDefault: true }),
+                headers: {
+                    ...(await getServerSiteHeaders()),
+                    'Content-Type': 'application/json'
+                }
             });
             const data = await res.json();
             return data.success;

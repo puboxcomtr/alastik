@@ -8,12 +8,15 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CardHeader from '@mui/material/CardHeader'
 import TextField from '@mui/material/TextField'
+import Autocomplete from '@mui/material/Autocomplete'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Divider from '@mui/material/Divider'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -39,6 +42,7 @@ import { Image } from '@tiptap/extension-image'
 import { toast } from 'react-toastify'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { fetchMenus } from '@/utils/api/menus'
 import { getActiveSite, getSiteLabel } from '@/utils/activeSite'
 
 import CustomIconButton from '@/@core/components/mui/IconButton'
@@ -47,10 +51,27 @@ import '@/libs/styles/tiptapEditor.css'
 
 type SliderOption = { _id: string; name: string; key?: string }
 
-const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
+type EditorToolbarProps = {
+    editor: Editor | null
+    htmlMode: boolean
+    onToggleHtmlMode: () => void
+}
+
+const EditorToolbar = ({ editor, htmlMode, onToggleHtmlMode }: EditorToolbarProps) => {
     const [colorAnchor, setColorAnchor] = useState<HTMLButtonElement | null>(null)
 
     if (!editor) return null
+
+    // HTML kaynak modunda biçimlendirme düğmeleri iş görmez; yalnızca geri dönüş düğmesi kalır
+    if (htmlMode) {
+        return (
+            <div className='flex flex-wrap gap-x-3 gap-y-1 pbs-5 pbe-4 pli-5'>
+                <CustomIconButton color='primary' variant='outlined' size='small' onClick={onToggleHtmlMode} title='Görsel düzenleyiciye dön'>
+                    <i className='ri-code-s-slash-line' />
+                </CustomIconButton>
+            </div>
+        )
+    }
 
     const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#000080', '#808080', '#C0C0C0']
 
@@ -110,6 +131,9 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
             <CustomIconButton variant='outlined' size='small' onClick={() => { const url = window.prompt('Resim URL girin:'); if (url) editor.chain().focus().setImage({ src: url }).run() }}>
                 <i className='ri-image-add-line' />
             </CustomIconButton>
+            <CustomIconButton variant='outlined' size='small' onClick={onToggleHtmlMode} title='HTML kaynağını düzenle'>
+                <i className='ri-code-s-slash-line' />
+            </CustomIconButton>
             <Popover open={Boolean(colorAnchor)} anchorEl={colorAnchor} onClose={() => setColorAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
                 <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px' }}>
                     {colors.map(color => (
@@ -131,8 +155,12 @@ const CategoryEditForm = () => {
     const [saving, setSaving] = useState(false)
     const [editorReady, setEditorReady] = useState(false)
     const [sliders, setSliders] = useState<SliderOption[]>([])
+    const [menus, setMenus] = useState<{ _id: string; name: string }[]>([])
     const [categoryName, setCategoryName] = useState('')
     const [pendingContent, setPendingContent] = useState<string | null>(null)
+    // HTML kaynak modu: içerik editörden alınıp düz metin olarak düzenlenir
+    const [htmlMode, setHtmlMode] = useState(false)
+    const [htmlSource, setHtmlSource] = useState('')
 
     const [formData, setFormData] = useState({
         description: '',
@@ -140,7 +168,9 @@ const CategoryEditForm = () => {
         seoDescription: '',
         seoUrl: '',
         webOrder: 0,
-        sliderId: ''
+        webVisible: true,
+        sliderId: '',
+        menuIds: [] as string[]
     })
 
     const activeSite = getActiveSite()
@@ -188,6 +218,20 @@ const CategoryEditForm = () => {
         loadSliders()
     }, [])
 
+    // Kategori sayfasında gösterilecek menü seçenekleri (menü grupları)
+    useEffect(() => {
+        const loadMenus = async () => {
+            try {
+                const result = await fetchMenus()
+                if (result.success) {
+                    const groups = (result.flatData || []).filter((m: any) => m.rowLevel === 1)
+                    setMenus(groups.map((m: any) => ({ _id: m._id, name: m.name })))
+                }
+            } catch { }
+        }
+        loadMenus()
+    }, [])
+
     useEffect(() => {
         const loadCategory = async () => {
             if (!id) return
@@ -203,7 +247,9 @@ const CategoryEditForm = () => {
                         seoDescription: d.seoDescription || '',
                         seoUrl: d.seoUrl || '',
                         webOrder: d.webOrder || 0,
-                        sliderId: d.sliderId || ''
+                        webVisible: d.webVisible !== false,
+                        sliderId: d.sliderId || '',
+                        menuIds: d.menuIds || []
                     })
                     setPendingContent(d.content || '')
                 }
@@ -223,6 +269,19 @@ const CategoryEditForm = () => {
         }
     }, [editor, editorReady, pendingContent])
 
+    const toggleHtmlMode = () => {
+        if (!editor) return
+
+        if (htmlMode) {
+            // Kaynaktan görsel düzenleyiciye dön
+            editor.commands.setContent(htmlSource, false)
+            setHtmlMode(false)
+        } else {
+            setHtmlSource(editor.getHTML())
+            setHtmlMode(true)
+        }
+    }
+
     const handleChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
@@ -230,14 +289,16 @@ const CategoryEditForm = () => {
     const handleSave = async () => {
         try {
             setSaving(true)
-            const content = editor?.getHTML() || ''
+            const content = htmlMode ? htmlSource : (editor?.getHTML() || '')
             const body = {
                 seoTitle: formData.seoTitle,
                 seoDescription: formData.seoDescription,
                 content,
                 seoUrl: formData.seoUrl,
                 webOrder: formData.webOrder,
-                sliderId: formData.sliderId || null
+                webVisible: formData.webVisible,
+                sliderId: formData.sliderId || null,
+                menuIds: formData.menuIds
             }
             const result = await fetchAPI(API_ENDPOINTS.categories.detail(id), {
                 method: 'PATCH',
@@ -286,10 +347,27 @@ const CategoryEditForm = () => {
             <Grid size={{ xs: 12, md: 8 }}>
                 <Card>
                     <Divider />
-                    <EditorToolbar editor={editor} />
+                    <EditorToolbar editor={editor} htmlMode={htmlMode} onToggleHtmlMode={toggleHtmlMode} />
                     <Divider />
                     <CardContent className='p-0'>
-                        <EditorContent editor={editor} />
+                        {htmlMode ? (
+                            <TextField
+                                fullWidth
+                                multiline
+                                minRows={16}
+                                value={htmlSource}
+                                onChange={(e) => setHtmlSource(e.target.value)}
+                                placeholder='<p>HTML içeriği</p>'
+                                slotProps={{
+                                    input: {
+                                        sx: { fontFamily: 'monospace', fontSize: '0.85rem', alignItems: 'flex-start' }
+                                    }
+                                }}
+                                sx={{ '& fieldset': { border: 'none' } }}
+                            />
+                        ) : (
+                            <EditorContent editor={editor} />
+                        )}
                     </CardContent>
                 </Card>
             </Grid>
@@ -313,6 +391,17 @@ const CategoryEditForm = () => {
                                 <TextField fullWidth type='number' label='Öncelik' value={formData.webOrder} onChange={(e) => handleChange('webOrder', Number(e.target.value) || 0)} />
                             </Grid>
                             <Grid size={{ xs: 12 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.webVisible}
+                                            onChange={(e) => handleChange('webVisible', e.target.checked)}
+                                        />
+                                    }
+                                    label={`${siteLabel} sitesinde görünür`}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
                                 <FormControl fullWidth>
                                     <InputLabel>Kategori Slider</InputLabel>
                                     <Select label='Kategori Slider' value={formData.sliderId} onChange={(e) => handleChange('sliderId', e.target.value)}>
@@ -322,6 +411,25 @@ const CategoryEditForm = () => {
                                         ))}
                                     </Select>
                                 </FormControl>
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <Autocomplete
+                                    multiple
+                                    options={menus}
+                                    value={menus.filter(m => formData.menuIds.includes(m._id))}
+                                    onChange={(event, newValue) => handleChange('menuIds', newValue.map(m => m._id))}
+                                    getOptionLabel={(option) => option.name}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                    noOptionsText='Menü bulunamadı'
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label='Kategori Menüleri'
+                                            placeholder='Menü ekle'
+                                            helperText='Birden fazla menü seçebilirsiniz; sırayla sidebar’da görünür'
+                                        />
+                                    )}
+                                />
                             </Grid>
                         </Grid>
                     </CardContent>

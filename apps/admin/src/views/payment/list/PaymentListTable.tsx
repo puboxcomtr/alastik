@@ -33,6 +33,8 @@ import EditPaymentMethodDrawer from '../edit/EditPaymentMethodDrawer'
 /* Toast */
 import { toast } from 'react-toastify'
 
+import { fetchAPI } from '@libs/api'
+
 /* Tanstack */
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
@@ -137,6 +139,8 @@ const DebouncedInput = ({
 
 const columnHelper = createColumnHelper<PaymentMethodWithActionsType>()
 
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+
 const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => {
   const router = useRouter()
   const [rowSelection, setRowSelection] = useState({})
@@ -156,11 +160,9 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
 
   const handleToggle = async (id: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`http://localhost:3082/api/admin/settings/payment/${id}/toggle`, {
+      const result = await fetchAPI(`${baseUrl}/admin/settings/payment/${id}/toggle`, {
         method: 'PATCH'
       })
-
-      const result = await response.json()
 
       if (result.success) {
         toast.success(result.message)
@@ -188,11 +190,9 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
     if (!methodToDelete) return
 
     try {
-      const response = await fetch(`http://localhost:3082/api/admin/settings/payment/${methodToDelete._id}`, {
+      const result = await fetchAPI(`${baseUrl}/admin/settings/payment/${methodToDelete._id}`, {
         method: 'DELETE'
       })
-
-      const result = await response.json()
 
       if (result.success) {
         toast.success(`"${methodToDelete.name}" ödeme yöntemi arşivlendi`)

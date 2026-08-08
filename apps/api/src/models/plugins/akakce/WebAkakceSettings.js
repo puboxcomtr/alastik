@@ -1,9 +1,12 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 // Kategori / ürün seçimi öğesi
 const pickItemSchema = new mongoose.Schema({
     id: { type: String, required: true },
-    name: { type: String, default: '' }
+    name: { type: String, default: '' },
+    // Excel'den gelen özel ad; doluysa XML çıktısında ürün adı olarak kullanılır
+    xmlName: { type: String, default: '' }
 }, { _id: false });
 
 // Ürün kaynağı filtresi (Stoklu / XML ürünler)
@@ -19,6 +22,16 @@ const sourceFilterSchema = new mongoose.Schema({
 }, { _id: false });
 
 const webAkakceSettingsSchema = new mongoose.Schema({
+    // Her site için ayrı Akakçe yapılandırması ve feed'i
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        unique: true,
+        index: true
+    },
+
     // Genel Ayarlar
     isActive: { type: Boolean, default: true },
 

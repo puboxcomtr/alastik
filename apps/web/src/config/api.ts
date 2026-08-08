@@ -166,6 +166,7 @@ export const API_ENDPOINTS = {
     },
     menus: {
         header: () => `${getBaseUrl()}/menus/header`,
+        group: (id: string) => `${getBaseUrl()}/menus/group/${id}`,
     },
     purchaseLimits: {
         check: () => `${getBaseUrl()}/campaign/purchase-limits/check`,
@@ -176,6 +177,26 @@ export const API_ENDPOINTS = {
 };
 
 /**
+ * Sunucu tarafinda aktif sitenin X-Site header'ini uretir.
+ * Middleware her istege x-site request header'i ekler; server component /
+ * servis fetch'leri bunu API'ye iletmek zorundadir — aksi halde API
+ * varsayilan siteyi (alastik) cozer ve site verileri karisir.
+ * Client tarafinda bos doner (tarayici Origin'i siteyi zaten belirler).
+ */
+export async function getServerSiteHeaders(): Promise<Record<string, string>> {
+    if (typeof window !== 'undefined') return {};
+    try {
+        const { headers } = await import('next/headers');
+        const h = await headers();
+        const site = h.get('x-site');
+        return site ? { 'X-Site': site } : {};
+    } catch {
+        // Request kapsami disinda (build ani vb.) — header eklenmez
+        return {};
+    }
+}
+
+/**
  * Genel fetch helper - Server side ve client side uyumlu
  */
 export async function fetchAPI<T = any>(
@@ -183,12 +204,14 @@ export async function fetchAPI<T = any>(
     options?: RequestInit
 ): Promise<{ success: boolean; data: T | null; message?: string }> {
     try {
+        // options once yayilir; headers en sonda birlesir ki X-Site ezilmesin
         const response = await fetch(url, {
+            ...options,
             headers: {
                 'Content-Type': 'application/json',
+                ...(await getServerSiteHeaders()),
                 ...options?.headers,
             },
-            ...options,
         });
 
         if (!response.ok) {

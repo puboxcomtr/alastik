@@ -19,6 +19,9 @@ import Chip from '@mui/material/Chip'
 // Toast
 import { toast } from 'react-toastify'
 
+// API
+import { fetchAPI } from '@libs/api'
+
 // Types
 import type {
     ProviderTemplate,
@@ -86,8 +89,7 @@ const AddPaymentMethodDrawer = ({ open, handleClose, onSuccess }: Props) => {
     const loadProviders = async () => {
         try {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-            const response = await fetch(`${baseUrl}${API_ENDPOINTS.PROVIDERS}`)
-            const result = await response.json()
+            const result = await fetchAPI(`${baseUrl}${API_ENDPOINTS.PROVIDERS}`)
 
             if (result.success) {
                 setProviders(result.data)
@@ -174,15 +176,10 @@ const AddPaymentMethodDrawer = ({ open, handleClose, onSuccess }: Props) => {
                 }
             }
 
-            const response = await fetch(`${baseUrl}${API_ENDPOINTS.BASE}`, {
+            const result: PaymentMethodResponse = await fetchAPI(`${baseUrl}${API_ENDPOINTS.BASE}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify(payload)
             })
-
-            const result: PaymentMethodResponse = await response.json()
 
             if (result.success) {
                 toast.success(TOAST_MESSAGES.SUCCESS(formData.name), {

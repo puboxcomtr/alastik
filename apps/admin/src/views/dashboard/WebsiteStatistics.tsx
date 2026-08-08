@@ -12,47 +12,20 @@ import Typography from '@mui/material/Typography'
 // Third-party Imports
 import classnames from 'classnames'
 
-// Components Imports
-import OptionMenu from '@core/components/option-menu'
-
 // Styles Imports
 import tableStyles from '@core/styles/table.module.css'
 
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-const data = [
-    {
-        sales: '86.471',
-        title: 'Direkt Trafik',
-        color: 'success',
-        trendNumber: '15%',
-        trend: 'down'
-    },
-    {
-        sales: '57.484',
-        title: 'Arama Motoru',
-        color: 'primary',
-        trendNumber: '85%',
-        trend: 'up'
-    },
-    {
-        sales: '2.534',
-        color: 'warning',
-        title: 'Sosyal Medya',
-        trendNumber: '48%',
-        trend: 'up'
-    },
-    {
-        sales: '977',
-        title: 'Bilinmiyor',
-        color: 'error',
-        trendNumber: '36%',
-        trend: 'down'
-    }
-]
+export type VisitStats = {
+    total: number
+    daily: number[]
+    devices: { title: string; color: string; count: number; share: number }[]
+}
 
-const WebsiteStatistics = () => {
+// Seçili sitenin son 28 gün ziyaret istatistikleri (oturum kayıtlarından)
+const WebsiteStatistics = ({ visits }: { visits?: VisitStats }) => {
     const options = {
         chart: {
             parentHeightOffset: 0,
@@ -85,29 +58,28 @@ const WebsiteStatistics = () => {
         }
     }
 
+    const dailyData = visits?.daily?.length ? visits.daily : [0]
+
     return (
         <Card className='bs-full'>
-            <CardHeader
-                title='Website Ziyaretleri'
-                action={<OptionMenu iconClassName='text-textPrimary' options={['Son 28 Gün', 'Geçen Ay', 'Geçen Yıl']} />}
-            />
+            <CardHeader title='Website Ziyaretleri' subheader='Son 28 Gün' />
             <CardContent className='!pbe-1'>
                 <div className='flex items-end justify-between pbe-5 pbs-5 xl:pbs-[0.6rem]'>
                     <div className='flex flex-col gap-2'>
-                        <Typography variant='h1'>4.590</Typography>
-                        <Typography variant='body2'>Toplam Trafik</Typography>
+                        <Typography variant='h1'>{(visits?.total || 0).toLocaleString('tr-TR')}</Typography>
+                        <Typography variant='body2'>Toplam Ziyaret</Typography>
                     </div>
                     <AppReactApexCharts
                         type='bar'
                         height={85}
                         width={135}
                         options={options}
-                        series={[{ data: [50, 40, 130, 100, 75, 100, 45, 35] }]}
+                        series={[{ data: dailyData }]}
                     />
                 </div>
                 <table className={tableStyles.table}>
                     <tbody>
-                        {data.map((row, index) => (
+                        {(visits?.devices || []).map((row, index) => (
                             <tr key={index}>
                                 <td className='flex items-center gap-2 !plb-2.5 !pis-0 !bs-[unset]'>
                                     <i className={classnames('ri-circle-fill text-base', `text-${row.color}`)} />
@@ -115,19 +87,13 @@ const WebsiteStatistics = () => {
                                 </td>
                                 <td className='text-end !plb-2.5 !bs-[unset]'>
                                     <Typography color='text.primary' className='font-medium'>
-                                        {row.sales}
+                                        {row.count.toLocaleString('tr-TR')}
                                     </Typography>
                                 </td>
-                                <td className='flex gap-2 justify-end !plb-2.5 !pie-0 !bs-[unset]'>
+                                <td className='text-end !plb-2.5 !pie-0 !bs-[unset]'>
                                     <Typography color='text.primary' className='font-medium'>
-                                        {row.trendNumber}
+                                        {`%${row.share}`}
                                     </Typography>
-                                    <i
-                                        className={classnames(
-                                            row.trend === 'up' ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
-                                            row.trend === 'up' ? 'text-success' : 'text-error'
-                                        )}
-                                    />
                                 </td>
                             </tr>
                         ))}

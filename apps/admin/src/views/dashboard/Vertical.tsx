@@ -26,9 +26,11 @@ const CardStatVertical = ({ title, stats, avatarIcon, avatarColor, trendNumber, 
                     </Typography>
                     <div className='flex gap-x-2 gap-y-0.5 items-center flex-wrap'>
                         <Typography variant='h5'>{stats}</Typography>
-                        <Typography color={trend === 'negative' ? 'error.main' : 'success.main'}>
-                            {`${trend === 'negative' ? '-' : '+'}${trendNumber}`}
-                        </Typography>
+                        {trendNumber ? (
+                            <Typography color={trend === 'negative' ? 'error.main' : 'success.main'}>
+                                {`${trend === 'negative' ? '-' : '+'}${trendNumber}`}
+                            </Typography>
+                        ) : null}
                     </div>
                 </div>
             </CardContent>

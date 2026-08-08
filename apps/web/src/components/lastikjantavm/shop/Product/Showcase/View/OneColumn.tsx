@@ -108,11 +108,12 @@ export default function OneColumn({ product }: ProductCardProps) {
                     {/* Marka */}
                     <div className="d-flex align-items-center justify-content-between">
                         <div>
-                            {brandLogo ? (
+                            {/* Marka gizle açıksa kartta marka gösterilmez */}
+                            {product.customData?.hideBrand !== true && (brandLogo ? (
                                 <Image src={brandLogo} alt={brandName} width={90} height={36} style={{ objectFit: 'contain', marginLeft: '-8px' }} />
                             ) : (
                                 <span className="fw-medium fs-sm">{brandInfo?.name || brandName || 'Marka Yok'}</span>
-                            )}
+                            ))}
                         </div>
                         {reviewCount > 0 && (
                             <Link href={`${productUrl}#reviews`} className="d-flex flex-column text-decoration-none">
@@ -128,7 +129,7 @@ export default function OneColumn({ product }: ProductCardProps) {
                     {/* Seçenekler */}
                     <div className="d-flex my-1 gap-4 align-items-center">
                         <span className="fs-xs text-body-secondary d-block">Stok Kodu {stockCode}</span>
-                        <span className="fs-xs text-body-secondary d-block">Üretim Tarihi {product.diaData?.ekalan5 || '-'}</span>
+                        {product.customData?.hideProductionDate !== true && <span className="fs-xs text-body-secondary d-block">Üretim Tarihi {product.diaData?.ekalan5 || '-'}</span>}
                         <span className="fs-xs text-body-secondary d-block">
                             {(() => { const s = getProductSeason(product); return s ? <><img src={s.icon} alt={s.text} width={14} height={14} className="me-1" />{s.text}</> : (getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-'); })()}
                         </span>
@@ -166,7 +167,8 @@ export default function OneColumn({ product }: ProductCardProps) {
                         <div className="d-flex justify-content-between align-items-end">
                             <div>
                                 <div className="fw-semibold fs-xs text-black">
-                                    {product.diaData?.gercek_stok > 0 ? (
+                                    {/* Stok gizle açıksa kartta stok adedi gösterilmez */}
+                                    {product.customData?.hideStock !== true && (product.diaData?.gercek_stok > 0 ? (
                                         <>Stok Adeti:
                                             <span className="text-success" style={{ paddingLeft: "5px" }}>
                                                 {product.diaData.gercek_stok > 20 ? '+20' : product.diaData.gercek_stok} Adet
@@ -174,7 +176,7 @@ export default function OneColumn({ product }: ProductCardProps) {
                                         </>
                                     ) : (
                                         <span className="text-danger">Stok Sorunuz</span>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                             <div className="text-end">

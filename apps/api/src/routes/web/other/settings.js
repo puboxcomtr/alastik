@@ -7,7 +7,7 @@ router.get('/:key', async (req, res) => {
     try {
         const { key } = req.params;
 
-        const setting = await Setting.findOne({ key }).lean();
+        const setting = await Setting.findOne({ key, site: req.site }).lean();
 
         if (!setting) {
             return res.status(404).json({
@@ -34,7 +34,7 @@ router.get('/group/:group', async (req, res) => {
     try {
         const { group } = req.params;
 
-        const settings = await Setting.find({ group }).lean();
+        const settings = await Setting.find({ group, site: req.site }).lean();
 
         if (!settings || settings.length === 0) {
             return res.json({
@@ -65,7 +65,7 @@ router.get('/group/:group', async (req, res) => {
 // GET /api/settings
 router.get('/', async (req, res) => {
     try {
-        const settings = await Setting.find().lean();
+        const settings = await Setting.find({ site: req.site }).lean();
 
         // Gruplara göre organize et
         const groupedSettings = {};

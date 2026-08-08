@@ -143,19 +143,13 @@ const XmlMappingTable = () => {
         if (!file) return
         setImporting(true)
         try {
-            const { getSession } = await import('next-auth/react')
-            const session = await getSession()
-            const token = (session as any)?.user?.accessToken
-
             const formData = new FormData()
             formData.append('file', file)
 
-            const res = await fetch(API_ENDPOINTS.webxml.mappingImport(), {
+            const data = await fetchAPI(API_ENDPOINTS.webxml.mappingImport(), {
                 method: 'POST',
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
                 body: formData
             })
-            const data = await res.json()
             if (data.success) {
                 toast.success(data.message)
                 fetchProducts()
@@ -171,15 +165,9 @@ const XmlMappingTable = () => {
     }
     const handleEslesmeyiKaldir = async (id: string) => {
         try {
-            const { getSession } = await import('next-auth/react')
-            const session = await getSession()
-            const token = (session as any)?.user?.accessToken
-
-            const res = await fetch(API_ENDPOINTS.webxml.mappingDelete(id), {
-                method: 'DELETE',
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) }
+            const data = await fetchAPI(API_ENDPOINTS.webxml.mappingDelete(id), {
+                method: 'DELETE'
             })
-            const data = await res.json()
             if (data.success) {
                 toast.success(data.message)
                 fetchProducts()

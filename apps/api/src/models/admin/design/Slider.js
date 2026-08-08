@@ -32,7 +32,6 @@ const sliderSchema = new mongoose.Schema({
     name: { type: String, required: true },
     key: {
         type: String,
-        unique: true,
         immutable: true,
         index: true
     },
@@ -42,6 +41,9 @@ const sliderSchema = new mongoose.Schema({
     timestamps: true,
     collection: 'sliders'
 });
+
+// Aynı key her sitede bir kez kullanılabilir (site + key benzersiz)
+sliderSchema.index({ site: 1, key: 1 }, { unique: true });
 
 sliderSchema.pre('save', async function (next) {
     if (this.isNew && !this.key) {

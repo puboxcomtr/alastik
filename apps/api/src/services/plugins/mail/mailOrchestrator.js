@@ -3,11 +3,12 @@ const WebSettings = require('../../../models/web/settings/WebSettings')
 const { sendMail } = require('../../web/mail/MailService')
 const { render } = require('./templateRenderer')
 const { buildData } = require('./templateDataBuilder')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
-// Admin mail adresi: orderEmail > email > null
-const getAdminMailAddress = async (purpose = 'order') => {
+// Admin mail adresi: orderEmail > email > null (site bazlı ayarlardan)
+const getAdminMailAddress = async (purpose = 'order', site = DEFAULT_SITE) => {
     try {
-        const settings = await WebSettings.getSettings()
+        const settings = await WebSettings.getSettings(site)
         const emailInfo = settings?.emailInfo || {}
 
         if (purpose === 'order' && emailInfo.orderEmail) {
@@ -22,17 +23,17 @@ const getAdminMailAddress = async (purpose = 'order') => {
     }
 }
 
-// Şablonu DB'den çek
-const getTemplate = async (templateKey) => {
-    const template = await WebMailTemplate.findOne({ templateKey, isActive: true }).lean()
+// Şablonu DB'den çek (sitenin kendi şablonu)
+const getTemplate = async (templateKey, site = DEFAULT_SITE) => {
+    const template = await WebMailTemplate.findOne({ templateKey, isActive: true, site }).lean()
 
     if (!template) {
-        throw new Error(`Mail şablonu bulunamadı veya pasif: ${templateKey}`)
+        throw new Error(`Mail şablonu bulunamadı veya pasif: ${templateKey} (site: ${site})`)
     }
 
     // Kullanıcı düzenlediyse content, yoksa defaultContent
     const content = template.content || template.defaultContent || ''
-    const subject = template.subject || template.defaultSubject || template.name || 'ALastik'
+    const subject = template.subject || template.defaultSubject || template.name || SITES[site]?.name || SITES[DEFAULT_SITE].name
 
     if (!content) {
         throw new Error(`Şablon içeriği boş: ${templateKey}`)
@@ -42,13 +43,15 @@ const getTemplate = async (templateKey) => {
 }
 
 // Ana fonksiyon: Şablon ile mail gönder
-// params: { templateKey, context, to, alsoSendToAdmin, adminPurpose }
+// params: { templateKey, context, to, alsoSendToAdmin, adminPurpose, site }
+// site: gönderimde hangi sitenin SMTP ayarları ve gönderen adı kullanılacak
 const sendTemplateMail = async ({
     templateKey,
     context = {},
     to,
     alsoSendToAdmin = false,
-    adminPurpose = 'order'
+    adminPurpose = 'order',
+    site = DEFAULT_SITE
 }) => {
     const result = {
         success: false,
@@ -59,10 +62,10 @@ const sendTemplateMail = async ({
 
     try {
         // 1. Şablonu çek
-        const { content, subject } = await getTemplate(templateKey)
+        const { content, subject } = await getTemplate(templateKey, site)
 
-        // 2. Veriyi hazırla (gerçek mail için context ile)
-        const { data } = await buildData(templateKey, { mode: 'real', ...context })
+        // 2. Veriyi hazırla (gerçek mail için context ile; site şirket bilgisi/logo seçiminde kullanılır)
+        const { data } = await buildData(templateKey, { mode: 'real', site, ...context })
 
         // 3. HTML render
         const html = render(content, { data })
@@ -80,7 +83,8 @@ const sendTemplateMail = async ({
                     await sendMail({
                         to: validRecipients.join(','),
                         subject: renderedSubject,
-                        html
+                        html,
+                        site
                     })
                     result.customerSent = true
                 } catch (err) {
@@ -92,14 +96,15 @@ const sendTemplateMail = async ({
 
         // 6. Admine kopya gönder
         if (alsoSendToAdmin) {
-            const adminEmail = await getAdminMailAddress(adminPurpose)
+            const adminEmail = await getAdminMailAddress(adminPurpose, site)
 
             if (adminEmail) {
                 try {
                     await sendMail({
                         to: adminEmail,
                         subject: `[Yönetici Kopyası] ${renderedSubject}`,
-                        html
+                        html,
+                        site
                     })
                     result.adminSent = true
                 } catch (err) {

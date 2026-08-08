@@ -1,8 +1,11 @@
 const nodemailer = require('nodemailer')
 const SmtpSettings = require('../../../models/admin/mail/smtp/SmtpSettings')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
-let cachedTransporter = null
-let cachedConfigKey = null
+// Site başına ayrı transporter önbelleği (her sitenin kendi SMTP ayarı var)
+const cachedBySite = {}
+
+const resolveSite = (site) => (SITES[site] ? site : DEFAULT_SITE)
 
 const buildConfigKey = (s) => `${s.host}|${s.port}|${s.username}|${s.password}|${s.provider}`
 
@@ -22,8 +25,9 @@ const buildTransporter = (settings) => {
     })
 }
 
-const getTransporter = async (overrideSettings = null) => {
-    const settings = overrideSettings || (await SmtpSettings.getSingleton())
+const getTransporter = async (overrideSettings = null, site = DEFAULT_SITE) => {
+    const slug = resolveSite(site)
+    const settings = overrideSettings || (await SmtpSettings.getForSite(slug))
 
     if (!settings.host || !settings.username || !settings.password) {
         throw new Error('SMTP ayarları eksik. Lütfen önce ayarları kaydedin.')
@@ -34,32 +38,36 @@ const getTransporter = async (overrideSettings = null) => {
     }
 
     const key = buildConfigKey(settings)
+    const cached = cachedBySite[slug]
 
-    if (!cachedTransporter || cachedConfigKey !== key) {
-        cachedTransporter = buildTransporter(settings)
-        cachedConfigKey = key
+    if (!cached || cached.configKey !== key) {
+        cachedBySite[slug] = { transporter: buildTransporter(settings), configKey: key }
     }
 
-    return { transporter: cachedTransporter, settings }
+    return { transporter: cachedBySite[slug].transporter, settings }
 }
 
-const invalidateCache = () => {
-    cachedTransporter = null
-    cachedConfigKey = null
+const invalidateCache = (site = null) => {
+    if (site) {
+        delete cachedBySite[resolveSite(site)]
+    } else {
+        Object.keys(cachedBySite).forEach(key => delete cachedBySite[key])
+    }
 }
 
-const verifyConnection = async (overrideSettings = null) => {
-    const { transporter } = await getTransporter(overrideSettings)
+const verifyConnection = async (overrideSettings = null, site = DEFAULT_SITE) => {
+    const { transporter } = await getTransporter(overrideSettings, site)
     await transporter.verify()
 
     return true
 }
 
-const sendMail = async ({ to, subject, html, text, from, attachments }, overrideSettings = null) => {
-    const { transporter, settings } = await getTransporter(overrideSettings)
+const sendMail = async ({ to, subject, html, text, from, attachments, site }, overrideSettings = null) => {
+    const slug = resolveSite(site)
+    const { transporter, settings } = await getTransporter(overrideSettings, slug)
 
     const fromAddress = from || settings.senderEmail || settings.username
-    const fromHeader = `ALastik <${fromAddress}>`
+    const fromHeader = `${SITES[slug].name} <${fromAddress}>`
 
     const info = await transporter.sendMail({
         from: fromHeader,
@@ -71,6 +79,7 @@ const sendMail = async ({ to, subject, html, text, from, attachments }, override
     })
 
     console.log('[MailService] Gönderim sonucu:', {
+        site: slug,
         to,
         subject,
         messageId: info.messageId,

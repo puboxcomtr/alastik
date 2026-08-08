@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSiteHeader } from '@/utils/activeSite'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 import classnames from 'classnames'
 
 /* MUI */
@@ -105,8 +105,6 @@ const DebouncedInput = ({
 
 const columnHelper = createColumnHelper<ShowcaseWithActionsType>()
 
-const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
-
 type Props = {
     showcaseData?: ShowcaseType[]
 }
@@ -124,12 +122,9 @@ const ShowcaseListTable = ({ showcaseData }: Props) => {
         const fetchShowcases = async () => {
             try {
                 setLoading(true)
-                const res = await fetch(`${baseUrl}/showcases`, {
-                    cache: 'no-store',
-                    headers: { ...getSiteHeader() }
+                const json = await fetchAPI(API_ENDPOINTS.showcases.list(), {
+                    cache: 'no-store'
                 })
-                if (!res.ok) return
-                const json = await res.json()
                 const list = (json.data || []).map((s: any) => ({
                     id: s.id,
                     title: s.title,
@@ -159,19 +154,16 @@ const ShowcaseListTable = ({ showcaseData }: Props) => {
         if (!showcaseToDelete) return
 
         try {
-            const response = await fetch(`${baseUrl}/showcases/${showcaseToDelete.id}`, {
-                method: 'DELETE',
-                headers: { ...getSiteHeader() }
+            await fetchAPI(API_ENDPOINTS.showcases.detail(showcaseToDelete.id), {
+                method: 'DELETE'
             })
-
-            if (!response.ok) throw new Error('Vitrin silinemedi')
 
             toast.success(`"${showcaseToDelete.title}" vitrini silindi`)
             setData(prev => prev.filter(s => s.id !== showcaseToDelete.id))
             setDeleteConfirmOpen(false)
             setShowcaseToDelete(null)
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Vitrin silinirken hata oluştu')
+        } catch {
+            toast.error('Vitrin silinemedi')
         }
     }
 
@@ -182,14 +174,9 @@ const ShowcaseListTable = ({ showcaseData }: Props) => {
 
     const handleToggleStatus = async (showcase: ShowcaseType) => {
         try {
-            const response = await fetch(`${baseUrl}/showcases/${showcase.id}/toggle`, {
-                method: 'PATCH',
-                headers: { ...getSiteHeader() }
+            const result = await fetchAPI(API_ENDPOINTS.showcases.toggle(showcase.id), {
+                method: 'PATCH'
             })
-
-            if (!response.ok) throw new Error('Durum değiştirilemedi')
-
-            const result = await response.json()
 
             setData(prev => prev.map(s =>
                 s.id === showcase.id ? { ...s, isActive: result.data.isActive } : s

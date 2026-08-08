@@ -24,7 +24,8 @@ router.post('/', async (req, res) => {
             },
             to: email,
             alsoSendToAdmin: true,
-            adminPurpose: 'general'
+            adminPurpose: 'general',
+            site: req.site
         }).then((mailResult) => {
             if (!mailResult.success) {
                 console.warn('[contact] Mail gönderilemedi:', email, mailResult.errors);

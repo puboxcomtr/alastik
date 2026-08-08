@@ -100,7 +100,7 @@ class XmlDiaMatchService {
             aciklama: diaData.aciklama || '',
             marka: diaData.marka || '',
             anabarkod: diaData.anabarkod || '',
-            anabirimdesi: diaData.anabirimdesi || '',
+            anabirimdesi: String(parseFloat(diaData.anabirimdesi) || 0),
             ozelkod1kodu: diaData.ozelkod1kodu || '',
             ozelkod2kodu: diaData.ozelkod2kodu || '',
             ozelkod3kodu: diaData.ozelkod3kodu || '',
@@ -122,9 +122,10 @@ class XmlDiaMatchService {
         return crypto.createHash('md5').update(JSON.stringify(hashData)).digest('hex');
     }
 
-    async matchAll() {
+    async matchAll(options = {}) {
+        const useLiveDia = options.useLiveDia === true;
         const operationId = `xml_dia_match_${Date.now()}`;
-        console.log(`[XmlDiaMatchService] Eşleştirme başladı: ${operationId}`);
+        console.log(`[XmlDiaMatchService] Eşleştirme başladı: ${operationId} (kaynak: ${useLiveDia ? 'canlı DIA' : 'diastocks + canlı DIA yedeği'})`);
 
         try {
             // Tüm entegrasyon kurallarını çek
@@ -150,7 +151,28 @@ class XmlDiaMatchService {
 
             console.log(`[XmlDiaMatchService] ${mappedProducts.length} ürün bulundu`);
 
-            await this.login();
+            // Kart verisi kaynağı: canlı DIA (manuel sync) veya diastocks aynası (zamanlanmış sync).
+            // diastocks'ta bulunamayan kart için her zaman canlı DIA'ya düşülür.
+            let diaStockMap = null;
+            if (useLiveDia) {
+                await this.login();
+            } else {
+                const DiaStock = require('../../../models/plugins/DiaStock');
+                const hedefKodlar = [...new Set(mappedProducts.map(p => p.mappedData?.hedefStokKodu).filter(Boolean))];
+                const META_FIELDS = ['_id', '__v', 'dataHash', 'priceHash', 'stockHash', 'ozelkodHash', 'syncInfo', 'synchronization', 'createdAt', 'updatedAt'];
+                diaStockMap = new Map();
+                const CHUNK = 5000;
+                for (let k = 0; k < hedefKodlar.length; k += CHUNK) {
+                    const docs = await DiaStock.find({ anabarkod: { $in: hedefKodlar.slice(k, k + CHUNK) } }).lean();
+                    for (const doc of docs) {
+                        if (doc.anabarkod && !diaStockMap.has(doc.anabarkod)) {
+                            for (const f of META_FIELDS) delete doc[f];
+                            diaStockMap.set(doc.anabarkod, doc);
+                        }
+                    }
+                }
+                console.log(`[XmlDiaMatchService] diastocks ön yükleme: ${diaStockMap.size}/${hedefKodlar.length} kart bulundu (eksikler canlı DIA'dan sorulacak)`);
+            }
 
             let matched = 0, skipped = 0, notFound = 0, filtered = 0, errors = 0;
             const CONCURRENCY = 10;
@@ -196,7 +218,12 @@ class XmlDiaMatchService {
                 });
 
                 const results = await Promise.allSettled(
-                    filteredBatch.map(xmlProduct => this.fetchByAnabarkod(xmlProduct.mappedData.hedefStokKodu))
+                    filteredBatch.map(xmlProduct => {
+                        const kod = xmlProduct.mappedData.hedefStokKodu;
+                        if (useLiveDia) return this.fetchByAnabarkod(kod);
+                        const cached = diaStockMap.get(kod);
+                        return cached ? Promise.resolve(cached) : this.fetchByAnabarkod(kod);
+                    })
                 );
 
                 for (let j = 0; j < filteredBatch.length; j++) {
@@ -252,8 +279,10 @@ class XmlDiaMatchService {
 
                 if (i > 0 && i % 100 === 0) {
                     console.log(`[XmlDiaMatchService] ${i}/${mappedProducts.length} işlendi`);
-                    this.sessionId = null;
-                    await this.login();
+                    if (useLiveDia) {
+                        this.sessionId = null;
+                        await this.login();
+                    }
                 }
             }
 

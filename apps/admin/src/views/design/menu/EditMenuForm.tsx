@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 /* MUI */
-import Autocomplete from '@mui/material/Autocomplete'
+import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -30,15 +30,22 @@ import {
     updateMenu,
     fetchCategories,
     fetchPages,
+    fetchBlogs,
+    fetchProducts,
     fetchParentMenus,
     type CategoryOptionType,
     type PageOptionType,
+    type BlogOptionType,
+    type ProductOptionType,
     type ParentMenuOptionType
 } from '@/utils/api/menus'
 
 type EditMenuFormProps = {
     menuId: string
 }
+
+// 2000'den fazla blog kaydı var; listede aynı anda en fazla 50 seçenek çizilir
+const blogFilterOptions = createFilterOptions<BlogOptionType>({ limit: 50 })
 
 const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
     const router = useRouter()
@@ -47,14 +54,17 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
 
     // Form state
     const [name, setName] = useState('')
-    const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'heading'>('link')
+    const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'blog' | 'product' | 'heading'>('link')
     const [linkUrl, setLinkUrl] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [categoryLevel, setCategoryLevel] = useState<1 | 2>(1)
     const [pageId, setPageId] = useState('')
+    const [blogId, setBlogId] = useState('')
+    const [productId, setProductId] = useState('')
+    const [productQuery, setProductQuery] = useState('')
     const [headingText, setHeadingText] = useState('')
     const [openNewTab, setOpenNewTab] = useState(false)
-    const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile'>('header')
+    const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile' | 'general'>('header')
     const [rowLevel, setRowLevel] = useState<1 | 2>(1)
     const [parentId, setParentId] = useState('')
     const [order, setOrder] = useState(0)
@@ -63,6 +73,9 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
     // Options state
     const [categories, setCategories] = useState<CategoryOptionType[]>([])
     const [pages, setPages] = useState<PageOptionType[]>([])
+    const [blogs, setBlogs] = useState<BlogOptionType[]>([])
+    const [products, setProducts] = useState<ProductOptionType[]>([])
+    const [loadingProducts, setLoadingProducts] = useState(false)
     const [parentMenus, setParentMenus] = useState<ParentMenuOptionType[]>([])
     const [loadingOptions, setLoadingOptions] = useState(false)
 
@@ -95,6 +108,40 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
             setLoadingOptions(false)
         }
     }
+
+    // Blog yazılarını yükle
+    const loadBlogs = async () => {
+        try {
+            setLoadingOptions(true)
+            const result = await fetchBlogs()
+            if (result.success) {
+                setBlogs(result.data)
+            }
+        } catch (error: any) {
+            console.error('Blog yükleme hatası:', error)
+        } finally {
+            setLoadingOptions(false)
+        }
+    }
+
+    // Ürün araması: yazarken sunucuda aranır (katalog büyük)
+    useEffect(() => {
+        if (menuType !== 'product') return
+
+        const timer = setTimeout(async () => {
+            try {
+                setLoadingProducts(true)
+                const result = await fetchProducts(productQuery)
+                if (result.success) setProducts(result.data)
+            } catch (error: any) {
+                console.error('Ürün arama hatası:', error)
+            } finally {
+                setLoadingProducts(false)
+            }
+        }, 300)
+
+        return () => clearTimeout(timer)
+    }, [menuType, productQuery])
 
     // Ana menüleri yükle
     const loadParentMenus = async (area: string) => {
@@ -136,6 +183,13 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                 } else if (menu.menuType === 'page') {
                     setPageId(menu.linkData?.pageId || '')
                     await loadPages()
+                } else if (menu.menuType === 'blog') {
+                    setBlogId(menu.linkData?.blogId || '')
+                    await loadBlogs()
+                } else if (menu.menuType === 'product') {
+                    setProductId(menu.linkData?.productId || '')
+                    // Seçili ürünün etikette görünmesi için başlığıyla arat
+                    setProductQuery(menu.linkData?.productTitle || '')
                 } else if (menu.menuType === 'heading') {
                     setHeadingText(menu.linkData?.heading || '')
                 }
@@ -180,6 +234,10 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
             setPages([])
             setPageId('')
             loadPages()
+        } else if (menuType === 'blog') {
+            setBlogs([])
+            setBlogId('')
+            loadBlogs()
         }
     }, [menuType])
 
@@ -225,6 +283,16 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
             toast.error('Sayfa seçimi zorunludur')
             return false
         }
+
+        if (menuType === 'blog' && !blogId) {
+            toast.error('Blog yazısı seçimi zorunludur')
+            return false
+        }
+
+        if (menuType === 'product' && !productId) {
+            toast.error('Ürün seçimi zorunludur')
+            return false
+        }
         if (rowLevel === 2 && !parentId) {
             toast.error('Alt menü için ana menü seçmelisiniz')
             return false
@@ -249,7 +317,9 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                 linkData: {
                     ...(menuType === 'link' && { url: linkUrl }),
                     ...(menuType === 'category' && { categoryId, categoryLevel }),
-                    ...(menuType === 'page' && { pageId })
+                    ...(menuType === 'page' && { pageId }),
+                    ...(menuType === 'blog' && { blogId }),
+                    ...(menuType === 'product' && { productId })
                 },
                 openNewTab: menuType === 'heading' ? false : openNewTab,
                 displayArea,
@@ -263,7 +333,8 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
 
             if (result.success) {
                 toast.success('Menü başarıyla güncellendi')
-                router.push('/tr/apps/design/menu')
+                // Düzenlenen öğenin ait olduğu menünün detayına dön (liste kök menüyü çözer)
+                router.push(`/tr/apps/design/menu?menu=${menuId}`)
             } else {
                 throw new Error(result.message || 'Menü güncellenemedi')
             }
@@ -337,6 +408,8 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                         <MenuItem key="link" value='link'>Bağlantı</MenuItem>
                                                         <MenuItem key="category" value='category'>Kategori</MenuItem>
                                                         <MenuItem key="page" value='page'>Sayfa</MenuItem>
+                                                        <MenuItem key="blog" value='blog'>Blog</MenuItem>
+                                                        <MenuItem key="product" value='product'>Ürün</MenuItem>
                                                         {rowLevel === 2 && (
                                                             <MenuItem key="heading" value='heading'>Başlık</MenuItem>
                                                         )}
@@ -404,23 +477,83 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                             {menuType === 'page' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
-                                                        <InputLabel>Sayfa Seç</InputLabel>
-                                                        <Select
-                                                            value={pageId || ''}
-                                                            label='Sayfa Seç'
-                                                            onChange={(e) => setPageId(e.target.value)}
+                                                        <Autocomplete
+                                                            value={pages.find(p => p._id === pageId) || null}
+                                                            onChange={(event, newValue) => {
+                                                                setPageId(newValue?._id || '')
+                                                            }}
+                                                            options={pages}
+                                                            getOptionLabel={(option) => option.title}
+                                                            loading={loadingOptions}
+                                                            loadingText="Yükleniyor..."
+                                                            noOptionsText="Bu sitede yayında sayfa yok"
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    label="Sayfa Seç"
+                                                                    required
+                                                                />
+                                                            )}
                                                             disabled={loadingOptions}
-                                                            required
-                                                        >
-                                                            <MenuItem key="empty-page" value="">
-                                                                <em>{pages.length === 0 ? 'Yükleniyor...' : 'Seçiniz'}</em>
-                                                            </MenuItem>
-                                                            {pages.map((page) => (
-                                                                <MenuItem key={page._id} value={page._id}>
-                                                                    {page.title}
-                                                                </MenuItem>
-                                                            ))}
-                                                        </Select>
+                                                        />
+                                                    </FormControl>
+                                                </Grid>
+                                            )}
+                                            {/* Blog Seçimi - Sadece menuType: blog ise */}
+                                            {menuType === 'blog' && (
+                                                <Grid size={{ xs: 12 }}>
+                                                    <FormControl fullWidth>
+                                                        <Autocomplete
+                                                            value={blogs.find(b => b._id === blogId) || null}
+                                                            onChange={(event, newValue) => {
+                                                                setBlogId(newValue?._id || '')
+                                                            }}
+                                                            options={blogs}
+                                                            filterOptions={blogFilterOptions}
+                                                            getOptionLabel={(option) => option.title}
+                                                            loading={loadingOptions}
+                                                            loadingText="Yükleniyor..."
+                                                            noOptionsText="Yayında blog yazısı yok"
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    label="Blog Yazısı Seç"
+                                                                    required
+                                                                />
+                                                            )}
+                                                            disabled={loadingOptions}
+                                                        />
+                                                    </FormControl>
+                                                </Grid>
+                                            )}
+                                            {/* Ürün Seçimi - Sadece menuType: product ise */}
+                                            {menuType === 'product' && (
+                                                <Grid size={{ xs: 12 }}>
+                                                    <FormControl fullWidth>
+                                                        <Autocomplete
+                                                            value={products.find(p => p._id === productId) || null}
+                                                            onChange={(event, newValue) => {
+                                                                setProductId(newValue?._id || '')
+                                                            }}
+                                                            onInputChange={(event, newInput, reason) => {
+                                                                if (reason === 'input') setProductQuery(newInput)
+                                                            }}
+                                                            options={products}
+                                                            getOptionLabel={(option) => `${option.title}${option.sku ? ` (${option.sku})` : ''}`}
+                                                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                            filterOptions={(x) => x}
+                                                            loading={loadingProducts}
+                                                            loadingText="Aranıyor..."
+                                                            noOptionsText="Ürün adı veya stok kodu yazın"
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    label="Ürün Seç"
+                                                                    placeholder="Ürün adı veya stok kodu"
+                                                                    required
+                                                                />
+                                                            )}
+                                                        />
                                                     </FormControl>
                                                 </Grid>
                                             )}
@@ -469,6 +602,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                         <MenuItem key="header" value='header'>Header</MenuItem>
                                                         <MenuItem key="footer" value='footer'>Footer</MenuItem>
                                                         <MenuItem key="mobile" value='mobile'>Mobil</MenuItem>
+                                                        <MenuItem key="general" value='general'>Genel (Serbest)</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </CardContent>
@@ -499,7 +633,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                             required
                                                         >
                                                             <MenuItem key="empty-parent" value="">
-                                                                <em>{parentMenus.length === 0 ? 'Yükleniyor...' : 'Seçiniz'}</em>
+                                                                <em>{loadingOptions ? 'Yükleniyor...' : (parentMenus.length === 0 ? 'Üst menü bulunamadı' : 'Seçiniz')}</em>
                                                             </MenuItem>
                                                             {parentMenus.map((menu) => (
                                                                 <MenuItem key={menu._id} value={menu._id}>

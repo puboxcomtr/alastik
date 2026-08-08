@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const WebMerchantSettings = require('../../../models/plugins/merchant/WebMerchantSettings');
 
-// Ayarları Getir
+// Ayarları Getir (seçili sitenin ayarları)
 router.get('/', async (req, res) => {
     try {
-        let settings = await WebMerchantSettings.findOne();
+        let settings = await WebMerchantSettings.findOne({ site: req.site });
         if (!settings) {
-            settings = await WebMerchantSettings.create({});
+            settings = await WebMerchantSettings.create({ site: req.site });
         }
         res.json({ success: true, data: settings });
     } catch (err) {
@@ -15,14 +15,17 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Ayarları Güncelle
+// Ayarları Güncelle (seçili sitenin ayarları)
 router.put('/', async (req, res) => {
     try {
-        let settings = await WebMerchantSettings.findOne();
+        // Salt okunur / sistem alanları istekten ayıklanır (site de dışarıdan değiştirilemez)
+        const { _id, createdAt, updatedAt, __v, lastGenerated, productCount, site, ...payload } = req.body || {};
+
+        let settings = await WebMerchantSettings.findOne({ site: req.site });
         if (!settings) {
-            settings = await WebMerchantSettings.create(req.body);
+            settings = await WebMerchantSettings.create({ ...payload, site: req.site });
         } else {
-            Object.assign(settings, req.body);
+            settings.set(payload);
             await settings.save();
         }
         res.json({ success: true, data: settings });

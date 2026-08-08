@@ -64,7 +64,7 @@ const DiaStockSchema = new mongoose.Schema({
   },
 
   // Barkod bilgileri
-  anabarkod: String,
+  anabarkod: { type: String, index: true },
   barkodu: String,
   karebarkod: String,
   // Birim bilgileri

@@ -1,16 +1,19 @@
 /**
- * Mail şablonu DB'ye ekleme/güncelleme scripti
+ * Mail şablonu DB'ye ekleme/güncelleme scripti (tüm siteler için)
  * Kullanım: node seed-template.js
  *
  * Bu dosyayı her şablon için kopyalayıp template verisini değiştir,
- * sonra çalıştır.
+ * sonra çalıştır. Şablon her site için ayrı ayrı upsert edilir.
  */
+
+const path = require('path')
+
+require('dotenv').config({ path: path.join(__dirname, '../../../.env.production') })
 
 const mongoose = require('mongoose')
 const fs = require('fs')
-const path = require('path')
 
-const MONGO_URI = 'mongodb://alastik:34gm4191M.@217.195.202.170:27017/alastik_db?authSource=admin'
+const { SITES } = require('../../config/sites')
 
 // =============================================
 // ŞABLON BİLGİLERİ - HER YENİ ŞABLON İÇİN BURAYI DÜZENLE
@@ -31,7 +34,7 @@ const WebMailTemplate = require('../../models/admin/mail/Template')
 const run = async () => {
     try {
         console.log('MongoDB bağlantısı kuruluyor...')
-        await mongoose.connect(MONGO_URI)
+        await mongoose.connect(process.env.MONGODB_URI)
         console.log('MongoDB bağlandı')
 
         // HTML dosyasını oku
@@ -45,44 +48,47 @@ const run = async () => {
 
         console.log(`HTML dosyası okundu: ${htmlContent.length} karakter`)
 
-        // Var olan kaydı kontrol et
-        const existing = await WebMailTemplate.findOne({ templateKey: TEMPLATE.templateKey })
+        // Her site için ayrı kayıt (site + templateKey benzersiz)
+        for (const site of Object.keys(SITES)) {
+            const existing = await WebMailTemplate.findOne({ site, templateKey: TEMPLATE.templateKey })
 
-        if (existing) {
-            console.log(`Mevcut kayıt bulundu (ID: ${existing._id})`)
-            console.log('Sadece defaultContent güncellenecek (kullanıcı edit\'leri korunacak)...')
+            if (existing) {
+                console.log(`[${site}] Mevcut kayıt bulundu (ID: ${existing._id})`)
+                console.log(`[${site}] Sadece defaultContent güncellenecek (kullanıcı edit'leri korunacak)...`)
 
-            existing.defaultContent = htmlContent
+                existing.defaultContent = htmlContent
 
-            // Eğer content boşsa veya defaultContent ile aynıysa content'i de güncelle
-            if (!existing.content || existing.content === existing.defaultContent) {
-                existing.content = htmlContent
+                // Eğer content boşsa veya defaultContent ile aynıysa content'i de güncelle
+                if (!existing.content || existing.content === existing.defaultContent) {
+                    existing.content = htmlContent
+                }
+
+                existing.name = TEMPLATE.name
+                existing.category = TEMPLATE.category
+                existing.categoryName = TEMPLATE.categoryName
+                existing.order = TEMPLATE.order
+                existing.isActive = TEMPLATE.isActive
+
+                await existing.save()
+
+                console.log(`[${site}] Şablon güncellendi`)
+            } else {
+                console.log(`[${site}] Yeni şablon ekleniyor...`)
+
+                await WebMailTemplate.create({
+                    site,
+                    templateKey: TEMPLATE.templateKey,
+                    name: TEMPLATE.name,
+                    category: TEMPLATE.category,
+                    categoryName: TEMPLATE.categoryName,
+                    content: htmlContent,
+                    defaultContent: htmlContent,
+                    order: TEMPLATE.order,
+                    isActive: TEMPLATE.isActive
+                })
+
+                console.log(`[${site}] Şablon başarıyla eklendi`)
             }
-
-            existing.name = TEMPLATE.name
-            existing.category = TEMPLATE.category
-            existing.categoryName = TEMPLATE.categoryName
-            existing.order = TEMPLATE.order
-            existing.isActive = TEMPLATE.isActive
-
-            await existing.save()
-
-            console.log('Şablon güncellendi')
-        } else {
-            console.log('Yeni şablon ekleniyor...')
-
-            await WebMailTemplate.create({
-                templateKey: TEMPLATE.templateKey,
-                name: TEMPLATE.name,
-                category: TEMPLATE.category,
-                categoryName: TEMPLATE.categoryName,
-                content: htmlContent,
-                defaultContent: htmlContent,
-                order: TEMPLATE.order,
-                isActive: TEMPLATE.isActive
-            })
-
-            console.log('Şablon başarıyla eklendi')
         }
 
         await mongoose.disconnect()

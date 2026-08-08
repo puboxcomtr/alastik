@@ -29,3 +29,6 @@ apps/api/src/config/alastik-service-account.json
 backups/
 .next/
 node_modules/
+
+# Hassas evraklar (montaj sozlesmeleri vb.)
+apps/api/private/

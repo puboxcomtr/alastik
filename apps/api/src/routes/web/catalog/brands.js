@@ -20,12 +20,13 @@ router.get('/', async (req, res) => {
             min_products
         } = req.query;
 
-        // Filtre oluştur
+        // Filtre oluştur (görünürlük ziyaret edilen siteye göre)
         const filter = {};
 
-        // Sadece görünür markalar
+        // Sadece görünür markalar (sitede yayınlanmış ürünü olmayan marka otomatik gizlenir)
         if (visible_only === 'true' || visible_only === '1') {
-            filter.webVisible = true;
+            filter[`siteSettings.${req.site}.webVisible`] = true;
+            filter[`siteSettings.${req.site}.productCount`] = { $gt: 0 };
         }
 
         // Arama
@@ -48,11 +49,12 @@ router.get('/', async (req, res) => {
             filter.productCount = { $gte: parseInt(min_products) };
         }
 
-        // Sıralama
+        // Sıralama (webOrder site bazlı alandan okunur)
         const sortOptions = {};
         const validSortFields = ['name', 'productCount', 'totalStock', 'webOrder'];
         const sortField = validSortFields.includes(sort_by) ? sort_by : 'name';
-        sortOptions[sortField] = sort_order === 'desc' ? -1 : 1;
+        const resolvedSortField = sortField === 'webOrder' ? `siteSettings.${req.site}.webOrder` : sortField;
+        sortOptions[resolvedSortField] = sort_order === 'desc' ? -1 : 1;
 
         // Sayfalama
         const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -128,11 +130,12 @@ router.get('/', async (req, res) => {
 router.get('/homepage', async (req, res) => {
     try {
         const brands = await WebBrand.find({
-            webVisible: true,
-            showOnHomepage: true
+            [`siteSettings.${req.site}.webVisible`]: true,
+            [`siteSettings.${req.site}.showOnHomepage`]: true,
+            [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         })
-            .select('name diaBrand diaMarkaAck customName slug seoUrl logo productCount homepageOrder')
-            .sort({ homepageOrder: 1, name: 1 })
+            .select('name diaBrand diaMarkaAck customName slug seoUrl logo productCount siteSettings')
+            .sort({ [`siteSettings.${req.site}.homepageOrder`]: 1, name: 1 })
             .lean();
 
         const formattedBrands = brands.map(brand => {
@@ -191,9 +194,10 @@ router.get('/:slug', async (req, res) => {
                 { diaMarkaAck: { $regex: new RegExp(`^${slug}$`, 'i') } },
                 { name: { $regex: new RegExp(`^${slug}$`, 'i') } }
             ],
-            webVisible: true
+            [`siteSettings.${req.site}.webVisible`]: true,
+            [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         })
-            .select('name diaBrand diaMarkaAck seoUrl seoTitle seoDescription description logo productCount activeProductCount totalStock priceRange categoryDistribution brandInfo')
+            .select('name slug diaBrand diaMarkaAck seoUrl seoTitle seoDescription description siteContent logo productCount activeProductCount totalStock priceRange categoryDistribution brandInfo')
             .lean();
 
         if (!brand) {
@@ -202,6 +206,9 @@ router.get('/:slug', async (req, res) => {
                 error: 'Marka bulunamadı'
             });
         }
+
+        // Sitenin kendi içerik/SEO metinleri (yoksa ortak alanlar)
+        const sc = brand.siteContent?.[req.site] || {};
 
         // Logo URL düzenleme
         const logoUrl = brand.logo?.url;
@@ -226,9 +233,9 @@ router.get('/:slug', async (req, res) => {
                 diaMarkaAck: brand.diaMarkaAck,
                 logo: formattedLogoUrl,
                 logoAlt: brand.logo?.alt || `${brand.name} Logo`,
-                description: brand.description,
-                seoTitle: brand.seoTitle,
-                seoDescription: brand.seoDescription,
+                description: sc.description || brand.description,
+                seoTitle: sc.seoTitle || brand.seoTitle,
+                seoDescription: sc.seoDescription || brand.seoDescription,
                 productCount: brand.productCount || 0,
                 activeProductCount: brand.activeProductCount || 0,
                 totalStock: brand.totalStock || 0,

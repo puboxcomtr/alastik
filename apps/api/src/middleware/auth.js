@@ -75,6 +75,7 @@ const sessionMiddleware = async (req, res, next) => {
 
       session = await Session.createGuestSession({
         sessionId,
+        site: req.site,
         metadata: {
           ipAddress: getClientIP(req),
           userAgent: userAgent,
@@ -307,6 +308,20 @@ const authenticateAdmin = async (req, res, next) => {
     if (admin.isLocked) {
       return res.status(401).json({
         error: 'Admin account is temporarily locked.'
+      });
+    }
+
+    // Site erişim kontrolü — yönetici yalnızca yetkili olduğu sitelerde işlem yapabilir
+    // (kendi profil/çıkış uçları hariç: yetkisiz sitedeyken bile kim olduğunu öğrenebilmeli)
+    const isAuthSelfEndpoint = (req.originalUrl || '').startsWith('/api/admin/user/auth/');
+    const adminSites = Array.isArray(admin.sites) && admin.sites.length > 0 ? admin.sites : null;
+    if (!isAuthSelfEndpoint && adminSites && req.site && !adminSites.includes(req.site)) {
+      const { SITES } = require('../config/sites');
+      const siteName = SITES[req.site]?.name || req.site;
+      return res.status(403).json({
+        error: `${siteName} yetkiniz kısıtlıdır`,
+        code: 'SITE_ACCESS_DENIED',
+        site: req.site
       });
     }
 

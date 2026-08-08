@@ -1,7 +1,14 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { SITES } = require('../../../config/sites');
 
 const adminSchema = new mongoose.Schema({
+  // Yöneticinin erişebildiği siteler — listede olmayan sitede işlem yapamaz
+  sites: {
+    type: [String],
+    enum: Object.keys(SITES),
+    default: () => Object.keys(SITES)
+  },
   email: {
     type: String,
     required: true,

@@ -19,7 +19,7 @@ router.post('/calculate', async (req, res) => {
             });
         }
 
-        const result = await CargoCalculatorService.calculate(items);
+        const result = await CargoCalculatorService.calculate(items, req.site);
         return res.json(result);
 
     } catch (error) {

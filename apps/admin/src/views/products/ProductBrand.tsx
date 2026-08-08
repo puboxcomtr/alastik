@@ -18,6 +18,8 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
 
 export interface ProductBrandProps {
   product: ProductType
@@ -29,10 +31,16 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
 
   // States
   const [webVisible, setWebVisible] = useState(true)
+  const [hideBrand, setHideBrand] = useState(false)
+  const [hideProductionDate, setHideProductionDate] = useState(false)
+  const [hideStock, setHideStock] = useState(false)
 
   // Initialize values
   useEffect(() => {
     setWebVisible(product.webVisible ?? true)
+    setHideBrand(product.hideBrand ?? false)
+    setHideProductionDate(product.hideProductionDate ?? false)
+    setHideStock(product.hideStock ?? false)
   }, [product])
 
   // Ürün durumu değişiklik handler
@@ -40,6 +48,24 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
     const isVisible = value === 'Aktif'
     setWebVisible(isVisible)
     updateField('webVisible', isVisible)
+  }
+
+  // Marka gizleme değişiklik handler
+  const handleHideBrandChange = (checked: boolean) => {
+    setHideBrand(checked)
+    updateField('hideBrand', checked)
+  }
+
+  // Üretim tarihi gizleme değişiklik handler
+  const handleHideProductionDateChange = (checked: boolean) => {
+    setHideProductionDate(checked)
+    updateField('hideProductionDate', checked)
+  }
+
+  // Stok gizleme değişiklik handler
+  const handleHideStockChange = (checked: boolean) => {
+    setHideStock(checked)
+    updateField('hideStock', checked)
   }
 
   return (
@@ -67,6 +93,36 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
             InputProps={{
               readOnly: true,
             }}
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={hideBrand}
+                onChange={e => handleHideBrandChange(e.target.checked)}
+              />
+            }
+            label='Markayı Gizle (kategori/vitrin kartlarında marka gösterilmez)'
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={hideProductionDate}
+                onChange={e => handleHideProductionDateChange(e.target.checked)}
+              />
+            }
+            label='Üretim Tarihini Gizle (kartlarda üretim tarihi gösterilmez)'
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={hideStock}
+                onChange={e => handleHideStockChange(e.target.checked)}
+              />
+            }
+            label='Stok Bilgisini Gizle (kartlarda stok adedi gösterilmez)'
           />
         </div>
       </CardContent>

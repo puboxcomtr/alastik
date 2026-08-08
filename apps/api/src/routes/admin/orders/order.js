@@ -262,7 +262,8 @@ router.get('/:id', async (req, res) => {
             if (member) {
                 const orderCount = await WebOrder.countDocuments({
                     memberId: order.memberId,
-                    isActive: true
+                    isActive: true,
+                    site: req.site
                 });
 
                 memberInfo = {
@@ -335,8 +336,11 @@ router.get('/:id', async (req, res) => {
                 referenceCode: order.payment?.referenceCode || null,
                 bankTransfer: order.payment?.bankTransfer || null,
                 cardInfo: order.payment?.cardInfo || null,
-                paidAt: order.payment?.paidAt || null
+                paidAt: order.payment?.paidAt || null,
+                manualCollection: order.payment?.manualCollection || null
             },
+
+            adminNote: order.adminNote || '',
 
             status: order.status || 'pending',
             statusText: ORDER_STATUSES[order.status] || order.status || 'Onay Bekliyor',
@@ -371,6 +375,97 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /api/admin/orders/:id/status - Sipariş durumu güncelle
+// Manuel tahsilat bilgisi - PUT /admin/orders/:id/manual-collection
+// channel: paynet | otopirpos | nkolay | null (temizle)
+router.put('/:id/manual-collection', async (req, res) => {
+    try {
+        const { channel } = req.body || {};
+        const allowedChannels = ['paynet', 'otopirpos', 'nkolay', null];
+
+        if (!allowedChannels.includes(channel ?? null)) {
+            return res.status(400).json({ success: false, message: 'Geçersiz tahsilat kanalı' });
+        }
+
+        const order = await WebOrder.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
+            {
+                $set: {
+                    'payment.manualCollection': {
+                        channel: channel || null,
+                        updatedAt: new Date()
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
+        }
+
+        res.json({
+            success: true,
+            message: channel ? 'Manuel tahsilat bilgisi kaydedildi' : 'Manuel tahsilat bilgisi kaldırıldı',
+            data: { manualCollection: order.payment?.manualCollection || null }
+        });
+    } catch (error) {
+        console.error('Manuel tahsilat güncelleme hatası:', error);
+        res.status(500).json({ success: false, message: 'Manuel tahsilat bilgisi güncellenemedi' });
+    }
+});
+
+// Sipariş açıklaması - PUT /admin/orders/:id/admin-note
+router.put('/:id/admin-note', async (req, res) => {
+    try {
+        const note = String(req.body?.note ?? '').trim();
+
+        const order = await WebOrder.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
+            { $set: { adminNote: note } },
+            { new: true }
+        );
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
+        }
+
+        res.json({ success: true, message: 'Sipariş açıklaması kaydedildi', data: { adminNote: order.adminNote } });
+    } catch (error) {
+        console.error('Sipariş açıklaması güncelleme hatası:', error);
+        res.status(500).json({ success: false, message: 'Sipariş açıklaması kaydedilemedi' });
+    }
+});
+
+// Sipariş açıklama şablonları - GET /admin/orders/templates/notes (site bazlı, ayarlardan)
+router.get('/templates/notes', async (req, res) => {
+    try {
+        const Setting = require('../../../models/admin/settings/Setting');
+
+        let setting = await Setting.findOne({ site: req.site, group: 'order', key: 'noteTemplates' });
+
+        if (!setting) {
+            // Varsayılan şablonlar (ayarlardan düzenlenebilir kayıt olarak oluşturulur)
+            setting = await Setting.create({
+                site: req.site,
+                group: 'order',
+                key: 'noteTemplates',
+                type: 'json',
+                description: 'Sipariş açıklama şablonları',
+                value: [
+                    { title: 'Kargo Bilgilendirmesi', content: 'Siparişiniz kargoya verilmiştir. Takip numaranız ayrıca iletilecektir.' },
+                    { title: 'Stok Bekleniyor', content: 'Siparişinizdeki ürünler tedarik sürecindedir. Tahmini gönderim tarihi güncellenecektir.' },
+                    { title: 'Manuel Tahsilat Notu', content: 'Ödeme müşteriden telefonla manuel olarak tahsil edilmiştir.' }
+                ]
+            });
+        }
+
+        res.json({ success: true, data: setting.value || [] });
+    } catch (error) {
+        console.error('Sipariş şablonları hatası:', error);
+        res.status(500).json({ success: false, message: 'Şablonlar yüklenemedi' });
+    }
+});
+
 router.put('/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
@@ -383,8 +478,8 @@ router.put('/:id/status', async (req, res) => {
             });
         }
 
-        const order = await WebOrder.findByIdAndUpdate(
-            id,
+        const order = await WebOrder.findOneAndUpdate(
+            { _id: id, site: req.site },
             { status, updatedAt: new Date() },
             { new: true }
         );
@@ -439,8 +534,8 @@ router.put('/:id/payment-status', async (req, res) => {
             updateData['payment.paidAt'] = new Date();
         }
 
-        const order = await WebOrder.findByIdAndUpdate(
-            id,
+        const order = await WebOrder.findOneAndUpdate(
+            { _id: id, site: req.site },
             updateData,
             { new: true }
         );
@@ -491,7 +586,7 @@ router.post('/:id/verify-payment', async (req, res) => {
         }
 
         const NkolayService = require('../../../services/plugins/payment/NKolayService');
-        const result = await NkolayService.checkPaymentStatus({ clientRefCode: order.orderNumber });
+        const result = await NkolayService.checkPaymentStatus({ clientRefCode: order.orderNumber, site: order.site });
 
         if (!result.success || !result.found) {
             return res.json({ success: true, updated: false, reason: 'not_found_in_nkolay', paymentStatus: order.payment?.status });
@@ -540,7 +635,8 @@ router.post('/:id/verify-payment', async (req, res) => {
                 context: { orderId: order._id.toString() },
                 to: customerMail,
                 alsoSendToAdmin: true,
-                adminPurpose: 'order'
+                adminPurpose: 'order',
+                site: order.site
             }).catch(err => console.error('[verify-payment] Mail hatasi:', order.orderNumber, err.message));
         } catch (mailErr) {
             console.error('[verify-payment] Mail tetikleme hatasi:', mailErr.message);

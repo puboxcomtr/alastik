@@ -23,6 +23,11 @@ import Box from '@mui/material/Box'
 
 // API
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { ADMIN_SITES, getSiteLabel } from '@/utils/activeSite'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import FormGroup from '@mui/material/FormGroup'
+import FormLabel from '@mui/material/FormLabel'
 
 type RoleType = {
     _id: string
@@ -49,6 +54,13 @@ const AdminForm = ({ roles }: AdminFormProps) => {
         role: '',
         status: 'active' as const
     })
+    const [selectedSites, setSelectedSites] = useState<string[]>(ADMIN_SITES.slice())
+
+    const toggleSite = (slug: string) => {
+        setSelectedSites(prev =>
+            prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]
+        )
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -101,6 +113,11 @@ const AdminForm = ({ roles }: AdminFormProps) => {
             return
         }
 
+        if (selectedSites.length === 0) {
+            toast.error('En az bir site erişimi seçmelisiniz')
+            return
+        }
+
         setLoading(true)
 
         try {
@@ -108,7 +125,7 @@ const AdminForm = ({ roles }: AdminFormProps) => {
 
             await fetchAPI(API_ENDPOINTS.admins.create(), {
                 method: 'POST',
-                body: JSON.stringify(dataToSend)
+                body: JSON.stringify({ ...dataToSend, sites: selectedSites })
             })
 
             toast.success('Yönetici başarıyla oluşturuldu')
@@ -281,6 +298,27 @@ const AdminForm = ({ roles }: AdminFormProps) => {
                                             <MenuItem value='active'>Aktif</MenuItem>
                                             <MenuItem value='inactive'>Pasif</MenuItem>
                                         </Select>
+                                    </FormControl>
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <FormControl component='fieldset'>
+                                        <FormLabel component='legend'>Site Erişimi</FormLabel>
+                                        <FormGroup row>
+                                            {ADMIN_SITES.map(slug => (
+                                                <FormControlLabel
+                                                    key={slug}
+                                                    control={
+                                                        <Checkbox
+                                                            checked={selectedSites.includes(slug)}
+                                                            onChange={() => toggleSite(slug)}
+                                                            disabled={loading}
+                                                        />
+                                                    }
+                                                    label={getSiteLabel(slug)}
+                                                />
+                                            ))}
+                                        </FormGroup>
                                     </FormControl>
                                 </Grid>
 

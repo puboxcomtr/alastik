@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -20,6 +20,7 @@ import Checkbox from '@mui/material/Checkbox'
 import InputAdornment from '@mui/material/InputAdornment'
 import { toast } from 'react-toastify'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getActiveSite } from '@/utils/activeSite'
 
 interface AkakceFieldMapping {
     sku: string
@@ -31,7 +32,7 @@ interface AkakceFieldMapping {
     category: string
 }
 
-type PickItem = { id: string, name: string }
+type PickItem = { id: string, name: string, xmlName?: string }
 
 interface SourceFilter {
     enabled: boolean
@@ -287,6 +288,50 @@ const CustomProductSelector = ({ value, onChange }: {
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
     const [searchPerformed, setSearchPerformed] = useState(false)
+    const [isImporting, setIsImporting] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+        if (!file) return
+
+        setIsImporting(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            const json = await fetchAPI(API_ENDPOINTS.akakceSettings.importProducts(), {
+                method: 'POST',
+                body: formData
+            })
+            if (!json.success) throw new Error(json.message)
+
+            const { matched = [], notFound = [] } = json.data || {}
+            if (!matched.length) {
+                toast.warn(json.data?.message || 'Dosyadaki kodlarla eşleşen ürün bulunamadı')
+                return
+            }
+
+            const matchedById = new Map((matched as PickItem[]).map(m => [m.id, m]))
+            // Zaten seçili olanların xmlName'ini güncelle, yenileri ekle
+            const updatedExisting = value.map(v => {
+                const m = matchedById.get(v.id)
+                return m?.xmlName ? { ...v, xmlName: m.xmlName } : v
+            })
+            const existingIds = new Set(value.map(v => v.id))
+            const additions = (matched as PickItem[]).filter(m => !existingIds.has(m.id))
+            onChange([...updatedExisting, ...additions])
+
+            toast.success(`${matched.length} ürün eşleşti, ${additions.length} yeni ürün seçime eklendi`)
+            if (notFound.length) {
+                toast.warn(`${notFound.length} kod eşleşmedi: ${notFound.slice(0, 5).join(', ')}${notFound.length > 5 ? '...' : ''}`)
+            }
+        } catch (err: any) {
+            toast.error(err?.message || 'Excel içe aktarma sırasında hata oluştu')
+        } finally {
+            setIsImporting(false)
+        }
+    }
 
     const idOf = (p: any) => String(p.sku || p.stokkartkodu || p.id || p._id)
     const nameOf = (p: any) => p.name || p.sku || 'İsimsiz'
@@ -343,7 +388,19 @@ const CustomProductSelector = ({ value, onChange }: {
 
             {/* Seçili ürünler */}
             {value.length > 0 && (
-                <Box display="flex" flexWrap="wrap" gap={1} mb={3}>
+                <Box
+                    display="flex"
+                    flexWrap="wrap"
+                    gap={1}
+                    mb={3}
+                    sx={{
+                        maxHeight: 150,
+                        overflowY: 'auto',
+                        border: '1px solid var(--mui-palette-divider)',
+                        borderRadius: 1,
+                        p: 2
+                    }}
+                >
                     {value.map(v => (
                         <Chip
                             key={v.id}
@@ -356,8 +413,15 @@ const CustomProductSelector = ({ value, onChange }: {
             )}
 
             {/* Arama Alanı */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                hidden
+                onChange={handleImportFile}
+            />
             <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth
                         placeholder="Ürün adı veya stok kodu (SKU) ile ara..."
@@ -379,9 +443,21 @@ const CustomProductSelector = ({ value, onChange }: {
                         }}
                     />
                 </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Button fullWidth variant="outlined" onClick={handleSearch} disabled={isSearching}>
                         {isSearching ? 'Aranıyor...' : 'Ara'}
+                    </Button>
+                </Grid>
+                <Grid size={{ xs: 6, md: 3 }}>
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        color="success"
+                        startIcon={isImporting ? <CircularProgress size={16} /> : <i className="ri-file-excel-2-line" />}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isImporting}
+                    >
+                        {isImporting ? 'Aktarılıyor...' : "Excel'den İçe Aktar"}
                     </Button>
                 </Grid>
             </Grid>
@@ -538,19 +614,17 @@ export default function Settings() {
     const [categoryOptions, setCategoryOptions] = useState<PickItem[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(false)
 
-    const feedUrl = API_ENDPOINTS.akakceSettings.feedUrl()
+    const feedUrl = `${API_ENDPOINTS.akakceSettings.feedUrl()}?site=${getActiveSite()}`
 
     const fetchPriceFields = async () => {
         try {
-            const res = await fetch(API_ENDPOINTS.akakceSettings.priceFields())
-            const data = await res.json()
+            const data = await fetchAPI(API_ENDPOINTS.akakceSettings.priceFields())
             if (data.success) setPriceFields(data.data)
         } catch { }
     }
     const fetchTextFields = async () => {
         try {
-            const res = await fetch(API_ENDPOINTS.akakceSettings.textFields())
-            const data = await res.json()
+            const data = await fetchAPI(API_ENDPOINTS.akakceSettings.textFields())
             if (data.success) setTextFields(data.data)
         } catch { }
     }
@@ -580,8 +654,7 @@ export default function Settings() {
     const fetchSettings = async () => {
         try {
             setLoading(true)
-            const res = await fetch(API_ENDPOINTS.akakceSettings.get())
-            const data = await res.json()
+            const data = await fetchAPI(API_ENDPOINTS.akakceSettings.get())
             if (data.success && data.data) {
                 setSettings(prev => ({
                     ...prev,
@@ -603,12 +676,10 @@ export default function Settings() {
     const handleSave = async () => {
         try {
             setSaving(true)
-            const res = await fetch(API_ENDPOINTS.akakceSettings.update(), {
+            const data = await fetchAPI(API_ENDPOINTS.akakceSettings.update(), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
             })
-            const data = await res.json()
             if (data.success) {
                 toast.success('Ayarlar kaydedildi')
             } else {

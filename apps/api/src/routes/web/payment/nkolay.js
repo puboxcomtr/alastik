@@ -61,6 +61,7 @@ router.post('/3d-init', async (req, res) => {
 
         // Ödeme başlat
         const result = await NkolayService.processPayment({
+            site: order.site,
             orderNumber: order.orderNumber,
             amount: order.pricing.total,
             cardNumber,
@@ -160,7 +161,7 @@ router.post('/3d-callback/success', async (req, res) => {
         let finalAuthCode = authCode;
 
         if (referenceCode) {
-            const completeResult = await NkolayService.completePayment(referenceCode);
+            const completeResult = await NkolayService.completePayment(referenceCode, order.site);
             console.log('[Nkolay Route] CompletePayment sonuç:', completeResult);
 
             if (completeResult.success) {
@@ -200,7 +201,8 @@ router.post('/3d-callback/success', async (req, res) => {
                     context: { orderId: order._id.toString() },
                     to: customerMail,
                     alsoSendToAdmin: true,
-                    adminPurpose: 'order'
+                    adminPurpose: 'order',
+                    site: order.site
                 }).then((mailResult) => {
                     if (!mailResult.success) {
                         console.warn('[nkolay:3d-callback-success] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
@@ -267,7 +269,9 @@ router.post('/cancel', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Eksik bilgi: referenceCode, amount, trxDate gerekli' });
         }
 
-        const result = await NkolayService.cancelPayment({ referenceCode, amount, trxDate });
+        // Site, referans kodundan bulunan siparişten çözülür (yoksa istekten)
+        const cancelOrder = await WebOrder.findOne({ 'payment.referenceCode': referenceCode }).select('site').lean();
+        const result = await NkolayService.cancelPayment({ referenceCode, amount, trxDate, site: cancelOrder?.site || req.site });
         return res.json(result);
 
     } catch (error) {
@@ -285,7 +289,9 @@ router.post('/refund', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Eksik bilgi: referenceCode, amount, trxDate gerekli' });
         }
 
-        const result = await NkolayService.refundPayment({ referenceCode, amount, trxDate });
+        // Site, referans kodundan bulunan siparişten çözülür (yoksa istekten)
+        const refundOrder = await WebOrder.findOne({ 'payment.referenceCode': referenceCode }).select('site').lean();
+        const result = await NkolayService.refundPayment({ referenceCode, amount, trxDate, site: refundOrder?.site || req.site });
         return res.json(result);
 
     } catch (error) {

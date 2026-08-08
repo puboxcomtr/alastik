@@ -16,7 +16,7 @@ export interface TireFilterOptions {
     productType: 'LASTİK' | 'JANT';
     brands: FilterOption[];
     vehicleTypes: VehicleTypeOption[];
-    priceRange: { min: number; max: number };
+    priceRange: { min: number; max: number } | null;
     widths?: FilterOption[];
     aspects?: FilterOption[];
     rims?: FilterOption[];

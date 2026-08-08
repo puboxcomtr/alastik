@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import { toast } from 'react-toastify'
-import { getSiteHeader } from '@/utils/activeSite'
+import { fetchAPI } from '@libs/api'
 
 // Settings veri tipi
 interface SettingsData {
@@ -88,13 +88,10 @@ export function SettingsProvider({
         setIsLoading(true)
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/settings/general`, {
+            const result = await fetchAPI(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/settings/general`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', ...getSiteHeader() },
                 body: JSON.stringify(updateData)
             })
-
-            const result = await response.json()
 
             if (result.success) {
                 toast.success('Ayarlar başarıyla kaydedildi')

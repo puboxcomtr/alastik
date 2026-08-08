@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const cargoSchema = new mongoose.Schema({
+    // Her site için ayrı kargo tanımı (site + code benzersiz)
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     name: {
         type: String,
         required: true,
@@ -9,7 +18,6 @@ const cargoSchema = new mongoose.Schema({
     code: {
         type: String,
         required: true,
-        unique: true,
         trim: true,
         lowercase: true
     },
@@ -75,7 +83,7 @@ const cargoSchema = new mongoose.Schema({
     collection: 'webcargo'
 });
 
-cargoSchema.index({ code: 1 }, { unique: true });
+cargoSchema.index({ site: 1, code: 1 }, { unique: true });
 cargoSchema.index({ isActive: 1, webOrder: -1 });
 
 module.exports = mongoose.model('Cargo', cargoSchema);

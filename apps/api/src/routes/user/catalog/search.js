@@ -6,6 +6,7 @@ const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 const WebTag = require('../../../models/web/catalog/WebTag');
 const Setting = require('../../../models/admin/settings/Setting');
+const { getSiteVisibilityFilter } = require('../../../config/diaFilters');
 
 
 // POST /api/search/autocomplete
@@ -65,7 +66,7 @@ router.post('/autocomplete', async (req, res) => {
             const stockRegex = new RegExp(escapeRegex(definiteStockCode), 'i');
             const products = await WebProduct.find({
                 'syncInfo.diaStatus': 'synced',
-                'customData.webVisible': true,
+                $and: [getSiteVisibilityFilter(req.site)],
                 $or: [
                     { 'diaData.stokkartkodu': stockRegex },
                     { 'diaData.anabarkod': stockRegex }
@@ -93,7 +94,7 @@ router.post('/autocomplete', async (req, res) => {
             const stockRegex = new RegExp(escapeRegex(stockCode), 'i');
             const products = await WebProduct.find({
                 'syncInfo.diaStatus': 'synced',
-                'customData.webVisible': true,
+                $and: [getSiteVisibilityFilter(req.site)],
                 $or: [
                     { 'diaData.stokkartkodu': stockRegex },
                     { 'diaData.anabarkod': stockRegex }
@@ -120,7 +121,7 @@ router.post('/autocomplete', async (req, res) => {
 
             const productAndConditions = [
                 { 'syncInfo.diaStatus': 'synced' },
-                { 'customData.webVisible': true },
+                getSiteVisibilityFilter(req.site),
                 { $or: sizePatterns.map(p => ({ 'diaData.aciklama': p })) }
             ];
 
@@ -137,6 +138,7 @@ router.post('/autocomplete', async (req, res) => {
             // Etiketleri ebat ile bul
             // Etiketleri ebat ile bul (ebat dışı kelime varsa onu da etikette ara)
             const tagAndConditions = [
+                { site: req.site },
                 { isActive: true },
                 { $or: sizePatterns.map(p => ({ title: p })) }
             ];
@@ -193,7 +195,8 @@ router.post('/autocomplete', async (req, res) => {
         // Marka: tek kelimeyle eşleşme (marka adı genelde tek kelimedir)
         const fullQueryRegex = new RegExp(escapeRegex(query.trim()), 'i');
         const brands = await WebBrand.find({
-            webVisible: true,
+            [`siteSettings.${req.site}.webVisible`]: true,
+            [`siteSettings.${req.site}.productCount`]: { $gt: 0 },
             diaMarkaAck: fullQueryRegex
         }).limit(5).lean();
 
@@ -215,6 +218,7 @@ router.post('/autocomplete', async (req, res) => {
         }));
 
         const tags = await WebTag.find({
+            site: req.site,
             isActive: true,
             title: fullQueryRegex
         }).limit(10).lean();
@@ -228,7 +232,7 @@ router.post('/autocomplete', async (req, res) => {
         // Ürün: Tüm kelimeler aciklama veya stokkartkodu/anabarkod'da AND mantığıyla geçmeli
         const productConditions = [
             { 'syncInfo.diaStatus': 'synced' },
-            { 'customData.webVisible': true }
+            getSiteVisibilityFilter(req.site)
         ];
 
         wordRegexes.forEach(rgx => {
@@ -302,10 +306,14 @@ router.get('/results', async (req, res) => {
 
         // Stok kodu aramasında katı filtre uygulamayalım, sadece görünür ürünler
         const filter = isStockCode
-            ? { 'syncInfo.diaStatus': 'synced', 'customData.webVisible': true }
-            : getProductListFilters();
+            ? {
+                'syncInfo.diaStatus': 'synced',
+                ...(req.site ? { sites: req.site } : {}),
+                $and: [getSiteVisibilityFilter(req.site)]
+            }
+            : getProductListFilters(req.site);
 
-        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
+        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true && !isStockCode) {
             filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
         }

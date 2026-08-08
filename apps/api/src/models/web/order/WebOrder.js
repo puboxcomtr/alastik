@@ -100,6 +100,16 @@ const paymentSchema = new mongoose.Schema({
     },
     paidAt: Date,
 
+    // Manuel tahsilat bilgisi (hangi kanaldan elle tahsil edildi)
+    manualCollection: {
+        channel: {
+            type: String,
+            enum: ['paynet', 'otopirpos', 'nkolay', null],
+            default: null
+        },
+        updatedAt: Date
+    },
+
     // Mail durumu (mükerrer mail koruması)
     mailSent: { type: Boolean, default: false },
     mailSentAt: Date

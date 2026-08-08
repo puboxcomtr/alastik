@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+
 import Grid from '@mui/material/Grid2'
 import 'server-only'
 
@@ -7,7 +9,10 @@ const AddMenuPage = () => {
     return (
         <Grid container spacing={6}>
             <Grid size={{ xs: 12 }}>
-                <AddMenuForm />
+                {/* useSearchParams kullanan client bileşen Suspense ister */}
+                <Suspense>
+                    <AddMenuForm />
+                </Suspense>
             </Grid>
         </Grid>
     )

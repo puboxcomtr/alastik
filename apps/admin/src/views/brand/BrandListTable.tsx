@@ -126,6 +126,7 @@ const BrandListTable = () => {
           seoUrl: brand.seoUrl || '',
           productCount: brand.productCount || 0,
           webOrder: brand.webOrder || 0,
+          webVisible: brand.webVisible !== false,
           logo: brand.logo || null,
           status: brand.status || 'Inactive',
           completenessScore: brand.completenessScore || 0,

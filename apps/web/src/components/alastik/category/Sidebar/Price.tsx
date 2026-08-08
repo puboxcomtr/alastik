@@ -8,10 +8,11 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 interface PriceProps {
+  // Fiyat aralığı hesaplanamayan kategorilerde null gelir (filtre gizlenir)
   priceRange?: {
     min: number;
     max: number;
-  };
+  } | null;
 }
 
 export default function Price({ priceRange }: PriceProps) {

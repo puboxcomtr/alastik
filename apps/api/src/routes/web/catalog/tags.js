@@ -5,7 +5,7 @@ const router = express.Router();
 
 const WebTag = require('../../../models/web/catalog/WebTag');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
-const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+const { MAIN_DIA_FILTERS, getSiteVisibilityFilter } = require('../../../config/diaFilters');
 const Setting = require('../../../models/admin/settings/Setting');
 
 /**
@@ -26,6 +26,7 @@ router.get('/tire-size', async (req, res) => {
         const seoUrl = `${width}-${aspectRatio}-r${diameter}-lastik-fiyatlari`.toLowerCase();
 
         let tag = await WebTag.findOne({
+            site: req.site,
             seoUrl: seoUrl,
             type: 'tire_size',
             isActive: true
@@ -33,6 +34,7 @@ router.get('/tire-size', async (req, res) => {
 
         if (!tag) {
             tag = await WebTag.findOne({
+                site: req.site,
                 seoUrl: { $regex: new RegExp(`^${width}-${aspectRatio}-r${diameter}-`, 'i') },
                 type: 'tire_size',
                 isActive: true
@@ -85,6 +87,7 @@ router.get('/rim-pcd', async (req, res) => {
         const seoUrl = `${urlPcd}-jant-fiyatlari`;
 
         const tag = await WebTag.findOne({
+            site: req.site,
             seoUrl: seoUrl,
             type: 'rim_pcd',
             isActive: true
@@ -126,6 +129,7 @@ router.get('/:slug', async (req, res) => {
         const { slug } = req.params;
 
         const tag = await WebTag.findOne({
+            site: req.site,
             seoUrl: slug,
             isActive: true
         });
@@ -160,8 +164,9 @@ router.get('/:slug/products', async (req, res) => {
         const { slug } = req.params;
         const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax, sortBy, sortOrder } = req.query;
 
-        // Tag'i bul
+        // Tag'i bul (ziyaret edilen sitenin etiketi)
         const tag = await WebTag.findOne({
+            site: req.site,
             seoUrl: slug,
             isActive: true
         });
@@ -194,7 +199,9 @@ router.get('/:slug/products', async (req, res) => {
             _key: { $in: tag.products },
             'diaData.durum': 'A',
             'syncInfo.diaStatus': 'synced',
-            'customData.webVisible': true
+            ...(req.site ? { sites: req.site } : {}),
+            // Görünürlük: site ayarı > ortak değer
+            $and: [getSiteVisibilityFilter(req.site)]
         };
 
         // Merkezi DIA filtrelerini uygula
@@ -204,7 +211,7 @@ router.get('/:slug/products', async (req, res) => {
                 filter[fieldPath] = f.value;
             }
         });
-        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
+        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true) {
             filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
         }

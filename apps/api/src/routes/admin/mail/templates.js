@@ -8,7 +8,7 @@ const WebMailTemplate = require('../../../models/admin/mail/Template')
 // Frontend solda kategori bazlı liste yapacak, kategorize edip dönelim
 router.get('/', async (req, res) => {
     try {
-        const items = await WebMailTemplate.find({ isActive: true })
+        const items = await WebMailTemplate.find({ isActive: true, site: req.site })
             .sort({ category: 1, order: 1, name: 1 })
             .lean()
 
@@ -56,7 +56,7 @@ router.get('/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçersiz ID' })
         }
 
-        const item = await WebMailTemplate.findById(req.params.id).lean()
+        const item = await WebMailTemplate.findOne({ _id: req.params.id, site: req.site }).lean()
 
         if (!item) {
             return res.status(404).json({ success: false, message: 'Şablon bulunamadı' })
@@ -97,8 +97,8 @@ router.patch('/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'İçerik zorunludur' })
         }
 
-        const updated = await WebMailTemplate.findByIdAndUpdate(
-            req.params.id,
+        const updated = await WebMailTemplate.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             { $set: { content } },
             { new: true }
         )
@@ -121,7 +121,7 @@ router.post('/:id/reset', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçersiz ID' })
         }
 
-        const item = await WebMailTemplate.findById(req.params.id)
+        const item = await WebMailTemplate.findOne({ _id: req.params.id, site: req.site })
 
         if (!item) {
             return res.status(404).json({ success: false, message: 'Şablon bulunamadı' })
@@ -149,7 +149,7 @@ router.post('/:id/preview', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçersiz ID' })
         }
 
-        const item = await WebMailTemplate.findById(req.params.id).lean()
+        const item = await WebMailTemplate.findOne({ _id: req.params.id, site: req.site }).lean()
 
         if (!item) {
             return res.status(404).json({ success: false, message: 'Şablon bulunamadı' })
@@ -161,7 +161,8 @@ router.post('/:id/preview', async (req, res) => {
         // Edit edilmiş içerik gönderilmişse onu kullan, yoksa DB'deki content'i
         const templateContent = req.body?.content || item.content || item.defaultContent
 
-        const templateData = await buildData(item.templateKey)
+        // Önizleme, panelde seçili sitenin verileriyle üretilir
+        const templateData = await buildData(item.templateKey, { site: req.site })
         const html = render(templateContent, templateData)
 
         res.json({

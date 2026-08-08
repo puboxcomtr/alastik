@@ -107,23 +107,28 @@ router.get('/', maybeAuth, async (req, res) => {
             has_logo
         } = req.query;
 
-        // WebBrand filtreleri
+        // WebBrand filtreleri (görünürlük/sıralama seçili siteye göre)
+        const siteVisibleField = `siteSettings.${req.site}.webVisible`;
+        const siteOrderField = `siteSettings.${req.site}.webOrder`;
         const webFilter = {};
 
-        // Sadece görünür markalar mı?
-        if (visible_only === 'true') {
-            webFilter.webVisible = true;
-        }
+        // Web durumu filtreleme (ürün sayısı seçili sitenin yayın durumuna göre)
+        const siteCountField = `siteSettings.${req.site}.productCount`;
 
-        // Web durumu filtreleme
+        // Sadece görünür markalar mı? (seçili sitede yayınlanmış ürünü olmayan marka listelenmez;
+        // görmek için "Boş" durum filtresi kullanılır)
+        if (visible_only === 'true') {
+            webFilter[siteVisibleField] = true;
+            webFilter[siteCountField] = { $gt: 0 };
+        }
         if (web_status && web_status.trim() !== '') {
             if (web_status.trim() === 'active') {
-                webFilter.webVisible = true;
-                webFilter.productCount = { $gt: 0 };
+                webFilter[siteVisibleField] = true;
+                webFilter[siteCountField] = { $gt: 0 };
             } else if (web_status.trim() === 'hidden') {
-                webFilter.webVisible = false;
+                webFilter[siteVisibleField] = false;
             } else if (web_status.trim() === 'empty') {
-                webFilter.productCount = 0;
+                webFilter[siteCountField] = 0;
             }
         }
 
@@ -158,7 +163,8 @@ router.get('/', maybeAuth, async (req, res) => {
         const sortOptions = {};
         const validSortFields = ['name', 'productCount', 'totalStock', 'createdAt', 'webOrder'];
         const sortField = validSortFields.includes(sort_by) ? sort_by : 'name';
-        sortOptions[sortField] = sort_order === 'desc' ? -1 : 1;
+        const resolvedSortField = sortField === 'webOrder' ? siteOrderField : sortField;
+        sortOptions[resolvedSortField] = sort_order === 'desc' ? -1 : 1;
 
         const brands = await WebBrand.find(webFilter)
             .select({
@@ -171,6 +177,8 @@ router.get('/', maybeAuth, async (req, res) => {
                 webOrder: 1,
                 showOnHomepage: 1,
                 homepageOrder: 1,
+                siteSettings: 1,
+                siteContent: 1,
                 seoTitle: 1,
                 seoDescription: 1,
                 seoUrl: 1,
@@ -198,12 +206,23 @@ router.get('/', maybeAuth, async (req, res) => {
 
         // Response formatı
         const formattedBrands = brands.map(brand => {
+            // Seçili sitenin ayarları (eski ortak alanlar yedek)
+            const siteSet = brand.siteSettings?.[req.site] || {};
+            const siteVisible = siteSet.webVisible !== undefined ? siteSet.webVisible : brand.webVisible;
+            const siteOrder = siteSet.webOrder !== undefined ? siteSet.webOrder : (brand.webOrder || 0);
+            const siteShowOnHomepage = siteSet.showOnHomepage !== undefined ? siteSet.showOnHomepage : (brand.showOnHomepage || false);
+            const siteHomepageOrder = siteSet.homepageOrder !== undefined ? siteSet.homepageOrder : (brand.homepageOrder || 0);
+            const siteProductCount = siteSet.productCount !== undefined ? siteSet.productCount : (brand.productCount || 0);
+
+            // Seçili sitenin içerik/SEO metinleri (yoksa ortak alanlar)
+            const sc = brand.siteContent?.[req.site] || {};
+
             let webStatus = 'Inactive';
-            if (brand.webVisible && brand.productCount > 0) {
+            if (siteVisible && siteProductCount > 0) {
                 webStatus = 'Active';
-            } else if (brand.webVisible && brand.productCount === 0) {
+            } else if (siteVisible && siteProductCount === 0) {
                 webStatus = 'Empty';
-            } else if (!brand.webVisible) {
+            } else if (!siteVisible) {
                 webStatus = 'Hidden';
             }
 
@@ -230,23 +249,23 @@ router.get('/', maybeAuth, async (req, res) => {
                 diaMarkaAck: brand.diaMarkaAck,
                 diaKey: brand.diaKey,
 
-                // Web yönetimi
-                webVisible: brand.webVisible,
-                webOrder: brand.webOrder,
+                // Web yönetimi (seçili site)
+                webVisible: siteVisible,
+                webOrder: siteOrder,
                 status: webStatus,
 
-                // Anasayfa Gösterimi
-                showOnHomepage: brand.showOnHomepage || false,
-                homepageOrder: brand.homepageOrder || 0,
+                // Anasayfa Gösterimi (seçili site)
+                showOnHomepage: siteShowOnHomepage,
+                homepageOrder: siteHomepageOrder,
 
-                // SEO
-                seoTitle: brand.seoTitle || brand.name,
-                seoDescription: brand.seoDescription || `${brand.name} markası ürünleri`,
+                // SEO (seçili site öncelikli)
+                seoTitle: sc.seoTitle || brand.seoTitle || brand.name,
+                seoDescription: sc.seoDescription || brand.seoDescription || `${brand.name} markası ürünleri`,
                 seoUrl: brand.seoUrl || brand.slug,
-                seoKeywords: brand.seoKeywords || [],
+                seoKeywords: (sc.seoKeywords && sc.seoKeywords.length ? sc.seoKeywords : brand.seoKeywords) || [],
 
-                // İçerik
-                description: brand.description || '',
+                // İçerik (seçili site öncelikli)
+                description: sc.description || brand.description || '',
 
                 // Görseller
                 logo: (() => {
@@ -272,8 +291,9 @@ router.get('/', maybeAuth, async (req, res) => {
                     about: brand.brandInfo?.about || null
                 },
 
-                // İstatistikler
-                productCount: brand.productCount || 0,
+                // İstatistikler (ürün sayısı seçili sitenin yayınlanmış ürünleri)
+                productCount: siteProductCount,
+                totalDiaProductCount: brand.productCount || 0,
                 activeProductCount: brand.activeProductCount || 0,
                 totalStock: brand.totalStock || 0,
                 totalValue: brand.totalValue || 0,
@@ -368,18 +388,21 @@ router.patch('/:id', maybeAuth, [
     body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
     body('seoDescription').optional().isLength({ max: 200 }).withMessage('SEO açıklaması en fazla 200 karakter olabilir'),
     body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
-    body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır')
+    body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır'),
+    body('webVisible').optional().isBoolean().withMessage('Görünürlük true veya false olmalıdır')
 ], async (req, res) => {
     try {
         const { id } = req.params
-        const { description, seoTitle, seoDescription, seoUrl, webOrder } = req.body
+        const { description, seoTitle, seoDescription, seoUrl, webOrder, webVisible } = req.body
 
         const updateData = {}
-        if (description !== undefined) updateData.description = description
-        if (seoTitle !== undefined) updateData.seoTitle = seoTitle?.trim()
-        if (seoDescription !== undefined) updateData.seoDescription = seoDescription?.trim()
+        // İçerik/SEO metinleri seçili siteye yazılır; seoUrl ortak kalır (URL kimliği tek)
+        if (description !== undefined) updateData[`siteContent.${req.site}.description`] = description
+        if (seoTitle !== undefined) updateData[`siteContent.${req.site}.seoTitle`] = seoTitle?.trim()
+        if (seoDescription !== undefined) updateData[`siteContent.${req.site}.seoDescription`] = seoDescription?.trim()
         if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase()
-        if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0
+        if (webOrder !== undefined) updateData[`siteSettings.${req.site}.webOrder`] = Number(webOrder) || 0
+        if (webVisible !== undefined) updateData[`siteSettings.${req.site}.webVisible`] = webVisible === true || webVisible === 'true'
 
         updateData.updatedAt = new Date()
 
@@ -420,24 +443,26 @@ router.put('/:id', maybeAuth, async (req, res) => {
         const { id } = req.params;
         const updateData = req.body;
 
-        // İzin verilen alanlar
-        const allowedFields = [
-            'description',
-            'seoTitle',
-            'seoDescription',
-            'seoUrl',
-            'seoKeywords',
-            'webVisible',
-            'webOrder',
-            'showOnHomepage',
-            'homepageOrder',
-            'brandInfo'
-        ];
+        // İzin verilen alanlar: içerik/SEO metinleri siteContent, yönetim alanları siteSettings altına yazılır
+        // seoUrl ve brandInfo ortak kalır (URL kimliği tek, marka bilgisi olgusal)
+        const allowedFields = ['seoUrl', 'brandInfo'];
+        const siteContentFields = ['description', 'seoTitle', 'seoDescription', 'seoKeywords'];
+        const siteScopedFields = ['webVisible', 'webOrder', 'showOnHomepage', 'homepageOrder'];
 
         const filteredData = {};
         allowedFields.forEach(field => {
             if (updateData[field] !== undefined) {
                 filteredData[field] = updateData[field];
+            }
+        });
+        siteContentFields.forEach(field => {
+            if (updateData[field] !== undefined) {
+                filteredData[`siteContent.${req.site}.${field}`] = updateData[field];
+            }
+        });
+        siteScopedFields.forEach(field => {
+            if (updateData[field] !== undefined) {
+                filteredData[`siteSettings.${req.site}.${field}`] = updateData[field];
             }
         });
 

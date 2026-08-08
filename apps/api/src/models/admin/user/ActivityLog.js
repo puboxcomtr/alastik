@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const activityLogSchema = new mongoose.Schema({
+    // İşlemin yapıldığı site (panelde seçili site)
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        index: true
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

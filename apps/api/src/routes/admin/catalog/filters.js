@@ -15,7 +15,8 @@ router.get('/product-options', maybeAuth, async (req, res) => {
     try {
         const baseFilter = {
             'diaData.durum': 'A',
-            'syncInfo.diaStatus': 'synced'
+            'syncInfo.diaStatus': 'synced',
+            sites: req.site
         };
 
         const ozelkodDistinct = (num) => WebProduct.distinct(`diaData.ozelkod${num}kodu`, {
@@ -130,7 +131,8 @@ router.get('/sub-categories', maybeAuth, async (req, res) => {
         const baseFilter = {
             'diaData.durum': 'A',
             'syncInfo.diaStatus': 'synced',
-            'diaData.m_kategoriler.kategori_aciklama_1': main_category
+            'diaData.m_kategoriler.kategori_aciklama_1': main_category,
+            sites: req.site
         };
 
         const subCategories = await WebProduct.distinct(

@@ -28,30 +28,32 @@ router.post('/notify-all/:type', async (req, res) => {
         if (type === 'urun') {
             const products = await WebProduct.find({
                 'customData.seoUrl': { $exists: true, $ne: null },
-                'syncInfo.webStatus': 'active'
+                'syncInfo.webStatus': 'active',
+                sites: req.site
             }).select('customData.seoUrl');
-            urls = products.map(p => buildUrl('urun', p.customData.seoUrl));
+            urls = products.map(p => buildUrl('urun', p.customData.seoUrl, req.site));
 
         } else if (type === 'marka') {
             const brands = await WebBrand.find({
                 seoUrl: { $exists: true, $ne: null },
-                webVisible: true
+                [`siteSettings.${req.site}.webVisible`]: true
             }).select('seoUrl');
-            urls = brands.map(b => buildUrl('marka', b.seoUrl));
+            urls = brands.map(b => buildUrl('marka', b.seoUrl, req.site));
 
         } else if (type === 'kategori') {
             const categories = await WebCategory.find({
                 seoUrl: { $exists: true, $ne: null },
-                webVisible: true
+                [`siteSettings.${req.site}.webVisible`]: true
             }).select('seoUrl');
-            urls = categories.map(c => buildUrl('kategori', c.seoUrl));
+            urls = categories.map(c => buildUrl('kategori', c.seoUrl, req.site));
 
         } else if (type === 'etiket') {
             const tags = await WebTag.find({
+                site: req.site,
                 seoUrl: { $exists: true, $ne: null },
                 isActive: true
             }).select('seoUrl');
-            urls = tags.map(t => buildUrl('etiket', t.seoUrl));
+            urls = tags.map(t => buildUrl('etiket', t.seoUrl, req.site));
 
         } else {
             return res.status(400).json({ success: false, message: 'Geçersiz tip' });

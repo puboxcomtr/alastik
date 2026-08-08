@@ -24,7 +24,7 @@ router.post('/register', async (req, res) => {
         } = req.body;
 
         // Üyelik ayarlarını kontrol et
-        const settings = await SettingsHelper.checkMemberSettings();
+        const settings = await SettingsHelper.checkMemberSettings(req.site);
 
         if (!settings.newMember) {
             return res.status(403).json({
@@ -111,7 +111,8 @@ router.post('/register', async (req, res) => {
                     activationToken
                 },
                 to: member.email,
-                alsoSendToAdmin: false
+                alsoSendToAdmin: false,
+                site: req.site
             }).then((mailResult) => {
                 if (!mailResult.success) {
                     console.warn('[register] Aktivasyon maili gönderilemedi:', member.email, mailResult.errors);
@@ -174,7 +175,7 @@ router.post('/login', async (req, res) => {
         // Durum kontrolü
         if (member.status === 'pending') {
             // Aktivasyon moduna göre mesaj
-            const settings = await SettingsHelper.checkMemberSettings();
+            const settings = await SettingsHelper.checkMemberSettings(req.site);
             let message = 'Hesabınız henüz aktif değil.';
 
             if (settings.memberActivation === 'personal') {
@@ -394,7 +395,8 @@ router.post('/forgot-password', async (req, res) => {
                     resetToken
                 },
                 to: member.email,
-                alsoSendToAdmin: false
+                alsoSendToAdmin: false,
+                site: req.site
             }).then((mailResult) => {
                 if (!mailResult.success) {
                     console.warn('[forgot-password] Mail gönderilemedi:', member.email, mailResult.errors);

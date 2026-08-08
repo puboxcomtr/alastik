@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 const WebMerchantSettings = require('../../../models/plugins/merchant/WebMerchantSettings');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
-const SITE_URL = process.env.SITE_URL || 'https://alastik.com';
+// Site başına ürün URL tabanı (config/sites.js'teki ilk domain)
+function getSiteUrl(site) {
+    const domain = SITES[site]?.domains?.[0] || SITES[DEFAULT_SITE].domains[0];
+    return `https://${domain}`;
+}
 
 function getNestedValue(obj, path) {
     return path.split('.').reduce((acc, key) => acc?.[key], obj);
@@ -40,10 +45,10 @@ function getPrice(product, priceField, includeTax, taxRate) {
     return price.toFixed(2);
 }
 
-function buildProductUrl(product) {
+function buildProductUrl(product, siteUrl) {
     const seoUrl = product.customData?.seoUrl;
     if (!seoUrl) return null;
-    return `${SITE_URL}/urun/${seoUrl}`;
+    return `${siteUrl}/urun/${seoUrl}`;
 }
 
 function stripHtml(html) {
@@ -61,11 +66,12 @@ function escapeXml(str) {
         .replace(/'/g, '&apos;');
 }
 
-async function buildQuery(settings) {
+async function buildQuery(settings, site) {
     const query = {
         'syncInfo.diaStatus': 'synced',
         'diaData.durum': 'A',
-        'customData.seoUrl': { $exists: true, $ne: null }
+        'customData.seoUrl': { $exists: true, $ne: null },
+        sites: site
     };
 
     if (settings.onlyInStock) {
@@ -75,18 +81,18 @@ async function buildQuery(settings) {
     return query;
 }
 
-async function generateXml(settings, products) {
+async function generateXml(settings, products, siteUrl) {
     const lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">',
         '  <channel>',
-        `    <title>${escapeXml(SITE_URL)}</title>`,
-        `    <link>${SITE_URL}</link>`,
+        `    <title>${escapeXml(siteUrl)}</title>`,
+        `    <link>${siteUrl}</link>`,
         `    <description>Google Merchant Feed</description>`,
     ];
 
     for (const product of products) {
-        const url = buildProductUrl(product);
+        const url = buildProductUrl(product, siteUrl);
         if (!url) continue;
 
         const price = getPrice(product, settings.priceField, settings.includeTax, settings.taxRate);
@@ -96,7 +102,10 @@ async function generateXml(settings, products) {
         if (!image) continue;
 
         const title = escapeXml(getNestedValue(product, settings.fieldMapping.title) || product.diaData?.aciklama || '');
-        const descRaw = getNestedValue(product, settings.fieldMapping.description) || product.diaData?.aciklama || '';
+        // Açıklama: sitenin kendi açıklaması > eşleştirilen alan > ürün adı
+        const descRaw = product.customData?.siteDescriptions?.[settings.site]
+            || getNestedValue(product, settings.fieldMapping.description)
+            || product.diaData?.aciklama || '';
         const description = escapeXml(stripHtml(descRaw));
         const brand = escapeXml(product.diaData?.marka || '');
         const gtin = escapeXml(product.diaData?.anabarkod || '');
@@ -133,24 +142,26 @@ async function generateXml(settings, products) {
     return lines.join('\n');
 }
 
-async function generateFeed() {
+async function generateFeed({ site = DEFAULT_SITE } = {}) {
+    const feedSite = SITES[site] ? site : DEFAULT_SITE;
     const db = mongoose.connection.db;
-    const settings = await WebMerchantSettings.findOne();
+    const settings = await WebMerchantSettings.findOne({ site: feedSite });
     if (!settings || !settings.isActive) {
-        throw new Error('Feed aktif değil');
+        throw new Error('Feed bu site için aktif değil');
     }
 
-    const query = await buildQuery(settings);
+    const siteUrl = getSiteUrl(feedSite);
+    const query = await buildQuery(settings, feedSite);
     const products = await db.collection('webproducts').find(query).toArray();
 
     let feed;
     if (settings.feedFormat === 'csv') {
-        feed = await generateCsv(settings, products);
+        feed = await generateCsv(settings, products, siteUrl);
     } else {
-        feed = await generateXml(settings, products);
+        feed = await generateXml(settings, products, siteUrl);
     }
 
-    await WebMerchantSettings.updateOne({}, {
+    await WebMerchantSettings.updateOne({ site: feedSite }, {
         $set: {
             lastGenerated: new Date(),
             productCount: products.length
@@ -160,12 +171,12 @@ async function generateFeed() {
     return { feed, format: settings.feedFormat, count: products.length };
 }
 
-async function generateCsv(settings, products) {
+async function generateCsv(settings, products, siteUrl) {
     const headers = ['id', 'title', 'description', 'link', 'image_link', 'availability', 'price', 'condition', 'brand', 'gtin'];
     const rows = [headers.join('\t')];
 
     for (const product of products) {
-        const url = buildProductUrl(product);
+        const url = buildProductUrl(product, siteUrl);
         if (!url) continue;
 
         const price = getPrice(product, settings.priceField, settings.includeTax, settings.taxRate);
@@ -175,7 +186,9 @@ async function generateCsv(settings, products) {
         if (!image) continue;
 
         const title = getNestedValue(product, settings.fieldMapping.title) || product.diaData?.aciklama || '';
-        const descRaw = getNestedValue(product, settings.fieldMapping.description) || product.diaData?.aciklama || '';
+        const descRaw = product.customData?.siteDescriptions?.[settings.site]
+            || getNestedValue(product, settings.fieldMapping.description)
+            || product.diaData?.aciklama || '';
         const description = stripHtml(descRaw);
         const brand = product.diaData?.marka || '';
         const gtin = product.diaData?.anabarkod || '';

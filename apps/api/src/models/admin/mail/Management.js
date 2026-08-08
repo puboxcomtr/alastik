@@ -1,6 +1,15 @@
 const mongoose = require('mongoose')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const managementSchema = new mongoose.Schema({
+    // Her site için ayrı mail şablonları
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     title: {
         type: String,
         required: true,
@@ -39,7 +48,7 @@ const managementSchema = new mongoose.Schema({
     collection: 'webcustommail'
 })
 
-managementSchema.index({ isActive: 1, createdAt: -1 })
+managementSchema.index({ site: 1, isActive: 1, createdAt: -1 })
 managementSchema.index({ recipientType: 1 })
 
 module.exports = mongoose.model('MailManagement', managementSchema)

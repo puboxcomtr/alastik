@@ -43,7 +43,7 @@ const upload = multer({
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const banner = await Banner.findById(id);
+        const banner = await Banner.findOne({ _id: id, site: req.site });
         if (!banner) {
             return res.status(404).json({
                 success: false,
@@ -116,7 +116,7 @@ router.post('/', upload.single('image'), async (req, res) => {
             });
         }
 
-        const existingBanner = await Banner.findOne({ variableKey: variableKey.trim() });
+        const existingBanner = await Banner.findOne({ variableKey: variableKey.trim(), site: req.site });
         if (existingBanner) {
             return res.status(400).json({
                 success: false,
@@ -159,7 +159,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
         const { id } = req.params;
         const { description, redirectUrl, altTag, status, openNewTab, variableKey, order } = req.body;
 
-        const banner = await Banner.findById(id);
+        const banner = await Banner.findOne({ _id: id, site: req.site });
         if (!banner) {
             return res.status(404).json({
                 success: false,
@@ -184,6 +184,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
         if (variableKey.trim() !== banner.variableKey) {
             const existingBanner = await Banner.findOne({
                 variableKey: variableKey.trim(),
+                site: req.site,
                 _id: { $ne: banner._id }
             });
             if (existingBanner) {
@@ -236,7 +237,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const banner = await Banner.findById(id);
+        const banner = await Banner.findOne({ _id: id, site: req.site });
         if (!banner) {
             return res.status(404).json({
                 success: false,
@@ -253,7 +254,7 @@ router.delete('/:id', async (req, res) => {
             }
         }
 
-        await Banner.findByIdAndDelete(id);
+        await Banner.findOneAndDelete({ _id: id, site: req.site });
 
         res.json({
             success: true,

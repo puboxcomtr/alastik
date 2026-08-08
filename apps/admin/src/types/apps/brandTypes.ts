@@ -7,6 +7,7 @@ export type BrandType = {
     seoUrl: string
     productCount: number
     webOrder: number
+    webVisible?: boolean
     logo: string
     status: string
     completenessScore: number

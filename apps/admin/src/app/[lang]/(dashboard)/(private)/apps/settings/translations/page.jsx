@@ -42,6 +42,10 @@ import {
 
 import tableStyles from '@core/styles/table.module.css';
 
+import { fetchAPI } from '@libs/api';
+
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
+
 const fuzzyFilter = (row, columnId, value, addMeta) => {
   const itemRank = rankItem(row.getValue(columnId), value);
   addMeta({ itemRank });
@@ -98,13 +102,10 @@ const TranslationsPage = () => {
       const params = new URLSearchParams();
       if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
 
-      const [translationsRes, categoriesRes] = await Promise.all([
-        fetch(`http://localhost:3082/api/admin/settings/translations?${params}`),
-        fetch('http://localhost:3082/api/admin/settings/translations/categories')
+      const [translationsData, categoriesData] = await Promise.all([
+        fetchAPI(`${baseUrl}/admin/settings/translations?${params}`),
+        fetchAPI(`${baseUrl}/admin/settings/translations/categories`)
       ]);
-
-      const translationsData = await translationsRes.json();
-      const categoriesData = await categoriesRes.json();
 
       if (translationsData.success) {
         setData(translationsData.data?.translations || []);
@@ -174,13 +175,10 @@ const TranslationsPage = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3082/api/admin/settings/translations', {
+      const result = await fetchAPI(`${baseUrl}/admin/settings/translations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-
-      const result = await response.json();
 
       if (result.success) {
         toast.success('Çeviri başarıyla eklendi');
@@ -201,13 +199,10 @@ const TranslationsPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3082/api/admin/settings/translations/${translationToEdit._id}`, {
+      const result = await fetchAPI(`${baseUrl}/admin/settings/translations/${translationToEdit._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-
-      const result = await response.json();
 
       if (result.success) {
         toast.success('Çeviri başarıyla güncellendi');

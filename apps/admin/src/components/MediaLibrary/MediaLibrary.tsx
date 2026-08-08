@@ -218,16 +218,10 @@ const MediaLibrary = ({
                 formData.append('files', file)
             })
 
-            const response = await fetch(API_ENDPOINTS.media.upload(currentFolder), {
+            const data: ApiResponse = await fetchAPI(API_ENDPOINTS.media.upload(currentFolder), {
                 method: 'POST',
                 body: formData
             })
-
-            if (!response.ok) {
-                throw new Error(`Upload hatası: ${response.status}`)
-            }
-
-            const data: ApiResponse = await response.json()
 
             if (data.success) {
                 toast.success(`${files.length} dosya başarıyla yüklendi`)
@@ -257,15 +251,9 @@ const MediaLibrary = ({
             return
         }
         try {
-            const response = await fetch(API_ENDPOINTS.media.delete(fileId), {
+            const data = await fetchAPI(API_ENDPOINTS.media.delete(fileId), {
                 method: 'DELETE'
             })
-
-            if (!response.ok) {
-                throw new Error(`Silme hatası: ${response.status}`)
-            }
-
-            const data = await response.json()
 
             if (data.success) {
                 toast.success('Dosya başarıyla silindi')

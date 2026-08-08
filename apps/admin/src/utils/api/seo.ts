@@ -1,4 +1,5 @@
-import { getSiteHeader } from '@/utils/activeSite'
+import { fetchAPI } from '@libs/api'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 export type SeoHomepageType = {
     title: string
@@ -23,16 +24,15 @@ export type SeoSettingsType = {
 }
 
 export async function getSeoSettings() {
-    const response = await fetch(`${API_URL}/admin/settings/seo`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
+    let result: any
 
-    if (!response.ok) {
+    try {
+        result = await fetchAPI(`${API_URL}/admin/settings/seo`, {
+            cache: 'no-store'
+        })
+    } catch {
         throw new Error('SEO ayarları yüklenemedi')
     }
-
-    const result = await response.json()
 
     if (!result.success) {
         throw new Error(result.message || 'SEO ayarları alınamadı')
@@ -42,21 +42,16 @@ export async function getSeoSettings() {
 }
 
 export async function updateSeoSettings(data: Partial<SeoSettingsType>) {
-    const response = await fetch(`${API_URL}/admin/settings/seo`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getSiteHeader()
-        },
-        body: JSON.stringify(data)
-    })
+    let result: any
 
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'SEO ayarları güncellenemedi')
+    try {
+        result = await fetchAPI(`${API_URL}/admin/settings/seo`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    } catch {
+        throw new Error('SEO ayarları güncellenemedi')
     }
-
-    const result = await response.json()
 
     if (!result.success) {
         throw new Error(result.message || 'SEO ayarları kaydedilemedi')

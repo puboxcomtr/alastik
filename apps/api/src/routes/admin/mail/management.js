@@ -12,7 +12,8 @@ router.get('/', async (req, res) => {
         const limit = parseInt(req.query.limit) || 50
         const skip = (page - 1) * limit
 
-        const filter = {}
+        // Yalnızca seçili sitenin şablonları (X-Site başlığından çözülür)
+        const filter = { site: req.site }
 
         if (req.query.search) {
             filter.title = { $regex: req.query.search, $options: 'i' }
@@ -62,7 +63,7 @@ router.get('/', async (req, res) => {
 // Mail Grupları - GET /admin/mail-management/groups
 router.get('/groups', async (req, res) => {
     try {
-        const groups = await MailGroup.find({ isActive: true })
+        const groups = await MailGroup.find({ isActive: true, site: req.site })
             .sort({ name: 1 })
             .lean()
 
@@ -85,7 +86,7 @@ router.get('/users', async (req, res) => {
     try {
         const WebMember = mongoose.model('WebMember')
 
-        const users = await WebMember.find({ status: 'active' })
+        const users = await WebMember.find({ status: 'active', site: req.site })
             .select('_id firstName lastName email')
             .sort({ firstName: 1 })
             .limit(1000)
@@ -111,7 +112,7 @@ router.get('/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçersiz ID' })
         }
 
-        const item = await MailManagement.findById(req.params.id).lean()
+        const item = await MailManagement.findOne({ _id: req.params.id, site: req.site }).lean()
 
         if (!item) {
             return res.status(404).json({ success: false, message: 'Mail şablonu bulunamadı' })
@@ -161,6 +162,7 @@ router.post('/', async (req, res) => {
         }
 
         const newItem = await MailManagement.create({
+            site: req.site,
             title: title.trim(),
             subject: subject.trim(),
             body,
@@ -214,8 +216,8 @@ router.patch('/:id', async (req, res) => {
         }
         if (isActive !== undefined) updateData.isActive = isActive
 
-        const updated = await MailManagement.findByIdAndUpdate(
-            req.params.id,
+        const updated = await MailManagement.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             { $set: updateData },
             { new: true }
         )
@@ -238,7 +240,7 @@ router.delete('/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçersiz ID' })
         }
 
-        const deleted = await MailManagement.findByIdAndDelete(req.params.id)
+        const deleted = await MailManagement.findOneAndDelete({ _id: req.params.id, site: req.site })
 
         if (!deleted) {
             return res.status(404).json({ success: false, message: 'Mail şablonu bulunamadı' })

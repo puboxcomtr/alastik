@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 import { useSession } from 'next-auth/react'
 
+import { fetchAPI } from '@libs/api'
+
 // MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -175,20 +177,13 @@ const RoleForm = ({ modules, role, isEdit = false }: RoleFormProps) => {
                 ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/user/roles/${role?._id}`
                 : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'}/admin/user/roles`
 
-            const response = await fetch(apiUrl, {
+            const data = await fetchAPI(apiUrl, {
                 method: isEdit ? 'PUT' : 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(formData)
             })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.message || `Rol ${isEdit ? 'güncellenemedi' : 'oluşturulamadı'}`)
-            }
 
             if (!data.success) {
                 throw new Error(data.message || `Rol ${isEdit ? 'güncellenemedi' : 'oluşturulamadı'}`)

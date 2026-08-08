@@ -20,6 +20,9 @@ import Alert from '@mui/material/Alert'
 // Toast
 import { toast } from 'react-toastify'
 
+// API
+import { fetchAPI } from '@libs/api'
+
 // Types
 import type {
     PaymentMethod,
@@ -110,15 +113,10 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                     swift: formData.apiCredentials.swift
                 }
             }
-            const response = await fetch(`${baseUrl}${API_ENDPOINTS.BASE}/${method._id}`, {
+            const result: PaymentMethodResponse = await fetchAPI(`${baseUrl}${API_ENDPOINTS.BASE}/${method._id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify(payload)
             })
-
-            const result: PaymentMethodResponse = await response.json()
 
             if (result.success) {
                 toast.success('Ödeme yöntemi güncellendi', {

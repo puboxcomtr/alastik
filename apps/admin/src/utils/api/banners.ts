@@ -1,3 +1,5 @@
+import { fetchAPI } from '@libs/api'
+
 import { apiClient } from './apiClient'
 
 export type BannerType = {
@@ -34,35 +36,29 @@ export async function fetchBanner(id: string) {
 export async function createBanner(formData: FormData) {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
-    const response = await fetch(`${API_URL}/admin/design/banners`, {
-        method: 'POST',
-        credentials: 'include', 
-        body: formData  
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Banner oluşturulamadı')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/banners`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        })
+    } catch {
+        throw new Error('Banner oluşturulamadı')
     }
-
-    return response.json()
 }
 
 export async function updateBanner(id: string, formData: FormData) {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
-    const response = await fetch(`${API_URL}/admin/design/banners/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        body: formData
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Banner güncellenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/banners/${id}`, {
+            method: 'PUT',
+            credentials: 'include',
+            body: formData
+        })
+    } catch {
+        throw new Error('Banner güncellenemedi')
     }
-
-    return response.json()
 }
 
 export async function deleteBanner(id: string) {

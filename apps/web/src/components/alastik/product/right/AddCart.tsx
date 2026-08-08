@@ -91,8 +91,8 @@ export default function Cart({ product }: CartProps) {
             <Grid container>
                 <Grid size={12}>
                     <div className='d-none d-md-flex justify-content-center'>
-                        {/* Marka */}
-                        {brandLogo ? (
+                        {/* Marka gizle açıksa detay sayfasında marka gösterilmez */}
+                        {product.customData?.hideBrand !== true && (brandLogo ? (
                             <Image
                                 src={brandLogo}
                                 alt={brandName || 'Marka'}
@@ -102,7 +102,7 @@ export default function Cart({ product }: CartProps) {
                             />
                         ) : (
                             <span className="fw-medium fs-lg">{brandInfo?.name || brandName || 'Marka Yok'}</span>
-                        )}
+                        ))}
                     </div>
                 </Grid>
                 {/* Add to Cart */}

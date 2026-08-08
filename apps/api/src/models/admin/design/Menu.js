@@ -4,7 +4,9 @@ const linkDataSchema = new mongoose.Schema({
     url: String,
     categoryId: String,
     categoryLevel: { type: Number, enum: [1, 2] },
-    pageId: String
+    pageId: String,
+    blogId: String,
+    productId: String
 }, { _id: false });
 
 const menuSchema = new mongoose.Schema({
@@ -16,7 +18,7 @@ const menuSchema = new mongoose.Schema({
     menuType: {
         type: String,
         required: true,
-        enum: ['link', 'category', 'page', 'heading']
+        enum: ['link', 'category', 'page', 'blog', 'product', 'heading']
     },
     linkData: {
         type: linkDataSchema,
@@ -29,12 +31,13 @@ const menuSchema = new mongoose.Schema({
     displayArea: {
         type: String,
         required: true,
-        enum: ['header', 'footer', 'mobile']
+        enum: ['header', 'footer', 'mobile', 'general'] // general: serbest alan, site üzerinde bir yere bağlı değildir
     },
     rowLevel: {
         type: Number,
         required: true,
-        enum: [1, 2],
+        enum: [1, 2, 3], // 1: menü (grup), 2: üst bar öğesi, 3: açılır menü öğesi
+
         default: 1
     },
     parentId: {

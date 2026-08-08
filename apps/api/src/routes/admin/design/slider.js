@@ -53,7 +53,7 @@ router.get('/key/:key', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const slider = await Slider.findById(id).lean();
+        const slider = await Slider.findOne({ _id: id, site: req.site }).lean();
 
         if (!slider) {
             return res.status(404).json({
@@ -187,7 +187,7 @@ router.put('/:id', uploadSlider, async (req, res) => {
     try {
         const { id } = req.params;
         const { name, sliders, settings } = req.body;
-        const slider = await Slider.findById(id);
+        const slider = await Slider.findOne({ _id: id, site: req.site });
         if (!slider) {
             return res.status(404).json({
                 success: false,
@@ -239,7 +239,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const slider = await Slider.findByIdAndDelete(id);
+        const slider = await Slider.findOneAndDelete({ _id: id, site: req.site });
 
         if (!slider) {
             return res.status(404).json({

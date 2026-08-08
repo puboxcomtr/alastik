@@ -1,5 +1,35 @@
 // models/WebBrand.js
 const mongoose = require('mongoose');
+const { SITES } = require('../../../config/sites');
+
+// Site başına görünürlük/sıralama/anasayfa ayarları (siteSettings.<slug>)
+const siteBrandSettingsSchema = new mongoose.Schema({
+    webVisible: { type: Boolean, default: true },
+    webOrder: { type: Number, default: 0 },
+    showOnHomepage: { type: Boolean, default: false },
+    homepageOrder: { type: Number, default: 0 },
+    // Sitede yayınlanmış ürün sayısı — sync hesaplar; 0 ise vitrin markayı göstermez
+    productCount: { type: Number, default: 0 }
+}, { _id: false });
+
+const siteSettingsShape = Object.keys(SITES).reduce((acc, slug) => {
+    acc[slug] = { type: siteBrandSettingsSchema, default: () => ({}) };
+    return acc;
+}, {});
+
+// Site başına içerik/SEO metinleri (siteContent.<slug>)
+// Alan tanımsızsa kök (ortak) değer geçerlidir
+const siteBrandContentSchema = new mongoose.Schema({
+    description: { type: String },
+    seoTitle: { type: String },
+    seoDescription: { type: String },
+    seoKeywords: { type: [String], default: undefined }
+}, { _id: false });
+
+const siteContentShape = Object.keys(SITES).reduce((acc, slug) => {
+    acc[slug] = { type: siteBrandContentSchema, default: () => ({}) };
+    return acc;
+}, {});
 
 // Showcase Ürün Schema (Vitrin için)
 const showcaseProductSchema = new mongoose.Schema({
@@ -40,7 +70,7 @@ const webBrandSchema = new mongoose.Schema({
     diaMarkaAck: String, // DIA'daki "markaack" field'ı (örn: "Konak")
     diaKey: String, // DIA'dan gelen _key_scf_marka
 
-    // Web Yönetimi
+    // Eski ortak alanlar — geriye dönük uyumluluk için tutuluyor; okuma/yazma artık siteSettings üzerinden
     webVisible: {
         type: Boolean,
         default: true,
@@ -51,6 +81,8 @@ const webBrandSchema = new mongoose.Schema({
         default: 0,
         index: true
     },
+    siteSettings: siteSettingsShape,
+    siteContent: siteContentShape,
 
     // SEO Bilgileri
     seoTitle: String,
@@ -157,6 +189,9 @@ webBrandSchema.index({ 'diaBrand': 1 }, { unique: true });
 webBrandSchema.index({ 'syncInfo.lastSync': 1 });
 webBrandSchema.index({ 'productCount': -1 });
 webBrandSchema.index({ 'webVisible': 1, 'productCount': -1 });
+Object.keys(SITES).forEach(slug => {
+    webBrandSchema.index({ [`siteSettings.${slug}.webVisible`]: 1, 'productCount': -1 });
+});
 webBrandSchema.index({ 'createdAt': -1 });
 webBrandSchema.index({ 'updatedAt': -1 });
 

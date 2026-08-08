@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
             isActive = ''
         } = req.query
 
-        const filter = {}
+        const filter = { site: req.site }
 
         if (search) {
             filter.name = { $regex: search, $options: 'i' }
@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
 // Detay
 router.get('/:id', async (req, res) => {
     try {
-        const item = await PurchaseLimit.findById(req.params.id).lean()
+        const item = await PurchaseLimit.findOne({ _id: req.params.id, site: req.site }).lean()
         if (!item) {
             return res.status(404).json({ success: false, message: 'Limit bulunamadı' })
         }
@@ -82,6 +82,7 @@ router.post('/', async (req, res) => {
         } = req.body
 
         const newItem = new PurchaseLimit({
+            site: req.site,
             name,
             minLimit: minLimit != null && minLimit !== '' ? Number(minLimit) : null,
             maxLimit: maxLimit != null && maxLimit !== '' ? Number(maxLimit) : null,
@@ -114,7 +115,7 @@ router.put('/:id', async (req, res) => {
             isActive
         } = req.body
 
-        const item = await PurchaseLimit.findById(req.params.id)
+        const item = await PurchaseLimit.findOne({ _id: req.params.id, site: req.site })
         if (!item) {
             return res.status(404).json({ success: false, message: 'Limit bulunamadı' })
         }
@@ -139,7 +140,7 @@ router.put('/:id', async (req, res) => {
 // Aktif/Pasif Toggle
 router.patch('/:id/toggle', async (req, res) => {
     try {
-        const item = await PurchaseLimit.findById(req.params.id)
+        const item = await PurchaseLimit.findOne({ _id: req.params.id, site: req.site })
         if (!item) {
             return res.status(404).json({ success: false, message: 'Limit bulunamadı' })
         }
@@ -155,7 +156,7 @@ router.patch('/:id/toggle', async (req, res) => {
 // Sil
 router.delete('/:id', async (req, res) => {
     try {
-        const item = await PurchaseLimit.findByIdAndDelete(req.params.id)
+        const item = await PurchaseLimit.findOneAndDelete({ _id: req.params.id, site: req.site })
         if (!item) {
             return res.status(404).json({ success: false, message: 'Limit bulunamadı' })
         }

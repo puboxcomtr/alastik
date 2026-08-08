@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 // Vitrin Ürün Schema
 const showcaseProductSchema = new mongoose.Schema({
@@ -14,7 +15,7 @@ const showcaseProductSchema = new mongoose.Schema({
 
 // Ana WebShowcase Schema
 const webShowcaseSchema = new mongoose.Schema({
-  site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+  site: { type: String, enum: Object.keys(SITES), default: DEFAULT_SITE, index: true },
   title: {
     type: String,
     required: true,

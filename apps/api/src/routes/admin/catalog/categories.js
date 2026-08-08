@@ -63,7 +63,7 @@ router.get('/sliders/list', maybeAuth, async (req, res) => {
   try {
     const Slider = require('../../../models/admin/design/Slider');
 
-    const sliders = await Slider.find({ 'settings.isActive': true })
+    const sliders = await Slider.find({ 'settings.isActive': true, site: req.site })
       .select('_id name key')
       .sort({ name: 1 })
       .lean();
@@ -103,23 +103,28 @@ router.get('/', maybeAuth, async (req, res) => {
       with_children = 'false'
     } = req.query;
 
-    // WebCategory filtreleri
+    // WebCategory filtreleri (görünürlük/sıralama/ürün sayısı seçili siteye göre)
+    const siteVisibleField = `siteSettings.${req.site}.webVisible`;
+    const siteOrderField = `siteSettings.${req.site}.webOrder`;
+    const siteCountField = `siteSettings.${req.site}.productCount`;
     const webFilter = {};
 
-    // Sadece görünür kategoriler mi?
+    // Sadece görünür kategoriler mi? (seçili sitede yayınlanmış ürünü olmayan kategori listelenmez;
+    // görmek için "Boş" durum filtresi kullanılır)
     if (visible_only === 'true') {
-      webFilter.webVisible = true;
+      webFilter[siteVisibleField] = true;
+      webFilter[siteCountField] = { $gt: 0 };
     }
 
     // Web durumu filtreleme
     if (web_status && web_status.trim() !== '') {
       if (web_status.trim() === 'active') {
-        webFilter.webVisible = true;
-        webFilter.productCount = { $gt: 0 };
+        webFilter[siteVisibleField] = true;
+        webFilter[siteCountField] = { $gt: 0 };
       } else if (web_status.trim() === 'hidden') {
-        webFilter.webVisible = false;
+        webFilter[siteVisibleField] = false;
       } else if (web_status.trim() === 'empty') {
-        webFilter.productCount = 0;
+        webFilter[siteCountField] = 0;
       }
     }
 
@@ -154,6 +159,8 @@ router.get('/', maybeAuth, async (req, res) => {
         diaLevel: 1,
         webVisible: 1,
         webOrder: 1,
+        siteSettings: 1,
+        siteContent: 1,
         seoTitle: 1,
         seoDescription: 1,
         seoUrl: 1,
@@ -169,7 +176,7 @@ router.get('/', maybeAuth, async (req, res) => {
         description: 1,
         customImage: 1
       })
-      .sort({ level: 1, webOrder: 1, name: 1 });
+      .sort({ level: 1, [siteOrderField]: 1, name: 1 });
 
     // Parent bilgilerini populate et
     if (with_children === 'true' || level !== '1') {
@@ -180,13 +187,19 @@ router.get('/', maybeAuth, async (req, res) => {
 
     // Response formatını product.js gibi ayarla
     const formattedCategories = categories.map(cat => {
+      // Seçili sitenin görünürlük/sıralama/ürün sayısı (eski ortak alanlar yedek)
+      const siteSet = cat.siteSettings?.[req.site] || {};
+      const siteVisible = siteSet.webVisible !== undefined ? siteSet.webVisible : cat.webVisible;
+      const siteOrder = siteSet.webOrder !== undefined ? siteSet.webOrder : (cat.webOrder || 0);
+      const siteProductCount = siteSet.productCount !== undefined ? siteSet.productCount : (cat.productCount || 0);
+
       // Web durumu belirleme
       let webStatus = 'Inactive';
-      if (cat.webVisible && cat.productCount > 0) {
+      if (siteVisible && siteProductCount > 0) {
         webStatus = 'Active';
-      } else if (cat.webVisible && cat.productCount === 0) {
+      } else if (siteVisible && siteProductCount === 0) {
         webStatus = 'Empty';
-      } else if (!cat.webVisible) {
+      } else if (!siteVisible) {
         webStatus = 'Hidden';
       }
 
@@ -222,26 +235,33 @@ router.get('/', maybeAuth, async (req, res) => {
         diaCategory: cat.diaCategory,
         diaLevel: cat.diaLevel,
 
-        // Web yönetimi
-        webVisible: cat.webVisible,
-        webOrder: cat.webOrder,
+        // Web yönetimi (seçili site)
+        webVisible: siteVisible,
+        webOrder: siteOrder,
         status: webStatus,
 
-        // SEO
-        seoTitle: cat.seoTitle || cat.name,
-        seoDescription: cat.seoDescription || '',
+        // SEO (seçili site öncelikli)
+        seoTitle: cat.siteContent?.[req.site]?.seoTitle || cat.seoTitle || cat.name,
+        seoDescription: cat.siteContent?.[req.site]?.seoDescription || cat.seoDescription || '',
         seoUrl: cat.seoUrl || cat.slug,
 
-        // Slider
-        sliderId: cat.sliderId || null,
+        // Slider (seçili site öncelikli)
+        sliderId: (cat.siteContent?.[req.site]?.sliderId !== undefined
+          ? cat.siteContent[req.site].sliderId
+          : cat.sliderId) || null,
+        menuIds: (() => {
+          const c = cat.siteContent?.[req.site] || {};
+          return c.menuIds && c.menuIds.length ? c.menuIds : (c.menuId ? [c.menuId] : []);
+        })(),
 
-        // İstatistikler
-        productCount: cat.productCount || 0,
+        // İstatistikler (ürün sayısı seçili sitenin yayınlanmış ürünleri)
+        productCount: siteProductCount,
+        totalDiaProductCount: cat.productCount || 0,
         activeProductCount: cat.activeProductCount || 0,
         totalStock: cat.totalStock || 0,
 
-        // Opsiyonel Alanlar
-        description: cat.description || '',
+        // Opsiyonel Alanlar (seçili site öncelikli)
+        description: cat.siteContent?.[req.site]?.description ?? (cat.description || ''),
 
         // Tarihler
         createdAt: cat.createdAt,
@@ -285,19 +305,31 @@ router.patch('/:id', maybeAuth, [
   body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
   body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
   body('webOrder').optional().isInt({ min: 0 }).withMessage('Sıralama 0 veya daha büyük olmalıdır'),
-  body('sliderId').optional()
+  body('webVisible').optional().isBoolean().withMessage('Görünürlük true veya false olmalıdır'),
+  body('sliderId').optional(),
+  body('menuId').optional(),
+  body('menuIds').optional().isArray().withMessage('Menü listesi dizi olmalıdır')
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, sliderId } = req.body;
+    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, webVisible, sliderId, menuId, menuIds } = req.body;
     const updateData = {};
-    if (description !== undefined) updateData.description = description;
+    if (description !== undefined) updateData[`siteContent.${req.site}.description`] = description;
     if (seoTitle !== undefined) updateData[`siteContent.${req.site}.seoTitle`] = seoTitle?.trim();
     if (seoDescription !== undefined) updateData[`siteContent.${req.site}.seoDescription`] = seoDescription?.trim();
     if (content !== undefined) updateData[`siteContent.${req.site}.content`] = content;
     if (seoUrl !== undefined) updateData.seoUrl = seoUrl?.trim().toLowerCase();
-    if (webOrder !== undefined) updateData.webOrder = Number(webOrder) || 0;
-    if (sliderId !== undefined) updateData.sliderId = sliderId || null;
+    if (webOrder !== undefined) updateData[`siteSettings.${req.site}.webOrder`] = Number(webOrder) || 0;
+    if (webVisible !== undefined) updateData[`siteSettings.${req.site}.webVisible`] = webVisible === true || webVisible === 'true';
+    if (sliderId !== undefined) updateData[`siteContent.${req.site}.sliderId`] = sliderId || null;
+    // Kategori sayfasında gösterilecek menüler (boş bırakılabilir, birden fazla olabilir)
+    if (menuIds !== undefined) {
+      updateData[`siteContent.${req.site}.menuIds`] = Array.isArray(menuIds) ? menuIds.filter(Boolean) : [];
+      // Eski tek alan artık kullanılmıyor; çakışmaması için temizlenir
+      updateData[`siteContent.${req.site}.menuId`] = null;
+    } else if (menuId !== undefined) {
+      updateData[`siteContent.${req.site}.menuId`] = menuId || null;
+    }
     updateData.updatedAt = new Date();
 
     const updatedCategory = await WebCategory.findByIdAndUpdate(
@@ -330,15 +362,18 @@ router.get('/:id', maybeAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Kategori bulunamadı' });
     }
     const sc = (cat.siteContent && cat.siteContent[req.site]) || {};
+    const siteSet = (cat.siteSettings && cat.siteSettings[req.site]) || {};
     res.json({
       success: true,
       data: {
         id: cat._id,
         name: cat.name,
-        description: cat.description || '',
+        description: sc.description ?? (cat.description || ''),
         seoUrl: cat.seoUrl || '',
-        webOrder: cat.webOrder || 0,
-        sliderId: cat.sliderId || null,
+        webOrder: siteSet.webOrder !== undefined ? siteSet.webOrder : (cat.webOrder || 0),
+        webVisible: siteSet.webVisible !== undefined ? siteSet.webVisible : (cat.webVisible !== false),
+        sliderId: (sc.sliderId !== undefined ? sc.sliderId : cat.sliderId) || null,
+        menuIds: (sc.menuIds && sc.menuIds.length ? sc.menuIds : (sc.menuId ? [sc.menuId] : [])),
         content: sc.content || '',
         seoTitle: sc.seoTitle || '',
         seoDescription: sc.seoDescription || ''

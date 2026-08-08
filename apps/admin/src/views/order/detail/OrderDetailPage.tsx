@@ -15,6 +15,7 @@ import OrderDetailContent from '@/views/order/detail/Content/OrderDetail'
 import CustomerInformation from '@/views/order/detail/Content/CustomerInformation'
 import PaymentInformation from '@/views/order/detail/Content/PaymentInformation'
 import OrderStatus from '@/views/order/detail/Content/OrderStatus'
+import OrderNote from '@/views/order/detail/Content/OrderNote'
 import CustomerDetail from '@/views/order/detail/Content/CustomerDetail'
 import CarInformation from '@/views/order/detail/Content/CarInformation'
 
@@ -118,8 +119,10 @@ const OrderDetailPage = () => {
             <OrderStatus
               orderId={order.id}
               status={order.status}
+              manualCollection={order.payment?.manualCollection}
               onStatusChange={(newStatus) => setOrder({ ...order, status: newStatus })}
             />
+            <OrderNote orderId={order.id} adminNote={order.adminNote} />
             <CustomerDetail
               isGuest={order.isGuest}
               memberInfo={order.memberInfo}

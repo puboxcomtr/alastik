@@ -26,8 +26,8 @@ router.get('/', async (req, res) => {
             sortOrder = 'desc'
         } = req.query;
 
-        // Filtreler
-        const filter = {};
+        // Filtreler (yalnızca seçili sitenin kayıtları)
+        const filter = { site: req.site };
 
         if (userId) {
             filter.user = userId;
@@ -68,18 +68,20 @@ router.get('/', async (req, res) => {
 
         const total = await ActivityLog.countDocuments(filter);
 
-        // İstatistikler
+        // İstatistikler (seçili site)
         const stats = {
-            total: await ActivityLog.countDocuments(),
+            total: await ActivityLog.countDocuments({ site: req.site }),
             today: await ActivityLog.countDocuments({
+                site: req.site,
                 createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
             }),
-            success: await ActivityLog.countDocuments({ status: 'success' }),
-            failed: await ActivityLog.countDocuments({ status: 'failed' })
+            success: await ActivityLog.countDocuments({ site: req.site, status: 'success' }),
+            failed: await ActivityLog.countDocuments({ site: req.site, status: 'failed' })
         };
 
         // Modül bazlı istatistikler
         const moduleStats = await ActivityLog.aggregate([
+            { $match: { site: req.site } },
             { $group: { _id: '$module', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
             { $limit: 5 }
@@ -181,6 +183,7 @@ router.delete('/cleanup', async (req, res) => {
         cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
 
         const result = await ActivityLog.deleteMany({
+            site: req.site,
             createdAt: { $lt: cutoffDate }
         });
 

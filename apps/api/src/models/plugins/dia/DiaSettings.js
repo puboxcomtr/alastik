@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 
 const webDiaSchema = new mongoose.Schema({
+    // Site (tenant) — her site için ayrı ayar kaydı tutulur
+    site: { type: String, default: 'alastik', index: true },
+
     // Bağlantı Ayarları
     baseURL: { type: String, default: '' },
     apiKey: { type: String, default: '' },
@@ -24,6 +27,15 @@ const webDiaSchema = new mongoose.Schema({
         projeKodu: { type: String, default: '' }
     },
 
+    // Aktarım Ayarları (ürün gösterim filtresi)
+    aktarim: {
+        mode: { type: String, enum: ['tumu', 'dahil', 'haric'], default: 'tumu' },
+        filterType: { type: String, enum: ['urun', 'kategori', 'marka'], default: 'urun' },
+        products: [{ _id: false, id: String, name: String, sku: String, brand: String }],
+        categories: [{ _id: false, id: String, name: String }],
+        brands: [{ _id: false, id: String, name: String }]
+    },
+
     // Senkronizasyon Ayarları
     sync: {
         urunAdlariniGuncelle: { type: Boolean, default: true },
@@ -31,42 +43,54 @@ const webDiaSchema = new mongoose.Schema({
         urunAciklamalari: { type: Boolean, default: true },
         kategoriGuncellemeKapat: { type: Boolean, default: false },
         fullSyncSaat: { type: String, default: '05:00' },
-        lightSyncAraligi: { type: Number, default: 15 }
+        lightSyncAraligi: { type: Number, default: 15 },
+        // DIA'dan çekim kuralları (eski hardcoded filtrelerin DB karşılığı)
+        durumFiltre: { type: String, default: 'A' },        // boş = durum filtresi yok
+        ozelkod11Filtre: { type: String, default: 'E' },    // boş = ozelkod11 filtresi yok
+        b2cFiltre: { type: String, default: '' },           // boş = b2c_gonder filtresi yok (DIA "B2C Göster")
+        hashKontrol: { type: Boolean, default: true },      // değişmeyen ürünleri hash ile atla
+        lastCardSyncAt: { type: Date, default: null }       // tarih filtreli kart senkronunun son başarılı başlangıç zamanı
     }
 }, {
     timestamps: true,
     collection: 'webdia'
 });
 
-// Tek kayıt olacak, her zaman ilk kaydı döndür veya oluştur
-webDiaSchema.statics.getSettings = async function () {
-    let settings = await this.findOne();
+// Site başına tek kayıt; yoksa oluştur. Eski (site alanı olmayan) kayıt alastik'e devredilir.
+webDiaSchema.statics.getSettings = async function (site = 'alastik') {
+    let settings = await this.findOne({ site });
+
+    if (!settings && site === 'alastik') {
+        settings = await this.findOneAndUpdate(
+            { site: { $exists: false } },
+            { $set: { site: 'alastik' } },
+            { new: true }
+        );
+    }
 
     if (!settings) {
-        settings = await this.create({});
+        settings = await this.create({ site });
     }
 
     return settings;
 };
 
-webDiaSchema.statics.updateSettings = async function (data) {
-    let settings = await this.findOne();
+webDiaSchema.statics.updateSettings = async function (data, site = 'alastik') {
+    delete data.site;
 
-    if (!settings) {
-        settings = await this.create(data);
-    } else {
-        Object.assign(settings, data);
+    let settings = await this.getSettings(site);
 
-        if (data.siparis) {
-            settings.siparis = { ...settings.siparis.toObject(), ...data.siparis };
-        }
+    Object.assign(settings, data);
 
-        if (data.sync) {
-            settings.sync = { ...settings.sync.toObject(), ...data.sync };
-        }
-
-        await settings.save();
+    if (data.siparis) {
+        settings.siparis = { ...settings.siparis.toObject(), ...data.siparis };
     }
+
+    if (data.sync) {
+        settings.sync = { ...settings.sync.toObject(), ...data.sync };
+    }
+
+    await settings.save();
 
     return settings;
 };

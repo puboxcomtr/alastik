@@ -1,3 +1,5 @@
+import { fetchAPI } from '@libs/api'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
 export type RoleType = {
@@ -30,38 +32,13 @@ export type ModulesByCategory = {
     [category: string]: ModuleDefinition[]
 }
 
-// Token'ı localStorage'dan al
-const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-        return localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
-    }
-    return null
-}
-
-// Ortak fetch fonksiyonu
+// Ortak fetch fonksiyonu (fetchAPI Bearer token ve X-Site header'larını ekler)
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    // next-auth session'ından token almak için
-    const { getSession } = await import('next-auth/react')
-    const session = await getSession()
-    const token = (session?.user as any)?.accessToken
-
-    const headers = {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers
+    try {
+        return await fetchAPI(url, options)
+    } catch {
+        throw new Error('İşlem başarısız')
     }
-
-    const response = await fetch(url, {
-        ...options,
-        headers
-    })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Bir hata oluştu' }))
-        throw new Error(error.message || 'İşlem başarısız')
-    }
-
-    return response.json()
 }
 
 export async function deleteRole(id: string) {

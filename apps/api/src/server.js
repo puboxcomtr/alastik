@@ -308,8 +308,10 @@ app.use('/api/wheelsize', wheelsizeRoutes);
 // ============================================
 // DIA PLUGIN ROUTES (Workers)
 // ============================================
+// Yalnızca admin paneli kullanır — sync tetikleme uçları kimlik doğrulaması ister
 const diaRoutes = require('./routes/plugins/dia');
-app.use('/api/dia', diaRoutes);
+const { authenticateAdmin: diaAuth } = require('./middleware/auth');
+app.use('/api/dia', process.env.DISABLE_AUTH === 'true' ? (req, res, next) => next() : diaAuth, diaRoutes);
 
 // ============================================
 // PAYMENT ROUTES
@@ -399,8 +401,13 @@ app.use('/api/reviews', webReviewsRoutes);
 const webFiltersRoutes = require('./routes/web/catalog/filters');
 app.use('/api/filters', webFiltersRoutes);
 
+// Vitrin: dışarıya yalnızca vitrin okuma uçları açılır (/public/*);
+// CRUD uçları /api/admin/showcases altında admin kimlik doğrulamasıyla korunur
 const showcaseRoutes = require('./routes/admin/catalog/showcase');
-app.use('/api/showcases', showcaseRoutes);
+app.use('/api/showcases', (req, res, next) => {
+    if (req.method === 'GET' && req.path.startsWith('/public/')) return next();
+    return res.status(401).json({ success: false, message: 'Bu uç için yetkilendirme gereklidir' });
+}, showcaseRoutes);
 
 // ============================================
 // THEME CART & PAYMENT ROUTES
@@ -476,9 +483,7 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'public/uploads')));
 
-/* * Görsel Upload * */
-const mediaRoutes = require('./routes/admin/catalog/media');
-app.use('/api/media', mediaRoutes);
+/* * Görsel Upload — yalnızca /api/admin/media altında, admin kimlik doğrulamasıyla sunulur * */
 
 /* * Static Görsel Upload *  */
 app.use('/uploads', express.static(paths.getStaticPath('')));

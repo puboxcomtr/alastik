@@ -108,6 +108,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/order/payment`}>{dictionary['navigation'].payment}</MenuItem>
             <MenuItem href={`/${locale}/apps/order/cart`}>{`${dictionary['navigation'].active} ${dictionary['navigation'].cart}`}</MenuItem>
           </SubMenu>
+          <MenuItem icon={<i className='ri-map-pin-2-line' />} href={`/${locale}/apps/montage/list`}>Montaj Noktaları</MenuItem>
 
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <SubMenu label={"Sayfa Yönetimi"} icon={<i className='ri-pages-line' />}>

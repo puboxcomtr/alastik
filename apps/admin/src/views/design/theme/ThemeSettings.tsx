@@ -14,7 +14,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import { toast } from 'react-toastify'
 import type { ThemeSettings as ThemeSettingsType } from '@/types/apps/themeTypes'
-import { getSiteHeader } from '@/utils/activeSite'
+import { fetchAPI } from '@libs/api'
 
 
 const menuItems = [
@@ -60,14 +60,11 @@ const ImageUpload = ({ title, description, type, currentImage, onUpload }: Image
 
         try {
             setUploading(true)
-            const res = await fetch(`${API_URL}/admin/design/settings/theme/upload`, {
+            const data = await fetchAPI(`${API_URL}/admin/design/settings/theme/upload`, {
                 method: 'POST',
                 credentials: 'include',
-                headers: { ...getSiteHeader() },
                 body: formData
             })
-
-            const data = await res.json()
 
             if (data.success && data.data?.url) {
                 setPreview(data.data.url)
@@ -139,11 +136,9 @@ const ThemeSettings = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch(`${API_URL}/admin/design/settings/theme`, {
-                credentials: 'include',
-                headers: { ...getSiteHeader() }
+            const data = await fetchAPI(`${API_URL}/admin/design/settings/theme`, {
+                credentials: 'include'
             })
-            const data = await res.json()
             if (data.success && data.data) {
                 setSettings(data.data)
             }
@@ -155,11 +150,9 @@ const ThemeSettings = () => {
     const fetchSliderList = async () => {
         try {
             setLoadingSliders(true)
-            const res = await fetch(`${API_URL}/admin/design/slider`, {
-                credentials: 'include',
-                headers: { ...getSiteHeader() }
+            const data = await fetchAPI(`${API_URL}/admin/design/slider`, {
+                credentials: 'include'
             })
-            const data = await res.json()
             if (data.success && data.data) {
                 setSliderList(data.data)
             }
@@ -173,11 +166,9 @@ const ThemeSettings = () => {
     const fetchShowcaseList = async () => {
         try {
             setLoadingShowcases(true)
-            const res = await fetch(`${API_URL}/showcases?is_active=true`, {
-                credentials: 'include',
-                headers: { ...getSiteHeader() }
+            const data = await fetchAPI(`${API_URL}/admin/showcases?is_active=true`, {
+                credentials: 'include'
             })
-            const data = await res.json()
             if (data.success && data.data) {
                 setShowcaseList(data.data)
             }
@@ -195,14 +186,11 @@ const ThemeSettings = () => {
     const handleSave = async () => {
         setSaving(true)
         try {
-            const res = await fetch(`${API_URL}/admin/design/settings/theme`, {
+            const data = await fetchAPI(`${API_URL}/admin/design/settings/theme`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', ...getSiteHeader() },
                 credentials: 'include',
                 body: JSON.stringify({ value: settings })
             })
-
-            const data = await res.json()
 
             if (data.success) {
                 toast.success('Ayarlar kaydedildi')

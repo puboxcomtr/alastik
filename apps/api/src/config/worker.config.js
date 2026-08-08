@@ -17,17 +17,21 @@ module.exports = {
         },
 
         lightSync: {
-            schedule: process.env.LIGHT_SYNC_CRON || '*/15 * * * *', // 15 dakika
+            schedule: process.env.LIGHT_SYNC_CRON || '*/15 * * * *', // 15 dakika (tarih filtreli kart senkronu)
             batchSize: parseInt(process.env.LIGHT_SYNC_BATCH) || 50,
             batchDelay: parseInt(process.env.LIGHT_SYNC_DELAY) || 1000
+        },
+
+        stockSync: {
+            schedule: process.env.STOCK_SYNC_CRON || '10 * * * *' // saatte bir :10'da tam stok taraması
         }
     },
 
     worker: {
         concurrency: parseInt(process.env.WORKER_CONCURRENCY) || 1,
         maxMemory: process.env.WORKER_MAX_MEMORY || '512M',
-        timeout: parseInt(process.env.WORKER_TIMEOUT) || 3600000, // 1 saat
-        lightSyncTimeout: parseInt(process.env.LIGHT_SYNC_TIMEOUT) || 900000 // 15 dakika
+        timeout: parseInt(process.env.WORKER_TIMEOUT) || 14400000, // 4 saat (DIA API yavaş günlerde full sync 1 saati aşabiliyor)
+        lightSyncTimeout: parseInt(process.env.LIGHT_SYNC_TIMEOUT) || 5400000 // 90 dakika (tek taramalı fiyat+stok turu DIA yavaşken 45-50 dk sürebiliyor)
     },
 
     queue: {

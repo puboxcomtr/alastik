@@ -12,6 +12,7 @@
 const mongoose = require('mongoose');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebTag = require('../../../models/web/catalog/WebTag');
+const { SITES } = require('../../../config/sites');
 
 const MEVSIM_MAP = {
     'Yaz': { season: 'summer', label: 'Yaz' },
@@ -74,10 +75,11 @@ class TireTagSyncService {
     }
 
     /**
-     * Ana sync metodu
+     * Ana sync metodu — her site için ayrı çalışır:
+     * sitenin etiketleri yalnızca o sitede yayında olan ürünlerle eşleştirilir.
      * @param {Object} options
      * @param {boolean} options.dryRun - DB'ye yazma yapma
-     * @param {number}  options.limit  - Test için ürün limiti (0 = sınırsız)
+     * @param {number}  options.limit  - Test için ürün limiti (0 = sınırsız, site başına)
      * @param {Function} options.onProgress - Progress callback (her 500 üründe)
      */
     static async sync(options = {}) {
@@ -98,92 +100,103 @@ class TireTagSyncService {
             dbModified: 0
         };
 
-        const productFilter = { 'diaData.ozelkod7kodu': 'LASTİK' };
-        stats.totalProducts = await WebProduct.countDocuments(productFilter);
+        const siteSlugs = Object.keys(SITES);
 
-        const queryBuilder = WebProduct.find(productFilter)
-            .select('_key diaData.ozelkod3kodu diaData.ozelkod1kodu diaData.marka')
-            .lean();
+        // Toplamı baştan hesapla (progress yüzdesi doğru aksın)
+        for (const site of siteSlugs) {
+            stats.totalProducts += await WebProduct.countDocuments({ 'diaData.ozelkod7kodu': 'LASTİK', sites: site });
+        }
 
-        if (limit > 0) queryBuilder.limit(limit);
+        for (const site of siteSlugs) {
+            const productFilter = { 'diaData.ozelkod7kodu': 'LASTİK', sites: site };
 
-        const cursor = queryBuilder.cursor();
+            const queryBuilder = WebProduct.find(productFilter)
+                .select('_key diaData.ozelkod3kodu diaData.ozelkod1kodu diaData.marka')
+                .lean();
 
-        for await (const product of cursor) {
-            stats.processedProducts++;
+            if (limit > 0) queryBuilder.limit(limit);
 
-            const olcu = product.diaData?.ozelkod3kodu;
-            const mevsim = product.diaData?.ozelkod1kodu;
-            const marka = product.diaData?.marka;
-            const productKey = product._key;
+            const cursor = queryBuilder.cursor();
 
-            if (!olcu) {
-                stats.skippedNoOlcu++;
-                continue;
-            }
+            for await (const product of cursor) {
+                stats.processedProducts++;
 
-            const parsed = this.parseOzelkod3(olcu);
-            if (!parsed) {
-                stats.skippedFormat++;
-                continue;
-            }
+                const olcu = product.diaData?.ozelkod3kodu;
+                const mevsim = product.diaData?.ozelkod1kodu;
+                const marka = product.diaData?.marka;
+                const productKey = product._key;
 
-            const olcuPrefix = this.buildOlcuPrefix(parsed);
-            const olcuPrefixEsc = this.escapeRegex(olcuPrefix);
-            const mevsimInfo = MEVSIM_MAP[mevsim];
+                if (!olcu) {
+                    stats.skippedNoOlcu++;
+                    continue;
+                }
 
-            let matchedAtLeastOne = false;
+                const parsed = this.parseOzelkod3(olcu);
+                if (!parsed) {
+                    stats.skippedFormat++;
+                    continue;
+                }
 
-            // TIP 1: Sadece ölçü
-            const sizeOnlyTag = await WebTag.findOne({
-                type: 'tire_size',
-                season: 'all',
-                title: { $regex: new RegExp(`^${olcuPrefixEsc} Lastikleri Fiyatları$`, 'i') }
-            }).select('_id').lean();
+                const olcuPrefix = this.buildOlcuPrefix(parsed);
+                const olcuPrefixEsc = this.escapeRegex(olcuPrefix);
+                const mevsimInfo = MEVSIM_MAP[mevsim];
 
-            if (sizeOnlyTag) {
-                this.addToCache(tagsCache, sizeOnlyTag._id, productKey);
-                stats.matchedSizeOnly++;
-                matchedAtLeastOne = true;
-            }
+                let matchedAtLeastOne = false;
 
-            // TIP 2: Ölçü + Mevsim
-            if (mevsimInfo) {
-                const sizeSeasonTag = await WebTag.findOne({
+                // TIP 1: Sadece ölçü
+                const sizeOnlyTag = await WebTag.findOne({
+                    site: site,
                     type: 'tire_size',
-                    season: mevsimInfo.season,
-                    title: { $regex: new RegExp(`^${olcuPrefixEsc} ${this.escapeRegex(mevsimInfo.label)} Lastikleri Fiyatları$`, 'i') }
+                    season: 'all',
+                    title: { $regex: new RegExp(`^${olcuPrefixEsc} Lastikleri Fiyatları$`, 'i') }
                 }).select('_id').lean();
 
-                if (sizeSeasonTag) {
-                    this.addToCache(tagsCache, sizeSeasonTag._id, productKey);
-                    stats.matchedSizeSeason++;
+                if (sizeOnlyTag) {
+                    this.addToCache(tagsCache, sizeOnlyTag._id, productKey);
+                    stats.matchedSizeOnly++;
                     matchedAtLeastOne = true;
                 }
-            }
 
-            // TIP 3: Ölçü + Marka + Mevsim
-            if (mevsimInfo && marka) {
-                const markaEsc = this.escapeRegex(marka);
-                const brandTag = await WebTag.findOne({
-                    type: 'general',
-                    title: { $regex: new RegExp(`^${olcuPrefixEsc} ${markaEsc} ${this.escapeRegex(mevsimInfo.label)} Lastikleri Fiyatları$`, 'i') }
-                }).select('_id').lean();
+                // TIP 2: Ölçü + Mevsim
+                if (mevsimInfo) {
+                    const sizeSeasonTag = await WebTag.findOne({
+                        site: site,
+                        type: 'tire_size',
+                        season: mevsimInfo.season,
+                        title: { $regex: new RegExp(`^${olcuPrefixEsc} ${this.escapeRegex(mevsimInfo.label)} Lastikleri Fiyatları$`, 'i') }
+                    }).select('_id').lean();
 
-                if (brandTag) {
-                    this.addToCache(tagsCache, brandTag._id, productKey);
-                    stats.matchedBrandSizeSeason++;
-                    matchedAtLeastOne = true;
+                    if (sizeSeasonTag) {
+                        this.addToCache(tagsCache, sizeSeasonTag._id, productKey);
+                        stats.matchedSizeSeason++;
+                        matchedAtLeastOne = true;
+                    }
                 }
-            }
 
-            if (!matchedAtLeastOne) stats.productsWithoutAnyMatch++;
+                // TIP 3: Ölçü + Marka + Mevsim
+                if (mevsimInfo && marka) {
+                    const markaEsc = this.escapeRegex(marka);
+                    const brandTag = await WebTag.findOne({
+                        site: site,
+                        type: 'general',
+                        title: { $regex: new RegExp(`^${olcuPrefixEsc} ${markaEsc} ${this.escapeRegex(mevsimInfo.label)} Lastikleri Fiyatları$`, 'i') }
+                    }).select('_id').lean();
 
-            if (stats.processedProducts % 500 === 0 && typeof onProgress === 'function') {
-                onProgress({
-                    processed: stats.processedProducts,
-                    total: stats.totalProducts
-                });
+                    if (brandTag) {
+                        this.addToCache(tagsCache, brandTag._id, productKey);
+                        stats.matchedBrandSizeSeason++;
+                        matchedAtLeastOne = true;
+                    }
+                }
+
+                if (!matchedAtLeastOne) stats.productsWithoutAnyMatch++;
+
+                if (stats.processedProducts % 500 === 0 && typeof onProgress === 'function') {
+                    onProgress({
+                        processed: stats.processedProducts,
+                        total: stats.totalProducts
+                    });
+                }
             }
         }
 

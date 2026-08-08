@@ -25,8 +25,8 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Filtreler
-    const filter = {};
+    // Filtreler (seçili siteye yetkili yöneticiler listelenir)
+    const filter = { sites: req.site };
 
     if (search) {
       filter.$or = [
@@ -58,12 +58,12 @@ router.get('/', async (req, res) => {
 
     const total = await Admin.countDocuments(filter);
 
-    // İstatistikler
+    // İstatistikler (seçili siteye yetkili adminler)
     const stats = {
-      total: await Admin.countDocuments(),
-      active: await Admin.countDocuments({ status: 'active' }),
-      inactive: await Admin.countDocuments({ status: 'inactive' }),
-      blocked: await Admin.countDocuments({ status: 'blocked' })
+      total: await Admin.countDocuments({ sites: req.site }),
+      active: await Admin.countDocuments({ status: 'active', sites: req.site }),
+      inactive: await Admin.countDocuments({ status: 'inactive', sites: req.site }),
+      blocked: await Admin.countDocuments({ status: 'blocked', sites: req.site })
     };
 
     res.json({
@@ -96,7 +96,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const admin = await Admin.findById(req.params.id).populate('role');
+    const admin = await Admin.findOne({ _id: req.params.id, sites: req.site }).populate('role');
 
     if (!admin) {
       return res.status(404).json({
@@ -140,10 +140,21 @@ router.post('/', async (req, res) => {
       password,
       role,
       permissions,
+      sites,
       status = 'active'
     } = req.body;
 
     const name = `${firstName} ${lastName}`.trim();
+
+    // Site erişim listesi doğrulama
+    const { isValidSite } = require('../../../config/sites');
+    const requestedSites = Array.isArray(sites) ? sites.filter(s => isValidSite(s)) : [];
+    if (Array.isArray(sites) && requestedSites.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'En az bir geçerli site seçilmelidir'
+      });
+    }
 
     // Validasyon
     if (!name || !username || !email || !password || !role) {
@@ -198,7 +209,9 @@ router.post('/', async (req, res) => {
       password,
       role,
       permissions,
-      isActive  
+      // Site belirtilmediyse yalnızca oluşturulduğu siteye yetkili olur
+      sites: requestedSites.length > 0 ? requestedSites : [req.site],
+      isActive
     });
 
     await admin.save();
@@ -206,6 +219,7 @@ router.post('/', async (req, res) => {
 
     // Activity log
     await ActivityLog.logActivity({
+      site: req.site,
       user: req.adminId,
       action: 'create',
       module: 'users',
@@ -253,10 +267,11 @@ router.put('/:id', async (req, res) => {
       role,
       permissions,
       status,
-      profile
+      profile,
+      sites
     } = req.body;
 
-    const admin = await Admin.findById(req.params.id);
+    const admin = await Admin.findOne({ _id: req.params.id, sites: req.site });
 
     if (!admin) {
       return res.status(404).json({
@@ -296,12 +311,31 @@ router.put('/:id', async (req, res) => {
     if (permissions) admin.permissions = permissions;
     if (status) admin.status = status;
     if (profile) admin.profile = { ...admin.profile, ...profile };
+    if (Array.isArray(sites)) {
+      const { isValidSite } = require('../../../config/sites');
+      const validSites = sites.filter(s => isValidSite(s));
+      if (validSites.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'En az bir geçerli site seçilmelidir'
+        });
+      }
+      // Kendi site erişimini kısıtlayıp kilitlenmeyi önle
+      if (req.adminId.toString() === admin._id.toString() && !validSites.includes(req.site)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Kendi hesabınızın aktif site erişimini kaldıramazsınız'
+        });
+      }
+      admin.sites = validSites;
+    }
 
     await admin.save();
     await admin.populate('role');
 
     // Activity log
     await ActivityLog.logActivity({
+      site: req.site,
       user: req.adminId,
       action: 'update',
       module: 'users',
@@ -337,7 +371,7 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    const admin = await Admin.findById(req.params.id);
+    const admin = await Admin.findOne({ _id: req.params.id, sites: req.site });
 
     if (!admin) {
       return res.status(404).json({
@@ -358,6 +392,7 @@ router.delete('/:id', async (req, res) => {
 
     // Activity log
     await ActivityLog.logActivity({
+      site: req.site,
       user: req.adminId,
       action: 'delete',
       module: 'users',

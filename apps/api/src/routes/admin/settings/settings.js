@@ -7,7 +7,7 @@ router.get('/:group', async (req, res) => {
     try {
         const { group } = req.params;
         
-        const settings = await Setting.find({ group }).lean();
+        const settings = await Setting.find({ group, site: req.site }).lean();
         
         // Key-value formatına dönüştür
         const settingsObj = {};
@@ -40,14 +40,15 @@ router.put('/:group', async (req, res) => {
         for (const [key, value] of Object.entries(updates)) {
             bulkOps.push({
                 updateOne: {
-                    filter: { key, group },
-                    update: { 
-                        $set: { 
+                    filter: { key, group, site: req.site },
+                    update: {
+                        $set: {
                             value,
                             group,
-                            type: typeof value === 'boolean' ? 'boolean' : 
+                            site: req.site,
+                            type: typeof value === 'boolean' ? 'boolean' :
                                   typeof value === 'number' ? 'number' : 'string'
-                        } 
+                        }
                     },
                     upsert: true
                 }
@@ -75,7 +76,7 @@ router.put('/:group', async (req, res) => {
 // GET /api/admin/settings - Tüm ayarları getir
 router.get('/', async (req, res) => {
     try {
-        const settings = await Setting.find().lean();
+        const settings = await Setting.find({ site: req.site }).lean();
         
         // Gruplara göre organize et
         const groupedSettings = {};

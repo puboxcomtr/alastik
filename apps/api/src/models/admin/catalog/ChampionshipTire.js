@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const webChampionshipSchema = new mongoose.Schema({
+    // Her site için ayrı şampiyonluk seti
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     productKey: {
         type: String,
         required: true,
@@ -19,6 +28,6 @@ const webChampionshipSchema = new mongoose.Schema({
     collection: 'webchampionships'
 });
 
-webChampionshipSchema.index({ productKey: 1, name: 1 }, { unique: true });
+webChampionshipSchema.index({ site: 1, productKey: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model('WebChampionship', webChampionshipSchema);

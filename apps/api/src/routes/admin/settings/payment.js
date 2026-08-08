@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
+const NkolayService = require('../../../services/plugins/payment/NKolayService');
 const {
     getAllProviders,
     getProviderTemplate,
@@ -53,8 +54,8 @@ router.get('/', async (req, res) => {
             limit = 50
         } = req.query;
 
-        // Filtre oluştur
-        const filter = { isDeleted: false };
+        // Filtre oluştur (yalnızca seçili sitenin yöntemleri)
+        const filter = { isDeleted: false, site: req.site };
 
         if (type) filter.type = type;
         if (provider) filter.provider = provider;
@@ -83,7 +84,7 @@ router.get('/', async (req, res) => {
 
         // İstatistikler
         const stats = await PaymentMethod.aggregate([
-            { $match: { isDeleted: false } },
+            { $match: { isDeleted: false, site: req.site } },
             {
                 $group: {
                     _id: null,
@@ -140,7 +141,8 @@ router.get('/:id', async (req, res) => {
     try {
         const method = await PaymentMethod.findOne({
             _id: req.params.id,
-            isDeleted: false
+            isDeleted: false,
+            site: req.site
         });
 
         if (!method) {
@@ -193,7 +195,8 @@ router.post('/', async (req, res) => {
             const existingProvider = await PaymentMethod.findOne({
                 type: 'credit_card',
                 provider: provider,
-                isDeleted: false
+                isDeleted: false,
+                site: req.site
             });
 
             if (existingProvider) {
@@ -214,17 +217,19 @@ router.post('/', async (req, res) => {
 
         const existingWithPriority = await PaymentMethod.findOne({
             priority,
-            isDeleted: false
+            isDeleted: false,
+            site: req.site
         });
 
         if (existingWithPriority) {
             await PaymentMethod.updateMany(
-                { priority: { $gte: priority }, isDeleted: false },
+                { priority: { $gte: priority }, isDeleted: false, site: req.site },
                 { $inc: { priority: 1 } }
             );
         }
 
         const newMethod = new PaymentMethod({
+            site: req.site,
             type,
             provider,
             name,
@@ -283,7 +288,8 @@ router.put('/:id', async (req, res) => {
 
         const method = await PaymentMethod.findOne({
             _id: req.params.id,
-            isDeleted: false
+            isDeleted: false,
+            site: req.site
         });
 
         if (!method) {
@@ -321,6 +327,9 @@ router.put('/:id', async (req, res) => {
 
         await method.save();
 
+        // Kimlik bilgileri değişmiş olabilir; servis önbelleğini temizle
+        if (method.provider === 'nkolay') NkolayService.clearCredentials();
+
         res.json({
             success: true,
             message: 'Ödeme yöntemi güncellendi',
@@ -345,7 +354,8 @@ router.patch('/:id/toggle', async (req, res) => {
     try {
         const method = await PaymentMethod.findOne({
             _id: req.params.id,
-            isDeleted: false
+            isDeleted: false,
+            site: req.site
         });
 
         if (!method) {
@@ -357,6 +367,8 @@ router.patch('/:id/toggle', async (req, res) => {
 
         method.isActive = !method.isActive;
         await method.save();
+
+        if (method.provider === 'nkolay') NkolayService.clearCredentials();
 
         res.json({
             success: true,
@@ -382,7 +394,8 @@ router.delete('/:id', async (req, res) => {
     try {
         const method = await PaymentMethod.findOne({
             _id: req.params.id,
-            isDeleted: false
+            isDeleted: false,
+            site: req.site
         });
 
         if (!method) {
@@ -397,6 +410,8 @@ router.delete('/:id', async (req, res) => {
         method.isActive = false;
 
         await method.save();
+
+        if (method.provider === 'nkolay') NkolayService.clearCredentials();
 
         res.json({
             success: true,

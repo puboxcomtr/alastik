@@ -1,7 +1,7 @@
 // apps/web/src/services/categoryService.ts
 import { headers } from 'next/headers';
 
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { Category, ParentCategory } from '@src/types/category';
 
 /**
@@ -100,5 +100,37 @@ export async function getCategorySlugByName(name: string | null | undefined): Pr
     } catch (error) {
         console.error('[categoryService] getCategorySlugByName error:', error);
         return undefined;
+    }
+}
+/**
+ * Kategoriye bağlı menüleri getirir (birden fazla olabilir).
+ * Menü seçilmemişse boş dizi döner.
+ */
+export async function getCategoryMenus(menuIds?: string[] | null) {
+    if (!menuIds || menuIds.length === 0) return [];
+
+    const results = await Promise.all(menuIds.map(id => getCategoryMenu(id)));
+    return results.filter(Boolean);
+}
+
+/**
+ * Kategoriye bağlı tek menü grubunu getirir (grup adı + öğeleri).
+ */
+export async function getCategoryMenu(menuId?: string | null) {
+    if (!menuId) return null;
+
+    try {
+        const res = await fetch(API_ENDPOINTS.menus.group(menuId), {
+            cache: 'no-store',
+            headers: await getServerSiteHeaders()
+        });
+
+        if (!res.ok) return null;
+
+        const result = await res.json();
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error('[categoryService] getCategoryMenu error:', error);
+        return null;
     }
 }

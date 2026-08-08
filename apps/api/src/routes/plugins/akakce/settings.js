@@ -1,13 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const XLSX = require('xlsx');
 const WebAkakceSettings = require('../../../models/plugins/akakce/WebAkakceSettings');
 
-// Ayarları Getir
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+// Ayarları Getir (seçili sitenin ayarları)
 router.get('/', async (req, res) => {
     try {
-        let settings = await WebAkakceSettings.findOne();
+        let settings = await WebAkakceSettings.findOne({ site: req.site });
         if (!settings) {
-            settings = await WebAkakceSettings.create({});
+            settings = await WebAkakceSettings.create({ site: req.site });
         }
         res.json({ success: true, data: settings });
     } catch (err) {
@@ -15,20 +22,117 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Ayarları Güncelle
+// Ayarları Güncelle (seçili sitenin ayarları)
 router.put('/', async (req, res) => {
     try {
-        // Salt okunur / sistem alanları istekten ayıklanır
-        const { _id, createdAt, updatedAt, __v, lastGenerated, productCount, ...payload } = req.body || {};
+        // Salt okunur / sistem alanları istekten ayıklanır (site de dışarıdan değiştirilemez)
+        const { _id, createdAt, updatedAt, __v, lastGenerated, productCount, site, ...payload } = req.body || {};
 
-        let settings = await WebAkakceSettings.findOne();
+        let settings = await WebAkakceSettings.findOne({ site: req.site });
         if (!settings) {
-            settings = await WebAkakceSettings.create(payload);
+            settings = await WebAkakceSettings.create({ ...payload, site: req.site });
         } else {
             settings.set(payload);
             await settings.save();
         }
         res.json({ success: true, data: settings });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Excel'den stok kodu içe aktar: kodları webproducts ile eşleştirip seçim listesi döner
+router.post('/import-products', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Dosya yüklenmedi' });
+        }
+
+        const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        if (!sheet) {
+            return res.status(400).json({ success: false, message: 'Excel dosyasında sayfa bulunamadı' });
+        }
+
+        // Tüm hücreleri satır/sütun bazında oku (kolon konumu önemli değil)
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+        const cells = []; // { value, row, col }
+        rows.forEach((row, r) => {
+            (row || []).forEach((cell, c) => {
+                const value = String(cell ?? '').trim();
+                if (value && value.length <= 300) cells.push({ value, row: r, col: c });
+            });
+        });
+
+        if (!cells.length) {
+            return res.status(400).json({ success: false, message: 'Dosyada okunabilir veri bulunamadı' });
+        }
+
+        // Büyük/küçük harf farkını tolere etmek için orijinal + upper varyantlarıyla sorgula
+        // (kod adayı olarak yalnızca kısa değerler kullanılır)
+        const candidates = [...new Set(cells.filter(c => c.value.length <= 64).flatMap(c => [c.value, c.value.toUpperCase()]))];
+        const db = require('mongoose').connection.db;
+        const docs = await db.collection('webproducts')
+            .find(
+                { 'diaData.stokkartkodu': { $in: candidates } },
+                { projection: { 'diaData.stokkartkodu': 1, 'diaData.aciklama': 1, 'customData.seoTitle': 1 } }
+            )
+            .toArray();
+
+        const byUpperCode = new Map();
+        docs.forEach(d => {
+            const code = d.diaData?.stokkartkodu;
+            if (code) byUpperCode.set(String(code).toUpperCase(), d);
+        });
+
+        // Stok kodu kolonunu tespit et: en çok eşleşme barındıran sütun
+        const matchCountByCol = new Map();
+        cells.forEach(c => {
+            if (byUpperCode.has(c.value.toUpperCase())) {
+                matchCountByCol.set(c.col, (matchCountByCol.get(c.col) || 0) + 1);
+            }
+        });
+
+        if (!matchCountByCol.size) {
+            return res.json({
+                success: true,
+                data: { matched: [], notFound: [], totalCodes: 0, message: 'Dosyadaki hiçbir değer stok kodlarıyla eşleşmedi' }
+            });
+        }
+
+        const bestCol = [...matchCountByCol.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        const colCells = cells.filter(c => c.col === bestCol);
+
+        // Kod kolonunun sağındaki dolu kolon varsa özel XML adı olarak al
+        const nameByRow = new Map();
+        cells.forEach(c => {
+            if (c.col === bestCol + 1) nameByRow.set(c.row, c.value);
+        });
+        const matchedRows = colCells.filter(c => byUpperCode.has(c.value.toUpperCase()));
+        const nameColUsable = matchedRows.length > 0 &&
+            matchedRows.filter(c => nameByRow.has(c.row)).length >= matchedRows.length * 0.5;
+
+        const matched = [];
+        const notFound = [];
+        const seen = new Set();
+        colCells.forEach(c => {
+            const key = c.value.toUpperCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            const doc = byUpperCode.get(key);
+            if (doc) {
+                matched.push({
+                    id: String(doc.diaData.stokkartkodu),
+                    name: doc.diaData?.aciklama || doc.customData?.seoTitle || String(doc.diaData.stokkartkodu),
+                    xmlName: nameColUsable ? (nameByRow.get(c.row) || '') : ''
+                });
+            } else if (c.row > 0) {
+                // İlk satır muhtemelen başlık; eşleşmeyenlere dahil etme
+                notFound.push(c.value);
+            }
+        });
+
+        res.json({ success: true, data: { matched, notFound, totalCodes: matched.length + notFound.length } });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

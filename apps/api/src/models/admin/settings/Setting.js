@@ -1,10 +1,18 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const settingSchema = new mongoose.Schema({
+    // Her ayar bir siteye aittir (anahtar site içinde benzersizdir)
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     key: {
         type: String,
         required: true,
-        unique: true,
         trim: true
     },
     value: {
@@ -29,7 +37,7 @@ const settingSchema = new mongoose.Schema({
     timestamps: true
 });
 
-settingSchema.index({ key: 1 }, { unique: true });
-settingSchema.index({ group: 1 });
+settingSchema.index({ site: 1, key: 1 }, { unique: true });
+settingSchema.index({ site: 1, group: 1 });
 
 module.exports = mongoose.model('Setting', settingSchema);

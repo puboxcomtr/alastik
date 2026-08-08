@@ -1,3 +1,5 @@
+import { getSession } from 'next-auth/react'
+
 import { getSiteHeader } from '@/utils/activeSite'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
@@ -6,26 +8,40 @@ interface FetchOptions extends RequestInit {
     body?: any
 }
 
-export async function apiClient(endpoint: string, options: FetchOptions = {}) {
-    const config: RequestInit = {
-        credentials: 'include', 
-        headers: {
-            'Content-Type': 'application/json',
-            ...getSiteHeader(),
-            ...options.headers
-        },
-        ...options
+export async function apiClient<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+    // Bearer token (fetchAPI ile aynı davranış: client tarafında session'dan alınır)
+    let token: string | undefined
+
+    if (typeof window !== 'undefined') {
+        const session = await getSession()
+
+        token = session?.user?.accessToken
     }
 
-    // Body varsa JSON'a çevir
-    if (options.body && typeof options.body !== 'string') {
-        config.body = JSON.stringify(options.body)
+    const { headers, body, ...rest } = options
+    const isFormData = body instanceof FormData
+
+    const config: RequestInit = {
+        credentials: 'include',
+        ...rest,
+        headers: {
+            ...(!isFormData && { 'Content-Type': 'application/json' }),
+            ...getSiteHeader(),
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+            ...headers
+        }
+    }
+
+    // Body varsa JSON'a çevir (FormData olduğu gibi gönderilir)
+    if (body !== undefined) {
+        config.body = isFormData || typeof body === 'string' ? body : JSON.stringify(body)
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, config)
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'Bir hata oluştu' }))
+
         throw new Error(error.message || 'İstek başarısız')
     }
 

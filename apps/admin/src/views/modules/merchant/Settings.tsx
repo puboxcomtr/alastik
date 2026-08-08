@@ -15,7 +15,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import MenuItem from '@mui/material/MenuItem'
 import Box from '@mui/material/Box'
 import { toast } from 'react-toastify'
-import { API_ENDPOINTS } from '@libs/api'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 interface MerchantSettings {
     isActive: boolean
@@ -83,15 +83,13 @@ export default function Settings() {
     const [textFields, setTextFields] = useState<{ diaFields: { key: string, preview: string }[], customFields: { key: string, preview: string }[] }>({ diaFields: [], customFields: [] })
     const fetchPriceFields = async () => {
         try {
-            const res = await fetch(API_ENDPOINTS.merchantSettings.priceFields())
-            const data = await res.json()
+            const data = await fetchAPI(API_ENDPOINTS.merchantSettings.priceFields())
             if (data.success) setPriceFields(data.data)
         } catch { }
     }
     const fetchTextFields = async () => {
         try {
-            const res = await fetch(API_ENDPOINTS.merchantSettings.textFields())
-            const data = await res.json()
+            const data = await fetchAPI(API_ENDPOINTS.merchantSettings.textFields())
             if (data.success) setTextFields(data.data)
         } catch { }
     }
@@ -104,8 +102,7 @@ export default function Settings() {
     const fetchSettings = async () => {
         try {
             setLoading(true)
-            const res = await fetch(API_ENDPOINTS.merchantSettings.get())
-            const data = await res.json()
+            const data = await fetchAPI(API_ENDPOINTS.merchantSettings.get())
             if (data.success && data.data) {
                 setSettings(prev => ({
                     ...prev,
@@ -123,12 +120,10 @@ export default function Settings() {
     const handleSave = async () => {
         try {
             setSaving(true)
-            const res = await fetch(API_ENDPOINTS.merchantSettings.update(), {
+            const data = await fetchAPI(API_ENDPOINTS.merchantSettings.update(), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
             })
-            const data = await res.json()
             if (data.success) {
                 toast.success('Ayarlar kaydedildi')
             } else {

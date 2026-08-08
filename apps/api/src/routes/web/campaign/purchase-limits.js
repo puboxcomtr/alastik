@@ -12,8 +12,8 @@ router.post('/check', async (req, res) => {
       return res.json({ success: true, valid: true, violations: [] })
     }
 
-    // Aktif limitleri çek
-    const filter = { isActive: true }
+    // Aktif limitleri çek (ziyaret edilen sitenin limitleri)
+    const filter = { site: req.site, isActive: true }
     if (memberType) {
       filter.memberGroups = memberType
     }

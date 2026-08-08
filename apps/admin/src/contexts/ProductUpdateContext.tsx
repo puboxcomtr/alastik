@@ -12,6 +12,9 @@ interface ProductUpdateData {
     delivery?: string
     seoKeywords?: string[]
     webVisible?: boolean
+    hideBrand?: boolean
+    hideProductionDate?: boolean
+    hideStock?: boolean
     webTags?: string[]
     webCategory?: string
     customDescription?: string

@@ -9,6 +9,7 @@ const https = require('https');
 const WebXml = require('../../../models/plugins/xml/WebXml');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
 const XmlPricingRule = require('../../../models/plugins/xml/XmlPricingRule');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
 const XLSX = require('xlsx');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
@@ -854,12 +855,18 @@ router.get('/webproducts/export.xml', async (req, res) => {
             return Math.round(fiyat * 100) / 100;
         };
 
+        // Site seçimi: ?site= parametresi > X-Site/Host (req.site)
+        const { isValidSite } = require('../../../config/sites');
+        const querySite = (req.query.site || '').toString().trim().toLowerCase();
+        const feedSite = isValidSite(querySite) ? querySite : req.site;
+
         const productQuery = {
             'syncInfo.syncSource': 'xml_integration',
             'diaData.durum': 'A',
             'diaData.gercek_stok': { $gt: 0 },
             'diaData.m_birimler.0.fiyat1': { $gt: 0 },
-            'customData.webVisible': true
+            'customData.webVisible': true,
+            sites: feedSite
         };
 
         if (type === 'jant') {
@@ -1261,16 +1268,37 @@ router.delete('/pricing/rules/:id', async (req, res) => {
 // ============================================
 router.delete('/mapping/:productId', async (req, res) => {
     try {
-        const result = await XmlProduct.updateOne(
-            { _id: req.params.productId },
-            { $set: { mappedData: null, status: 'pending', lastMappedAt: null } }
-        );
+        const xmlProduct = await XmlProduct.findById(req.params.productId, { diaKey: 1 }).lean();
 
-        if (result.matchedCount === 0) {
+        if (!xmlProduct) {
             return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
         }
 
-        res.json({ success: true, message: 'Eşleşme kaldırıldı' });
+        await XmlProduct.updateOne(
+            { _id: xmlProduct._id },
+            { $set: { mappedData: null, status: 'pending', lastMappedAt: null, diaKey: null, diaData: null, diaDataHash: null } }
+        );
+
+        // Aynı DIA kartını kullanan başka XML kaynağı kalmadıysa web ürününü sil
+        let webDeleted = 0;
+        if (xmlProduct.diaKey) {
+            const otherSource = await XmlProduct.exists({ _id: { $ne: xmlProduct._id }, diaKey: xmlProduct.diaKey });
+            if (!otherSource) {
+                const keyVariants = [String(xmlProduct.diaKey)];
+                const numKey = Number(xmlProduct.diaKey);
+                if (!Number.isNaN(numKey)) keyVariants.push(numKey);
+                const delResult = await WebProduct.deleteMany({
+                    _key: { $in: keyVariants },
+                    'syncInfo.syncSource': 'xml_integration'
+                });
+                webDeleted = delResult.deletedCount;
+            }
+        }
+
+        res.json({
+            success: true,
+            message: webDeleted > 0 ? 'Eşleşme kaldırıldı, ürün siteden silindi' : 'Eşleşme kaldırıldı'
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

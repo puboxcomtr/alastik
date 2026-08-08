@@ -140,9 +140,12 @@ router.put('/:id', async (req, res) => {
             }
         }
 
+        // site alanı gövdeden ayıklanır; kayıt başka siteye taşınamaz
+        const { site: _ignoredSite, ...pagePayload } = req.body || {};
+
         const page = await Page.findOneAndUpdate(
             { _id: req.params.id, site: req.site },
-            req.body,
+            pagePayload,
             { new: true, runValidators: true }
         );
 

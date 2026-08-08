@@ -1,5 +1,5 @@
 // apps/web/src/services/brandService.ts
-import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
+import { API_ENDPOINTS, getImageUrl, getServerSiteHeaders } from '@/src/config/api';
 import type {
     Brand,
     BrandResponse,
@@ -13,7 +13,8 @@ import type {
 export async function getHomepageBrands(): Promise<BrandListResponse> {
     try {
         const response = await fetch(API_ENDPOINTS.brands.homepage(), {
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            headers: { ...(await getServerSiteHeaders()) }
         });
 
         if (!response.ok) {
@@ -33,7 +34,8 @@ export async function getHomepageBrands(): Promise<BrandListResponse> {
 export async function getBrandByName(brandName: string): Promise<BrandResponse> {
     try {
         const response = await fetch(API_ENDPOINTS.brands.detail(brandName), {
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            headers: { ...(await getServerSiteHeaders()) }
         });
 
         if (!response.ok) {
@@ -66,7 +68,8 @@ export async function getBrandByName(brandName: string): Promise<BrandResponse> 
 export async function getBrandDetail(seoUrl: string): Promise<BrandDetailResponse> {
     try {
         const response = await fetch(API_ENDPOINTS.brands.detail(seoUrl), {
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            headers: { ...(await getServerSiteHeaders()) }
         });
 
         if (!response.ok) {

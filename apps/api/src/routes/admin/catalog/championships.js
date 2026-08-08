@@ -5,7 +5,7 @@ const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire
 // Tüm şampiyonlukları getir
 router.get('/', async (req, res) => {
     try {
-        const championships = await ChampionshipTire.find().sort({ name: 1 }).lean();
+        const championships = await ChampionshipTire.find({ site: req.site }).sort({ name: 1 }).lean();
         res.json({ success: true, data: championships });
     } catch (error) {
         console.error('Championship listesi hatası:', error);
@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
 // GET Ürüne ait şampiyonluklar
 router.get('/product/:productKey', async (req, res) => {
     try {
-        const championships = await ChampionshipTire.find({ productKey: req.params.productKey }).lean();
+        const championships = await ChampionshipTire.find({ productKey: req.params.productKey, site: req.site }).lean();
         res.json({ success: true, data: championships });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Şampiyonluklar getirilemedi' });
@@ -27,8 +27,8 @@ router.get('/product/:productKey', async (req, res) => {
 router.put('/:id/assign', async (req, res) => {
     try {
         const { productKey } = req.body;
-        const championship = await ChampionshipTire.findByIdAndUpdate(
-            req.params.id,
+        const championship = await ChampionshipTire.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             { productKey, updatedAt: new Date() },
             { new: true }
         );
@@ -44,8 +44,8 @@ router.put('/:id/assign', async (req, res) => {
 // PUT Üründen çıkar
 router.put('/:id/unassign', async (req, res) => {
     try {
-        const championship = await ChampionshipTire.findByIdAndUpdate(
-            req.params.id,
+        const championship = await ChampionshipTire.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             { productKey: '', updatedAt: new Date() },
             { new: true }
         );

@@ -28,6 +28,7 @@ router.post('/login', async (req, res) => {
 
     if (isBlocked) {
       await ActivityLog.logActivity({
+      site: req.site,
         action: 'login_failed',
         module: 'auth',
         details: { reason: 'Engellenen IP', email, ip: clientIP },
@@ -47,6 +48,7 @@ router.post('/login', async (req, res) => {
 
     if (!admin) {
       await ActivityLog.logActivity({
+      site: req.site,
         action: 'login_failed',
         module: 'auth',
         details: { reason: 'Kullanıcı bulunamadı', email },
@@ -64,6 +66,7 @@ router.post('/login', async (req, res) => {
     // Hesap kilitli mi?
     if (admin.isLocked) {
       await ActivityLog.logActivity({
+      site: req.site,
         user: admin._id,
         action: 'login_failed',
         module: 'auth',
@@ -86,6 +89,7 @@ router.post('/login', async (req, res) => {
       await admin.incLoginAttempts();
 
       await ActivityLog.logActivity({
+      site: req.site,
         user: admin._id,
         action: 'login_failed',
         module: 'auth',
@@ -104,6 +108,7 @@ router.post('/login', async (req, res) => {
     // Hesap aktif mi?
     if (!admin.isActive) {
       await ActivityLog.logActivity({
+      site: req.site,
         user: admin._id,
         action: 'login_failed',
         module: 'auth',
@@ -124,6 +129,7 @@ router.post('/login', async (req, res) => {
 
     // Activity log
     await ActivityLog.logActivity({
+      site: req.site,
       user: admin._id,
       action: 'login',
       module: 'auth',
@@ -162,6 +168,7 @@ router.post('/logout', authenticateAdmin, async (req, res) => {
 
     // Activity log
     await ActivityLog.logActivity({
+      site: req.site,
       user: req.adminId,
       action: 'logout',
       module: 'auth',

@@ -1,10 +1,18 @@
 const mongoose = require('mongoose')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const templateSchema = new mongoose.Schema({
+    // Her site için ayrı şablon seti (site + templateKey benzersiz)
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     templateKey: {
         type: String,
         required: true,
-        unique: true,
         trim: true
     },
     name: {
@@ -54,7 +62,7 @@ const templateSchema = new mongoose.Schema({
     collection: 'webmailtemplates'
 })
 
-templateSchema.index({ templateKey: 1 }, { unique: true })
+templateSchema.index({ site: 1, templateKey: 1 }, { unique: true })
 templateSchema.index({ category: 1, order: 1 })
 
 module.exports = mongoose.model('WebMailTemplate', templateSchema)

@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const TireTagSyncService = require('../../../services/plugins/tag/TireTagSyncService');
+const { authenticateAdmin } = require('../../../middleware/auth');
+
+// Admin kimlik doğrulaması (DISABLE_AUTH=true ise dev ortamında atlanır)
+const maybeAuth = process.env.DISABLE_AUTH === 'true'
+    ? (req, res, next) => next()
+    : authenticateAdmin;
+
+router.use(maybeAuth);
 
 let isRunning = false;
 

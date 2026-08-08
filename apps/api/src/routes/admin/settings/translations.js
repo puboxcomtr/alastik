@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     try {
         const { category, search, page = 1, limit = 100 } = req.query;
 
-        let query = { isActive: true };
+        let query = { isActive: true, site: req.site };
 
         if (category && category !== 'all') {
             query.category = category;
@@ -72,12 +72,12 @@ router.get('/', async (req, res) => {
 // GET /api/admin/settings/translations/categories
 router.get('/categories', async (req, res) => {
     try {
-        const categories = await WebTranslation.distinct('category', { isActive: true });
+        const categories = await WebTranslation.distinct('category', { isActive: true, site: req.site });
 
         const categoryCounts = await Promise.all(
             categories.map(async (category) => ({
                 name: category,
-                count: await WebTranslation.countDocuments({ category, isActive: true })
+                count: await WebTranslation.countDocuments({ category, isActive: true, site: req.site })
             }))
         );
 
@@ -99,7 +99,7 @@ router.get('/categories', async (req, res) => {
 // GET /api/admin/settings/translations/:id
 router.get('/:id', async (req, res) => {
     try {
-        const translation = await WebTranslation.findById(req.params.id);
+        const translation = await WebTranslation.findOne({ _id: req.params.id, site: req.site });
 
         if (!translation) {
             return res.status(404).json({
@@ -135,7 +135,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const exists = await WebTranslation.findOne({ key });
+        const exists = await WebTranslation.findOne({ key, site: req.site });
         if (exists) {
             return res.status(400).json({
                 success: false,
@@ -144,6 +144,7 @@ router.post('/', async (req, res) => {
         }
 
         const translation = new WebTranslation({
+            site: req.site,
             key,
             value,
             category: category || 'general',
@@ -181,8 +182,8 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const translation = await WebTranslation.findByIdAndUpdate(
-            req.params.id,
+        const translation = await WebTranslation.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             {
                 value,
                 ...(category && { category }),
@@ -219,8 +220,8 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/admin/settings/translations/:id
 router.delete('/:id', async (req, res) => {
     try {
-        const translation = await WebTranslation.findByIdAndUpdate(
-            req.params.id,
+        const translation = await WebTranslation.findOneAndUpdate(
+            { _id: req.params.id, site: req.site },
             { isActive: false },
             { new: true }
         );

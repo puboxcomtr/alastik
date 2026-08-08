@@ -1,6 +1,15 @@
 const mongoose = require('mongoose')
+const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const purchaseLimitSchema = new mongoose.Schema({
+    // Her limit bir siteye aittir — siteler bağımsız limit kuralları kullanır
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
     name: {
         type: String,
         required: true,
@@ -43,6 +52,7 @@ const purchaseLimitSchema = new mongoose.Schema({
     collection: 'purchaselimits'
 })
 
+purchaseLimitSchema.index({ site: 1, isActive: 1 })
 purchaseLimitSchema.index({ limitType: 1, isActive: 1 })
 purchaseLimitSchema.index({ 'targets.targetId': 1 })
 purchaseLimitSchema.index({ memberGroups: 1 })

@@ -15,7 +15,8 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        const slider = await WebSlider.findById(id);
+        // Yalnızca isteğin geldiği sitenin slider'ı
+        const slider = await WebSlider.findOne({ _id: id, site: req.site });
 
         if (!slider) {
             return res.status(404).json({

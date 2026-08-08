@@ -1,21 +1,34 @@
-import { getSiteHeader } from '@/utils/activeSite'
+import { fetchAPI } from '@libs/api'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+
+
+// Backend'in döndürdüğü açıklayıcı mesajı korur; bağlantı hatasını anlaşılır hale getirir
+function menuError(error: any, fallback: string): Error {
+    const message = String(error?.message || '')
+    if (!message || /failed to fetch|networkerror|load failed/i.test(message)) {
+        return new Error('Sunucuya ulaşılamadı, lütfen tekrar deneyin')
+    }
+    return new Error(message || fallback)
+}
 
 export type MenuLinkDataType = {
     url?: string
     categoryId?: string
     categoryLevel?: 1 | 2
     pageId?: string
+    blogId?: string
+    productId?: string
 }
 
 export type MenuType = {
     _id: string
     name: string
-    menuType: 'link' | 'category' | 'page'
+    menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'heading'
     linkData: MenuLinkDataType
     openNewTab: boolean
-    displayArea: 'header' | 'footer' | 'mobile'
-    rowLevel: 1 | 2
+    displayArea: 'header' | 'footer' | 'mobile' | 'general'
+    rowLevel: 1 | 2 | 3
     parentId?: string | null
     order: number
     isActive: boolean
@@ -30,6 +43,19 @@ export type CategoryOptionType = {
     categoryLevel: number
 }
 
+export type ProductOptionType = {
+    _id: string
+    title: string
+    sku: string
+    slug: string
+}
+
+export type BlogOptionType = {
+    _id: string
+    title: string
+    slug: string
+}
+
 export type PageOptionType = {
     _id: string
     title: string
@@ -40,6 +66,8 @@ export type ParentMenuOptionType = {
     _id: string
     name: string
     displayArea: string
+    rowLevel?: number
+    menuType?: string
 }
 
 // Menü listesi
@@ -53,125 +81,130 @@ export async function fetchMenus(params?: {
     if (params?.rowLevel) queryParams.append('rowLevel', params.rowLevel.toString())
     if (params?.isActive !== undefined) queryParams.append('isActive', params.isActive.toString())
 
-    const response = await fetch(`${API_URL}/admin/design/menu?${queryParams.toString()}`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
-
-    if (!response.ok) {
-        throw new Error('Menüler yüklenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu?${queryParams.toString()}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Menüler yüklenemedi')
     }
-
-    return response.json()
 }
 
 // Tek menü getir
 export async function fetchMenu(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/menu/${id}`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
-
-    if (!response.ok) {
-        throw new Error('Menü bulunamadı')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/${id}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Menü bulunamadı')
     }
-
-    return response.json()
 }
 
 // Kategorileri getir (dropdown için)
 export async function fetchCategories(level?: 1 | 2) {
     const queryParams = level ? `?level=${level}` : ''
-    const response = await fetch(`${API_URL}/admin/design/menu/options/categories${queryParams}`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
 
-    if (!response.ok) {
-        throw new Error('Kategoriler yüklenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/categories${queryParams}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Kategoriler yüklenemedi')
     }
-
-    return response.json()
 }
 
 // Sayfaları getir (dropdown için)
 export async function fetchPages() {
-    const response = await fetch(`${API_URL}/admin/design/menu/options/pages`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
-
-    if (!response.ok) {
-        throw new Error('Sayfalar yüklenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/pages`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Sayfalar yüklenemedi')
     }
+}
 
-    return response.json()
+// Blog yazılarını getir (dropdown için)
+export async function fetchBlogs() {
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/blogs`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Blog yazıları yüklenemedi')
+    }
+}
+
+// Ürünleri ara (katalog büyük olduğundan sunucuda aranır)
+export async function fetchProducts(query: string) {
+    const q = query ? `?q=${encodeURIComponent(query)}` : ''
+
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/products${q}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Ürünler yüklenemedi')
+    }
 }
 
 // Ana menüleri getir (alt menü eklerken)
 export async function fetchParentMenus(displayArea?: string) {
     const queryParams = displayArea ? `?displayArea=${displayArea}` : ''
-    const response = await fetch(`${API_URL}/admin/design/menu/options/parent-menus${queryParams}`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
 
-    if (!response.ok) {
-        throw new Error('Ana menüler yüklenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/parent-menus${queryParams}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Ana menüler yüklenemedi')
     }
-
-    return response.json()
 }
 
 // Yeni menü oluştur
 export async function createMenu(data: Partial<MenuType>) {
-    const response = await fetch(`${API_URL}/admin/design/menu`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getSiteHeader()
-        },
-        body: JSON.stringify(data)
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Menü oluşturulamadı')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Menü oluşturulamadı')
     }
-
-    return response.json()
 }
 
 // Menü güncelle
 export async function updateMenu(id: string, data: Partial<MenuType>) {
-    const response = await fetch(`${API_URL}/admin/design/menu/${id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getSiteHeader()
-        },
-        body: JSON.stringify(data)
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Menü güncellenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Menü güncellenemedi')
     }
-
-    return response.json()
 }
 
 // Menü sil
 export async function deleteMenu(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/menu/${id}`, {
-        method: 'DELETE',
-        headers: { ...getSiteHeader() }
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Menü silinemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/${id}`, {
+            method: 'DELETE'
+        })
+    } catch (error: any) {
+        // Backend mesajını koru (örn. "Bu menüye bağlı alt menüler var")
+        throw menuError(error, 'Menü silinemedi')
     }
+}
 
-    return response.json()
+// Menü grubunu (görüntüleme alanı) topluca sil
+export async function deleteMenuArea(area: 'header' | 'footer' | 'mobile') {
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/area/${area}`, {
+            method: 'DELETE'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Menü silinemedi')
+    }
 }

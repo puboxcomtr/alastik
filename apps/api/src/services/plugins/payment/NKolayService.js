@@ -9,30 +9,34 @@ const crypto = require('crypto');
 const axios = require('axios');
 const FormData = require('form-data');
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 class NkolayService {
 
     constructor() {
-        this.credentials = null;
+        // Site başına ayrı kimlik önbelleği (her sitenin kendi POS kaydı var)
+        this.credentialsBySite = {};
     }
 
     // ========== CREDENTIALS ==========
 
-    async getCredentials() {
-        if (this.credentials) return this.credentials;
+    async getCredentials(site) {
+        const slug = SITES[site] ? site : DEFAULT_SITE;
+        if (this.credentialsBySite[slug]) return this.credentialsBySite[slug];
 
         const PaymentMethod = mongoose.connection.collection('paymentmethods');
         const record = await PaymentMethod.findOne({
             provider: 'nkolay',
             isActive: true,
-            isDeleted: { $ne: true }
+            isDeleted: { $ne: true },
+            site: slug
         });
 
         if (!record) {
-            throw new Error('[Nkolay] PaymentMethod kaydı bulunamadı');
+            throw new Error(`[Nkolay] PaymentMethod kaydı bulunamadı (site: ${slug})`);
         }
 
-        this.credentials = {
+        this.credentialsBySite[slug] = {
             sx: record.apiCredentials.sx,
             sxCancel: record.apiCredentials.sxCancel,
             sxList: record.apiCredentials.sxList,
@@ -40,13 +44,13 @@ class NkolayService {
             baseUrl: record.apiCredentials.baseUrl
         };
 
-        console.log('[Nkolay] Credentials yüklendi, baseUrl:', this.credentials.baseUrl);
-        return this.credentials;
+        console.log('[Nkolay] Credentials yüklendi:', slug, this.credentialsBySite[slug].baseUrl);
+        return this.credentialsBySite[slug];
     }
 
     // Credentials cache'ini temizle (credential güncellenirse)
     clearCredentials() {
-        this.credentials = null;
+        this.credentialsBySite = {};
     }
 
     // ========== HASH HESAPLAMA ==========
@@ -99,7 +103,7 @@ class NkolayService {
 
     async processPayment(params) {
         try {
-            const creds = await this.getCredentials();
+            const creds = await this.getCredentials(params.site);
 
             const {
                 orderNumber,
@@ -215,9 +219,9 @@ class NkolayService {
 
     // ========== ÖDEME TAMAMLAMA ==========
 
-    async completePayment(referenceCode) {
+    async completePayment(referenceCode, site) {
         try {
-            const creds = await this.getCredentials();
+            const creds = await this.getCredentials(site);
 
             const form = new FormData();
             form.append('sx', creds.sx);
@@ -260,9 +264,9 @@ class NkolayService {
     // clientRefCode (orderNumber) ile Nkolay'dan gerçek işlem durumunu sorgular.
     // Callback gelmese bile ödeme durumunu doğrular.
     // Hash: sx + startDate + endDate + clientRefCode + secretkey -> sha1 -> base64
-    async checkPaymentStatus({ clientRefCode, startDate, endDate }) {
+    async checkPaymentStatus({ clientRefCode, startDate, endDate, site }) {
         try {
-            const creds = await this.getCredentials();
+            const creds = await this.getCredentials(site);
 
             if (!creds.sxList) {
                 return { success: false, message: '[Nkolay] sxList credential tanimli degil' };
@@ -331,9 +335,9 @@ class NkolayService {
 
     // ========== İPTAL ==========
 
-    async cancelPayment({ referenceCode, amount, trxDate }) {
+    async cancelPayment({ referenceCode, amount, trxDate, site }) {
         try {
-            const creds = await this.getCredentials();
+            const creds = await this.getCredentials(site);
             const formattedAmount = parseFloat(amount).toFixed(2);
 
             const hashDatav2 = this.generateCancelHash({
@@ -380,9 +384,9 @@ class NkolayService {
 
     // ========== İADE ==========
 
-    async refundPayment({ referenceCode, amount, trxDate }) {
+    async refundPayment({ referenceCode, amount, trxDate, site }) {
         try {
-            const creds = await this.getCredentials();
+            const creds = await this.getCredentials(site);
             const formattedAmount = parseFloat(amount).toFixed(2);
 
             const hashDatav2 = this.generateCancelHash({

@@ -22,3 +22,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Kategori SEO içeriği (admin editöründen gelen HTML):
+   başlıklar gövde metniyle aynı boyutta görünür, alan kendi içinde kaydırılır */
+.category-seo-content {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
+.category-seo-content h1,
+.category-seo-content h2,
+.category-seo-content h3,
+.category-seo-content h4,
+.category-seo-content h5,
+.category-seo-content h6 {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+/* Kategori sidebar menüleri: başlık sabit, uzun listeler kendi içinde YUKARIDAN AŞAĞI kaydırılır.
+   flex-wrap: nowrap şart — Bootstrap .nav sınıfı wrap uyguladığı için yükseklik sınırlanınca
+   öğeler alta değil yana yeni sütuna taşıyor ve yatay kaydırma oluşuyordu. */
+.category-menu ul {
+  flex-wrap: nowrap;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+}

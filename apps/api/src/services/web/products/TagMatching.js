@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 // Bilinen marka listesi
 const KNOWN_BRANDS = {
@@ -71,11 +72,11 @@ class TagMatchingService {
     }
 
     /**
-     * Tüm ürünleri bir kere çekip ebat+mevsim+marka bazlı index oluşturur
+     * Tüm ürünleri bir kere çekip ebat+mevsim+marka bazlı index oluşturur (site bazlı)
      */
-    static async buildProductIndex() {
+    static async buildProductIndex(site) {
         const products = await WebProduct.find(
-            { 'diaData.durum': 'A', 'syncInfo.diaStatus': 'synced', 'diaData.ozelkod7kodu': 'LASTİK' },
+            { 'diaData.durum': 'A', 'syncInfo.diaStatus': 'synced', 'diaData.ozelkod7kodu': 'LASTİK', sites: site },
             { '_key': 1, 'diaData.ozelkod3kodu': 1, 'diaData.ozelkod1kodu': 1, 'diaData.marka': 1 }
         ).lean();
 
@@ -127,11 +128,13 @@ class TagMatchingService {
         const db = mongoose.connection.db;
         const webtagsCol = db.collection('webtags');
 
-        // 1. Ürün index'i oluştur (tek sorgu)
-        console.log('Ürün index oluşturuluyor...');
-        const index = await this.buildProductIndex();
-        const sizeCount = Object.keys(index).length;
-        console.log(`${sizeCount} farklı ebat indexlendi.`);
+        // 1. Ürün index'i oluştur (site başına ayrı — her sitenin etiketi kendi ürünleriyle eşleşir)
+        console.log('Ürün indexleri oluşturuluyor (site bazlı)...');
+        const indexBySite = {};
+        for (const siteSlug of Object.keys(SITES)) {
+            indexBySite[siteSlug] = await this.buildProductIndex(siteSlug);
+            console.log(`${siteSlug}: ${Object.keys(indexBySite[siteSlug]).length} farklı ebat indexlendi.`);
+        }
 
         // 2. Etiketleri al
         const tagFilter = { isActive: true };
@@ -169,7 +172,7 @@ class TagMatchingService {
                     continue;
                 }
 
-                const productKeys = this.matchFromIndex(parsed, index);
+                const productKeys = this.matchFromIndex(parsed, indexBySite[tag.site] || indexBySite[DEFAULT_SITE]);
                 results.matched++;
 
                 results.details.push({
@@ -228,12 +231,13 @@ class TagMatchingService {
             return { seoUrl: tag.seoUrl, status: 'skipped', reason: 'Ebat bulunamadı' };
         }
 
-        // Tek etiket için direkt sorgu at
+        // Tek etiket için direkt sorgu at (etiketin kendi sitesinin ürünleri)
         const query = {
             'diaData.ozelkod3kodu': new RegExp(`^${parsed.size}$`, 'i'),
             'diaData.durum': 'A',
             'syncInfo.diaStatus': 'synced',
-            'diaData.ozelkod7kodu': 'LASTİK'
+            'diaData.ozelkod7kodu': 'LASTİK',
+            sites: tag.site || DEFAULT_SITE
         };
 
         if (parsed.season) {

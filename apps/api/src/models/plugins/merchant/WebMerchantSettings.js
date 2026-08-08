@@ -1,6 +1,17 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const webMerchantSettingsSchema = new mongoose.Schema({
+    // Her site için ayrı Merchant yapılandırması ve feed'i
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        unique: true,
+        index: true
+    },
+
     // Genel Ayarlar
     isActive: { type: Boolean, default: true },
     currency: { type: String, default: 'TRY' },

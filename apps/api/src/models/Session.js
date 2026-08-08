@@ -251,6 +251,12 @@ const SessionSchema = new mongoose.Schema({
     customerLifetimeValue: Number
   },
   
+  // Oturumun açıldığı site (ziyaret istatistikleri site bazlı tutulur)
+  site: {
+    type: String,
+    index: true
+  },
+
   // Tarih bilgileri
   createdAt: {
     type: Date,

@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { generateFeed } = require('../../../services/plugins/merchant/MerchantFeedService');
+const { isValidSite } = require('../../../config/sites');
 
+// Site seçimi: ?site=lastikjantavm > X-Site/Host (req.site) > varsayılan
 router.get('/', async (req, res) => {
     try {
-        const { feed, format, count } = await generateFeed();
+        const querySite = (req.query.site || '').toString().trim().toLowerCase();
+        const site = isValidSite(querySite) ? querySite : req.site;
+        const { feed, format } = await generateFeed({ site });
 
         if (format === 'csv') {
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');

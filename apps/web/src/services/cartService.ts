@@ -1,5 +1,5 @@
 // apps/web/src/services/cartService.ts
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 
 // SessionId al veya olustur
 export function getCartSessionId(): string {
@@ -19,7 +19,9 @@ export async function getCart() {
     if (!sessionId) return null;
 
     try {
-        const res = await fetch(API_ENDPOINTS.cart.get(sessionId));
+        const res = await fetch(API_ENDPOINTS.cart.get(sessionId), {
+            headers: { ...(await getServerSiteHeaders()) }
+        });
         const data = await res.json();
         return data.success ? data.data : null;
     } catch (error) {
@@ -35,8 +37,11 @@ export async function addToCart(productKey: string, quantity: number = 1) {
     try {
         const res = await fetch(API_ENDPOINTS.cart.add(), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, productKey, quantity })
+            body: JSON.stringify({ sessionId, productKey, quantity }),
+            headers: {
+                ...(await getServerSiteHeaders()),
+                'Content-Type': 'application/json'
+            }
         });
         return await res.json();
     } catch (error) {
@@ -52,8 +57,11 @@ export async function updateCartItem(productKey: string, quantity: number) {
     try {
         const res = await fetch(API_ENDPOINTS.cart.update(), {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, productKey, quantity })
+            body: JSON.stringify({ sessionId, productKey, quantity }),
+            headers: {
+                ...(await getServerSiteHeaders()),
+                'Content-Type': 'application/json'
+            }
         });
         return await res.json();
     } catch (error) {
@@ -69,8 +77,11 @@ export async function removeFromCart(productKey: string) {
     try {
         const res = await fetch(API_ENDPOINTS.cart.remove(), {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, productKey })
+            body: JSON.stringify({ sessionId, productKey }),
+            headers: {
+                ...(await getServerSiteHeaders()),
+                'Content-Type': 'application/json'
+            }
         });
         return await res.json();
     } catch (error) {
@@ -85,7 +96,8 @@ export async function clearCart() {
 
     try {
         const res = await fetch(API_ENDPOINTS.cart.clear(sessionId), {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: { ...(await getServerSiteHeaders()) }
         });
         return await res.json();
     } catch (error) {

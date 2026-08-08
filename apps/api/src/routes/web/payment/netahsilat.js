@@ -151,7 +151,8 @@ router.post('/3d-callback', async (req, res) => {
                             context: { orderId: order._id.toString() },
                             to: customerMail,
                             alsoSendToAdmin: true,
-                            adminPurpose: 'order'
+                            adminPurpose: 'order',
+                            site: order.site
                         }).then((mailResult) => {
                             if (!mailResult.success) {
                                 console.warn('[netahsilat:3d-callback] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
@@ -231,7 +232,8 @@ router.post('/3d-commit', async (req, res) => {
                         context: { orderId: order._id.toString() },
                         to: customerMail,
                         alsoSendToAdmin: true,
-                        adminPurpose: 'order'
+                        adminPurpose: 'order',
+                        site: order.site
                     }).then((mailResult) => {
                         if (!mailResult.success) {
                             console.warn('[netahsilat:3d-commit] Mail gönderilemedi:', order.orderNumber, mailResult.errors);

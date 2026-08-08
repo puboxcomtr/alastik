@@ -105,17 +105,14 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
 
         try {
             // 1. Grup ayarlarını güncelle
-            const groupResponse = await fetch(
+            const groupResult = await fetchAPI(
                 `${API_ENDPOINTS.features.list()}/${encodeURIComponent(selectedFeature.name)}`,
                 {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify(formData)
                 }
             )
-
-            const groupResult = await groupResponse.json()
 
             if (!groupResult.success) {
                 throw new Error(groupResult.message || 'Grup güncellenemedi')
@@ -123,11 +120,10 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
 
             // 2. Her değerin sıralamasını güncelle
             const valueUpdatePromises = featureValues.map(value =>
-                fetch(
+                fetchAPI(
                     `${API_ENDPOINTS.features.list()}/${encodeURIComponent(selectedFeature.name)}/value/${value._id}`,
                     {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
                         body: JSON.stringify({ featureValueOrder: value.featureValueOrder })
                     }

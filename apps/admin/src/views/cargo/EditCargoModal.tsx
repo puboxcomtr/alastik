@@ -28,7 +28,6 @@ import type { SelectChangeEvent } from '@mui/material/Select'
 
 // Third-party Imports
 import { toast } from 'react-toastify'
-import { getSession } from 'next-auth/react'
 
 // API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
@@ -112,25 +111,14 @@ const EditCargoModal = ({ open, cargo, handleClose, onSuccess }: EditCargoModalP
 
         setLogoUploading(true)
         try {
-            const session = await getSession()
-            const token = session?.user?.accessToken
-
             const formData = new FormData()
             formData.append('files', file)
 
-            const response = await fetch(API_ENDPOINTS.media.upload('general'), {
+            const result = await fetchAPI(API_ENDPOINTS.media.upload('general'), {
                 method: 'POST',
-                headers: {
-                    ...(token && { Authorization: `Bearer ${token}` })
-                },
                 body: formData
             })
 
-            if (!response.ok) {
-                throw new Error('Upload failed')
-            }
-
-            const result = await response.json()
             const uploadedUrl = result?.files?.[0]?.url || ''
 
             if (!uploadedUrl) {

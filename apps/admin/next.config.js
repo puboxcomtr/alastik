@@ -11,8 +11,11 @@ const nextConfig = {
     ignoreBuildErrors: true
   },
 
+  // Sabit build id, /_next/static/<buildId>/ altındaki dosya listesi "immutable" olarak
+  // önbelleğe alındığı için tarayıcıda eskiyip silinmiş chunk'ları istemeye ve sayfanın
+  // yüklemede takılı kalmasına yol açıyordu. Her derleme benzersiz kimlik almalı.
   generateBuildId: async function () {
-    return 'build-id'
+    return process.env.BUILD_ID || `build-${Date.now()}`
   },
 
   output: 'standalone',

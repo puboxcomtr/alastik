@@ -1,5 +1,5 @@
 // apps/web/src/services/productService.ts
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import type { ProductFilterParams, ProductFilterResponse } from '@src/types/products';
 
 export async function filterProducts(params: ProductFilterParams): Promise<ProductFilterResponse | null> {
@@ -33,7 +33,9 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
 
         const res = await fetch(`${API_ENDPOINTS.products.filter()}?${queryParams.toString()}`, {
             cache: 'no-store',
-            next: { revalidate: 0 }
+            next: { revalidate: 0 },
+            // SSR'da aktif site API'ye iletilir; aksi halde varsayılan site çözülür
+            headers: await getServerSiteHeaders()
         });
 
         if (!res.ok) return null;
@@ -65,7 +67,9 @@ export async function getRandomProducts(limit: number = 10) {
 export async function getProductBySlug(slug: string) {
     try {
         const res = await fetch(API_ENDPOINTS.products.detail(slug), {
-            cache: 'no-store'
+            cache: 'no-store',
+            // SSR'da aktif site API'ye iletilir; aksi halde yalnızca LJAVM'de yayınlı ürünler 404 olur
+            headers: await getServerSiteHeaders()
         });
 
         if (!res.ok) return null;
@@ -81,7 +85,8 @@ export async function getProductBySlug(slug: string) {
 export async function getProductWheelSize(slug: string) {
     try {
         const res = await fetch(API_ENDPOINTS.products.wheelSize(slug), {
-            cache: 'no-store'
+            cache: 'no-store',
+            headers: await getServerSiteHeaders()
         });
 
         if (!res.ok) return null;

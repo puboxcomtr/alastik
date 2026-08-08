@@ -38,11 +38,13 @@ type ShowcaseDataType = {
 }
 
 type Props = {
-    showcaseData: ShowcaseDataType | null
+    showcaseId: string
 }
 
-const EditShowcaseForm = ({ showcaseData }: Props) => {
+const EditShowcaseForm = ({ showcaseId }: Props) => {
     const router = useRouter()
+    const [showcaseData, setShowcaseData] = useState<ShowcaseDataType | null>(null)
+    const [fetching, setFetching] = useState(true)
     const [loading, setLoading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState<ProductType[]>([])
@@ -56,6 +58,24 @@ const EditShowcaseForm = ({ showcaseData }: Props) => {
         itemsPerRow: 4,
         isActive: true
     })
+
+    useEffect(() => {
+        const fetchShowcase = async () => {
+            try {
+                setFetching(true)
+                const json = await fetchAPI(API_ENDPOINTS.showcases.detail(showcaseId), {
+                    cache: 'no-store'
+                })
+                setShowcaseData(json.data || null)
+            } catch (err) {
+                console.error('Vitrin yüklenemedi:', err)
+                setShowcaseData(null)
+            } finally {
+                setFetching(false)
+            }
+        }
+        fetchShowcase()
+    }, [showcaseId])
 
     useEffect(() => {
         if (showcaseData) {
@@ -175,6 +195,16 @@ const EditShowcaseForm = ({ showcaseData }: Props) => {
         } finally {
             setLoading(false)
         }
+    }
+
+    if (fetching) {
+        return (
+            <Card>
+                <CardContent>
+                    <Typography>Vitrin yükleniyor...</Typography>
+                </CardContent>
+            </Card>
+        )
     }
 
     if (!showcaseData) {

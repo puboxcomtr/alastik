@@ -7,6 +7,9 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 // Component Imports
 import RoleListTable from '@/views/manager/roles/RoleListTable'
 
+// API Imports
+import { fetchAPI } from '@libs/api'
+
 // Type Imports
 export type RoleType = {
     _id: string
@@ -29,20 +32,13 @@ export type RoleType = {
 
 const getRolesData = async (token: string): Promise<RoleType[]> => {
     try {
-        const res = await fetch(`${process.env.API_URL}/admin/user/roles?limit=100`, {
+        const response = await fetchAPI(`${process.env.API_URL}/admin/user/roles?limit=100`, {
             cache: 'no-store',
             headers: {
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             }
         })
 
-        if (!res.ok) {
-            console.error('Failed to fetch roles:', res.status)
-            return []
-        }
-
-        const response = await res.json()
         return response.data?.roles || []
     } catch (error) {
         console.error('Error fetching roles:', error)

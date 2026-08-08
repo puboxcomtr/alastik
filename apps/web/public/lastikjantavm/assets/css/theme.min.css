@@ -16253,7 +16253,7 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 }
 
 .navbar-nav {
-    --cz-nav-link-font-size: 1rem;
+    --cz-nav-link-font-size: .9rem;
     --cz-nav-link-underline-border-width: var(--cz-underline-thickness);
     gap: 0
 }

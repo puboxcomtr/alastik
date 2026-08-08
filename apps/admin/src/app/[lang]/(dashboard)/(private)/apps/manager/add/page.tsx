@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { toast } from 'react-toastify'
-import { API_ENDPOINTS } from '@libs/api'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 // Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
@@ -29,25 +29,12 @@ const AdminAddPage = async () => {
     }
 
     try {
-        const rolesRes = await fetch(API_ENDPOINTS.roles.list(), {
+        const rolesData = await fetchAPI(API_ENDPOINTS.roles.list(), {
             cache: 'no-store',
             headers: {
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             }
         })
-
-        if (!rolesRes.ok) {
-            console.error('Roller yüklenemedi:', rolesRes.status)
-            return (
-                <div style={{ padding: '20px', textAlign: 'center' }}>
-                    <h2>Roller Yüklenemedi</h2>
-                    <p>Lütfen daha sonra tekrar deneyin.</p>
-                </div>
-            )
-        }
-
-        const rolesData = await rolesRes.json()
 
         return <AdminForm roles={rolesData.data?.roles || []} />
     } catch (error) {

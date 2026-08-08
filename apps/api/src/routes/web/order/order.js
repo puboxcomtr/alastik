@@ -314,7 +314,8 @@ router.post('/', async (req, res) => {
                 context: { orderId: order._id.toString() },
                 to: customerMail,
                 alsoSendToAdmin: true,
-                adminPurpose: 'order'
+                adminPurpose: 'order',
+                site: order.site
             }).then((mailResult) => {
                 if (!mailResult.success) {
                     console.warn('[order] Mail gönderilemedi:', order.orderNumber, mailResult.errors);
@@ -531,7 +532,8 @@ router.put('/:id/payment', async (req, res) => {
                 context: { orderId: order._id.toString() },
                 to: customerMail,
                 alsoSendToAdmin: true,
-                adminPurpose: 'order'
+                adminPurpose: 'order',
+                site: order.site
             }).then((mailResult) => {
                 if (!mailResult.success) {
                     console.warn('[order:payment-approved] Mail gönderilemedi:', order.orderNumber, mailResult.errors);

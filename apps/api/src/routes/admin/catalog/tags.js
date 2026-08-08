@@ -4,6 +4,14 @@ const WebTag = require('../../../models/web/catalog/WebTag');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const TagMatchingService = require('../../../services/web/products/TagMatching');
 const { revalidateWebTag } = require('../../../utils/revalidateWeb');
+const { authenticateAdmin } = require('../../../middleware/auth');
+
+// Admin kimlik doğrulaması (DISABLE_AUTH=true ise dev ortamında atlanır)
+const maybeAuth = process.env.DISABLE_AUTH === 'true'
+    ? (req, res, next) => next()
+    : authenticateAdmin;
+
+router.use(maybeAuth);
 
 /**
  * Etiket Listeleme -
@@ -30,7 +38,7 @@ router.get('/', async (req, res) => {
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
 
-        const filter = {};
+        const filter = { site: req.site };
 
         // Arama filtresi
         if (search) {
@@ -174,7 +182,7 @@ router.get('/', async (req, res) => {
 router.get('/filter-options', async (req, res) => {
     try {
         const tags = await WebTag.find(
-            { type: 'tire_size', isActive: true },
+            { site: req.site, type: 'tire_size', isActive: true },
             { seoUrl: 1 }
         ).lean();
 
@@ -240,13 +248,13 @@ router.post('/', async (req, res) => {
                 .trim('-');
         }
 
-        // SEO URL benzersizlik kontrolü
+        // SEO URL benzersizlik kontrolü (site içinde)
         if (finalSeoUrl) {
-            const existing = await WebTag.findOne({ seoUrl: finalSeoUrl });
+            const existing = await WebTag.findOne({ site: req.site, seoUrl: finalSeoUrl });
             if (existing) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Bu SEO URL zaten kullanılıyor'
+                    message: 'Bu SEO URL bu sitede zaten kullanılıyor'
                 });
             }
         }
@@ -266,6 +274,7 @@ router.post('/', async (req, res) => {
         }
 
         const tag = new WebTag({
+            site: req.site,
             title,
             description,
             seoTitle,
@@ -351,7 +360,7 @@ router.post('/:id/matching', async (req, res) => {
 // Etiket Detayı
 router.get('/:id', async (req, res) => {
     try {
-        const tag = await WebTag.findById(req.params.id);
+        const tag = await WebTag.findOne({ _id: req.params.id, site: req.site });
 
         if (!tag) {
             return res.status(404).json({
@@ -403,7 +412,7 @@ router.put('/:id', async (req, res) => {
     try {
         const { title, description, seoTitle, seoDescription, seoUrl, isActive, order, products } = req.body;
 
-        const tag = await WebTag.findById(req.params.id);
+        const tag = await WebTag.findOne({ _id: req.params.id, site: req.site });
 
         if (!tag) {
             return res.status(404).json({
@@ -412,13 +421,13 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // SEO URL kontrolü (değiştiriliyorsa)
+        // SEO URL kontrolü (değiştiriliyorsa — etiketin kendi sitesi içinde)
         if (seoUrl && seoUrl !== tag.seoUrl) {
-            const existing = await WebTag.findOne({ seoUrl, _id: { $ne: req.params.id } });
+            const existing = await WebTag.findOne({ site: tag.site, seoUrl, _id: { $ne: req.params.id } });
             if (existing) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Bu SEO URL zaten kullanılıyor'
+                    message: 'Bu SEO URL bu sitede zaten kullanılıyor'
                 });
             }
         }
@@ -469,7 +478,7 @@ router.put('/:id', async (req, res) => {
 // Etiket Silme
 router.delete('/:id', async (req, res) => {
     try {
-        const tag = await WebTag.findByIdAndDelete(req.params.id);
+        const tag = await WebTag.findOneAndDelete({ _id: req.params.id, site: req.site });
 
         if (!tag) {
             return res.status(404).json({
@@ -511,7 +520,7 @@ router.post('/:id/products', async (req, res) => {
             });
         }
 
-        const tag = await WebTag.findById(req.params.id);
+        const tag = await WebTag.findOne({ _id: req.params.id, site: req.site });
 
         if (!tag) {
             return res.status(404).json({
@@ -561,7 +570,7 @@ router.post('/:id/products', async (req, res) => {
 router.get('/:id/available-products', async (req, res) => {
     try {
         const { search, page = 1, limit = 20 } = req.query;
-        const tag = await WebTag.findById(req.params.id);
+        const tag = await WebTag.findOne({ _id: req.params.id, site: req.site });
 
         if (!tag) {
             return res.status(404).json({
@@ -573,7 +582,8 @@ router.get('/:id/available-products', async (req, res) => {
         const filter = {
             _id: { $nin: tag.products }, // Zaten eklenmiş ürünleri hariç tut
             'syncInfo.diaStatus': 'synced',
-            'diaData.durum': 'A'
+            'diaData.durum': 'A',
+            sites: req.site
         };
 
         if (search) {
@@ -615,7 +625,7 @@ router.get('/:id/available-products', async (req, res) => {
 router.get('/:id/clean', async (req, res) => {
     try {
         const mongoose = require('mongoose');
-        const tag = await WebTag.findById(req.params.id);
+        const tag = await WebTag.findOne({ _id: req.params.id, site: req.site });
 
         if (!tag) {
             return res.status(404).json({ success: false, message: 'Etiket bulunamadı' });

@@ -41,6 +41,9 @@ export interface CustomData {
     shippingPerUnit?: number;
     featuredImage?: string;
     webVisible?: boolean;
+    hideBrand?: boolean;
+    hideProductionDate?: boolean;
+    hideStock?: boolean;
     webOrder?: number;
     delivery?: string;
     customDescription?: string;

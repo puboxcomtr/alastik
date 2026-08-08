@@ -1,6 +1,7 @@
 const Cargo = require('../../../models/admin/settings/Cargo');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const CargoCalculatorService = require('./CargoCalculatorService');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 class XmlShippingPriceUpdaterService {
 
@@ -10,15 +11,17 @@ class XmlShippingPriceUpdaterService {
      * - Her ürün için 1 adetlik kargo hesaplar
      * - bulkWrite ile DB'ye yazar
      */
-    async updateAll() {
+    async updateAll(site = DEFAULT_SITE) {
         const startTime = Date.now();
-        console.log('[XmlShippingPriceUpdater] Başlıyor...');
+        const slug = SITES[site] ? site : DEFAULT_SITE;
+        console.log(`[XmlShippingPriceUpdater] Başlıyor... (site: ${slug})`);
 
         try {
-            // 1. Aktif XML kargosunu çek
+            // 1. Sitenin aktif XML kargosunu çek
             const xmlCargo = await Cargo.findOne({
                 isActive: true,
-                productType: 'xml_integration'
+                productType: 'xml_integration',
+                site: slug
             }).sort({ webOrder: 1 }).lean();
 
             if (!xmlCargo) {

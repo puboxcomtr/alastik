@@ -18,7 +18,8 @@ router.get('/search/by-name', async (req, res) => {
                 { name: name },
                 { diaCategory: name }
             ],
-            webVisible: true
+            [`siteSettings.${req.site}.webVisible`]: true,
+            [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         }).select('name slug seoUrl diaCategory').lean();
 
         if (!category) {
@@ -46,7 +47,8 @@ router.get('/slug/:slug/size/:size', async (req, res) => {
         }
         const category = await WebCategory.findOne({
             slug,
-            webVisible: true
+            [`siteSettings.${req.site}.webVisible`]: true,
+            [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         }).lean();
         if (!category) {
             return res.status(404).json({
@@ -58,6 +60,10 @@ router.get('/slug/:slug/size/:size', async (req, res) => {
         category.seoTitle = sc.seoTitle || category.seoTitle;
         category.seoDescription = sc.seoDescription || category.seoDescription;
         category.siteContentHtml = sc.content || '';
+        category.description = sc.description ?? category.description;
+        category.sliderId = sc.sliderId !== undefined ? sc.sliderId : category.sliderId;
+        category.menuIds = (sc.menuIds && sc.menuIds.length) ? sc.menuIds : (sc.menuId ? [sc.menuId] : []);
+        if (sc.seoKeywords && sc.seoKeywords.length) category.seoKeywords = sc.seoKeywords;
         res.json({
             success: true,
             data: category
@@ -78,7 +84,8 @@ router.get('/slug/:slug', async (req, res) => {
         }
         const category = await WebCategory.findOne({
             slug,
-            webVisible: true
+            [`siteSettings.${req.site}.webVisible`]: true,
+            [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         }).lean();
         if (!category) {
             return res.status(404).json({
@@ -90,6 +97,10 @@ router.get('/slug/:slug', async (req, res) => {
         category.seoTitle = sc.seoTitle || category.seoTitle;
         category.seoDescription = sc.seoDescription || category.seoDescription;
         category.siteContentHtml = sc.content || '';
+        category.description = sc.description ?? category.description;
+        category.sliderId = sc.sliderId !== undefined ? sc.sliderId : category.sliderId;
+        category.menuIds = (sc.menuIds && sc.menuIds.length) ? sc.menuIds : (sc.menuId ? [sc.menuId] : []);
+        if (sc.seoKeywords && sc.seoKeywords.length) category.seoKeywords = sc.seoKeywords;
         res.json({
             success: true,
             data: category

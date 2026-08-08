@@ -1,9 +1,15 @@
 const { google } = require('googleapis');
 const path = require('path');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const KEY_FILE = path.join(__dirname, '../../../config/alastik-service-account.json');
 const SCOPES = ['https://www.googleapis.com/auth/indexing'];
-const SITE_URL = 'https://alastik.com';
+
+// Site başına URL tabanı (config/sites.js'teki ilk domain)
+function getSiteUrl(site) {
+    const domain = SITES[site]?.domains?.[0] || SITES[DEFAULT_SITE].domains[0];
+    return `https://${domain}`;
+}
 
 const INDEXABLE_PATHS = {
     urun: '/urun/',
@@ -45,10 +51,10 @@ async function notifyBatch(urls, type = 'URL_UPDATED') {
     return results;
 }
 
-function buildUrl(type, slug) {
+function buildUrl(type, slug, site = DEFAULT_SITE) {
     const basePath = INDEXABLE_PATHS[type];
     if (!basePath) throw new Error(`Geçersiz tip: ${type}`);
-    return `${SITE_URL}${basePath}${slug}`;
+    return `${getSiteUrl(site)}${basePath}${slug}`;
 }
 
 module.exports = { notifyUrl, notifyBatch, buildUrl, INDEXABLE_PATHS };

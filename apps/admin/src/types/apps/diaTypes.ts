@@ -21,6 +21,34 @@ export interface DiaSyncSettings {
     kategoriGuncellemeKapat: boolean
     fullSyncSaat: string
     lightSyncAraligi: number
+    durumFiltre: string
+    ozelkod11Filtre: string
+    b2cFiltre: string
+    hashKontrol: boolean
+}
+
+// Aktarım Ayarları (ürün gösterim filtresi)
+export type DiaAktarimMode = 'tumu' | 'dahil' | 'haric'
+export type DiaAktarimFilterType = 'urun' | 'kategori' | 'marka'
+
+export interface DiaAktarimProduct {
+    id: string
+    name: string
+    sku: string
+    brand: string
+}
+
+export interface DiaAktarimNamedItem {
+    id: string
+    name: string
+}
+
+export interface DiaAktarimSettings {
+    mode: DiaAktarimMode
+    filterType: DiaAktarimFilterType
+    products: DiaAktarimProduct[]
+    categories: DiaAktarimNamedItem[]
+    brands: DiaAktarimNamedItem[]
 }
 
 // DİA Ana Ayarlar
@@ -32,6 +60,7 @@ export interface DiaSettings {
     firmaKodu: number
     donemKodu: number
     siparis: DiaSiparisSettings
+    aktarim: DiaAktarimSettings
     sync: DiaSyncSettings
 }
 
@@ -76,12 +105,23 @@ export const defaultDiaSettings: DiaSettings = {
         masrafMerkeziKodu: '',
         projeKodu: ''
     },
+    aktarim: {
+        mode: 'tumu',
+        filterType: 'urun',
+        products: [],
+        categories: [],
+        brands: []
+    },
     sync: {
         urunAdlariniGuncelle: true,
         fiyatGuncellemeKapat: false,
         urunAciklamalari: true,
         kategoriGuncellemeKapat: false,
         fullSyncSaat: '05:00',
-        lightSyncAraligi: 15
+        lightSyncAraligi: 15,
+        durumFiltre: 'A',
+        ozelkod11Filtre: 'E',
+        b2cFiltre: '',
+        hashKontrol: true
     }
 }

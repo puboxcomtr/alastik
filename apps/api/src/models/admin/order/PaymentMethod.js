@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const paymentMethodSchema = new mongoose.Schema({
+    // Her site için ayrı ödeme yöntemi / banka hesabı kaydı
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        required: true,
+        index: true
+    },
+
     type: {
         type: String,
         required: true,
@@ -154,10 +164,11 @@ paymentMethodSchema.virtual('successRate').get(function () {
     return ((this.stats.successfulOrders / total) * 100).toFixed(2);
 });
 
-paymentMethodSchema.statics.getActivePaymentMethods = function (type = null) {
+paymentMethodSchema.statics.getActivePaymentMethods = function (type = null, site = DEFAULT_SITE) {
     const query = {
         isActive: true,
-        isDeleted: false
+        isDeleted: false,
+        site: SITES[site] ? site : DEFAULT_SITE
     };
 
     if (type) {
@@ -167,19 +178,21 @@ paymentMethodSchema.statics.getActivePaymentMethods = function (type = null) {
     return this.find(query).sort({ priority: 1 });
 };
 
-paymentMethodSchema.statics.getCreditCardMethods = function () {
+paymentMethodSchema.statics.getCreditCardMethods = function (site = DEFAULT_SITE) {
     return this.find({
         type: 'credit_card',
         isActive: true,
-        isDeleted: false
+        isDeleted: false,
+        site: SITES[site] ? site : DEFAULT_SITE
     }).sort({ priority: 1 });
 };
 
-paymentMethodSchema.statics.getBankTransferMethods = function () {
+paymentMethodSchema.statics.getBankTransferMethods = function (site = DEFAULT_SITE) {
     return this.find({
         type: 'bank_transfer',
         isActive: true,
-        isDeleted: false
+        isDeleted: false,
+        site: SITES[site] ? site : DEFAULT_SITE
     }).sort({ priority: 1 });
 };
 paymentMethodSchema.pre('save', function (next) {

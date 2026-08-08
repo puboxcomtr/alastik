@@ -7,7 +7,7 @@ const WebBrand = require('../../../models/web/catalog/WebBrand');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const WebOrder = require('../../../models/web/order/WebOrder');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
-const { getProductListFilters, MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
+const { getProductListFilters, getSiteVisibilityFilter, MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 const Setting = require('../../../models/admin/settings/Setting');
 /**
  * GET /api/products/similar-by-order/:orderNumber
@@ -62,11 +62,12 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
         // Base filter
         const filter = {
             'syncInfo.diaStatus': 'synced',
-            'customData.webVisible': true,
             'diaData.durum': 'A',
             'diaData.gercek_stok': { $gt: 0 },
             _key: { $nin: orderedKeys },
-            $or: orConditions
+            $or: orConditions,
+            // Görünürlük: site ayarı > ortak değer
+            $and: [getSiteVisibilityFilter(req.site)]
         };
 
         // Merkezi DIA filtrelerini uygula
@@ -126,7 +127,7 @@ router.get('/filter', async (req, res) => {
 
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
-        const filter = getProductListFilters();
+        const filter = getProductListFilters(req.site);
 
         console.log('=== SORTING DEBUG ===');
         console.log('sortBy:', sortBy);
@@ -166,19 +167,19 @@ router.get('/filter', async (req, res) => {
                 isMultiCategory = true;
                 webCategories = await WebCategory.find({
                     slug: { $in: vehicleCategorySlugs },
-                    webVisible: true
+                    [`siteSettings.${req.site}.webVisible`]: true
                 }).lean();
             } else if (categorySlugs.length > 1) {
                 isMultiCategory = true;
                 webCategories = await WebCategory.find({
                     slug: { $in: categorySlugs },
-                    webVisible: true
+                    [`siteSettings.${req.site}.webVisible`]: true
                 }).lean();
                 // Multi-category: productType tespiti yapılmaz, her kategorinin ozelkod7kodu farklı olabilir
             } else {
                 webCategory = await WebCategory.findOne({
                     slug: categorySlugs[0],
-                    webVisible: true
+                    [`siteSettings.${req.site}.webVisible`]: true
                 }).lean();
 
                 if (webCategory && webCategory.diaCategory) {
@@ -208,7 +209,7 @@ router.get('/filter', async (req, res) => {
 
         const isJantCategory = productType === 'JANT';
 
-        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase' }).lean();
+        const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true) {
             filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
         }
@@ -547,7 +548,8 @@ router.get('/filter', async (req, res) => {
 router.get('/championships/:productKey', async (req, res) => {
     try {
         const championships = await ChampionshipTire.find({
-            productKey: req.params.productKey
+            productKey: req.params.productKey,
+            site: req.site
         }).select('name rank').lean();
 
         res.json({ success: true, data: championships });
@@ -605,7 +607,7 @@ router.get('/:slug', async (req, res) => {
                 { 'customData.seoUrl': slug },
                 { '_key': slug }
             ],
-            ...getProductListFilters()
+            ...getProductListFilters(req.site)
         }).lean();
 
         if (!product) {
@@ -613,6 +615,16 @@ router.get('/:slug', async (req, res) => {
                 success: false,
                 message: 'Ürün bulunamadı'
             });
+        }
+
+        // Sitenin kendi SEO/açıklama değerleri etkin değer olarak yansıtılır (yoksa ortak alanlar)
+        if (product.customData) {
+            const siteData = product.customData.siteData?.[req.site] || {};
+            if (siteData.seoTitle !== undefined) product.customData.seoTitle = siteData.seoTitle;
+            if (siteData.seoDescription !== undefined) product.customData.seoDescription = siteData.seoDescription;
+            if (siteData.shortDescription !== undefined) product.customData.shortDescription = siteData.shortDescription;
+            const siteDescription = product.customData.siteDescriptions?.[req.site];
+            if (siteDescription) product.customData.customDescription = siteDescription;
         }
 
         // Marka customName kontrolü

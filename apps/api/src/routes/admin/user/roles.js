@@ -101,6 +101,7 @@ router.post('/', async (req, res) => {
         // Activity log
         try {
             await ActivityLog.logActivity({
+      site: req.site,
                 user: req.adminId,
                 action: 'create',
                 module: 'roles',
@@ -303,6 +304,7 @@ router.put('/:id', async (req, res) => {
 
         try {
             await ActivityLog.logActivity({
+      site: req.site,
                 user: req.adminId,
                 action: 'update',
                 module: 'roles',
@@ -369,6 +371,7 @@ router.delete('/:id', async (req, res) => {
 
         try {
             await ActivityLog.logActivity({
+      site: req.site,
                 user: req.adminId,
                 action: 'delete',
                 module: 'roles',

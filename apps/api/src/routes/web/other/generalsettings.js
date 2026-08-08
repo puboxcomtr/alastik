@@ -8,7 +8,7 @@ const Setting = require('../../../models/admin/settings/Setting');
 router.get('/key/:key', async (req, res) => {
     try {
         const { key } = req.params;
-        const setting = await Setting.findOne({ key }).lean();
+        const setting = await Setting.findOne({ key, site: req.site }).lean();
 
         if (!setting) {
             return res.status(404).json({
@@ -36,7 +36,7 @@ router.get('/key/:key', async (req, res) => {
 router.get('/group/:group', async (req, res) => {
     try {
         const { group } = req.params;
-        const settings = await Setting.find({ group }).lean();
+        const settings = await Setting.find({ group, site: req.site }).lean();
 
         res.json({
             success: true,
@@ -57,7 +57,7 @@ router.get('/group/:group', async (req, res) => {
  */
 router.get('/site-status', async (req, res) => {
     try {
-        const setting = await Setting.findOne({ key: 'siteStatus' }).lean();
+        const setting = await Setting.findOne({ key: 'siteStatus', site: req.site }).lean();
 
         const isActive = setting?.value === '1' || setting?.value === 1;
 

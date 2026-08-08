@@ -8,7 +8,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { toast } from 'react-toastify'
-import { API_ENDPOINTS } from '@libs/api'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 const SyncDropdown = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -30,11 +30,9 @@ const SyncDropdown = () => {
         setLoading(true)
 
         try {
-            const res = await fetch(API_ENDPOINTS.diaSync.fullSync(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+            const data = await fetchAPI(API_ENDPOINTS.diaSync.fullSync(), {
+                method: 'POST'
             })
-            const data = await res.json()
 
             if (data.success) {
                 toast.info('Tam senkronizasyon başlatıldı. DIA Ayarları sayfasından takip edebilirsiniz.')
@@ -53,11 +51,9 @@ const SyncDropdown = () => {
         setLoading(true)
 
         try {
-            const res = await fetch(API_ENDPOINTS.diaSync.lightSync(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+            const data = await fetchAPI(API_ENDPOINTS.diaSync.lightSync(), {
+                method: 'POST'
             })
-            const data = await res.json()
 
             if (data.success) {
                 toast.info('Fiyat ve stok güncelleme başlatıldı. DIA Ayarları sayfasından takip edebilirsiniz.')

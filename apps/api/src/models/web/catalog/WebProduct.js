@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 // DIA Birim Schema
 const diaUnitSchema = new mongoose.Schema({
@@ -178,6 +179,12 @@ const customDataSchema = new mongoose.Schema({
     // Web Görünüm
     webOrder: { type: Number, default: 0 },
     webVisible: { type: Boolean, default: true },
+    // Marka gizleme — açıkken vitrin/kategori kartlarında marka gösterilmez
+    hideBrand: { type: Boolean, default: false },
+    // Üretim tarihi gizleme — açıkken kartlarda üretim tarihi gösterilmez
+    hideProductionDate: { type: Boolean, default: false },
+    // Stok gizleme — açıkken kartlarda stok adedi gösterilmez
+    hideStock: { type: Boolean, default: false },
 
     // Kargo Süresi
     delivery: {
@@ -188,11 +195,23 @@ const customDataSchema = new mongoose.Schema({
 
     // İçerik
     customDescription: String,
-    siteDescriptions: {
-        alastik: { type: String, default: '' },
-        lastikjantavm: { type: String, default: '' }
-    },
+    siteDescriptions: Object.keys(SITES).reduce((acc, slug) => {
+        acc[slug] = { type: String, default: '' };
+        return acc;
+    }, {}),
     shortDescription: String,
+
+    // Site başına SEO/görünürlük ayarları — alan tanımsızsa ortak (kök) değer geçerlidir
+    siteData: Object.keys(SITES).reduce((acc, slug) => {
+        acc[slug] = {
+            seoTitle: { type: String },
+            seoDescription: { type: String },
+            shortDescription: { type: String },
+            webVisible: { type: Boolean },
+            webOrder: { type: Number }
+        };
+        return acc;
+    }, {}),
 
     // Etiketler ve kategoriler
     webTags: [String],
@@ -251,7 +270,8 @@ const syncInfoSchema = new mongoose.Schema({
     lastWebUpdate: Date,
     syncSource: { type: String, default: 'dia_api' },
     xmlSource: { type: String, default: null },
-    lastXmlSync: { type: Date, default: null }
+    lastXmlSync: { type: Date, default: null },
+    diaDataHash: { type: String, default: null } // diastocks.dataHash kopyası — DB kaynaklı web aktarımında değişiklik atlama
 }, { _id: false });
 
 // Ana WebProduct Schema
@@ -260,6 +280,13 @@ const webProductSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
+        index: true
+    },
+
+    // Ürünün yayınlandığı siteler (site bazlı aktarım filtreleri sync'te doldurur)
+    sites: {
+        type: [String],
+        default: [DEFAULT_SITE],
         index: true
     },
 

@@ -7,10 +7,12 @@ router.get('/bank-transfer', async (req, res) => {
     try {
         const PaymentMethod = mongoose.connection.collection('paymentmethods');
 
+        // Yalnızca isteğin geldiği sitenin banka hesapları
         const bankAccounts = await PaymentMethod.find({
             type: 'bank_transfer',
             isActive: true,
-            isDeleted: { $ne: true }
+            isDeleted: { $ne: true },
+            site: req.site
         }).toArray();
 
         const formatted = bankAccounts.map(acc => ({

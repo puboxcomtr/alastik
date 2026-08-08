@@ -1,5 +1,6 @@
 const Cargo = require('../../../models/admin/settings/Cargo');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
+const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 class CargoCalculatorService {
 
@@ -163,16 +164,19 @@ class CargoCalculatorService {
     }
 
     /**
-     * Ana hesaplama metodu
+     * Ana hesaplama metodu (site bazlı kargo tanımlarıyla)
      */
-    async calculate(items) {
+    async calculate(items, site = DEFAULT_SITE) {
+        const slug = SITES[site] ? site : DEFAULT_SITE;
+
         // 1. Ürünleri yükle ve ayır
         const { xmlItems, diaItems } = await this.loadCartItems(items);
 
-        // 2. Aktif XML kargosunu çek (webOrder'a göre ilk)
+        // 2. Sitenin aktif XML kargosunu çek (webOrder'a göre ilk)
         const xmlCargo = await Cargo.findOne({
             isActive: true,
-            productType: 'xml_integration'
+            productType: 'xml_integration',
+            site: slug
         }).sort({ webOrder: 1 }).lean();
 
         // 3. XML ürünleri için kargo hesapla

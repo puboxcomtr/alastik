@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
-import { API_ENDPOINTS } from '@libs/api'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 // Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
@@ -31,34 +31,21 @@ const XmlRulesPage = async ({ params }: Props) => {
     }
 
     try {
-        // XML entegrasyon bilgisini çek
-        const xmlRes = await fetch(API_ENDPOINTS.webxml.detail(params.id), {
+        // XML entegrasyon bilgisini çek (server tarafında token'ı elle iletiyoruz)
+        const xmlData = await fetchAPI(API_ENDPOINTS.webxml.detail(params.id), {
             cache: 'no-store',
             headers: {
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             }
         })
-
-        if (!xmlRes.ok) {
-            console.error('XML bilgisi yüklenemedi:', xmlRes.status)
-            return (
-                <div style={{ padding: '20px', textAlign: 'center' }}>
-                    <h2>XML Entegrasyonu Bulunamadı</h2>
-                    <p>Lütfen geçerli bir entegrasyon seçin.</p>
-                </div>
-            )
-        }
-
-        const xmlData = await xmlRes.json()
 
         return <XmlRulesForm xmlData={xmlData.data} />
     } catch (error) {
         console.error('Sayfa yükleme hatası:', error)
         return (
             <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h2>Bir Hata Oluştu</h2>
-                <p>Sayfa yüklenirken bir hata oluştu. Lütfen tekrar deneyin.</p>
+                <h2>XML Entegrasyonu Bulunamadı</h2>
+                <p>Lütfen geçerli bir entegrasyon seçin.</p>
             </div>
         )
     }

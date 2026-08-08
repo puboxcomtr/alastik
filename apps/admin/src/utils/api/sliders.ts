@@ -1,4 +1,4 @@
-import { getSiteHeader } from '@/utils/activeSite'
+import { fetchAPI } from '@libs/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
@@ -34,37 +34,35 @@ export type SliderType = {
 }
 
 export async function fetchSliders() {
-    const response = await fetch(`${API_URL}/admin/design/slider`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
-    if (!response.ok) {
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/slider`, {
+            cache: 'no-store'
+        })
+    } catch {
         throw new Error('Sliderlar yüklenemedi')
     }
-
-    return response.json()
 }
 
 export async function fetchSlider(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
-    if (!response.ok) {
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/slider/${id}`, {
+            cache: 'no-store'
+        })
+    } catch {
         throw new Error('Slider bulunamadı')
     }
-    return response.json()
 }
 
 export async function getSliderById(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        cache: 'no-store',
-        headers: { ...getSiteHeader() }
-    })
-    if (!response.ok) {
+    let result: any
+
+    try {
+        result = await fetchAPI(`${API_URL}/admin/design/slider/${id}`, {
+            cache: 'no-store'
+        })
+    } catch {
         throw new Error('Slider bulunamadı')
     }
-    const result = await response.json()
 
     if (!result.success) {
         throw new Error(result.message || 'Slider detayı alınamadı')
@@ -74,45 +72,33 @@ export async function getSliderById(id: string) {
 }
 
 export async function createSlider(formData: FormData) {
-    const response = await fetch(`${API_URL}/admin/design/slider`, {
-        method: 'POST',
-        headers: { ...getSiteHeader() },
-        body: formData
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Slider oluşturulamadı')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/slider`, {
+            method: 'POST',
+            body: formData
+        })
+    } catch {
+        throw new Error('Slider oluşturulamadı')
     }
-
-    return response.json()
 }
 
 export async function updateSlider(id: string, formData: FormData) {
-    const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        method: 'PUT',
-        headers: { ...getSiteHeader() },
-        body: formData
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Slider güncellenemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/slider/${id}`, {
+            method: 'PUT',
+            body: formData
+        })
+    } catch {
+        throw new Error('Slider güncellenemedi')
     }
-
-    return response.json()
 }
 
 export async function deleteSlider(id: string) {
-    const response = await fetch(`${API_URL}/admin/design/slider/${id}`, {
-        method: 'DELETE',
-        headers: { ...getSiteHeader() }
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Slider silinemedi')
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/slider/${id}`, {
+            method: 'DELETE'
+        })
+    } catch {
+        throw new Error('Slider silinemedi')
     }
-
-    return response.json()
 }
