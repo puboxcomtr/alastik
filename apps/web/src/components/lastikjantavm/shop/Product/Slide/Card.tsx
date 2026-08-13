@@ -198,9 +198,11 @@ export default function ProductSlideCard({ product }: Props) {
           </div>
         </div>
 
-        {/* Stok kodu + ürün adı */}
+        {/* Stok kodu + ürün adı — stok kodu kategori ayarı açıksa gösterilmez */}
         <h3 className="mb-2">
-          <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">{stockCode}</span>
+          {(product as any)?.hideStockCode !== true && (
+            <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">{stockCode}</span>
+          )}
           <Link href={productUrl} className="d-block fs-sm fw-medium text-truncate">
             {productName}
           </Link>

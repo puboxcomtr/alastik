@@ -40,6 +40,39 @@ const DiaStockService = require('../../../services/plugins/dia/DiaStockService')
 const { getProductListFilters, getSiteVisibilityFilter, getSyncRules } = require('../../../config/diaFilters');
 
 // ============================================
+// HELPERS
+// ============================================
+/**
+ * YouTube adresinden video kimliğini çıkarır.
+ * Desteklenen biçimler: watch?v=, youtu.be/, /shorts/, /embed/, /live/
+ * Geçersiz veya YouTube dışı adreslerde null döner.
+ */
+function extractYoutubeId(rawUrl) {
+  const url = String(rawUrl || '').trim();
+
+  if (!url) return null;
+
+  const patterns = [
+    /(?:youtube\.com|youtube-nocookie\.com)\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})/,
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com|youtube-nocookie\.com)\/shorts\/([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com|youtube-nocookie\.com)\/embed\/([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com|youtube-nocookie\.com)\/live\/([A-Za-z0-9_-]{11})/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+
+    if (match) return match[1];
+  }
+
+  // Doğrudan video kimliği girildiyse
+  if (/^[A-Za-z0-9_-]{11}$/.test(url)) return url;
+
+  return null;
+}
+
+// ============================================
 // ROUTER INITIALIZATION
 // ============================================
 const router = express.Router();
@@ -555,6 +588,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
       image: featuredImage,
       images: images,
       customImages: customData.customImages || [],
+      videos: customData.videos || [],
 
       // Kargo
       delivery: customData.delivery || 'same_day',
@@ -580,6 +614,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
       hideBrand: customData.hideBrand === true,
       hideProductionDate: customData.hideProductionDate === true,
       hideStock: customData.hideStock === true,
+      hideDelivery: customData.hideDelivery === true,
 
       // Ürün özellikleri
       properties: {
@@ -630,6 +665,7 @@ router.patch('/:id', maybeAuth, [
   body('hideBrand').optional().isBoolean().withMessage('Marka gizleme alanı boolean olmalıdır'),
   body('hideProductionDate').optional().isBoolean().withMessage('Üretim tarihi gizleme alanı boolean olmalıdır'),
   body('hideStock').optional().isBoolean().withMessage('Stok gizleme alanı boolean olmalıdır'),
+  body('hideDelivery').optional().isBoolean().withMessage('Kargo bilgisi gizleme alanı boolean olmalıdır'),
   body('webPrice').optional().isFloat({ min: 0 }).withMessage('Web fiyatı 0 veya daha büyük olmalıdır'),
   body('webDiscount').optional().isFloat({ min: 0, max: 100 }).withMessage('İndirim 0-100 arasında olmalıdır'),
   body('minOrderQuantity').optional().isInt({ min: 1 }).withMessage('Minimum sipariş adedi 1 veya daha büyük olmalıdır')
@@ -690,7 +726,10 @@ router.patch('/:id', maybeAuth, [
       // Marka / üretim tarihi / stok gizleme (vitrin/kategori kartlarında gösterilmez)
       hideBrand,
       hideProductionDate,
-      hideStock
+      hideStock,
+
+      // Kargo bilgisi gizleme (ürün detayında kargoya teslim tarihi gösterilmez)
+      hideDelivery
     } = req.body;
 
     // WebProduct'ı bul
@@ -760,6 +799,7 @@ router.patch('/:id', maybeAuth, [
     if (hideBrand !== undefined) updateData['customData.hideBrand'] = Boolean(hideBrand);
     if (hideProductionDate !== undefined) updateData['customData.hideProductionDate'] = Boolean(hideProductionDate);
     if (hideStock !== undefined) updateData['customData.hideStock'] = Boolean(hideStock);
+    if (hideDelivery !== undefined) updateData['customData.hideDelivery'] = Boolean(hideDelivery);
 
     // Görseller — dış adresli görseller kendi sunucumuza indirilir
     if (req.body.customImages !== undefined) {
@@ -783,6 +823,29 @@ router.patch('/:id', maybeAuth, [
       if (images.length > 0) {
         updateData['customData.featuredImage'] = images[0].url;
       }
+    }
+
+    // Videolar — yalnızca YouTube adresleri kabul edilir, kimlik sunucuda çıkarılır
+    if (req.body.videos !== undefined) {
+      const incoming = Array.isArray(req.body.videos) ? req.body.videos : [];
+
+      const videos = incoming
+        .map((video, index) => {
+          const url = String(video?.url || '').trim();
+          const videoId = extractYoutubeId(url);
+
+          if (!videoId) return null;
+
+          return {
+            order: Number.isFinite(video?.order) ? video.order : index,
+            url,
+            videoId,
+            title: String(video?.title || '').trim()
+          };
+        })
+        .filter(Boolean);
+
+      updateData['customData.videos'] = videos;
     }
     // Sync bilgilerini güncelle
     updateData['syncInfo.lastWebUpdate'] = new Date();

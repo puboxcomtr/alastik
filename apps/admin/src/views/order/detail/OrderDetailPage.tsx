@@ -120,6 +120,7 @@ const OrderDetailPage = () => {
               orderId={order.id}
               status={order.status}
               manualCollection={order.payment?.manualCollection}
+              diaIntegration={order.diaIntegration}
               onStatusChange={(newStatus) => setOrder({ ...order, status: newStatus })}
             />
             <OrderNote orderId={order.id} adminNote={order.adminNote} />

@@ -28,6 +28,8 @@ const SITES = {
         ],
         theme: 'alastik',
         active: true,
+        // Sipariş numarası öneki (orderNumber üretiminde kullanılır)
+        orderPrefix: 'AL',
     },
 
     lastikjantavm: {
@@ -40,6 +42,7 @@ const SITES = {
         ],
         theme: 'lastikjantavm',
         active: true,
+        orderPrefix: 'LJA',
     },
 };
 

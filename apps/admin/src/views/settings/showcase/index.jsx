@@ -10,6 +10,7 @@ import Payment from './Payment'
 import ProductManagament from './ProductManagament'
 import ShowcaseManagement from './ShowcaseManagement'
 import { getSettings, updateSettings } from '@/utils/api/settings'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 const Showcase = () => {
   const [loading, setLoading] = useState(true)
@@ -33,6 +34,10 @@ const Showcase = () => {
     pictureOptimization: false,
     watermark: false,
     watermarkPosition: 'sol-ust',
+    watermarkRotation: 0,
+    watermarkWidth: 25,
+    watermarkOpacity: 30,
+    watermarkExcludedCategories: [],
     watermarkImage: null,
     watermarkImagePreview: ''
   })
@@ -60,6 +65,14 @@ const Showcase = () => {
           pictureOptimization: response.data.pictureOptimization || false,
           watermark: response.data.watermark || false,
           watermarkPosition: response.data.watermarkPosition || 'sol-ust',
+          watermarkRotation: Number(response.data.watermarkRotation) || 0,
+          watermarkWidth: Number(response.data.watermarkWidth) || 25,
+          watermarkOpacity: Number.isFinite(Number(response.data.watermarkOpacity))
+            ? Number(response.data.watermarkOpacity)
+            : 30,
+          watermarkExcludedCategories: Array.isArray(response.data.watermarkExcludedCategories)
+            ? response.data.watermarkExcludedCategories.map(String)
+            : [],
           watermarkImage: null,
           watermarkImagePreview: response.data.watermarkImage || ''
         })
@@ -77,19 +90,25 @@ const Showcase = () => {
     try {
       setSaving(true)
       let watermarkImageUrl = formData.watermarkImagePreview
+
+      // Yeni dosya seçildiyse medya kütüphanesine yüklenir ve adresi kaydedilir
       if (formData.watermarkImage instanceof File) {
         const uploadFormData = new FormData()
-        uploadFormData.append('file', formData.watermarkImage)
-        uploadFormData.append('category', 'watermark')
-        const uploadResponse = await fetch('http://localhost:3082/api/upload', {
+
+        uploadFormData.append('files', formData.watermarkImage)
+
+        const uploadResponse = await fetchAPI(API_ENDPOINTS.media.upload('general'), {
           method: 'POST',
           body: uploadFormData
         })
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          watermarkImageUrl = uploadData.url
+        const yuklenen = uploadResponse?.data?.[0] || uploadResponse?.files?.[0]
+
+        if (!yuklenen?.url) {
+          throw new Error('Filigran görseli yüklenemedi')
         }
+
+        watermarkImageUrl = yuklenen.url
       }
 
       const dataToSave = {
@@ -105,6 +124,10 @@ const Showcase = () => {
         pictureOptimization: formData.pictureOptimization,
         watermark: formData.watermark,
         watermarkPosition: formData.watermarkPosition,
+        watermarkRotation: formData.watermarkRotation,
+        watermarkWidth: formData.watermarkWidth,
+        watermarkOpacity: formData.watermarkOpacity,
+        watermarkExcludedCategories: formData.watermarkExcludedCategories,
         watermarkImage: watermarkImageUrl
       }
 

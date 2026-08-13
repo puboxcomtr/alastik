@@ -155,7 +155,7 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                             )}
                                         </div>
                                     </div>
-                                ) : (
+                                ) : features.length > 0 && (
                                     <Typography
                                         className="fw-semibold d-block lh-sm"
                                         variant="body1"

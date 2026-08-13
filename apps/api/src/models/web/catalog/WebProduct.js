@@ -173,6 +173,16 @@ const customImageSchema = new mongoose.Schema({
     title: String
 }, { _id: false });
 
+// Ürün Videosu Schema — YouTube video veya short
+const productVideoSchema = new mongoose.Schema({
+    order: { type: Number, default: 0 },
+    // Kullanıcının girdiği özgün adres
+    url: { type: String, required: true },
+    // Adresten çıkarılan YouTube kimliği (gömme için kullanılır)
+    videoId: { type: String, required: true },
+    title: { type: String, default: '' }
+}, { _id: false });
+
 // Özel Veri Schema
 const customDataSchema = new mongoose.Schema({
     // SEO Bilgileri
@@ -190,6 +200,8 @@ const customDataSchema = new mongoose.Schema({
     hideProductionDate: { type: Boolean, default: false },
     // Stok gizleme — açıkken kartlarda stok adedi gösterilmez
     hideStock: { type: Boolean, default: false },
+    // Kargo bilgisi gizleme — açıkken ürün detayında kargoya teslim tarihi gösterilmez
+    hideDelivery: { type: Boolean, default: false },
 
     // Kargo Süresi
     delivery: {
@@ -225,6 +237,7 @@ const customDataSchema = new mongoose.Schema({
 
     // Görseller
     customImages: [customImageSchema],
+    videos: [productVideoSchema],
     featuredImage: String,
 
     // Fiyatlandırma

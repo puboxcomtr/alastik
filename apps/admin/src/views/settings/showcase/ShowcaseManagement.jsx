@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -13,9 +14,39 @@ import { FormControl, Switch } from '@mui/material'
 import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
+import Slider from '@mui/material/Slider'
+import Autocomplete from '@mui/material/Autocomplete'
+import Chip from '@mui/material/Chip'
+
+import WatermarkPreview from './WatermarkPreview'
+import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 const ShowcaseManagement = ({ formData, setFormData }) => {
   const fileInputRef = useRef(null)
+
+  // Yalnızca panel görünümü için; kaydedilen bir ayar değildir
+  const [previewOpen, setPreviewOpen] = useState(false)
+
+  // Filigran dışında tutulacak kategorileri seçebilmek için liste
+  const [categories, setCategories] = useState([])
+
+  useEffect(() => {
+    const kategorileriYukle = async () => {
+      try {
+        const response = await fetchAPI(API_ENDPOINTS.categories.list())
+
+        setCategories(Array.isArray(response?.data) ? response.data : [])
+      } catch {
+        setCategories([])
+      }
+    }
+
+    kategorileriYukle()
+  }, [])
+
+  // Autocomplete seçili değerleri kategori nesnesi olarak ister; id listesini eşleyip veriyoruz
+  const secilenKategoriler = formData.watermarkExcludedCategories
+    .map((id) => categories.find((k) => String(k.id) === String(id)) || { id, name: String(id) })
 
   return (
     <Card>
@@ -140,108 +171,262 @@ const ShowcaseManagement = ({ formData, setFormData }) => {
           </Grid>
           
           {formData.watermark && (
-            <>
-              <Grid size={{ xs: 12, sm: 3 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Filigran Konumu</InputLabel>
-                  <Select
-                    label="Filigran Konumu"
-                    value={formData.watermarkPosition}
-                    onChange={(e) => setFormData((prev) => ({
-                      ...prev,
-                      watermarkPosition: e.target.value
-                    }))}
-                  >
-                    <MenuItem value="sol-ust">Sol Üst</MenuItem>
-                    <MenuItem value="sag-ust">Sağ Üst</MenuItem>
-                    <MenuItem value="sol-alt">Sol Alt</MenuItem>
-                    <MenuItem value="sag-alt">Sağ Alt</MenuItem>
-                    <MenuItem value="orta">Orta</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid size={{ xs: 12, sm: 3 }}>
-                <FormControl fullWidth>
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    fullWidth
-                    startIcon={<i className='ri-upload-2-line' />}
-                    sx={{
-                      height: '56px',
-                      justifyContent: 'flex-start',
-                      textTransform: 'none',
-                      color: 'text.secondary'
-                    }}
-                  >
-                    {formData.watermarkImage ? formData.watermarkImage.name : 'Filigran Görseli Seç'}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      hidden
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          const previewUrl = URL.createObjectURL(file)
-                          setFormData((prev) => ({
-                            ...prev,
-                            watermarkImage: file,
-                            watermarkImagePreview: previewUrl
-                          }))
-                        }
+            <Grid size={{ xs: 12 }}>
+              <Box
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  p: 5
+                }}
+              >
+                <Typography variant='h6' className='mb-4'>
+                  Filigran Ayarları
+                </Typography>
+
+                <Grid container spacing={6}>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <FormControl fullWidth>
+                      <InputLabel>Filigran Konumu</InputLabel>
+                      <Select
+                        label='Filigran Konumu'
+                        value={formData.watermarkPosition}
+                        onChange={(e) => setFormData((prev) => ({
+                          ...prev,
+                          watermarkPosition: e.target.value
+                        }))}
+                      >
+                        <MenuItem value='sol-ust'>Sol Üst</MenuItem>
+                        <MenuItem value='sag-ust'>Sağ Üst</MenuItem>
+                        <MenuItem value='sol-alt'>Sol Alt</MenuItem>
+                        <MenuItem value='sag-alt'>Sağ Alt</MenuItem>
+                        <MenuItem value='orta'>Orta</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <FormControl fullWidth>
+                      <InputLabel>Filigran Yönü</InputLabel>
+                      <Select
+                        label='Filigran Yönü'
+                        value={formData.watermarkRotation}
+                        onChange={(e) => setFormData((prev) => ({
+                          ...prev,
+                          watermarkRotation: e.target.value
+                        }))}
+                      >
+                        <MenuItem value={0}>Yatay (0°)</MenuItem>
+                        <MenuItem value={45}>Çapraz (45°)</MenuItem>
+                        <MenuItem value={-45}>Ters Çapraz (-45°)</MenuItem>
+                        <MenuItem value={90}>Dikey (90°)</MenuItem>
+                        <MenuItem value={-90}>Ters Dikey (-90°)</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box
+                      sx={{
+                        border: '1px dashed',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        height: '100%',
+                        minHeight: 56,
+                        p: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 3
                       }}
-                    />
-                  </Button>
-                  {formData.watermarkImage && (
-                    <Typography variant='caption' color='text.secondary' className='block mt-1'>
-                      Seçilen: {formData.watermarkImage.name}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-            </>
-          )}
-          
-          {formData.watermarkImagePreview && (
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <Card variant='outlined'>
-                <CardContent className='flex flex-col items-center gap-2'>
-                  <img
-                    src={formData.watermarkImagePreview}
-                    alt="Filigran önizleme"
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '150px',
-                      objectFit: 'contain'
-                    }}
-                  />
-                  <Button
-                    size='small'
-                    color='error'
-                    variant='outlined'
-                    startIcon={<i className='ri-delete-bin-line' />}
-                    onClick={() => {
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = ''
-                      }
-                      if (formData.watermarkImagePreview && formData.watermarkImagePreview.startsWith('blob:')) {
-                        URL.revokeObjectURL(formData.watermarkImagePreview)
-                      }
-                      setFormData((prev) => ({
+                    >
+                      {/* Yüklü filigran varsa küçük önizlemesi burada gösterilir */}
+                      {formData.watermarkImagePreview && (
+                        <img
+                          src={formData.watermarkImagePreview}
+                          alt='Filigran'
+                          style={{ width: 48, height: 48, objectFit: 'contain' }}
+                        />
+                      )}
+
+                      <div className='flex flex-col items-start gap-1'>
+                        <Button
+                          component='label'
+                          variant='outlined'
+                          size='small'
+                          startIcon={<i className='ri-upload-2-line' />}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          {formData.watermarkImagePreview ? 'Görseli Değiştir' : 'Filigran Görseli Seç'}
+                          <input
+                            ref={fileInputRef}
+                            type='file'
+                            hidden
+                            accept='image/*'
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+
+                              if (file) {
+                                const previewUrl = URL.createObjectURL(file)
+
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  watermarkImage: file,
+                                  watermarkImagePreview: previewUrl
+                                }))
+                              }
+                            }}
+                          />
+                        </Button>
+
+                        {formData.watermarkImagePreview && (
+                          <Button
+                            size='small'
+                            color='error'
+                            startIcon={<i className='ri-delete-bin-line' />}
+                            sx={{ textTransform: 'none' }}
+                            onClick={() => {
+                              if (fileInputRef.current) fileInputRef.current.value = ''
+
+                              if (formData.watermarkImagePreview?.startsWith('blob:')) {
+                                URL.revokeObjectURL(formData.watermarkImagePreview)
+                              }
+
+                              setFormData((prev) => ({
+                                ...prev,
+                                watermarkImage: null,
+                                watermarkImagePreview: ''
+                              }))
+                            }}
+                          >
+                            Kaldır
+                          </Button>
+                        )}
+                      </div>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <FormControl fullWidth sx={{ pr: { sm: 6 } }}>
+                      <FormLabel className='text-textPrimary'>
+                        Filigran Genişliği: %{formData.watermarkWidth}
+                      </FormLabel>
+                      <Slider
+                        sx={{ mx: 2, width: 'calc(100% - 32px)' }}
+                        value={formData.watermarkWidth}
+                        min={5}
+                        max={100}
+                        step={1}
+                        valueLabelDisplay='auto'
+                        valueLabelFormat={(deger) => `%${deger}`}
+                        marks={[{ value: 5, label: '%5' }, { value: 100, label: '%100' }]}
+                        onChange={(event, deger) => setFormData((prev) => ({
+                          ...prev,
+                          watermarkWidth: deger
+                        }))}
+                      />
+                      <Typography variant='caption' color='text.secondary'>
+                        Ürün görselinin genişliğine oranla ölçeklenir
+                      </Typography>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <FormControl fullWidth sx={{ pl: { sm: 6 } }}>
+                      <FormLabel className='text-textPrimary'>
+                        Filigran Opaklığı: %{formData.watermarkOpacity}
+                      </FormLabel>
+                      <Slider
+                        sx={{ mx: 2, width: 'calc(100% - 32px)' }}
+                        value={formData.watermarkOpacity}
+                        min={0}
+                        max={100}
+                        step={1}
+                        valueLabelDisplay='auto'
+                        valueLabelFormat={(deger) => `%${deger}`}
+                        marks={[{ value: 0, label: '%0' }, { value: 100, label: '%100' }]}
+                        onChange={(event, deger) => setFormData((prev) => ({
+                          ...prev,
+                          watermarkOpacity: deger
+                        }))}
+                      />
+                      <Typography variant='caption' color='text.secondary'>
+                        Düşük değer daha saydam filigran demektir
+                      </Typography>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid size={{ xs: 12 }}>
+                    <Autocomplete
+                      multiple
+                      disableCloseOnSelect
+                      options={categories}
+                      value={secilenKategoriler}
+                      getOptionLabel={(secenek) => secenek.name || ''}
+                      isOptionEqualToValue={(secenek, deger) => String(secenek.id) === String(deger.id)}
+                      noOptionsText='Kategori bulunamadı'
+                      slotProps={{ listbox: { sx: { maxHeight: 280 } } }}
+                      onChange={(event, yeni) => setFormData((prev) => ({
                         ...prev,
-                        watermarkImage: null,
-                        watermarkImagePreview: null
-                      }))
-                    }}
-                  >
-                    Görseli Kaldır
-                  </Button>
-                </CardContent>
-              </Card>
+                        watermarkExcludedCategories: yeni.map((k) => String(k.id))
+                      }))}
+                      renderOption={(props, secenek) => (
+                        <li {...props} key={secenek.id}>
+                          <div className='flex flex-col'>
+                            <Typography variant='body2'>{secenek.name}</Typography>
+                            {(secenek.parentPath || secenek.levelName) && (
+                              <Typography variant='caption' color='text.secondary'>
+                                {secenek.parentPath || secenek.levelName}
+                              </Typography>
+                            )}
+                          </div>
+                        </li>
+                      )}
+                      renderTags={(deger, getTagProps) =>
+                        deger.map((secenek, index) => {
+                          const { key, ...tagProps } = getTagProps({ index })
+
+                          return <Chip key={key} size='small' label={secenek.name} {...tagProps} />
+                        })
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label='Filigran Uygulanmayacak Kategoriler'
+                          placeholder='Kategori arayın'
+                          helperText='Seçilen kategorilerin ürün görsellerine filigran basılmaz. Üst kategori seçilirse alt kategorileri de kapsanır.'
+                        />
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12 }}>
+                    <div className='flex items-center gap-3'>
+                      <Switch
+                        id='watermarkPreview'
+                        checked={previewOpen}
+                        onChange={(e) => setPreviewOpen(e.target.checked)}
+                      />
+                      <FormLabel
+                        component='label'
+                        htmlFor='watermarkPreview'
+                        className='text-base font-medium cursor-pointer'
+                      >
+                        Önizlemeyi Gör
+                      </FormLabel>
+                    </div>
+                  </Grid>
+
+                  {previewOpen && (
+                    <Grid size={{ xs: 12 }}>
+                      <WatermarkPreview formData={formData} />
+                    </Grid>
+                  )}
+                </Grid>
+              </Box>
             </Grid>
           )}
+
         </Grid>
       </CardContent>
     </Card>

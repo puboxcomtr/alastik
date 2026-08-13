@@ -137,6 +137,10 @@ router.post('/3d-callback', async (req, res) => {
                     order.payment.paymentGuid = paymentGuid;
                     await order.save();
 
+                    // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
+                    const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
+                    syncOrderToDiaBackground(order, 'netahsilat-3d');
+
                     // Ödeme başarılı → mail tetikle (fire-and-forget)
                     if (order.payment.status === 'paid' && !order.payment.mailSent) {
                         order.payment.mailSent = true;
@@ -217,6 +221,10 @@ router.post('/3d-commit', async (req, res) => {
                 order.payment.authCode = commitResult.authCode;
                 order.payment.paymentGuid = paymentGuid;
                 await order.save();
+
+                // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
+                const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
+                syncOrderToDiaBackground(order, 'netahsilat-callback');
 
                 // Ödeme başarılı → mail tetikle (fire-and-forget)
                 if (order.payment.status === 'paid' && !order.payment.mailSent) {

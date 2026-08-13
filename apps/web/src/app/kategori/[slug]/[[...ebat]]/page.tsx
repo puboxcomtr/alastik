@@ -8,7 +8,7 @@ import { headers } from 'next/headers';
 /* Services */
 import { getCategory, getCategoryMenus, getCategoryWithSize, getParentCategory } from '@/src/services/categoryService';
 import { filterProducts } from '@/src/services/productService';
-import { getShowcaseSettings } from '@/src/services/settingsService';
+import { getShowcaseSettings, getServicePoints } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
 
@@ -27,6 +27,7 @@ import LjaSidebar from "@components/lastikjantavm/category/Sidebar/Content";
 import LjaBreadcrumb from "@components/lastikjantavm/category/Header/Breadcrumb";
 import LjaCategorySlider from '@components/lastikjantavm/category/Top/Slider';
 import LjaCategoryMenu from '@components/lastikjantavm/category/Top/CategoryMenu';
+import LjaMobileCategoryMenus from '@components/lastikjantavm/category/Top/MobileCategoryMenus';
 import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
 import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/CategoryTireSearch';
 import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
@@ -72,9 +73,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const title = category.seoTitle
             ? category.seoTitle
             : (applyTemplate(tpl?.titleTemplate, vars) || category.name);
-        const description = category.description
-            ? category.description
-            : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['kategori-aciklamasi']);
+        // Meta açıklama önce SEO alanından, yoksa sayfadaki tanıtım metninden alınır
+        const description = category.seoDescription
+            ? category.seoDescription
+            : (category.description
+                ? category.description
+                : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['kategori-aciklamasi']));
         return {
             title,
             description,
@@ -129,6 +133,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
     // Showcase ayarlarını al
     const showcaseSettings = await getShowcaseSettings();
+
+    // Servis noktaları — hizmet ürünlerinin kartlarında gösterilir
+    const servicePoints = await getServicePoints();
 
     // Sayfa numarasını al
     const currentPage = parseInt(filters.page || '1');
@@ -186,19 +193,28 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                     <Container className="category-page-container">
                         <div className="row-fluid">
                             <Row>
+                                {/* Mobilde önce ürünler, sonra sidebar gösterilir */}
                                 <Col
-                                 lg={3} className="mt-4">
-                                    {categoryMenus.map((menu: any) => (
-                                        <CategoryMenu key={menu._id} menu={menu} />
-                                    ))}
+                                 lg={3} className="mt-4 order-2 order-lg-1">
+                                    {/* Menüler mobilde ayrı düğmelerle açılır, burada yalnızca masaüstünde listelenir */}
+                                    <div className="d-none d-md-block">
+                                        {categoryMenus.map((menu: any) => (
+                                            <CategoryMenu key={menu._id} menu={menu} />
+                                        ))}
+                                    </div>
                                     <Sidebar hideEbatFilters={false} categorySlug={slug} />
                                 </Col>
-                                <Col lg={9}>
+                                <Col lg={9} className="order-1 order-lg-2">
                                     <Row>
                                         <Col md={12}>
                                             <Col md={12}>
                                                 <CategorySlider sliderId={category.sliderId} />
                                             </Col>
+                                        </Col>
+                                        <Col md={12}>
+                                            {site === 'lastikjantavm' && (
+                                                <LjaMobileCategoryMenus menus={categoryMenus} />
+                                            )}
                                         </Col>
                                         <Col md={12}>
                                             <MobileFilterSort
@@ -219,7 +235,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                     </Row>
 
                                     {/* Ürün Listesi */}
-                                    <ViewModeProductList products={productsData?.products || []} />
+                                    <ViewModeProductList products={productsData?.products || []} servicePoints={servicePoints} />
                                     {/* Pagination */}
                                     {productsData?.pagination && (
                                         <Row>
@@ -233,7 +249,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                         </Row>
                                     )}
                                 </Col>
-                                <Col lg={12}>
+                                <Col lg={12} className="order-3">
                                     {/* Kategori SEO Icerigi (site bazli) */}
                                     {category.siteContentHtml && (
                                         <Row>

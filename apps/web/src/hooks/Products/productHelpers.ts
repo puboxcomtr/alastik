@@ -330,18 +330,20 @@ const getLastikEbat = (product: Product): string => {
 export const getProductDetailFeatures = (product: Product): ProductFeatureItem[] => {
     const type = getProductType(product);
 
-    switch (type) {
-        case 'LASTIK':
-            return getLastikDetailFeatures(product);
-        case 'JANT':
-            return getJantDetailFeatures(product);
-        case 'ZINCIR':
-            return getZincirDetailFeatures(product);
-        case 'AKSESUAR':
-            return getAksesuarDetailFeatures(product);
-        default:
-            return getGenericFeatures(product);
-    }
+    const features = type === 'LASTIK'
+        ? getLastikDetailFeatures(product)
+        : type === 'JANT'
+            ? getJantDetailFeatures(product)
+            : type === 'ZINCIR'
+                ? getZincirDetailFeatures(product)
+                : type === 'AKSESUAR'
+                    ? getAksesuarDetailFeatures(product)
+                    : getGenericFeatures(product);
+
+    // Kategori ayarı açıksa stok kodu satırı listelenmez
+    return (product as any)?.hideStockCode === true
+        ? features.filter(f => f.label !== 'Stok Kodu')
+        : features;
 };
 /**
  * Aynı desenin diğer ebatlarını getir
@@ -500,6 +502,24 @@ export const getAllJantFeatures = (product: Product): Array<{ label: string; val
         { label: 'ET (Offset)', value: getProductFeature(product, 'ET') },
         { label: 'Renk', value: getProductFeature(product, 'Renk') }
     ].filter(f => f.value && f.value !== '-');
+};
+
+/**
+ * Ürün detayındaki "Ürün Özellikleri" tablosunun satırları.
+ * Lastik ve jant dışındaki ürünlerde (hizmet, aksesuar) liste boş döner;
+ * bu durumda bölüm hiç gösterilmez.
+ */
+export const getProductSpecRows = (product: Product): Array<{ label: string; value: string }> => {
+    const rows = isLastik(product)
+        ? getAllLastikFeatures(product)
+        : isJant(product)
+            ? getAllJantFeatures(product)
+            : [];
+
+    // Kategori ayarı açıksa stok kodu satırı listelenmez
+    return (product as any)?.hideStockCode === true
+        ? rows.filter(r => r.label !== 'Stok Kodu')
+        : rows;
 };
 
 /**
@@ -711,4 +731,16 @@ export const getDeliveryDateRange = (product: Product): {
         default:
             return null;
     }
+};
+
+/**
+ * Kategori ayarına göre gösterilecek fiyatı ve ek ibareyi döndürür.
+ * "haric" seçiliyken kayıtlı fiyattan KDV çıkarılır ve "+ KDV" ibaresi eklenir.
+ */
+export const getDisplayPrice = (product: any, price: number): { value: number; suffix: string } => {
+    if (product?.priceDisplay !== 'haric') return { value: price, suffix: '' };
+
+    const rate = Number(product.vatRate) > 0 ? Number(product.vatRate) : 20;
+
+    return { value: Math.round((price / (1 + rate / 100)) * 100) / 100, suffix: ' + KDV' };
 };

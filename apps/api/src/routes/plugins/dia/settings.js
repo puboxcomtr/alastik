@@ -142,4 +142,102 @@ router.post('/test-connection', async (req, res) => {
     }
 });
 
+// Sipariş Entegrasyonu key alanları için DIA seçenek listeleri.
+// Şube/depo ve yetki kodlarının doğrudan listeleme servisi yoktur —
+// mevcut belgelerden (sipariş/fatura/irsaliye/cari) türetilir.
+const siparisOptionsCache = new Map(); // site → { at, data }
+const SIPARIS_OPTIONS_TTL = 10 * 60 * 1000;
+
+router.get('/siparis-options', async (req, res) => {
+    try {
+        const cached = siparisOptionsCache.get(req.site);
+        if (cached && Date.now() - cached.at < SIPARIS_OPTIONS_TTL && !req.query.refresh) {
+            return res.json({ success: true, data: cached.data, cached: true });
+        }
+
+        const settings = await WebDia.getSettings(req.site);
+        if (!settings.baseURL || !settings.username || !settings.password || !settings.apiKey) {
+            return res.status(400).json({ success: false, message: 'DIA bağlantı ayarları eksik' });
+        }
+
+        const firma = settings.siparis?.firmaKodu || settings.firmaKodu || 1;
+        const donem = settings.siparis?.donemKodu || settings.donemKodu || 1;
+
+        const send = async (endpoint, payload) => {
+            const response = await axios.post(`${settings.baseURL}${endpoint}`, payload, {
+                headers: { 'Content-Type': 'application/json' }, timeout: 60000, validateStatus: () => true
+            });
+            return response.data;
+        };
+
+        const loginRes = await send('/api/v3/sis/json', {
+            login: {
+                username: settings.username,
+                password: settings.password,
+                disconnect_same_user: 'True',
+                params: { apikey: settings.apiKey }
+            }
+        });
+        if (loginRes?.code !== '200') {
+            return res.status(502).json({ success: false, message: `DIA oturumu açılamadı: ${loginRes?.msg || ''}` });
+        }
+        const sessionId = loginRes.msg;
+
+        const list = async (serviceName, limit = 100, sorts = '', endpoint = '/api/v3/scf/json') => {
+            const response = await send(endpoint, {
+                [serviceName]: {
+                    session_id: sessionId, firma_kodu: firma, donem_kodu: donem,
+                    filters: '', sorts, params: {}, limit, offset: 0
+                }
+            });
+            return Array.isArray(response?.result) ? response.result : [];
+        };
+
+        // Doğrudan listelenebilenler (kargo firmaları krg modülündedir)
+        const [kargoRows, elemanRows, planRows] = [
+            await list('krg_firma_listele', 100, '', '/api/v3/krg/json'),
+            await list('scf_satiselemani_listele', 200),
+            await list('scf_odeme_plani_listele', 200)
+        ];
+
+        // Belgelerden türetilenler (son kayıtlar, _key azalan)
+        const desc = [{ field: '_key', sorttype: 'DESC' }];
+        const [siparisRows, faturaRows, irsaliyeRows, cariRows] = [
+            await list('scf_siparis_listele', 100, desc),
+            await list('scf_fatura_listele', 100, desc),
+            await list('scf_irsaliye_listele', 100, desc),
+            await list('scf_carikart_listele', 100, desc)
+        ];
+
+        const collectPairs = (rows, keyField, labelField) => {
+            const map = new Map();
+            for (const row of rows) {
+                const key = parseInt(row[keyField]) || 0;
+                const label = String(row[labelField] || '').trim();
+                if (key && label && !map.has(key)) map.set(key, label);
+            }
+            return [...map.entries()].map(([key, label]) => ({ key, label })).sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+        };
+
+        const belgeRows = [...siparisRows, ...faturaRows, ...irsaliyeRows];
+        const data = {
+            subeler: collectPairs(belgeRows, '_key_sis_sube_source', '__sourcesubeadi'),
+            depolar: collectPairs(belgeRows, '_key_sis_depo_source', '__sourcedepoadi'),
+            // Alan adları DIA yanıtına göre: kargo adı 'aciklama', satış elemanı adı 'kodu' + açıklaması 'aciklama'
+            kargoFirmalari: kargoRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: `${r.aciklama || ''} (${r.kodu || ''})`.trim() })),
+            satisElemanlari: elemanRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: [r.kodu, r.aciklama].filter(Boolean).join(' — ') || String(r._key) })).sort((a, b) => a.label.localeCompare(b.label, 'tr')),
+            odemePlanlari: planRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: [r.kodu, r.aciklama || r.adi].filter(Boolean).join(' — ') || String(r._key) })).sort((a, b) => a.label.localeCompare(b.label, 'tr')),
+            cariOzelKodlari: collectPairs(cariRows, '_key_sis_ozelkod1', 'ozelkod1kod'),
+            cariYetkiKodlari: collectPairs(cariRows, '_key_sis_seviyekodu', 'yetkikodu'),
+            siparisYetkiKodlari: collectPairs(siparisRows, '_key_sis_seviyekodu', 'yetkikodu'),
+            faturaYetkiKodlari: collectPairs(faturaRows, '_key_sis_seviyekodu', 'yetkikodu')
+        };
+
+        siparisOptionsCache.set(req.site, { at: Date.now(), data });
+        res.json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'DIA seçenekleri yüklenemedi', error: err.message });
+    }
+});
+
 module.exports = router;

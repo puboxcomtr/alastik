@@ -491,6 +491,33 @@ router.put('/:id/status', async (req, res) => {
             });
         }
 
+        // Sipariş onaylandığında DIA'ya aktar (cari + sipariş girişi).
+        // Banka havalesi HARİÇ — havale siparişleri sipariş detayındaki
+        // "DIA'ya Gönder" butonuyla manuel aktarılır.
+        // Entegrasyon kapalıysa servis kendisi atlar; hata durum güncellemesini bozmaz.
+        let diaResult = null;
+        if (status === 'confirmed' && order.payment?.method !== 'bank_transfer') {
+            try {
+                const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
+                diaResult = await syncOrderToDia(order);
+            } catch (diaError) {
+                console.error('DIA sipariş aktarım hatası:', diaError);
+                diaResult = { success: false, message: diaError.message };
+            }
+        }
+
+        // Sipariş iptal edildiğinde DIA'daki kayıtlar da iptal edilir
+        // (fatura iptal + stok iadesi + sipariş silme)
+        if (status === 'cancelled' && (order.diaIntegration?.diaOrderKey || order.diaIntegration?.diaInvoiceKey)) {
+            try {
+                const { cancelOrderInDia } = require('../../../services/plugins/dia/DiaOrderService');
+                diaResult = await cancelOrderInDia(order);
+            } catch (diaError) {
+                console.error('DIA sipariş iptal hatası:', diaError);
+                diaResult = { success: false, message: diaError.message };
+            }
+        }
+
         res.json({
             success: true,
             message: 'Sipariş durumu güncellendi',
@@ -498,7 +525,8 @@ router.put('/:id/status', async (req, res) => {
                 id: order._id.toString(),
                 status: order.status,
                 statusText: ORDER_STATUSES[order.status]
-            }
+            },
+            dia: diaResult
         });
 
     } catch (error) {
@@ -567,6 +595,32 @@ router.put('/:id/payment-status', async (req, res) => {
     }
 });
 
+// POST /api/admin/orders/:id/sync-dia - Siparişi DIA'ya manuel gönder (yeniden deneme)
+router.post('/:id/sync-dia', async (req, res) => {
+    try {
+        const order = await WebOrder.findOne({ _id: req.params.id, site: req.site });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
+        }
+
+        const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
+        const result = await syncOrderToDia(order);
+
+        res.json({
+            success: result.success,
+            message: result.message,
+            data: {
+                diaOrderKey: result.diaOrderKey || null,
+                diaCustomerKey: result.diaCustomerKey || null,
+                skipped: result.skipped || false
+            }
+        });
+    } catch (error) {
+        console.error('DIA manuel gönderim hatası:', error);
+        res.status(500).json({ success: false, message: 'DIA gönderimi sırasında hata oluştu', error: error.message });
+    }
+});
+
 // POST /api/admin/orders/:id/verify-payment - Nkolay ödeme durumunu sorgula, ödendiyse onayla
 router.post('/:id/verify-payment', async (req, res) => {
     try {
@@ -622,6 +676,14 @@ router.post('/:id/verify-payment', async (req, res) => {
         await order.save();
 
         console.log('[verify-payment] Odeme dogrulandi ve onaylandi:', order.orderNumber);
+
+        // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
+        try {
+            const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
+            syncOrderToDiaBackground(order, 'verify-payment');
+        } catch (diaErr) {
+            console.error('[verify-payment] DIA tetikleme hatası:', diaErr.message);
+        }
 
         // Ödeme başarılı maili tetikle (fire-and-forget)
         try {

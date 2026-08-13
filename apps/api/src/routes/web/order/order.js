@@ -107,8 +107,8 @@ router.post('/', async (req, res) => {
         // Backend'de items ve pricing hesapla (frontend'den gelene güvenme)
         const { items, pricing } = await calculateOrderPricing(rawItems);
 
-        // Sipariş numarası oluştur
-        const orderNumber = await WebOrder.generateOrderNumber();
+        // Sipariş numarası oluştur (önek siteye göre: AL / LJA)
+        const orderNumber = await WebOrder.generateOrderNumber(req.site);
 
         // Snapshot'ları hazırla
         let billingSnapshot = null;

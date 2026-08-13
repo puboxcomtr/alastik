@@ -19,6 +19,7 @@ import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 import {
     getProductUrl,
     getProductPrice,
+    getDisplayPrice,
     getProductOriginalPrice,
     hasProductDiscount,
     getProductImage,
@@ -71,6 +72,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
+    const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
@@ -105,6 +107,15 @@ export default function ProductCard({ product }: ProductCardProps) {
                             </button>
                         </div>
                     </div>
+
+                    {/* Videolu ürün rozeti — favori butonunun tam karşısında */}
+                    {product.customData?.videos?.length > 0 && (
+                        <span
+                            className={`position-absolute top-0 start-0 z-2 ms-2 ms-lg-3 badge rounded-pill text-bg-danger video-badge ${season ? 'mt-6' : 'mt-2 mt-lg-3'}`}
+                        >
+                            Videolu Ürün
+                        </span>
+                    )}
 
                     {/* Product Image */}
                     <Link className="d-block rounded-top overflow-hidden p-0 p-md-3" href={productUrl}>
@@ -166,9 +177,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
 
                     <h3 className="pb-1 mb-2">
-                        <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
-                            {stockCode}
-                        </span>
+                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
+                        {(product as any)?.hideStockCode !== true && (
+                            <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
+                                {stockCode}
+                            </span>
+                        )}
                         <Link
                             className="d-block fs-sm fw-medium text-truncates"
                             href={productUrl}
@@ -216,10 +230,10 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 </del>
                             )}
                             <span className="fw-bold">
-                                {price.toLocaleString('tr-TR', {
+                                {gosterim.value.toLocaleString('tr-TR', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
-                                })} TL
+                                })} TL{gosterim.suffix}
                             </span>
                         </div>
                     </div>

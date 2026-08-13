@@ -34,6 +34,7 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
   const [hideBrand, setHideBrand] = useState(false)
   const [hideProductionDate, setHideProductionDate] = useState(false)
   const [hideStock, setHideStock] = useState(false)
+  const [hideDelivery, setHideDelivery] = useState(false)
 
   // Initialize values
   useEffect(() => {
@@ -41,6 +42,7 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
     setHideBrand(product.hideBrand ?? false)
     setHideProductionDate(product.hideProductionDate ?? false)
     setHideStock(product.hideStock ?? false)
+    setHideDelivery(product.hideDelivery ?? false)
   }, [product])
 
   // Ürün durumu değişiklik handler
@@ -66,6 +68,12 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
   const handleHideStockChange = (checked: boolean) => {
     setHideStock(checked)
     updateField('hideStock', checked)
+  }
+
+  // Kargo bilgisi gizleme değişiklik handler
+  const handleHideDeliveryChange = (checked: boolean) => {
+    setHideDelivery(checked)
+    updateField('hideDelivery', checked)
   }
 
   return (
@@ -123,6 +131,16 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
               />
             }
             label='Stok Bilgisini Gizle (kartlarda stok adedi gösterilmez)'
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={hideDelivery}
+                onChange={e => handleHideDeliveryChange(e.target.checked)}
+              />
+            }
+            label='Kargo Bilgisini Gizle (ürün detayında kargoya teslim tarihi gösterilmez)'
           />
         </div>
       </CardContent>

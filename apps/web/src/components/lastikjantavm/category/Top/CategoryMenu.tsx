@@ -3,7 +3,7 @@ import Link from 'next/link';
 interface MenuItemType {
     _id: string;
     name: string;
-    menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'heading';
+    menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading';
     linkData?: {
         url?: string;
         categoryUrl?: string;
@@ -14,13 +14,23 @@ interface MenuItemType {
         blogId?: string;
         productUrl?: string;
         productId?: string;
+        tagUrl?: string;
+        tagId?: string;
+        brandUrl?: string;
+        brandId?: string;
     };
     openNewTab?: boolean;
     children?: MenuItemType[];
 }
 
 interface CategoryMenuProps {
-    menu: { _id: string; name: string; items: MenuItemType[] } | null;
+    menu: {
+        _id: string;
+        name: string;
+        menuType?: MenuItemType['menuType'];
+        linkData?: MenuItemType['linkData'];
+        items: MenuItemType[];
+    } | null;
 }
 
 function itemUrl(item: MenuItemType): string {
@@ -29,6 +39,8 @@ function itemUrl(item: MenuItemType): string {
     if (item.menuType === 'page') return `/sayfa/${item.linkData?.pageUrl || item.linkData?.pageId}`;
     if (item.menuType === 'blog') return `/blog/${item.linkData?.blogUrl || item.linkData?.blogId}`;
     if (item.menuType === 'product') return `/urun/${item.linkData?.productUrl || item.linkData?.productId}`;
+  if (item.menuType === 'tag') return `/etiket/${item.linkData?.tagUrl || item.linkData?.tagId}`;
+  if (item.menuType === 'brand') return `/marka/${item.linkData?.brandUrl || item.linkData?.brandId}`;
     return '#';
 }
 
@@ -42,10 +54,21 @@ export default function CategoryMenu({ menu }: CategoryMenuProps) {
 
     if (links.length === 0) return null;
 
+    // Başlığa bağlantı verilmişse tıklanabilir olur; "heading" tipinde bağlantı yoktur
+    const baslikAdresi = menu.menuType && menu.menuType !== 'heading'
+        ? itemUrl({ _id: menu._id, name: menu.name, menuType: menu.menuType, linkData: menu.linkData })
+        : null;
+
     return (
         // Sol sidebar'ın en üstünde dikey liste; kutu çerçevesi yok, ayrım satır altı çizgisiyle
         <div className="category-menu mb-4 pe-lg-4">
-            <div className="h6 mb-2">{menu.name}</div>
+            {baslikAdresi ? (
+                <Link href={baslikAdresi} className="h6 mb-2 d-block text-dark text-decoration-none animate-underline animate-target">
+                    {menu.name}
+                </Link>
+            ) : (
+                <div className="h6 mb-2">{menu.name}</div>
+            )}
             <ul className="nav flex-column mb-0">
                 {links.map(item => (
                     <li key={item._id} className="d-flex w-100 border-bottom py-2">

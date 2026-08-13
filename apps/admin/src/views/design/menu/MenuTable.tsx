@@ -22,13 +22,38 @@ import MenuItem from '@mui/material/MenuItem'
 
 import tableStyles from '@core/styles/table.module.css'
 import { toast } from 'react-toastify'
-import { fetchMenus, deleteMenu, createMenu, updateMenuOrder, type MenuType } from '@/utils/api/menus'
+import Autocomplete from '@mui/material/Autocomplete'
+
+import {
+    fetchMenus,
+    deleteMenu,
+    createMenu,
+    updateMenu,
+    updateMenuOrder,
+    fetchCategories,
+    fetchTags,
+    fetchBrands,
+    type MenuType,
+    type CategoryOptionType,
+    type TagOptionType,
+    type BrandOptionType
+} from '@/utils/api/menus'
+
+// Ana başlığa verilebilecek bağlantı tipleri
+const TITLE_LINK_TYPES: { value: MenuType['menuType']; label: string }[] = [
+    { value: 'heading', label: 'Bağlantı yok (sadece başlık)' },
+    { value: 'link', label: 'Bağlantı (URL)' },
+    { value: 'category', label: 'Kategori' },
+    { value: 'tag', label: 'Etiket' },
+    { value: 'brand', label: 'Marka' }
+]
 
 const AREA_LABELS: Record<MenuType['displayArea'], string> = {
     header: 'Üst Menü (Header)',
     footer: 'Alt Menü (Footer)',
     mobile: 'Mobil Menü',
-    general: 'Genel (Serbest)'
+    general: 'Genel (Serbest)',
+    blog: 'Blog Menü'
 }
 
 const MenuTable = () => {
@@ -48,6 +73,19 @@ const MenuTable = () => {
 
     // Yeni menü oluşturma dialogu
     const [addDialogOpen, setAddDialogOpen] = useState(false)
+
+    // Ana başlık düzenleme penceresi
+    const [titleMenu, setTitleMenu] = useState<MenuType | null>(null)
+    const [titleName, setTitleName] = useState('')
+    const [titleArea, setTitleArea] = useState<MenuType['displayArea']>('header')
+    const [titleType, setTitleType] = useState<MenuType['menuType']>('heading')
+    const [titleUrl, setTitleUrl] = useState('')
+    const [titleTargetId, setTitleTargetId] = useState('')
+    const [titleCategories, setTitleCategories] = useState<CategoryOptionType[]>([])
+    const [titleTags, setTitleTags] = useState<TagOptionType[]>([])
+    const [titleBrands, setTitleBrands] = useState<BrandOptionType[]>([])
+    const [titleQuery, setTitleQuery] = useState('')
+    const [titleSaving, setTitleSaving] = useState(false)
     const [newMenuName, setNewMenuName] = useState('')
     const [newMenuArea, setNewMenuArea] = useState<MenuType['displayArea']>('header')
     const [saving, setSaving] = useState(false)
@@ -226,6 +264,108 @@ const MenuTable = () => {
         }
     }
 
+    // Ana başlık penceresini mevcut değerlerle açar
+    const openTitleDialog = (menu: MenuType) => {
+        setTitleMenu(menu)
+        setTitleName(menu.name)
+        setTitleArea(menu.displayArea)
+        setTitleType(menu.menuType || 'heading')
+        setTitleUrl(menu.linkData?.url || '')
+        setTitleTargetId(
+            menu.linkData?.categoryId || menu.linkData?.tagId || menu.linkData?.brandId || ''
+        )
+        setTitleQuery('')
+
+        // Seçili hedef arama sonuçlarında olmayabilir; listeye doğrudan konur
+        const link = menu.linkData as any
+
+        if (menu.menuType === 'category' && link?.categoryId) {
+            setTitleCategories([{ _id: link.categoryId, name: link.categoryName || link.categoryId, categoryLevel: 1 }])
+        }
+
+        if (menu.menuType === 'tag' && link?.tagId) {
+            setTitleTags([{ _id: link.tagId, title: link.tagTitle || link.tagId, slug: link.tagUrl || '', productCount: 0 }])
+        }
+
+        if (menu.menuType === 'brand' && link?.brandId) {
+            setTitleBrands([{ _id: link.brandId, title: link.brandTitle || link.brandId, slug: link.brandUrl || '', productCount: 0 }])
+        }
+    }
+
+    // Pencere açıkken tip değişince ilgili seçenekler yüklenir
+    useEffect(() => {
+        if (!titleMenu) return
+
+        const timer = setTimeout(async () => {
+            try {
+                if (titleType === 'category') {
+                    const result = await fetchCategories()
+
+                    if (result.success) setTitleCategories(result.data)
+                } else if (titleType === 'tag') {
+                    const result = await fetchTags(titleQuery)
+
+                    if (result.success) setTitleTags(result.data)
+                } else if (titleType === 'brand') {
+                    const result = await fetchBrands(titleQuery)
+
+                    if (result.success) setTitleBrands(result.data)
+                }
+            } catch (error: any) {
+                console.error('Seçenek yükleme hatası:', error)
+            }
+        }, 300)
+
+        return () => clearTimeout(timer)
+    }, [titleMenu, titleType, titleQuery])
+
+    // Ana başlığı kaydeder
+    const handleTitleSave = async () => {
+        if (!titleMenu) return
+
+        if (!titleName.trim()) {
+            toast.error('Menü adı boş olamaz')
+
+            return
+        }
+
+        const linkData: Record<string, string> = {}
+
+        if (titleType === 'link') linkData.url = titleUrl.trim()
+        if (titleType === 'category') linkData.categoryId = titleTargetId
+        if (titleType === 'tag') linkData.tagId = titleTargetId
+        if (titleType === 'brand') linkData.brandId = titleTargetId
+
+        if (titleType !== 'heading' && !Object.values(linkData).some(Boolean)) {
+            toast.error('Bağlantı hedefi seçilmedi')
+
+            return
+        }
+
+        try {
+            setTitleSaving(true)
+
+            await updateMenu(titleMenu._id, {
+                name: titleName.trim(),
+                menuType: titleType,
+                linkData,
+                displayArea: titleArea,
+                rowLevel: titleMenu.rowLevel,
+                parentId: titleMenu.parentId || null,
+                order: titleMenu.order,
+                isActive: titleMenu.isActive
+            } as any)
+
+            toast.success('Ana başlık güncellendi')
+            setTitleMenu(null)
+            await loadMenus()
+        } catch (error: any) {
+            toast.error(error.message || 'Güncellenemedi')
+        } finally {
+            setTitleSaving(false)
+        }
+    }
+
     // Öğenin nereye yönlendirdiğini metne çevirir
     const linkTargetOf = (menu: MenuType) => {
         if (menu.menuType === 'link') return { label: 'Bağlantı', text: menu.linkData?.url || '-' }
@@ -241,6 +381,13 @@ const MenuTable = () => {
         if (menu.menuType === 'blog') {
             return { label: 'Blog', text: (menu.linkData as any)?.blogTitle || `Blog ID: ${(menu.linkData as any)?.blogId || '-'}` }
         }
+        if (menu.menuType === 'tag') {
+            return { label: 'Etiket', text: (menu.linkData as any)?.tagTitle || `Etiket ID: ${(menu.linkData as any)?.tagId || '-'}` }
+        }
+        if (menu.menuType === 'brand') {
+            return { label: 'Marka', text: (menu.linkData as any)?.brandTitle || `Marka ID: ${(menu.linkData as any)?.brandId || '-'}` }
+        }
+
         return { label: 'Başlık', text: 'Sadece Başlık (Link Yok)' }
     }
 
@@ -329,6 +476,17 @@ const MenuTable = () => {
                                                             <i className='ri-edit-box-line text-textSecondary' />
                                                         </IconButton>
                                                     </Tooltip>
+                                                    <Tooltip title='Ana Başlığı Düzenle'>
+                                                        <IconButton
+                                                            size='small'
+                                                            onClick={e => {
+                                                                e.stopPropagation()
+                                                                openTitleDialog(menu)
+                                                            }}
+                                                        >
+                                                            <i className='ri-links-line text-textSecondary' />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                     <Tooltip title='Sil'>
                                                         <IconButton
                                                             size='small'
@@ -349,6 +507,112 @@ const MenuTable = () => {
                         </table>
                     </div>
                 </Card>
+
+                {/* Ana başlık: ad, görüntülenme alanı ve başlığın kendi bağlantısı */}
+                <Dialog open={Boolean(titleMenu)} onClose={() => setTitleMenu(null)} fullWidth maxWidth='sm'>
+                    <DialogTitle>Ana Başlığı Düzenle</DialogTitle>
+                    <DialogContent>
+                        <div className='flex flex-col gap-4 pt-2'>
+                            <TextField
+                                fullWidth
+                                label='Menü Adı'
+                                value={titleName}
+                                onChange={e => setTitleName(e.target.value)}
+                                autoFocus
+                            />
+
+                            <FormControl fullWidth>
+                                <InputLabel>Görüntülenme Alanı</InputLabel>
+                                <Select
+                                    label='Görüntülenme Alanı'
+                                    value={titleArea}
+                                    onChange={e => setTitleArea(e.target.value as MenuType['displayArea'])}
+                                >
+                                    {Object.entries(AREA_LABELS).map(([key, label]) => (
+                                        <MenuItem key={key} value={key}>{label}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <FormControl fullWidth>
+                                <InputLabel>Başlık Bağlantısı</InputLabel>
+                                <Select
+                                    label='Başlık Bağlantısı'
+                                    value={titleType}
+                                    onChange={e => {
+                                        setTitleType(e.target.value as MenuType['menuType'])
+                                        setTitleTargetId('')
+                                        setTitleUrl('')
+                                    }}
+                                >
+                                    {TITLE_LINK_TYPES.map(t => (
+                                        <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            {titleType === 'link' && (
+                                <TextField
+                                    fullWidth
+                                    label='Bağlantı Adresi'
+                                    placeholder='/kategori/lastik-tamir-hizmetleri'
+                                    value={titleUrl}
+                                    onChange={e => setTitleUrl(e.target.value)}
+                                />
+                            )}
+
+                            {titleType === 'category' && (
+                                <Autocomplete
+                                    value={titleCategories.find(c => c._id === titleTargetId) || null}
+                                    onChange={(event, newValue) => setTitleTargetId(newValue?._id || '')}
+                                    options={titleCategories}
+                                    getOptionLabel={option => option.name}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                    noOptionsText='Kategori bulunamadı'
+                                    renderInput={params => <TextField {...params} label='Kategori Seç' />}
+                                />
+                            )}
+
+                            {titleType === 'tag' && (
+                                <Autocomplete
+                                    value={titleTags.find(t => t._id === titleTargetId) || null}
+                                    onChange={(event, newValue) => setTitleTargetId(newValue?._id || '')}
+                                    onInputChange={(event, newInput, reason) => {
+                                        if (reason === 'input') setTitleQuery(newInput)
+                                    }}
+                                    options={titleTags}
+                                    getOptionLabel={option => option.title}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                    filterOptions={x => x}
+                                    noOptionsText='Etiket adı yazın'
+                                    renderInput={params => <TextField {...params} label='Etiket Seç' />}
+                                />
+                            )}
+
+                            {titleType === 'brand' && (
+                                <Autocomplete
+                                    value={titleBrands.find(b => b._id === titleTargetId) || null}
+                                    onChange={(event, newValue) => setTitleTargetId(newValue?._id || '')}
+                                    onInputChange={(event, newInput, reason) => {
+                                        if (reason === 'input') setTitleQuery(newInput)
+                                    }}
+                                    options={titleBrands}
+                                    getOptionLabel={option => option.title}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                    filterOptions={x => x}
+                                    noOptionsText='Marka adı yazın'
+                                    renderInput={params => <TextField {...params} label='Marka Seç' />}
+                                />
+                            )}
+                        </div>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setTitleMenu(null)} color='secondary'>İptal</Button>
+                        <Button onClick={handleTitleSave} variant='contained' disabled={titleSaving}>
+                            {titleSaving ? 'Kaydediliyor...' : 'Kaydet'}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
 
                 {/* Yeni menü: sadece ad + alan; öğeler detaydan eklenir */}
                 <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} fullWidth maxWidth='xs'>

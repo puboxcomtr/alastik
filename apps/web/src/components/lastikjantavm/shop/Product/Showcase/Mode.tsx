@@ -6,9 +6,10 @@ import { useViewMode } from "@/src/context/ViewModeContext";
 
 interface Props {
     products: any[];
+    servicePoints?: { name: string; phone: string }[];
 }
 
-export default function ViewModeProductList({ products }: Props) {
+export default function ViewModeProductList({ products, servicePoints = [] }: Props) {
     const { viewMode } = useViewMode();
 
     if (!products || products.length === 0) {
@@ -25,7 +26,7 @@ export default function ViewModeProductList({ products }: Props) {
                 {products.map((product) => (
                     <Col key={product._key} xs={12} className="px-2 mb-3">
                         {/* Tekli görünüm buraya gelecek */}
-                        <OneColumn product={product} />
+                        <OneColumn product={product} servicePoints={servicePoints} />
                     </Col>
                 ))}
             </Row>

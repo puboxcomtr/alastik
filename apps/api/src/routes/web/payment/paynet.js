@@ -122,6 +122,10 @@ router.post('/3d-callback', async (req, res) => {
             order.status = 'confirmed';
             await order.save();
 
+            // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
+            const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
+            syncOrderToDiaBackground(order, 'paynet-callback');
+
             return res.redirect(`${FRONTEND_URL}/siparis-basarili?order=${order.orderNumber}`);
         }
 

@@ -24,6 +24,9 @@ interface SettingsData {
         email?: string
         orderEmail?: string
     }
+    serviceInfo?: {
+        points?: { name: string; phone: string }[]
+    }
     taxInfo?: {
         registrationNumber?: string
         taxOffice?: string

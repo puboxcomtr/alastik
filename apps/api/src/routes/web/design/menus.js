@@ -45,6 +45,28 @@ async function enrichMenus(menus) {
             }
         }
 
+        if (menu.menuType === 'brand' && menu.linkData?.brandId) {
+            const WebBrand = require('../../../models/web/catalog/WebBrand');
+            const brand = await WebBrand.findById(menu.linkData.brandId)
+                .select('name slug seoUrl')
+                .lean()
+                .catch(() => null);
+            if (brand) {
+                enriched.linkData = { ...enriched.linkData, brandTitle: brand.name, brandUrl: brand.seoUrl || brand.slug };
+            }
+        }
+
+        if (menu.menuType === 'tag' && menu.linkData?.tagId) {
+            const WebTag = require('../../../models/web/catalog/WebTag');
+            const tag = await WebTag.findById(menu.linkData.tagId)
+                .select('title seoUrl')
+                .lean()
+                .catch(() => null);
+            if (tag) {
+                enriched.linkData = { ...enriched.linkData, tagTitle: tag.title, tagUrl: tag.seoUrl };
+            }
+        }
+
         if (menu.menuType === 'blog' && menu.linkData?.blogId) {
             const WebBlog = require('../../../models/web/content/WebBlog');
             const blog = await WebBlog.findById(menu.linkData.blogId)
@@ -91,12 +113,65 @@ router.get('/group/:id', async (req, res) => {
             }));
         };
 
+        // Grubun kendi bağlantısı da çözümlenir (başlık tıklanabilir olabilir)
+        const [enrichedGroup] = await enrichMenus([group]);
+
         res.json({
             success: true,
-            data: { _id: group._id, name: group.name, items: buildChildren(group._id) }
+            data: {
+                _id: group._id,
+                name: group.name,
+                menuType: enrichedGroup.menuType,
+                linkData: enrichedGroup.linkData,
+                items: buildChildren(group._id)
+            }
         });
     } catch (error) {
         console.error('Menü grubu hatası:', error);
+        res.status(500).json({ success: false, message: 'Menü yüklenemedi' });
+    }
+});
+
+/**
+ * Bir görüntüleme alanındaki tüm menü gruplarını döndürür.
+ * Blog detay sayfasının sağ sidebar'ı bu ucu kullanır (alan: blog).
+ */
+router.get('/area/:area', async (req, res) => {
+    try {
+        const { area } = req.params;
+
+        const menus = await Menu.find({ site: req.site, displayArea: area, isActive: true })
+            .sort({ order: 1, createdAt: 1 })
+            .lean();
+
+        if (!menus.length) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const enriched = await enrichMenus(menus);
+
+        const byParent = new Map();
+
+        enriched.forEach(item => {
+            const pid = item.parentId ? String(item.parentId) : 'root';
+
+            if (!byParent.has(pid)) byParent.set(pid, []);
+            byParent.get(pid).push(item);
+        });
+
+        // Kök öğeler grup başlığı, altındakiler bağlantı listesi olur
+        const groups = (byParent.get('root') || []).map(group => ({
+            _id: group._id,
+            name: group.name,
+            items: (byParent.get(String(group._id)) || []).flatMap(item => [
+                item,
+                ...(byParent.get(String(item._id)) || [])
+            ])
+        })).filter(group => group.items.length > 0);
+
+        res.json({ success: true, data: groups });
+    } catch (error) {
+        console.error('Alan menüsü hatası:', error);
         res.status(500).json({ success: false, message: 'Menü yüklenemedi' });
     }
 });

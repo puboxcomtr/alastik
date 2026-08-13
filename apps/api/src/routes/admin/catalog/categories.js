@@ -254,6 +254,11 @@ router.get('/', maybeAuth, async (req, res) => {
           return c.menuIds && c.menuIds.length ? c.menuIds : (c.menuId ? [c.menuId] : []);
         })(),
 
+        // Fiyat gösterimi (KDV dahil / hariç)
+        priceDisplay: cat.siteContent?.[req.site]?.priceDisplay || 'dahil',
+        vatRate: cat.siteContent?.[req.site]?.vatRate ?? 20,
+        hideStockCode: cat.siteContent?.[req.site]?.hideStockCode === true,
+
         // İstatistikler (ürün sayısı seçili sitenin yayınlanmış ürünleri)
         productCount: siteProductCount,
         totalDiaProductCount: cat.productCount || 0,
@@ -308,11 +313,14 @@ router.patch('/:id', maybeAuth, [
   body('webVisible').optional().isBoolean().withMessage('Görünürlük true veya false olmalıdır'),
   body('sliderId').optional(),
   body('menuId').optional(),
-  body('menuIds').optional().isArray().withMessage('Menü listesi dizi olmalıdır')
+  body('menuIds').optional().isArray().withMessage('Menü listesi dizi olmalıdır'),
+  body('priceDisplay').optional().isIn(['dahil', 'haric']).withMessage('Fiyat gösterimi dahil veya haric olmalıdır'),
+  body('vatRate').optional().isFloat({ min: 0, max: 100 }).withMessage('KDV oranı 0-100 arasında olmalıdır'),
+  body('hideStockCode').optional().isBoolean().withMessage('Stok kodu gizleme boolean olmalıdır')
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, webVisible, sliderId, menuId, menuIds } = req.body;
+    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, webVisible, sliderId, menuId, menuIds, priceDisplay, vatRate, hideStockCode } = req.body;
     const updateData = {};
     if (description !== undefined) updateData[`siteContent.${req.site}.description`] = description;
     if (seoTitle !== undefined) updateData[`siteContent.${req.site}.seoTitle`] = seoTitle?.trim();
@@ -330,6 +338,9 @@ router.patch('/:id', maybeAuth, [
     } else if (menuId !== undefined) {
       updateData[`siteContent.${req.site}.menuId`] = menuId || null;
     }
+    if (priceDisplay !== undefined) updateData[`siteContent.${req.site}.priceDisplay`] = priceDisplay === 'haric' ? 'haric' : 'dahil';
+    if (vatRate !== undefined) updateData[`siteContent.${req.site}.vatRate`] = Number(vatRate) || 20;
+    if (hideStockCode !== undefined) updateData[`siteContent.${req.site}.hideStockCode`] = hideStockCode === true || hideStockCode === 'true';
     updateData.updatedAt = new Date();
 
     const updatedCategory = await WebCategory.findByIdAndUpdate(

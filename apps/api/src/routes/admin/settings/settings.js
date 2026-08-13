@@ -40,14 +40,18 @@ router.put('/:group', async (req, res) => {
         for (const [key, value] of Object.entries(updates)) {
             bulkOps.push({
                 updateOne: {
-                    filter: { key, group, site: req.site },
+                    // Benzersiz indeks (site + key) ile aynı ölçüt: grup farklıysa kayıt
+                    // yeniden eklenmeye çalışılıp çakışmasın, grubu güncellensin
+                    filter: { key, site: req.site },
                     update: {
                         $set: {
                             value,
                             group,
                             site: req.site,
+                            // Dizi/nesne değerler 'json' olarak işaretlenir (value alanı Mixed)
                             type: typeof value === 'boolean' ? 'boolean' :
-                                  typeof value === 'number' ? 'number' : 'string'
+                                  typeof value === 'number' ? 'number' :
+                                  (value !== null && typeof value === 'object') ? 'json' : 'string'
                         }
                     },
                     upsert: true
@@ -57,6 +61,18 @@ router.put('/:group', async (req, res) => {
 
         if (bulkOps.length > 0) {
             await Setting.bulkWrite(bulkOps);
+        }
+
+        // Filigran ayarı değiştiyse üretilmiş kopyalar geçersiz olur
+        const filigranDegisti = require('../../../services/media/WatermarkService').AYAR_ANAHTARLARI
+            .some(key => Object.prototype.hasOwnProperty.call(updates, key));
+
+        if (filigranDegisti) {
+            try {
+                require('../../../services/media/WatermarkService').onbellegiSil(req.site);
+            } catch (error) {
+                console.error('Filigran önbelleği temizlenemedi:', error.message);
+            }
         }
 
         res.json({

@@ -45,6 +45,14 @@ router.put('/', async (req, res) => {
             };
         }
 
+        // Servis noktaları liste olduğu için birleştirilmez, doğrudan değiştirilir
+        if (updateData.serviceInfo) {
+            settings.serviceInfo = {
+                ...(settings.serviceInfo ? settings.serviceInfo.toObject?.() || settings.serviceInfo : {}),
+                ...updateData.serviceInfo
+            };
+        }
+
         if (updateData.taxInfo) {
             settings.taxInfo = {
                 ...settings.taxInfo,

@@ -44,6 +44,8 @@ export interface CustomData {
     hideBrand?: boolean;
     hideProductionDate?: boolean;
     hideStock?: boolean;
+    hideDelivery?: boolean;
+    videos?: { order?: number; url: string; videoId: string; title?: string }[];
     webOrder?: number;
     delivery?: string;
     customDescription?: string;

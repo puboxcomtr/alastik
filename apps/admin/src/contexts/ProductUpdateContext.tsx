@@ -15,6 +15,7 @@ interface ProductUpdateData {
     hideBrand?: boolean
     hideProductionDate?: boolean
     hideStock?: boolean
+    hideDelivery?: boolean
     webTags?: string[]
     webCategory?: string
     customDescription?: string

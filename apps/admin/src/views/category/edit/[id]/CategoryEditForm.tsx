@@ -170,7 +170,10 @@ const CategoryEditForm = () => {
         webOrder: 0,
         webVisible: true,
         sliderId: '',
-        menuIds: [] as string[]
+        menuIds: [] as string[],
+        priceDisplay: 'dahil',
+        vatRate: 20,
+        hideStockCode: false
     })
 
     const activeSite = getActiveSite()
@@ -249,7 +252,10 @@ const CategoryEditForm = () => {
                         webOrder: d.webOrder || 0,
                         webVisible: d.webVisible !== false,
                         sliderId: d.sliderId || '',
-                        menuIds: d.menuIds || []
+                        menuIds: d.menuIds || [],
+                        priceDisplay: d.priceDisplay || 'dahil',
+                        vatRate: d.vatRate ?? 20,
+                        hideStockCode: d.hideStockCode === true
                     })
                     setPendingContent(d.content || '')
                 }
@@ -298,7 +304,10 @@ const CategoryEditForm = () => {
                 webOrder: formData.webOrder,
                 webVisible: formData.webVisible,
                 sliderId: formData.sliderId || null,
-                menuIds: formData.menuIds
+                menuIds: formData.menuIds,
+                priceDisplay: formData.priceDisplay,
+                vatRate: Number(formData.vatRate) || 20,
+                hideStockCode: formData.hideStockCode
             }
             const result = await fetchAPI(API_ENDPOINTS.categories.detail(id), {
                 method: 'PATCH',
@@ -399,6 +408,41 @@ const CategoryEditForm = () => {
                                         />
                                     }
                                     label={`${siteLabel} sitesinde görünür`}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 8 }}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Fiyat Gösterimi</InputLabel>
+                                    <Select
+                                        label='Fiyat Gösterimi'
+                                        value={formData.priceDisplay}
+                                        onChange={(e) => handleChange('priceDisplay', e.target.value)}
+                                    >
+                                        <MenuItem value='dahil'>KDV Dahil</MenuItem>
+                                        <MenuItem value='haric'>KDV Hariç (fiyat + KDV olarak gösterilir)</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    type='number'
+                                    label='KDV Oranı (%)'
+                                    value={formData.vatRate}
+                                    onChange={(e) => handleChange('vatRate', e.target.value)}
+                                    disabled={formData.priceDisplay !== 'haric'}
+                                    helperText={formData.priceDisplay === 'haric' ? 'Kayıtlı fiyattan bu oran çıkarılır' : 'Yalnızca KDV Hariç seçiliyken kullanılır'}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.hideStockCode}
+                                            onChange={(e) => handleChange('hideStockCode', e.target.checked)}
+                                        />
+                                    }
+                                    label='Stok Kodlarını Gizle (bu kategorideki ürünlerde stok kodu gösterilmez)'
                                 />
                             </Grid>
                             <Grid size={{ xs: 12 }}>

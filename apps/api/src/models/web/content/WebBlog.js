@@ -24,13 +24,22 @@ const webBlogSchema = new mongoose.Schema({
     featuredImage: String,
     showOnHomepage: { type: Boolean, default: false },
     author: String,
-    tags: [String]
+    tags: [String],
+    // Hangi siteye ait olduğu — vitrin sorguları bu alana göre filtreler
+    site: {
+        type: String,
+        required: true,
+        enum: ['alastik', 'lastikjantavm'],
+        default: 'alastik',
+        index: true
+    }
 }, {
     timestamps: true,
     collection: 'blogs'
 });
 
 webBlogSchema.index({ slug: 1 }, { unique: true });
+webBlogSchema.index({ site: 1, status: 1, publishedAt: -1 });
 webBlogSchema.index({ status: 1, publishedAt: -1 });
 webBlogSchema.index({ wheelSizePattern: 1, status: 1 });
 webBlogSchema.index({ tags: 1 });

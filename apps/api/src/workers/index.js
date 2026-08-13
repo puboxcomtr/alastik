@@ -3,10 +3,10 @@
 const path = require('path');
 const mongoose = require('mongoose');
 
-// Environment yükle
-require('dotenv').config({
-    path: path.resolve(__dirname, '../../.env.production')
-});
+// Environment yükle — API ile aynı modül; seçilen dosyada eksik olan anahtarlar
+// diğerinden tamamlanır. Daha önce burası koşulsuz .env.production yüklüyordu ve
+// o dosyada MONGODB_URI olmadığı için worker günlerce çöküp durmuştu.
+require('../config/env').yukle();
 
 const DiaWorker = require('./DiaWorker');
 

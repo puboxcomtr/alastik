@@ -167,6 +167,7 @@ export const API_ENDPOINTS = {
     menus: {
         header: () => `${getBaseUrl()}/menus/header`,
         group: (id: string) => `${getBaseUrl()}/menus/group/${id}`,
+        area: (area: string) => `${getBaseUrl()}/menus/area/${area}`,
     },
     purchaseLimits: {
         check: () => `${getBaseUrl()}/campaign/purchase-limits/check`,

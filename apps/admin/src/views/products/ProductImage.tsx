@@ -12,7 +12,13 @@ import {
   IconButton,
   Typography,
   Box,
-  Link
+  Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Stack
 } from '@mui/material'
 
 // Third-party Imports
@@ -31,11 +37,50 @@ import type { MediaFile } from '@/types/apps/mediaTypes'
 // ============================================
 // MAIN COMPONENT
 // ============================================
+type ProductVideo = {
+  order?: number
+  url: string
+  videoId: string
+  title?: string
+}
+
+/**
+ * YouTube adresinden video kimliğini çıkarır (video, short, embed, canlı).
+ * Sunucu tarafında da aynı kontrol yapılır; buradaki amaç anında geri bildirim.
+ */
+const extractYoutubeId = (rawUrl: string): string | null => {
+  const url = String(rawUrl || '').trim()
+
+  if (!url) return null
+
+  const patterns = [
+    /(?:youtube\.com|youtube-nocookie\.com)\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})/,
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com|youtube-nocookie\.com)\/shorts\/([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com|youtube-nocookie\.com)\/embed\/([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com|youtube-nocookie\.com)\/live\/([A-Za-z0-9_-]{11})/
+  ]
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+
+    if (match) return match[1]
+  }
+
+  if (/^[A-Za-z0-9_-]{11}$/.test(url)) return url
+
+  return null
+}
+
 const ProductImage = ({ product }: ProductImageProps) => {
   // States
   const [diaImages, setDiaImages] = useState<string[]>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
+  const [videos, setVideos] = useState<ProductVideo[]>([])
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false)
+  const [videoUrl, setVideoUrl] = useState('')
+  const [videoTitle, setVideoTitle] = useState('')
 
   // Initialize images from product
   useEffect(() => {
@@ -44,6 +89,11 @@ const ProductImage = ({ product }: ProductImageProps) => {
     } else if (product?.image) {
       setDiaImages([product.image])
     }
+  }, [product])
+
+  // Initialize videos from product
+  useEffect(() => {
+    setVideos((product as any)?.videos || [])
   }, [product])
 
   // ============================================
@@ -123,6 +173,68 @@ const ProductImage = ({ product }: ProductImageProps) => {
     setDraggedIndex(null)
   }
 
+  // Videoları kaydet
+  const saveVideos = async (nextVideos: ProductVideo[]) => {
+    if (!product?.id) return
+
+    try {
+      await fetchAPI(API_ENDPOINTS.products.update(product.id), {
+        method: 'PATCH',
+        body: JSON.stringify({ videos: nextVideos })
+      })
+
+      return true
+    } catch (error) {
+      console.error('Video kaydetme hatası:', error)
+      toast.error('Video kaydedilemedi')
+
+      return false
+    }
+  }
+
+  // Video ekle
+  const handleAddVideo = async () => {
+    const videoId = extractYoutubeId(videoUrl)
+
+    if (!videoId) {
+      toast.error('Geçerli bir YouTube adresi girin')
+
+      return
+    }
+
+    if (videos.some(video => video.videoId === videoId)) {
+      toast.error('Bu video zaten eklenmiş')
+
+      return
+    }
+
+    const nextVideos = [...videos, { order: videos.length, url: videoUrl.trim(), videoId, title: videoTitle.trim() }]
+
+    const saved = await saveVideos(nextVideos)
+
+    if (!saved) return
+
+    setVideos(nextVideos)
+    setVideoUrl('')
+    setVideoTitle('')
+    setVideoDialogOpen(false)
+    toast.success('Video eklendi')
+  }
+
+  // Video sil
+  const handleRemoveVideo = async (index: number) => {
+    const nextVideos = videos
+      .filter((_, i) => i !== index)
+      .map((video, i) => ({ ...video, order: i }))
+
+    const saved = await saveVideos(nextVideos)
+
+    if (!saved) return
+
+    setVideos(nextVideos)
+    toast.success('Video kaldırıldı')
+  }
+
   // Görsel silme
   const handleRemoveImage = (imageUrl: string, index: number) => {
     const updatedImages = diaImages.filter((_, i) => i !== index)
@@ -140,13 +252,22 @@ const ProductImage = ({ product }: ProductImageProps) => {
         <CardHeader
           title='Ürün Görselleri'
           action={
-            <Button
-              variant="contained"
-              onClick={() => setMediaLibraryOpen(true)}
-              startIcon={<i className='ri-image-add-line' />}
-            >
-              Görsel Ekle
-            </Button>
+            <Stack direction='row' spacing={2}>
+              <Button
+                variant="contained"
+                onClick={() => setMediaLibraryOpen(true)}
+                startIcon={<i className='ri-image-add-line' />}
+              >
+                Görsel Ekle
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => setVideoDialogOpen(true)}
+                startIcon={<i className='ri-youtube-line' />}
+              >
+                Video Ekle
+              </Button>
+            </Stack>
           }
         />
         <CardContent>
@@ -242,8 +363,99 @@ const ProductImage = ({ product }: ProductImageProps) => {
               </Link>
             </Box>
           )}
+
+          {/* Ürün Videoları */}
+          {videos.length > 0 && (
+            <Box sx={{ mt: 5 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Ürün videoları
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {videos.map((video, index) => (
+                  <Box
+                    key={video.videoId}
+                    sx={{
+                      position: 'relative',
+                      width: 200,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <a href={video.url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={`https://i.ytimg.com/vi/${video.videoId}/mqdefault.jpg`}
+                        alt={video.title || 'Ürün videosu'}
+                        style={{ width: '100%', display: 'block' }}
+                      />
+                    </a>
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="body2" noWrap>
+                        {video.title || video.videoId}
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveVideo(index)}
+                      aria-label="Videoyu kaldır"
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        bgcolor: 'background.paper',
+                        '&:hover': { bgcolor: 'error.main', color: 'common.white' }
+                      }}
+                    >
+                      <i className='ri-close-line' />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
         </CardContent>
       </Card>
+
+      {/* Video Ekleme Penceresi */}
+      <Dialog open={videoDialogOpen} onClose={() => setVideoDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>YouTube Videosu Ekle</DialogTitle>
+        <DialogContent>
+          <Stack spacing={4} sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              autoFocus
+              label="YouTube Adresi"
+              placeholder="https://www.youtube.com/watch?v=... veya .../shorts/..."
+              value={videoUrl}
+              onChange={e => setVideoUrl(e.target.value)}
+              helperText="Normal video, short ve canlı yayın adresleri desteklenir"
+            />
+            <TextField
+              fullWidth
+              label="Başlık (isteğe bağlı)"
+              placeholder="Ürün tanıtım videosu"
+              value={videoTitle}
+              onChange={e => setVideoTitle(e.target.value)}
+            />
+            {extractYoutubeId(videoUrl) && (
+              <Box sx={{ textAlign: 'center' }}>
+                <img
+                  src={`https://i.ytimg.com/vi/${extractYoutubeId(videoUrl)}/mqdefault.jpg`}
+                  alt="Video önizleme"
+                  style={{ maxWidth: '100%', borderRadius: 4 }}
+                />
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVideoDialogOpen(false)}>Vazgeç</Button>
+          <Button variant="contained" onClick={handleAddVideo} disabled={!extractYoutubeId(videoUrl)}>
+            Ekle
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Media Library Modal */}
       <MediaLibrary

@@ -86,6 +86,86 @@ router.get('/options/blogs', async (req, res) => {
     }
 });
 // Ürünleri ara (dropdown için — katalog büyük olduğundan sunucuda aranır)
+router.get('/options/brands', async (req, res) => {
+    try {
+        const WebBrand = require('../../../models/web/catalog/WebBrand');
+        const { q } = req.query;
+        const term = String(q || '').trim();
+
+        const filter = { webVisible: true };
+
+        if (term) {
+            const rx = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+            filter.$or = [{ name: rx }, { slug: rx }];
+        }
+
+        const brands = await WebBrand.find(filter)
+            .select('name diaMarkaAck slug seoUrl productCount')
+            .sort({ productCount: -1 })
+            .limit(50)
+            .lean();
+
+        // DIA'daki düzgün yazımlı ad tercih edilir; yoksa büyük harfli ad başlık biçimine çevrilir
+        // Marka adları çoğunlukla yabancı; Türkçe küçültme kuralı (I -> ı) uygulanmaz
+        const baslikBicimi = (metin) => String(metin || '')
+            .replace(/İ/g, 'i')
+            .toLowerCase()
+            .split(' ')
+            .filter(Boolean)
+            .map(kelime => kelime.charAt(0).toUpperCase() + kelime.slice(1))
+            .join(' ');
+
+        res.json({
+            success: true,
+            data: brands.map(b => ({
+                _id: b._id.toString(),
+                title: b.diaMarkaAck || baslikBicimi(b.name) || b.slug,
+                slug: b.seoUrl || b.slug || '',
+                productCount: b.productCount || 0
+            }))
+        });
+    } catch (error) {
+        console.error('Marka listele hatası:', error);
+        res.status(500).json({ success: false, message: 'Markalar listelenemedi', error: error.message });
+    }
+});
+
+router.get('/options/tags', async (req, res) => {
+    try {
+        const WebTag = require('../../../models/web/catalog/WebTag');
+        const { q } = req.query;
+        const term = String(q || '').trim();
+
+        const filter = { isActive: true };
+
+        if (term) {
+            const rx = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+            filter.$or = [{ title: rx }, { seoUrl: rx }];
+        }
+
+        const tags = await WebTag.find(filter)
+            .select('title seoUrl type productCount')
+            .sort({ productCount: -1 })
+            .limit(30)
+            .lean();
+
+        res.json({
+            success: true,
+            data: tags.map(t => ({
+                _id: t._id.toString(),
+                title: t.title || t.seoUrl,
+                slug: t.seoUrl || '',
+                productCount: t.productCount || 0
+            }))
+        });
+    } catch (error) {
+        console.error('Etiket listele hatası:', error);
+        res.status(500).json({ success: false, message: 'Etiketler listelenemedi', error: error.message });
+    }
+});
+
 router.get('/options/products', async (req, res) => {
     try {
         const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -216,6 +296,34 @@ router.get('/', async (req, res) => {
                 }
             }
 
+            // Marka menüsü ise
+            if (menu.menuType === 'brand' && menu.linkData?.brandId) {
+                try {
+                    const WebBrand = require('../../../models/web/catalog/WebBrand');
+                    const brand = await WebBrand.findById(menu.linkData.brandId).select('name slug seoUrl').lean();
+
+                    if (brand) {
+                        enriched.linkData = { ...enriched.linkData, brandTitle: brand.name, brandUrl: brand.seoUrl || brand.slug };
+                    }
+                } catch (err) {
+                    console.error('Marka bulunamadı:', menu.linkData.brandId, err);
+                }
+            }
+
+            // Etiket menüsü ise
+            if (menu.menuType === 'tag' && menu.linkData?.tagId) {
+                try {
+                    const WebTag = require('../../../models/web/catalog/WebTag');
+                    const tag = await WebTag.findById(menu.linkData.tagId).select('title seoUrl').lean();
+
+                    if (tag) {
+                        enriched.linkData = { ...enriched.linkData, tagTitle: tag.title, tagUrl: tag.seoUrl };
+                    }
+                } catch (err) {
+                    console.error('Etiket bulunamadı:', menu.linkData.tagId, err);
+                }
+            }
+
             // Blog menüsü ise
             if (menu.menuType === 'blog' && menu.linkData?.blogId) {
                 try {
@@ -318,6 +426,14 @@ router.get('/:id', async (req, res) => {
                 const WebBlog = require('../../../models/web/content/WebBlog');
                 const bl = await WebBlog.findById(menu.linkData.blogId).select('title slug').lean();
                 if (bl) menu.linkData = { ...menu.linkData, blogTitle: bl.title, blogUrl: bl.slug };
+            } else if (menu.menuType === 'brand' && menu.linkData?.brandId) {
+                const WebBrand = require('../../../models/web/catalog/WebBrand');
+                const br = await WebBrand.findById(menu.linkData.brandId).select('name slug seoUrl').lean();
+                if (br) menu.linkData = { ...menu.linkData, brandTitle: br.name, brandUrl: br.seoUrl || br.slug };
+            } else if (menu.menuType === 'tag' && menu.linkData?.tagId) {
+                const WebTag = require('../../../models/web/catalog/WebTag');
+                const tg = await WebTag.findById(menu.linkData.tagId).select('title seoUrl').lean();
+                if (tg) menu.linkData = { ...menu.linkData, tagTitle: tg.title, tagUrl: tg.seoUrl };
             } else if (menu.menuType === 'product' && menu.linkData?.productId) {
                 const WebProduct = require('../../../models/web/catalog/WebProduct');
                 const pr = await WebProduct.findOne({ _key: menu.linkData.productId })
@@ -361,14 +477,14 @@ router.post('/', async (req, res) => {
         }
 
         // 'heading' eklendi
-        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'heading'].includes(menuType)) {
+        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
             });
         }
 
-        if (!displayArea || !['header', 'footer', 'mobile', 'general'].includes(displayArea)) {
+        if (!displayArea || !['header', 'footer', 'mobile', 'general', 'blog'].includes(displayArea)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir gösterilecek alan seçmelisiniz'
@@ -486,7 +602,7 @@ router.put('/:id', async (req, res) => {
         }
 
         // 'heading' eklendi
-        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'heading'].includes(menuType)) {
+        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
@@ -615,7 +731,7 @@ router.delete('/area/:area', async (req, res) => {
     try {
         const { area } = req.params;
 
-        if (!['header', 'footer', 'mobile', 'general'].includes(area)) {
+        if (!['header', 'footer', 'mobile', 'general', 'blog'].includes(area)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçersiz menü alanı'

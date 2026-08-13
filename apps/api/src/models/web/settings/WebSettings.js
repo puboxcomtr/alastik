@@ -19,6 +19,14 @@ const webSettingsSchema = new mongoose.Schema({
         email: { type: String, default: '' },
         orderEmail: { type: String, default: '' }
     },
+    // Servis noktaları — hizmet ürünlerinin kartlarında iletişim bilgisi olarak gösterilir
+    serviceInfo: {
+        points: [{
+            _id: false,
+            name: { type: String, default: '' },
+            phone: { type: String, default: '' }
+        }]
+    },
     taxInfo: {
         registrationNumber: { type: String, default: '' },
         taxOffice: { type: String, default: '' },

@@ -63,6 +63,9 @@ router.get('/slug/:slug/size/:size', async (req, res) => {
         category.description = sc.description ?? category.description;
         category.sliderId = sc.sliderId !== undefined ? sc.sliderId : category.sliderId;
         category.menuIds = (sc.menuIds && sc.menuIds.length) ? sc.menuIds : (sc.menuId ? [sc.menuId] : []);
+        category.priceDisplay = sc.priceDisplay || 'dahil';
+        category.vatRate = sc.vatRate ?? 20;
+        category.hideStockCode = sc.hideStockCode === true;
         if (sc.seoKeywords && sc.seoKeywords.length) category.seoKeywords = sc.seoKeywords;
         res.json({
             success: true,
@@ -100,6 +103,9 @@ router.get('/slug/:slug', async (req, res) => {
         category.description = sc.description ?? category.description;
         category.sliderId = sc.sliderId !== undefined ? sc.sliderId : category.sliderId;
         category.menuIds = (sc.menuIds && sc.menuIds.length) ? sc.menuIds : (sc.menuId ? [sc.menuId] : []);
+        category.priceDisplay = sc.priceDisplay || 'dahil';
+        category.vatRate = sc.vatRate ?? 20;
+        category.hideStockCode = sc.hideStockCode === true;
         if (sc.seoKeywords && sc.seoKeywords.length) category.seoKeywords = sc.seoKeywords;
         res.json({
             success: true,

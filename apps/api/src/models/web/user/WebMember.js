@@ -71,7 +71,11 @@ const webMemberSchema = new mongoose.Schema({
 
     // E-posta Aktivasyonu
     activationToken: String,
-    activationTokenExpire: Date
+    activationTokenExpire: Date,
+
+    // DIA cari eşleşmesi (ilk sipariş aktarımında doldurulur)
+    diaCustomerKey: String,
+    diaCustomerCode: String
 
 }, {
     timestamps: true,

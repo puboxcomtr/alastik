@@ -174,9 +174,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
 
                     <h3 className="pb-1 mb-2">
-                        <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
-                            {stockCode}
-                        </span>
+                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
+                        {(product as any)?.hideStockCode !== true && (
+                            <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
+                                {stockCode}
+                            </span>
+                        )}
                         <Link
                             className="d-block fs-sm fw-medium text-truncates"
                             href={productUrl}

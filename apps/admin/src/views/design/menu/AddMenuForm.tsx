@@ -30,11 +30,15 @@ import {
     fetchPages,
     fetchBlogs,
     fetchProducts,
+    fetchTags,
+    fetchBrands,
     fetchParentMenus,
     type CategoryOptionType,
     type PageOptionType,
     type BlogOptionType,
     type ProductOptionType,
+    type TagOptionType,
+    type BrandOptionType,
     type ParentMenuOptionType
 } from '@/utils/api/menus'
 
@@ -47,13 +51,13 @@ const AddMenuForm = () => {
 
     // Menü detayından "Öğe Ekle" ile gelindiyse ana menü ve alan hazır seçili gelir
     const presetParentId = searchParams.get('parentId') || ''
-    const presetArea = searchParams.get('displayArea') as 'header' | 'footer' | 'mobile' | 'general' | null
+    const presetArea = searchParams.get('displayArea') as 'header' | 'footer' | 'mobile' | 'general' | 'blog' | null
 
     const [loading, setLoading] = useState(false)
 
     // Form state
     const [name, setName] = useState('')
-    const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'blog' | 'product' | 'heading'>('link')
+    const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading'>('link')
     const [linkUrl, setLinkUrl] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [categoryLevel, setCategoryLevel] = useState<1 | 2>(1)
@@ -63,8 +67,8 @@ const AddMenuForm = () => {
     const [productQuery, setProductQuery] = useState('')
     const [headingText, setHeadingText] = useState('')
     const [openNewTab, setOpenNewTab] = useState(false)
-    const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile' | 'general'>(
-        presetArea && ['header', 'footer', 'mobile', 'general'].includes(presetArea) ? presetArea : 'header'
+    const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile' | 'general' | 'blog'>(
+        presetArea && ['header', 'footer', 'mobile', 'general', 'blog'].includes(presetArea) ? presetArea : 'header'
     )
     // Grup bağlamında "Ana Menü" seçimi = üst bar öğesi (grup gizli üst olur);
     // "Alt Menü" = seçilen üst bar öğesinin açılır menüsüne girer
@@ -78,6 +82,14 @@ const AddMenuForm = () => {
     const [pages, setPages] = useState<PageOptionType[]>([])
     const [blogs, setBlogs] = useState<BlogOptionType[]>([])
     const [products, setProducts] = useState<ProductOptionType[]>([])
+    const [tags, setTags] = useState<TagOptionType[]>([])
+    const [tagQuery, setTagQuery] = useState('')
+    const [tagId, setTagId] = useState('')
+    const [loadingTags, setLoadingTags] = useState(false)
+    const [brands, setBrands] = useState<BrandOptionType[]>([])
+    const [brandQuery, setBrandQuery] = useState('')
+    const [brandId, setBrandId] = useState('')
+    const [loadingBrands, setLoadingBrands] = useState(false)
     const [loadingProducts, setLoadingProducts] = useState(false)
     const [parentMenus, setParentMenus] = useState<ParentMenuOptionType[]>([])
     const [loadingOptions, setLoadingOptions] = useState(false)
@@ -145,6 +157,46 @@ const AddMenuForm = () => {
 
         return () => clearTimeout(timer)
     }, [menuType, productQuery])
+
+    // Etiket araması: yazarken sunucuda aranır (etiket sayısı yüksek)
+    useEffect(() => {
+        if (menuType !== 'tag') return
+
+        const timer = setTimeout(async () => {
+            try {
+                setLoadingTags(true)
+                const result = await fetchTags(tagQuery)
+
+                if (result.success) setTags(result.data)
+            } catch (error: any) {
+                console.error('Etiket arama hatası:', error)
+            } finally {
+                setLoadingTags(false)
+            }
+        }, 300)
+
+        return () => clearTimeout(timer)
+    }, [menuType, tagQuery])
+
+    // Marka araması
+    useEffect(() => {
+        if (menuType !== 'brand') return
+
+        const timer = setTimeout(async () => {
+            try {
+                setLoadingBrands(true)
+                const result = await fetchBrands(brandQuery)
+
+                if (result.success) setBrands(result.data)
+            } catch (error: any) {
+                console.error('Marka arama hatası:', error)
+            } finally {
+                setLoadingBrands(false)
+            }
+        }, 300)
+
+        return () => clearTimeout(timer)
+    }, [menuType, brandQuery])
 
     // Ana menüleri yükle
     const loadParentMenus = async (area: string) => {
@@ -252,7 +304,9 @@ const AddMenuForm = () => {
                     ...(menuType === 'category' && { categoryId, categoryLevel }),
                     ...(menuType === 'page' && { pageId }),
                     ...(menuType === 'blog' && { blogId }),
-                    ...(menuType === 'product' && { productId })
+                    ...(menuType === 'product' && { productId }),
+                    ...(menuType === 'tag' && { tagId }),
+                    ...(menuType === 'brand' && { brandId })
                 },
                 openNewTab: menuType === 'heading' ? false : openNewTab,
                 displayArea,
@@ -335,6 +389,8 @@ const AddMenuForm = () => {
                                                         <MenuItem key="page" value='page'>Sayfa</MenuItem>
                                                         <MenuItem key="blog" value='blog'>Blog</MenuItem>
                                                         <MenuItem key="product" value='product'>Ürün</MenuItem>
+                                                        <MenuItem key="tag" value='tag'>Etiket</MenuItem>
+                                                        <MenuItem key="brand" value='brand'>Marka</MenuItem>
                                                         {rowLevel === 2 && (
                                                             <MenuItem key="heading" value='heading'>Başlık</MenuItem>
                                                         )}
@@ -482,6 +538,68 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
+                                            {/* Etiket Seçimi - Sadece menuType: tag ise */}
+                                            {menuType === 'tag' && (
+                                                <Grid size={{ xs: 12 }}>
+                                                    <FormControl fullWidth>
+                                                        <Autocomplete
+                                                            value={tags.find(t => t._id === tagId) || null}
+                                                            onChange={(event, newValue) => {
+                                                                setTagId(newValue?._id || '')
+                                                            }}
+                                                            onInputChange={(event, newInput, reason) => {
+                                                                if (reason === 'input') setTagQuery(newInput)
+                                                            }}
+                                                            options={tags}
+                                                            getOptionLabel={(option) => `${option.title}${option.productCount ? ` (${option.productCount} ürün)` : ''}`}
+                                                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                            filterOptions={(x) => x}
+                                                            loading={loadingTags}
+                                                            loadingText="Aranıyor..."
+                                                            noOptionsText="Etiket adı yazın"
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    label="Etiket Seç"
+                                                                    placeholder="Örn. 205-55-r16"
+                                                                    required
+                                                                />
+                                                            )}
+                                                        />
+                                                    </FormControl>
+                                                </Grid>
+                                            )}
+                                            {/* Marka Seçimi - Sadece menuType: brand ise */}
+                                            {menuType === 'brand' && (
+                                                <Grid size={{ xs: 12 }}>
+                                                    <FormControl fullWidth>
+                                                        <Autocomplete
+                                                            value={brands.find(b => b._id === brandId) || null}
+                                                            onChange={(event, newValue) => {
+                                                                setBrandId(newValue?._id || '')
+                                                            }}
+                                                            onInputChange={(event, newInput, reason) => {
+                                                                if (reason === 'input') setBrandQuery(newInput)
+                                                            }}
+                                                            options={brands}
+                                                            getOptionLabel={(option) => option.title}
+                                                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                            filterOptions={(x) => x}
+                                                            loading={loadingBrands}
+                                                            loadingText="Aranıyor..."
+                                                            noOptionsText="Marka adı yazın"
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    label="Marka Seç"
+                                                                    placeholder="Örn. Michelin"
+                                                                    required
+                                                                />
+                                                            )}
+                                                        />
+                                                    </FormControl>
+                                                </Grid>
+                                            )}
                                             {/* Sıralama */}
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <TextField
@@ -528,6 +646,7 @@ const AddMenuForm = () => {
                                                         <MenuItem key="footer" value='footer'>Footer</MenuItem>
                                                         <MenuItem key="mobile" value='mobile'>Mobil</MenuItem>
                                                         <MenuItem key="general" value='general'>Genel (Serbest)</MenuItem>
+                                                        <MenuItem key="blog" value='blog'>Blog Menü</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </CardContent>

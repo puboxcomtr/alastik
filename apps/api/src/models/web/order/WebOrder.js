@@ -119,12 +119,24 @@ const paymentSchema = new mongoose.Schema({
 const diaIntegrationSchema = new mongoose.Schema({
     status: {
         type: String,
-        enum: ['pending', 'synced', 'failed'],
+        enum: ['pending', 'synced', 'failed', 'cancelled'],
         default: 'pending'
     },
     diaOrderKey: String,
     diaOrderNumber: String,
     diaCustomerKey: String,
+    // Otomatik kesilen DIA faturası
+    diaInvoiceKey: String,
+    diaInvoiceNumber: String,
+    invoicedAt: Date,
+    // Şirketler arası akış belgeleri (kaynak firma transferi/faturası + alış faturası)
+    diaSourceOrderKey: String,
+    diaTransferKey: String,
+    diaSourceInvoiceKey: String,
+    diaPurchaseInvoiceKey: String,
+    diaPurchaseDispatchKey: String,
+    // Eşzamanlı aktarım kilidi (yarış koruması)
+    syncLockAt: Date,
     syncedAt: Date,
     syncErrors: [String]
 }, { _id: false });
@@ -247,14 +259,17 @@ webOrderSchema.index({ 'payment.status': 1 });
 webOrderSchema.index({ 'diaIntegration.status': 1 });
 webOrderSchema.index({ createdAt: -1 });
 
-// Sipariş numarası oluştur
-webOrderSchema.statics.generateOrderNumber = async function () {
+// Sipariş numarası oluştur — önek site tanımından gelir (AL / LJA)
+webOrderSchema.statics.generateOrderNumber = async function (site) {
+    const { SITES, DEFAULT_SITE } = require('../../../config/sites');
+    const sitePrefix = SITES[site]?.orderPrefix || SITES[DEFAULT_SITE].orderPrefix;
+
     const today = new Date();
     const year = today.getFullYear().toString().slice(-2);
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
 
-    const prefix = `AL${year}${month}${day}`;
+    const prefix = `${sitePrefix}${year}${month}${day}`;
     const lastOrder = await this.findOne({
         orderNumber: { $regex: `^${prefix}` }
     }).sort({ orderNumber: -1 });

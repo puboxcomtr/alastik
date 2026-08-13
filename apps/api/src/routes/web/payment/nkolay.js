@@ -114,6 +114,10 @@ router.post('/3d-init', async (req, res) => {
             order.status = 'confirmed';
             await order.save();
 
+            // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
+            const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
+            syncOrderToDiaBackground(order, 'nkolay-direct');
+
             return res.json({
                 success: true,
                 directSuccess: true,
@@ -189,6 +193,10 @@ router.post('/3d-callback/success', async (req, res) => {
             await order.save();
 
             console.log('[Nkolay Route] Ödeme başarılı, sipariş güncellendi:', order.orderNumber);
+
+            // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
+            const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
+            syncOrderToDiaBackground(order, 'nkolay-callback');
 
             // Ödeme başarılı → mail tetikle (fire-and-forget)
             if (order.payment.status === 'paid') {

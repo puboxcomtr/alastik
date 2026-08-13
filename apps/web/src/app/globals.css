@@ -52,3 +52,20 @@ body {
   overflow-x: hidden;
   padding-right: 8px;
 }
+
+/* Videolu ürün rozeti — dikkat çekmesi için yanıp söner.
+   Hareket azaltma tercihi açık olan kullanıcılarda sabit kalır. */
+@keyframes videoBadgeBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.video-badge {
+  animation: videoBadgeBlink 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-badge {
+    animation: none;
+  }
+}

@@ -166,15 +166,20 @@ async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
  * Dosya adları ürün adından türetilir: <slug>.jpg, <slug>-1.jpg, <slug>-2.jpg ...
  * Zaten yerel olan (\/urun\/ ile başlayan) görseller yeniden indirilmez.
  *
+ * İndirilemeyen dış adresler diziden DÜŞÜRÜLÜR: kaynak sunucu 403/404 verdiğinde
+ * eski davranış adresi olduğu gibi saklıyordu ve vitrinde kırık görsel çıkıyordu.
+ * Adres sonradan erişilebilir hale gelirse bir sonraki senkronda indirilip geri döner.
+ *
  * @param {Array} images  m_resimler benzeri dizi ({ aws_url, source_url })
  * @param {string} productName Ürün adı (dosya adı bundan türetilir)
- * @returns {Promise<Array>} Aynı dizi; indirilenlerin aws_url'i yerel yola çevrilmiş
+ * @returns {Promise<Array>} İndirilenlerin aws_url'i yerel yola çevrilmiş dizi
  */
 async function mirrorProductImages(images, productName) {
     if (!Array.isArray(images) || images.length === 0) return images || [];
 
     const reserved = new Set();
     const result = [];
+    let dusurulen = 0;
 
     for (const img of images) {
         if (!img || !img.aws_url) { result.push(img); continue; }
@@ -186,7 +191,16 @@ async function mirrorProductImages(images, productName) {
         }
 
         const local = await mirrorOne(img.aws_url, productName, reserved);
-        result.push(local ? { ...img, aws_url: local, source_url: img.source_url || img.aws_url } : img);
+
+        if (local) {
+            result.push({ ...img, aws_url: local, source_url: img.source_url || img.aws_url });
+        } else {
+            dusurulen++;
+        }
+    }
+
+    if (dusurulen) {
+        console.warn(`[ImageMirror] "${productName}" için indirilemeyen ${dusurulen} görsel listeden çıkarıldı`);
     }
 
     return result;

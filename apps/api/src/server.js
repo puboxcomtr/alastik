@@ -4,17 +4,11 @@ const paths = require('./config/path');
 // ============================================
 // ENVIRONMENT CONFIGURATION
 // ============================================
-// Dynamically load the correct .env file based on NODE_ENV
-// - Development: loads .env.local
-// - Production: loads .env.production
-
-const envFile = process.env.NODE_ENV === 'production'
-  ? '.env.production'
-  : '.env.local';
-
-require('dotenv').config({
-  path: path.resolve(__dirname, `../${envFile}`)
-});
+// NODE_ENV'e göre .env.local / .env.production seçilir; eksik anahtarlar
+// diğer dosyadan tamamlanır. Worker da aynı modülü kullanır (config/env.js).
+// DİKKAT: config/path yukarıda, bu satırdan ÖNCE yükleniyor — medya kökü
+// (PUBLIC_DIR) modül yüklenirken hesaplandığı için sıra değiştirilmemeli.
+require('./config/env').yukle();
 
 
 // ============================================
@@ -212,6 +206,30 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+
+// Filigran: ürün görselleri istenirken ayar açıksa filigranlı kopya sunulur.
+// nginx önce önbellek klasörüne bakar, bulamazsa bu rotaya düşer.
+const watermarkService = require('./services/media/WatermarkService');
+
+app.get(/^\/(urun|blog|marka|genel)\/.+\.(jpe?g|png|webp)$/i, async (req, res, next) => {
+    try {
+        // Bu rota site middleware'inden önce çalışır; site Host başlığından çözülür
+        const { resolveSite } = require('./utils/resolveSite');
+        const site = resolveSite(req);
+        const dosya = await watermarkService.filigranliDosya(site, decodeURIComponent(req.path));
+
+        if (!dosya) return next();
+
+        res.set('Cache-Control', 'public, max-age=86400');
+
+        return res.sendFile(dosya);
+    } catch (error) {
+        console.error('Filigran uygulanamadı:', error.message);
+
+        return next();
+    }
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 

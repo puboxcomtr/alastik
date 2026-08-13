@@ -106,6 +106,9 @@ const DIA_FIELDS = [
     'b2c_gonder',
     'ozelkod5',
     'ozelkod5kodu',
+    // Grup kodu — hizmet kartları DIA'da ozelkod6 = "Hizmet (Hizmet)" ile işaretlidir
+    'ozelkod6',
+    'ozelkod6kodu',
     'ozelkod11',
     'ozelkod11kodu',
     'm_kategoriler',

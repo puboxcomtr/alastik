@@ -18,6 +18,7 @@ export interface Category {
     webVisible: boolean;
     webOrder: number;
     seoTitle: string;
+    seoDescription?: string;
     seoUrl: string;
     seoKeywords: string[];
     siteContentHtml?: string;

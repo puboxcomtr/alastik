@@ -44,3 +44,9 @@ apps/api/public/blog/
 # Icerik yedekleri (depo disinda /var/www/backups altinda tutulur)
 apps/api/blog-*yedek*.json
 
+
+# Env yedekleri ve editor yedek dosyalari (kimlik bilgisi sizintisina karsi)
+.env*.yedek*
+*.env.yedek*
+apps/api/.env.*
+*.bak

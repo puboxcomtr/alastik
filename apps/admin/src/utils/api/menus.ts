@@ -19,15 +19,21 @@ export type MenuLinkDataType = {
     pageId?: string
     blogId?: string
     productId?: string
+    tagId?: string
+    tagTitle?: string
+    tagUrl?: string
+    brandId?: string
+    brandTitle?: string
+    brandUrl?: string
 }
 
 export type MenuType = {
     _id: string
     name: string
-    menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'heading'
+    menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading'
     linkData: MenuLinkDataType
     openNewTab: boolean
-    displayArea: 'header' | 'footer' | 'mobile' | 'general'
+    displayArea: 'header' | 'footer' | 'mobile' | 'general' | 'blog'
     rowLevel: 1 | 2 | 3
     parentId?: string | null
     order: number
@@ -48,6 +54,20 @@ export type ProductOptionType = {
     title: string
     sku: string
     slug: string
+}
+
+export type BrandOptionType = {
+    _id: string
+    title: string
+    slug: string
+    productCount: number
+}
+
+export type TagOptionType = {
+    _id: string
+    title: string
+    slug: string
+    productCount: number
 }
 
 export type BlogOptionType = {
@@ -146,6 +166,32 @@ export async function fetchProducts(query: string) {
         })
     } catch (error: any) {
         throw menuError(error, 'Ürünler yüklenemedi')
+    }
+}
+
+// Markaları getir (dropdown için, sunucuda aranır)
+export async function fetchBrands(query: string) {
+    const q = query ? `?q=${encodeURIComponent(query)}` : ''
+
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/brands${q}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Markalar yüklenemedi')
+    }
+}
+
+// Etiketleri ara (çok sayıda olduğundan sunucuda aranır)
+export async function fetchTags(query: string) {
+    const q = query ? `?q=${encodeURIComponent(query)}` : ''
+
+    try {
+        return await fetchAPI(`${API_URL}/admin/design/menu/options/tags${q}`, {
+            cache: 'no-store'
+        })
+    } catch (error: any) {
+        throw menuError(error, 'Etiketler yüklenemedi')
     }
 }
 

@@ -12,7 +12,7 @@ import { useCart } from '@/src/context/CartContext';
 import { useFavourites } from '@/src/context/FavouritesContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
-import { getProductPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
+import { getProductPrice, getDisplayPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
 import { checkPurchaseLimit, productToLimitCheckItem, clampQuantityToStock } from '@/src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
 
@@ -26,6 +26,7 @@ export default function Cart({ product }: CartProps) {
     const deliveryInfo = getDeliveryDateRange(product);
     const { getBrand } = useBrands();
     const price = getProductPrice(product);
+    const gosterim = getDisplayPrice(product, price);
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
@@ -147,10 +148,10 @@ export default function Cart({ product }: CartProps) {
                                         </div>
                                         <div>
                                             <span className='fw-bold text-black'>
-                                                {price.toLocaleString('tr-TR', {
+                                                {gosterim.value.toLocaleString('tr-TR', {
                                                     minimumFractionDigits: 2,
                                                     maximumFractionDigits: 2
-                                                })} TL
+                                                })} TL{gosterim.suffix}
                                             </span>
                                         </div>
                                     </div>
@@ -160,27 +161,31 @@ export default function Cart({ product }: CartProps) {
                                         </p>
                                     </div>
                                     <hr className="m-0 p-2" />
-                                    {/* Kargo Teslim Tarihi */}
-                                    <div>
-                                        <div className="d-flex align-items-center gap-1">
-                                            <i className="ri-box-3-fill text-black"></i>
-                                            <p className='m-0 fw-bold text-black'>
-                                                Kargoya Teslim Tarihi
-                                            </p>
-                                        </div>
-                                        <div className="d-flex align-items-center gap-1 mt-1">
-                                            {deliveryInfo ? (
-                                                <p className='badge text-success bg-success-subtle'>
-                                                    Tahmini Teslim Tarihi {deliveryInfo.startDate} - {deliveryInfo.endDate}
-                                                </p>
-                                            ) : (
-                                                <p className='badge text-muted bg-light'>
-                                                    Teslimat bilgisi mevcut değil
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <hr className="m-0 p-2" />
+                                    {/* Kargo Teslim Tarihi — hizmet gibi kargolanmayan ürünlerde gizlenir */}
+                                    {product?.customData?.hideDelivery !== true && (
+                                        <>
+                                            <div>
+                                                <div className="d-flex align-items-center gap-1">
+                                                    <i className="ri-box-3-fill text-black"></i>
+                                                    <p className='m-0 fw-bold text-black'>
+                                                        Kargoya Teslim Tarihi
+                                                    </p>
+                                                </div>
+                                                <div className="d-flex align-items-center gap-1 mt-1">
+                                                    {deliveryInfo ? (
+                                                        <p className='badge text-success bg-success-subtle'>
+                                                            Tahmini Teslim Tarihi {deliveryInfo.startDate} - {deliveryInfo.endDate}
+                                                        </p>
+                                                    ) : (
+                                                        <p className='badge text-muted bg-light'>
+                                                            Teslimat bilgisi mevcut değil
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <hr className="m-0 p-2" />
+                                        </>
+                                    )}
                                     {/* Kampanyalar */}
                                     <div>
                                         <div className="d-flex align-items-center gap-1">

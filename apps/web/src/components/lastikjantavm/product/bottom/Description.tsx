@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
    MUI Components
    ======================================== */
 import { Grid, Tooltip, useMediaQuery, useTheme } from '@mui/material';
-import { getAllLastikFeatures, getAllJantFeatures, isLastik, isJant, isZincir, getLastikEbatDisplay, getProductType } from '@/src/hooks/Products/productHelpers';
+import { getProductSpecRows, isLastik, isZincir, getLastikEbatDisplay, getProductType } from '@/src/hooks/Products/productHelpers';
 
 /* ========================================
    Routes Helper
@@ -19,15 +19,20 @@ import { buildBlogUrl } from '@/src/config/routes';
 import ReviewModal from '@/src/components/layout/Modals/product/ReviewModal';
 
 const getMenuItems = (product: any) => {
+    const hasFeatures = getProductSpecRows(product).length > 0;
+
     const items = [
         { id: 'description', label: 'Açıklama' },
-        { id: 'feature', label: 'Ürün Özellikleri' },
+        { id: 'feature', label: 'Ürün Özellikleri', onlyWithFeatures: true },
         { id: 'reviews', label: 'Müşteri Yorumları' },
         { id: 'compatible', label: 'Uyumlu Araçlar', onlyLastik: true },
         { id: 'change', label: 'İade ve Değişim' }
     ];
 
-    return items.filter(item => !item.onlyLastik || isLastik(product));
+    return items.filter(item =>
+        (!item.onlyLastik || isLastik(product)) &&
+        (!item.onlyWithFeatures || hasFeatures)
+    );
 };
 
 interface DescriptionProps {
@@ -63,6 +68,30 @@ function DescriptionContent({ product, wheelSize, relatedBlogs }: { product: any
             )}
             {(product?.customData?.siteDescriptions?.lastikjantavm || product?.customData?.customDescription) && (
                 <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: product.customData.siteDescriptions?.lastikjantavm || product.customData.customDescription }} />
+            )}
+            {/* Ürüne özel videolar — admin panelinden eklenen YouTube video ve shortları */}
+            {product?.customData?.videos?.length > 0 && (
+                <div className="mt-4" id="urun_videolari">
+                    <h3 className="fs-6 font-bold text-gray-900 mb-3">Ürün Videoları</h3>
+                    <div className="row g-3">
+                        {product.customData.videos.map((video: any, idx: number) => (
+                            <div key={idx} className="col-md-6">
+                                <div className="border rounded p-2">
+                                    <div className="ratio ratio-16x9 mb-2">
+                                        <iframe
+                                            src={`https://www.youtube.com/embed/${video.videoId}`}
+                                            title={video.title || product.diaData?.aciklama}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            className="rounded"
+                                        ></iframe>
+                                    </div>
+                                    {video.title && <p className="mb-0 fw-semibold fs-7">{video.title}</p>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             )}
             <div id="tire_test">
                 {isLastik(product) && relatedBlogs && relatedBlogs.length > 0 && (
@@ -115,19 +144,17 @@ function DescriptionContent({ product, wheelSize, relatedBlogs }: { product: any
 }
 
 function FeatureContent({ product }: { product: any }) {
+    const features = getProductSpecRows(product);
+
+    if (features.length === 0) return null;
+
     return (
         <div className="table-responsive">
             <table className="table custom-striped cursor-pointer fs-7">
                 <tbody>
-                    {isLastik(product) && getAllLastikFeatures(product).map((feature, index) => (
+                    {features.map((feature, index) => (
                         <tr key={index}>
                             <td className="text-black fw-semibold">{feature.label}</td>
-                            <td className='text-body'>{feature.value}</td>
-                        </tr>
-                    ))}
-                    {isJant(product) && getAllJantFeatures(product).map((feature, index) => (
-                        <tr key={index}>
-                            <td className='text-black fw-semibold'>{feature.label}</td>
                             <td className='text-body'>{feature.value}</td>
                         </tr>
                     ))}
@@ -195,6 +222,7 @@ function SectionContent({ id, product, wheelSize, definition, reviews, compatibl
 export default function ProductDescription({ product, wheelSize, definition, reviews, compatibleVehicles, relatedBlogs }: DescriptionProps) {
     const [activeSection, setActiveSection] = useState('description');
     const menuItems = getMenuItems(product);
+    const hasFeatures = getProductSpecRows(product).length > 0;
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -308,10 +336,12 @@ export default function ProductDescription({ product, wheelSize, definition, rev
                         <DescriptionContent product={product} wheelSize={wheelSize} relatedBlogs={relatedBlogs} />
                     </section>
 
-                    <section id="feature" className="mb-12 min-h-[400px]">
-                        <h2 className="fs-5 font-bold text-gray-900 mb-4">Ürün Özellikleri</h2>
-                        <FeatureContent product={product} />
-                    </section>
+                    {hasFeatures && (
+                        <section id="feature" className="mb-12 min-h-[400px]">
+                            <h2 className="fs-5 font-bold text-gray-900 mb-4">Ürün Özellikleri</h2>
+                            <FeatureContent product={product} />
+                        </section>
+                    )}
 
                     <section id="reviews" className="mb-12 min-h-[400px]">
                         <ReviewsContent reviews={reviews} product={product} onOpenModal={handleOpenReviewModal} />

@@ -19584,3 +19584,176 @@ span.flatpickr-weekday {
 .site-border-left-primary {
     border-left: 3px solid #e4cc15 !important
 }
+.table thead th {
+    font-size: 13px;
+    padding: 8px;
+    font-weight: 600;
+    vertical-align: middle !important;
+    border-top: 1px solid #d7d7db !important;
+    border-bottom: 1px solid #d7d7db !important;
+}
+
+.table tbody {
+    font-size: 12px;
+}
+
+.table>tbody>tr>td {
+    vertical-align: middle;
+    padding: 5px
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #d7d7db !important;
+}
+
+.table tr {
+    border-top: 1px solid #d7d7db !important;
+    border-bottom: 1px solid #d7d7db !important;
+    transition: all .3s ease;
+}
+
+.table>tbody>tr:hover {
+    background-color: #f7f7f7;
+    color: var(--black);
+    cursor: pointer;
+}
+
+.table .product__image {
+    width: 100%;
+    height: 60px;
+    object-fit: contain
+}
+
+.table .product__image:hover {
+    cursor: pointer
+}
+
+.table .brand__img img {
+    width: 60px
+}
+
+.table .brand__img img:hover {
+    -webkit-filter: grayscale(0%);
+    filter: grayscale(0%);
+}
+
+.table .oem__img img {
+    width: 60px;
+}
+
+.table .season__img img {
+    width: 30px;
+}
+
+.table .product__code {
+    font-weight: 600;
+    text-align: left
+}
+
+.table .product__action {
+    display: flex;
+    justify-content: center
+}
+
+.table .product__action div {
+    background: var(--primary);
+    color: var(--black);
+    min-height: 30px;
+    min-width: 30px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all .3s ease;
+}
+
+.table .product__action div:hover {
+    background: var(--black);
+}
+
+.table .product__action div:hover a {
+    color: var(--white);
+}
+
+.table .product__action svg {
+    font-size: 18px;
+}
+
+/* Sayfa ve blog icerigindeki tablolar
+   Editorden gelen HTML'de tabloya sinif verilmiyor; asagidaki kurallar
+   ciplak <table> yapisini fiyat listesi gorunumune getirir. */
+#page__detail .page-content table,
+.blog-content table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: collapse;
+    font-size: .9375rem;
+}
+
+#page__detail .page-content table th,
+.blog-content table th {
+    background-color: var(--cz-dark);
+    color: var(--cz-white, #fff);
+    font-weight: 600;
+    text-align: left;
+    padding: .875rem 1rem;
+    border: 0;
+}
+
+#page__detail .page-content table td,
+.blog-content table td {
+    padding: .75rem 1rem;
+    border-top: 1px solid var(--cz-border-color);
+    vertical-align: middle;
+}
+
+/* Ilk sutun disindakiler ortalanir (fiyat, islem) */
+#page__detail .page-content table th:not(:first-child),
+#page__detail .page-content table td:not(:first-child),
+.blog-content table th:not(:first-child),
+.blog-content table td:not(:first-child) {
+    text-align: center;
+}
+
+/* Satir seritleri: baslik satiri th oldugu icin etkilenmez */
+#page__detail .page-content table tr:nth-of-type(even) td,
+.blog-content table tr:nth-of-type(even) td {
+    background-color: var(--cz-secondary-bg);
+}
+
+/* Hucre icindeki paragraflar satir yuksekligini bozmasin */
+#page__detail .page-content table p,
+.blog-content table p {
+    margin: 0;
+}
+
+/* Tablo icindeki eylem baglantisi (Incele) */
+#page__detail .page-content .btn-primary,
+.blog-content .btn-primary {
+    display: inline-block;
+    padding: .375rem 1rem;
+    background-color: var(--cz-primary);
+    color: var(--cz-dark);
+    border-radius: .25rem;
+    font-size: .875rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+#page__detail .page-content .btn-primary:hover,
+.blog-content .btn-primary:hover {
+    background-color: var(--cz-primary-text-emphasis);
+    color: var(--cz-dark);
+}
+
+/* Dar ekranda tablo kendi icinde kaydirilir */
+@media (max-width: 575.98px) {
+    #page__detail .page-content table,
+    .blog-content table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}

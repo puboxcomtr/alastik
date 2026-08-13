@@ -8,6 +8,7 @@ import Grid from '@mui/material/Grid2'
 import CompanyInfoSettings from '@/views/settings/definitions/CompanyInfoSettings'
 import EmailInfoSettings from '@/views/settings/definitions/EmailInfoSettings'
 import TaxInfoSettings from '@/views/settings/definitions/TaxInfoSettings'
+import ServicePointsSettings from '@/views/settings/definitions/ServicePointsSettings'
 import LegalContractsSettings from '@/views/settings/definitions/LegalContractsSettings'
 import ImagesSettings from '@/views/settings/definitions/ImagesSettings'
 
@@ -57,6 +58,9 @@ function SettingsContent() {
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                     <TaxInfoSettings />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                    <ServicePointsSettings />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                     <LegalContractsSettings />

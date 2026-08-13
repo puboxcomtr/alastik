@@ -1,80 +1,99 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Offcanvas } from 'react-bootstrap';
-import { ROUTES } from '@/src/config/routes';
+import { API_ENDPOINTS } from '@/src/config/api';
 
-const blogCategories = [
-  { name: 'Lastik Testleri', slug: '#' },
-  { name: 'Lastik Rehberi', slug: '#' },
-  { name: 'Mevsimsel Bakım', slug: '#' },
-  { name: 'Güvenli Sürüş', slug: '#' },
-  { name: 'Araç Bakımı', slug: '#' },
-];
+type MenuItemType = {
+  _id: string;
+  name: string;
+  menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading';
+  linkData?: {
+    url?: string;
+    categoryUrl?: string; categoryId?: string;
+    pageUrl?: string; pageId?: string;
+    blogUrl?: string; blogId?: string;
+    productUrl?: string; productId?: string;
+    tagUrl?: string; tagId?: string;
+    brandUrl?: string; brandId?: string;
+  };
+  openNewTab?: boolean;
+};
 
-const productCategories = [
-  { name: 'Lastik Testleri', slug: '#' },
-  { name: 'Lastik Rehberi', slug: '#' },
-  { name: 'Mevsimsel Bakım', slug: '#' },
-  { name: 'Güvenli Sürüş', slug: '#' },
-  { name: 'Araç Bakımı', slug: '#' },
-];
+type MenuGroupType = { _id: string; name: string; items: MenuItemType[] };
 
-function SidebarContent() {
+function itemUrl(item: MenuItemType): string {
+  if (item.menuType === 'link') return item.linkData?.url || '#';
+  if (item.menuType === 'category') return `/kategori/${item.linkData?.categoryUrl || item.linkData?.categoryId}`;
+  if (item.menuType === 'page') return `/sayfa/${item.linkData?.pageUrl || item.linkData?.pageId}`;
+  if (item.menuType === 'blog') return `/blog/${item.linkData?.blogUrl || item.linkData?.blogId}`;
+  if (item.menuType === 'product') return `/urun/${item.linkData?.productUrl || item.linkData?.productId}`;
+  if (item.menuType === 'tag') return `/etiket/${item.linkData?.tagUrl || item.linkData?.tagId}`;
+  if (item.menuType === 'brand') return `/marka/${item.linkData?.brandUrl || item.linkData?.brandId}`;
+
+  return '#';
+}
+
+/**
+ * Panelden "Blog Menü" alanına eklenen menüler.
+ * Statik bloklarla aynı görünümü kullanır; menü yoksa hiçbir şey basılmaz.
+ */
+function MenuGroups({ groups }: { groups: MenuGroupType[] }) {
+  if (!groups.length) return null;
+
   return (
     <>
-      {/* Blog Kategorileri */}
-      <div className="bg-white rounded p-3 pt-0 mb-3">
-        <h6 className="fw-bold pb-2 border-bottom">Blog Kategorileri</h6>
-        <ul className="list-unstyled mb-0">
-          {blogCategories.map((cat) => (
-            <li key={cat.name} className="mb-2">
-              <Link
-                href={`${ROUTES.BLOG}?category=#`}
-                className="text-decoration-none text-dark d-flex align-items-center gap-2"
-                style={{ fontSize: '0.9rem' }}
-              >
-                <i className="ri-arrow-right-s-line" style={{ fontSize: '0.75rem' }}></i>
-                <span className="animate-underline animate-target">{cat.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Ürün Kategorileri */}
-      <div className="bg-white rounded p-3 pt-0 mb-3">
-        <h6 className="fw-bold pb-2 border-bottom">Ürün Kategorileri</h6>
-        <ul className="list-unstyled mb-0">
-          {productCategories.map((cat) => (
-            <li key={cat.name} className="mb-2">
-              <Link
-                href={`${ROUTES.BLOG}?category=#`}
-                className="text-decoration-none text-dark d-flex align-items-center gap-2"
-                style={{ fontSize: '0.9rem' }}
-              >
-                <i className="ri-arrow-right-s-line" style={{ fontSize: '0.75rem' }}></i>
-                <span className="animate-underline animate-target">{cat.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Popüler İçerikler */}
-      <div className="bg-white rounded p-3">
-        <h6 className="fw-bold pb-2 border-bottom">Popüler İçerikler</h6>
-        <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
-          Yakında eklenecek...
-        </p>
-      </div>
+      {groups.map((group) => (
+        <div key={group._id} className="bg-white rounded p-3 pt-0 mb-3">
+          <h6 className="fw-bold pb-2 border-bottom">{group.name}</h6>
+          <ul className="list-unstyled mb-0">
+            {group.items.map((item) => (
+              <li key={item._id} className="mb-2">
+                <Link
+                  href={itemUrl(item)}
+                  target={item.openNewTab ? '_blank' : undefined}
+                  className="text-decoration-none text-dark d-flex align-items-center gap-2"
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  <i className="ri-arrow-right-s-line" style={{ fontSize: '0.75rem' }}></i>
+                  <span className="animate-underline animate-target">{item.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </>
   );
 }
 
+/**
+ * Sidebar tamamen panelden yönetilir; "Blog Menü" alanına eklenen her menü bir kutu olur.
+ */
+function SidebarContent({ groups }: { groups: MenuGroupType[] }) {
+  return <MenuGroups groups={groups} />;
+}
+
 export default function Sidebar() {
   const [show, setShow] = useState(false);
+  const [groups, setGroups] = useState<MenuGroupType[]>([]);
+
+  useEffect(() => {
+    let iptal = false;
+
+    fetch(API_ENDPOINTS.menus.area('blog'))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!iptal && data?.success) setGroups(data.data || []);
+      })
+      .catch(() => { /* menü yüklenemezse sidebar gösterilmez */ });
+
+    return () => { iptal = true; };
+  }, []);
+
+  // Panelde tanımlı menü yoksa sidebar hiç basılmaz
+  if (groups.length === 0) return null;
 
   return (
     <>
@@ -85,23 +104,23 @@ export default function Sidebar() {
           onClick={() => setShow(true)}
         >
           <i className="ri-menu-2-line"></i>
-          Blog Kategorileri
+          {groups.length === 1 ? groups[0].name : 'Menü'}
         </button>
       </div>
 
       {/* Mobil Offcanvas */}
       <Offcanvas show={show} onHide={() => setShow(false)} placement="end">
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title>Menü</Offcanvas.Title>
+          <Offcanvas.Title>{groups.length === 1 ? groups[0].name : 'Menü'}</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
-          <SidebarContent />
+          <SidebarContent groups={groups} />
         </Offcanvas.Body>
       </Offcanvas>
 
       {/* Desktop Sidebar */}
       <div className="d-none d-lg-block">
-        <SidebarContent />
+        <SidebarContent groups={groups} />
       </div>
     </>
   );

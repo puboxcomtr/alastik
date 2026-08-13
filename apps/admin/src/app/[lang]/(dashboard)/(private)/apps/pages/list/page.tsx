@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import classnames from 'classnames'
 
 /* API */
 import { fetchPages, deletePage, type PageType } from '@/utils/api/pages'
+import { getSiteUrl } from '@/utils/activeSite'
 
 /* MUI */
 import Card from '@mui/material/Card'
@@ -200,14 +202,26 @@ const PageListTable = () => {
             columnHelper.accessor('title', {
                 header: 'Sayfa Başlığı',
                 cell: ({ row }) => (
-                    <div className='flex flex-col items-start'>
-                        <Typography className='font-medium' color='text.primary'>
-                            {row.original.title}
-                        </Typography>
-                        <Typography variant='body2' color='text.secondary'>
-                            /{row.original.slug}
-                        </Typography>
-                    </div>
+                    // Başlık vitrindeki sayfaya açılır; üzerine gelince bağlantı simgesi belirir
+                    <Tooltip title='Sayfayı Ziyaret Et'>
+                        <Link
+                            href={`${getSiteUrl()}/sayfa/${row.original.slug}`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='flex flex-col items-start group no-underline'
+                        >
+                            <Typography
+                                className='font-medium group-hover:text-primary'
+                                color='text.primary'
+                            >
+                                {row.original.title}
+                                <i className='ri-external-link-line text-base align-middle mis-2 opacity-0 group-hover:opacity-100' />
+                            </Typography>
+                            <Typography variant='body2' color='text.secondary'>
+                                /sayfa/{row.original.slug}
+                            </Typography>
+                        </Link>
+                    </Tooltip>
                 )
             }),
             columnHelper.accessor('status', {

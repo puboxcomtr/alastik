@@ -22,6 +22,7 @@ import { getRelatedBlogs } from '@/src/services/productService';
 import {
     getProductUrl,
     getProductPrice,
+    getDisplayPrice,
     getProductOriginalPrice,
     hasProductDiscount,
     getProductImage,
@@ -30,7 +31,12 @@ import {
 import { checkPurchaseLimit, productToLimitCheckItem } from '@src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
 
-export default function OneColumn({ product }: ProductCardProps) {
+type ServicePoint = { name: string; phone: string };
+
+// DIA grup kodu — bu koda sahip kartlar hizmet olarak değerlendirilir
+const SERVICE_GROUP_CODE = 'Hizmet';
+
+export default function OneColumn({ product, servicePoints = [] }: ProductCardProps & { servicePoints?: ServicePoint[] }) {
     const [isFavorite, setIsFavorite] = useState(false);
     const [adding, setAdding] = useState(false);
     const [blogCount, setBlogCount] = useState(0);
@@ -81,6 +87,7 @@ export default function OneColumn({ product }: ProductCardProps) {
     const [quantity, setQuantity] = useState(1);
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
+    const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
@@ -95,7 +102,7 @@ export default function OneColumn({ product }: ProductCardProps) {
         <div className="product-card bg-body rounded border mb-2">
             <Row className="g-0 py-3 align-items-stretch">
                 {/* Görsel */}
-                <Col md={2}>
+                <Col md={2} className="px-2">
                     <Link href={productUrl}>
                         <img
                             src={imageUrl}
@@ -128,13 +135,47 @@ export default function OneColumn({ product }: ProductCardProps) {
                     </Link>
                     {/* Seçenekler */}
                     <div className="d-flex my-1 gap-4 align-items-center">
-                        <span className="fs-xs text-body-secondary d-block">Stok Kodu {stockCode}</span>
-                        {product.customData?.hideProductionDate !== true && <span className="fs-xs text-body-secondary d-block">Üretim Tarihi {product.diaData?.ekalan5 || '-'}</span>}
-                        <span className="fs-xs text-body-secondary d-block">
-                            {(() => { const s = getProductSeason(product); return s ? <><img src={s.icon} alt={s.text} width={14} height={14} className="me-1" />{s.text}</> : (getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1 || '-'); })()}
-                        </span>
+                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
+                        {(product as any)?.hideStockCode !== true && (
+                            <span className="fs-xs text-body-secondary d-block">Stok Kodu {stockCode}</span>
+                        )}
+                        {/* Üretim tarihi — değer yoksa satır hiç gösterilmez */}
+                        {product.customData?.hideProductionDate !== true && product.diaData?.ekalan5 && (
+                            <span className="fs-xs text-body-secondary d-block">Üretim Tarihi {product.diaData.ekalan5}</span>
+                        )}
+                        {/* Mevsim — ikon ya da metin yoksa satır hiç gösterilmez */}
+                        {(() => {
+                            const season = getProductSeason(product);
+                            const seasonText = getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1;
+
+                            if (!season && !seasonText) return null;
+
+                            return (
+                                <span className="fs-xs text-body-secondary d-block">
+                                    {season ? (
+                                        <>
+                                            <img src={season.icon} alt={season.text} width={14} height={14} className="me-1" />
+                                            {season.text}
+                                        </>
+                                    ) : seasonText}
+                                </span>
+                            );
+                        })()}
                     </div>
                     <Divider className="my-3" />
+                    {/* Servis noktaları — yalnızca DIA grup kodu "Hizmet" olan kartlarda */}
+                    {product.diaData?.ozelkod6kodu === SERVICE_GROUP_CODE && servicePoints.length > 0 && (
+                        <div className="mb-2">
+                            {servicePoints.map((point, index) => (
+                                <div key={index} className="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                    <span className="fs-xs text-body-secondary">{point.name}</span>
+                                    <a href={`tel:${point.phone.replace(/\s/g, '')}`} className="fs-sm fw-semibold text-dark text-decoration-none text-nowrap">
+                                        {point.phone}
+                                    </a>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     {isLastik(product) && (
                         <div className="d-flex gap-2 flex-wrap mt-1 align-items-center">
                             {[
@@ -190,7 +231,7 @@ export default function OneColumn({ product }: ProductCardProps) {
                                     )
                                 )}
                                 <span className="fw-bold fs-lg">
-                                    {price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
+                                    {gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL{gosterim.suffix}
                                 </span>
                             </div>
                         </div>

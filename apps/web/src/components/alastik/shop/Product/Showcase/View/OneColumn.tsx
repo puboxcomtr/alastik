@@ -136,7 +136,10 @@ export default function OneColumn({ product }: ProductCardProps) {
                     </Link>
                     {/* Seçenekler */}
                     <div className="d-flex my-1 gap-4 align-items-center">
-                        <span className="fs-xs text-body-secondary d-block">Stok Kodu {stockCode}</span>
+                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
+                        {(product as any)?.hideStockCode !== true && (
+                            <span className="fs-xs text-body-secondary d-block">Stok Kodu {stockCode}</span>
+                        )}
                         {product.diaData?.ekalan5 && product.customData?.hideProductionDate !== true && <span className="fs-xs text-body-secondary d-block">Üretim Tarihi {product.diaData.ekalan5}</span>}
                         {(() => {
                             const s = getProductSeason(product);

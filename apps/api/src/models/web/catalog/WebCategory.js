@@ -97,7 +97,13 @@ const webCategorySchema = new mongoose.Schema({
       // Kategori sayfasında gösterilecek menüler (boş bırakılabilir, birden fazla olabilir)
       menuIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'Menu', default: undefined },
       // Eski tek menü alanı — geriye dönük uyumluluk için korunur
-      menuId: { type: mongoose.Schema.Types.ObjectId, ref: 'Menu' }
+      menuId: { type: mongoose.Schema.Types.ObjectId, ref: 'Menu' },
+      // Fiyat gösterimi: dahil = kayıtlı fiyat, haric = KDV çıkarılıp "+ KDV" ibaresiyle
+      priceDisplay: { type: String, enum: ['dahil', 'haric'], default: 'dahil' },
+      // "haric" seçiliyken kullanılacak KDV oranı (%)
+      vatRate: { type: Number, default: 20 },
+      // Açıkken bu kategorideki ürünlerde stok kodu gösterilmez
+      hideStockCode: { type: Boolean, default: false }
     };
     return acc;
   }, {}),

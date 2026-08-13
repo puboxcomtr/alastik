@@ -13,6 +13,71 @@ const Setting = require('../../../models/admin/settings/Setting');
  * GET /api/products/similar-by-order/:orderNumber
  * Sipariş edilen lastiklerin: Aynı ebat + Farklı mevsim + Stokta olan benzer ürünleri
  */
+
+// Kategori fiyat gösterim ayarları (60 sn önbellekli): kategori adı -> { priceDisplay, vatRate }
+const fiyatAyarOnbellek = new Map();
+
+async function getFiyatAyarlari(site) {
+    const anahtar = site;
+    const kayit = fiyatAyarOnbellek.get(anahtar);
+
+    if (kayit && Date.now() - kayit.zaman < 60 * 1000) return kayit.harita;
+
+    const WebCategory = require('../../../models/web/catalog/WebCategory');
+    const kategoriler = await WebCategory.find({
+        $or: [
+            { [`siteContent.${site}.priceDisplay`]: 'haric' },
+            { [`siteContent.${site}.hideStockCode`]: true }
+        ]
+    })
+        .select(`name siteContent.${site}.priceDisplay siteContent.${site}.vatRate siteContent.${site}.hideStockCode`)
+        .lean()
+        .catch(() => []);
+
+    const harita = new Map();
+
+    kategoriler.forEach(k => {
+        const ayar = k.siteContent?.[site] || {};
+
+        harita.set(k.name, {
+            priceDisplay: ayar.priceDisplay || 'dahil',
+            vatRate: ayar.vatRate ?? 20,
+            hideStockCode: ayar.hideStockCode === true
+        });
+    });
+
+    fiyatAyarOnbellek.set(anahtar, { zaman: Date.now(), harita });
+
+    return harita;
+}
+
+/**
+ * Ürünün kategorilerinden birinde "KDV Hariç" ayarı varsa ürüne işler.
+ */
+function fiyatAyariUygula(urun, harita) {
+    if (!harita.size) return urun;
+
+    // En özel kategoriden en genele doğru taranır: alt kategori ayarı üst kategoriyi ezer.
+    // Ters sırada tarandığında üst kategori haritada olduğu anda alttakini gölgeliyordu.
+    const adlar = (urun.diaData?.m_kategoriler || []).flatMap(k => [
+        k.kategori_aciklama_3, k.kategori_aciklama_2, k.kategori_aciklama_1
+    ]).filter(Boolean);
+
+    for (const ad of adlar) {
+        const ayar = harita.get(ad);
+
+        if (ayar) {
+            urun.priceDisplay = ayar.priceDisplay;
+            urun.vatRate = ayar.vatRate;
+            urun.hideStockCode = ayar.hideStockCode;
+
+            return urun;
+        }
+    }
+
+    return urun;
+}
+
 router.get('/similar-by-order/:orderNumber', async (req, res) => {
     try {
         const { orderNumber } = req.params;
@@ -523,6 +588,11 @@ router.get('/filter', async (req, res) => {
 
         const products = await WebProduct.aggregate(aggregatePipeline);
 
+        // Kategori bazlı fiyat gösterim ayarı (tek sorgu, önbellekli)
+        const fiyatAyarlari = await getFiyatAyarlari(req.site);
+
+        products.forEach(p => fiyatAyariUygula(p, fiyatAyarlari));
+
         res.json({
             success: true,
             data: {
@@ -626,6 +696,9 @@ router.get('/:slug', async (req, res) => {
             const siteDescription = product.customData.siteDescriptions?.[req.site];
             if (siteDescription) product.customData.customDescription = siteDescription;
         }
+
+        // Kategori bazlı fiyat gösterim ayarı
+        fiyatAyariUygula(product, await getFiyatAyarlari(req.site));
 
         // Marka customName kontrolü
         const marka = product.diaData?.marka;
