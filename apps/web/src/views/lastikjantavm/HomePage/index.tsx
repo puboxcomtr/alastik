@@ -31,8 +31,8 @@ export default function LastikJantAvmHomePage() {
         <DraggableBanner
           site="lastikjantavm"
           sliderKey="homepage_banner"
-          slidesPerView={4}
-          slidesPerViewMobile={2}
+          slidesPerView={2}
+          slidesPerViewMobile={1}
           slidesPerViewTablet={2}
           spaceBetween={20}
         />

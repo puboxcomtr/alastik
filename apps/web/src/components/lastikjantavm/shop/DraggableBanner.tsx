@@ -2,8 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation } from 'swiper/modules';
 
 // Services
 import { getSliderByKey, getSliderImageUrl } from '@/src/services/sliderService';
@@ -11,31 +9,30 @@ import { getSliderByKey, getSliderImageUrl } from '@/src/services/sliderService'
 // Types
 import type { Slider } from '@/src/types/slider';
 
-// Swiper CSS
-import 'swiper/css';
-import 'swiper/css/navigation';
-
 interface DraggableBannerProps {
     sliderKey: string;
     site?: string;
-    // Override ayarları (opsiyonel)
+    // Satır başına düşen banner sayısı (kırılım bazlı) — grid sütun genişliğini belirler
     slidesPerView?: number;
     slidesPerViewMobile?: number;
     slidesPerViewTablet?: number;
     spaceBetween?: number;
-    loop?: boolean;
-    showNavigation?: boolean;
 }
+
+// Satırdaki banner sayısını 12'lik Bootstrap grid sütununa çevirir
+const gridKolonu = (perRow: number): number => {
+    const adet = Math.max(1, Math.min(12, Math.round(perRow) || 1));
+
+    return Math.max(1, Math.round(12 / adet));
+};
 
 export default function DraggableBanner({
     sliderKey,
     site = 'lastikjantavm',
-    slidesPerView = 4,
-    slidesPerViewMobile = 2,
+    slidesPerView = 2,
+    slidesPerViewMobile = 1,
     slidesPerViewTablet = 2,
-    spaceBetween = 20,
-    loop = false,
-    showNavigation = true
+    spaceBetween = 20
 }: DraggableBannerProps) {
     const [slider, setSlider] = useState<Slider | null>(null);
 
@@ -61,38 +58,32 @@ export default function DraggableBanner({
 
     // Props override > DB settings > default
     const settings = slider.settings || {};
-    const finalSlidesPerView = slidesPerView || settings.slidesPerView || 4;
-    const finalSlidesPerViewMobile = slidesPerViewMobile || settings.slidesPerViewMobile || 2;
-    const finalSlidesPerViewTablet = slidesPerViewTablet || settings.slidesPerViewTablet || 2;
+    const finalPerRow = slidesPerView || settings.slidesPerView || 2;
+    const finalPerRowMobile = slidesPerViewMobile || settings.slidesPerViewMobile || 1;
+    const finalPerRowTablet = slidesPerViewTablet || settings.slidesPerViewTablet || 2;
     const finalSpaceBetween = spaceBetween || settings.spaceBetween || 20;
-    const finalLoop = loop !== undefined ? loop : (settings.loop !== undefined ? settings.loop : false);
-    const finalShowNav = showNavigation !== undefined ? showNavigation : (settings.showNavButtons !== false);
+
+    // Kaydırma yok: bannerlar satır satır alt alta dizilir
+    const kolonSinifi = [
+        `col-${gridKolonu(finalPerRowMobile)}`,
+        `col-md-${gridKolonu(finalPerRowTablet)}`,
+        `col-lg-${gridKolonu(finalPerRow)}`
+    ].join(' ');
 
     return (
         <section id="draggable_banner" className="position-relative">
             <div className="container">
                 <div className="row-fluid">
-                    <Swiper
-                        modules={[Navigation]}
-                        loop={finalLoop && slider.sliders.length > finalSlidesPerView}
-                        slidesPerView={finalSlidesPerViewMobile}
-                        spaceBetween={finalSpaceBetween}
-                        navigation={finalShowNav ? {
-                            nextEl: `.banner_btn_next_${sliderKey}`,
-                            prevEl: `.banner_btn_prev_${sliderKey}`,
-                        } : false}
-                        breakpoints={{
-                            600: {
-                                slidesPerView: finalSlidesPerViewTablet,
-                            },
-                            1000: {
-                                slidesPerView: finalSlidesPerView,
-                            },
-                        }}
-                        className="hover-effect-opacity"
+                    <div
+                        className="row"
+                        style={{
+                            // Tema Bootstrap degiskenlerini cz onekiyle kullanir
+                            '--cz-gutter-x': `${finalSpaceBetween}px`,
+                            '--cz-gutter-y': `${finalSpaceBetween}px`
+                        } as React.CSSProperties}
                     >
                         {slider.sliders.map((slide, index) => (
-                            <SwiperSlide key={index} className="rounded">
+                            <div key={index} className={kolonSinifi}>
                                 {slide.link ? (
                                     <Link
                                         href={slide.link}
@@ -103,8 +94,8 @@ export default function DraggableBanner({
                                             className="homepage_banner rounded"
                                             src={getSliderImageUrl(slide.image)}
                                             alt={slide.description || `${slider.name} - Banner ${index + 1}`}
-                                            width={400}
-                                            height={200}
+                                            width={800}
+                                            height={400}
                                             quality={95}
                                             style={{ objectFit: 'cover', width: '100%', height: 'auto' }}
                                         />
@@ -114,38 +105,15 @@ export default function DraggableBanner({
                                         className="homepage_banner rounded"
                                         src={getSliderImageUrl(slide.image)}
                                         alt={slide.description || `${slider.name} - Banner ${index + 1}`}
-                                        width={400}
-                                        height={200}
+                                        width={800}
+                                        height={400}
+                                        quality={95}
                                         style={{ objectFit: 'cover', width: '100%', height: 'auto' }}
                                     />
                                 )}
-                            </SwiperSlide>
+                            </div>
                         ))}
-
-                        {finalShowNav && (
-                            <>
-                                <div className="position-absolute top-50 start-0 z-2 translate-middle-y ms-3 ms-sm-4 hover-effect-target">
-                                    <button
-                                        type="button"
-                                        className={`btn banner_btn_prev_${sliderKey} btn-icon btn-primary border-0 rounded-circle animate-slide-start`}
-                                        aria-label="Önceki"
-                                    >
-                                        <i className="ci-chevron-left fs-lg animate-target"></i>
-                                    </button>
-                                </div>
-
-                                <div className="position-absolute top-50 end-0 z-2 translate-middle-y me-3 me-sm-4 hover-effect-target">
-                                    <button
-                                        type="button"
-                                        className={`btn banner_btn_next_${sliderKey} btn-icon btn-primary border-0 rounded-circle animate-slide-end`}
-                                        aria-label="Sonraki"
-                                    >
-                                        <i className="ci-chevron-right fs-lg animate-target"></i>
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </Swiper>
+                    </div>
                 </div>
             </div>
         </section>
