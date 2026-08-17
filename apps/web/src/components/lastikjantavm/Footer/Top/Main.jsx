@@ -331,44 +331,50 @@ export default function FooterTop() {
                                     <ul className="nav flex-column gap-2 pt-sm-3 pb-3 pb-sm-0 mt-n1 mb-1 mb-sm-0">
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/etiket/205-55-16'
+                                                href='/etiket/205-55-r16-lastik-fiyatlari'
+                                                title='205/55R16 Lastik Fiyatları'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
-                                                205/55R16
+                                                205/55R16 Lastik Fiyatları
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/etiket/185-55-15'
+                                                href='/etiket/185-55-r15-lastik-fiyatlari'
+                                                title='185/55R15 Lastik Fiyatları'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
-                                                185/55R15
+                                                185/55R15 Lastik Fiyatları
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/etiket/205-45-15'
+                                                href='/etiket/195-55-r16-lastik-fiyatlari'
+                                                title='195/55R16 Lastik Fiyatları'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
-                                                205/45R15
+                                                195/55R16 Lastik Fiyatları
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/etiket/205-55-17'
+                                                href='/etiket/205-55-r17-lastik-fiyatlari'
+                                                title='205/55R17 Lastik Fiyatları'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
-                                                205/55R17
+                                                205/55R17 Lastik Fiyatları
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/etiket/205-45-16'
+                                                href='/etiket/225-45-r17-lastik-fiyatlari'
+                                                title='225/45R17 Lastik Fiyatları'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
-                                                225/45R16
+                                                225/45R17 Lastik Fiyatları
                                             </Link>
                                         </li>
                                         <li className="d-flex w-100 pt-1">
                                             <Link
-                                                href='/etiket/205-55-17'
+                                                href='/etiket/185-65-r15-lastik-fiyatlari'
+                                                title='185/65R15 Lastik Fiyatları'
                                                 className='nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0'>
-                                                225/55R17
+                                                185/65R15 Lastik Fiyatları
                                             </Link>
                                         </li>
                                     </ul>

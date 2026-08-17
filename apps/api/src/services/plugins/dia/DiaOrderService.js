@@ -335,6 +335,10 @@ class DiaOrderService {
         if (siparis.cariSeviyeKodKey) {
             kart._key_sis_seviyekodu = siparis.cariSeviyeKodKey;
         }
+        // Cari kartın varsayılan ödeme planı — ayarlardan gelir (örn. ACIK HESAP)
+        if (siparis.cariOdemePlaniKey) {
+            kart._key_scf_odeme_plani = siparis.cariOdemePlaniKey;
+        }
 
         const request = {
             scf_carikart_ekle: {
@@ -526,11 +530,17 @@ class DiaOrderService {
             if (!stock) continue;
 
             const quantity = parseFloat(item.quantity) || 1;
-            const unitPrice = parseFloat(item.unitPrice) || 0;
+            // Kargo bedeli ayrı kalem olarak GÖSTERİLMEZ (17 Ağu kararı) —
+            // birim kargo payı ürün birim fiyatına dahil edilir; böylece DIA
+            // fiş toplamı müşterinin ödediği tutarla birebir eşleşir
+            const shippingPerUnit = parseFloat(item.shippingPerUnit)
+                || ((parseFloat(item.shippingTotal) || 0) / quantity)
+                || 0;
+            const unitPrice = (parseFloat(item.unitPrice) || 0) + shippingPerUnit;
             const vatRate = parseFloat(item.vatRate) || 20;
             const lineTotal = unitPrice * quantity;
             // Fiyatlar KDV dahil (kdvdurumu: D) — KDV tutarı içten hesaplanır
-            const vatAmount = item.vatAmount || (lineTotal * vatRate) / (100 + vatRate);
+            const vatAmount = (lineTotal * vatRate) / (100 + vatRate);
 
             items.push({
                 _key_scf_carikart: parseInt(customer.key),
@@ -551,7 +561,7 @@ class DiaOrderService {
                 kdvtutari: this.formatDecimal(vatAmount),
                 daraadet: '0.000000',
                 note: item.name || '',
-                note2: '',
+                note2: shippingPerUnit > 0 ? 'Kargo dahil' : '',
                 onay: 'KABUL',
                 rezervasyon: 'H',
                 siptarih: today,
@@ -679,8 +689,7 @@ class DiaOrderService {
      * DIA'daki siparişten satış faturası keser (kalemler sipariş kalemlerine
      * bağlanır, stok çıkışı fatura deposundan oluşur). Fatura fişno = sipariş no.
      * Depo, öncelik listesine göre kalem bazında seçilir.
-     * NOT: XML ürün içeren siparişlerde bu fonksiyon ÇAĞRILMAZ —
-     * o siparişlerin faturası DIA içinden manuel kesilir (maybeCreateInvoice).
+     * XML ürünlerde de çağrılır (17 Ağu) — stok XML kartında eksiye düşer.
      */
     async createInvoice(order, diaOrderKey) {
         const siparis = this.settings.siparis || {};
@@ -732,7 +741,7 @@ class DiaOrderService {
                 _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
                 _key_scf_odeme_plani: paymentPlanKey || this.extractKey(kalem._key_scf_odeme_plani),
                 _key_scf_satiselemani: siparis.satisElemaniKey || 0,
-                kalemturu: 'MLZM',
+                kalemturu: kalem.kalemturu || 'MLZM',
                 miktar: kalem.miktar,
                 anamiktar: kalem.anamiktar || kalem.miktar,
                 birimfiyati: kalem.birimfiyati,
@@ -764,6 +773,9 @@ class DiaOrderService {
         const kart = {
             turu: 2,
             fisno: order.orderNumber,
+            // Belge no'ya RESMİ fatura numarası (e-arşiv) yazılır — kesim anında
+            // henüz oluşmadığı için boş bırakılır, e-arşiv gönderiminde DIA'da dolar
+            belgeno: '',
             tarih: dateStr,
             saat: timeStr,
             ortalamavade: dateStr,
@@ -777,9 +789,14 @@ class DiaOrderService {
             _key_sis_seviyekodu: siparis.faturaSeviyeKodKey || siparis.siparisSeviyeKodKey || 0,
             dovizkuru: '1.000000',
             raporlamadovizkuru: '1.000000',
-            aciklama1: `Web sipariş ${order.orderNumber}`,
-            aciklama2: this.site,
-            aciklama3: '',
+            // alastik: müşteri adı + sipariş no + 'ALastik <ÖDEME YÖNTEMİ>' (17 Ağu isteği)
+            aciklama1: this.site === 'alastik'
+                ? (order.customerName || order.billingSnapshot?.fullName || '').trim()
+                : `Web sipariş ${order.orderNumber}`,
+            aciklama2: this.site === 'alastik' ? order.orderNumber : this.site,
+            aciklama3: this.site === 'alastik'
+                ? `ALastik ${this.getPaymentMethodLabel(order).toLocaleUpperCase('tr-TR')}`
+                : '',
             m_kalemler: items,
             net: diaOrder.net,
             netdvz: diaOrder.netdvz || diaOrder.net,
@@ -862,51 +879,100 @@ class DiaOrderService {
     }
 
     /**
+     * Kalem miktarını depo öncelik listesine göre böler: sırayla her depodan
+     * mevcut stok kadar alınır, kalan miktar bir sonraki depoya geçer.
+     * Hiçbir depoda karşılanamayan kalan, son öncelikli depoya yazılır
+     * (karar DIA/muhasebeye kalır). Öncelik listesi boşsa tek depo kullanılır.
+     */
+    async allocateSourceDepots(stockCode, quantity, depotKeys, fallbackDepoKey) {
+        if (!Array.isArray(depotKeys) || depotKeys.length === 0 || !stockCode) {
+            return [{ depoKey: fallbackDepoKey, quantity }];
+        }
+
+        const allocations = [];
+        let remaining = quantity;
+        for (const depoKey of depotKeys) {
+            if (remaining <= 0) break;
+            const stock = await this.getDepotStock(stockCode, depoKey);
+            const take = Math.min(remaining, Math.max(0, Math.floor(stock)));
+            if (take > 0) {
+                allocations.push({ depoKey, quantity: take });
+                remaining -= take;
+            }
+        }
+
+        if (remaining > 0) {
+            const lastDepot = depotKeys[depotKeys.length - 1];
+            const existing = allocations.find(a => a.depoKey === lastDepot);
+            if (existing) {
+                existing.quantity += remaining;
+            } else {
+                allocations.push({ depoKey: lastDepot, quantity: remaining });
+            }
+            logger.warn('[DiaOrder] Kaynak depolarda yeterli stok yok, kalan son depoya yazıldı', {
+                stockCode, quantity, remaining, lastDepot
+            });
+        }
+
+        logger.info('[DiaOrder] Kaynak sipariş depo dağılımı', { stockCode, quantity, allocations });
+        return allocations;
+    }
+
+    /**
      * Kaynak firmada şirketler arası satış SİPARİŞİ oluşturur (ara cariye).
      * Fiyatlar KDV hariç (fiyatN). Sipariş listesinde izlenebilirlik için.
+     * Kalemler depo öncelik listesine (depotKeys) göre stok bulunan depolara
+     * bölünür; liste boşsa tüm kalemler depoKey deposundan yazılır.
      */
-    async createSourceOrder({ fisno, cariKey, depoKey, subeKey, planKey, elemanKey, seviyeKey, items, description, orderNumber }) {
+    async createSourceOrder({ fisno, cariKey, depoKey, depotKeys = [], subeKey, planKey, elemanKey, seviyeKey, items, description, orderNumber }) {
         const sessionId = await this.ensureSession();
         const now = new Date();
         const dateStr = now.toISOString().slice(0, 10);
 
         let subtotal = 0;
         let vatTotal = 0;
-        const rows = items.map((item, index) => {
-            const lineTotal = item.price * item.quantity;
-            const lineVat = (lineTotal * item.vatRate) / 100;
-            subtotal += lineTotal;
-            vatTotal += lineVat;
-            return {
-                _key_scf_carikart: cariKey,
-                _key_kalemturu: item.stockKey,
-                _key_scf_kalem_birimleri: item.unitKey,
-                _key_sis_depo_source: depoKey,
-                _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
-                _key_scf_odeme_plani: planKey || 0,
-                kalemturu: 'MLZM',
-                miktar: this.formatDecimal(item.quantity),
-                anamiktar: this.formatDecimal(item.quantity),
-                birimfiyati: this.formatDecimal(item.price),
-                sonbirimfiyati: this.formatDecimal(item.price),
-                yerelbirimfiyati: this.formatDecimal(item.price),
-                tutari: this.formatDecimal(lineTotal),
-                dovizkuru: '1.000000',
-                kdv: this.formatDecimal(item.vatRate),
-                kdvdurumu: 'H',
-                kdvtutari: this.formatDecimal(lineVat),
-                onay: 'KABUL',
-                rezervasyon: 'H',
-                siptarih: dateStr,
-                sirano: index + 1,
-                note: item.name || ''
-            };
-        });
+        const rows = [];
+        let sirano = 1;
+        for (const item of items) {
+            const allocations = await this.allocateSourceDepots(item.stockCode, item.quantity, depotKeys, depoKey);
+            for (const alloc of allocations) {
+                const lineTotal = item.price * alloc.quantity;
+                const lineVat = (lineTotal * item.vatRate) / 100;
+                subtotal += lineTotal;
+                vatTotal += lineVat;
+                rows.push({
+                    _key_scf_carikart: cariKey,
+                    _key_kalemturu: item.stockKey,
+                    _key_scf_kalem_birimleri: item.unitKey,
+                    _key_sis_depo_source: alloc.depoKey,
+                    _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
+                    _key_scf_odeme_plani: planKey || 0,
+                    kalemturu: 'MLZM',
+                    miktar: this.formatDecimal(alloc.quantity),
+                    anamiktar: this.formatDecimal(alloc.quantity),
+                    birimfiyati: this.formatDecimal(item.price),
+                    sonbirimfiyati: this.formatDecimal(item.price),
+                    yerelbirimfiyati: this.formatDecimal(item.price),
+                    tutari: this.formatDecimal(lineTotal),
+                    dovizkuru: '1.000000',
+                    kdv: this.formatDecimal(item.vatRate),
+                    kdvdurumu: 'H',
+                    kdvtutari: this.formatDecimal(lineVat),
+                    onay: 'KABUL',
+                    rezervasyon: 'H',
+                    siptarih: dateStr,
+                    sirano: sirano++,
+                    note: item.name || ''
+                });
+            }
+        }
+
+        const headerDepoKey = rows[0]?._key_sis_depo_source || depoKey;
 
         const kart = {
             _key_scf_carikart: cariKey,
             _key_sis_sube_source: subeKey,
-            _key_sis_depo_source: depoKey,
+            _key_sis_depo_source: headerDepoKey,
             _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
             _key_sis_doviz_raporlama: DIA_CURRENCY_KEY_TRY,
             turu: 2,
@@ -1310,6 +1376,18 @@ class DiaOrderService {
     }
 
     /**
+     * Sipariş ödeme yönteminin DIA açıklamalarında kullanılacak etiketi
+     */
+    getPaymentMethodLabel(order) {
+        const method = String(order.payment?.method || '').toLowerCase();
+        if (method.startsWith('netahsilat')) return 'Netahsilat';
+        if (method.startsWith('nkolay')) return 'Nkolay';
+        if (method.startsWith('paynet')) return 'Paynet';
+        if (method === 'bank_transfer') return 'Havale';
+        return method;
+    }
+
+    /**
      * Üyenin birincil aracının plakasını döner (Araçlarım'da doluysa)
      */
     async getVehiclePlate(order) {
@@ -1338,6 +1416,22 @@ class DiaOrderService {
 
         const orderItems = this.buildOrderItems(order, customer, resolvedStocks);
 
+        // Açıklama düzeni siteye göre değişir:
+        // alastik → 1: müşteri adı, 2: sipariş no, 3: ödeme yöntemi
+        // lastikjantavm → 1: boş, 2: site, 3: plaka (sipariş no Ek Alan 4'te)
+        const customerFullName = (order.customerName || order.billingSnapshot?.fullName || shipping.fullName || '').trim();
+        const descriptions = this.site === 'alastik'
+            ? {
+                aciklama1: customerFullName,
+                aciklama2: order.orderNumber,
+                aciklama3: this.getPaymentMethodLabel(order)
+            }
+            : {
+                aciklama1: '',
+                aciklama2: this.site,
+                aciklama3: vehiclePlate ? `Plaka: ${vehiclePlate}` : ''
+            };
+
         const kart = {
             _key_scf_carikart: parseInt(customer.key),
             _key_sis_sube_source: siparis.subeKey,
@@ -1347,15 +1441,17 @@ class DiaOrderService {
             turu: 2,
             onay: 'KABUL',
             fisno: order.orderNumber,
+            // Belge no = sipariş no (alastik isteği, 17 Ağu)
+            belgeno: this.site === 'alastik' ? order.orderNumber : '',
             tarih: dateStr,
             saat: timeStr,
             ortalamavade: dateStr,
             dovizkuru: '1.000000',
             raporlamadovizkuru: '1.000000',
-            aciklama1: '',
-            aciklama2: this.site,
-            aciklama3: vehiclePlate ? `Plaka: ${vehiclePlate}` : '',
-            // Sipariş numarası Ek Alan 4'te taşınır (açıklama boş bırakılır)
+            aciklama1: descriptions.aciklama1,
+            aciklama2: descriptions.aciklama2,
+            aciklama3: descriptions.aciklama3,
+            // Sipariş numarası her iki sitede de Ek Alan 4'te taşınır
             ekalan4: order.orderNumber,
             m_kalemler: orderItems,
             net: this.formatDecimal(order.pricing?.total),
@@ -1459,7 +1555,6 @@ async function syncOrderToDia(order) {
                 : await maybeCreateInvoice(service, order, order.diaIntegration.diaOrderKey);
             let message = 'Sipariş zaten DIA\'ya aktarılmış';
             if (chain && chain.success === false) message += ` — Şirketler arası zincir hatası: ${chain.error}`;
-            if (invoice?.skippedXml) message += ' — XML ürün içeriyor, fatura DIA üzerinden manuel kesilecek';
             else if (invoice?.success && !invoice.existing) message += ', fatura kesildi';
             else if (invoice && invoice.success === false) message += ` — Fatura kesilemedi: ${invoice.error}`;
             return {
@@ -1485,7 +1580,6 @@ async function syncOrderToDia(order) {
                 : await maybeCreateInvoice(service, order, existing.diaKey);
             let message = 'Sipariş DIA\'da zaten mevcut';
             if (chain && chain.success === false) message += ` — Şirketler arası zincir hatası: ${chain.error}`;
-            if (invoice?.skippedXml) message += ' — XML ürün içeriyor, fatura DIA üzerinden manuel kesilecek';
             else if (invoice?.success && !invoice.existing) message += ', fatura kesildi';
             else if (invoice && invoice.success === false) message += ` — Fatura kesilemedi: ${invoice.error}`;
             return { success: !invoice || invoice.success !== false, message, diaOrderKey: existing.diaKey };
@@ -1556,7 +1650,6 @@ async function syncOrderToDia(order) {
                 ? null
                 : await maybeCreateInvoice(service, order, diaOrderKey);
             if (chain && chain.success === false) message += ` — Şirketler arası zincir hatası: ${chain.error}`;
-            if (invoice?.skippedXml) message += ' — XML ürün içeriyor, fatura DIA üzerinden manuel kesilecek';
             else if (invoice?.success && !invoice.existing) message += ', fatura kesildi';
             else if (invoice && invoice.success === false) message += ` — Fatura kesilemedi: ${invoice.error}`;
 
@@ -1614,7 +1707,7 @@ async function maybeRunInterCompanyChain(service, order) {
     const hasXmlItem = (order.items || []).some(
         item => item.isXml || String(item.stockCode || '').endsWith('-XML')
     );
-    if (hasXmlItem) return null; // XML'li siparişte tüm faturalar manuel
+    if (hasXmlItem) return null; // XML üründe kaynak stok ALastik depolarında değil — zincir çalışmaz
 
     const integration = order.diaIntegration || {};
     if (integration.diaSourceOrderKey) {
@@ -1630,8 +1723,14 @@ async function maybeRunInterCompanyChain(service, order) {
         const priceNo = siparis.sirketlerArasiFiyatNo || 5;
         const toDepo = siparis.kaynakCikisDepoKey;
 
-        if (!toDepo || !siparis.araCariKodu) {
-            throw new Error('Şirketler arası ayarlar eksik (çıkış deposu / ara cari kodu)');
+        // Depo öncelik listesi: kalemler stok bulunan depolara sırayla bölünür
+        const depotKeys = String(siparis.kaynakDepoKeys || '')
+            .split(',')
+            .map(value => parseInt(value.trim()))
+            .filter(Boolean);
+
+        if ((!depotKeys.length && !toDepo) || !siparis.araCariKodu) {
+            throw new Error('Şirketler arası ayarlar eksik (depo öncelik listesi / ara cari kodu)');
         }
 
         // Kaynak firma kalemleri: DiaStock kartları + fiyatN (KDV hariç)
@@ -1647,6 +1746,7 @@ async function maybeRunInterCompanyChain(service, order) {
 
             srcItems.push({
                 stockKey: parseInt(stock._key),
+                stockCode: stock.stokkartkodu || '',
                 unitKey: parseInt(stock.anabirimkey) || 0,
                 quantity,
                 price,
@@ -1668,7 +1768,8 @@ async function maybeRunInterCompanyChain(service, order) {
         const sourceOrderKey = existing.exists ? existing.diaKey : await src.createSourceOrder({
             fisno: orderNumber,
             cariKey: parseInt(araCari.key),
-            depoKey: toDepo,
+            depoKey: toDepo || depotKeys[0],
+            depotKeys,
             subeKey: siparis.kaynakSubeKey || 0,
             planKey: siparis.kaynakOdemePlaniKey,
             elemanKey: siparis.kaynakSatisElemaniKey,
@@ -1696,27 +1797,16 @@ async function maybeRunInterCompanyChain(service, order) {
 
 /**
  * Ayarda otomatik fatura açıksa ve siparişin faturası yoksa fatura keser.
- * XML ürün içeren siparişlerde fatura KESİLMEZ — XML ürünlerin stoğunu
- * tedarikçi yönetir, DIA'da stok işlemi yapılmamalıdır; faturaları
- * muhasebe DIA içinden manuel keser. Yalnızca sipariş kaydı düşülür.
- * Sonuç: null (kapalı) | { success:true, skippedXml } |
- *        { success:true, invoiceKey, existing } | { success:false, error }
+ * XML ürünlerde de fatura otomatik kesilir (17 Ağu kararı) — stok XML
+ * kartında eksiye düşer, tedarikçi teslimatında alış faturasıyla kapanır.
+ * Sonuç: null (kapalı) | { success:true, invoiceKey, existing } |
+ *        { success:false, error }
  */
 async function maybeCreateInvoice(service, order, diaOrderKey) {
     const siparis = service.settings.siparis || {};
     if (!siparis.faturaOtomatik) return null;
     if (order.diaIntegration?.diaInvoiceKey) {
         return { success: true, invoiceKey: order.diaIntegration.diaInvoiceKey, existing: true };
-    }
-
-    const hasXmlItem = (order.items || []).some(
-        item => item.isXml || String(item.stockCode || '').endsWith('-XML')
-    );
-    if (hasXmlItem) {
-        logger.info('[DiaOrder] Sipariş XML ürün içeriyor, otomatik fatura atlandı (manuel kesilecek)', {
-            orderNumber: order.orderNumber
-        });
-        return { success: true, skippedXml: true };
     }
 
     const WebOrder = require('../../../models/web/order/WebOrder');

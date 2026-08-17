@@ -2,6 +2,7 @@
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 
@@ -84,11 +85,14 @@ export default async function TagPage({ params, searchParams }: Props) {
     const showcaseSettings = await getShowcaseSettings();
     const currentPage = parseInt(filters.page || '1');
 
+    const activeCondition = filters.durum === 'ikinci-el' ? 'ikinci-el' : 'sifir';
+
     const productsData = await tagService.getTagProducts(
         slug,
         currentPage,
         showcaseSettings.productsPerPage,
         {
+            durum: filters.durum,
             marka: filters.marka,
             arac: filters.arac,
             oem: filters.oem,
@@ -105,6 +109,26 @@ export default async function TagPage({ params, searchParams }: Props) {
     );
 
     const displayProductCount = productsData?.pagination?.totalProducts ?? tag.productCount ?? 0;
+
+    // Sıfır / İkinci El sekmeleri — etikette ikinci el ürün varsa gösterilir
+    const conditionCounts = productsData?.counts || { sifir: 0, ikinciEl: 0 };
+    const showConditionTabs = conditionCounts.ikinciEl > 0;
+    const conditionLabel = tag.type === 'rim_pcd' ? 'Jant' : 'Lastik';
+    // Sekme başına etiket adı: slug'daki ebat bölümü (örn. 185-55-r15 → 185 55 R15).
+    // Mevsim gibi kelime parçaları düz büyütme yerine doğru Türkçe karşılığıyla yazılır
+    // (kis → Kış; aksi halde "KİS" görünür).
+    const slugTokenLabels: Record<string, string> = {
+        kis: 'Kış',
+        yaz: 'Yaz',
+        mevsim: 'Mevsim',
+        dort: 'Dört',
+        jant: 'Jant',
+        lastik: 'Lastik'
+    };
+    const sizeLabel = currentSize
+        .split('-')
+        .map(part => slugTokenLabels[part] || part.toLocaleUpperCase('tr-TR'))
+        .join(' ');
 
     return (
         <>
@@ -148,6 +172,26 @@ export default async function TagPage({ params, searchParams }: Props) {
                                         <Col md={12}>
                                             <CategoryTireSearch />
                                         </Col>
+                                        {showConditionTabs && (
+                                            <Col md={12}>
+                                                <ul className="nav nav-tabs mb-3">
+                                                    <li className="nav-item">
+                                                        <Link
+                                                            href={`/etiket/${slug}`}
+                                                            className={`nav-link ${activeCondition === 'sifir' ? 'active' : ''}`}>
+                                                            {sizeLabel} Sıfır {conditionLabel} Fiyatları
+                                                        </Link>
+                                                    </li>
+                                                    <li className="nav-item">
+                                                        <Link
+                                                            href={`/etiket/${slug}?durum=ikinci-el`}
+                                                            className={`nav-link ${activeCondition === 'ikinci-el' ? 'active' : ''}`}>
+                                                            {sizeLabel} İkinci El {conditionLabel} Fiyatları
+                                                        </Link>
+                                                    </li>
+                                                </ul>
+                                            </Col>
+                                        )}
                                         <Col md={12}>
                                             <CategoryTop
                                                 productCount={displayProductCount}
@@ -165,6 +209,19 @@ export default async function TagPage({ params, searchParams }: Props) {
                                                     currentPage={productsData.pagination.currentPage}
                                                     totalPages={productsData.pagination.totalPages}
                                                     totalProducts={productsData.pagination.totalProducts}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
+                                </Col>
+                                <Col lg={12} className="order-3">
+                                    {/* Etiket SEO içeriği */}
+                                    {tag.description && (
+                                        <Row>
+                                            <Col md={12}>
+                                                <div
+                                                    className="category-seo-content mt-4"
+                                                    dangerouslySetInnerHTML={{ __html: tag.description }}
                                                 />
                                             </Col>
                                         </Row>

@@ -162,7 +162,7 @@ router.get('/:slug', async (req, res) => {
 router.get('/:slug/products', async (req, res) => {
     try {
         const { slug } = req.params;
-        const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax, sortBy, sortOrder } = req.query;
+        const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax, sortBy, sortOrder, durum } = req.query;
 
         // Tag'i bul (ziyaret edilen sitenin etiketi)
         const tag = await WebTag.findOne({
@@ -184,6 +184,7 @@ router.get('/:slug/products', async (req, res) => {
                 success: true,
                 data: {
                     products: [],
+                    counts: { sifir: 0, ikinciEl: 0 },
                     pagination: {
                         currentPage: 1,
                         totalPages: 0,
@@ -316,10 +317,28 @@ router.get('/:slug/products', async (req, res) => {
             });
         }
 
-        // $and koşullarını uygula
+        // $and koşullarını uygula (görünürlük filtresi ezilmez, üzerine eklenir)
         if (andConditions.length > 0) {
-            filter['$and'] = andConditions;
+            filter['$and'] = [...filter['$and'], ...andConditions];
         }
+
+        // Sıfır / İkinci El sekmeleri: ikinci el ürünler DIA kategori ağacında
+        // "İkinci El ..." başlığı altında işaretlidir
+        const secondHandCondition = {
+            'diaData.m_kategoriler': { $elemMatch: { kategori_aciklama_1: { $regex: '^İkinci El' } } }
+        };
+        const brandNewCondition = {
+            'diaData.m_kategoriler': { $not: { $elemMatch: { kategori_aciklama_1: { $regex: '^İkinci El' } } } }
+        };
+
+        // Sekme sayaçları (durum filtresi hariç mevcut tüm koşullarla)
+        const [sifirCount, ikinciElCount] = await Promise.all([
+            WebProduct.countDocuments({ ...filter, $and: [...filter['$and'], brandNewCondition] }),
+            WebProduct.countDocuments({ ...filter, $and: [...filter['$and'], secondHandCondition] })
+        ]);
+
+        // Aktif sekme: varsayılan sıfır ürünler, durum=ikinci-el ise ikinci el
+        filter['$and'] = [...filter['$and'], durum === 'ikinci-el' ? secondHandCondition : brandNewCondition];
 
         // Pagination hesapla
         const pageNum = parseInt(page);
@@ -327,7 +346,7 @@ router.get('/:slug/products', async (req, res) => {
         const skip = (pageNum - 1) * limitNum;
 
         // Toplam filtrelenmiş ürün sayısı
-        const totalProducts = await WebProduct.countDocuments(filter);
+        const totalProducts = durum === 'ikinci-el' ? ikinciElCount : sifirCount;
         const totalPages = Math.ceil(totalProducts / limitNum);
 
         // Sıralama:
@@ -406,6 +425,7 @@ router.get('/:slug/products', async (req, res) => {
             success: true,
             data: {
                 products,
+                counts: { sifir: sifirCount, ikinciEl: ikinciElCount },
                 pagination: {
                     currentPage: pageNum,
                     totalPages,

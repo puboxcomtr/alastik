@@ -17059,7 +17059,7 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
 
 .productImage {
     width: 100%;
-    height: 250px;
+    height: 300px;
     object-fit: cover;
     object-position: center;
     background-color: #fff;

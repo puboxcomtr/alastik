@@ -6,6 +6,7 @@ import classnames from 'classnames'
 
 // API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getSiteUrl } from '@/utils/activeSite'
 
 // MUI Imports
 import type { TextFieldProps } from '@mui/material/TextField'
@@ -317,7 +318,7 @@ const LabelListTable = () => {
       columnHelper.accessor('title', {
         header: 'Etiket Adı',
         cell: ({ row }) => (
-          <div className='flex items-center gap-3'>
+          <div className='group flex items-center gap-3'>
             <div className='flex flex-col items-start'>
               <Typography className='font-medium' color='text.primary'>
                 {row.original.title}
@@ -326,6 +327,20 @@ const LabelListTable = () => {
                 {row.original.productCount} adet üründe kullanılıyor
               </Typography>
             </div>
+            {row.original.seoUrl && (
+              <Tooltip title='Sitede Görüntüle'>
+                <IconButton
+                  size='small'
+                  component='a'
+                  href={`${getSiteUrl()}/etiket/${row.original.seoUrl}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='opacity-0 group-hover:opacity-100 transition-opacity'
+                >
+                  <i className='ri-external-link-line text-[18px] text-textSecondary' />
+                </IconButton>
+              </Tooltip>
+            )}
           </div>
         )
       }),

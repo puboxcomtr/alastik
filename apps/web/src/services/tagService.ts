@@ -1,5 +1,5 @@
 // apps/web/src/services/tagService.ts
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 
 export interface WebTag {
     _id: string;
@@ -20,6 +20,10 @@ export interface WebTag {
 
 export interface TagProductsResponse {
     products: any[];
+    counts?: {
+        sifir: number;
+        ikinciEl: number;
+    };
     pagination: {
         currentPage: number;
         totalPages: number;
@@ -29,6 +33,7 @@ export interface TagProductsResponse {
 }
 
 export interface TagFilterParams {
+    durum?: string;
     marka?: string;
     arac?: string;
     oem?: string;
@@ -46,6 +51,7 @@ export interface TagFilterParams {
 async function getTagBySlug(slug: string): Promise<WebTag | null> {
     try {
         const response = await fetch(API_ENDPOINTS.tags.detail(slug), {
+            headers: await getServerSiteHeaders(),
             next: {
                 revalidate: 300,
                 tags: [`tag-${slug}`]
@@ -76,6 +82,7 @@ async function getTagProducts(
         params.append('page', page.toString());
         params.append('limit', limit.toString());
 
+        if (filters?.durum) params.append('durum', filters.durum);
         if (filters?.marka) params.append('marka', filters.marka);
         if (filters?.arac) params.append('arac', filters.arac);
         if (filters?.oem) params.append('oem', filters.oem);
@@ -91,7 +98,7 @@ async function getTagProducts(
 
         const response = await fetch(
             `${API_ENDPOINTS.tags.products(slug)}?${params.toString()}`,
-            { cache: 'no-store' }
+            { cache: 'no-store', headers: await getServerSiteHeaders() }
         );
         if (!response.ok) return null;
 
@@ -110,7 +117,8 @@ async function getTireSizeTag(
 ): Promise<{ seoUrl: string; title: string } | null> {
     try {
         const response = await fetch(
-            `${API_ENDPOINTS.tags.tireSize()}?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
+            `${API_ENDPOINTS.tags.tireSize()}?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`,
+            { headers: await getServerSiteHeaders() }
         );
 
         if (!response.ok) return null;
@@ -127,7 +135,7 @@ async function getRimPcdTag(pcd: string): Promise<{ seoUrl: string; title: strin
     try {
         const response = await fetch(
             `${API_ENDPOINTS.tags.rimPcd()}?pcd=${pcd}`,
-            { next: { revalidate: 60 } }
+            { headers: await getServerSiteHeaders(), next: { revalidate: 60 } }
         );
 
         if (!response.ok) return null;
@@ -147,7 +155,8 @@ async function getChainSizeTag(
 ): Promise<{ seoUrl: string; title: string } | null> {
     try {
         const response = await fetch(
-            `${API_ENDPOINTS.tags.chainSize()}?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`
+            `${API_ENDPOINTS.tags.chainSize()}?width=${width}&aspectRatio=${aspectRatio}&diameter=${diameter}`,
+            { headers: await getServerSiteHeaders() }
         );
 
         if (!response.ok) return null;

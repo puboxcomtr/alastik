@@ -199,9 +199,14 @@ router.get('/tire-options', async (req, res) => {
 
                 if (webCategory && webCategory.diaCategory) {
                     const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
-                    baseMatch['diaData.m_kategoriler'] = {
-                        $elemMatch: { [diaLevel]: webCategory.diaCategory }
-                    };
+                    // Etiket sayfalarında ürün kümesini etiket belirler; kategori
+                    // koşulu eklenirse etiket ürünleri kategori ağacına bağlı
+                    // olmadığında kesişim boş kalır ve filtreler boş döner.
+                    if (!tag) {
+                        baseMatch['diaData.m_kategoriler'] = {
+                            $elemMatch: { [diaLevel]: webCategory.diaCategory }
+                        };
+                    }
 
                     const sampleProduct = await WebProduct.findOne({
                         'diaData.m_kategoriler': {
