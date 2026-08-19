@@ -320,6 +320,24 @@ router.get('/results', async (req, res) => {
 
         const andConditions = [];
 
+        // İkinci el ürünler genel arama sonuçlarına karışmasın; kullanıcı açıkça
+        // "2.el" / "ikinci el" aramadıysa dışlanır (stok kodu aramaları hariç)
+        const wantsSecondHand = /2\.?\s*el|ikinci\s*el/i.test(q);
+        if (!isStockCode && !wantsSecondHand) {
+            const secondHandCategory = await WebCategory.findOne({ slug: 'ikinci-el' }).lean();
+            if (secondHandCategory?.diaCategory) {
+                andConditions.push({
+                    'diaData.m_kategoriler': {
+                        $not: {
+                            $elemMatch: {
+                                [secondHandCategory.diaLevel || 'kategori_aciklama_2']: secondHandCategory.diaCategory
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
         if (isStockCode) {
             const stockRegex = new RegExp(escapeRegex(q.trim()), 'i');
             andConditions.push({

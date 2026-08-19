@@ -157,6 +157,8 @@ export interface ProductCardProps {
 // Filter parametreleri
 export interface ProductFilterParams {
     category?: string;
+    // Hariç tutulacak kategori slug'ları (virgülle) — örn. marka sayfası Sıfır sekmesinde 'ikinci-el'
+    haricKategori?: string;
     genislik?: string;
     yukseklik?: string;
     cap?: string;

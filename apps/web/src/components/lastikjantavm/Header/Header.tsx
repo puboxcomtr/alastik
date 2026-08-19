@@ -14,7 +14,7 @@ import { api } from '@src/lib/api';
 /* Variables */
 export default function Header() {
     const [logo, setLogo] = useState('');
-    const [siteName, setSiteName] = useState('A Lastik');
+    const [siteName, setSiteName] = useState('LastikJantAVM');
     const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {

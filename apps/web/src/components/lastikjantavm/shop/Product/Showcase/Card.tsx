@@ -76,7 +76,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
-    const stockCode = getProductStockCode(product);
+    const stockCode = getProductStockCode(product, 'lastikjantavm');
 
     // Marka bilgisini context'ten al
     const brandName = product.diaData.marka || '';
@@ -188,7 +188,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                             href={productUrl}
                         >
                             <span className="animate-target fs-sm">
-                                {product.diaData.aciklama?.replace(/^LJA/i, 'AKD')}
+                                {product.diaData.aciklama}
                             </span>
                         </Link>
                     </h3>

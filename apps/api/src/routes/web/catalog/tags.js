@@ -421,6 +421,12 @@ router.get('/:slug/products', async (req, res) => {
 
         const products = await WebProduct.aggregate(aggregatePipeline);
 
+        // Sitenin kendi açıklaması etkin değer olarak yansıtılır (ürün detayındaki çözümün liste karşılığı)
+        for (const product of products) {
+            const siteDescription = product.customData?.siteDescriptions?.[req.site];
+            if (siteDescription) product.customData.customDescription = siteDescription;
+        }
+
         res.json({
             success: true,
             data: {

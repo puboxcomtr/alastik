@@ -28,6 +28,7 @@ import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFi
 import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPagination';
 
 import Breadcrumb from '@/src/components/brand/Header/Breadcrumb';
+import SecondHandBanner from '@/src/components/category/SecondHandBanner';
 
 
 /* Context */
@@ -98,8 +99,16 @@ export default async function BrandPage({ params, searchParams }: Props) {
     const showcaseSettings = await getShowcaseSettings();
     const currentPage = parseInt(filters.page || '1');
 
+    // LJA marka sayfasında Sıfır / 2.El sekmeleri: 2.El sekmesi ikinci-el kategorisini
+    // listeler, Sıfır sekmesi bu kategoriyi dışlar. Diğer sitelerde davranış değişmez.
+    const hasConditionTabs = site === 'lastikjantavm';
+    const isSecondHand = hasConditionTabs && filters.durum === '2-el';
+
     const productsData = await filterProducts({
         marka: brand.diaMarkaAck,
+        // İkinci El üst kategorisi jantları da içerir; marka sekmesi lastik alt kategorisini kullanır
+        category: isSecondHand ? 'ikinci-el-arac-lastikleri' : undefined,
+        haricKategori: hasConditionTabs && !isSecondHand ? 'ikinci-el' : undefined,
         // Lastik parametreleri
         genislik: filters.genislik,
         yukseklik: filters.yanak,
@@ -167,7 +176,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                         <Col md={12}>
                                             <CategoryTop
                                                 productCount={displayProductCount}
-                                                categoryName={brand.name}
+                                                categoryName={isSecondHand ? `${brand.name} 2.EL` : brand.name}
                                             />
                                         </Col>
                                     </Row>
@@ -183,6 +192,31 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                                     currentPage={productsData.pagination.currentPage}
                                                     totalPages={productsData.pagination.totalPages}
                                                     totalProducts={productsData.pagination.totalProducts}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
+
+                                    {/* 2.El ürünlere geçiş banner'ı (sadece LJA, sıfır görünümünde) */}
+                                    {hasConditionTabs && !isSecondHand && (
+                                        <Row>
+                                            <Col md={12}>
+                                                <SecondHandBanner
+                                                    href={`/marka/${slug}?durum=2-el`}
+                                                    text={`${brand.diaMarkaAck || brand.name} markasında garantili 2. el lastik seçeneklerini görmek için`}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
+                                </Col>
+                                <Col lg={12} className="order-3">
+                                    {/* Marka SEO içeriği */}
+                                    {brand.description && (
+                                        <Row>
+                                            <Col md={12}>
+                                                <div
+                                                    className="category-seo-content mt-4"
+                                                    dangerouslySetInnerHTML={{ __html: brand.description }}
                                                 />
                                             </Col>
                                         </Row>

@@ -191,12 +191,12 @@ export default function Cart({ product }: CartProps) {
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>
                                             <p className='m-0 fw-bold text-black'>
-                                                Peşin Fiyatına 4 Taksit
+                                                Peşin Fiyatına 3 Taksit
                                             </p>
                                         </div>
                                         <div className="d-flex align-items-center gap-1 mt-1">
                                             <p>
-                                                Vade farksız 4 Taksit fırsatını kaçırma
+                                                Vade farksız 3 Taksit fırsatını kaçırma
                                             </p>
                                         </div>
                                     </div>

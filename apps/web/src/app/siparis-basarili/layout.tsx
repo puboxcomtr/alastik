@@ -1,12 +1,15 @@
 import type { Metadata } from 'next';
+import { siteTitle } from '@/src/lib/siteMeta';
 
-export const metadata: Metadata = {
-    title: 'Sipariş Başarılı - ALastik.com',
-    robots: {
-        index: false,
-        follow: false
-    }
-};
+export async function generateMetadata(): Promise<Metadata> {
+    return {
+        title: siteTitle('Sipariş Başarılı', '-'),
+        robots: {
+            index: false,
+            follow: false
+        }
+    };
+}
 
 export default function OrderSuccessLayout({
     children

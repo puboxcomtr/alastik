@@ -34,7 +34,7 @@ interface MiddleProps {
 }
 
 export default function Middle({ product, productName, wheelSize, reviews }: MiddleProps) {
-    const features = getProductDetailFeatures(product);
+    const features = getProductDetailFeatures(product, 'lastikjantavm');
     const rating = reviews?.stats?.averageOverall || 0;
     const reviewCount = reviews?.stats?.total || 0;
     const [ebatDialogOpen, setEbatDialogOpen] = useState(false);

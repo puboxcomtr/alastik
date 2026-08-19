@@ -11,6 +11,7 @@ export async function filterProducts(params: ProductFilterParams): Promise<Produ
         } else if (params.category) {
             queryParams.append('category', params.category);
         }
+        if (params.haricKategori) queryParams.append('haricKategori', params.haricKategori);
         if (params.genislik) queryParams.append('genislik', params.genislik);
         if (params.yukseklik) queryParams.append('yukseklik', params.yukseklik);
         if (params.cap) queryParams.append('cap', params.cap);

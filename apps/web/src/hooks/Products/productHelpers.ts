@@ -141,11 +141,13 @@ export const getProductFeatures = (product: Product) => {
 /**
  * Ürün stok kodunu getir
  */
-export const getProductStockCode = (product: Product): string => {
+export const getProductStockCode = (product: Product, site?: string): string => {
     const code = product.diaData?.anabarkod ||
         product.diaData?.stokkartkodu ||
         '-';
-    return code.replace(/-XML$/i, '').replace(/^LJA/i, 'AKD');
+    const cleaned = code.replace(/-XML$/i, '');
+    // AKD gosterimi yalnizca alastik icindir; LJA sitesi kodu oldugu gibi gosterir
+    return site === 'lastikjantavm' ? cleaned : cleaned.replace(/^LJA/i, 'AKD');
 };
 
 /**
@@ -327,18 +329,18 @@ const getLastikEbat = (product: Product): string => {
 
     return `${genislik}/${yanak} ${cap} ${yukEndeksi}${hizEndeksi}`;
 };
-export const getProductDetailFeatures = (product: Product): ProductFeatureItem[] => {
+export const getProductDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     const type = getProductType(product);
 
     const features = type === 'LASTIK'
-        ? getLastikDetailFeatures(product)
+        ? getLastikDetailFeatures(product, site)
         : type === 'JANT'
-            ? getJantDetailFeatures(product)
+            ? getJantDetailFeatures(product, site)
             : type === 'ZINCIR'
-                ? getZincirDetailFeatures(product)
+                ? getZincirDetailFeatures(product, site)
                 : type === 'AKSESUAR'
-                    ? getAksesuarDetailFeatures(product)
-                    : getGenericFeatures(product);
+                    ? getAksesuarDetailFeatures(product, site)
+                    : getGenericFeatures(product, site);
 
     // Kategori ayarı açıksa stok kodu satırı listelenmez
     return (product as any)?.hideStockCode === true
@@ -445,7 +447,7 @@ export const getCardHoverFeatures = (product: Product): Array<{ label: string; v
 /**
  * Tüm lastik özelliklerini detaylı getir (Description için)
  */
-export const getAllLastikFeatures = (product: Product): Array<{ label: string; value: string }> => {
+export const getAllLastikFeatures = (product: Product, site?: string): Array<{ label: string; value: string }> => {
     const genislik = getProductFeature(product, 'Genişlik');
     const yanak = getProductFeature(product, 'Yanak');
     const cap = getProductFeature(product, 'Jant Çapı');
@@ -467,7 +469,7 @@ export const getAllLastikFeatures = (product: Product): Array<{ label: string; v
     if (oem !== '-' && oem.toLowerCase() !== 'hayır') ekstraOzellikler.push(`OEM: ${oem}`);
 
     return [
-        { label: 'Stok Kodu', value: getProductStockCode(product) },
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) },
         { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
         { label: 'Araç Tipi', value: getProductFeature(product, 'Araç Tipi') },
         { label: 'Marka', value: capitalizeText(product.customData?.brandDisplayName || product.diaData?.marka || '-') },
@@ -488,9 +490,9 @@ export const getAllLastikFeatures = (product: Product): Array<{ label: string; v
 /**
  * Tüm jant özelliklerini detaylı getir (Description için)
  */
-export const getAllJantFeatures = (product: Product): Array<{ label: string; value: string }> => {
+export const getAllJantFeatures = (product: Product, site?: string): Array<{ label: string; value: string }> => {
     return [
-        { label: 'Stok Kodu', value: getProductStockCode(product) },
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) },
         { label: 'Ürün Tipi', value: capitalizeText(product.diaData?.ozelkod7kodu || '-') },
         { label: 'Marka', value: capitalizeText(product.customData?.brandDisplayName || product.diaData?.marka || '-') },
         { label: 'Model', value: product.diaData?.ozelkod5 || product.diaData?.ozelkod5kodu || '-' },
@@ -509,11 +511,11 @@ export const getAllJantFeatures = (product: Product): Array<{ label: string; val
  * Lastik ve jant dışındaki ürünlerde (hizmet, aksesuar) liste boş döner;
  * bu durumda bölüm hiç gösterilmez.
  */
-export const getProductSpecRows = (product: Product): Array<{ label: string; value: string }> => {
+export const getProductSpecRows = (product: Product, site?: string): Array<{ label: string; value: string }> => {
     const rows = isLastik(product)
-        ? getAllLastikFeatures(product)
+        ? getAllLastikFeatures(product, site)
         : isJant(product)
-            ? getAllJantFeatures(product)
+            ? getAllJantFeatures(product, site)
             : [];
 
     // Kategori ayarı açıksa stok kodu satırı listelenmez
@@ -525,7 +527,7 @@ export const getProductSpecRows = (product: Product): Array<{ label: string; val
 /**
  * Lastik özellikleri
  */
-const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
+const getLastikDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     const genislik = getProductFeature(product, 'Genişlik');
     const yanak = getProductFeature(product, 'Yanak');
     const cap = getProductFeature(product, 'Jant Çapı');
@@ -565,7 +567,7 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
     }
 
     return [
-        { label: 'Stok Kodu', value: getProductStockCode(product) },
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) },
         {
             label: 'Ebat',
             value: ebat,
@@ -603,7 +605,7 @@ const getLastikDetailFeatures = (product: Product): ProductFeatureItem[] => {
 /**
  * Jant özellikleri
  */
-const getJantDetailFeatures = (product: Product): ProductFeatureItem[] => {
+const getJantDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
         { label: 'Jant Genişliği', value: getProductFeature(product, 'Jant Genişliği') },
@@ -613,43 +615,43 @@ const getJantDetailFeatures = (product: Product): ProductFeatureItem[] => {
         { label: 'Göbek Çapı', value: getProductFeature(product, 'Göbek Çapı') },
         { label: 'Offset (ET)', value: getProductFeature(product, 'ET') },
         { label: 'Renk', value: getProductFeature(product, 'Renk') },
-        { label: 'Stok Kodu', value: getProductStockCode(product) }
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) }
     ].filter(f => f.value && f.value !== '-');
 };
 
 /**
  * Kar zinciri/palet özellikleri
  */
-const getZincirDetailFeatures = (product: Product): ProductFeatureItem[] => {
+const getZincirDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
         { label: 'Uyumlu Lastik Genişliği', value: getProductFeature(product, 'Genişlik') || product.diaData?.ozelkod3kodu || '-' },
         { label: 'Uyumlu Jant Çapı', value: getProductFeature(product, 'Jant Çapı') || product.diaData?.ozelkod4kodu || '-' },
         { label: 'Tip', value: product.diaData?.ekalan2 || '-' },
-        { label: 'Stok Kodu', value: getProductStockCode(product) }
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) }
     ].filter(f => f.value && f.value !== '-');
 };
 
 /**
  * Aksesuar özellikleri
  */
-const getAksesuarDetailFeatures = (product: Product): ProductFeatureItem[] => {
+const getAksesuarDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
         { label: 'Marka', value: product.diaData?.marka || '-' },
         { label: 'Tip', value: product.diaData?.ekalan1 || '-' },
-        { label: 'Stok Kodu', value: getProductStockCode(product) }
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) }
     ].filter(f => f.value && f.value !== '-');
 };
 
 /**
  * Generic özellikler (tip belirlenemezse)
  */
-const getGenericFeatures = (product: Product): ProductFeatureItem[] => {
+const getGenericFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
         { label: 'Marka', value: product.diaData?.marka || '-' },
-        { label: 'Stok Kodu', value: getProductStockCode(product) }
+        { label: 'Stok Kodu', value: getProductStockCode(product, site) }
     ].filter(f => f.value && f.value !== '-');
 };
 

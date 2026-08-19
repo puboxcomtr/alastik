@@ -14,9 +14,10 @@ interface ContactFormProps {
   sending: boolean;
   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleSubmit: () => void;
+  bgImage?: string;
 }
 
-export default function ContactForm({ formData, sending, handleChange, handleSubmit }: ContactFormProps) {
+export default function ContactForm({ formData, sending, handleChange, handleSubmit, bgImage = '/alastik/assets/img/contact_bg.jpg' }: ContactFormProps) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleBlur = (field: string) => {
@@ -196,7 +197,7 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
       {/* Sağ Görsel */}
       <div className="col position-relative d-none d-md-block" style={{ minHeight: '500px' }}>
         <img
-          src="/alastik/assets/img/contact_bg.jpg"
+          src={bgImage}
           className="position-absolute top-0 start-0 w-100 h-100 object-fit-cover"
           alt="İletişim"
         />

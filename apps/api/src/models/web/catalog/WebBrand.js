@@ -20,6 +20,12 @@ const siteSettingsShape = Object.keys(SITES).reduce((acc, slug) => {
 // Site başına içerik/SEO metinleri (siteContent.<slug>)
 // Alan tanımsızsa kök (ortak) değer geçerlidir
 const siteBrandContentSchema = new mongoose.Schema({
+    // Sitede gösterilen marka adı (örn. AKD markası LJA'da "LJA" görünür);
+    // boşsa customName → diaBrand → name sırası geçerlidir
+    displayName: { type: String },
+    // Sitede gösterilen marka logosu; boşsa ortak logo alanı geçerlidir
+    logoUrl: { type: String },
+    logoAlt: { type: String },
     description: { type: String },
     seoTitle: { type: String },
     seoDescription: { type: String },

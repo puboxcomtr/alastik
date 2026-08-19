@@ -39,6 +39,7 @@ import GlobalLoadingOverlay from '@components/common/GlobalLoadingOverlay';
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
 import TireSize from '@components/layout/Modals/TireSize';
 import Modal from '@components/ui/Modal';
+import LjaBannerPopup from '@components/lastikjantavm/Popup/BannerPopup';
 
 /* Theme Settings */
 import { getThemeSettings } from '@src/services/themeService';
@@ -120,6 +121,7 @@ export default async function RootLayout({
                     <Modal />
                     <TireSearchClient />
                     <TireSize />
+                    {site === 'lastikjantavm' && <LjaBannerPopup />}
                   </FavouritesProvider>
                 </CartProvider>
               </BrandsProvider>

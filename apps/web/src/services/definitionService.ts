@@ -1,11 +1,12 @@
 // apps/web/src/services/definitionService.ts
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 
 export async function getDefinition() {
     try {
         const res = await fetch(API_ENDPOINTS.definition.get(), {
             cache: 'no-store',
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            headers: { ...(await getServerSiteHeaders()) }
         });
 
         if (!res.ok) {

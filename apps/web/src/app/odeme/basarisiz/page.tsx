@@ -15,9 +15,6 @@ export default function PaymentFailedPage() {
     const [isValidAccess, setIsValidAccess] = useState(false);
 
     useEffect(() => {
-        // Sayfa title
-        document.title = 'Ödeme Başarısız - ALastik.com';
-
         // No-index meta tag
         let metaRobots = document.querySelector('meta[name="robots"]') as HTMLMetaElement;
         if (!metaRobots) {

@@ -18,6 +18,8 @@ export interface SiteTheme {
 export interface SiteConfig {
     slug: SiteSlug;
     name: string;
+    // Sayfa başlıklarında marka eki olarak kullanılır (örn. "Hesabım | <brandTitle>")
+    brandTitle: string;
     metaTitle: string;
     metaDescription: string;
     favicon: string;
@@ -33,6 +35,7 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
     alastik: {
         slug: 'alastik',
         name: 'ALastik',
+        brandTitle: 'ALastik.com',
         metaTitle: "A Lastik.com | Online Lastik Satışı – En Uygun Fiyatlı Lastikler",
         metaDescription: "Binek, SUV ve ticari araçlar için geniş lastik seçenekleri ALastik.com'da. Uygun fiyat, güvenilir alışveriş ve hızlı sipariş avantajlarını keşfedin.",
         favicon: '/alastik/favicon.ico',
@@ -54,6 +57,7 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
     lastikjantavm: {
         slug: 'lastikjantavm',
         name: 'LastikJantAVM',
+        brandTitle: 'LastikJantAVM',
         metaTitle: "LastikJantAVM | Online Lastik ve Jant Satışı",
         metaDescription: "Binek, SUV ve ticari araçlar için geniş lastik ve jant seçenekleri LastikJantAVM'de. Uygun fiyat, güvenilir alışveriş ve hızlı sipariş.",
         favicon: '/lastikjantavm/favicon.ico',

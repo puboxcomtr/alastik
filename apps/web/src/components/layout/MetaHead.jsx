@@ -32,7 +32,12 @@ export default async function MetaHead() {
           type="font/woff2"
           crossOrigin="anonymous"
         />
-        <meta name="google-site-verification" content="yubc1j2taIzdyUWWFlVWkSAYzwU8L_q-aEKtX1zdGh4" />
+        {/* Google Search Console doğrulaması — site başına ayrı kod */}
+        {siteSlug === "lastikjantavm" ? (
+          <meta name="google-site-verification" content="G4wbqvmKtztasq6HYX4WX_d0fLS7GHGdnhApayTSVtE" />
+        ) : (
+          <meta name="google-site-verification" content="yubc1j2taIzdyUWWFlVWkSAYzwU8L_q-aEKtX1zdGh4" />
+        )}
 
         {/* CSS Files */}
         <link rel="stylesheet" href="/alastik/assets/icons/cartzilla-icons.min.css" />

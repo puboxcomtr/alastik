@@ -212,7 +212,7 @@ app.options('*', cors(corsOptions));
 // nginx önce önbellek klasörüne bakar, bulamazsa bu rotaya düşer.
 const watermarkService = require('./services/media/WatermarkService');
 
-app.get(/^\/(urun|blog|marka|genel)\/.+\.(jpe?g|png|webp)$/i, async (req, res, next) => {
+app.get(/^\/(urun|blog|genel)\/.+\.(jpe?g|png|webp)$/i, async (req, res, next) => {
     try {
         // Bu rota site middleware'inden önce çalışır; site Host başlığından çözülür
         const { resolveSite } = require('./utils/resolveSite');
@@ -399,6 +399,10 @@ app.use('/api/tags', webTagsRoutes);
 /* Tanımlamalar */
 const definitionRouter = require('./routes/web/other/definition');
 app.use('/api/definition', definitionRouter);
+
+// Sitemap veri kaynağı (web route handler'ları XML üretirken kullanır)
+const sitemapDataRouter = require('./routes/web/other/sitemap');
+app.use('/api/sitemap-data', sitemapDataRouter);
 
 const seoRouter = require('./routes/web/other/seo');
 app.use('/api/seo', seoRouter);

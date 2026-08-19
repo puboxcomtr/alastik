@@ -105,6 +105,18 @@ export default function ActionButtons({ onMenuOpen, onSearchToggle }: ActionButt
                 </Tooltip>
             )}
 
+            <Tooltip title="Bayi Girişi">
+                <Link
+                    href="https://b2b.lastikjantavm.com"
+                    target="_blank"
+                    rel="noopener"
+                    className="btn btn-icon btn-lg fs-lg btn-outline-secondary border-0 rounded-circle animate-shake d-none d-md-inline-flex flex-column gap-1"
+                >
+                    <i className="ri-store-2-line animate-target"></i>
+                    <span className="text-muted fs-xs fw-normal">Bayi Girişi</span>
+                </Link>
+            </Tooltip>
+
             {isLoggedIn && (
                 <Menu
                     anchorEl={menuAnchor}

@@ -167,21 +167,37 @@ class DiaOrderService {
     // ==================== CARİ ====================
 
     /**
-     * Cari hesap kodu üretir.
-     * Ayarda cari kod öneki doluysa: '<önek><sipariş ayı>.<6 haneli rastgele>'
-     * (örn. LJA-120.01.08.483920). Benzersizlik resolveCustomer'da doğrulanır.
-     * Önek boşsa telefon tabanlı deterministik eski üretim kullanılır.
+     * Önekli modda sıradaki cari hesap kodunu üretir:
+     * '<önek><sipariş ayı>.<6 haneli sıra no>' (örn. AL-120.01.08.000003).
+     * Sıra numarası site başına webdia ayar kaydındaki cariKodSayac alanından
+     * atomik $inc ile alınır — her yeni cari bir öncekinin 1 fazlasını alır,
+     * eşzamanlı siparişlerde de çakışmaz. DIA'da dolu çıkarsa (elle açılmış
+     * kayıt vb.) resolveCustomer tekrar çağırıp bir sonraki numarayı dener.
      */
-    buildCustomerCode(order) {
+    async nextCustomerCode(order) {
         const siparis = this.settings.siparis || {};
 
-        if (siparis.cariKodOnek) {
-            const orderDate = new Date(order.createdAt || Date.now());
-            const month = String(orderDate.getMonth() + 1).padStart(2, '0');
-            const random = String(Math.floor(100000 + Math.random() * 900000));
-            return `${siparis.cariKodOnek}${month}.${random}`;
+        const updated = await WebDia.findOneAndUpdate(
+            { site: this.site },
+            { $inc: { 'siparis.cariKodSayac': 1 } },
+            { new: true }
+        ).select('siparis.cariKodSayac').lean();
+
+        const sequence = updated?.siparis?.cariKodSayac;
+        if (!sequence) {
+            throw new Error('Cari kod sayacı okunamadı. DIA sipariş ayarlarını kontrol edin.');
         }
 
+        const orderDate = new Date(order.createdAt || Date.now());
+        const month = String(orderDate.getMonth() + 1).padStart(2, '0');
+        return `${siparis.cariKodOnek}${month}.${String(sequence).padStart(6, '0')}`;
+    }
+
+    /**
+     * Önek tanımlı değilken kullanılan telefon tabanlı deterministik
+     * eski cari kodu üretimi.
+     */
+    buildCustomerCode(order) {
         const prefix = SITE_CUSTOMER_PREFIX[this.site] || this.site.slice(0, 3).toUpperCase();
 
         const phoneSource = order.customerPhone
@@ -398,21 +414,23 @@ class DiaOrderService {
             }
         }
 
-        let customerCode = this.buildCustomerCode(order);
         let customer = null;
         let created = false;
 
         if (siparis.cariKodOnek) {
-            // Rastgele kod modu: çakışan kod varsa yeniden üret, sonra cari aç.
+            // Sıralı kod modu: sayaçtan sıradaki numarayı al; DIA'da dolu
+            // çıkarsa (elle açılmış kayıt vb.) bir sonraki numarayı dene.
             // (Üyenin mevcut carisi yukarıda diaCustomerKey ile yakalanır.)
+            let customerCode = await this.nextCustomerCode(order);
             let attempts = 0;
             while (attempts < 5 && await this.findCustomerByCode(customerCode)) {
-                customerCode = this.buildCustomerCode(order);
+                customerCode = await this.nextCustomerCode(order);
                 attempts++;
             }
             customer = await this.createCustomer(order, customerCode);
             created = true;
         } else {
+            const customerCode = this.buildCustomerCode(order);
             customer = await this.findCustomerByCode(customerCode);
             if (!customer) {
                 customer = await this.createCustomer(order, customerCode);
@@ -1702,7 +1720,10 @@ function buildSourceService(service) {
  */
 async function maybeRunInterCompanyChain(service, order) {
     const siparis = service.settings.siparis || {};
-    if (!siparis.sirketlerArasiAktif || !siparis.faturaOtomatik) return null;
+    // faturaOtomatik'e bağlı DEĞİL: alastik'te müşteri faturasını DIA'daki
+    // Ws_Flow2 robotu keser (faturaOtomatik kapalı) ama kaynak firma
+    // siparişi (F1 zinciri) yine de oluşturulmalıdır.
+    if (!siparis.sirketlerArasiAktif) return null;
 
     const hasXmlItem = (order.items || []).some(
         item => item.isXml || String(item.stockCode || '').endsWith('-XML')

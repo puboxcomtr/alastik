@@ -324,8 +324,8 @@ router.get('/tire-options', async (req, res) => {
                 data: {
                     productType: 'JANT',
                     brands: await Promise.all(brands.map(async b => {
-                        const webBrand = await WebBrand.findOne({ diaBrand: { $regex: new RegExp(`^${b._id}$`, 'i') } }).select('customName name').lean();
-                        const displayName = webBrand?.customName || webBrand?.name || b._id;
+                        const webBrand = await WebBrand.findOne({ diaBrand: { $regex: new RegExp(`^${b._id}$`, 'i') } }).select('customName name siteContent').lean();
+                        const displayName = webBrand?.siteContent?.[req.site]?.displayName || webBrand?.customName || webBrand?.name || b._id;
                         return { value: b._id, label: displayName, count: b.count };
                     })),
                     // Hesaplanamıyorsa uydurma aralık döndürülmez; vitrin filtreyi gizler
@@ -465,8 +465,8 @@ router.get('/tire-options', async (req, res) => {
                     .sort((a, b) => parseInt(a.value) - parseInt(b.value)),
                 vehicleTypes: vehicleTypes.map(v => ({ value: v._id, label: getVehicleTypeLabel(v._id), count: v.count })),
                 brands: await Promise.all(brands.map(async b => {
-                    const webBrand = await WebBrand.findOne({ diaBrand: { $regex: new RegExp(`^${b._id}$`, 'i') } }).select('customName name').lean();
-                    const displayName = webBrand?.customName || webBrand?.name || b._id;
+                    const webBrand = await WebBrand.findOne({ diaBrand: { $regex: new RegExp(`^${b._id}$`, 'i') } }).select('customName name siteContent').lean();
+                    const displayName = webBrand?.siteContent?.[req.site]?.displayName || webBrand?.customName || webBrand?.name || b._id;
                     return { value: b._id, label: displayName, count: b.count };
                 })), oem: oem.map(o => {
                     const slug = o._id.split('(')[0].trim().toLowerCase().replace(/\s+/g, '-');

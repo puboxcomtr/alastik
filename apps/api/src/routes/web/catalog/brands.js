@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
         // Markaları getir
         const [brands, total] = await Promise.all([
             WebBrand.find(filter)
-                .select('name slug diaBrand diaMarkaAck customName seoUrl seoTitle logo productCount activeProductCount totalStock webVisible webOrder')
+                .select('name slug diaBrand diaMarkaAck customName siteContent seoUrl seoTitle logo productCount activeProductCount totalStock webVisible webOrder')
                 .sort(sortOptions)
                 .skip(skip)
                 .limit(parseInt(limit))
@@ -72,7 +72,7 @@ router.get('/', async (req, res) => {
 
         // Frontend formatına dönüştür
         const formattedBrands = brands.map(brand => {
-            const logoUrl = brand.logo?.url;
+            const logoUrl = brand.siteContent?.[req.site]?.logoUrl || brand.logo?.url;
             let formattedLogoUrl = '/images/urun/gorsel-bulunamadi.jpg';
 
             if (logoUrl) {
@@ -89,12 +89,12 @@ router.get('/', async (req, res) => {
 
             return {
                 _id: brand._id,
-                name: brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
+                name: brand.siteContent?.[req.site]?.displayName || brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
                 diaBrand: brand.diaBrand,
                 slug: brand.seoUrl || brand.slug,
                 seoUrl: brand.seoUrl || brand.slug,
                 logo: formattedLogoUrl,
-                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                logoAlt: brand.siteContent?.[req.site]?.logoAlt || brand.logo?.alt || `${brand.name} Logo`,
                 productCount: brand.productCount || 0
             };
         });
@@ -134,12 +134,12 @@ router.get('/homepage', async (req, res) => {
             [`siteSettings.${req.site}.showOnHomepage`]: true,
             [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         })
-            .select('name diaBrand diaMarkaAck customName slug seoUrl logo productCount siteSettings')
+            .select('name diaBrand diaMarkaAck customName siteContent slug seoUrl logo productCount siteSettings')
             .sort({ [`siteSettings.${req.site}.homepageOrder`]: 1, name: 1 })
             .lean();
 
         const formattedBrands = brands.map(brand => {
-            const logoUrl = brand.logo?.url;
+            const logoUrl = brand.siteContent?.[req.site]?.logoUrl || brand.logo?.url;
             let formattedLogoUrl = null;
 
             if (logoUrl) {
@@ -154,10 +154,10 @@ router.get('/homepage', async (req, res) => {
 
             return {
                 _id: brand._id,
-                name: brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
+                name: brand.siteContent?.[req.site]?.displayName || brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
                 slug: brand.seoUrl || brand.slug,
                 logo: formattedLogoUrl,
-                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                logoAlt: brand.siteContent?.[req.site]?.logoAlt || brand.logo?.alt || `${brand.name} Logo`,
                 productCount: brand.productCount || 0
             };
         });
@@ -197,7 +197,7 @@ router.get('/:slug', async (req, res) => {
             [`siteSettings.${req.site}.webVisible`]: true,
             [`siteSettings.${req.site}.productCount`]: { $gt: 0 }
         })
-            .select('name slug diaBrand diaMarkaAck seoUrl seoTitle seoDescription description siteContent logo productCount activeProductCount totalStock priceRange categoryDistribution brandInfo')
+            .select('name slug diaBrand diaMarkaAck customName seoUrl seoTitle seoDescription description siteContent logo productCount activeProductCount totalStock priceRange categoryDistribution brandInfo')
             .lean();
 
         if (!brand) {
@@ -211,7 +211,7 @@ router.get('/:slug', async (req, res) => {
         const sc = brand.siteContent?.[req.site] || {};
 
         // Logo URL düzenleme
-        const logoUrl = brand.logo?.url;
+        const logoUrl = brand.siteContent?.[req.site]?.logoUrl || brand.logo?.url;
         let formattedLogoUrl = null;
 
         if (logoUrl) {
@@ -227,12 +227,12 @@ router.get('/:slug', async (req, res) => {
         res.json({
             success: true,
             data: {
-                name: brand.diaBrand || brand.diaMarkaAck || brand.name,
+                name: sc.displayName || brand.customName || brand.diaBrand || brand.diaMarkaAck || brand.name,
                 slug: brand.seoUrl || brand.slug,
                 diaBrand: brand.diaBrand,
                 diaMarkaAck: brand.diaMarkaAck,
                 logo: formattedLogoUrl,
-                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                logoAlt: brand.siteContent?.[req.site]?.logoAlt || brand.logo?.alt || `${brand.name} Logo`,
                 description: sc.description || brand.description,
                 seoTitle: sc.seoTitle || brand.seoTitle,
                 seoDescription: sc.seoDescription || brand.seoDescription,

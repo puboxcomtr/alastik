@@ -91,7 +91,7 @@ export default function ProductSlideCard({ product }: Props) {
   const hasDiscount = hasProductDiscount(product)
   const imageUrl = getProductImage(product, theme?.defaultCatalogImage || '/lastikjantavm/assets/img/shop/pirelli.jpg')
   const productName = product.diaData?.aciklama || 'Ürün'
-  const stockCode = getProductStockCode(product)
+  const stockCode = getProductStockCode(product, 'lastikjantavm')
   const season = getProductSeason(product)
 
   const brandName = product.diaData?.marka || ''

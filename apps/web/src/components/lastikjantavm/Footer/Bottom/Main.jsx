@@ -123,7 +123,7 @@ export default function FooterTop() {
                             <Image
                                 src={'/lastikjantavm/assets/img/etbis.webp'}
                                 width={82}
-                                alt={'A Lastik Logo'}
+                                alt={'ETBİS Kayıtlı Site'}
                                 height={95}
                             />
                         </Link>

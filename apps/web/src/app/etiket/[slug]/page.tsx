@@ -2,7 +2,7 @@
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
-import Link from 'next/link';
+import SecondHandBanner from '@/src/components/category/SecondHandBanner';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 
@@ -10,6 +10,7 @@ import { headers } from 'next/headers';
 import tagService from '@/src/services/tagService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
 import { getOtherSeo } from '@/src/services/seoService';
+import { siteTitle } from '@/src/lib/siteMeta';
 
 /* Components */
 import VehicleInfo from "@/src/components/tag/Sidebar/VehicleInfo";
@@ -58,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     return {
-        title: tag.seoTitle || `${tag.title} | ALastik.com`,
+        title: tag.seoTitle || siteTitle(tag.title),
         description: tag.seoDescription || `${tag.title} - En uygun lastik fiyatları ve modelleri.`,
     };
 }
@@ -172,30 +173,12 @@ export default async function TagPage({ params, searchParams }: Props) {
                                         <Col md={12}>
                                             <CategoryTireSearch />
                                         </Col>
-                                        {showConditionTabs && (
-                                            <Col md={12}>
-                                                <ul className="nav nav-tabs mb-3">
-                                                    <li className="nav-item">
-                                                        <Link
-                                                            href={`/etiket/${slug}`}
-                                                            className={`nav-link ${activeCondition === 'sifir' ? 'active' : ''}`}>
-                                                            {sizeLabel} Sıfır {conditionLabel} Fiyatları
-                                                        </Link>
-                                                    </li>
-                                                    <li className="nav-item">
-                                                        <Link
-                                                            href={`/etiket/${slug}?durum=ikinci-el`}
-                                                            className={`nav-link ${activeCondition === 'ikinci-el' ? 'active' : ''}`}>
-                                                            {sizeLabel} İkinci El {conditionLabel} Fiyatları
-                                                        </Link>
-                                                    </li>
-                                                </ul>
-                                            </Col>
-                                        )}
                                         <Col md={12}>
                                             <CategoryTop
                                                 productCount={displayProductCount}
-                                                categoryName={tag.title}
+                                                categoryName={activeCondition === 'ikinci-el'
+                                                    ? `${sizeLabel} İkinci El ${conditionLabel} Fiyatları`
+                                                    : tag.title}
                                             />
                                         </Col>
                                     </Row>
@@ -209,6 +192,20 @@ export default async function TagPage({ params, searchParams }: Props) {
                                                     currentPage={productsData.pagination.currentPage}
                                                     totalPages={productsData.pagination.totalPages}
                                                     totalProducts={productsData.pagination.totalProducts}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
+
+                                    {/* İkinci el görünümüne geçiş banner'ı (sıfır görünümünde, 2.el ürün varsa) */}
+                                    {showConditionTabs && activeCondition === 'sifir' && (
+                                        <Row>
+                                            <Col md={12}>
+                                                <SecondHandBanner
+                                                    href={`/etiket/${slug}?durum=ikinci-el`}
+                                                    text={'İhtiyacınız olan ebatta garantili 2. el lastik seçeneklerini görmek için'}
+                                                    accent={site === 'lastikjantavm' ? '#e4cc15' : '#f2223b'}
+                                                    accentText={site === 'lastikjantavm' ? '#232323' : '#ffffff'}
                                                 />
                                             </Col>
                                         </Row>

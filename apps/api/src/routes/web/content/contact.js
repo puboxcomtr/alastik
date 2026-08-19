@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur' });
         }
 
-        const contact = new WebContact({ name, surname, email, phone, subject, message });
+        const contact = new WebContact({ site: req.site, name, surname, email, phone, subject, message });
         await contact.save();
 
         // Mail tetikle (fire-and-forget)

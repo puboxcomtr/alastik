@@ -12,7 +12,7 @@ type Props = {
 
 export default function SummerTireHeader({
     title = 'Yaz Oto Lastikleri',
-    subtitle = "A Lastik'le Serin Sürüş",
+    subtitle = "LastikJantAVM'yle Serin Sürüş",
     showAllLink = '/kategori',
     showAllText = 'Tümünü Gör'
 }: Props) {

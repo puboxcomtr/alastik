@@ -59,6 +59,8 @@ KURAL (15 Ağu kullanıcı kararı): etiket SEO içerikleri LASTİKJANTAVM taraf
 
 Etiketler `webtags` koleksiyonunda, site bazlı ayrı dokümanlar; sorgu `{site, seoUrl}` ile (slug alanı yok!). SEO içeriği `description` alanına düz HTML yazılır. Etiket sayfası (apps/web/src/app/etiket/[slug]/page.tsx) içeriği `category-seo-content` bloğuyla basar — bu render 15 Ağu 2026'da eklendi (kod değişikliği: build + pm2 restart alastik-web gerekir; canlı web süreci = alastik-web, dev = alastik-web-dev).
 
+META ALANLARI TOPLU DOLDURULDU (18 Ağu 2026): İçerik yazılmış 49 etiketin tümünde seoTitle + seoDescription yenilendi. Eski açıklamaların çoğunda YANLIŞ SİTE ADI (alastik.com) geçiyordu, 3'ü taslaktı ("... lastik secenekleri"), 2'sinde "Lastik Fiyatları Lastik Fiyatları" tekrarı vardı. Yeni desen: seoTitle = "<EBAT> [Tip ]Lastik Fiyatları ve Modelleri | LastikJantAVM"; seoDescription ~130-155 karakter, lastikjantavm.com geçer ve sayfanın içerik açısına uygundur (Civic, Passat filo, BMW runflat, Tesla EV, Duster C ticari, makam/VIP vb.). pirelli-scorpion-winter etiketi zaten doluydu, dokunulmadı. Yeni etiket içeriği yazarken meta alanlarını da aynı desenle DOLDUR.
+
 ÖNEMLİ BUG DÜZELTMESİ (15 Ağu 2026): tagService.ts fetch'leri X-Site header'ı göndermiyordu — API her etiket isteğini varsayılan siteye (alastik) çözüyordu; LJA etiket sayfaları alastik verisi çekiyordu. Tüm tagService fetch'lerine `getServerSiteHeaders()` eklendi, iki site doğrulandı.
 
 ### 205 55 R16 Genel — /etiket/205-55-r16-lastik-fiyatlari (lastikjantavm, 6.7k — 15 Ağu 2026)
@@ -137,6 +139,41 @@ Not: açı: ESP/ABS ancak tutan lastikle çalışır (YENİ), V→H kademe + ona
 215 60 r17 kış lastiği, 215 60 r17 96h kış lastiği, 215 60r17 kış, 2015 60 r17 kış lastiği (TYPO birebir + içerikte düzeltme kurgusu), 215 60 r17 kış lastik fiyatları (5 H2)
 Dış linkler: /etiket/215-60-r17-lastik-fiyatlari, /etiket/225-60-r17-kis-lastik-fiyatlari, /kategori/kis-lastikleri
 Not: açı: hibritte rejeneratif frenin kaygan zeminde devreden çıkması (YENİ) + batarya ağırlığı, 96H'nin kışta birebir eşleşme avantajı, ani kar günü
+
+### 245 45 R18 Kış — /etiket/245-45-r18-kis-lastik-fiyatlari (lastikjantavm, 4.1k — 17 Ağu 2026)
+245 45 r18 kış lastiği, 245 45 r18 kiş lastiği (typo birebir), 245 45 r18 kış lastik fiyatları, 245 45 18 kışlık lastik, 245 45 r18 kış, 245 45 18 kışlık (6 H2)
+Dış linkler: /etiket/225-55-r17-kis-lastik-fiyatlari (EŞDEĞER ÇAP 678≈679 — onaylı kışlık küçültme), /etiket/245-45-r18-lastik-fiyatlari, /kategori/kis-lastikleri
+Not: açı: VIP filo kış operasyonu (yolcu sorumluluğu, km başına maliyet, ekim toplu alım), RWD+uzun dingil karda, kademe W/Y→V/H ama yük endeksi esnemez
+
+### 245 45 R18 Yaz — /etiket/245-45-r18-yaz-lastik-fiyatlari (lastikjantavm, 3.2k — 17 Ağu 2026)
+245 45 r18 yaz lastiği, 245 45 r18 yaz lastik fiyatları, 245 45 r18 yazlık (3 kelime → kompakt: 3 H2 × 3 paragraf)
+Dış linkler: /etiket/245-45-r18-lastik-fiyatlari, /etiket/245-45-r18-kis-lastik-fiyatlari, /kategori/yaz-lastikleri
+Not: açı: yaz = VIP/turizm filosunun ZİRVE sezonu (nisan-mayıs yenileme planı), ağır sedanda aquaplaning kütle riski, tam yük basıncı, premium touring vs UHP
+
+### 245 45 R18 4 Mevsim — /etiket/245-45-r18-4-mevsim-lastik-fiyatlari (lastikjantavm, 2.9k — 17 Ağu 2026)
+245 45 r18 4 mevsim, 245 45 r18 4 mevsim lastik, 245 45 r18 4 mevsim lastik fiyatları (3 kelime → kompakt: 3 H2 × 3 paragraf)
+Dış linkler: /etiket/245-45-r18-kis-lastik-fiyatlari, /etiket/245-45-r18-lastik-fiyatlari, /kategori/4-mevsim-lastikler
+Not: açı: İKİ KULLANICI AYRIMI — düşük km bireysel yönetici aracı (4 mevsim uygun) vs yoğun VIP filo (yıllık 50-60bin km'de tek takım erir, sezonluk şart); karar kilometreyle
+
+### 245 45 R18 Genel — /etiket/245-45-r18-lastik-fiyatlari (lastikjantavm, 3.0k — 17 Ağu 2026)
+245 45 r18, 245 45 18, 245.45 18 (3 kelime → kompakt: 3 H2 × 3 paragraf)
+Dış linkler: /etiket/235-45-r18-lastik-fiyatlari (alt gövde sınıfı köprüsü), /etiket/245-45-r18-kis-lastik-fiyatlari, /kategori/lastik
+Not: makam/E-segment ölçüsü (~678mm; BMW 5/E-Serisi/A6, VIP transfer filoları); açı: premium touring/sessizlik, 96=710/100=800 XL, runflat kısa, VIP yüksek km işletme maliyeti
+
+### 235 45 R18 Kış — /etiket/235-45-r18-kis-lastik-fiyatlari (lastikjantavm, 3.1k — 17 Ağu 2026)
+235 45 r18 kış lastiği, 235 45 r18 kış lastik fiyatları, 235 45 r18 kış lastiği fiyatları, 235 45 r18 kış (4 kelime → kompakt: 4 H2)
+Dış linkler: /etiket/215-55-r17-kis-lastik-fiyatlari (EŞDEĞER ÇAP 669≈668mm — onaylı kışlık küçültme kurgusu), /etiket/235-45-r18-lastik-fiyatlari, /kategori/kis-lastikleri
+Not: açı: 18→17 onaylı kışlık jant küçültme ekonomisi (Passat örneği), EV kış menzil kaybı + EV uyumlu kış deseni, ağır sedan fren
+
+### 235 45 R18 Genel — /etiket/235-45-r18-lastik-fiyatlari (lastikjantavm, 4.5k — 17 Ağu 2026)
+235 45 r18, 235 45 r 18, 235 45 18, 23545r18, 235 45 zr18, 235 45 r18 94w, 235.45 18 (7 H2)
+Dış linkler: /kategori/elektrikli-arac-lastikleri (EV açısı link inşası), /etiket/235-45-r18-yaz-lastik-fiyatlari, /etiket/235-45-r18-kis-lastik-fiyatlari
+Not: çift kimlik açısı: Passat/Superb üst donanım + TESLA MODEL 3 standart ölçüsü (YENİ: EV lastiği — anlık tork aşınması, akustik sünger, XL zorunluluğu, yüksek basınç); 94=670 W / XL 98
+
+### 225 40 R18 Genel — /etiket/225-40-r18-lastik-fiyatlari (lastikjantavm, 3.0k — 17 Ağu 2026)
+225 40 r18, 225 40 r 18, 225 40 18, 225.40 18 (4 kelime → kompakt: 4 H2)
+Dış linkler: /kategori/jant (link inşası — jant hasarı bağlamı), /etiket/225-40-r18-yaz-lastik-fiyatlari, /etiket/225-40-r18-kis-lastik-fiyatlari
+Not: hot hatch amiral ölçüsü (~637mm, Golf GTI/Leon FR/i30 N-Line); açı: jant koruma kenarı (rim protector — YENİ), 92Y XL fiili standart (92=630, Y=300 — Y İLK KEZ), hassas montaj/balans
 
 ### 215 60 R17 Genel — /etiket/215-60-r17-lastik-fiyatlari (lastikjantavm, 3.5k — 17 Ağu 2026)
 215 60r17, 215 60 17, 215 60 r17 96h, 215 60 r 17, 215 60 r 17 96h (5 H2)

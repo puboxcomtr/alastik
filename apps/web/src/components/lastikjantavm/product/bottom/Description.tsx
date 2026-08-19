@@ -19,7 +19,7 @@ import { buildBlogUrl } from '@/src/config/routes';
 import ReviewModal from '@/src/components/layout/Modals/product/ReviewModal';
 
 const getMenuItems = (product: any) => {
-    const hasFeatures = getProductSpecRows(product).length > 0;
+    const hasFeatures = getProductSpecRows(product, 'lastikjantavm').length > 0;
 
     const items = [
         { id: 'description', label: 'Açıklama' },
@@ -144,7 +144,7 @@ function DescriptionContent({ product, wheelSize, relatedBlogs }: { product: any
 }
 
 function FeatureContent({ product }: { product: any }) {
-    const features = getProductSpecRows(product);
+    const features = getProductSpecRows(product, 'lastikjantavm');
 
     if (features.length === 0) return null;
 
@@ -222,7 +222,7 @@ function SectionContent({ id, product, wheelSize, definition, reviews, compatibl
 export default function ProductDescription({ product, wheelSize, definition, reviews, compatibleVehicles, relatedBlogs }: DescriptionProps) {
     const [activeSection, setActiveSection] = useState('description');
     const menuItems = getMenuItems(product);
-    const hasFeatures = getProductSpecRows(product).length > 0;
+    const hasFeatures = getProductSpecRows(product, 'lastikjantavm').length > 0;
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -469,7 +469,7 @@ function ReviewItem({ review, product }: { review: any; product: any }) {
             )}
             <ul className="d-flex flex-row list-unstyled fs-sm pb-2 mb-1 gap-5 flex-wrap">
                 <li className='text-body-tertiary'>
-                    <span className="fw-semibold">Kaynak:</span> {review.source || 'ALastik'}
+                    <span className="fw-semibold">Kaynak:</span> {review.source || 'LastikJantAVM'}
                 </li>
                 {review.tireSize && (
                     <li className='text-body-tertiary'>

@@ -2,8 +2,10 @@
 const mongoose = require('mongoose');
 
 const pageSchema = new mongoose.Schema({
+    // Site (tenant) — admin Page modeliyle aynı koleksiyon; slug site başına tekildir
+    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
     title: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    slug: { type: String, required: true, lowercase: true, trim: true },
     content: { type: String, default: '<p></p>' },
     excerpt: { type: String, trim: true, default: '' },
     seo: {
@@ -20,7 +22,7 @@ const pageSchema = new mongoose.Schema({
     collection: 'pages'
 });
 
-pageSchema.index({ slug: 1 });
+pageSchema.index({ slug: 1, site: 1 }, { unique: true });
 pageSchema.index({ status: 1 });
 
 module.exports = mongoose.model('WebPage', pageSchema);

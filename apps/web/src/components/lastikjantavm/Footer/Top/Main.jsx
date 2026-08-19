@@ -44,9 +44,9 @@ export default function FooterTop() {
                         </div>
                         <div className='footer__adress text-center'>
                             <Typography variant="body2" className="footer__text" color='white' sx={{ fontSize: '12px' }}>
-                                A Lastik, modern altyapısı, güvenli ödeme sistemleri ve zengin ürün
-                                yelpazesiyle lastik ve jant ihtiyaçlarınızı hızlı ve güvenilir şekilde
-                                karşılamak için hizmet vermektedir.
+                                Aracınız için doğru lastiği seçmek, güvenli ve konforlu bir sürüş deneyimi
+                                için büyük önem taşır. Lastik Jant AVM, geniş ürün yelpazesiyle her araca
+                                uygun lastik ve jant seçeneklerini en uygun fiyatlarla sunar.
                             </Typography>
                         </div>
                         <div
@@ -58,14 +58,15 @@ export default function FooterTop() {
                                 { key: 'youtube', href: theme.youtube, icon: 'ri-youtube-fill', label: 'Youtube' },
                                 { key: 'linkedin', href: theme.linkedin, icon: 'ri-linkedin-fill', label: 'Linkedin' },
                                 { key: 'facebook', href: theme.facebook, icon: 'ri-facebook-fill', label: 'Facebook' },
+                                { key: 'pinterest', href: theme.pinterest, icon: 'ri-pinterest-fill', label: 'Pinterest' },
                                 { key: 'twitter', href: theme.twitter, icon: 'ri-twitter-x-fill', label: 'Twitter' },
                                 { key: 'whatsapp', href: theme.whatsapp ? `https://wa.me/${theme.whatsapp.replace(/\s+/g, '').replace('+', '')}` : '', icon: 'ri-whatsapp-fill', label: 'WhatsApp' },
                             ].filter(item => item.href).map((item) => (
-                                <Tooltip key={item.key} title={`A Lastik ${item.label}`}>
+                                <Tooltip key={item.key} title={`LastikJantAVM ${item.label}`}>
                                     <Link
                                         className="btn btn-icon fs-base btn-outline-secondary border-0"
                                         href={item.href}
-                                        aria-label={`A Lastik ${item.label}`}
+                                        aria-label={`LastikJantAVM ${item.label}`}
                                         target="_blank"
                                     >
                                         <i className={item.icon}></i>
@@ -84,6 +85,7 @@ export default function FooterTop() {
                                     { href: '/kampanyalar', label: 'Kampanyalar' },
                                     { href: '/jant-lastik-hesaplama', label: 'Jant Lastik Hesaplama' },
                                     { href: '/sayfa/banka-hesap-numaralari', label: 'Banka Hesap Numaraları' },
+                                    { href: '/sayfa/lastik-terimleri-ve-anlamlari', label: 'Lastik Terimleri ve Anlamları' },
                                     { href: '/iletisim', label: 'Bize Ulaşın' },
                                 ]
                             },
@@ -140,24 +142,6 @@ export default function FooterTop() {
                         ))}
                     </Col>
                     <Col xs={12}>
-                        <ul className="d-flex list-unstyled flex-row merchant justify-content-center mt-3">
-                            {[
-                                { key: 'trendyol', href: theme.trendyol, src: '/lastikjantavm/assets/img/pazaryeri/trendyol-logo.png', alt: 'Trendyol Pazaryeri', title: 'LastikJantAVM - Trendyol Pazaryeri', bg: '#f27a1a' },
-                                { key: 'n11', href: theme.n11, src: '/lastikjantavm/assets/img/pazaryeri/n11-logo.png', alt: 'N11 Pazaryeri', title: 'LastikJantAVM - N11 Pazaryeri', bg: '#FFF' },
-                                { key: 'hepsiburada', href: theme.hepsiburada, src: '/lastikjantavm/assets/img/pazaryeri/hepsiburada-logo.png', alt: 'Hepsiburada Pazaryeri', title: 'LastikJantAVM - Hepsiburada Pazaryeri', bg: '#ff6000' },
-                                { key: 'pttavm', href: theme.pttavm, src: '/lastikjantavm/assets/img/pazaryeri/pttavm-logo.png', alt: 'PttAVM Pazaryeri', title: 'LastikJantAVM - PttAVM Pazaryeri', bg: '#ffc107' },
-                                { key: 'pazarama', href: theme.pazarama, src: '/lastikjantavm/assets/img/pazaryeri/pazarama-logo.png', alt: 'Pazarama Pazaryeri', title: 'LastikJantAVM - Pazarama Pazaryeri', bg: '#f27a1a' },
-                                { key: 'idefix', href: theme.idefix, src: '/lastikjantavm/assets/img/pazaryeri/idefix-logo.png', alt: 'İdefix Pazaryeri', title: 'LastikJantAVM - İdefix Pazaryeri', bg: '#f27a1a' },
-                            ].filter(item => item.href).map((item) => (
-                                <li key={item.key} style={{ borderRadius: '4px' }}>
-                                    <Link className="nav-link" href={item.href} target="_blank" rel="nofollow">
-                                        <Tooltip title={item.title}>
-                                            <Image src={item.src} width={50} height={47} alt={item.alt} />
-                                        </Tooltip>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
                         <div id="footer__middle" className="d-flex align-items-center justify-content-center mt-4 gap-2">
                             <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <g clipPath="url(#clip0_2206_29097)">
@@ -472,14 +456,15 @@ export default function FooterTop() {
                                 { key: 'youtube', href: theme.youtube, icon: 'ri-youtube-fill', label: 'Youtube' },
                                 { key: 'linkedin', href: theme.linkedin, icon: 'ri-linkedin-fill', label: 'Linkedin' },
                                 { key: 'facebook', href: theme.facebook, icon: 'ri-facebook-fill', label: 'Facebook' },
+                                { key: 'pinterest', href: theme.pinterest, icon: 'ri-pinterest-fill', label: 'Pinterest' },
                                 { key: 'twitter', href: theme.twitter, icon: 'ri-twitter-x-fill', label: 'Twitter' },
                                 { key: 'whatsapp', href: theme.whatsapp ? `https://wa.me/${theme.whatsapp.replace(/\s+/g, '').replace('+', '')}` : '', icon: 'ri-whatsapp-fill', label: 'WhatsApp' },
                             ].filter(item => item.href).map((item) => (
-                                <Tooltip key={item.key} title={`A Lastik ${item.label}`}>
+                                <Tooltip key={item.key} title={`LastikJantAVM ${item.label}`}>
                                     <Link
                                         className="btn btn-icon fs-base btn-outline-secondary border-0"
                                         href={item.href}
-                                        aria-label={`A Lastik ${item.label}`}
+                                        aria-label={`LastikJantAVM ${item.label}`}
                                         target="_blank"
                                     >
                                         <i className={item.icon}></i>
@@ -524,32 +509,6 @@ export default function FooterTop() {
                             <Typography variant='body1' component='span'>256 bit SSL</Typography>
                             <Typography variant='h6' component='strong' fontWeight='bold'>Sertifika ile korunuyor.</Typography>
                         </div>
-                    </div>
-                </div>
-                <div className="col-md-6">
-                    <div className="d-flex justify-content-end">
-                        <ul className="d-flex list-unstyled flex-row merchant">
-                            {[
-                                { key: 'trendyol', href: theme.trendyol, src: '/lastikjantavm/assets/img/pazaryeri/trendyol-logo.png', alt: 'Trendyol Pazaryeri', title: 'LastikJantAVM - Trendyol Pazaryeri', bg: '#f27a1a' },
-                                { key: 'n11', href: theme.n11, src: '/lastikjantavm/assets/img/pazaryeri/n11-logo.png', alt: 'N11 Pazaryeri', title: 'LastikJantAVM - N11 Pazaryeri', bg: '#FFF' },
-                                { key: 'hepsiburada', href: theme.hepsiburada, src: '/lastikjantavm/assets/img/pazaryeri/hepsiburada-logo.png', alt: 'Hepsiburada Pazaryeri', title: 'LastikJantAVM - Hepsiburada Pazaryeri', bg: '#ff6000' },
-                                { key: 'pttavm', href: theme.pttavm, src: '/lastikjantavm/assets/img/pazaryeri/pttavm-logo.png', alt: 'PttAVM Pazaryeri', title: 'LastikJantAVM - PttAVM Pazaryeri', bg: '#ffc107' },
-                                { key: 'pazarama', href: theme.pazarama, src: '/lastikjantavm/assets/img/pazaryeri/pazarama-logo.png', alt: 'Pazarama Pazaryeri', title: 'LastikJantAVM - Pazarama Pazaryeri', bg: '#f27a1a' },
-                                { key: 'idefix', href: theme.idefix, src: '/lastikjantavm/assets/img/pazaryeri/trendyol-logo.png', alt: 'İdefix Pazaryeri', title: 'LastikJantAVM - İdefix Pazaryeri', bg: '#f27a1a' },
-                            ].filter(item => item.href).map((item) => (
-                                <li key={item.key} style={{ borderRadius: '4px' }}>
-                                    <Link className="nav-link" href={item.href} target='_blank' rel="nofollow">
-                                        <Tooltip title={item.title}>
-                                            <Image
-                                                src={item.src}
-                                                width={90}
-                                                height={47}
-                                                alt={item.alt} />
-                                        </Tooltip>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
                     </div>
                 </div>
             </Row>

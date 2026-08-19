@@ -280,6 +280,25 @@ router.get('/filter', async (req, res) => {
         }
 
         const andConditions = [];
+
+        // Hariç tutulacak kategori (örn. marka sayfasında Sıfır sekmesi için ikinci-el dışlanır)
+        if (req.query.haricKategori) {
+            const excludeSlugs = String(req.query.haricKategori).split(',').map(s => s.trim()).filter(Boolean);
+            const excludeCategories = await WebCategory.find({ slug: { $in: excludeSlugs } }).lean();
+            for (const exCat of excludeCategories) {
+                if (!exCat.diaCategory) continue;
+                andConditions.push({
+                    'diaData.m_kategoriler': {
+                        $not: {
+                            $elemMatch: {
+                                [exCat.diaLevel || 'kategori_aciklama_2']: exCat.diaCategory
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
         if (webCategory?.diaCategory) {
             const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
             andConditions.push({
@@ -593,6 +612,12 @@ router.get('/filter', async (req, res) => {
 
         products.forEach(p => fiyatAyariUygula(p, fiyatAyarlari));
 
+        // Sitenin kendi açıklaması etkin değer olarak yansıtılır (ürün detayındaki çözümün liste karşılığı)
+        for (const product of products) {
+            const siteDescription = product.customData?.siteDescriptions?.[req.site];
+            if (siteDescription) product.customData.customDescription = siteDescription;
+        }
+
         res.json({
             success: true,
             data: {
@@ -700,20 +725,21 @@ router.get('/:slug', async (req, res) => {
         // Kategori bazlı fiyat gösterim ayarı
         fiyatAyariUygula(product, await getFiyatAyarlari(req.site));
 
-        // Marka customName kontrolü
+        // Marka görünen adı: site bazlı displayName > ortak customName
         const marka = product.diaData?.marka;
         if (marka) {
             const webBrand = await WebBrand.findOne({
                 diaBrand: { $regex: new RegExp(`^${marka}$`, 'i') }
-            }).select('customName name').lean();
+            }).select('customName name siteContent').lean();
 
-            if (webBrand && webBrand.customName) {
+            const brandDisplay = webBrand?.siteContent?.[req.site]?.displayName || webBrand?.customName;
+            if (webBrand && brandDisplay) {
                 product.customData = product.customData || {};
-                product.customData.brandDisplayName = webBrand.customName;
+                product.customData.brandDisplayName = brandDisplay;
                 if (product.diaData?.aciklama) {
                     product.diaData.aciklama = product.diaData.aciklama.replace(
                         new RegExp(marka, 'gi'),
-                        webBrand.customName
+                        brandDisplay
                     );
                 }
             }

@@ -33,9 +33,13 @@ const webDiaSchema = new mongoose.Schema({
         genelCariKodu: { type: String, default: '' },
 
         // Cari hesap kodu öneki (örn. 'LJA-120.01.'). Doluysa cari kodu
-        // '<önek><ay>.<6 haneli rastgele>' biçiminde üretilir; boşsa telefon
+        // '<önek><ay>.<6 haneli sıra no>' biçiminde üretilir; boşsa telefon
         // tabanlı eski üretim kullanılır.
         cariKodOnek: { type: String, default: '' },
+
+        // Cari kod sıra sayacı: her yeni cari için atomik olarak 1 artırılır
+        // (findOneAndUpdate $inc). Son üretilen sıra numarasını tutar.
+        cariKodSayac: { type: Number, default: 0 },
 
         // Yeni açılan cari kartına yazılacak Özel Kod 1 (DIA _key değeri).
         // Firma ayarında zorunluysa boş bırakılamaz (örn. PERAKENDE)
