@@ -34,6 +34,7 @@ import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
 // Data Imports
 import { CARGO_PROVIDERS } from '@/data/cargo/providers'
+import type { CargoProductType } from './cargoOptions'
 
 type MemberGroupType = 'member' | 'guest' | 'all'
 
@@ -59,7 +60,7 @@ const AddCargoModal = ({ open, handleClose, onSuccess, existingCodes = [] }: Add
     const [webOrder, setWebOrder] = useState<number | ''>('')
     const [memberGroups, setMemberGroups] = useState<MemberGroupType[]>([])
     const [logo, setLogo] = useState('')
-    const [productType, setProductType] = useState<'dia_api' | 'xml_integration'>('dia_api')
+    const [productType, setProductType] = useState<CargoProductType>('dia_api')
     const [paymentType, setPaymentType] = useState<'sender' | 'receiver'>('sender')
     const [fixedPrice, setFixedPrice] = useState<number | ''>('')
     const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | ''>('')

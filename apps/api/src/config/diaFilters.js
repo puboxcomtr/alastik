@@ -104,6 +104,9 @@ const DIA_FIELDS = [
     'gercek_stok',
     'durum',
     'b2c_gonder',
+    // LJA fiyatlaması: fiyat1 üzerinden uygulanan B2C indirim oranı
+    'b2c_indirimorani',
+    'birimindirimorani',
     'ozelkod5',
     'ozelkod5kodu',
     // Grup kodu — hizmet kartları DIA'da ozelkod6 = "Hizmet (Hizmet)" ile işaretlidir

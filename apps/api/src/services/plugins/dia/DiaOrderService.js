@@ -150,7 +150,7 @@ class DiaOrderService {
                 donem_kodu: this.donemKodu,
                 filters: [{ field: 'fisno', operator: '=', value: orderNumber }],
                 sorts: '',
-                params: { selectedcolumns: ['_key', 'fisno'] },
+                params: { selectedcolumns: ['_key', 'fisno', 'turu', 'aciklama1', 'aciklama2'] },
                 limit: 5,
                 offset: 0
             }
@@ -159,7 +159,22 @@ class DiaOrderService {
         const response = await this.sendRequest('/api/v3/scf/json', request);
 
         if (Array.isArray(response?.result) && response.result.length > 0) {
-            return { exists: true, diaKey: String(response.result[0]._key) };
+            // Aynı fiş numarası B2B/elle açılan fişlerde de kullanılabiliyor.
+            // Fişi sahiplenmeden önce bizim yazdığımız imzayı doğrula:
+            // web siparişleri turu=2 ile yazılır ve açıklamada sipariş no/site bulunur.
+            const own = response.result.find(row => {
+                if (String(row.turu) !== '2') return false;
+                const a1 = String(row.aciklama1 || '');
+                const a2 = String(row.aciklama2 || '');
+                return a2 === orderNumber || a2 === this.site || a1.includes(orderNumber);
+            });
+            if (own) {
+                return { exists: true, diaKey: String(own._key) };
+            }
+            logger.warn('[DiaOrder] Aynı fiş numaralı YABANCI fiş bulundu, sahiplenilmedi', {
+                orderNumber,
+                foreignKeys: response.result.map(r => String(r._key))
+            });
         }
         return { exists: false };
     }

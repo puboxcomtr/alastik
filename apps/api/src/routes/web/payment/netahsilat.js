@@ -68,6 +68,8 @@ router.post('/3d-init', async (req, res) => {
         // ProcessPayment ile 3D başlat
         const result = await NetahsilatService.processPayment({
             orderNumber: order.orderNumber,
+            customerName: (order.customerName || order.billingSnapshot?.fullName || order.shippingSnapshot?.fullName || order.guestShippingAddress?.fullName || '').trim(),
+            site: order.site,
             amount: order.pricing.total,
             installment: parseInt(installment),
             vPosId: parseInt(vPosId),

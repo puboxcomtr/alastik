@@ -2,6 +2,7 @@
 
 // React Imports
 import { useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 
 // API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
@@ -26,8 +27,8 @@ import type { TextFieldProps } from '@mui/material/TextField'
 
 // Component Imports
 import AddCargoModal from './AddCargoModal'
+import type { CargoProductType } from './cargoOptions'
 import EditCargoModal from './EditCargoModal'
-import DesiPricingModal from './DesiPricingModal'
 import ConfirmDialog from '@components/dialogs/ConfirmDialog'
 
 // Third-party Imports
@@ -70,7 +71,7 @@ type CargoType = {
     isActive: boolean
     webOrder: number
     memberGroups?: string[]
-    productType?: 'dia_api' | 'xml_integration'
+    productType?: CargoProductType
     paymentType?: 'sender' | 'receiver'
     fixedPrice?: number
     freeShippingThreshold?: number
@@ -127,7 +128,8 @@ const columnHelper = createColumnHelper<CargoWithActionsType>()
 const CargoListTable = () => {
     const [selectedCargo, setSelectedCargo] = useState<CargoType | null>(null)
     const [editCargoOpen, setEditCargoOpen] = useState(false)
-    const [desiModalOpen, setDesiModalOpen] = useState(false)
+    const router = useRouter()
+    const { lang: locale } = useParams()
     const [addCargoOpen, setAddCargoOpen] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
@@ -308,13 +310,10 @@ const CargoListTable = () => {
                 header: 'İşlemler',
                 cell: ({ row }) => (
                     <div className='flex items-center'>
-                        <Tooltip title='Desi Bazlı Fiyatlandırma'>
+                        <Tooltip title='Kargo Kuralları ve Desi Fiyatlandırma'>
                             <IconButton
                                 size='small'
-                                onClick={() => {
-                                    setSelectedCargo(row.original)
-                                    setDesiModalOpen(true)
-                                }}
+                                onClick={() => router.push(`/${locale}/apps/cargo/desi/${row.original.id}`)}
                             >
                                 <i className="ri-price-tag-3-fill text-[22px] text-textSecondary"></i>
                             </IconButton>
@@ -555,42 +554,6 @@ const CargoListTable = () => {
                                 fixedPrice: cargo.fixedPrice ?? 0,
                                 freeShippingThreshold: cargo.freeShippingThreshold ?? 0,
                                 freeShippingDesiLimit: cargo.freeShippingDesiLimit ?? 0,
-                                apiEnabled: cargo.apiEnabled || false,
-                                createdAt: cargo.createdAt,
-                                updatedAt: cargo.updatedAt
-                            }))
-                            setData(cargos)
-                            setTotalCount(response.meta?.total || cargos.length)
-                        })
-                        .finally(() => setLoading(false))
-                }}
-            />
-            <DesiPricingModal
-                open={desiModalOpen}
-                cargo={selectedCargo}
-                handleClose={() => {
-                    setDesiModalOpen(false)
-                    setSelectedCargo(null)
-                }}
-                onSuccess={() => {
-                    setLoading(true)
-                    fetchAPI(`${API_ENDPOINTS.cargo.list()}?page=${page}&limit=${limit}`, { cache: 'no-store' })
-                        .then(response => {
-                            const cargos = (response.data || []).map((cargo: any) => ({
-                                id: cargo._id || cargo.id,
-                                name: cargo.name || '',
-                                code: cargo.code || '',
-                                logo: cargo.logo || '',
-                                description: cargo.description || '',
-                                isActive: cargo.isActive !== false,
-                                webOrder: cargo.webOrder || 0,
-                                memberGroups: cargo.memberGroups || [],
-                                productType: cargo.productType || 'dia_api',
-                                paymentType: cargo.paymentType || 'sender',
-                                fixedPrice: cargo.fixedPrice ?? 0,
-                                freeShippingThreshold: cargo.freeShippingThreshold ?? 0,
-                                freeShippingDesiLimit: cargo.freeShippingDesiLimit ?? 0,
-                                desiPricing: cargo.desiPricing || { ranges: [], extraPerDesi: 0 },
                                 apiEnabled: cargo.apiEnabled || false,
                                 createdAt: cargo.createdAt,
                                 updatedAt: cargo.updatedAt

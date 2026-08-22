@@ -4,10 +4,12 @@
 
 const STORAGE_KEY = 'admin_active_site';
 
-export const SITE_DEFINITIONS: Record<string, { label: string }> = {
-    alastik: { label: 'Alastik.com' },
-    lastikjantavm: { label: 'Lastikjantavm.com' },
+export const SITE_DEFINITIONS: Record<string, { label: string; title: string }> = {
+    alastik: { label: 'Alastik.com', title: 'ALastik.com' },
+    lastikjantavm: { label: 'Lastikjantavm.com', title: 'LastikJantAVM' },
 };
+
+export const ADMIN_PANEL_TITLE = 'Yönetici Paneli';
 
 const VALID_SITES = Object.keys(SITE_DEFINITIONS);
 const DEFAULT_SITE = 'alastik';
@@ -60,4 +62,9 @@ export function getSiteUrl(): string {
 
 export function getSiteLabel(slug: string): string {
     return SITE_DEFINITIONS[slug]?.label || slug;
+}
+
+/** Sekme basligi: "Yönetici Paneli - <Site>" (aktif siteye gore) */
+export function getAdminDocumentTitle(slug: string = getActiveSite()): string {
+    return `${ADMIN_PANEL_TITLE} - ${SITE_DEFINITIONS[slug]?.title || SITE_DEFINITIONS[DEFAULT_SITE].title}`;
 }

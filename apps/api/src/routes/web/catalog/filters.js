@@ -5,6 +5,7 @@ const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebTag = require('../../../models/web/catalog/WebTag');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 const { MAIN_DIA_FILTERS, getSiteVisibilityFilter, getVehicleTypeLabel } = require('../../../config/diaFilters');
+const { salePriceExpr, usesCustomPricing } = require('../../../utils/sitePricing');
 
 function buildBaseMatch(site) {
     const baseMatch = {
@@ -268,12 +269,20 @@ router.get('/tire-options', async (req, res) => {
             { $sort: { count: -1, _id: 1 } }
         ];
 
-        const pricePipeline = [
-            { $match: matchFor(null) },
-            { $unwind: '$diaData.m_birimler' },
-            { $match: { 'diaData.m_birimler.fiyat4': { $gt: 0 } } },
-            { $group: { _id: null, minPrice: { $min: '$diaData.m_birimler.fiyat4' }, maxPrice: { $max: '$diaData.m_birimler.fiyat4' } } }
-        ];
+        // Özel fiyat kuralı olan sitede aralık hesaplanan satış fiyatından türetilir; varsayılanda eski davranış
+        const pricePipeline = usesCustomPricing(req.site)
+            ? [
+                { $match: matchFor(null) },
+                { $addFields: { _salePrice: salePriceExpr(req.site) } },
+                { $match: { _salePrice: { $gt: 0 } } },
+                { $group: { _id: null, minPrice: { $min: '$_salePrice' }, maxPrice: { $max: '$_salePrice' } } }
+            ]
+            : [
+                { $match: matchFor(null) },
+                { $unwind: '$diaData.m_birimler' },
+                { $match: { 'diaData.m_birimler.fiyat4': { $gt: 0 } } },
+                { $group: { _id: null, minPrice: { $min: '$diaData.m_birimler.fiyat4' }, maxPrice: { $max: '$diaData.m_birimler.fiyat4' } } }
+            ];
 
         const vehicleTypePipeline = [
             { $match: matchFor('arac') },

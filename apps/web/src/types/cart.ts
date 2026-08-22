@@ -13,6 +13,7 @@ export interface CartSidebarProps {
 
 export interface CartItem {
     productKey: string;
+    montagePointLabel?: string;
     productName: string;
     productImage: string | null;
     productSlug: string;

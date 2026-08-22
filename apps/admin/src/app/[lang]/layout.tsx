@@ -22,6 +22,9 @@ import { i18n } from '@configs/i18n'
 // Util Imports
 import { getSystemMode } from '@/@core/utils/serverHelpers'
 
+// Aktif siteye gore sekme basligi
+import SiteDocumentTitle from '@components/layout/shared/SiteDocumentTitle'
+
 // Style Imports
 import '@/app/globals.css'
 
@@ -30,8 +33,8 @@ import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
   
-  title: 'ALastik.com - Yönetici Paneli',
-  description: 'ALastik.com - Yönetici Paneli',
+  title: 'Yönetici Paneli - ALastik.com',
+  description: 'Yönetici Paneli - ALastik.com',
   robots: {
     index: false,
     follow: false,
@@ -57,6 +60,7 @@ const RootLayout = async (props: ChildrenType & { params: Promise<{ lang: Locale
       <html id='__next' lang={params.lang} dir={direction} suppressHydrationWarning>
         <body className='flex is-full min-bs-full flex-auto flex-col'>
           <InitColorSchemeScript attribute='data' defaultMode={systemMode} />
+          <SiteDocumentTitle />
           {children}
 
         </body>

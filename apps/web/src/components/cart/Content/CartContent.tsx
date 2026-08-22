@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Tooltip } from "@mui/material";
+import { resolveSiteFromHost } from '@/src/config/siteConfig';
 
 import { getImageUrl } from '@/src/config/api';
 import { buildProductUrl } from '@/src/config/routes';
@@ -14,6 +15,11 @@ import { useBrands } from '@/src/context/BrandsContext';
 import { CartItem, CartContentProps } from '@/src/types/cart';
 
 export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: CartContentProps) {
+    // Montaj bloğu: LJA'da Montaj Noktaları sayfasına, diğer sitede iletişime yönlenir
+    const [isLja, setIsLja] = useState(false);
+    useEffect(() => {
+        setIsLja(resolveSiteFromHost(window.location.host) === 'lastikjantavm');
+    }, []);
 
     const formatPrice = (price: number) => {
         return price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -58,6 +64,11 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                                 className="text-decoration-none text-black"
                                             >
                                                 <p className="mb-1 fw-medium">{item.productName}</p>
+                                                {item.montagePointLabel && (
+                                                    <small className="d-block mb-1" style={{ color: '#8a8a8a' }}>
+                                                        <i className="ri-map-pin-2-line me-1"></i>{item.montagePointLabel}
+                                                    </small>
+                                                )}
                                             </Link>
                                         </Tooltip>
                                         {item.brandName && (() => {
@@ -124,6 +135,18 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                     ))}
                 </div>
             </div>
+            {items.some(i => i.montagePointLabel) && (
+                <div
+                    className="d-flex align-items-center gap-3 mt-3 px-3 py-3 rounded-3"
+                    style={{ backgroundColor: '#fff8e1', border: '1px solid #f0e3b0' }}
+                >
+                    <i className="ri-notification-3-line" style={{ fontSize: 22, color: '#b58900' }}></i>
+                    <div className="small" style={{ color: '#6b5b1e' }}>
+                        <span className="fw-semibold">Montaj bilgilendirmesi:</span>{' '}
+                        Alışverişi tamamladıktan sonra montaj noktası bilgileri tarafınıza SMS veya e-posta ile gönderilecektir.
+                    </div>
+                </div>
+            )}
             <div className="card mr-2 my-3 border-0" style={{ backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
                 <div className="card-body p-4">
                     <div className="row align-items-center g-3">
@@ -131,20 +154,42 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                             <h6 className="text-white fw-bold mb-1">
                                 Türkiye'nin 81 İlinde Montaj Hizmeti
                             </h6>
-                            <p className="text-white-50 mb-0 small d-md-none">
-                                Ürününüzü teslim aldıktan sonra montaj işlemini dilediğiniz noktada gerçekleştirebilir...
-                            </p>
-                            <p className="text-white-50 mb-0 small d-none d-md-block">
-                                Ürününüzü teslim aldıktan sonra montaj işlemini dilediğiniz noktada gerçekleştirebilir veya bizimle iletişime geçerek Türkiye'nin 81 ilinde profesyonel montaj hizmetimizden faydalanabilirsiniz.
-                            </p>
+                            {isLja ? (
+                                <>
+                                    <p className="text-white-50 mb-0 small d-md-none">
+                                        Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
+                                    </p>
+                                    <p className="text-white-50 mb-0 small d-none d-md-block">
+                                        Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-white-50 mb-0 small d-md-none">
+                                        Ürününüzü teslim aldıktan sonra montaj işlemini dilediğiniz noktada gerçekleştirebilir...
+                                    </p>
+                                    <p className="text-white-50 mb-0 small d-none d-md-block">
+                                        Ürününüzü teslim aldıktan sonra montaj işlemini dilediğiniz noktada gerçekleştirebilir veya bizimle iletişime geçerek Türkiye'nin 81 ilinde profesyonel montaj hizmetimizden faydalanabilirsiniz.
+                                    </p>
+                                </>
+                            )}
                         </div>
                         <div className="col-12 col-md-auto">
-                            <Link
-                                href="/iletisim"
-                                className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none">
-                                <i className="ri-phone-fill"></i>
-                                İletişime Geç
-                            </Link>
+                            {isLja ? (
+                                <Link
+                                    href="/montaj-noktalari"
+                                    className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none">
+                                    <i className="ri-map-pin-2-fill"></i>
+                                    Montaj Noktaları
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/iletisim"
+                                    className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none">
+                                    <i className="ri-phone-fill"></i>
+                                    İletişime Geç
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>

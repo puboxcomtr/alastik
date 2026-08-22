@@ -2,6 +2,9 @@
 export interface ThemeSettings {
     // Tab 1 - Genel Ayarlar
     brandDisplayType?: string
+    // Gösterilecek fiyat: DIA stok kartı fiyat alanı (fiyat1..fiyat4) + indirim modu (none | b2c_oran)
+    priceField?: string
+    priceDiscountMode?: string
     showcaseDisplayCount?: string
     blogDisplayCount?: string
     isActive?: boolean

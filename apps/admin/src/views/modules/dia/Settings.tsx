@@ -28,7 +28,6 @@ import TransferSettingsCard from '@/views/modules/dia/TransferSettingsCard'
 import { DiaKeySelect, DiaKeyMultiSelect } from '@/views/modules/dia/DiaKeyFields'
 import type { DiaSiparisOptions } from '@/views/modules/dia/DiaKeyFields'
 
-
 export default function Settings() {
   const [settings, setSettings] = useState<DiaSettings>(defaultDiaSettings)
   const [loading, setLoading] = useState(true)
@@ -112,7 +111,6 @@ export default function Settings() {
       setSaving(false)
     }
   }
-
 
   const handleTestConnection = async () => {
     try {
@@ -441,143 +439,6 @@ export default function Settings() {
                           />
                         }
                         label="Fatura Siparişi Kapatsın (Tamamı Sevk Edilmiş)"
-                      />
-                    </Grid>
-
-                    <Grid size={{ xs: 12 }}>
-                      <Divider sx={{ my: 1 }} />
-                      <Typography variant="subtitle1" sx={{ mt: 1 }}>Şirketler Arası Akış</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Fiziki stok kaynak firmadaysa: kaynak firmada depo transferi + ara cariye satış faturası, bu firmaya alış faturası kesilir.
-                      </Typography>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={settings.siparis.sirketlerArasiAktif}
-                            onChange={e => updateSiparis('sirketlerArasiAktif', e.target.checked)}
-                          />
-                        }
-                        label="Şirketler Arası Akış Aktif"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Şirketler Arası Fiyat No (fiyatN)"
-                        value={settings.siparis.sirketlerArasiFiyatNo}
-                        onChange={e => updateSiparis('sirketlerArasiFiyatNo', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Firma Kodu"
-                        value={settings.siparis.kaynakFirmaKodu}
-                        onChange={e => updateSiparis('kaynakFirmaKodu', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Dönem Kodu"
-                        value={settings.siparis.kaynakDonemKodu}
-                        onChange={e => updateSiparis('kaynakDonemKodu', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Şube (_key)"
-                        value={settings.siparis.kaynakSubeKey}
-                        onChange={e => updateSiparis('kaynakSubeKey', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Çıkış Deposu (_key)"
-                        value={settings.siparis.kaynakCikisDepoKey}
-                        onChange={e => updateSiparis('kaynakCikisDepoKey', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        label="Kaynak Depolar (_key, öncelik sırasıyla)"
-                        placeholder="örn: 7741979,2034"
-                        value={settings.siparis.kaynakDepoKeys}
-                        onChange={e => updateSiparis('kaynakDepoKeys', e.target.value)}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        label="Ara Cari Kodu (kaynak firmadaki alıcı)"
-                        value={settings.siparis.araCariKodu}
-                        onChange={e => updateSiparis('araCariKodu', e.target.value)}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        label="Tedarikçi Cari Kodu (bu firmadaki satıcı)"
-                        value={settings.siparis.tedarikciCariKodu}
-                        onChange={e => updateSiparis('tedarikciCariKodu', e.target.value)}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Satış Elemanı (_key)"
-                        value={settings.siparis.kaynakSatisElemaniKey}
-                        onChange={e => updateSiparis('kaynakSatisElemaniKey', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Ödeme Planı (_key)"
-                        value={settings.siparis.kaynakOdemePlaniKey}
-                        onChange={e => updateSiparis('kaynakOdemePlaniKey', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Kaynak Yetki Kodu (_key)"
-                        value={settings.siparis.kaynakSeviyeKodKey}
-                        onChange={e => updateSiparis('kaynakSeviyeKodKey', Number(e.target.value))}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Tedarikçi Ödeme Planı (_key)"
-                        value={settings.siparis.tedarikciOdemePlaniKey}
-                        onChange={e => updateSiparis('tedarikciOdemePlaniKey', Number(e.target.value))}
-                        size="small"
                       />
                     </Grid>
 

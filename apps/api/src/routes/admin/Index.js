@@ -89,6 +89,14 @@ router.use('/orders', orderRoutes);
 const pageRoutes = require('./content/pages');
 router.use('/pages', pageRoutes);
 
+// Link yönlendirmeleri (eski URL -> yeni URL, 301)
+const redirectRoutes = require('./other/redirects');
+router.use('/redirects', redirectRoutes);
+
+// Site üyeleri (webmembers) listesi
+const memberRoutes = require('./user/members');
+router.use('/members', memberRoutes);
+
 const blogRoutes = require('./content/blogs');
 router.use('/blogs', blogRoutes);
 

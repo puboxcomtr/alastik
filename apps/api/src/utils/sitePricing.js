@@ -1,0 +1,225 @@
+/**
+ * Site bazlı satış fiyatı çözümü — PANELDEN YÖNETİLİR.
+ *
+ * Ayar kaynağı: sitesettings { key:'theme', site } → value.priceField / value.priceDiscountMode
+ * (Admin > Tasarım > Tema Ayarları > "Gösterilecek Fiyat").
+ *   priceField        : 'fiyat1' | 'fiyat2' | 'fiyat3' | 'fiyat4'  (varsayılan fiyat4)
+ *   priceDiscountMode : 'none' | 'b2c_oran'                        (varsayılan none)
+ *     b2c_oran → satış = temelFiyat − (temelFiyat × oran/100), yani oran kadar İNDİRİM
+ *     (21 Ağu 2026 son karar; ara bir sürümde temelFiyat × oran denenmiş, geri alındı).
+ *     Oran DIA "B2C İndirim Oranı" (birimindirimorani "AD: 46.00" > b2c_indirimorani). Oran yoksa temel fiyat aynen.
+ *
+ * Vitrindeki tüm tüketiciler satış fiyatını m_birimler[0].fiyat4 alanından okuduğu için
+ * dönüşüm, yanıt üzerindeki fiyat4 alanı ezilerek yapılır; üstü çizili liste fiyatı (fiyat1)
+ * değişmez → satış fiyatı düşükse indirim etiketi kendiliğinden görünür.
+ * Varsayılan ayarda (fiyat4 + none) hiçbir şeye dokunulmaz — eski davranış birebir.
+ */
+
+const PRICE_FIELDS = ['fiyat1', 'fiyat2', 'fiyat3', 'fiyat4'];
+const DISCOUNT_MODES = ['none', 'b2c_oran'];
+const DEFAULT_PRICING = Object.freeze({ priceField: 'fiyat4', discountMode: 'none' });
+const CONFIG_TTL_MS = 60 * 1000;
+// Geç bağlama: ShippingRuleService model yükler, döngüsel require riskine karşı kullanım anında alınır
+const applyShippingToProduct = (doc, site) => require('../services/web/cargo/ShippingRuleService').applyShippingToProduct(doc, site);
+
+const configBySite = {};
+let configLoadedAt = 0;
+
+function round2(value) {
+    return Math.round(value * 100) / 100;
+}
+
+function normalizeConfig(value) {
+    const priceField = PRICE_FIELDS.includes(value?.priceField) ? value.priceField : DEFAULT_PRICING.priceField;
+    const discountMode = DISCOUNT_MODES.includes(value?.priceDiscountMode) ? value.priceDiscountMode : DEFAULT_PRICING.discountMode;
+    return { priceField, discountMode };
+}
+
+/**
+ * Tüm sitelerin fiyat ayarlarını DB'den yükler (server açılışında await edilir).
+ */
+async function loadPricingConfig() {
+    configLoadedAt = Date.now();
+    try {
+        const SiteSetting = require('../models/admin/settings/SiteSetting');
+        const rows = await SiteSetting.find({ key: 'theme' }, { site: 1, value: 1 }).lean();
+        const next = {};
+        rows.forEach(r => { next[r.site] = normalizeConfig(r.value); });
+        Object.keys(configBySite).forEach(k => delete configBySite[k]);
+        Object.assign(configBySite, next);
+    } catch (e) {
+        // DB hazır değilse mevcut/varsayılan ayarlarla devam
+    }
+    return configBySite;
+}
+
+/** Admin tema ayarı kaydedilince çağrılır — bir sonraki istekte DB'den tazelenir */
+function invalidatePricingConfig() {
+    configLoadedAt = 0;
+}
+
+/**
+ * Sitenin güncel fiyat ayarı (senkron; 60 sn'de bir arka planda tazelenir)
+ */
+function getPricingConfig(site) {
+    if (Date.now() - configLoadedAt > CONFIG_TTL_MS) loadPricingConfig();
+    return configBySite[site] || DEFAULT_PRICING;
+}
+
+function isDefaultPricing(cfg) {
+    return cfg.priceField === DEFAULT_PRICING.priceField && cfg.discountMode === DEFAULT_PRICING.discountMode;
+}
+
+/** Site varsayılan (fiyat4) dışında bir fiyat kuralı kullanıyor mu */
+function usesCustomPricing(site) {
+    return !isDefaultPricing(getPricingConfig(site));
+}
+
+function parseDiscountRate(dia) {
+    const m = String(dia.birimindirimorani || '').match(/([0-9]+(?:\.[0-9]+)?)/);
+    let oran = m ? parseFloat(m[1]) || 0 : 0;
+    if (!oran) oran = parseFloat(dia.b2c_indirimorani) || 0;
+    return oran;
+}
+
+/**
+ * Sitenin kuralına göre satış fiyatı. Varsayılan ayarda veya temel fiyat yoksa null
+ * döner (çağıran mevcut fiyat4 mantığıyla devam eder).
+ * doc: WebProduct (diaData'lı) veya ham DiaStock dokümanı olabilir.
+ */
+function resolveSitePrice(doc, site) {
+    const cfg = getPricingConfig(site);
+    if (isDefaultPricing(cfg)) return null;
+
+    const dia = doc?.diaData || doc || {};
+    const birim = (dia.m_birimler || [])[0];
+    const base = parseFloat(birim?.[cfg.priceField]) || 0;
+    if (base <= 0) return null;
+
+    if (cfg.discountMode === 'b2c_oran') {
+        const oran = parseDiscountRate(dia);
+        if (oran > 0 && oran < 100) return round2(base * (1 - oran / 100));
+    }
+    return round2(base);
+}
+
+/**
+ * Ürün dokümanının satış fiyatı alanlarını siteye göre yerinde günceller.
+ * WebProduct: diaData.m_birimler[0].fiyat4 — DiaStock (ham): m_birimler[0].fiyat4 + kök fiyat4
+ */
+function applySitePricing(doc, site) {
+    if (!doc) return doc;
+    const price = resolveSitePrice(doc, site);
+    if (price !== null) {
+        const dia = doc.diaData || doc;
+        if (dia.m_birimler && dia.m_birimler[0]) {
+            dia.m_birimler[0].fiyat4 = price;
+        }
+        if (!doc.diaData && typeof doc.fiyat4 !== 'undefined') {
+            doc.fiyat4 = price;
+        }
+    }
+    // Kural tabanlı kargo payı (Kargo Tanımları): fiyata gömülür, müşteri "ücretsiz kargo" görür
+    if (doc.diaData) applyShippingToProduct(doc, site);
+    return doc;
+}
+
+function applySitePricingMany(docs, site) {
+    if (!Array.isArray(docs)) return docs;
+    for (const doc of docs) applySitePricing(doc, site);
+    return docs;
+}
+
+/* ---------- Sorgu/aggregation tarafı (liste filtresi, sıralama, min-maks) ---------- */
+
+/**
+ * Satış fiyatını MongoDB aggregation ifadesi olarak döndürür (resolveSitePrice ile aynı kural).
+ */
+function salePriceExpr(site) {
+    const fiyat4 = { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] };
+    const cfg = getPricingConfig(site);
+    if (isDefaultPricing(cfg)) return fiyat4;
+
+    const base = { $ifNull: [{ $arrayElemAt: [`$diaData.m_birimler.${cfg.priceField}`, 0] }, 0] };
+
+    let priced = '$$base';
+    if (cfg.discountMode === 'b2c_oran') {
+        const birimOranMatch = {
+            $regexFind: {
+                input: { $toString: { $ifNull: ['$diaData.birimindirimorani', ''] } },
+                regex: '[0-9]+(\\.[0-9]+)?'
+            }
+        };
+        const birimOran = {
+            $let: {
+                vars: { m: birimOranMatch },
+                in: { $cond: [{ $eq: ['$$m', null] }, 0, { $convert: { input: '$$m.match', to: 'double', onError: 0, onNull: 0 } }] }
+            }
+        };
+        const kartOran = { $convert: { input: '$diaData.b2c_indirimorani', to: 'double', onError: 0, onNull: 0 } };
+        priced = {
+            $let: {
+                vars: { oran: { $let: { vars: { bo: birimOran }, in: { $cond: [{ $gt: ['$$bo', 0] }, '$$bo', kartOran] } } } },
+                in: {
+                    $cond: [
+                        { $or: [{ $lte: ['$$oran', 0] }, { $gte: ['$$oran', 100] }] },
+                        '$$base',
+                        { $round: [{ $multiply: ['$$base', { $subtract: [1, { $divide: ['$$oran', 100] }] }] }, 2] }
+                    ]
+                }
+            }
+        };
+    }
+
+    return {
+        $let: {
+            vars: { base, f4: fiyat4 },
+            in: { $cond: [{ $lte: ['$$base', 0] }, '$$f4', priced] }
+        }
+    };
+}
+
+/**
+ * "Fiyatsız ürünleri gizle" koşulu (filter nesnesine Object.assign ile eklenir).
+ */
+function pricedCondition(site) {
+    if (!usesCustomPricing(site)) return { 'diaData.m_birimler.0.fiyat4': { $gt: 0 } };
+    return { $expr: { $gt: [salePriceExpr(site), 0] } };
+}
+
+/**
+ * fiyatMin / fiyatMax aralık koşulu ($and dizisine eklenir).
+ */
+function priceRangeCondition(site, fiyatMin, fiyatMax) {
+    const min = fiyatMin ? parseFloat(fiyatMin) : null;
+    const max = fiyatMax ? parseFloat(fiyatMax) : null;
+
+    if (!usesCustomPricing(site)) {
+        const range = {};
+        if (min !== null) range.$gte = min;
+        if (max !== null) range.$lte = max;
+        return { 'diaData.m_birimler': { $elemMatch: { fiyat4: range } } };
+    }
+
+    const expr = salePriceExpr(site);
+    const parts = [];
+    if (min !== null) parts.push({ $gte: [expr, min] });
+    if (max !== null) parts.push({ $lte: [expr, max] });
+    return { $expr: parts.length === 1 ? parts[0] : { $and: parts } };
+}
+
+module.exports = {
+    PRICE_FIELDS,
+    DISCOUNT_MODES,
+    DEFAULT_PRICING,
+    loadPricingConfig,
+    invalidatePricingConfig,
+    getPricingConfig,
+    usesCustomPricing,
+    resolveSitePrice,
+    applySitePricing,
+    applySitePricingMany,
+    salePriceExpr,
+    pricedCondition,
+    priceRangeCondition
+};

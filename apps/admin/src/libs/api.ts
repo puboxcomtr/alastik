@@ -153,6 +153,9 @@ export const API_ENDPOINTS = {
         detail: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
         create: () => `${getBaseUrl()}/admin/cargo`,
         update: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
+        sizes: (params: { categoryId?: string; brandId?: string }) => `${getBaseUrl()}/admin/cargo/sizes?${new URLSearchParams(params as Record<string, string>)}`,
+        brands: () => `${getBaseUrl()}/admin/cargo/brands`,
+        products: (search: string) => `${getBaseUrl()}/admin/cargo/products?search=${encodeURIComponent(search)}`,
         toggleStatus: (id: string) => `${getBaseUrl()}/admin/cargo/${id}/status`,
         delete: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
     },
@@ -235,6 +238,33 @@ export const API_ENDPOINTS = {
         folders: () => `${getBaseUrl()}/admin/media/folders`,
         delete: (fileId: string) => `${getBaseUrl()}/admin/media/${encodeURIComponent(fileId)}`,
         updateMeta: () => `${getBaseUrl()}/admin/media/meta`,
+        removeBackground: () => `${getBaseUrl()}/admin/media/remove-background`,
+        restoreOriginal: () => `${getBaseUrl()}/admin/media/restore-original`,
+    },
+    redirects: {
+        list: (params: { search?: string; page?: number; limit?: number }) => {
+            const query = new URLSearchParams({
+                search: params.search || '',
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 50).toString()
+            })
+            return `${getBaseUrl()}/admin/redirects?${query}`
+        },
+        create: () => `${getBaseUrl()}/admin/redirects`,
+        update: (id: string) => `${getBaseUrl()}/admin/redirects/${id}`,
+        delete: (id: string) => `${getBaseUrl()}/admin/redirects/${id}`,
+        import: () => `${getBaseUrl()}/admin/redirects/import`,
+    },
+    members: {
+        list: (params: { search?: string; status?: string; page?: number; limit?: number }) => {
+            const query = new URLSearchParams({
+                search: params.search || '',
+                status: params.status || '',
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 100).toString()
+            })
+            return `${getBaseUrl()}/admin/members?${query}`
+        },
     },
 }
 

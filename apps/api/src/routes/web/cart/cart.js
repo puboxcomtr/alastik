@@ -1,4 +1,6 @@
 const express = require('express');
+const { resolveSitePrice } = require('../../../utils/sitePricing');
+const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
 const router = express.Router();
 const WebCart = require('../../../models/web/cart/WebCart');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -8,12 +10,17 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
  * XML ürünleri için kargo dahil fiyat (shippingIncludedPrice), 
  * diğerleri için fiyat4 kullanılır
  */
-const getCartUnitPrice = (product) => {
+const getCartUnitPrice = (product, site) => {
     const isXml = product.syncInfo?.syncSource === 'xml_integration';
     if (isXml && product.customData?.shippingIncludedPrice > 0) {
         return product.customData.shippingIncludedPrice;
     }
-    return product.diaData?.m_birimler?.[0]?.fiyat4 || 0;
+    // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılan ayarda null döner
+    const sitePrice = resolveSitePrice(product, site);
+    const basePrice = sitePrice !== null ? sitePrice : (product.diaData?.m_birimler?.[0]?.fiyat4 || 0);
+    // Kural tabanlı kargo payı (Kargo Tanımları) müşteri fiyatına dahildir
+    const shipping = resolveUnitShipping(product, site, basePrice);
+    return shipping && shipping.shippingPerUnit > 0 ? Math.round((basePrice + shipping.shippingPerUnit) * 100) / 100 : basePrice;
 };
 
 /**
@@ -66,7 +73,7 @@ router.get('/:sessionId', async (req, res) => {
                 continue;
             }
 
-            const currentPrice = getCartUnitPrice(product);
+            const currentPrice = getCartUnitPrice(product, req.site);
             const currentOriginalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
             const currentImage = getCartProductImage(product);
             const currentName = product.diaData?.aciklama || '';
@@ -113,7 +120,7 @@ router.get('/:sessionId', async (req, res) => {
 // Sepete ürün ekle
 router.post('/add', async (req, res) => {
     try {
-        const { sessionId, productKey, quantity = 1 } = req.body;
+        const { sessionId, productKey, quantity = 1, montagePointId = '' } = req.body;
 
         if (!sessionId || !productKey) {
             return res.status(400).json({ success: false, message: 'sessionId ve productKey gerekli' });
@@ -126,7 +133,7 @@ router.post('/add', async (req, res) => {
         }
 
         // Fiyat al (fiyat4)
-        const unitPrice = getCartUnitPrice(product);
+        const unitPrice = getCartUnitPrice(product, req.site);
         if (unitPrice <= 0) {
             return res.status(400).json({ success: false, message: 'Urun fiyati bulunamadi' });
         }
@@ -136,6 +143,19 @@ router.post('/add', async (req, res) => {
 
         if (!cart) {
             cart = new WebCart({ sessionId, items: [] });
+        }
+
+        // Montaj noktası bağı: nokta anonim etiketle sepete işlenir (ad/adres satın alma sonrası paylaşılır)
+        let montagePointLabel = '';
+        if (montagePointId) {
+            const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
+            const point = String(montagePointId).match(/^[a-f0-9]{24}$/i)
+                ? await WebMontagePoint.findOne({ _id: montagePointId, site: req.site, isActive: true }, { city: 1, district: 1 }).lean()
+                : null;
+            if (!point) {
+                return res.status(400).json({ success: false, message: 'Montaj noktası bulunamadı' });
+            }
+            montagePointLabel = `${point.city}${point.district ? ` / ${point.district}` : ''}`;
         }
 
         // Ürün zaten sepette mi?
@@ -154,11 +174,17 @@ router.post('/add', async (req, res) => {
 
         if (existingIndex > -1) {
             cart.items[existingIndex].quantity += quantity;
+            if (montagePointId) {
+                cart.items[existingIndex].montagePointId = montagePointId;
+                cart.items[existingIndex].montagePointLabel = montagePointLabel;
+            }
         } else {
             // Resim al
             const productImage = getCartProductImage(product);
 
             cart.items.push({
+                montagePointId,
+                montagePointLabel,
                 productKey,
                 productName: product.diaData?.aciklama || '',
                 productImage,

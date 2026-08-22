@@ -241,6 +241,42 @@ const ThemeSettings = () => {
                         <Divider className='mb-4' />
                         <FormControl fullWidth className='mb-4'>
                             <div className='flex justify-between items-center gap-4'>
+                                <div className='flex flex-col'>
+                                    <Typography variant='body2' className='text-base font-semibold'>Gösterilecek Fiyat</Typography>
+                                    <Typography variant='body2' color='text.secondary' className='font-light'>
+                                        Ürün satış fiyatı DIA stok kartındaki seçilen fiyat alanından alınır (listeleme, ürün detayı, sepet ve sipariş dahil). Üstü çizili liste fiyatı Fiyat1 olarak kalır.
+                                    </Typography>
+                                </div>
+                                <FormControl className='w-1/2 flex-shrink-0'>
+                                    <Select value={settings.priceField || 'fiyat4'} onChange={(e) => handleChange('priceField', e.target.value)}>
+                                        <MenuItem value='fiyat1'>Fiyat1</MenuItem>
+                                        <MenuItem value='fiyat2'>Fiyat2</MenuItem>
+                                        <MenuItem value='fiyat3'>Fiyat3</MenuItem>
+                                        <MenuItem value='fiyat4'>Fiyat4</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </div>
+                        </FormControl>
+                        <Divider className='mb-4' />
+                        <FormControl fullWidth className='mb-4'>
+                            <div className='flex justify-between items-center gap-4'>
+                                <div className='flex flex-col'>
+                                    <Typography variant='body2' className='text-base font-semibold'>İndirim Uygulaması</Typography>
+                                    <Typography variant='body2' color='text.secondary' className='font-light'>
+                                        Satış fiyatı, seçilen fiyat alanından DIA kartındaki B2C İndirim Oranı kadar düşülerek hesaplanır. Üstü çizili liste fiyatı Fiyat1 kalır, indirim etiketi otomatik görünür.
+                                    </Typography>
+                                </div>
+                                <FormControl className='w-1/2 flex-shrink-0'>
+                                    <Select value={settings.priceDiscountMode || 'none'} onChange={(e) => handleChange('priceDiscountMode', e.target.value)}>
+                                        <MenuItem value='none'>İndirim Yok</MenuItem>
+                                        <MenuItem value='b2c_oran'>B2C İndirim Oranı (DIA)</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </div>
+                        </FormControl>
+                        <Divider className='mb-4' />
+                        <FormControl fullWidth className='mb-4'>
+                            <div className='flex justify-between items-center gap-4'>
                                 <Typography variant='body2' className='text-base font-semibold'>Vitrinde Ürün Gösterim Adeti</Typography>
                                 <FormControl className='w-1/2 flex-shrink-0'>
                                     <Select value={settings.showcaseDisplayCount || ''} onChange={(e) => handleChange('showcaseDisplayCount', e.target.value)}>

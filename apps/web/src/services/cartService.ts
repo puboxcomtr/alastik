@@ -31,13 +31,13 @@ export async function getCart() {
 }
 
 // Sepete ekle
-export async function addToCart(productKey: string, quantity: number = 1) {
+export async function addToCart(productKey: string, quantity: number = 1, montagePointId?: string) {
     const sessionId = getCartSessionId();
 
     try {
         const res = await fetch(API_ENDPOINTS.cart.add(), {
             method: 'POST',
-            body: JSON.stringify({ sessionId, productKey, quantity }),
+            body: JSON.stringify({ sessionId, productKey, quantity, montagePointId }),
             headers: {
                 ...(await getServerSiteHeaders()),
                 'Content-Type': 'application/json'

@@ -177,6 +177,8 @@ class DiaToWebProductMigration {
         ekalan10: diaProduct.ekalan10,
 
         gercek_stok: diaProduct.gercek_stok || diaProduct.fiili_stok || 0,
+        b2c_indirimorani: parseFloat(diaProduct.b2c_indirimorani) || 0,
+        birimindirimorani: diaProduct.birimindirimorani || '',
         marka: diaProduct.marka,
         menseiulkeadi: diaProduct.menseiulkeadi,
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const { applySitePricingMany, salePriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const router = express.Router();
 const FrondSearchTerm = require('../../../models/web/catalog/FrondSearchTerm');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -315,7 +316,7 @@ router.get('/results', async (req, res) => {
 
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true && !isStockCode) {
-            filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
+            Object.assign(filter, pricedCondition(req.site));
         }
 
         const andConditions = [];
@@ -439,10 +440,7 @@ router.get('/results', async (req, res) => {
             andConditions.push({ 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'OEM', detayaciklama: { $in: oemRegexList } } } });
         }
         if (fiyatMin || fiyatMax) {
-            const priceMatch = {};
-            if (fiyatMin) priceMatch.$gte = parseFloat(fiyatMin);
-            if (fiyatMax) priceMatch.$lte = parseFloat(fiyatMax);
-            andConditions.push({ 'diaData.m_birimler': { $elemMatch: { fiyat4: priceMatch } } });
+            andConditions.push(priceRangeCondition(req.site, fiyatMin, fiyatMax));
         }
 
         if (andConditions.length > 0) {
@@ -473,7 +471,7 @@ router.get('/results', async (req, res) => {
                             vars: {
                                 shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
                                 webPrice: { $ifNull: ['$customData.webPrice', 0] },
-                                fiyat4: { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] }
+                                fiyat4: salePriceExpr(req.site) // site bazlı satış fiyatı (LJA: fiyat1 * oran)
                             },
                             in: {
                                 $cond: [
@@ -528,6 +526,8 @@ router.get('/results', async (req, res) => {
         );
 
         const products = await WebProduct.aggregate(aggregatePipeline);
+
+        applySitePricingMany(products, req.site);
 
         res.json({
             success: true,

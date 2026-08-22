@@ -50,3 +50,7 @@ apps/api/blog-*yedek*.json
 *.env.yedek*
 apps/api/.env.*
 *.bak
+
+# Arka plan temizleme yedekleri (buyuk ikili dosyalar, repoya girmez)
+apps/api/public/_orijinal/
+tools/rembg-venv/

@@ -124,6 +124,18 @@ function findExisting(url) {
 async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
     if (!isExternal(url)) return null;
 
+    // Ürün adı verilmemişse dosya adı deterministiktir: sha1(url). Daha önce indirilmişse
+    // TEKRAR İNDİRME ve üzerine yazma — yoksa gece görsel senkronu, üzerinde çalışılmış
+    // (arka planı temizlenmiş vb.) kopyaları her gece orijinaliyle eziyordu (22 Ağu 2026 vakası).
+    if (!fileNameBase) {
+        const hash = crypto.createHash('sha1').update(String(url)).digest('hex');
+        for (const ext of ALLOWED_EXTENSIONS) {
+            if (fs.existsSync(path.join(MIRROR_ROOT, `${hash}${ext}`))) {
+                return `/${MIRROR_DIR_NAME}/${hash}${ext}`;
+            }
+        }
+    }
+
     try {
         const response = await axios.get(url, {
             responseType: 'arraybuffer',

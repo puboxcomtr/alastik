@@ -10,6 +10,9 @@ const cartItemSchema = new mongoose.Schema({
     unitPrice: { type: Number, required: true },
     originalPrice: { type: Number, default: 0 },
     kdvRate: { type: Number, default: 20 },
+    // Montaj hizmeti: hangi anlaşmalı noktadan seçildi (kimlik satın alma sonrası açılır, sepette anonim etiket)
+    montagePointId: { type: String, default: '' },
+    montagePointLabel: { type: String, default: '' },
     addedAt: { type: Date, default: Date.now }
 }, { _id: false });
 

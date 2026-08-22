@@ -608,6 +608,9 @@ class DiaStockService {
       ozelkod10kodu: diaProduct.ozelkod10kodu,
       ozelkod11: diaProduct.ozelkod11,
       ozelkod11kodu: diaProduct.ozelkod11kodu,
+      // LJA fiyatlaması: B2C indirim oranları (tam senkron diaData'yı baştan yazdığından burada da taşınmalı)
+      b2c_indirimorani: parseFloat(diaProduct.b2c_indirimorani) || 0,
+      birimindirimorani: diaProduct.birimindirimorani || '',
 
       stokkartkodu: diaProduct.stokkartkodu,
       synced: diaProduct.synced || 'synced',
@@ -1318,6 +1321,8 @@ class DiaStockService {
       fiyat10: parseFloat(product.fiyat10) || 0,
       sontuketicifiyati: parseFloat(product.sontuketicifiyati) || 0,
       kdvsatis: parseFloat(product.kdvsatis) || 0,
+      b2c_indirimorani: parseFloat(product.b2c_indirimorani) || 0,
+      birimindirimorani: String(product.birimindirimorani || ''),
       __dinamik__16: parseFloat(product.__dinamik__16) || 0
     };
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
@@ -3200,6 +3205,8 @@ class DiaStockService {
                   'diaData.m_birimler.0.fiyat3': parseFloat(product.fiyat3) || 0,
                   'diaData.m_birimler.0.fiyat4': finalFiyat4,
                   'diaData.m_birimler.0.fiyat10': parseFloat(product.fiyat10) || 0,
+                  'diaData.b2c_indirimorani': parseFloat(product.b2c_indirimorani) || 0,
+                  'diaData.birimindirimorani': product.birimindirimorani || '',
                   'syncInfo.lastDiaSync': new Date(),
                   'syncInfo.diaStatus': 'synced'
                 }
@@ -3667,7 +3674,9 @@ class DiaStockService {
               'diaData.m_birimler.0.fiyat2': parseFloat(product.fiyat2) || 0,
               'diaData.m_birimler.0.fiyat3': parseFloat(product.fiyat3) || 0,
               'diaData.m_birimler.0.fiyat4': finalFiyat4,
-              'diaData.m_birimler.0.fiyat10': parseFloat(product.fiyat10) || 0
+              'diaData.m_birimler.0.fiyat10': parseFloat(product.fiyat10) || 0,
+              'diaData.b2c_indirimorani': parseFloat(product.b2c_indirimorani) || 0,
+              'diaData.birimindirimorani': product.birimindirimorani || ''
             });
           }
 

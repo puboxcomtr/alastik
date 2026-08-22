@@ -292,6 +292,10 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(async () => {
     logger.info('Connected to MongoDB');
+    // Site bazlı fiyat kuralları (panel: Gösterilecek Fiyat) — istekler gelmeden belleğe al
+    await require('./utils/sitePricing').loadPricingConfig();
+    // Kargo kuralları (stoklu ürünlerde fiyata gömülü kargo payı)
+    await require('./services/web/cargo/ShippingRuleService').loadShippingRules();
     // XML Kontrolü
     const xmlSyncScheduler = require('./services/plugins/xml/XmlSyncScheduler');
     xmlSyncScheduler.start();
@@ -411,6 +415,10 @@ app.use('/api/seo', seoRouter);
 const webPageRoutes = require('./routes/web/content/pages');
 app.use('/api/pages', webPageRoutes);
 
+// Yönlendirme haritası (web middleware okur)
+const webRedirectRoutes = require('./routes/web/other/redirects');
+app.use('/api/redirects', webRedirectRoutes);
+
 /* Blog */
 const webBlogRoutes = require('./routes/web/content/blog');
 app.use('/api/blogs', webBlogRoutes);
@@ -422,6 +430,10 @@ app.use('/api/reviews', webReviewsRoutes);
 /* Ürün Filtreleme */
 const webFiltersRoutes = require('./routes/web/catalog/filters');
 app.use('/api/filters', webFiltersRoutes);
+
+// Montaj noktaları (vitrin)
+const webMontageRoutes = require('./routes/web/content/montage');
+app.use('/api/montage-points', webMontageRoutes);
 
 // Vitrin: dışarıya yalnızca vitrin okuma uçları açılır (/public/*);
 // CRUD uçları /api/admin/showcases altında admin kimlik doğrulamasıyla korunur

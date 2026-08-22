@@ -5,12 +5,14 @@ const WebAddress = require('../../../models/web/address/WebAddress');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
+const { resolveSitePrice } = require('../../../utils/sitePricing');
+const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
 
 /**
  * Sepet ürünleri için backend'de items + pricing hesapla
  * Her ürün DB'den çekilir, gerçek webPrice ve shippingPerUnit ayrı kaydedilir
  */
-const calculateOrderPricing = async (cartItems) => {
+const calculateOrderPricing = async (cartItems, site) => {
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
         throw new Error('Sepet boş');
     }
@@ -23,9 +25,17 @@ const calculateOrderPricing = async (cartItems) => {
             'diaData.stokkartkodu': 1,
             'diaData.aciklama': 1,
             'diaData.m_birimler': 1,
+            'diaData.b2c_indirimorani': 1,
+            'diaData.birimindirimorani': 1,
             'customData.webPrice': 1,
             'customData.shippingPerUnit': 1,
-            'syncInfo.syncSource': 1
+            'syncInfo.syncSource': 1,
+            // Kural tabanlı kargo payı için (ürün/marka/kategori/ebat/desi eşleşmesi)
+            'diaData.marka': 1,
+            'diaData.anabirimdesi': 1,
+            'diaData.ozelkod7kodu': 1,
+            'diaData.m_kategoriler': 1,
+            'diaData.m_urunOzellikleri': 1
         }
     ).lean();
 
@@ -46,12 +56,15 @@ const calculateOrderPricing = async (cartItems) => {
         const isXml = product.syncInfo?.syncSource === 'xml_integration';
 
         // Kargosuz birim fiyat
+        // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılanda webPrice > fiyat4
+        const sitePrice = resolveSitePrice(product, site);
         const unitPrice = product.customData?.webPrice ||
-            product.diaData?.m_birimler?.[0]?.fiyat4 ||
+            (sitePrice !== null ? sitePrice : product.diaData?.m_birimler?.[0]?.fiyat4) ||
             0;
 
-        // Kargo payı (sadece XML için)
-        const shippingPerUnit = isXml ? (product.customData?.shippingPerUnit || 0) : 0;
+        // Kargo payı: XML ürünlerde senkronda yazılan sabit değer; stoklu ürünlerde Kargo Tanımları kuralları
+        const ruleShipping = isXml ? null : resolveUnitShipping(product, site, unitPrice);
+        const shippingPerUnit = isXml ? (product.customData?.shippingPerUnit || 0) : (ruleShipping?.shippingPerUnit || 0);
 
         const totalPrice = Math.round(unitPrice * quantity * 100) / 100;
         const shippingTotal = Math.round(shippingPerUnit * quantity * 100) / 100;
@@ -105,7 +118,7 @@ router.post('/', async (req, res) => {
         } = req.body;
 
         // Backend'de items ve pricing hesapla (frontend'den gelene güvenme)
-        const { items, pricing } = await calculateOrderPricing(rawItems);
+        const { items, pricing } = await calculateOrderPricing(rawItems, req.site);
 
         // Sipariş numarası oluştur (önek siteye göre: AL / LJA)
         const orderNumber = await WebOrder.generateOrderNumber(req.site);

@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Cargo = require('../../../models/admin/settings/Cargo');
+const WebCategory = require('../../../models/web/catalog/WebCategory');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
+const WebBrand = require('../../../models/web/catalog/WebBrand');
+const { invalidateShippingRules } = require('../../../services/web/cargo/ShippingRuleService');
 const XmlShippingPriceUpdaterService = require('../../../services/web/cargo/XmlShippingPriceUpdaterService');
 
 // XML kargo değişince ürünlerin kargo dahil fiyatlarını güncelle (fire-and-forget)
@@ -12,6 +16,113 @@ const triggerShippingUpdate = (cargo) => {
 };
 
 // Liste
+/** Desi aralık listesini doğrular; hata varsa mesaj, yoksa null döner */
+function validateDesiRanges(ranges) {
+    if (!Array.isArray(ranges)) return null;
+    for (let i = 0; i < ranges.length; i++) {
+        const r = ranges[i];
+        if (typeof r.min !== 'number' || typeof r.max !== 'number' || typeof r.price !== 'number') {
+            return 'Desi aralık verileri geçersiz';
+        }
+        if (r.max < r.min) return 'Desi aralığı bitiş değeri başlangıçtan küçük olamaz';
+        if (i > 0 && r.min < ranges[i - 1].max) return 'Desi aralıkları birbiriyle çakışamaz';
+    }
+    return null;
+}
+
+const SCOPE_TYPES = ['', 'category', 'brand', 'product', 'size'];
+
+
+/**
+ * Kategori/marka kural listesini doğrular ve temizler.
+ * Dönüş: { rules } | { error }
+ */
+function cleanScopedRules(input, idField, nameField, withDiaBrand = false) {
+    if (!Array.isArray(input)) return { error: 'Kural listesi geçersiz' };
+    const seen = new Set();
+    const rules = [];
+    for (const rule of input) {
+        const id = String(rule?.[idField] || '');
+        if (!id.match(/^[a-f0-9]{24}$/i)) return { error: 'Seçim geçersiz' };
+        if (seen.has(id)) return { error: `Aynı kayıt birden fazla kez eklenemez: ${rule[nameField] || id}` };
+        seen.add(id);
+        const ranges = Array.isArray(rule.desiPricing?.ranges) ? rule.desiPricing.ranges : [];
+        const rangeError = validateDesiRanges(ranges);
+        if (rangeError) return { error: `${rule[nameField] || 'Kural'}: ${rangeError}` };
+        const sizeRules = [];
+        const seenSizes = new Set();
+        for (const sr of Array.isArray(rule.sizeRules) ? rule.sizeRules : []) {
+            const size = String(sr?.size || '').trim();
+            const price = Number(sr?.price);
+            if (!size || !Number.isFinite(price) || price < 0 || seenSizes.has(size)) continue;
+            seenSizes.add(size);
+            sizeRules.push({ size, price });
+        }
+        const cleaned = {
+            [idField]: id,
+            [nameField]: String(rule[nameField] || '').trim(),
+            fixedPrice: Number(rule.fixedPrice) || 0,
+            pricingMode: rule.pricingMode === 'size' ? 'size' : 'all',
+            sizeRules,
+            desiPricing: { ranges, extraPerDesi: Number(rule.desiPricing?.extraPerDesi) || 0 }
+        };
+        if (withDiaBrand) cleaned.diaBrand = String(rule.diaBrand || '').trim();
+        rules.push(cleaned);
+    }
+    return { rules };
+}
+
+/** Kapsamdaki ürünleri bulur: kategori (diaLevel/diaCategory) ya da marka (diaBrand ↔ diaData.marka) */
+async function findScopedProducts(site, { categoryId, brandId }, projection) {
+    const base = { sites: site, 'syncInfo.diaStatus': 'synced' };
+    if (categoryId) {
+        const category = await WebCategory.findById(categoryId).select('name diaCategory diaLevel').lean();
+        if (!category || !category.diaCategory) return { error: 'Kategori bulunamadı veya DIA eşleşmesi yok' };
+        const diaLevel = category.diaLevel || 'kategori_aciklama_2';
+        const products = await WebProduct.find({ ...base, 'diaData.m_kategoriler': { $elemMatch: { [diaLevel]: category.diaCategory } } }, projection).lean();
+        return { products, label: category.name };
+    }
+    if (brandId) {
+        const brand = await WebBrand.findById(brandId).select('name diaBrand customName').lean();
+        if (!brand || !brand.diaBrand) return { error: 'Marka bulunamadı veya DIA eşleşmesi yok' };
+        const products = await WebProduct.find({ ...base, 'diaData.marka': { $regex: new RegExp(`^${brand.diaBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }, projection).lean();
+        return { products, label: brand.customName || brand.name || brand.diaBrand };
+    }
+    // Kapsam yoksa: seçili sitede yayındaki tüm ürünler (ebat bazlı genel kurallar)
+    const products = await WebProduct.find(base, projection).lean();
+    return { products, label: 'Tüm Ürünler' };
+}
+
+/**
+ * Ürün ebatını özelliklerden (yoksa addan) çözer.
+ * Lastik: 205/55R16, yanaksız 195R14C, kamyon 12R22.5 / 315/80R22.5, 5.00R12C; jant: 7.0x16
+ */
+function extractProductSize(dia) {
+    const props = {};
+    for (const o of dia.m_urunOzellikleri || []) {
+        if (o?.ozellikadi) props[o.ozellikadi] = String(o.detayaciklama || '').trim();
+    }
+    const tip = String(dia.ozelkod7kodu || '').toUpperCase();
+    if (tip === 'JANT' || props['Jant Genişliği']) {
+        const w = props['Jant Genişliği'];
+        const d = (props['Jant Çapı'] || '').replace(/[^0-9.]/g, '');
+        if (w && d) return `${w}x${d}`;
+    } else {
+        const w = props['Genişlik'];
+        const a = props['Yanak'];
+        const d = (props['Jant Çapı'] || '').replace(/^R/i, '').toUpperCase();
+        if (w && d) return a ? `${w}/${a}R${d}` : `${w}R${d}`;
+    }
+    const name = String(dia.aciklama || '');
+    // 205/55R16, 195R14C, 5.00R12C, 12R22.5, 12/R22.5, 315/80R22.5
+    const tire = name.match(/(\d{1,3}(?:\.\d{1,2})?)(?:\/(\d{2,3})?)?\s*Z?R\s*(\d{2}(?:\.5)?)\s*(C)?(?![0-9])/i);
+    if (tire) return `${tire[1]}${tire[2] ? `/${tire[2]}` : ''}R${tire[3]}${tire[4] ? 'C' : ''}`;
+    const rim = name.match(/(\d{1,2}(?:\.\d)?)\s*x\s*(\d{2})/i);
+    if (rim) return `${rim[1]}x${rim[2]}`;
+    return null;
+}
+
+
 router.get('/', async (req, res) => {
     try {
         const {
@@ -69,6 +180,83 @@ router.get('/', async (req, res) => {
 });
 
 // Tekil
+/**
+ * GET /sizes?categoryId=... | ?brandId=... — kapsamdaki (seçili sitede yayında) ürünlerin ebatları.
+ * Lastik: Genişlik/Yanak + Jant Çapı (205/55R16); Jant: Jant Genişliği x Jant Çapı (7.0x16); yoksa addan regex.
+ */
+router.get('/sizes', async (req, res) => {
+    try {
+        const { categoryId, brandId } = req.query;
+        const idOk = v => !v || String(v).match(/^[a-f0-9]{24}$/i);
+        if (!idOk(categoryId) || !idOk(brandId)) {
+            return res.status(400).json({ success: false, message: 'Seçim geçersiz' });
+        }
+        const found = await findScopedProducts(req.site, { categoryId, brandId }, { 'diaData.aciklama': 1, 'diaData.ozelkod7kodu': 1, 'diaData.m_urunOzellikleri': 1 });
+        if (found.error) return res.status(404).json({ success: false, message: found.error });
+
+        const counts = new Map();
+        for (const p of found.products) {
+            const size = extractProductSize(p.diaData || {});
+            if (!size) continue;
+            counts.set(size, (counts.get(size) || 0) + 1);
+        }
+        const sizes = [...counts.entries()]
+            .map(([size, count]) => ({ size, count }))
+            .sort((a, b) => a.size.localeCompare(b.size, 'tr', { numeric: true }));
+
+        res.json({ success: true, data: sizes, meta: { scope: found.label, productCount: found.products.length, unsized: found.products.length - sizes.reduce((t, x) => t + x.count, 0) } });
+    } catch (error) {
+        console.error('Cargo sizes error:', error);
+        res.status(500).json({ success: false, message: 'Ebatlar alınırken hata oluştu' });
+    }
+});
+
+/** GET /brands — seçili sitede görünür markalar (kural seçimi için hafif liste) */
+router.get('/brands', async (req, res) => {
+    try {
+        const visibleField = `siteSettings.${req.site}.webVisible`;
+        const countField = `siteSettings.${req.site}.productCount`;
+        const brands = await WebBrand.find(
+            { diaBrand: { $nin: [null, ''] }, $or: [{ [visibleField]: true }, { [visibleField]: { $exists: false }, webVisible: true }] },
+            { name: 1, customName: 1, diaBrand: 1, siteContent: 1, [countField]: 1, productCount: 1 }
+        ).lean();
+        const data = brands
+            .map(b => ({
+                id: String(b._id),
+                name: b.siteContent?.[req.site]?.displayName || b.customName || b.name || b.diaBrand,
+                diaBrand: b.diaBrand,
+                productCount: b.siteSettings?.[req.site]?.productCount ?? b.productCount ?? 0
+            }))
+            .filter(b => b.productCount > 0)
+            .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Cargo brands error:', error);
+        res.status(500).json({ success: false, message: 'Markalar alınırken hata oluştu' });
+    }
+});
+
+/** GET /products?search=... — stok kodu / ürün adı araması (kural seçimi için, en fazla 30) */
+router.get('/products', async (req, res) => {
+    try {
+        const search = String(req.query.search || '').trim();
+        if (search.length < 2) return res.json({ success: true, data: [] });
+        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const rx = new RegExp(escaped, 'i');
+        const products = await WebProduct.find(
+            { sites: req.site, 'syncInfo.diaStatus': 'synced', $or: [{ 'diaData.stokkartkodu': rx }, { 'diaData.aciklama': rx }] },
+            { _key: 1, 'diaData.stokkartkodu': 1, 'diaData.aciklama': 1, 'diaData.marka': 1 }
+        ).limit(30).lean();
+        res.json({
+            success: true,
+            data: products.map(p => ({ productKey: String(p._key), stockCode: p.diaData?.stokkartkodu || '', productName: p.diaData?.aciklama || '', brand: p.diaData?.marka || '' }))
+        });
+    } catch (error) {
+        console.error('Cargo products error:', error);
+        res.status(500).json({ success: false, message: 'Ürünler alınırken hata oluştu' });
+    }
+});
+
 router.get('/:id', async (req, res) => {
     try {
         const cargo = await Cargo.findOne({ _id: req.params.id, site: req.site }).lean();
@@ -128,7 +316,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        if (!['dia_api', 'xml_integration'].includes(productType)) {
+        if (!Cargo.schema.path('productType').enumValues.includes(productType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir ürün tipi seçiniz'
@@ -248,7 +436,7 @@ router.put('/:id', async (req, res) => {
         if (Array.isArray(memberGroups)) cargo.memberGroups = memberGroups;
 
         if (productType !== undefined) {
-            if (!['dia_api', 'xml_integration'].includes(productType)) {
+            if (!Cargo.schema.path('productType').enumValues.includes(productType)) {
                 return res.status(400).json({
                     success: false,
                     message: 'Geçerli bir ürün tipi seçiniz'
@@ -270,6 +458,66 @@ router.put('/:id', async (req, res) => {
         if (fixedPrice !== undefined) cargo.fixedPrice = Number(fixedPrice) || 0;
         if (freeShippingThreshold !== undefined) cargo.freeShippingThreshold = Number(freeShippingThreshold) || 0;
         if (freeShippingDesiLimit !== undefined) cargo.freeShippingDesiLimit = Number(freeShippingDesiLimit) || 0;
+
+        // Kural kapsamı (genel / kategori / ürün / marka / desi / ebat)
+        if (req.body.scopeType !== undefined) {
+            const scopeType = String(req.body.scopeType || '');
+            if (!SCOPE_TYPES.includes(scopeType)) {
+                return res.status(400).json({ success: false, message: 'Geçerli bir kural kapsamı seçiniz' });
+            }
+            cargo.scopeType = scopeType;
+        }
+
+        // Kategori / marka bazlı kurallar (her biri için ayrı desi tablosu ya da ebat listesi)
+        if (req.body.categoryRules !== undefined) {
+            const out = cleanScopedRules(req.body.categoryRules, 'categoryId', 'categoryName');
+            if (out.error) return res.status(400).json({ success: false, message: out.error });
+            cargo.categoryRules = out.rules;
+        }
+        if (req.body.brandRules !== undefined) {
+            const out = cleanScopedRules(req.body.brandRules, 'brandId', 'brandName', true);
+            if (out.error) return res.status(400).json({ success: false, message: out.error });
+            cargo.brandRules = out.rules;
+        }
+        // Ebat bazlı kurallar (tüm ürünler)
+        if (req.body.sizeRules !== undefined) {
+            if (!Array.isArray(req.body.sizeRules)) {
+                return res.status(400).json({ success: false, message: 'Ebat kuralları geçersiz' });
+            }
+            const seenSizes = new Set();
+            const sizeRules = [];
+            for (const sr of req.body.sizeRules) {
+                const size = String(sr?.size || '').trim();
+                const price = Number(sr?.price);
+                if (!size || !Number.isFinite(price) || price < 0 || seenSizes.has(size)) continue;
+                seenSizes.add(size);
+                sizeRules.push({ size, price });
+            }
+            cargo.sizeRules = sizeRules;
+        }
+        // Ürün bazlı kurallar: stok kartı başına adet ücreti
+        if (req.body.productRules !== undefined) {
+            if (!Array.isArray(req.body.productRules)) {
+                return res.status(400).json({ success: false, message: 'Ürün kuralları geçersiz' });
+            }
+            const seen = new Set();
+            const rules = [];
+            for (const r of req.body.productRules) {
+                const productKey = String(r?.productKey || '').trim();
+                const price = Number(r?.price);
+                if (!productKey) return res.status(400).json({ success: false, message: 'Ürün seçimi geçersiz' });
+                if (!Number.isFinite(price) || price < 0) return res.status(400).json({ success: false, message: `${r.stockCode || productKey}: geçerli bir kargo ücreti giriniz` });
+                if (seen.has(productKey)) continue;
+                seen.add(productKey);
+                rules.push({
+                    productKey,
+                    stockCode: String(r.stockCode || '').trim(),
+                    productName: String(r.productName || '').trim(),
+                    price
+                });
+            }
+            cargo.productRules = rules;
+        }
 
         if (req.body.desiPricing !== undefined) {
             const { ranges, extraPerDesi } = req.body.desiPricing || {};
@@ -307,6 +555,7 @@ router.put('/:id', async (req, res) => {
         }
 
         await cargo.save();
+        invalidateShippingRules();
 
         triggerShippingUpdate(cargo);
 
@@ -337,6 +586,7 @@ router.patch('/:id/status', async (req, res) => {
 
         cargo.isActive = !cargo.isActive;
         await cargo.save();
+        invalidateShippingRules();
 
         triggerShippingUpdate(cargo);
 
@@ -358,6 +608,7 @@ router.patch('/:id/status', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const cargo = await Cargo.findOneAndDelete({ _id: req.params.id, site: req.site });
+        invalidateShippingRules();
 
         if (!cargo) {
             return res.status(404).json({

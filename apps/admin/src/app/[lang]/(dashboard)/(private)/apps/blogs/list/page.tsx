@@ -7,6 +7,7 @@ import classnames from 'classnames'
 /* API */
 import { fetchBlogs, deleteBlog, type BlogType } from '@/utils/api/blogs'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getSiteUrl } from '@/utils/activeSite'
 
 /* MUI */
 import Card from '@mui/material/Card'
@@ -241,10 +242,25 @@ const BlogListTable = () => {
             columnHelper.accessor('title', {
                 header: 'Blog Başlığı',
                 cell: ({ row }) => (
-                    <div className='flex flex-col items-start'>
-                        <Typography className='font-medium' color='text.primary'>
-                            {row.original.title}
-                        </Typography>
+                    <div className='flex flex-col items-start group'>
+                        <div className='flex items-center gap-2'>
+                            <Typography className='font-medium' color='text.primary'>
+                                {row.original.title}
+                            </Typography>
+                            <Tooltip title='Sitede Görüntüle'>
+                                <IconButton
+                                    size='small'
+                                    component='a'
+                                    href={`${getSiteUrl()}/blog/${row.original.slug}`}
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                    className='opacity-0 group-hover:opacity-100 transition-opacity'
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <i className='ri-external-link-line text-[18px] text-textSecondary' />
+                                </IconButton>
+                            </Tooltip>
+                        </div>
                         <Typography variant='body2' color='text.secondary'>
                             /{row.original.slug}
                         </Typography>

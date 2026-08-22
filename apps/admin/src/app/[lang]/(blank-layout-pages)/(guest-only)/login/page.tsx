@@ -8,8 +8,8 @@ import Login from '@views/Login'
 import { getServerMode } from '@/@core/utils/serverHelpers'
 
 export const metadata: Metadata = {
-  title: 'ALastik.com - Yönetici Paneli',
-  description: 'ALastik.com - Yönetici Paneli Giriş,'
+  title: 'Yönetici Paneli - ALastik.com',
+  description: 'Yönetici Paneli Giriş - ALastik.com'
 }
 
 const LoginPage = async () => {

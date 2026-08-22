@@ -13,6 +13,7 @@ interface CartItem {
     quantity: number;
     unitPrice: number;
     kdvRate: number;
+    montagePointLabel?: string;
 }
 
 interface CartTotals {
@@ -26,9 +27,9 @@ interface CartContextType {
     items: CartItem[];
     totals: CartTotals;
     loading: boolean;
-    addToCart: (productKey: string, quantity?: number) => Promise<boolean>;
+    addToCart: (productKey: string, quantity?: number, successMessage?: string, montagePointId?: string) => Promise<boolean>;
     updateQuantity: (productKey: string, quantity: number) => Promise<void>;
-    removeItem: (productKey: string) => Promise<void>;
+    removeItem: (productKey: string, successMessage?: string) => Promise<void>;
     clearCart: (silent?: boolean) => Promise<void>;
     refreshCart: () => Promise<void>;
 }
@@ -58,13 +59,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         refreshCart();
     }, [refreshCart]);
 
-    const addToCart = async (productKey: string, quantity: number = 1): Promise<boolean> => {
+    const addToCart = async (productKey: string, quantity: number = 1, successMessage: string = 'Ürün sepetinize başarıyla eklendi.', montagePointId?: string): Promise<boolean> => {
         try {
-            const result = await cartService.addToCart(productKey, quantity);
+            const result = await cartService.addToCart(productKey, quantity, montagePointId);
             if (result.success) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
-                toast.success('Ürün sepetinize başarıyla eklendi.');
+                toast.success(successMessage);
                 return true;
             } else {
                 toast.error(result.message || 'Ürün sepetinize eklenirken hata oluştu.');
@@ -90,13 +91,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const removeItem = async (productKey: string) => {
+    const removeItem = async (productKey: string, successMessage: string = 'Ürün Sepetten Silindi') => {
         try {
             const result = await cartService.removeFromCart(productKey);
             if (result.success) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
-                toast.success('Ürün Sepetten Silindi');
+                toast.success(successMessage);
             } else {
                 toast.error(result.message || 'Silme işlemi başarısız oldu');
             }

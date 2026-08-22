@@ -105,11 +105,13 @@ class NetahsilatService {
                 expYear,
                 cvc,
                 email,
-                returnUrl
+                returnUrl,
+                customerName,
+                site
             } = params;
 
             // Türkçe karakterleri temizle
-            const cleanCardHolderName = cardHolderName
+            const cleanTurkish = (str) => String(str || '')
                 .replace(/İ/g, 'I')
                 .replace(/ı/g, 'i')
                 .replace(/Ğ/g, 'G')
@@ -122,6 +124,16 @@ class NetahsilatService {
                 .replace(/ö/g, 'o')
                 .replace(/Ç/g, 'C')
                 .replace(/ç/g, 'c');
+
+            const cleanCardHolderName = cleanTurkish(cardHolderName);
+
+            // Açıklama düzeni: Sipariş No + Cari Ad Soyad + Site adı
+            // (Netahsilat/banka kayıtlarında siparişle eşleştirme için)
+            const { SITES } = require('../../../config/sites');
+            const siteLabel = (SITES[site]?.name || site || '').toLocaleUpperCase('tr-TR');
+            const description = customerName
+                ? cleanTurkish(`${orderNumber} ${customerName} ${siteLabel}`.replace(/\s+/g, ' ').trim())
+                : `Siparis: ${orderNumber}`;
 
             const request = {
                 authInfo: AUTH,
@@ -136,7 +148,7 @@ class NetahsilatService {
                         ExpMonth: parseInt(expMonth),
                         ExpYear: parseInt(expYear.length === 2 ? `20${expYear}` : expYear)
                     },
-                    Description: `Siparis: ${orderNumber}`,
+                    Description: description,
                     Email: email || 'musteri@alastik.com',
                     Installment: parseInt(installment),
                     ReturnUrl: returnUrl,

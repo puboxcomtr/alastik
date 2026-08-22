@@ -28,6 +28,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
 
+import LinearProgress from '@mui/material/LinearProgress'
 import { toast } from 'react-toastify'
 
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@/libs/api'
@@ -54,6 +55,8 @@ const FOLDERS: Record<string, string> = {
 }
 
 const PER_PAGE = 30
+// Arka plan temizleme: istek başına parça boyutu (model bir kez yüklenir, görsel başına ~10-20 sn)
+const BG_REMOVAL_CHUNK = 4
 
 /** Bayt değerini okunabilir biçime çevirir */
 const formatSize = (bytes: number) => {
@@ -93,6 +96,17 @@ const MediaGallery = () => {
     const [savingMeta, setSavingMeta] = useState(false)
     const [zoom, setZoom] = useState(false)
     const [dragActive, setDragActive] = useState(false)
+    // Arka plan temizleme (yapay zekâ) durumu
+    const [bgConfirmOpen, setBgConfirmOpen] = useState(false)
+    const [bgProgress, setBgProgress] = useState<{ done: number; total: number } | null>(null)
+    const [restoring, setRestoring] = useState(false)
+    // Üzerine yazılan görsellerin tarayıcı önbelleğini kırmak için dosya bazlı sürüm damgası
+    const [cacheBust, setCacheBust] = useState<Record<string, number>>({})
+
+    const imageSrc = (file: MediaFile) => {
+        const base = getImageUrl(file.url)
+        return cacheBust[file.id] ? `${base}${base.includes('?') ? '&' : '?'}v=${cacheBust[file.id]}` : base
+    }
 
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -228,6 +242,66 @@ const MediaGallery = () => {
         }
     }
 
+    const runBackgroundRemoval = async () => {
+        const targets = files.filter(f => selected.includes(f.id))
+        setBgConfirmOpen(false)
+        if (targets.length === 0) return
+
+        setBgProgress({ done: 0, total: targets.length })
+        let okCount = 0
+        let failCount = 0
+        const failures: string[] = []
+        const doneIds: string[] = []
+
+        for (let i = 0; i < targets.length; i += BG_REMOVAL_CHUNK) {
+            const chunk = targets.slice(i, i + BG_REMOVAL_CHUNK)
+            try {
+                const data = await fetchAPI(API_ENDPOINTS.media.removeBackground(), {
+                    method: 'POST',
+                    body: JSON.stringify({ folder, files: chunk.map(f => f.id) })
+                })
+                if (!data.success) throw new Error(data.message || 'Arka plan temizlenemedi')
+                for (const r of data.results || []) {
+                    if (r.ok) { okCount++; doneIds.push(r.file) } else { failCount++; failures.push(`${r.file}: ${r.error}`) }
+                }
+            } catch (error: any) {
+                failCount += chunk.length
+                failures.push(`${chunk.length} dosya: ${error.message || 'istek başarısız'}`)
+            }
+            setBgProgress({ done: Math.min(i + chunk.length, targets.length), total: targets.length })
+        }
+
+        setBgProgress(null)
+        if (doneIds.length) {
+            const stamp = Date.now()
+            setCacheBust(prev => ({ ...prev, ...Object.fromEntries(doneIds.map(id => [id, stamp])) }))
+        }
+        if (okCount > 0) toast.success(`${okCount} görselin arka planı temizlendi${failCount ? `, ${failCount} başarısız` : ''}`)
+        else toast.error(failures[0] || 'Arka plan temizlenemedi')
+        if (failCount > 0 && okCount > 0) console.warn('Arka plan temizleme hataları:', failures)
+        setSelected([])
+        loadFiles()
+    }
+
+    const restoreOriginal = async () => {
+        if (!detail) return
+        try {
+            setRestoring(true)
+            const data = await fetchAPI(API_ENDPOINTS.media.restoreOriginal(), {
+                method: 'POST',
+                body: JSON.stringify({ folder: detail.folder, file: detail.id })
+            })
+            if (!data.success) throw new Error(data.message || 'Orijinal geri yüklenemedi')
+            toast.success('Orijinal görsel geri yüklendi')
+            setCacheBust(prev => ({ ...prev, [detail.id]: Date.now() }))
+            loadFiles()
+        } catch (error: any) {
+            toast.error(error.message || 'Orijinal geri yüklenemedi')
+        } finally {
+            setRestoring(false)
+        }
+    }
+
     const toggleSelect = (file: MediaFile) => {
         setSelected(prev => (prev.includes(file.id) ? prev.filter(id => id !== file.id) : [...prev, file.id]))
     }
@@ -267,6 +341,20 @@ const MediaGallery = () => {
                                     Seçilenleri Sil ({selected.length})
                                 </Button>
                             )}
+                            <Tooltip title={selected.length === 0 ? 'Önce görsel seçin' : 'Seçili görsellerin arka planını yapay zekâ ile temizler'}>
+                                <span>
+                                    <Button
+                                        variant='outlined'
+                                        startIcon={<i className='ri-magic-line' />}
+                                        onClick={() => setBgConfirmOpen(true)}
+                                        disabled={selected.length === 0 || Boolean(bgProgress)}
+                                    >
+                                        {bgProgress
+                                            ? `Temizleniyor ${bgProgress.done}/${bgProgress.total}`
+                                            : selected.length > 0 ? `Arka Plan Kaldır (${selected.length})` : 'Arka Plan Kaldır'}
+                                    </Button>
+                                </span>
+                            </Tooltip>
                             <Button
                                 variant='contained'
                                 startIcon={<i className='ri-upload-2-line' />}
@@ -280,6 +368,14 @@ const MediaGallery = () => {
                 />
 
                 <CardContent>
+                    {bgProgress && (
+                        <div className='mbe-4'>
+                            <Typography variant='body2' className='mbe-1'>
+                                Yapay zekâ arka planları temizliyor: {bgProgress.done} / {bgProgress.total} görsel
+                            </Typography>
+                            <LinearProgress variant='determinate' value={(bgProgress.done / bgProgress.total) * 100} />
+                        </div>
+                    )}
                     <Grid container spacing={4} className='mbe-4'>
                         <Grid size={{ xs: 12, sm: 4 }}>
                             <FormControl fullWidth size='small'>
@@ -389,7 +485,7 @@ const MediaGallery = () => {
                                                     />
                                                 </div>
                                                 <img
-                                                    src={getImageUrl(file.url)}
+                                                    src={imageSrc(file)}
                                                     alt={file.filename}
                                                     loading='lazy'
                                                     style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block' }}
@@ -445,7 +541,7 @@ const MediaGallery = () => {
                         {/* Önizleme: tıklayınca tam boy açılır */}
                         <Tooltip title='Büyütmek için tıklayın'>
                             <img
-                                src={getImageUrl(detail.url)}
+                                src={imageSrc(detail)}
                                 alt={detail.alt || detail.filename}
                                 onClick={() => setZoom(true)}
                                 style={{ width: '100%', borderRadius: 8, marginBottom: 16, cursor: 'zoom-in', backgroundColor: 'var(--mui-palette-action-hover)' }}
@@ -518,9 +614,19 @@ const MediaGallery = () => {
 
                         <Button
                             fullWidth
-                            color='error'
                             variant='outlined'
                             className='mbs-5'
+                            startIcon={<i className='ri-arrow-go-back-line' />}
+                            onClick={restoreOriginal}
+                            disabled={restoring}
+                        >
+                            {restoring ? 'Geri yükleniyor...' : 'Orijinal Görseli Geri Yükle'}
+                        </Button>
+                        <Button
+                            fullWidth
+                            color='error'
+                            variant='outlined'
+                            className='mbs-2'
                             startIcon={<i className='ri-delete-bin-line' />}
                             onClick={() => setDeleteTarget([detail])}
                         >
@@ -535,7 +641,7 @@ const MediaGallery = () => {
                 <DialogContent sx={{ p: 1, bgcolor: 'background.default' }}>
                     {detail && (
                         <img
-                            src={getImageUrl(detail.url)}
+                            src={imageSrc(detail)}
                             alt={detail.alt || detail.filename}
                             onClick={() => setZoom(false)}
                             style={{ maxWidth: '100%', maxHeight: '80vh', display: 'block', cursor: 'zoom-out' }}
@@ -545,6 +651,23 @@ const MediaGallery = () => {
             </Dialog>
 
             {/* Silme onayı */}
+            <Dialog open={bgConfirmOpen} onClose={() => setBgConfirmOpen(false)}>
+                <DialogTitle>Arka Planı Temizle</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Seçili {selected.length} görselin arka planı yapay zekâ ile temizlenip beyaz yapılacak ve
+                        dosyanın üzerine yazılacak; adresler değişmez. Orijinaller yedeklenir, görsel detayından
+                        "Orijinal Görseli Geri Yükle" ile geri alınabilir. Görsel başına 10-20 saniye sürer,
+                        işlem bitene kadar sayfayı kapatmayın. Ön plan güvenle ayrılamayan görseller değiştirilmez ve
+                        başarısız olarak raporlanır.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button color='secondary' onClick={() => setBgConfirmOpen(false)}>İptal</Button>
+                    <Button variant='contained' startIcon={<i className='ri-magic-line' />} onClick={runBackgroundRemoval}>Başlat</Button>
+                </DialogActions>
+            </Dialog>
+
             <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)}>
                 <DialogTitle>Dosyayı Sil</DialogTitle>
                 <DialogContent>

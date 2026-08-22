@@ -1,6 +1,7 @@
 // apps/api/src/routes/web/catalog/tags.js
 
 const express = require('express');
+const { applySitePricingMany, salePriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const router = express.Router();
 
 const WebTag = require('../../../models/web/catalog/WebTag');
@@ -214,7 +215,7 @@ router.get('/:slug/products', async (req, res) => {
         });
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true) {
-            filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
+            Object.assign(filter, pricedCondition(req.site));
         }
 
         // Ek filtreler için $and
@@ -294,19 +295,7 @@ router.get('/:slug/products', async (req, res) => {
             }
         }
         if (fiyatMin || fiyatMax) {
-            const priceCondition = {
-                'diaData.m_birimler': {
-                    $elemMatch: {
-                        'fiyat4': {}
-                    }
-                }
-            };
-            if (fiyatMin) {
-                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$gte = parseFloat(fiyatMin);
-            }
-            if (fiyatMax) {
-                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$lte = parseFloat(fiyatMax);
-            }
+            const priceCondition = priceRangeCondition(req.site, fiyatMin, fiyatMax);
 
             andConditions.push(priceCondition);
         }
@@ -365,7 +354,7 @@ router.get('/:slug/products', async (req, res) => {
                             vars: {
                                 shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
                                 webPrice: { $ifNull: ['$customData.webPrice', 0] },
-                                fiyat4: { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] }
+                                fiyat4: salePriceExpr(req.site) // site bazlı satış fiyatı (LJA: fiyat1 * oran)
                             },
                             in: {
                                 $cond: [
@@ -420,6 +409,8 @@ router.get('/:slug/products', async (req, res) => {
         );
 
         const products = await WebProduct.aggregate(aggregatePipeline);
+
+        applySitePricingMany(products, req.site);
 
         // Sitenin kendi açıklaması etkin değer olarak yansıtılır (ürün detayındaki çözümün liste karşılığı)
         for (const product of products) {

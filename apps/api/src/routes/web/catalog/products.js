@@ -4,6 +4,7 @@ const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
+const { applySitePricing, applySitePricingMany, salePriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const WebOrder = require('../../../models/web/order/WebOrder');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
@@ -148,6 +149,8 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
             { $project: { _key: 1, customData: 1, diaData: 1 } }
         ]);
 
+        applySitePricingMany(products, req.site);
+
         res.json({ success: true, data: products });
     } catch (error) {
         console.error('[Similar API] error:', error);
@@ -276,7 +279,7 @@ router.get('/filter', async (req, res) => {
 
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true) {
-            filter['diaData.m_birimler.0.fiyat4'] = { $gt: 0 };
+            Object.assign(filter, pricedCondition(req.site));
         }
 
         const andConditions = [];
@@ -505,19 +508,7 @@ router.get('/filter', async (req, res) => {
 
         // Fiyat filtresi
         if (fiyatMin || fiyatMax) {
-            const priceCondition = {
-                'diaData.m_birimler': {
-                    $elemMatch: {
-                        'fiyat4': {}
-                    }
-                }
-            };
-            if (fiyatMin) {
-                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$gte = parseFloat(fiyatMin);
-            }
-            if (fiyatMax) {
-                priceCondition['diaData.m_birimler'].$elemMatch['fiyat4'].$lte = parseFloat(fiyatMax);
-            }
+            const priceCondition = priceRangeCondition(req.site, fiyatMin, fiyatMax);
             andConditions.push(priceCondition);
         }
 
@@ -545,7 +536,7 @@ router.get('/filter', async (req, res) => {
                             vars: {
                                 shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
                                 webPrice: { $ifNull: ['$customData.webPrice', 0] },
-                                fiyat4: { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] }
+                                fiyat4: salePriceExpr(req.site) // site bazlı satış fiyatı (LJA: fiyat1 * oran)
                             },
                             in: {
                                 $cond: [
@@ -610,6 +601,7 @@ router.get('/filter', async (req, res) => {
         // Kategori bazlı fiyat gösterim ayarı (tek sorgu, önbellekli)
         const fiyatAyarlari = await getFiyatAyarlari(req.site);
 
+        applySitePricingMany(products, req.site);
         products.forEach(p => fiyatAyariUygula(p, fiyatAyarlari));
 
         // Sitenin kendi açıklaması etkin değer olarak yansıtılır (ürün detayındaki çözümün liste karşılığı)
@@ -723,6 +715,7 @@ router.get('/:slug', async (req, res) => {
         }
 
         // Kategori bazlı fiyat gösterim ayarı
+        applySitePricing(product, req.site);
         fiyatAyariUygula(product, await getFiyatAyarlari(req.site));
 
         // Marka görünen adı: site bazlı displayName > ortak customName

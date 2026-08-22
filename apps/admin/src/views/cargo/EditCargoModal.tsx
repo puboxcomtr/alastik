@@ -29,6 +29,8 @@ import type { SelectChangeEvent } from '@mui/material/Select'
 // Third-party Imports
 import { toast } from 'react-toastify'
 
+import { CARGO_PRODUCT_TYPE_OPTIONS, type CargoProductType } from './cargoOptions'
+
 // API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
@@ -42,7 +44,7 @@ type CargoData = {
     isActive: boolean
     webOrder: number
     memberGroups?: string[]
-    productType?: 'dia_api' | 'xml_integration'
+    productType?: CargoProductType
     paymentType?: 'sender' | 'receiver'
     fixedPrice?: number
     freeShippingThreshold?: number
@@ -70,7 +72,7 @@ const EditCargoModal = ({ open, cargo, handleClose, onSuccess }: EditCargoModalP
     const [webOrder, setWebOrder] = useState<number | ''>('')
     const [memberGroups, setMemberGroups] = useState<MemberGroupType[]>([])
     const [logo, setLogo] = useState('')
-    const [productType, setProductType] = useState<'dia_api' | 'xml_integration'>('dia_api')
+    const [productType, setProductType] = useState<CargoProductType>('dia_api')
     const [paymentType, setPaymentType] = useState<'sender' | 'receiver'>('sender')
     const [fixedPrice, setFixedPrice] = useState<number | ''>('')
     const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | ''>('')
@@ -320,10 +322,11 @@ const EditCargoModal = ({ open, cargo, handleClose, onSuccess }: EditCargoModalP
                         <Select
                             label='Ürün Tipi'
                             value={productType}
-                            onChange={e => setProductType(e.target.value as 'dia_api' | 'xml_integration')}
+                            onChange={e => setProductType(e.target.value as CargoProductType)}
                         >
-                            <MenuItem value='dia_api'>Normal Ürünler (DIA)</MenuItem>
-                            <MenuItem value='xml_integration'>XML Ürünler</MenuItem>
+                            {CARGO_PRODUCT_TYPE_OPTIONS.map(opt => (
+                                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
                     <FormControl fullWidth required>

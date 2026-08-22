@@ -12,6 +12,9 @@ const generateFileUrl = paths.generateFileUrl;
 const SimpleImageProcessor = require('../../../utils/SimpleImageProcessor');
 const imageProcessor = new SimpleImageProcessor(paths.public);
 
+// Yapay zekâ ile arka plan temizleme (ürün görselleri, toplu)
+const backgroundRemoval = require('../../../services/media/BackgroundRemovalService');
+
 const upload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
@@ -293,6 +296,37 @@ router.patch('/meta', async (req, res) => {
     } catch (error) {
         console.error('Medya bilgisi güncelleme hatası:', error);
         res.status(500).json({ success: false, message: 'Dosya bilgileri güncellenemedi' });
+    }
+});
+
+/**
+ * POST /remove-background — seçili görsellerin arka planını yapay zekâ ile temizler (beyaz),
+ * dosyanın üzerine yazar; orijinal _orijinal/ altına yedeklenir. body: { folder, files: [relPath] }
+ */
+router.post('/remove-background', async (req, res) => {
+    try {
+        const { folder = 'urun', files } = req.body || {};
+        const result = await backgroundRemoval.removeBackgrounds(folder, files);
+        clearFolderCache(folder);
+        res.json({ success: true, message: `${result.processed} görselin arka planı temizlendi`, ...result });
+    } catch (error) {
+        const status = error.status || 500;
+        if (status >= 500) console.error('Arka plan temizleme hatası:', error);
+        res.status(status).json({ success: false, message: error.message || 'Arka plan temizlenemedi' });
+    }
+});
+
+/** POST /restore-original — arka planı temizlenmiş görselin yedekteki orijinalini geri yükler */
+router.post('/restore-original', async (req, res) => {
+    try {
+        const { folder = 'urun', file } = req.body || {};
+        const result = await backgroundRemoval.restoreOriginal(folder, file);
+        clearFolderCache(folder);
+        res.json({ success: true, message: 'Orijinal görsel geri yüklendi', ...result });
+    } catch (error) {
+        const status = error.status || 500;
+        if (status >= 500) console.error('Orijinal geri yükleme hatası:', error);
+        res.status(status).json({ success: false, message: error.message || 'Orijinal geri yüklenemedi' });
     }
 });
 

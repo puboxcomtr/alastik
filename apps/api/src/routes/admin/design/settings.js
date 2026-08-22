@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const SiteSetting = require('../../../models/admin/settings/SiteSetting');
 const MediaService = require('../../../services/web/MediaService');
+const { invalidatePricingConfig } = require('../../../utils/sitePricing');
 
 // Upload middleware - theme kategorisi için (MediaService ile)
 const uploadThemeImage = MediaService.createUploader('theme', 'image');
@@ -62,6 +63,9 @@ router.put('/:key', async (req, res) => {
                 setDefaultsOnInsert: true
             }
         );
+
+        // Tema ayarındaki fiyat kuralı (priceField/priceDiscountMode) anında geçerli olsun
+        if (key === 'theme') invalidatePricingConfig();
 
         res.json({
             success: true,
