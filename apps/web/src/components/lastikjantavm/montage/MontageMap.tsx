@@ -23,9 +23,11 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [search, setSearch] = useState('');
     // İstanbul varsayılan açık gelir (kullanıcı kararı)
-    const [openCity, setOpenCity] = useState<string>('İstanbul');
-    const [activeId, setActiveId] = useState<string>('');
-    const [selected, setSelected] = useState<MontagePoint | null>(null);
+    // Açılışta bilgileri açık ilk nokta (panelde "Bilgileri Gözüksün") seçili gelir; yoksa liste kapalı başlar
+    const defaultPoint = useMemo(() => points.find(p => p.isPublicInfo) || null, [points]);
+    const [openCity, setOpenCity] = useState<string>(defaultPoint?.city || 'İstanbul');
+    const [activeId, setActiveId] = useState<string>(defaultPoint?._id || '');
+    const [selected, setSelected] = useState<MontagePoint | null>(defaultPoint);
 
     // İl bazlı gruplar (çok noktalı iller akordeon olur)
     const groups = useMemo(() => {
