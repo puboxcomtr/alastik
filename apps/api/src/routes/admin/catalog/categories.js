@@ -3,6 +3,7 @@
 // DEPENDENCIES
 // ============================================
 const express = require('express');
+const { CATEGORY_FILTERS, CATEGORY_FILTER_KEYS } = require('../../../config/categoryFilters');
 
 // ============================================
 // MODELS
@@ -59,6 +60,11 @@ const maybeAuth = process.env.DISABLE_AUTH === 'true'
  * GET /api/categories/sliders
  * Slider listesini getir (kategori düzenleme için)
  */
+// Kategori Düzenle → Gizlenecek Filtreler seçenekleri
+router.get('/filter-options', maybeAuth, (req, res) => {
+  res.json({ success: true, data: CATEGORY_FILTERS });
+});
+
 router.get('/sliders/list', maybeAuth, async (req, res) => {
   try {
     const Slider = require('../../../models/admin/design/Slider');
@@ -258,6 +264,7 @@ router.get('/', maybeAuth, async (req, res) => {
         priceDisplay: cat.siteContent?.[req.site]?.priceDisplay || 'dahil',
         vatRate: cat.siteContent?.[req.site]?.vatRate ?? 20,
         hideStockCode: cat.siteContent?.[req.site]?.hideStockCode === true,
+        hiddenFilters: cat.siteContent?.[req.site]?.hiddenFilters || [],
 
         // İstatistikler (ürün sayısı seçili sitenin yayınlanmış ürünleri)
         productCount: siteProductCount,
@@ -320,7 +327,7 @@ router.patch('/:id', maybeAuth, [
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, webVisible, sliderId, menuId, menuIds, priceDisplay, vatRate, hideStockCode } = req.body;
+    const { description, seoTitle, seoDescription, content, seoUrl, webOrder, webVisible, sliderId, menuId, menuIds, priceDisplay, vatRate, hideStockCode, hiddenFilters } = req.body;
     const updateData = {};
     if (description !== undefined) updateData[`siteContent.${req.site}.description`] = description;
     if (seoTitle !== undefined) updateData[`siteContent.${req.site}.seoTitle`] = seoTitle?.trim();
@@ -341,6 +348,11 @@ router.patch('/:id', maybeAuth, [
     if (priceDisplay !== undefined) updateData[`siteContent.${req.site}.priceDisplay`] = priceDisplay === 'haric' ? 'haric' : 'dahil';
     if (vatRate !== undefined) updateData[`siteContent.${req.site}.vatRate`] = Number(vatRate) || 20;
     if (hideStockCode !== undefined) updateData[`siteContent.${req.site}.hideStockCode`] = hideStockCode === true || hideStockCode === 'true';
+    if (hiddenFilters !== undefined) {
+      updateData[`siteContent.${req.site}.hiddenFilters`] = Array.isArray(hiddenFilters)
+        ? hiddenFilters.filter(k => CATEGORY_FILTER_KEYS.has(k))
+        : [];
+    }
     updateData.updatedAt = new Date();
 
     const updatedCategory = await WebCategory.findByIdAndUpdate(

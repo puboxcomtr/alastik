@@ -142,8 +142,9 @@ export const getProductFeatures = (product: Product) => {
  * Ürün stok kodunu getir
  */
 export const getProductStockCode = (product: Product, site?: string): string => {
-    const code = product.diaData?.anabarkod ||
-        product.diaData?.stokkartkodu ||
+    // Stok Kodu = DIA stok kartı kodu; barkod (anabarkod) yalnızca kod yoksa gösterilir
+    const code = product.diaData?.stokkartkodu ||
+        product.diaData?.anabarkod ||
         '-';
     const cleaned = code.replace(/-XML$/i, '');
     // AKD gosterimi yalnizca alastik icindir; LJA sitesi kodu oldugu gibi gosterir

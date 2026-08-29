@@ -73,7 +73,8 @@ const paymentMethodSchema = new mongoose.Schema({
         mode: {
             type: String,
             enum: ['test', 'live', 'sandbox'],
-            default: 'test'
+            // Yeni kayıtlar varsayılan CANLI açılır (kullanıcı kararı, 24 Ağu)
+            default: 'live'
         },
         apiUrl: String,
         has3DSecure: {

@@ -198,6 +198,7 @@ class DiaWorker {
                 }
             };
             const result = await this.diaService.fullSync(progressCallback);
+            result.labelImages = await this.reorderLabelImagesSafely('full');
 
             await job.progress({ percent: 100, step: 9, totalSteps: 9, message: 'Tamamlandı' });
             const duration = Date.now() - startTime;
@@ -230,6 +231,18 @@ class DiaWorker {
 
 
     /**
+     * Senkron sonrası etiket görsel sıralaması; hata senkronu düşürmez, sadece loglanır.
+     */
+    async reorderLabelImagesSafely(syncType) {
+        try {
+            return await this.diaService.reorderLabelImages();
+        } catch (error) {
+            this.logger.error('Etiket görsel sıralaması başarısız', { syncType, error: error.message });
+            return { error: error.message };
+        }
+    }
+
+    /**
      * Light sync işlemini çalıştır (Fiyat + Stok)
      */
     async processLightSync(job) {
@@ -260,6 +273,7 @@ class DiaWorker {
             // Kontör dostu: yalnızca DIA'da değişen kartlar çekilir (fiyat, ad, görsel, kategori).
             // Stoklar kart tarihini değiştirmediği için ayrı saatlik stok taramasıyla güncellenir.
             const result = await this.diaService.syncChangedCards();
+            result.labelImages = await this.reorderLabelImagesSafely('light');
 
             await job.progress(100);
 

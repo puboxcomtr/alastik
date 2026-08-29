@@ -29,10 +29,10 @@ const gridKolonu = (perRow: number): number => {
 export default function DraggableBanner({
     sliderKey,
     site = 'lastikjantavm',
-    slidesPerView = 2,
-    slidesPerViewMobile = 1,
-    slidesPerViewTablet = 2,
-    spaceBetween = 20
+    slidesPerView,
+    slidesPerViewMobile,
+    slidesPerViewTablet,
+    spaceBetween
 }: DraggableBannerProps) {
     const [slider, setSlider] = useState<Slider | null>(null);
 
@@ -56,7 +56,7 @@ export default function DraggableBanner({
         return null;
     }
 
-    // Props override > DB settings > default
+    // Props override > DB settings > default (props verilmezse banner grubunun kendi ayarları geçerli)
     const settings = slider.settings || {};
     const finalPerRow = slidesPerView || settings.slidesPerView || 2;
     const finalPerRowMobile = slidesPerViewMobile || settings.slidesPerViewMobile || 1;
@@ -71,7 +71,12 @@ export default function DraggableBanner({
     ].join(' ');
 
     return (
-        <section id="draggable_banner" className="position-relative">
+        <section
+            id="draggable_banner"
+            className="position-relative"
+            // Üst/alt boşluk = satırlar arası boşluk (grubun aralık ayarı) — eşit ritim
+            style={{ paddingTop: `${finalSpaceBetween}px`, paddingBottom: `${finalSpaceBetween}px` }}
+        >
             <div className="container">
                 <div className="row-fluid">
                     <div
@@ -97,7 +102,7 @@ export default function DraggableBanner({
                                             width={800}
                                             height={400}
                                             quality={95}
-                                            style={{ objectFit: 'cover', width: '100%', height: 'auto' }}
+                                            style={{ objectFit: 'cover', width: '100%', height: 'auto', marginTop: 0 }}
                                         />
                                     </Link>
                                 ) : (
@@ -108,7 +113,7 @@ export default function DraggableBanner({
                                         width={800}
                                         height={400}
                                         quality={95}
-                                        style={{ objectFit: 'cover', width: '100%', height: 'auto' }}
+                                        style={{ objectFit: 'cover', width: '100%', height: 'auto', marginTop: 0 }}
                                     />
                                 )}
                             </div>

@@ -16,9 +16,11 @@ interface SpeedIndexProps {
     speedIndexOptions?: IndexOption[];
     categorySlug?: string;
     tagSlug?: string;
+    hideLoadIndex?: boolean;
+    hideSpeedIndex?: boolean;
 }
 
-export default function SpeedIndex({ loadIndexOptions = [], speedIndexOptions = [], categorySlug, tagSlug }: SpeedIndexProps) {
+export default function SpeedIndex({ loadIndexOptions = [], speedIndexOptions = [], categorySlug, tagSlug, hideLoadIndex = false, hideSpeedIndex = false }: SpeedIndexProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -37,10 +39,12 @@ export default function SpeedIndex({ loadIndexOptions = [], speedIndexOptions = 
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
+    if (hideLoadIndex && hideSpeedIndex) return null;
+
     return (
         <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
             {/* Yük Endeksi */}
-            {loadIndexOptions.length > 0 && (
+            {!hideLoadIndex && loadIndexOptions.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
                         Yük Endeksi
@@ -92,7 +96,7 @@ export default function SpeedIndex({ loadIndexOptions = [], speedIndexOptions = 
             )}
 
             {/* Hız Endeksi */}
-            {speedIndexOptions.length > 0 && (
+            {!hideSpeedIndex && speedIndexOptions.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
                         Hız Endeksi

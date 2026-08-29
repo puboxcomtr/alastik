@@ -681,7 +681,7 @@ router.post('/', async (req, res) => {
     try {
         const {
             name, city, cityId, district, districtId, address, phone, workingHours, workingSchedule,
-            services, amenities, image, documents, reviews, location, isActive, order
+            services, amenities, image, documents, reviews, location, isActive, order, showPublicInfo
         } = req.body || {};
 
         if (!name || !name.trim() || !city || !city.trim()) {
@@ -706,6 +706,7 @@ router.post('/', async (req, res) => {
             reviews: cleanReviews(reviews),
             location: location || { lat: null, lng: null },
             isActive: isActive !== false,
+            showPublicInfo: showPublicInfo === true,
             order: Number(order) || 0
         });
 
@@ -721,7 +722,7 @@ router.put('/:id', async (req, res) => {
     try {
         const {
             name, city, cityId, district, districtId, address, phone, workingHours, workingSchedule,
-            services, amenities, image, documents, reviews, location, isActive, order
+            services, amenities, image, documents, reviews, location, isActive, order, showPublicInfo
         } = req.body || {};
 
         const point = await WebMontagePoint.findOne({ _id: req.params.id, site: req.site });
@@ -750,6 +751,7 @@ router.put('/:id', async (req, res) => {
         if (reviews !== undefined) point.reviews = cleanReviews(reviews);
         if (location !== undefined) point.location = location;
         if (isActive !== undefined) point.isActive = isActive;
+        if (showPublicInfo !== undefined) point.showPublicInfo = showPublicInfo === true;
         if (order !== undefined) point.order = Number(order) || 0;
 
         await point.save();

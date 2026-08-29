@@ -2,6 +2,7 @@
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
+import { CONDITION_QUERY_PARAM, SECOND_HAND_CONDITION } from '@/src/config/productCondition';
 import SecondHandBanner from '@/src/components/category/SecondHandBanner';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -42,9 +43,15 @@ interface Props {
     searchParams: Promise<{ [key: string]: string | undefined }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { slug } = await params;
+    const filters = await searchParams;
     const tag = await tagService.getTagBySlug(slug);
+
+    // ?durum=ikinci-el görünümü sıfır lastik sayfasının kopyasıdır; arama motorları indekslemesin
+    const robots: Metadata['robots'] | undefined = filters[CONDITION_QUERY_PARAM] === SECOND_HAND_CONDITION
+        ? { index: false, follow: true }
+        : undefined;
 
     if (!tag) {
         const base = await getOtherSeo('seoTag');
@@ -55,12 +62,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
                 ? tag.seoTitle
                 : (siteName ? `${tag.title} | ${siteName}` : tag.title),
             description: tag.seoDescription || `${tag.title} - En uygun lastik fiyatları ve modelleri.`,
+            robots,
         };
     }
 
     return {
         title: tag.seoTitle || siteTitle(tag.title),
         description: tag.seoDescription || `${tag.title} - En uygun lastik fiyatları ve modelleri.`,
+        robots,
     };
 }
 

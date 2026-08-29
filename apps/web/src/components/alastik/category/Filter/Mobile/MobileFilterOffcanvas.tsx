@@ -16,6 +16,7 @@ interface MobileFilterOffcanvasProps {
     isOpen: boolean;
     onClose: () => void;
     hideEbatFilters?: boolean;
+    hiddenFilters?: string[];
     categorySlug?: string;
     tagSlug?: string;
     tagType?: string;
@@ -25,12 +26,13 @@ interface MobileFilterOffcanvasProps {
 export default function MobileFilterOffcanvas({
     isOpen,
     onClose,
-    hideEbatFilters = false,
+    hideEbatFilters = false, hiddenFilters = [],
     categorySlug,
     tagSlug,
     tagType,
     brandSlug
 }: MobileFilterOffcanvasProps) {
+    const hidden = new Set(hiddenFilters);
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
     const [productType, setProductType] = useState<string>('LASTİK');
 
@@ -66,19 +68,19 @@ export default function MobileFilterOffcanvas({
                 </div>
                 <div className="offcanvas-body">
                     {/* Marka Sayfası Gizli */}
-                    {!brandSlug && (
+                    {!brandSlug && !hidden.has('brand') && (
                         <Brand categorySlug={categorySlug} brands={options?.brands || []} />
                     )}
-                    <Price priceRange={options?.priceRange} />
+                    {!hidden.has('price') && <Price priceRange={options?.priceRange} />}
                     {isJant && <RimsFilter categorySlug={categorySlug} tagSlug={tagSlug} />}
                     {!isJant && (
                         <>
-                            <Season seasonOptions={options?.seasons || []} />
-                            <Properties propertyOptions={options?.properties || []} />
-                            <TireFilter hideEbatFilters={hideEbatFilters} categorySlug={categorySlug} tagSlug={tagSlug} />
-                            <SpeedIndex loadIndexOptions={options?.loadIndex || []} speedIndexOptions={options?.speedIndex || []} />
-                            <Oem oemOptions={options?.oem || []} />
-                            <ProductionYear productionYears={options?.productionYears} />
+                            {!hidden.has('season') && <Season seasonOptions={options?.seasons || []} />}
+                            {!hidden.has('properties') && <Properties propertyOptions={options?.properties || []} />}
+                            <TireFilter hideEbatFilters={hideEbatFilters || hidden.has('tireSize')} categorySlug={categorySlug} tagSlug={tagSlug} />
+                            <SpeedIndex hideLoadIndex={hidden.has('loadIndex')} hideSpeedIndex={hidden.has('speedIndex')} loadIndexOptions={options?.loadIndex || []} speedIndexOptions={options?.speedIndex || []} />
+                            {!hidden.has('oem') && <Oem oemOptions={options?.oem || []} />}
+                            {!hidden.has('productionYear') && <ProductionYear productionYears={options?.productionYears} />}
                         </>
                     )}
                 </div>

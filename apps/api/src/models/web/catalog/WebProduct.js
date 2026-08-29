@@ -150,6 +150,10 @@ const diaDataSchema = new mongoose.Schema({
     ozelkod11: String,
     ozelkod11kodu: String,
 
+    // B2C indirim oranları (site fiyatlaması) — şemada tanımsızken strict mod senkronda düşürüyordu
+    b2c_indirimorani: Number,
+    birimindirimorani: String,
+
     // Stok kart kodu
     stokkartkodu: { type: String, required: true },
 

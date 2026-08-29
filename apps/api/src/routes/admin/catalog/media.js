@@ -113,6 +113,94 @@ const GALLERY_IMAGE_EXTENSIONS = ['.webp', '.jpg', '.jpeg', '.png', '.gif', '.av
 
 // Klasör taraması 6 binden fazla dosya içerebildiği için kısa süreli önbelleğe alınır
 const FOLDER_CACHE_TTL_MS = 5 * 60 * 1000;
+/* ---------- Ürün Görselleri kategori filtresi ----------
+ * Görseller ürün kayıtlarından (diaData.m_resimler + customImages) kategoriye eşlenir.
+ * Setler 10 dk önbelleklenir; 'eslesmeyen' = hiçbir ürünün referans etmediği dosyalar. */
+const WebProductForMedia = require('../../../models/web/catalog/WebProduct');
+
+const IKINCI_EL_OR = [
+    { 'diaData.m_kategoriler.kategori_aciklama_1': /ikinci\s*el/i },
+    { 'diaData.m_kategoriler.kategori_aciklama_2': /ikinci\s*el/i },
+    { 'diaData.stokkartkodu': /^2\.?EL/i }
+];
+const PRODUCT_CATEGORY_FILTERS = {
+    'sifir-lastik': { 'diaData.ozelkod7kodu': 'LASTİK', $nor: IKINCI_EL_OR },
+    'ikinci-el-lastik': { $or: IKINCI_EL_OR, 'diaData.ozelkod7kodu': { $nin: ['JANT', '2.El Jant'] } },
+    'jant': { 'diaData.ozelkod7kodu': 'JANT', $nor: IKINCI_EL_OR },
+    'ikinci-el-jant': { 'diaData.ozelkod7kodu': '2.El Jant' },
+    'zincir': { 'diaData.ozelkod7kodu': 'ZİNCİR' },
+    'aksesuar': { 'diaData.m_kategoriler.kategori_aciklama_1': 'Aksesuar' },
+    'hizmet': { 'diaData.m_kategoriler.kategori_aciklama_1': 'Hizmetlerimiz' }
+};
+
+const categoryFileCache = new Map();
+const CATEGORY_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function collectProductFiles(p, set) {
+    for (const r of p.diaData?.m_resimler || []) {
+        const u = String(r?.aws_url || '');
+        if (u.startsWith('/urun/')) set.add(u.slice('/urun/'.length));
+    }
+    for (const img of p.customData?.customImages || []) {
+        const u = String(img?.url || '');
+        if (u.startsWith('/urun/')) set.add(u.slice('/urun/'.length));
+    }
+    const f = String(p.customData?.featuredImage || '');
+    if (f.startsWith('/urun/')) set.add(f.slice('/urun/'.length));
+}
+
+async function getCategoryFileSet(key) {
+    const cached = categoryFileCache.get(key);
+    if (cached && Date.now() - cached.at < CATEGORY_CACHE_TTL_MS) return cached.set;
+    const query = key === 'tum-urunler' ? {} : PRODUCT_CATEGORY_FILTERS[key];
+    if (!query) return null;
+    const set = new Set();
+    const cursor = WebProductForMedia.find(query, {
+        'diaData.m_resimler.aws_url': 1,
+        'customData.customImages.url': 1,
+        'customData.featuredImage': 1
+    }).lean().cursor();
+    for await (const p of cursor) collectProductFiles(p, set);
+    categoryFileCache.set(key, { at: Date.now(), set });
+    return set;
+}
+
+/* ---------- Dekupe (arka plan temizleme) durumu ----------
+ * _orijinal yedeği olan VE içeriği yedekten farklı olan dosya "işlenmiş" kabul edilir.
+ * Küme 10 dk önbelleklenir; toplu geri yükleme / temizleme sonrası düşürülür. */
+const BACKUP_ROOT = path.join(paths.public, '_orijinal');
+let dekupeCache = null;
+
+async function getProcessedSet(folder) {
+    if (dekupeCache && dekupeCache.folder === folder && Date.now() - dekupeCache.at < 10 * 60 * 1000) {
+        return dekupeCache.set;
+    }
+    const set = new Set();
+    const backupDir = path.join(BACKUP_ROOT, folder);
+    const uploadDir = getUploadPath(folder);
+    const walk = async (dir, rel = '') => {
+        let entries = [];
+        try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries) {
+            const r = rel ? path.join(rel, e.name) : e.name;
+            if (e.isDirectory()) { await walk(path.join(dir, e.name), r); continue; }
+            try {
+                const bakPath = path.join(dir, e.name);
+                const curPath = path.join(uploadDir, r);
+                const [bs, cs] = await Promise.all([fs.stat(bakPath), fs.stat(curPath)]);
+                if (bs.size !== cs.size) { set.add(r); continue; }
+                const [bb, cb] = await Promise.all([fs.readFile(bakPath), fs.readFile(curPath)]);
+                if (!bb.equals(cb)) set.add(r);
+            } catch { /* mevcut dosya yoksa islenmis sayilmaz */ }
+        }
+    };
+    await walk(backupDir);
+    dekupeCache = { folder, at: Date.now(), set };
+    return set;
+}
+
+function clearDekupeCache() { dekupeCache = null; }
+
 const folderCache = new Map();
 
 /**
@@ -164,6 +252,8 @@ router.get('/list', async (req, res) => {
     try {
         const {
             folder = 'general',
+            productCategory = '',
+            dekupe = '',
             search = '',
             page = 1,
             limit = 20,
@@ -179,7 +269,26 @@ router.get('/list', async (req, res) => {
         }
         const uploadPath = getUploadPath(folder);
         try {
-            const scanned = await getFolderFiles(folder, uploadPath);
+            let scanned = await getFolderFiles(folder, uploadPath);
+
+            // Ürün Görselleri: dekupe (arka plan temizleme) durumu filtresi + rozet bilgisi
+            let processedSet = null;
+            if (folder === 'urun' && (dekupe || true)) {
+                processedSet = await getProcessedSet(folder);
+                if (dekupe === 'islenmis') scanned = scanned.filter(f => processedSet.has(f.relPath));
+                else if (dekupe === 'islenmemis') scanned = scanned.filter(f => !processedSet.has(f.relPath));
+            }
+
+            // Ürün Görselleri: kategori filtresi (görsel → ürün eşlemesinden)
+            if (folder === 'urun' && productCategory) {
+                if (productCategory === 'eslesmeyen') {
+                    const all = await getCategoryFileSet('tum-urunler');
+                    scanned = scanned.filter(f => !all.has(f.relPath));
+                } else {
+                    const allow = await getCategoryFileSet(productCategory);
+                    if (allow) scanned = scanned.filter(f => allow.has(f.relPath));
+                }
+            }
             const term = String(search).toLowerCase();
 
             // Aynı görselin farklı türleri tek satır gösterilir; webp tercih edilir
@@ -200,6 +309,7 @@ router.get('/list', async (req, res) => {
                 id: item.relPath,
                 filename: path.basename(item.relPath),
                 url: generateFileUrl(item.relPath, folder),
+                dekupe: processedSet ? processedSet.has(item.relPath) : undefined,
                 size: item.size,
                 uploadDate: item.mtime.toISOString(),
                 folder: folder
@@ -308,11 +418,38 @@ router.post('/remove-background', async (req, res) => {
         const { folder = 'urun', files } = req.body || {};
         const result = await backgroundRemoval.removeBackgrounds(folder, files);
         clearFolderCache(folder);
+        clearDekupeCache();
         res.json({ success: true, message: `${result.processed} görselin arka planı temizlendi`, ...result });
     } catch (error) {
         const status = error.status || 500;
         if (status >= 500) console.error('Arka plan temizleme hatası:', error);
         res.status(status).json({ success: false, message: error.message || 'Arka plan temizlenemedi' });
+    }
+});
+
+/** POST /restore-original-bulk — seçili görsellerin orijinallerini topluca geri yükler */
+router.post('/restore-original-bulk', async (req, res) => {
+    try {
+        const { folder = 'urun', files } = req.body || {};
+        if (!Array.isArray(files) || files.length === 0) {
+            return res.status(400).json({ success: false, message: 'En az bir dosya seçilmelidir' });
+        }
+        const results = [];
+        for (const file of files.slice(0, 200)) {
+            try {
+                await backgroundRemoval.restoreOriginal(folder, file);
+                results.push({ file, ok: true });
+            } catch (error) {
+                results.push({ file, ok: false, error: error.message });
+            }
+        }
+        clearFolderCache(folder);
+        clearDekupeCache();
+        const ok = results.filter(r => r.ok).length;
+        res.json({ success: true, message: `${ok} görsel orijinaline döndürüldü`, restored: ok, failed: results.length - ok, results });
+    } catch (error) {
+        console.error('Toplu geri yükleme hatası:', error);
+        res.status(500).json({ success: false, message: 'Toplu geri yükleme başarısız' });
     }
 });
 
@@ -322,6 +459,7 @@ router.post('/restore-original', async (req, res) => {
         const { folder = 'urun', file } = req.body || {};
         const result = await backgroundRemoval.restoreOriginal(folder, file);
         clearFolderCache(folder);
+        clearDekupeCache();
         res.json({ success: true, message: 'Orijinal görsel geri yüklendi', ...result });
     } catch (error) {
         const status = error.status || 500;

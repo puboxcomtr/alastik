@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
         update: (id: string) => `${getBaseUrl()}/admin/products/${id}`,
         features: () => `${getBaseUrl()}/admin/products/features/all`,
         sync: (id: string) => `${getBaseUrl()}/admin/products/${id}/synchronization`,
+        reorderLabelImages: () => `${getBaseUrl()}/admin/products/images/reorder-labels`,
     },
     brands: {
         list: () => `${getBaseUrl()}/admin/brands`,
@@ -28,6 +29,7 @@ export const API_ENDPOINTS = {
     categories: {
         list: () => `${getBaseUrl()}/admin/categories`,
         detail: (id: string) => `${getBaseUrl()}/admin/categories/${id}`,
+        filterOptions: () => `${getBaseUrl()}/admin/categories/filter-options`,
     },
     labels: {
         list: () => `${getBaseUrl()}/admin/tags`,
@@ -78,6 +80,11 @@ export const API_ENDPOINTS = {
         update: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}`,
         reset: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}/reset`,
         preview: (id: string) => `${getBaseUrl()}/admin/mail-templates/${id}/preview`,
+    },
+    generalSettings: {
+        get: () => `${getBaseUrl()}/admin/settings/general`,
+        upload: () => `${getBaseUrl()}/admin/settings/general/upload`,
+        deleteImage: (type: string) => `${getBaseUrl()}/admin/settings/general/image/${type}`,
     },
     smtpSettings: {
         get: () => `${getBaseUrl()}/admin/smtp-settings`,
@@ -223,6 +230,8 @@ export const API_ENDPOINTS = {
             limit?: number
             sortBy?: string
             sortOrder?: string
+            productCategory?: string
+            dekupe?: string
         }) => {
             const query = new URLSearchParams({
                 folder: params.folder,
@@ -230,7 +239,9 @@ export const API_ENDPOINTS = {
                 page: (params.page || 1).toString(),
                 limit: (params.limit || 24).toString(),
                 sortBy: params.sortBy || 'date',
-                sortOrder: params.sortOrder || 'desc'
+                sortOrder: params.sortOrder || 'desc',
+                productCategory: params.productCategory || '',
+                dekupe: params.dekupe || ''
             })
             return `${getBaseUrl()}/admin/media/list?${query}`
         },
@@ -240,6 +251,7 @@ export const API_ENDPOINTS = {
         updateMeta: () => `${getBaseUrl()}/admin/media/meta`,
         removeBackground: () => `${getBaseUrl()}/admin/media/remove-background`,
         restoreOriginal: () => `${getBaseUrl()}/admin/media/restore-original`,
+        restoreOriginalBulk: () => `${getBaseUrl()}/admin/media/restore-original-bulk`,
     },
     redirects: {
         list: (params: { search?: string; page?: number; limit?: number }) => {

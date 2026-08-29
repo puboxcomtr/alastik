@@ -155,6 +155,8 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
     const [workingSchedule, setWorkingSchedule] = useState<WeekSchedule>(emptySchedule())
     const [order, setOrder] = useState(0)
     const [isActive, setIsActive] = useState(true)
+    // Vitrinde ad/adres/telefon gösterilsin mi (kapalıysa anonim "Anlaşmalı Nokta")
+    const [showPublicInfo, setShowPublicInfo] = useState(false)
     const [services, setServices] = useState<ServiceItem[]>([])
     const [serviceProducts, setServiceProducts] = useState<ServiceProduct[]>([])
     const [amenities, setAmenities] = useState<string[]>([])
@@ -230,6 +232,7 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
                     setWorkingSchedule({ ...emptySchedule(), ...(p.workingSchedule || {}) })
                     setOrder(p.order || 0)
                     setIsActive(p.isActive !== false)
+                    setShowPublicInfo(p.showPublicInfo === true)
                     setServices(
                         (p.services || []).map((s: ServiceItem) => ({ ...s, priceText: priceToText(s.price) }))
                     )
@@ -386,6 +389,7 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
                 workingSchedule,
                 order,
                 isActive,
+                showPublicInfo,
                 services,
                 amenities,
                 image,
@@ -859,6 +863,13 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
                             control={<Switch checked={isActive} onChange={e => setIsActive(e.target.checked)} />}
                             label='Aktif'
                         />
+                        <FormControlLabel
+                            control={<Switch checked={showPublicInfo} onChange={e => setShowPublicInfo(e.target.checked)} />}
+                            label='Montaj Noktasında Bilgileri Gözüksün'
+                        />
+                        <Typography variant='caption' color='text.secondary' className='block -mt-2 mb-2'>
+                            Açıkken vitrinde bayi adı, adres ve telefon görünür; kapalıyken nokta "Anlaşmalı Nokta" olarak anonim listelenir.
+                        </Typography>
                         <div className='flex gap-4'>
                             <Button fullWidth variant='contained' color='primary' onClick={handleSave} disabled={saving}>
                                 {saving ? 'Kaydediliyor...' : 'Kaydet'}

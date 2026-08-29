@@ -6,13 +6,14 @@ import MobileSortOffcanvas from '@components/alastik/category/Filter/Mobile/Mobi
 
 interface MobileFilterSortProps {
     hideEbatFilters?: boolean;
+    hiddenFilters?: string[];
     categorySlug?: string;
     tagSlug?: string;
     tagType?: string;
     brandSlug?: string;
 }
 
-export default function MobileFilterSort({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug }: MobileFilterSortProps) {
+export default function MobileFilterSort({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug, hiddenFilters = [] }: MobileFilterSortProps) {
     const [isMobile, setIsMobile] = useState(false);
     const [filterOpen, setFilterOpen] = useState(false);
 
@@ -45,6 +46,7 @@ export default function MobileFilterSort({ hideEbatFilters = false, categorySlug
                 isOpen={filterOpen}
                 onClose={() => setFilterOpen(false)}
                 hideEbatFilters={hideEbatFilters}
+                hiddenFilters={hiddenFilters}
                 categorySlug={categorySlug}
                 tagSlug={tagSlug}
                 tagType={tagType}

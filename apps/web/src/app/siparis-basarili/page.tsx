@@ -12,7 +12,6 @@ import { Order } from '@/src/types/order';
 
 // Components
 import OrderSummary from '@/src/components/payment/Success/OrderSummary';
-import Coupon from '@/src/components/payment/Success/Coupon';
 import PaymentProducts from '@/src/components/payment/Success/PaymentProducts';
 
 declare global {
@@ -94,7 +93,6 @@ export default function OrderSuccessPage() {
             <Row className='row-fluid align-items-center px-2 py-lg-3'>
                 <Col lg="6">
                     <OrderSummary order={order} />
-                    <Coupon />
                 </Col>
                 <Col lg="6">
                     <PaymentProducts orderNumber={orderNumber || undefined} />

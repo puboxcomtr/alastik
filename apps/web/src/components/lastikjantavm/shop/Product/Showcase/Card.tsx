@@ -1,6 +1,8 @@
 'use client';
 
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { shouldRedirectToMontage, MONTAGE_REDIRECT_PATH } from '@/src/hooks/Cart/montageRedirect';
 import { useState } from "react";
 import Tooltip from '@mui/material/Tooltip';
 import Rating from '@mui/material/Rating';
@@ -37,6 +39,7 @@ import { toast } from 'react-toastify';
 export default function ProductCard({ product }: ProductCardProps) {
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
+    const router = useRouter();
     const { toggleFavourite, isFavourite } = useFavourites();
     const { definition } = useDefinition();
     const getWhatsAppUrl = () => {
@@ -57,7 +60,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                 return;
             }
 
-            await addToCart(product._key, 1);
+            const added = await addToCart(product._key, 1);
+            if (added && shouldRedirectToMontage(product)) router.push(MONTAGE_REDIRECT_PATH);
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');
@@ -220,7 +224,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 <span className="text-body-secondary fs-semibold fs-xs">Adet Fiyatı</span>
                             </div>
                         )}
-                        <div className="d-flex flex-column flex-md-row justify-content-end align-items-end gap-1 gap-md-2">
+                        <div className="d-flex flex-wrap justify-content-end align-items-baseline gap-2">
                             {hasDiscount && (
                                 <del className="text-body-tertiary fw-normal">
                                     {originalPrice?.toLocaleString('tr-TR', {

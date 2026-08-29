@@ -66,6 +66,7 @@ router.get('/slug/:slug/size/:size', async (req, res) => {
         category.priceDisplay = sc.priceDisplay || 'dahil';
         category.vatRate = sc.vatRate ?? 20;
         category.hideStockCode = sc.hideStockCode === true;
+        category.hiddenFilters = Array.isArray(sc.hiddenFilters) ? sc.hiddenFilters : [];
         if (sc.seoKeywords && sc.seoKeywords.length) category.seoKeywords = sc.seoKeywords;
         res.json({
             success: true,
@@ -106,6 +107,7 @@ router.get('/slug/:slug', async (req, res) => {
         category.priceDisplay = sc.priceDisplay || 'dahil';
         category.vatRate = sc.vatRate ?? 20;
         category.hideStockCode = sc.hideStockCode === true;
+        category.hiddenFilters = Array.isArray(sc.hiddenFilters) ? sc.hiddenFilters : [];
         if (sc.seoKeywords && sc.seoKeywords.length) category.seoKeywords = sc.seoKeywords;
         res.json({
             success: true,

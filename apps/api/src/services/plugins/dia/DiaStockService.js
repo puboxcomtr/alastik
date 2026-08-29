@@ -21,6 +21,7 @@ const CacheManager = require('../../../../../../packages/cache/');
 /* Filter Config */
 const { getFiltersForSyncType, logFilterConfig, getBasicFilters, getDiaFields, getSyncRules, getAllSyncRules, SERVICE_VAT_RULE } = require('../../../config/diaFilters');
 const imageMirror = require('../../media/ImageMirrorService');
+const { moveLabelImagesLast, reorderLabelImagesForAllProducts } = require('../../../utils/productImages');
 
 const DiaSettings = require('../../../models/plugins/dia/DiaSettings');
 
@@ -539,12 +540,12 @@ class DiaStockService {
   mapMirroredImages(images) {
     if (!Array.isArray(images) || images.length === 0) return images || [];
 
-    return images.map(img => {
+    return moveLabelImagesLast(images.map(img => {
       if (!img || !img.aws_url) return img;
       const local = imageMirror.findExisting(img.aws_url);
       if (!local) return img;
       return { ...img, aws_url: local, source_url: img.source_url || img.aws_url };
-    });
+    }));
   }
   transformDiaDataForWeb(diaProduct) {
     return {
@@ -3858,6 +3859,16 @@ class DiaStockService {
       throw error;
     }
   }
+  /**
+   * Tüm ürünlerde AB etiketi görsellerini ürün görsellerinin arkasına alır.
+   * Her DIA senkronu sonunda çalıştırılır; siteler arası ortak alan olduğu için tek geçiş yeterlidir.
+   */
+  async reorderLabelImages() {
+    const result = await reorderLabelImagesForAllProducts(WebProduct);
+    this.logger.info('Etiket görselleri sona alındı', result);
+    return result;
+  }
+
   async syncImagesToWebProducts() {
     const operationId = `sync_images_web_${Date.now()}`;
     const startTime = Date.now();
@@ -3876,7 +3887,8 @@ class DiaStockService {
 
         const diaStocks = await DiaStock.find(
           {}, // tüm siteler + dahil istisnaları kapsansın; web'de olmayan key'ler no-op
-          { _key: 1, m_resimler: 1 }
+          // aciklama/stokkartkodu: YENİ indirilen görseller ürün adıyla (slug) kaydedilsin
+          { _key: 1, m_resimler: 1, aciklama: 1, stokkartkodu: 1 }
         ).skip(offset).limit(batchSize).lean();
 
         if (!diaStocks || diaStocks.length === 0) {
@@ -3894,17 +3906,25 @@ class DiaStockService {
           }
         }
 
-        const webOps = diaStocks.map(dia => ({
-          updateOne: {
-            filter: { _key: dia._key },
-            update: {
-              $set: {
-                'diaData.m_resimler': mirrored.get(dia._key) || dia.m_resimler || [],
-                'syncInfo.lastDiaSync': new Date()
-              }
-            }
-          }
-        }));
+        // Vekil görsel temizliği: gerçek (bastırılmamış) görseli olan ürünlerde temsiliYedek
+        // işaretli customImages kaldırılır — "daha güzel görseli gelince o değişsin" kuralı
+        const keysWithReal = diaStocks.filter(d => (mirrored.get(d._key) || []).length > 0).map(d => d._key);
+        const subs = keysWithReal.length
+          ? await WebProduct.find(
+              { _key: { $in: keysWithReal }, 'customData.customImages.temsiliYedek': true },
+              { _key: 1, 'customData.customImages': 1 }
+            ).lean()
+          : [];
+        const subMap = new Map(subs.map(p => [p._key, (p.customData.customImages || []).filter(i => !i.temsiliYedek)]));
+
+        const webOps = diaStocks.map(dia => {
+          const set = {
+            'diaData.m_resimler': mirrored.get(dia._key) || dia.m_resimler || [],
+            'syncInfo.lastDiaSync': new Date()
+          };
+          if (subMap.has(dia._key)) set['customData.customImages'] = subMap.get(dia._key);
+          return { updateOne: { filter: { _key: dia._key }, update: { $set: set } } };
+        });
 
         if (webOps.length > 0) {
           const result = await WebProduct.bulkWrite(webOps, { ordered: false });

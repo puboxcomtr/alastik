@@ -114,6 +114,12 @@ const webMontagePointSchema = new mongoose.Schema({
         lat: { type: Number, default: null },
         lng: { type: Number, default: null }
     },
+    // Vitrinde kimlik bilgileri (ad, adres, telefon, görsel, tam konum) gösterilsin mi?
+    // Kapalıysa nokta satın alma öncesi "Anlaşmalı Nokta" olarak anonim görünür
+    showPublicInfo: {
+        type: Boolean,
+        default: false
+    },
     isActive: {
         type: Boolean,
         default: true,

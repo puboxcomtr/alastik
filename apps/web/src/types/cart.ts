@@ -14,6 +14,10 @@ export interface CartSidebarProps {
 export interface CartItem {
     productKey: string;
     montagePointLabel?: string;
+    // Sepet kuralları: kalem türü, lastik jant çapı, montaj hizmetinin çap aralığı
+    itemType?: 'tire' | 'montage' | 'service' | 'product';
+    rimSize?: number | null;
+    rimRange?: { min: number; max: number } | null;
     productName: string;
     productImage: string | null;
     productSlug: string;

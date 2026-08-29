@@ -3,6 +3,8 @@ const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const Page = require('../../../models/admin/content/Page');
+const Blog = require('../../../models/admin/content/Blog');
+const WebTag = require('../../../models/web/catalog/WebTag');
 const { getSiteVisibilityFilter } = require('../../../config/diaFilters');
 
 // Sitemap üretimi için slug listeleri (site kapsamlı, hafif projeksiyonlar).
@@ -47,6 +49,21 @@ router.get('/:type', async (req, res) => {
                 .select('slug updatedAt').lean();
 
             data = rows.map(r => ({ slug: r.slug, updatedAt: r.updatedAt }));
+        } else if (type === 'blog') {
+            const rows = await Blog.find({ site, status: 'published' })
+                .select('slug updatedAt publishedAt').sort({ publishedAt: -1 }).lean();
+
+            data = rows
+                .map(r => ({ slug: r.slug, updatedAt: r.updatedAt || r.publishedAt }))
+                .filter(r => r.slug);
+        } else if (type === 'tags') {
+            // Yalnızca ürünü olan aktif etiketler — boş etiket sayfaları ince içerik sayılır
+            const rows = await WebTag.find({ site, isActive: true, productCount: { $gt: 0 } })
+                .select('seoUrl updatedAt').sort({ order: 1 }).lean();
+
+            data = rows
+                .map(r => ({ slug: r.seoUrl, updatedAt: r.updatedAt }))
+                .filter(r => r.slug);
         } else {
             return res.status(400).json({ success: false, message: 'Geçersiz sitemap tipi' });
         }

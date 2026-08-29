@@ -236,7 +236,8 @@ router.post('/', async (req, res) => {
             description,
             priority: priority || 0,
             apiCredentials,
-            isActive: false,
+            // Yeni yöntem varsayılan AKTİF açılır (kullanıcı kararı, 24 Ağu)
+            isActive: true,
             providerMeta: {
                 displayName: template.name,
                 logo: template.logo,

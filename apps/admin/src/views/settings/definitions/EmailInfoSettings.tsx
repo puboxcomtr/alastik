@@ -32,6 +32,16 @@ export default function EmailInfoSettings() {
                             onChange={(e) => updateField('emailInfo', 'orderEmail', e.target.value)}
                         />
                     </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                            fullWidth
+                            label='Geri Arama Formu E-mail Adresi'
+                            placeholder='Boşsa E-mail Adresi kullanılır'
+                            helperText='Anasayfadaki "Biz Sizi Arayalım" talepleri bu adrese gider'
+                            defaultValue={emailInfo.callbackEmail || ''}
+                            onChange={(e) => updateField('emailInfo', 'callbackEmail', e.target.value)}
+                        />
+                    </Grid>
                 </Grid>
             </CardContent>
         </Card>

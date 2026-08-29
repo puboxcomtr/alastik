@@ -1,11 +1,12 @@
 'use client';
 
-// Anlaşmalı nokta detayı: kimlik bilgisi GÖSTERİLMEZ (ad/adres/telefon/harita yok) —
+// Anlaşmalı nokta detayı: kimlik bilgisi varsayılan olarak GÖSTERİLMEZ (ad/adres/telefon/harita yok) —
 // hizmet satın alınmadan yalnız bölge, olanaklar, saatler, hizmetler ve yorumlar görünür.
+// Panelde "Bilgileri Gözüksün" açık noktalarda (isPublicInfo) ad, adres ve telefon gösterilir.
 import React from 'react';
 import Link from 'next/link';
 import { Col, Container, Row } from 'react-bootstrap';
-import { AMENITY_LABELS, DAYS, todayStatus, Stars, ServiceRow, type MontagePoint } from './montageShared';
+import { AMENITY_LABELS, DAYS, todayStatus, Stars, ServiceList, type MontagePoint } from './montageShared';
 
 const YELLOW = '#e4cc15';
 const DARK = '#313131';
@@ -29,16 +30,27 @@ export default function MontageDetail({ point }: { point: MontagePoint }) {
                         <div className="card border-0 shadow-sm rounded-3 p-4 mb-4">
                             <div className="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h1 className="fs-4 fw-bold mb-1" style={{ color: '#e58a00' }}>ANLAŞMALI NOKTA</h1>
+                                    <h1 className="fs-4 fw-bold mb-1" style={{ color: '#e58a00' }}>
+                                        {point.isPublicInfo ? point.name : 'ANLAŞMALI NOKTA'}
+                                    </h1>
                                     <div className="fw-semibold text-black mb-2">
                                         {point.city}{point.district ? ` / ${point.district}` : ''}
                                     </div>
+                                    {point.isPublicInfo && point.address && (
+                                        <div className="small text-black mb-1">{point.address}</div>
+                                    )}
+                                    {point.isPublicInfo && point.phone && (
+                                        <div className="small text-black mb-2">
+                                            <a href={`tel:${point.phone.replace(/\s/g, '')}`} className="text-black text-decoration-none">{point.phone}</a>
+                                        </div>
+                                    )}
                                     <a href="#yorumlar" className="text-decoration-underline text-black small fw-semibold">
                                         Mağaza Yorumları Gör ({point.rating.count})
                                     </a>
                                     <div className="d-flex align-items-center gap-2 mt-1">
-                                        <Stars value={point.rating.count > 0 ? point.rating.average : 0} />
-                                        <small className="text-muted">{point.rating.count > 0 ? `${point.rating.average} / 5` : '(Henüz Yorum Yapılmadı)'}</small>
+                                        {point.rating.count > 0
+                                            ? <><Stars value={point.rating.average} /><small className="text-muted">{`${point.rating.average} / 5`}</small></>
+                                            : <small className="text-muted">(Henüz Yorum Yapılmadı)</small>}
                                     </div>
                                 </div>
                                 <i className="ri-tools-fill" style={{ fontSize: 44, color: DARK }} />
@@ -97,7 +109,7 @@ export default function MontageDetail({ point }: { point: MontagePoint }) {
                             {point.services.length === 0 ? (
                                 <p className="text-muted mb-0">Bu nokta için hizmet tanımı bulunmuyor.</p>
                             ) : (
-                                point.services.map((s, i) => <ServiceRow key={i} service={s} montagePointId={point._id} />)
+                                <ServiceList services={point.services} montagePointId={point._id} />
                             )}
                         </div>
 

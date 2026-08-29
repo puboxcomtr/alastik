@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { API_ENDPOINTS, fetchAPI } from '@/src/config/api';
 import { siteTitle } from '@/src/lib/siteMeta';
 import MontageMap from '@/src/components/lastikjantavm/montage/MontageMap';
+import MontageStickyBar from '@/src/components/lastikjantavm/montage/MontageStickyBar';
 
 export const revalidate = 300;
 
@@ -22,5 +23,10 @@ export default async function MontagePointsPage() {
     const result = await fetchAPI(API_ENDPOINTS.montage.list());
     if (!result?.success) notFound();
 
-    return <MontageMap points={result.data || []} />;
+    return (
+        <>
+            <MontageMap points={result.data || []} />
+            <MontageStickyBar />
+        </>
+    );
 }

@@ -54,4 +54,17 @@ export interface ThemeSettings {
     showcaseThird?: string
     showcasenameThird?: string
     showcasesubThird?: string
+    showcaseFourth?: string
+    showcasenameFourth?: string
+    showcasesubFourth?: string
+    showcaseFifth?: string
+    showcasenameFifth?: string
+    showcasesubFifth?: string
+
+    // Vitrin altı banner grupları (slider key)
+    showcasebannerFirst?: string
+    showcasebannerSecond?: string
+    showcasebannerThird?: string
+    showcasebannerFourth?: string
+    showcasebannerFifth?: string
 }

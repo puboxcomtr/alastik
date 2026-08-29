@@ -1,5 +1,7 @@
 'use client';
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { shouldRedirectToMontage, MONTAGE_REDIRECT_PATH } from '@/src/hooks/Cart/montageRedirect';
 import { useState, useEffect } from "react";
 import { Row, Col } from "react-bootstrap";
 import Rating from '@mui/material/Rating';
@@ -41,6 +43,7 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
     const [adding, setAdding] = useState(false);
     const [blogCount, setBlogCount] = useState(0);
     const { addToCart } = useCart();
+    const router = useRouter();
     const { theme } = useSettings();
     const { definition } = useDefinition();
     const { t } = useTranslations('general');
@@ -62,7 +65,8 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
                 return;
             }
 
-            await addToCart(product._key, quantity);
+            const added = await addToCart(product._key, quantity);
+            if (added && shouldRedirectToMontage(product)) router.push(MONTAGE_REDIRECT_PATH);
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');

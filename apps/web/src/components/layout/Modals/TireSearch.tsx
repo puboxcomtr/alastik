@@ -28,6 +28,7 @@ import type { TireSearchState, SearchStep } from '@/src/types/tire-search';
 // Services & Hooks
 // ============================================
 import { buildTagUrl, buildTireSizeTagFallback } from '@/src/config/routes';
+import { CONDITION_QUERY_PARAM } from '@/src/config/productCondition';
 import tagService from '@/src/services/tagService';
 import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 
@@ -51,6 +52,8 @@ interface TireSearchModalProps {
     mode?: ModalMode;
     onSearchComplete?: (searchData: any) => void;
     onVehicleSaved?: () => void;
+    /** Sonuç sayfasında açılacak ürün durumu sekmesi (örn. 'ikinci-el') */
+    condition?: string;
 }
 
 export default function TireSearchModal({
@@ -58,7 +61,8 @@ export default function TireSearchModal({
     onClose,
     mode = 'search',
     onSearchComplete,
-    onVehicleSaved
+    onVehicleSaved,
+    condition
 }: TireSearchModalProps) {
     const router = useRouter();
     const { addVehicle } = useVehicles();
@@ -162,7 +166,9 @@ export default function TireSearchModal({
             const { width, aspectRatio, diameter } = searchState.selectedTireSize;
             const tagData = await tagService.getTireSizeTag(width, aspectRatio, diameter);
             const seoUrl = tagData?.seoUrl || buildTireSizeTagFallback(width, aspectRatio, diameter);
-            const tagUrl = buildTagUrl(seoUrl);
+            const tagUrl = condition
+                ? `${buildTagUrl(seoUrl)}?${new URLSearchParams({ [CONDITION_QUERY_PARAM]: condition }).toString()}`
+                : buildTagUrl(seoUrl);
 
             const vehicleData = {
                 make: searchState.make,

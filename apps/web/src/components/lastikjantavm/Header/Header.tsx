@@ -7,6 +7,7 @@ import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/lastikjantavm/Header/Middle/Main';
 import Navbar from '@components/lastikjantavm/Header/Navbar/Main';
 import MobileMenu from '@components/lastikjantavm/Header/MobileMenu';
+import MontageMarquee from '@components/lastikjantavm/Header/MontageMarquee';
 
 /* Api Connection */
 import { api } from '@src/lib/api';
@@ -28,6 +29,7 @@ export default function Header() {
 
     return (
         <>
+            <MontageMarquee />
             <Middle logo={logo} siteName={siteName} onMenuOpen={() => setMenuOpen(true)} />
             <Navbar />
             <MobileMenu show={menuOpen} onClose={() => setMenuOpen(false)} />

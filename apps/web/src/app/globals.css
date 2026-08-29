@@ -69,3 +69,10 @@ body {
     animation: none;
   }
 }
+
+/* LJA anasayfa blog bölümü: geniş ekranda sol/sağ sütun arasındaki dikey ayraç */
+@media (min-width: 992px) {
+  .lja-blog-divider {
+    border-right: 1px solid var(--cz-border-color, #e0e5eb);
+  }
+}

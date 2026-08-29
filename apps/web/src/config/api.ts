@@ -37,6 +37,10 @@ export const API_ENDPOINTS = {
     blocks: {
         detail: (key: string) => `${getBaseUrl()}/blocks/${key}`,
     },
+    contact: {
+        callback: () => `${getBaseUrl()}/contact/callback`,
+        callbackOptions: () => `${getBaseUrl()}/contact/callback/options`,
+    },
     montage: {
         list: () => `${getBaseUrl()}/montage-points`,
         detail: (id: string) => `${getBaseUrl()}/montage-points/${id}`,

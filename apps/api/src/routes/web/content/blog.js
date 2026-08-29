@@ -22,11 +22,27 @@ router.get('/by-pattern/:pattern', async (req, res) => {
 // Anasayfa blogları
 router.get('/homepage', async (req, res) => {
     try {
+        const HOMEPAGE_BLOG_COUNT = 5;
+        const fields = 'title slug excerpt publishedAt viewCount featuredImage tags';
         const blogs = await WebBlog.find({ site: req.site, status: 'published', showOnHomepage: true })
-            .select('title slug excerpt publishedAt viewCount featuredImage tags')
+            .select(fields)
             .sort({ publishedAt: -1 })
-            .limit(4)
+            .limit(HOMEPAGE_BLOG_COUNT)
             .lean();
+
+        // Anasayfa için işaretli yazı sayısı yetersizse en güncel yayınlanmış yazılarla tamamlanır
+        if (blogs.length < HOMEPAGE_BLOG_COUNT) {
+            const fillers = await WebBlog.find({
+                site: req.site,
+                status: 'published',
+                _id: { $nin: blogs.map(b => b._id) }
+            })
+                .select(fields)
+                .sort({ publishedAt: -1 })
+                .limit(HOMEPAGE_BLOG_COUNT - blogs.length)
+                .lean();
+            blogs.push(...fillers);
+        }
 
         res.json({ success: true, data: blogs });
     } catch (error) {

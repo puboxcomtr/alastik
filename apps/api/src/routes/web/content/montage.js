@@ -3,15 +3,14 @@
 const express = require('express');
 const router = express.Router();
 const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
+const { resolveMontageServicePrice } = require('../../../utils/montagePricing');
+const { isMontageServiceName, parseRimRange } = require('../../../services/web/cart/CartRulesService');
 
-// Satın alma öncesi noktalar ANONİMDİR: ad, adres, telefon, görsel ve hassas konum dışarı verilmez
-// (müşteri hizmeti satın alınca sipariş tarafında açılır). documents bayi sözleşmesidir, HER ZAMAN gizli.
+// Satın alma öncesi noktalar varsayılan olarak ANONİMDİR: ad, adres, telefon, görsel ve hassas konum
+// dışarı verilmez (müşteri hizmeti satın alınca sipariş tarafında açılır). Panelde "Bilgileri Gözüksün"
+// (showPublicInfo) açılan noktalarda bu bilgiler vitrinde gösterilir. documents bayi sözleşmesidir, HER ZAMAN gizli.
 const PUBLIC_FIELDS = {
     documents: 0,
-    name: 0,
-    address: 0,
-    phone: 0,
-    image: 0,
     __v: 0
 };
 
@@ -41,18 +40,28 @@ function ratingSummary(reviews = []) {
 }
 
 function toPublic(point) {
-    const { reviews, services, location, ...rest } = point;
-    const servicePrices = (services || []).map(s => (s.price ?? s.defaultPrice) || 0).filter(v => v > 0);
+    const { reviews, services, location, name, address, phone, image, showPublicInfo, ...rest } = point;
+    const isPublicInfo = showPublicInfo === true;
+    // Noktaya özel fiyat (0 = ücretsiz) > katalog fiyatı > null (Sorunuz)
+    const publicServices = (services || []).map(s => ({
+        productKey: s.productKey || '',
+        sku: s.sku || '',
+        name: s.name,
+        price: resolveMontageServicePrice(s),
+        // Sepet kuralları: montaj hizmeti mi, hangi jant çapı aralığını kapsıyor
+        isMontage: isMontageServiceName(s.name),
+        rimRange: isMontageServiceName(s.name) ? parseRimRange(s.name) : null
+    }));
+    const servicePrices = publicServices.map(s => s.price).filter(v => v !== null && v > 0);
     return {
         ...rest,
-        name: ANONYMOUS_NAME,
-        location: fuzzLocation(location),
-        services: (services || []).map(s => ({
-            productKey: s.productKey || '',
-            sku: s.sku || '',
-            name: s.name,
-            price: (s.price ?? s.defaultPrice) || 0
-        })),
+        isPublicInfo,
+        name: isPublicInfo ? name : ANONYMOUS_NAME,
+        address: isPublicInfo ? (address || '') : '',
+        phone: isPublicInfo ? (phone || '') : '',
+        image: isPublicInfo ? (image || '') : '',
+        location: isPublicInfo ? { lat: location?.lat ?? null, lng: location?.lng ?? null } : fuzzLocation(location),
+        services: publicServices,
         startingPrice: servicePrices.length ? Math.min(...servicePrices) : null,
         rating: ratingSummary(reviews),
         // Yorumlar en yeniden eskiye; üye adı ve tarih dışında kişisel veri yok

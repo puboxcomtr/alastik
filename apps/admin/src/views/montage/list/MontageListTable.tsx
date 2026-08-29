@@ -86,33 +86,6 @@ const formatPhoneDisplay = (value?: string) => {
         .join(' ')
 }
 
-// Gün bazlı programı kısa özet metnine çevirir
-const scheduleSummary = (schedule?: WeekSchedule, legacy?: string) => {
-    if (!schedule) return legacy || '-'
-
-    const fmt = (d?: DaySchedule) => (d?.open && d?.close ? `${d.open} - ${d.close}` : '')
-    const weekdayValues = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map(k => fmt(schedule[k]))
-    const allSame = weekdayValues.every(v => v === weekdayValues[0])
-
-    const parts: string[] = []
-
-    if (allSame && weekdayValues[0]) {
-        parts.push(`Hafta içi ${weekdayValues[0]}`)
-    } else {
-        const openCount = weekdayValues.filter(Boolean).length
-
-        if (openCount > 0) parts.push(`Hafta içi ${openCount} gün açık`)
-    }
-
-    const saturday = fmt(schedule.saturday)
-    const sunday = fmt(schedule.sunday)
-
-    if (saturday) parts.push(`Cmt ${saturday}`)
-    if (sunday) parts.push(`Paz ${sunday}`)
-
-    return parts.length ? parts.join(' • ') : legacy || 'Kapalı'
-}
-
 const columnHelper = createColumnHelper<MontagePoint>()
 
 const MontageListTable = () => {
@@ -342,14 +315,6 @@ const MontageListTable = () => {
                         </div>
                     )
                 }
-            }),
-            columnHelper.accessor('workingHours', {
-                header: 'Çalışma Saatleri',
-                cell: ({ row }) => (
-                    <Typography variant='body2'>
-                        {scheduleSummary(row.original.workingSchedule, row.original.workingHours)}
-                    </Typography>
-                )
             }),
             columnHelper.accessor('isActive', {
                 header: 'Durum',

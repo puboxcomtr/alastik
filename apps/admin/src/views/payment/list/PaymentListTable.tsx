@@ -154,8 +154,24 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [methodToEdit, setMethodToEdit] = useState<PaymentMethodType | null>(null)
 
+  // Liste, aktif site başlığıyla İSTEMCİ tarafında yüklenir (sunucu fetch'i X-Site gönderemiyordu
+  // ve sayfa hep ALastik yöntemlerini gösteriyordu)
+  const loadMethods = async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+      const result = await fetchAPI(`${baseUrl}/admin/settings/payment`)
+      if (result?.success !== false) setData(result.data || [])
+    } catch (e) {
+      console.error('Ödeme yöntemleri yüklenemedi:', e)
+    }
+  }
+
   useEffect(() => {
-    setData(methodData || [])
+    loadMethods()
+  }, [])
+
+  useEffect(() => {
+    if (methodData && methodData.length) setData(methodData)
   }, [methodData])
 
   const handleToggle = async (id: string, currentStatus: boolean) => {

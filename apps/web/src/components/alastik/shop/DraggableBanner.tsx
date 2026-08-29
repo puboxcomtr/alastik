@@ -30,10 +30,10 @@ interface DraggableBannerProps {
 export default function DraggableBanner({
     sliderKey,
     site = 'alastik',
-    slidesPerView = 4,
-    slidesPerViewMobile = 2,
-    slidesPerViewTablet = 2,
-    spaceBetween = 20,
+    slidesPerView,
+    slidesPerViewMobile,
+    slidesPerViewTablet,
+    spaceBetween,
     loop = false,
     showNavigation = true
 }: DraggableBannerProps) {
@@ -59,7 +59,7 @@ export default function DraggableBanner({
         return null;
     }
 
-    // Props override > DB settings > default
+    // Props override > DB settings > default (props verilmezse banner grubunun kendi ayarları geçerli)
     const settings = slider.settings || {};
     const finalSlidesPerView = slidesPerView || settings.slidesPerView || 4;
     const finalSlidesPerViewMobile = slidesPerViewMobile || settings.slidesPerViewMobile || 2;

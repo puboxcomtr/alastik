@@ -13,6 +13,10 @@ const cartItemSchema = new mongoose.Schema({
     // Montaj hizmeti: hangi anlaşmalı noktadan seçildi (kimlik satın alma sonrası açılır, sepette anonim etiket)
     montagePointId: { type: String, default: '' },
     montagePointLabel: { type: String, default: '' },
+    // Sepet kuralları için kalem türü: tire | montage | service | product (CartRulesService)
+    itemType: { type: String, enum: ['tire', 'montage', 'service', 'product'], default: 'product' },
+    rimSize: { type: Number, default: null },                       // lastik jant çapı (inç)
+    rimRange: { type: { min: Number, max: Number }, default: null }, // montaj hizmetinin kapsadığı çap aralığı
     addedAt: { type: Date, default: Date.now }
 }, { _id: false });
 

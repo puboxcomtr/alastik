@@ -658,6 +658,32 @@ const ThemeSettings = () => {
                                         </FormControl>
                                     </div>
                                 </FormControl>
+                                <FormControl fullWidth className='mb-4'>
+                                    <div className='flex justify-between items-center gap-4'>
+                                        <div className='flex flex-col'>
+                                            <Typography variant='body2' className='text-base font-semibold'>
+                                                Vitrin {vitrin.label} Altı Banner Grubu
+                                            </Typography>
+                                            <Typography variant='body2' color='text.secondary' className='font-light'>
+                                                Seçilen banner grubu bu vitrinin hemen altında gösterilir. Boş bırakılırsa alan görünmez.
+                                            </Typography>
+                                        </div>
+                                        <FormControl className='w-1/2 flex-shrink-0'>
+                                            <Select
+                                                value={settings[`showcasebanner${vitrin.key}` as keyof typeof settings] || ''}
+                                                onChange={(e) => handleChange(`showcasebanner${vitrin.key}` as keyof typeof settings, e.target.value)}
+                                                disabled={loadingSliders}
+                                            >
+                                                <MenuItem value=''>Yok</MenuItem>
+                                                {sliderList.filter((slider) => slider.key).map((slider) => (
+                                                    <MenuItem key={slider._id} value={slider.key}>
+                                                        {slider.name}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormControl>
                                 {index < vitrins.length - 1 && <Divider className='mb-4 mt-2' />}
                             </React.Fragment>
                         ))}

@@ -7,6 +7,7 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 const { resolveSitePrice } = require('../../../utils/sitePricing');
 const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
+const { loadMontagePrices } = require('../../../utils/montagePricing');
 
 /**
  * Sepet ürünleri için backend'de items + pricing hesapla
@@ -44,6 +45,9 @@ const calculateOrderPricing = async (cartItems, site) => {
         productMap[p._key] = p;
     }
 
+    // Montaj noktasına bağlı hizmetlerde noktaya özel fiyat (0 = ücretsiz) geçerlidir
+    const montagePrices = await loadMontagePrices(cartItems, site);
+
     const items = [];
     let subtotal = 0;
     let shippingCost = 0;
@@ -54,13 +58,17 @@ const calculateOrderPricing = async (cartItems, site) => {
 
         const quantity = parseInt(cartItem.quantity) || 1;
         const isXml = product.syncInfo?.syncSource === 'xml_integration';
+        const montagePointId = String(cartItem.montagePointId || '');
+        const montagePrice = montagePrices.get(`${montagePointId}:${cartItem.productKey}`);
 
         // Kargosuz birim fiyat
         // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılanda webPrice > fiyat4
         const sitePrice = resolveSitePrice(product, site);
-        const unitPrice = product.customData?.webPrice ||
-            (sitePrice !== null ? sitePrice : product.diaData?.m_birimler?.[0]?.fiyat4) ||
-            0;
+        const unitPrice = typeof montagePrice === 'number'
+            ? montagePrice
+            : (product.customData?.webPrice ||
+                (sitePrice !== null ? sitePrice : product.diaData?.m_birimler?.[0]?.fiyat4) ||
+                0);
 
         // Kargo payı: XML ürünlerde senkronda yazılan sabit değer; stoklu ürünlerde Kargo Tanımları kuralları
         const ruleShipping = isXml ? null : resolveUnitShipping(product, site, unitPrice);
@@ -79,6 +87,7 @@ const calculateOrderPricing = async (cartItems, site) => {
             shippingPerUnit: Math.round(shippingPerUnit * 100) / 100,
             shippingTotal,
             isXml,
+            montagePointId: typeof montagePrice === 'number' ? montagePointId : '',
             vatRate: 20,
             vatAmount: 0
         });

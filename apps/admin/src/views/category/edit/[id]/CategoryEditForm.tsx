@@ -156,6 +156,8 @@ const CategoryEditForm = () => {
     const [editorReady, setEditorReady] = useState(false)
     const [sliders, setSliders] = useState<SliderOption[]>([])
     const [menus, setMenus] = useState<{ _id: string; name: string }[]>([])
+    // Kategori sayfasında gizlenebilecek filtre seçenekleri (API'den gelir)
+    const [filterOptions, setFilterOptions] = useState<{ key: string; label: string }[]>([])
     const [categoryName, setCategoryName] = useState('')
     const [pendingContent, setPendingContent] = useState<string | null>(null)
     // HTML kaynak modu: içerik editörden alınıp düz metin olarak düzenlenir
@@ -173,7 +175,8 @@ const CategoryEditForm = () => {
         menuIds: [] as string[],
         priceDisplay: 'dahil',
         vatRate: 20,
-        hideStockCode: false
+        hideStockCode: false,
+        hiddenFilters: [] as string[]
     })
 
     const activeSite = getActiveSite()
@@ -214,6 +217,8 @@ const CategoryEditForm = () => {
     useEffect(() => {
         const loadSliders = async () => {
             try {
+                const fo = await fetchAPI(API_ENDPOINTS.categories.filterOptions())
+                if (fo.success && Array.isArray(fo.data)) setFilterOptions(fo.data)
                 const result = await fetchAPI(`${API_ENDPOINTS.categories.list()}/sliders/list`)
                 if (result.success && result.data) setSliders(result.data)
             } catch { }
@@ -255,7 +260,8 @@ const CategoryEditForm = () => {
                         menuIds: d.menuIds || [],
                         priceDisplay: d.priceDisplay || 'dahil',
                         vatRate: d.vatRate ?? 20,
-                        hideStockCode: d.hideStockCode === true
+                        hideStockCode: d.hideStockCode === true,
+                        hiddenFilters: Array.isArray(d.hiddenFilters) ? d.hiddenFilters : []
                     })
                     setPendingContent(d.content || '')
                 }
@@ -307,7 +313,8 @@ const CategoryEditForm = () => {
                 menuIds: formData.menuIds,
                 priceDisplay: formData.priceDisplay,
                 vatRate: Number(formData.vatRate) || 20,
-                hideStockCode: formData.hideStockCode
+                hideStockCode: formData.hideStockCode,
+                hiddenFilters: formData.hiddenFilters
             }
             const result = await fetchAPI(API_ENDPOINTS.categories.detail(id), {
                 method: 'PATCH',
@@ -443,6 +450,20 @@ const CategoryEditForm = () => {
                                         />
                                     }
                                     label='Stok Kodlarını Gizle (bu kategorideki ürünlerde stok kodu gösterilmez)'
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <Autocomplete
+                                    multiple
+                                    options={filterOptions}
+                                    getOptionLabel={(o) => o.label}
+                                    isOptionEqualToValue={(o, v) => o.key === v.key}
+                                    value={filterOptions.filter(o => formData.hiddenFilters.includes(o.key))}
+                                    onChange={(_, val) => handleChange('hiddenFilters', val.map(v => v.key))}
+                                    renderTags={(value, getTagProps) => value.map((option, index) => (
+                                        <Chip {...getTagProps({ index })} key={option.key} label={option.label} size='small' />
+                                    ))}
+                                    renderInput={(params) => <TextField {...params} label='Gizlenecek Filtreler' placeholder='Filtre seçin' />}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12 }}>

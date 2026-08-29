@@ -34,95 +34,88 @@ const getTimeAgo = (dateStr?: string): string => {
 };
 
 const defaultImage = '/lastikjantavm/assets/img/blog/continental-lastik.jpg';
+const EXCERPT_MAX_LENGTH = 90;
+
+const truncate = (text: string, maxLength: number): string => {
+  const clean = text.trim();
+  if (clean.length <= maxLength) return clean;
+  const cut = clean.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).replace(/[\s.,;:]+$/, '')}...`;
+};
+
+type BlogItemProps = {
+  blog: Blog;
+  imageMaxWidth: string;
+}
+
+const BlogItem = ({ blog, imageMaxWidth }: BlogItemProps) => (
+  <div className="position-relative d-flex align-items-start align-items-sm-center mb-3">
+    <div
+      style={{
+        ["--cz-aspect-ratio" as any]: "calc(140 / 196 * 100%)",
+        maxWidth: imageMaxWidth,
+      } as React.CSSProperties}
+    >
+      <img
+        src={blog.featuredImage ? getImageUrl(blog.featuredImage) : defaultImage}
+        className="rounded"
+        alt={blog.title}
+      />
+    </div>
+    <div className="ps-3 ps-xl-4">
+      {blog.tags && blog.tags[0] && (
+        <span className="badge bg-body-secondary text-body-emphasis rounded-pill mb-3">
+          {blog.tags[0]}
+        </span>
+      )}
+      <h3 className="fs-base fw-medium lh-base mb-2 mb-xl-3">
+        <Link
+          href={buildBlogUrl(blog.slug)}
+          className="hover-effect-underline stretched-link"
+        >
+          {blog.title}
+        </Link>
+      </h3>
+      {blog.excerpt && (
+        <p className="fs-sm text-body-secondary mb-2 mb-xl-3">
+          {truncate(blog.excerpt, EXCERPT_MAX_LENGTH)}
+        </p>
+      )}
+      <div className="d-flex gap-3 gap-xl-4 fs-sm text-body-secondary">
+        <div className="d-flex align-items-center text-nowrap">
+          <i className="ci-clock fs-base me-2"></i>
+          {getTimeAgo(blog.publishedAt)}
+        </div>
+        <div className="d-flex align-items-center text-nowrap">
+          <i className="ci-bookmark fs-base me-2"></i>
+          {blog.viewCount || 0} okunma
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function BlogSection({ blogs }: Props) {
   if (!blogs || blogs.length === 0) return null;
 
-  const featured = blogs[0];
-  const sideBlogs = blogs.slice(1, 4);
+  const featuredBlogs = blogs.slice(0, 2);
+  const sideBlogs = blogs.slice(2, 5);
 
   return (
-    <Row>
-      <Col lg={5} className="mb-4 mb-lg-0">
+    <Row className="align-items-center">
+      <Col lg={5} className="mb-4 mb-lg-0 pe-lg-4 pe-xl-5 lja-blog-divider">
         <div className="d-flex flex-column gap-1 gap-md-2">
           {sideBlogs.map((blog) => (
-            <div
-              className="position-relative d-flex align-items-start align-items-sm-center mb-4"
-              key={blog._id}
-            >
-              <div
-                style={{
-                  ["--cz-aspect-ratio" as any]: "calc(140 / 196 * 100%)",
-                  maxWidth: "196px",
-                } as React.CSSProperties}
-              >
-                <img
-                  src={blog.featuredImage ? getImageUrl(blog.featuredImage) : defaultImage}
-                  className="rounded"
-                  alt={blog.title}
-                />
-              </div>
-              <div className="ps-3 ps-xl-4">
-                {blog.tags && blog.tags[0] && (
-                  <span className="badge bg-body-secondary text-body-emphasis rounded-pill mb-3">
-                    {blog.tags[0]}
-                  </span>
-                )}
-                <h3 className="fs-base fw-medium lh-base mb-2 mb-xl-3">
-                  <Link
-                    href={buildBlogUrl(blog.slug)}
-                    className="hover-effect-underline stretched-link"
-                  >
-                    {blog.title}
-                  </Link>
-                </h3>
-                <div className="d-flex gap-3 gap-xl-4 fs-sm text-body-secondary">
-                  <div className="d-flex align-items-center text-nowrap">
-                    <i className="ci-clock fs-base me-2"></i>
-                    {getTimeAgo(blog.publishedAt)}
-                  </div>
-                  <div className="d-flex align-items-center text-nowrap">
-                    <i className="ci-bookmark fs-base me-2"></i>
-                    {blog.viewCount || 0} okunma
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BlogItem key={blog._id} blog={blog} imageMaxWidth="196px" />
           ))}
         </div>
       </Col>
-      <Col lg={7}>
-        <div className="border rounded-5 p-4">
-          <div className="d-sm-flex align-items-start align-items-md-center align-items-lg-start align-items-xl-center p-md-2 p-lg-0 p-xl-2 p-xxl-3">
-            <Link
-              href={buildBlogUrl(featured.slug)}
-              className="d-block w-100 mb-4 mb-sm-0"
-              style={{ maxWidth: "286px" }}
-            >
-              <img
-                src={featured.featuredImage ? getImageUrl(featured.featuredImage) : defaultImage}
-                className="rounded-4"
-                alt={featured.title}
-              />
-            </Link>
-            <div className="w-100 ps-sm-4 ms-md-2 ms-lg-0 ms-xl-2 ms-xxl-3">
-              {featured.tags && featured.tags[0] && (
-                <span className="badge bg-body-secondary text-body-emphasis rounded-pill mb-3">
-                  {featured.tags[0]}
-                </span>
-              )}
-              <h3 className="h4 mb-2">{featured.title}</h3>
-              {featured.excerpt && (
-                <p className="fs-sm pb-1 pb-xl-3">
-                  {featured.excerpt}
-                </p>
-              )}
-              <Link href={buildBlogUrl(featured.slug)} className="btn btn-dark rounded-pill">
-                Devamını Oku
-                <i className="ci-chevron-right fs-base ms-1 me-n1"></i>
-              </Link>
-            </div>
-          </div>
+      <Col lg={7} className="ps-lg-4 ps-xl-5">
+        <div className="d-flex flex-column gap-1 gap-md-2">
+          {featuredBlogs.map((blog) => (
+            <BlogItem key={blog._id} blog={blog} imageMaxWidth="286px" />
+          ))}
         </div>
       </Col>
     </Row>

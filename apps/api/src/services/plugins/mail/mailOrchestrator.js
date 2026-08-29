@@ -15,6 +15,10 @@ const getAdminMailAddress = async (purpose = 'order', site = DEFAULT_SITE) => {
             return emailInfo.orderEmail
         }
 
+        if (purpose === 'callback' && emailInfo.callbackEmail) {
+            return emailInfo.callbackEmail
+        }
+
         return emailInfo.email || null
     } catch (e) {
         console.error('[mailOrchestrator] Admin mail adresi alınamadı:', e.message)
@@ -43,15 +47,19 @@ const getTemplate = async (templateKey, site = DEFAULT_SITE) => {
 }
 
 // Ana fonksiyon: Şablon ile mail gönder
-// params: { templateKey, context, to, alsoSendToAdmin, adminPurpose, site }
+// params: { templateKey, context, to, alsoSendToAdmin, adminPurpose, site, subjectOverride, adminCopyPrefix }
 // site: gönderimde hangi sitenin SMTP ayarları ve gönderen adı kullanılacak
+// subjectOverride: şablon konusu yerine kullanılacak konu (örn. geri arama talebi)
+// adminCopyPrefix: yönetici mailine eklenen önek ("[Yönetici Kopyası] "); '' verilirse önek eklenmez
 const sendTemplateMail = async ({
     templateKey,
     context = {},
     to,
     alsoSendToAdmin = false,
     adminPurpose = 'order',
-    site = DEFAULT_SITE
+    site = DEFAULT_SITE,
+    subjectOverride = null,
+    adminCopyPrefix = '[Yönetici Kopyası] '
 }) => {
     const result = {
         success: false,
@@ -71,7 +79,7 @@ const sendTemplateMail = async ({
         const html = render(content, { data })
 
         // 4. Subject render (subject de dinamik olabilir)
-        const renderedSubject = render(subject, { data })
+        const renderedSubject = subjectOverride || render(subject, { data })
 
         // 5. Müşteriye gönder
         if (to) {
@@ -102,7 +110,7 @@ const sendTemplateMail = async ({
                 try {
                     await sendMail({
                         to: adminEmail,
-                        subject: `[Yönetici Kopyası] ${renderedSubject}`,
+                        subject: `${adminCopyPrefix}${renderedSubject}`,
                         html,
                         site
                     })

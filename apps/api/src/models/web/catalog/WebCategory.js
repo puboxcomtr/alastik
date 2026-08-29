@@ -103,7 +103,9 @@ const webCategorySchema = new mongoose.Schema({
       // "haric" seçiliyken kullanılacak KDV oranı (%)
       vatRate: { type: Number, default: 20 },
       // Açıkken bu kategorideki ürünlerde stok kodu gösterilmez
-      hideStockCode: { type: Boolean, default: false }
+      hideStockCode: { type: Boolean, default: false },
+      // Kategori sayfasında gizlenecek sol filtre bölümleri (anahtarlar: config/categoryFilters.js)
+      hiddenFilters: { type: [String], default: undefined }
     };
     return acc;
   }, {}),

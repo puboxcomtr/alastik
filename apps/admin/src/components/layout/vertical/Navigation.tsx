@@ -114,8 +114,10 @@ const Navigation = (props: Props) => {
       })}
     >
       <StyledBoxForShadow ref={shadowRef} />
-      <div style={{ marginTop: '20px'}}>
-        <VerticalMenu dictionary={dictionary} scrollMenu={scrollMenu}  />
+      {/* Sarmalayıcı esnek ve sınırlı yükseklikte olmalı; aksi halde özel kaydırıcı içeriği
+          tam boy sanır, tekerlek olaylarını yutar ve menü yalnızca kaydırma çubuğundan kayar */}
+      <div style={{ marginTop: '20px', flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <VerticalMenu dictionary={dictionary} scrollMenu={scrollMenu} />
       </div>
     </VerticalNav>
   )

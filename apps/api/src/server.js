@@ -140,6 +140,9 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+// Sunucunun kendi SSR çağrıları (web → api, nginx üzerinden) tek IP'den geldiği için limite takılmasın.
+// Liste env'den okunur: RATE_LIMIT_SKIP_IPS=ip1,ip2
+const RATE_LIMIT_SKIP_IPS = new Set(String(process.env.RATE_LIMIT_SKIP_IPS || '').split(',').map(s => s.trim()).filter(Boolean));
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 1500,
@@ -149,7 +152,7 @@ const limiter = rateLimit({
   skip: (req) => {
     if (process.env.NODE_ENV === 'development') return true;
     const ip = req.ip || req.headers['x-forwarded-for'] || '';
-    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || RATE_LIMIT_SKIP_IPS.has(ip);
   }
 });
 const searchLimiter = rateLimit({

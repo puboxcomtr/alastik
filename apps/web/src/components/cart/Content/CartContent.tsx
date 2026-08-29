@@ -21,6 +21,12 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
         setIsLja(resolveSiteFromHost(window.location.host) === 'lastikjantavm');
     }, []);
 
+    // Montaj hizmeti: sepette uygun çapta lastik varsa adedi lastik adedine kilitlidir
+    const isQuantityLocked = (item: CartItem) => {
+        if (item.itemType !== 'montage' || !item.rimRange) return false;
+        return items.some(t => t.itemType === 'tire' && t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= item.rimRange!.min && t.rimSize <= item.rimRange!.max);
+    };
+
     const formatPrice = (price: number) => {
         return price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
@@ -90,13 +96,13 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         })()}
                                     </div>
 
-                                    {/* Adet */}
+                                    {/* Adet — montaj hizmetinde lastik varsa adet lastik adedine kilitlidir */}
                                     <div className="col-6 col-md-3 mt-3 mt-md-0">
                                         <div className="d-flex align-items-center">
                                             <button
                                                 className="btn btn-outline-secondary btn-sm"
                                                 onClick={() => onUpdateQuantity(item.productKey, item.quantity - 1)}
-                                                disabled={item.quantity <= 1}
+                                                disabled={item.quantity <= 1 || isQuantityLocked(item)}
                                             >
                                                 <i className="ri-subtract-line"></i>
                                             </button>
@@ -104,10 +110,14 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                             <button
                                                 className="btn btn-outline-secondary btn-sm"
                                                 onClick={() => onUpdateQuantity(item.productKey, item.quantity + 1)}
+                                                disabled={isQuantityLocked(item)}
                                             >
                                                 <i className="ri-add-line fs-6"></i>
                                             </button>
                                         </div>
+                                        {isQuantityLocked(item) && (
+                                            <small className="text-muted d-block mt-1">Adet lastik adedine göre belirlenir</small>
+                                        )}
                                     </div>
 
                                     {/* Fiyat */}
@@ -115,7 +125,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         {item.originalPrice > item.unitPrice && (
                                             <small className="text-decoration-line-through text-muted fs-7">{formatPrice(item.originalPrice)} TL</small>
                                         )}
-                                        <p className="mb-0 fw-bold text-primary fs-7">{formatPrice(item.unitPrice)} TL</p>
+                                        <p className="mb-0 fw-bold text-primary fs-7">{item.unitPrice === 0 ? 'Ücretsiz' : `${formatPrice(item.unitPrice)} TL`}</p>
                                     </div>
 
                                     {/* Sil */}

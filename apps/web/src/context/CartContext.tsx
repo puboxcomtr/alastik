@@ -13,7 +13,12 @@ interface CartItem {
     quantity: number;
     unitPrice: number;
     kdvRate: number;
+    montagePointId?: string;
     montagePointLabel?: string;
+    // Sepet kuralları: kalem türü, lastik jant çapı, montaj hizmetinin çap aralığı
+    itemType?: 'tire' | 'montage' | 'service' | 'product';
+    rimSize?: number | null;
+    rimRange?: { min: number; max: number } | null;
 }
 
 interface CartTotals {
@@ -35,6 +40,11 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+// Sunucunun sepet kurallarıyla yaptığı otomatik düzeltmeleri (montaj adedi, düşen hizmetler) bildirir
+const notifyRuleNotes = (notes?: string[]) => {
+    (notes || []).forEach(note => toast.info(note));
+};
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
     const [items, setItems] = useState<CartItem[]>([]);
@@ -66,6 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
                 toast.success(successMessage);
+                notifyRuleNotes(result.notes);
                 return true;
             } else {
                 toast.error(result.message || 'Ürün sepetinize eklenirken hata oluştu.');
@@ -83,6 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (result.success) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
+                notifyRuleNotes(result.notes);
             } else {
                 toast.error(result.message || 'Güncelleme işlemi başarısız oldu');
             }
@@ -95,6 +107,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         try {
             const result = await cartService.removeFromCart(productKey);
             if (result.success) {
+                notifyRuleNotes(result.notes);
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
                 toast.success(successMessage);

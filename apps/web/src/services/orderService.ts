@@ -8,6 +8,8 @@ export interface OrderItem {
     name: string;
     quantity: number;
     unitPrice: number;
+    // Hizmetin alınacağı montaj noktası (fiyat sunucuda noktaya göre çözülür)
+    montagePointId?: string;
     totalPrice: number;
 }
 

@@ -23,6 +23,7 @@ export const ROUTES = {
     CATEGORY: '/kategori',
     TAG: '/etiket',
     CART: '/sepet',
+    MONTAGE: '/montaj-noktalari',
     CHECKOUT: '/teslimat',
     PAYMENT: '/odeme',
     CONTACT: '/iletisim',

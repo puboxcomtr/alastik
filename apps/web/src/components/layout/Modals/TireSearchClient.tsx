@@ -9,10 +9,12 @@ type ModalMode = 'search' | 'addVehicle' | 'rimSearch' | 'chainSearch';
 export default function TireSearchClient() {
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<ModalMode>('search');
+    const [condition, setCondition] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         // Lastik arama
-        const handleOpenTireSearch = () => {
+        const handleOpenTireSearch = (event: Event) => {
+            setCondition((event as CustomEvent)?.detail?.condition || undefined);
             setMode('search');
             setOpen(true);
         };
@@ -57,6 +59,7 @@ export default function TireSearchClient() {
             open={open}
             onClose={handleClose}
             mode={mode}
+            condition={condition}
         />
     );
 }

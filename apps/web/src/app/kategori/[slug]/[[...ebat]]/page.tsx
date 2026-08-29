@@ -7,6 +7,7 @@ import { headers } from 'next/headers';
 
 /* Services */
 import { getCategory, getCategoryMenus, getCategoryWithSize, getParentCategory } from '@/src/services/categoryService';
+import { isSecondHandCategory, SECOND_HAND_CONDITION } from '@/src/config/productCondition';
 import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings, getServicePoints } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
@@ -202,7 +203,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                             <CategoryMenu key={menu._id} menu={menu} />
                                         ))}
                                     </div>
-                                    <Sidebar hideEbatFilters={false} categorySlug={slug} />
+                                    <Sidebar hideEbatFilters={false} categorySlug={slug} hiddenFilters={category.hiddenFilters || []} />
                                 </Col>
                                 <Col lg={9} className="order-1 order-lg-2">
                                     <Row>
@@ -220,10 +221,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                             <MobileFilterSort
                                                 hideEbatFilters={false}
                                                 categorySlug={slug}
+                                                hiddenFilters={category.hiddenFilters || []}
                                             />
                                         </Col>
                                         <Col md={12}>
-                                            <CategoryTireSearch />
+                                            <CategoryTireSearch condition={isSecondHandCategory(category) ? SECOND_HAND_CONDITION : undefined} />
                                         </Col>
 
                                         <Col md={12}>

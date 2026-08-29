@@ -74,7 +74,8 @@ export default function PaymentPage() {
                 // Backend items ve pricing'i kendi hesaplayacak (güvenlik)
                 items: items.map(item => ({
                     productKey: item.productKey,
-                    quantity: item.quantity
+                    quantity: item.quantity,
+                    montagePointId: item.montagePointId || ''
                 })),
                 paymentMethod: cardData ? 'credit_card' : 'bank_transfer',
                 customerNote: ''

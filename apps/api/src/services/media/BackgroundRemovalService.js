@@ -7,7 +7,7 @@
  * (yanındaki .webp kopyası + filigran önbelleği). Geri yükleme yedekten kopyalar.
  *
  * Ortam değişkenleri: REMBG_PYTHON (sanal ortam python yolu), REMBG_MODEL, REMBG_THREADS,
- * REMBG_MAX_FILES_PER_REQUEST (varsayılan 20).
+ * REMBG_MAX_FILES_PER_REQUEST (varsayılan 20), REMBG_FILE_TIMEOUT_MS (görsel başına süre sınırı, varsayılan 30000).
  */
 const path = require('path');
 const fs = require('fs');
@@ -23,7 +23,8 @@ const WATERMARK_DIR_NAME = 'filigran';
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 const MAX_FILES = parseInt(process.env.REMBG_MAX_FILES_PER_REQUEST, 10) || 20;
 const MODEL_LOAD_TIMEOUT_MS = 60 * 1000;
-const PER_FILE_TIMEOUT_MS = 30 * 1000;
+// Görsel başına süre sınırı (tam model ~45 sn sürebilir); REMBG_FILE_TIMEOUT_MS ile ayarlanır
+const PER_FILE_TIMEOUT_MS = parseInt(process.env.REMBG_FILE_TIMEOUT_MS, 10) || 30 * 1000;
 
 class BackgroundRemovalError extends Error {
     constructor(message, status = 400) {

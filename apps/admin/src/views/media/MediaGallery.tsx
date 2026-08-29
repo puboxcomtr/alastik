@@ -35,6 +35,7 @@ import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@/libs/api'
 
 type MediaFile = {
     id: string
+    dekupe?: boolean
     filename: string
     url: string
     size: number
@@ -55,6 +56,19 @@ const FOLDERS: Record<string, string> = {
 }
 
 const PER_PAGE = 30
+
+// Ürün Görselleri klasöründe kategori filtresi (görsel → ürün eşlemesi API'de yapılır)
+const PRODUCT_CATEGORIES: Record<string, string> = {
+    '': 'Tüm Kategoriler',
+    'sifir-lastik': 'Sıfır Lastik',
+    'ikinci-el-lastik': 'İkinci El Lastik',
+    'jant': 'Jant',
+    'ikinci-el-jant': 'İkinci El Jant',
+    'zincir': 'Kar Zinciri',
+    'aksesuar': 'Aksesuar',
+    'hizmet': 'Hizmet',
+    'eslesmeyen': 'Ürünle Eşleşmeyen'
+}
 // Arka plan temizleme: istek başına parça boyutu (model bir kez yüklenir, görsel başına ~10-20 sn)
 const BG_REMOVAL_CHUNK = 4
 
@@ -80,6 +94,8 @@ const MediaGallery = () => {
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
     const [folder, setFolder] = useState('general')
+    const [productCategory, setProductCategory] = useState('')
+    const [dekupe, setDekupe] = useState('')
     const [search, setSearch] = useState('')
     const [searchInput, setSearchInput] = useState('')
     const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
@@ -120,7 +136,9 @@ const MediaGallery = () => {
                 page,
                 limit: PER_PAGE,
                 sortBy,
-                sortOrder: sortBy === 'name' ? 'asc' : 'desc'
+                sortOrder: sortBy === 'name' ? 'asc' : 'desc',
+                productCategory: folder === 'urun' ? productCategory : '',
+                dekupe: folder === 'urun' ? dekupe : ''
             })
 
             const data = await fetchAPI(`${url}&_t=${Date.now()}`)
@@ -138,7 +156,7 @@ const MediaGallery = () => {
         } finally {
             setLoading(false)
         }
-    }, [folder, search, page, sortBy])
+    }, [folder, search, page, sortBy, productCategory, dekupe])
 
     useEffect(() => {
         loadFiles()
@@ -279,8 +297,9 @@ const MediaGallery = () => {
         if (okCount > 0) toast.success(`${okCount} görselin arka planı temizlendi${failCount ? `, ${failCount} başarısız` : ''}`)
         else toast.error(failures[0] || 'Arka plan temizlenemedi')
         if (failCount > 0 && okCount > 0) console.warn('Arka plan temizleme hataları:', failures)
-        setSelected([])
-        loadFiles()
+        // Sayfa yenilenmez: seri çalışma için liste yerinde güncellenir (rozet + önizleme)
+        setFiles(prev => prev.map(f => (doneIds.includes(f.id) ? { ...f, dekupe: true } : f)))
+        setSelected(prev => prev.filter(id => !doneIds.includes(id)))
     }
 
     const restoreOriginal = async () => {
@@ -294,9 +313,32 @@ const MediaGallery = () => {
             if (!data.success) throw new Error(data.message || 'Orijinal geri yüklenemedi')
             toast.success('Orijinal görsel geri yüklendi')
             setCacheBust(prev => ({ ...prev, [detail.id]: Date.now() }))
-            loadFiles()
+            setFiles(prev => prev.map(f => (f.id === detail.id ? { ...f, dekupe: false } : f)))
         } catch (error: any) {
             toast.error(error.message || 'Orijinal geri yüklenemedi')
+        } finally {
+            setRestoring(false)
+        }
+    }
+
+    const restoreSelected = async () => {
+        const targets = files.filter(f => selected.includes(f.id))
+        if (targets.length === 0) return
+        try {
+            setRestoring(true)
+            const data = await fetchAPI(API_ENDPOINTS.media.restoreOriginalBulk(), {
+                method: 'POST',
+                body: JSON.stringify({ folder, files: targets.map(f => f.id) })
+            })
+            if (!data.success) throw new Error(data.message || 'Geri yükleme başarısız')
+            toast.success(data.message || `${data.restored} görsel orijinaline döndürüldü`)
+            const stamp = Date.now()
+            const okIds = (data.results || []).filter((r: any) => r.ok).map((r: any) => r.file)
+            setCacheBust(prev => ({ ...prev, ...Object.fromEntries(okIds.map((id: string) => [id, stamp])) }))
+            setFiles(prev => prev.map(f => (okIds.includes(f.id) ? { ...f, dekupe: false } : f)))
+            setSelected(prev => prev.filter(id => !okIds.includes(id)))
+        } catch (error: any) {
+            toast.error(error.message || 'Geri yükleme başarısız')
         } finally {
             setRestoring(false)
         }
@@ -331,6 +373,17 @@ const MediaGallery = () => {
                     subheader={total > 0 ? `${total} dosya` : undefined}
                     action={
                         <div className='flex gap-2'>
+                            {selected.length > 0 && folder === 'urun' && (
+                                <Button
+                                    color='warning'
+                                    variant='outlined'
+                                    startIcon={<i className='ri-arrow-go-back-line' />}
+                                    onClick={restoreSelected}
+                                    disabled={restoring}
+                                >
+                                    {restoring ? 'Döndürülüyor...' : `Orijinale Döndür (${selected.length})`}
+                                </Button>
+                            )}
                             {selected.length > 0 && (
                                 <Button
                                     color='error'
@@ -377,7 +430,7 @@ const MediaGallery = () => {
                         </div>
                     )}
                     <Grid container spacing={4} className='mbe-4'>
-                        <Grid size={{ xs: 12, sm: 4 }}>
+                        <Grid size={{ xs: 12, sm: 3 }}>
                             <FormControl fullWidth size='small'>
                                 <InputLabel>Klasör</InputLabel>
                                 <Select
@@ -385,6 +438,7 @@ const MediaGallery = () => {
                                     value={folder}
                                     onChange={e => {
                                         setFolder(e.target.value)
+                                        setProductCategory('')
                                         setPage(1)
                                         setSelected([])
                                     }}
@@ -395,22 +449,46 @@ const MediaGallery = () => {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 5 }}>
-                            <TextField
-                                fullWidth
-                                size='small'
-                                placeholder='Dosya adında ara'
-                                value={searchInput}
-                                onChange={e => setSearchInput(e.target.value)}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position='start'>
-                                            <i className='ri-search-line' />
-                                        </InputAdornment>
-                                    )
-                                }}
-                            />
-                        </Grid>
+                        {folder === 'urun' && (
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <FormControl fullWidth size='small'>
+                                    <InputLabel>Dekupe</InputLabel>
+                                    <Select
+                                        label='Dekupe'
+                                        value={dekupe}
+                                        onChange={e => {
+                                            setDekupe(e.target.value)
+                                            setPage(1)
+                                            setSelected([])
+                                        }}
+                                    >
+                                        <MenuItem value=''>Tümü</MenuItem>
+                                        <MenuItem value='islenmis'>İşlenmiş</MenuItem>
+                                        <MenuItem value='islenmemis'>İşlenmemiş</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        )}
+                        {folder === 'urun' && (
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <FormControl fullWidth size='small'>
+                                    <InputLabel>Ürün Kategorisi</InputLabel>
+                                    <Select
+                                        label='Ürün Kategorisi'
+                                        value={productCategory}
+                                        onChange={e => {
+                                            setProductCategory(e.target.value)
+                                            setPage(1)
+                                            setSelected([])
+                                        }}
+                                    >
+                                        {Object.entries(PRODUCT_CATEGORIES).map(([key, label]) => (
+                                            <MenuItem key={key} value={key}>{label}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        )}
                         <Grid size={{ xs: 12, sm: 3 }}>
                             <FormControl fullWidth size='small'>
                                 <InputLabel>Sıralama</InputLabel>
@@ -426,6 +504,22 @@ const MediaGallery = () => {
                                     <MenuItem value='name'>Dosya adı (A-Z)</MenuItem>
                                 </Select>
                             </FormControl>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <TextField
+                                fullWidth
+                                size='small'
+                                placeholder='Dosya adında ara'
+                                value={searchInput}
+                                onChange={e => setSearchInput(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position='start'>
+                                            <i className='ri-search-line' />
+                                        </InputAdornment>
+                                    )
+                                }}
+                            />
                         </Grid>
                     </Grid>
 
@@ -490,6 +584,17 @@ const MediaGallery = () => {
                                                     loading='lazy'
                                                     style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block' }}
                                                 />
+                                                {file.dekupe !== undefined && (
+                                                    <span
+                                                        style={{
+                                                            position: 'absolute', bottom: 4, right: 4, zIndex: 2,
+                                                            fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+                                                            background: file.dekupe ? '#2e7d32' : '#757575', color: '#fff'
+                                                        }}
+                                                    >
+                                                        {file.dekupe ? 'Dekupeli' : 'Orijinal'}
+                                                    </span>
+                                                )}
                                             </div>
                                             <Typography variant='body2' className='mbs-1 truncate' title={file.filename}>
                                                 {file.filename}

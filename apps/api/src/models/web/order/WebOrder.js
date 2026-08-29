@@ -46,6 +46,7 @@ const orderItemSchema = new mongoose.Schema({
     shippingPerUnit: { type: Number, default: 0 },         // 1 adetlik kargo (XML için, DIA'da 0)
     shippingTotal: { type: Number, default: 0 },           // Toplam kargo (shippingPerUnit × quantity)
     isXml: { type: Boolean, default: false },              // XML kaynaklı ürün mü?
+    montagePointId: { type: String, default: '' },         // Hizmetin alınacağı montaj noktası
     vatRate: { type: Number, default: 20 },
     vatAmount: { type: Number, default: 0 }
 }, { _id: false });

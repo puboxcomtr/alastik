@@ -7,7 +7,12 @@ import { Col, Container, Row } from 'react-bootstrap';
 /* MUI */
 import { TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
 
-export default function CategoryTireSearch() {
+type CategoryTireSearchProps = {
+    /** Arama sonucunun açılacağı ürün durumu (örn. 'ikinci-el'); boşsa sıfır ürünler */
+    condition?: string;
+};
+
+export default function CategoryTireSearch({ condition }: CategoryTireSearchProps = {}) {
     return (
         <Container className="border-bottom mb-4 pb-3 px-0">
             <Row className="align-items-center">
@@ -35,7 +40,7 @@ export default function CategoryTireSearch() {
                         color="primary"
                         className="btn-sm btn-md-xl btn-xl"
                         onClick={() => {
-                            const event = new Event('openTireSearchModal');
+                            const event = new CustomEvent('openTireSearchModal', { detail: { condition } });
                             window.dispatchEvent(event);
                         }}
                     >

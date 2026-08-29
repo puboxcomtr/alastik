@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useCart } from '@/src/context/CartContext';
+import { groupMontageServices } from '@/src/config/montageServiceGroups';
 export type MontageReview = {
     memberName: string;
     comment: string;
@@ -13,11 +14,25 @@ export type MontageReview = {
 };
 
 // Satın alma öncesi noktalar anonimdir: API ad/adres/telefon/görsel göndermez, konum ~1 km yuvarlanır
-export type MontageService = { productKey: string; sku: string; name: string; price: number };
+// price: noktaya özel fiyat (0 = ücretsiz) veya katalog fiyatı; null ise fiyat bilinmiyor ("Sorunuz")
+export type MontageService = {
+    productKey: string;
+    sku: string;
+    name: string;
+    price: number | null;
+    // Sepet kuralları: montaj hizmeti mi, kapsadığı jant çapı aralığı
+    isMontage?: boolean;
+    rimRange?: { min: number; max: number } | null;
+};
 
 export type MontagePoint = {
     _id: string;
-    name: string; // her zaman "Anlaşmalı Nokta"
+    name: string; // isPublicInfo değilse "Anlaşmalı Nokta"
+    // Panelde "Bilgileri Gözüksün" açıksa ad/adres/telefon gerçek değerlerle gelir
+    isPublicInfo?: boolean;
+    address?: string;
+    phone?: string;
+    image?: string;
     city: string;
     district: string;
     workingHours?: string;
@@ -86,7 +101,23 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
     const selected = Boolean(cartItem);
     const [quantity, setQuantity] = useState(1);
     const [busy, setBusy] = useState(false);
-    const shownQuantity = cartItem ? cartItem.quantity : quantity;
+
+    // Sepet kuralları: montaj adedi = uygun çaptaki lastik adedi; diğer hizmetler montaj gerektirir
+    const tires = items.filter(i => i.itemType === 'tire');
+    const montageInCart = items.some(i => i.itemType === 'montage');
+    const matchingTireCount = service.isMontage && service.rimRange
+        ? tires.filter(t => t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= service.rimRange!.min && t.rimSize <= service.rimRange!.max)
+            .reduce((sum, t) => sum + t.quantity, 0)
+        : 0;
+    const quantityLocked = Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0;
+    let ruleHint = '';
+    if (service.isMontage && tires.length > 0 && matchingTireCount === 0) {
+        ruleHint = 'Sepetinizdeki lastiklerin jant çapına uygun değil';
+    } else if (!service.isMontage && !montageInCart) {
+        ruleHint = 'Önce lastik montajı hizmeti seçin';
+    }
+    const blocked = Boolean(ruleHint) && !selected;
+    const shownQuantity = cartItem ? cartItem.quantity : quantityLocked ? matchingTireCount : quantity;
 
     const handleSelect = async () => {
         if (!service.productKey) return;
@@ -124,19 +155,29 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
             {/* 3 bölge: sol hizmet adı, ortada adet, sağda fiyat + Seç */}
             <div className="flex-grow-1 fw-bold" style={{ fontSize: compact ? 13 : 15, minWidth: 0 }}>
                 {service.name}
+                {ruleHint && !selected && (
+                    <div className="fw-normal text-warning" style={{ fontSize: compact ? 11 : 12 }}>{ruleHint}</div>
+                )}
+                {quantityLocked && (
+                    <div className="fw-normal text-muted" style={{ fontSize: compact ? 11 : 12 }}>Adet sepetinizdeki lastik adedine göre belirlenir</div>
+                )}
             </div>
             <select
                 className="form-select form-select-sm flex-shrink-0"
                 style={{ width: compact ? 112 : 120 }}
                 value={shownQuantity}
                 onChange={e => handleQuantity(parseInt(e.target.value))}
-                disabled={busy}
+                disabled={busy || quantityLocked}
                 aria-label="Adet"
             >
-                {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} Adet</option>)}
+                {[...new Set([1, 2, 3, 4, shownQuantity])].sort((a, b) => a - b).map(n => <option key={n} value={n}>{n} Adet</option>)}
             </select>
             <div className="fw-bold flex-shrink-0" style={{ width: compact ? 84 : 100, textAlign: 'right', fontSize: compact ? 14 : 17, color: 'inherit' }}>
-                {service.price > 0 ? `${(service.price * shownQuantity).toLocaleString('tr-TR')} TL` : 'Sorunuz'}
+                {service.price === null
+                    ? 'Sorunuz'
+                    : service.price === 0
+                        ? 'Ücretsiz'
+                        : `${(service.price * shownQuantity).toLocaleString('tr-TR')} TL`}
             </div>
             <button
                 type="button"
@@ -145,11 +186,28 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
                     ? { background: '#2e7d32', color: '#fff', minWidth: 72 }
                     : { background: '#e4cc15', color: '#000', minWidth: 72 }}
                 onClick={handleSelect}
-                disabled={busy || !service.productKey || service.price <= 0}
+                disabled={busy || !service.productKey || service.price === null || blocked}
                 title={selected ? 'Seçimi kaldır' : undefined}
             >
                 {selected ? <><i className="ri-check-line me-1" />Seçildi<i className="ri-close-line ms-1" /></> : busy ? '...' : 'Seç'}
             </button>
         </div>
+    );
+}
+
+/** Gruplu hizmet listesi: Lastik Montajı → Rot Ayarı → Jant Pres → diğerleri, aralarında ayraç */
+export function ServiceList({ services, compact = false, montagePointId }: { services: MontageService[]; compact?: boolean; montagePointId?: string }) {
+    const groups = groupMontageServices(services);
+    return (
+        <>
+            {groups.map((group, gi) => (
+                <React.Fragment key={gi}>
+                    {gi > 0 && <div className={compact ? 'mn-service-divider' : 'my-3 border-top border-2'} />}
+                    {group.map((service, i) => (
+                        <ServiceRow key={`${gi}-${i}`} service={service} compact={compact} montagePointId={montagePointId} />
+                    ))}
+                </React.Fragment>
+            ))}
+        </>
     );
 }

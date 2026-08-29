@@ -12,6 +12,7 @@
  */
 
 const fs = require('fs');
+const { moveLabelImagesLast } = require('../../utils/productImages');
 const fsp = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
@@ -121,18 +122,39 @@ function findExisting(url) {
  * Tek bir görseli indirir. Zaten varsa indirmez.
  * Başarısız olursa null döner — çağıran taraf kaynak URL'yi korur.
  */
+/* Yeniden adlandırma eşlemesi (imagerenames koleksiyonu): eski hash adlı dosyalar ürün adına
+ * çevrildiğinde kaynak URL'in sha1'i → yeni dosya adı burada tutulur. mirrorOne indirme öncesi
+ * buna bakar; yoksa gece senkronu yeniden indirip hem eskiyi diriltir hem kopya üretirdi. */
+let renameMap = null;
+let renameMapAt = 0;
+async function ensureRenameMap() {
+    if (renameMap && Date.now() - renameMapAt < 10 * 60 * 1000) return renameMap;
+    try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection?.readyState === 1) {
+            const rows = await mongoose.connection.db.collection('imagerenames')
+                .find({}, { projection: { hash: 1, file: 1 } }).toArray();
+            renameMap = new Map(rows.map(r => [r.hash, r.file]));
+            renameMapAt = Date.now();
+        }
+    } catch { /* DB yoksa mevcut haritayla devam */ }
+    return renameMap || new Map();
+}
+
 async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
     if (!isExternal(url)) return null;
 
-    // Ürün adı verilmemişse dosya adı deterministiktir: sha1(url). Daha önce indirilmişse
-    // TEKRAR İNDİRME ve üzerine yazma — yoksa gece görsel senkronu, üzerinde çalışılmış
-    // (arka planı temizlenmiş vb.) kopyaları her gece orijinaliyle eziyordu (22 Ağu 2026 vakası).
-    if (!fileNameBase) {
-        const hash = crypto.createHash('sha1').update(String(url)).digest('hex');
-        for (const ext of ALLOWED_EXTENSIONS) {
-            if (fs.existsSync(path.join(MIRROR_ROOT, `${hash}${ext}`))) {
-                return `/${MIRROR_DIR_NAME}/${hash}${ext}`;
-            }
+    // İNDİRMEDEN ÖNCE: bu URL daha önce aynalandıysa mevcut dosyayı kullan — üzerine yazma,
+    // kopya üretme (22 Ağu ezme vakası + ürün adına yeniden adlandırma eşlemesi).
+    const hash = crypto.createHash('sha1').update(String(url)).digest('hex');
+    const map = await ensureRenameMap();
+    const mapped = map.get(hash);
+    if (mapped && fs.existsSync(path.join(MIRROR_ROOT, mapped))) {
+        return `/${MIRROR_DIR_NAME}/${mapped}`;
+    }
+    for (const ext of ALLOWED_EXTENSIONS) {
+        if (fs.existsSync(path.join(MIRROR_ROOT, `${hash}${ext}`))) {
+            return `/${MIRROR_DIR_NAME}/${hash}${ext}`;
         }
     }
 
@@ -186,15 +208,45 @@ async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
  * @param {string} productName Ürün adı (dosya adı bundan türetilir)
  * @returns {Promise<Array>} İndirilenlerin aws_url'i yerel yola çevrilmiş dizi
  */
+/* Bastırma listesi (imagesuppress): temsili/istenmeyen görseller ürün listesine bir daha girmez.
+ * DIA o ürüne YENİ (farklı URL'li) bir görsel eklerse o normal akışla gelir. */
+let suppressSets = null;
+let suppressAt = 0;
+async function ensureSuppress() {
+    if (suppressSets && Date.now() - suppressAt < 10 * 60 * 1000) return suppressSets;
+    try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection?.readyState === 1) {
+            const rows = await mongoose.connection.db.collection('imagesuppress')
+                .find({}, { projection: { hash: 1, file: 1 } }).toArray();
+            suppressSets = {
+                hashes: new Set(rows.map(r => r.hash).filter(Boolean)),
+                files: new Set(rows.map(r => r.file).filter(Boolean))
+            };
+            suppressAt = Date.now();
+        }
+    } catch { /* DB yoksa mevcutla devam */ }
+    return suppressSets || { hashes: new Set(), files: new Set() };
+}
+
 async function mirrorProductImages(images, productName) {
     if (!Array.isArray(images) || images.length === 0) return images || [];
 
     const reserved = new Set();
     const result = [];
     let dusurulen = 0;
+    const suppress = await ensureSuppress();
 
     for (const img of images) {
         if (!img || !img.aws_url) { result.push(img); continue; }
+
+        // Bastırılmış görsel: listeye alınmaz. İki kaynak: (1) DIA'nın temsili görsel klasörü
+        // (URL'de 'temsili' geçer) — kalıcı kural; (2) imagesuppress listesi (elle bastırılanlar).
+        if (isExternal(img.aws_url)) {
+            if (/temsili/i.test(String(img.aws_url))) { dusurulen++; continue; }
+            const h = crypto.createHash('sha1').update(String(img.aws_url)).digest('hex');
+            if (suppress.hashes.has(h)) { dusurulen++; continue; }
+        } else if (suppress.files.has(path.basename(String(img.aws_url)))) { dusurulen++; continue; }
 
         // Zaten yerel: dosya duruyorsa dokunma
         if (!isExternal(img.aws_url)) {
@@ -215,7 +267,8 @@ async function mirrorProductImages(images, productName) {
         console.warn(`[ImageMirror] "${productName}" için indirilemeyen ${dusurulen} görsel listeden çıkarıldı`);
     }
 
-    return result;
+    // AB etiketi görselleri ürün görsellerinin arkasına alınır
+    return moveLabelImagesLast(result);
 }
 
 /**

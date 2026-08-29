@@ -335,17 +335,10 @@ const buildCompanyData = async (site) => {
 
         const mediaBaseUrl = (process.env.MEDIA_URL || process.env.API_PUBLIC_URL || 'https://api.alastik.com').replace(/\/$/, '')
 
-        let logoUrl = ''
-
-        if (themeVal.logo) {
-            logoUrl = themeVal.logo.startsWith('http')
-                ? themeVal.logo
-                : `${mediaBaseUrl}${themeVal.logo.startsWith('/') ? '' : '/'}${themeVal.logo}`
-        } else if (webSetting?.images?.mailLogo) {
-            logoUrl = webSetting.images.mailLogo.startsWith('http')
-                ? webSetting.images.mailLogo
-                : `${mediaBaseUrl}${webSetting.images.mailLogo.startsWith('/') ? '' : '/'}${webSetting.images.mailLogo}`
-        }
+        // Öncelik: Tanımlar > Görseller > Mail Logo; yoksa tema logosu
+        const toAbsolute = (u) => (u.startsWith('http') ? u : `${mediaBaseUrl}${u.startsWith('/') ? '' : '/'}${u}`)
+        const logoSource = webSetting?.images?.mailLogo || themeVal.logo || ''
+        const logoUrl = logoSource ? toAbsolute(logoSource) : ''
 
         const addressParts = [
             ci.address,

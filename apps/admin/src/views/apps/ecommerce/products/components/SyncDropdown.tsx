@@ -13,6 +13,7 @@ import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 const SyncDropdown = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
     const [loading, setLoading] = useState(false)
+    const [reordering, setReordering] = useState(false)
     const open = Boolean(anchorEl)
     const router = useRouter()
     const { lang: locale } = useParams()
@@ -67,6 +68,26 @@ const SyncDropdown = () => {
         }
     }
 
+    const handleReorderLabelImages = async () => {
+        setReordering(true)
+
+        try {
+            const data = await fetchAPI(API_ENDPOINTS.products.reorderLabelImages(), {
+                method: 'POST'
+            })
+
+            if (data.success) {
+                toast.success(data.message || 'Görsel sıralaması oluşturuldu')
+            } else {
+                toast.error(data.message || 'Görsel sıralaması oluşturulamadı')
+            }
+        } catch {
+            toast.error('Görsel sıralaması oluşturulamadı')
+        } finally {
+            setReordering(false)
+        }
+    }
+
     return (
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Button
@@ -85,6 +106,16 @@ const SyncDropdown = () => {
                 onClick={() => router.push(`/${locale}/apps/products/templates`)}
             >
                 Açıklama Şablonları
+            </Button>
+
+            <Button
+                variant="outlined"
+                color="secondary"
+                disabled={reordering}
+                startIcon={reordering ? <CircularProgress size={16} color="inherit" /> : <i className='ri-image-line' />}
+                onClick={handleReorderLabelImages}
+            >
+                {reordering ? 'Sıralanıyor...' : 'Görsel Sıralama Oluştur'}
             </Button>
 
             <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>

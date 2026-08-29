@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Container } from 'react-bootstrap';
 import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap, Marker } from 'leaflet';
-import { AMENITY_LABELS, DAYS, todayStatus, Stars, ServiceRow, type MontagePoint } from './montageShared';
+import { AMENITY_LABELS, DAYS, todayStatus, Stars, ServiceList, type MontagePoint } from './montageShared';
 
 const BRAND_YELLOW = '#e4cc15';
 const BRAND_DARK = '#313131';
@@ -131,7 +131,7 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                                     </button>
                                     {expanded && group.list.map(p => (
                                         <div key={p._id} className={`mn-item ${activeId === p._id ? 'active' : ''}`} onClick={() => { focusPoint(p); setSelected(p); }} role="button" tabIndex={0}>
-                                            <span className="mn-item-name">ANLAŞMALI NOKTA</span>
+                                            <span className="mn-item-name">{p.isPublicInfo ? p.name : 'ANLAŞMALI NOKTA'}</span>
                                             <span className="mn-item-city">{p.city}{p.district ? ` / ${p.district}` : ''}</span>
                                             <span className="mn-item-rating">
                                                 {p.rating.count > 0
@@ -166,13 +166,18 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                             </button>
                             <div className="mn-detail-head">
                                 <div>
-                                    <div className="mn-detail-title">ANLAŞMALI NOKTA</div>
+                                    <div className="mn-detail-title">{selected.isPublicInfo ? selected.name : 'ANLAŞMALI NOKTA'}</div>
                                     <div className="mn-detail-city">{selected.city}{selected.district ? ` / ${selected.district}` : ''}</div>
+                                    {selected.isPublicInfo && selected.address && (
+                                        <div className="small mt-1 text-white">{selected.address}</div>
+                                    )}
+                                    {selected.isPublicInfo && selected.phone && (
+                                        <div className="small mt-1"><a href={`tel:${selected.phone.replace(/\s/g, '')}`} className="text-decoration-none text-white">{selected.phone}</a></div>
+                                    )}
                                     <div className="d-flex align-items-center gap-2 mt-1">
-                                        <Stars value={selected.rating.count > 0 ? selected.rating.average : 0} size={14} />
-                                        <small className="text-muted">
-                                            {selected.rating.count > 0 ? `${selected.rating.average} / 5 (${selected.rating.count} yorum)` : '(Henüz Yorum Yapılmadı)'}
-                                        </small>
+                                        {selected.rating.count > 0
+                                            ? <><Stars value={selected.rating.average} size={14} /><small className="text-muted">{`${selected.rating.average} / 5 (${selected.rating.count} yorum)`}</small></>
+                                            : <small className="text-muted">(Henüz Yorum Yapılmadı)</small>}
                                     </div>
                                 </div>
                                 <button type="button" className="mn-detail-close" onClick={() => setSelected(null)} aria-label="Kapat">
@@ -186,7 +191,7 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                                     {selected.services.length === 0 ? (
                                         <p className="text-muted small mb-0">Bu nokta için hizmet tanımı bulunmuyor.</p>
                                     ) : (
-                                        selected.services.map((sv, i) => <ServiceRow key={i} service={sv} compact montagePointId={selected._id} />)
+                                        <ServiceList services={selected.services} compact montagePointId={selected._id} />
                                     )}
                                 </div>
 
@@ -287,6 +292,7 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                 }
                 .mn-detail-title { color: ${BRAND_YELLOW}; font-weight: 800; font-size: 17px; letter-spacing: .3px; }
                 .mn-detail-city { font-weight: 600; color: #fff; font-size: 13px; }
+                .mn-service-divider { border-top: 2px solid rgba(255, 255, 255, .3); margin: 10px 0 4px; }
                 .mn-detail-close {
                     background: #2a2a2a; border: 0; border-radius: 8px; width: 32px; height: 32px;
                     font-size: 18px; cursor: pointer; color: #fff;

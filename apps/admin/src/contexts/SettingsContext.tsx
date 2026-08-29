@@ -23,6 +23,7 @@ interface SettingsData {
     emailInfo?: {
         email?: string
         orderEmail?: string
+        callbackEmail?: string
     }
     serviceInfo?: {
         points?: { name: string; phone: string }[]

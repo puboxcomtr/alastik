@@ -226,26 +226,49 @@ export default function ProductDescription({ product, wheelSize, definition, rev
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+    // Kaydırma takibi: işaret çizgisini (görünür alanın üst %30'u) geçen son bölüm etkin olur;
+    // sayfa sonuna gelindiğinde ise son bölüm etkin kalır (son bölüm kısa olsa bile).
     useEffect(() => {
         if (isMobile) return;
 
-        const observers = menuItems.map((item) => {
-            const element = document.getElementById(item.id);
-            if (!element) return null;
-            const observer = new IntersectionObserver(
-                ([entry]) => { if (entry.isIntersecting) setActiveSection(item.id); },
-                { threshold: 0.3, rootMargin: '-20% 0px -50% 0px' }
-            );
-            observer.observe(element);
-            return observer;
-        });
+        const sectionIds = menuItems.map((item) => item.id);
+        let frame = 0;
 
-        return () => { observers.forEach((observer) => observer?.disconnect()); };
-    }, [isMobile]);
+        const updateActiveSection = () => {
+            frame = 0;
+            const markerLine = window.innerHeight * 0.3;
+            const atPageBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+
+            let current = '';
+            for (const id of sectionIds) {
+                const element = document.getElementById(id);
+                if (!element) continue;
+                if (element.getBoundingClientRect().top <= markerLine) current = id;
+            }
+            if (atPageBottom) current = sectionIds[sectionIds.length - 1];
+            if (current) setActiveSection((prev) => (prev === current ? prev : current));
+        };
+
+        const onScroll = () => {
+            if (frame) return;
+            frame = window.requestAnimationFrame(updateActiveSection);
+        };
+
+        updateActiveSection();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+
+        return () => {
+            if (frame) window.cancelAnimationFrame(frame);
+            window.removeEventListener('scroll', onScroll);
+            window.removeEventListener('resize', onScroll);
+        };
+    }, [isMobile, menuItems.map((item) => item.id).join(',')]);
 
     const scrollToSection = (id: string) => {
         const element = document.getElementById(id);
         if (element) {
+            setActiveSection(id);
             const offset = 80;
             const elementPosition = element.getBoundingClientRect().top;
             const offsetPosition = elementPosition + window.pageYOffset - offset;

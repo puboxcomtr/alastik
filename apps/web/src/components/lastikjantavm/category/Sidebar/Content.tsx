@@ -27,9 +27,12 @@ interface SidebarProps {
     tagType?: string;
     brandSlug?: string;
     searchQuery?: string;
+    // Kategori ayarından gelen gizli filtre anahtarları (siteContent.hiddenFilters)
+    hiddenFilters?: string[];
 }
 
-export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug, searchQuery }: SidebarProps) {
+export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug, tagType, brandSlug, searchQuery, hiddenFilters = [] }: SidebarProps) {
+    const hidden = new Set(hiddenFilters);
     const searchParams = useSearchParams();
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
     const [productType, setProductType] = useState<string>('LASTİK');
@@ -87,13 +90,13 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                 <Grid container className="offcanvas-body flex-column py-lg-0">
                     <Grid>
                         {/* Ortak Filtreler */}
-                        {!brandSlug && (
+                        {!brandSlug && !hidden.has('brand') && (
                             <Brand
                                 categorySlug={categorySlug}
                                 brands={options?.brands || []}
                             />
                         )}
-                        <Price priceRange={options?.priceRange} />
+                        {!hidden.has('price') && <Price priceRange={options?.priceRange} />}
 
                         {/* Jant Filtreleri */}
                         {isJant && (
@@ -106,21 +109,23 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                         {/* Lastik Filtreleri */}
                         {!isJant && (
                             <>
-                                <Season seasonOptions={options?.seasons || []} categorySlug={categorySlug} tagSlug={tagSlug} />
-                                <Properties propertyOptions={options?.properties || []} categorySlug={categorySlug} tagSlug={tagSlug} />
+                                {!hidden.has('season') && <Season seasonOptions={options?.seasons || []} categorySlug={categorySlug} tagSlug={tagSlug} />}
+                                {!hidden.has('properties') && <Properties propertyOptions={options?.properties || []} categorySlug={categorySlug} tagSlug={tagSlug} />}
                                 <TireFilter
-                                    hideEbatFilters={hideEbatFilters}
+                                    hideEbatFilters={hideEbatFilters || hidden.has('tireSize')}
                                     categorySlug={categorySlug}
                                     tagSlug={tagSlug}
                                 />
                                 <SpeedIndex
+                                    hideLoadIndex={hidden.has('loadIndex')}
+                                    hideSpeedIndex={hidden.has('speedIndex')}
                                     loadIndexOptions={options?.loadIndex || []}
                                     speedIndexOptions={options?.speedIndex || []}
                                     categorySlug={categorySlug}
                                     tagSlug={tagSlug}
                                 />
-                                <Oem oemOptions={options?.oem || []} categorySlug={categorySlug} tagSlug={tagSlug} />
-                                <ProductionYear productionYears={options?.productionYears} categorySlug={categorySlug} tagSlug={tagSlug} />
+                                {!hidden.has('oem') && <Oem oemOptions={options?.oem || []} categorySlug={categorySlug} tagSlug={tagSlug} />}
+                                {!hidden.has('productionYear') && <ProductionYear productionYears={options?.productionYears} categorySlug={categorySlug} tagSlug={tagSlug} />}
                             </>
                         )}
                     </Grid>

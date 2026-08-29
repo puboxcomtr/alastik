@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect } from "react"
+import { useRouter } from 'next/navigation'
+import { shouldRedirectToMontage, MONTAGE_REDIRECT_PATH } from '@/src/hooks/Cart/montageRedirect'
 import Link from "next/link"
 import Image from 'next/image'
 import Tooltip from '@mui/material/Tooltip'
@@ -34,6 +36,7 @@ export default function ProductSlideCard({ product }: Props) {
   const { theme } = useSettings()
   const { getBrand } = useBrands()
   const { addToCart } = useCart()
+  const router = useRouter()
   const { t } = useTranslations('general')
   const { definition } = useDefinition()
   const getWhatsAppUrl = () => {
@@ -77,7 +80,8 @@ export default function ProductSlideCard({ product }: Props) {
         return
       }
 
-      await addToCart(product._key, 1)
+      const added = await addToCart(product._key, 1)
+      if (added && shouldRedirectToMontage(product)) router.push(MONTAGE_REDIRECT_PATH)
     } catch (err) {
       console.error('Sepete ekleme hatası:', err)
       toast.error('Sepete eklenemedi')

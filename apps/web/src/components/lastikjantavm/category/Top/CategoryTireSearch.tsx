@@ -6,8 +6,14 @@ import { Offcanvas, Button } from "react-bootstrap";
 import { Col, Container, Row } from 'react-bootstrap';
 /* MUI */
 import { TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
+import { SECOND_HAND_CONDITION } from "@/src/config/productCondition";
 
-export default function CategoryTireSearch() {
+type CategoryTireSearchProps = {
+    /** Arama sonucunun açılacağı ürün durumu (örn. 'ikinci-el'); boşsa sıfır ürünler */
+    condition?: string;
+};
+
+export default function CategoryTireSearch({ condition }: CategoryTireSearchProps = {}) {
     return (
         <Container className="border-bottom mb-4 pb-3 px-0">
             <Row className="align-items-center">
@@ -24,7 +30,9 @@ export default function CategoryTireSearch() {
                                     marginLeft: { xs: "10px", md: "20px" }
                                 }}
                             >
-                                Aracınıza en uygun lastiği hemen bulun.
+                                {condition === SECOND_HAND_CONDITION
+                                    ? 'Aracınıza uygun 2.El lastiği bulun.'
+                                    : 'Aracınıza en uygun lastiği hemen bulun.'}
                             </Typography>
                         </Col>
                     </Row>
@@ -35,7 +43,7 @@ export default function CategoryTireSearch() {
                         color="primary"
                         className="btn-sm btn-md-xl btn-xl"
                         onClick={() => {
-                            const event = new Event('openTireSearchModal');
+                            const event = new CustomEvent('openTireSearchModal', { detail: { condition } });
                             window.dispatchEvent(event);
                         }}
                     >

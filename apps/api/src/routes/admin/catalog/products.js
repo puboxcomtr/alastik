@@ -231,19 +231,25 @@ router.get('/', maybeAuth, async (req, res) => {
       });
     }
 
-    // Açıklama: customData.customDescription
-    if (req.query.has_description === 'yes') {
-      ensureAnd().push({
-        'customData.customDescription': { $exists: true, $nin: [null, ''] }
-      });
-    } else if (req.query.has_description === 'no') {
-      ensureAnd().push({
+    // Açıklama: sitenin kendi açıklaması (customData.siteDescriptions.<site>);
+    // site alanı boşsa eski ortak alan (customData.customDescription) geçerlidir
+    if (req.query.has_description === 'yes' || req.query.has_description === 'no') {
+      const siteDescField = `customData.siteDescriptions.${req.site}`;
+      const legacyDescField = 'customData.customDescription';
+      const filled = (field) => ({ [field]: { $exists: true, $nin: [null, ''] } });
+      const empty = (field) => ({
         $or: [
-          { 'customData.customDescription': { $exists: false } },
-          { 'customData.customDescription': null },
-          { 'customData.customDescription': '' }
+          { [field]: { $exists: false } },
+          { [field]: null },
+          { [field]: '' }
         ]
       });
+
+      if (req.query.has_description === 'yes') {
+        ensureAnd().push({ $or: [filled(siteDescField), filled(legacyDescField)] });
+      } else {
+        ensureAnd().push({ $and: [empty(siteDescField), empty(legacyDescField)] });
+      }
     }
 
     // Fiyat: m_birimler[0].fiyat1 VEYA m_birimler[0].fiyat4
@@ -450,6 +456,26 @@ router.get('/', maybeAuth, async (req, res) => {
 /**
  * Ürün Detay Görüntüleme - WebProduct Modeli Kullanarak
  */
+/**
+ * POST /api/admin/products/images/reorder-labels
+ * Tüm ürünlerde AB etiketi görselini ürün görsellerinin arkasına alır.
+ * WebProduct siteler arasında ortak olduğundan ALastik ve LastikJantAVM birlikte düzeltilir.
+ */
+router.post('/images/reorder-labels', authenticateAdmin, async (req, res) => {
+  try {
+    const { reorderLabelImagesForAllProducts } = require('../../../utils/productImages');
+    const result = await reorderLabelImagesForAllProducts(WebProduct);
+    res.json({
+      success: true,
+      data: result,
+      message: `${result.updated} üründe görsel sıralaması güncellendi (${result.scanned} ürün tarandı)`
+    });
+  } catch (error) {
+    console.error('Reorder label images error:', error);
+    res.status(500).json({ success: false, message: 'Görsel sıralaması oluşturulamadı' });
+  }
+});
+
 router.get('/:id', maybeAuth, async (req, res) => {
   try {
     const id = String(req.params.id);
