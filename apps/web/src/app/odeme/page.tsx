@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Row, Col } from 'react-bootstrap';
 import { toast } from 'react-toastify';
@@ -15,6 +15,7 @@ import PaymentContent from '@/src/components/payment/Content/PaymentContent';
 import PaymentSidebar from '@/src/components/payment/Sidebar/PaymentSidebar';
 
 import { API_ENDPOINTS } from '@/src/config/api';
+import { pushDataLayer, fireAdsConversion } from '@/src/lib/tracking';
 
 
 export default function PaymentPage() {
@@ -26,6 +27,21 @@ export default function PaymentPage() {
     const [cardData, setCardData] = useState<CardFormData | null>(null);
 
     const totalAmount = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+
+    // GTM dönüşüm tetikleyicileri için begin_checkout olayı — sepet yüklenince 1 kez
+    const beginCheckoutSentRef = useRef(false);
+    useEffect(() => {
+        if (beginCheckoutSentRef.current || items.length === 0) return;
+        beginCheckoutSentRef.current = true;
+        const checkoutValue = Math.round(totalAmount * 100) / 100;
+        pushDataLayer({
+            event: 'begin_checkout',
+            value: checkoutValue,
+            currency: 'TRY'
+        });
+        fireAdsConversion('beginCheckout', { value: checkoutValue });
+    }, [items, totalAmount]);
+
     useEffect(() => {
         refreshCart();
     }, [refreshCart]);

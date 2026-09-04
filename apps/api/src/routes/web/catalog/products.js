@@ -4,7 +4,7 @@ const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
-const { applySitePricing, applySitePricingMany, salePriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
+const { applySitePricing, applySitePricingMany, salePriceExpr, sortPriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const WebOrder = require('../../../models/web/order/WebOrder');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
@@ -15,69 +15,8 @@ const Setting = require('../../../models/admin/settings/Setting');
  * Sipariş edilen lastiklerin: Aynı ebat + Farklı mevsim + Stokta olan benzer ürünleri
  */
 
-// Kategori fiyat gösterim ayarları (60 sn önbellekli): kategori adı -> { priceDisplay, vatRate }
-const fiyatAyarOnbellek = new Map();
-
-async function getFiyatAyarlari(site) {
-    const anahtar = site;
-    const kayit = fiyatAyarOnbellek.get(anahtar);
-
-    if (kayit && Date.now() - kayit.zaman < 60 * 1000) return kayit.harita;
-
-    const WebCategory = require('../../../models/web/catalog/WebCategory');
-    const kategoriler = await WebCategory.find({
-        $or: [
-            { [`siteContent.${site}.priceDisplay`]: 'haric' },
-            { [`siteContent.${site}.hideStockCode`]: true }
-        ]
-    })
-        .select(`name siteContent.${site}.priceDisplay siteContent.${site}.vatRate siteContent.${site}.hideStockCode`)
-        .lean()
-        .catch(() => []);
-
-    const harita = new Map();
-
-    kategoriler.forEach(k => {
-        const ayar = k.siteContent?.[site] || {};
-
-        harita.set(k.name, {
-            priceDisplay: ayar.priceDisplay || 'dahil',
-            vatRate: ayar.vatRate ?? 20,
-            hideStockCode: ayar.hideStockCode === true
-        });
-    });
-
-    fiyatAyarOnbellek.set(anahtar, { zaman: Date.now(), harita });
-
-    return harita;
-}
-
-/**
- * Ürünün kategorilerinden birinde "KDV Hariç" ayarı varsa ürüne işler.
- */
-function fiyatAyariUygula(urun, harita) {
-    if (!harita.size) return urun;
-
-    // En özel kategoriden en genele doğru taranır: alt kategori ayarı üst kategoriyi ezer.
-    // Ters sırada tarandığında üst kategori haritada olduğu anda alttakini gölgeliyordu.
-    const adlar = (urun.diaData?.m_kategoriler || []).flatMap(k => [
-        k.kategori_aciklama_3, k.kategori_aciklama_2, k.kategori_aciklama_1
-    ]).filter(Boolean);
-
-    for (const ad of adlar) {
-        const ayar = harita.get(ad);
-
-        if (ayar) {
-            urun.priceDisplay = ayar.priceDisplay;
-            urun.vatRate = ayar.vatRate;
-            urun.hideStockCode = ayar.hideStockCode;
-
-            return urun;
-        }
-    }
-
-    return urun;
-}
+// Kategori fiyat gösterim ayarı (KDV dahil/hariç) — ortak yardımcı, sepet de aynısını kullanır
+const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
 
 router.get('/similar-by-order/:orderNumber', async (req, res) => {
     try {
@@ -268,14 +207,17 @@ router.get('/filter', async (req, res) => {
             }
         }
 
-        if ((jantCap || bijon) && !isMultiCategory) {
+        // Jant parametresi geldiğinde tip janta zorlanır; ancak kategori zaten
+        // jant türevindeyse ("2.El Jant" gibi) kendi tipi korunur
+        if ((jantCap || bijon) && !isMultiCategory && !/jant/i.test(productType || '')) {
             productType = 'JANT';
         }
         if (productType && !isMultiCategory) {
             filter['diaData.ozelkod7kodu'] = productType;
         }
 
-        const isJantCategory = productType === 'JANT';
+        // "JANT" ve "2.El Jant" gibi jant türevleri jant listeleme davranışını kullanır
+        const isJantCategory = /jant/i.test(productType || '');
 
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
         if (hidePricelessSetting?.value === true) {
@@ -531,22 +473,7 @@ router.get('/filter', async (req, res) => {
             aggregatePipeline.push({
                 $addFields: {
                     _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
-                    _sortPrice: {
-                        $let: {
-                            vars: {
-                                shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
-                                webPrice: { $ifNull: ['$customData.webPrice', 0] },
-                                fiyat4: salePriceExpr(req.site) // site bazlı satış fiyatı (LJA: fiyat1 * oran)
-                            },
-                            in: {
-                                $cond: [
-                                    { $gt: ['$$shipPrice', 0] },
-                                    '$$shipPrice',
-                                    { $cond: [{ $gt: ['$$webPrice', 0] }, '$$webPrice', '$$fiyat4'] }
-                                ]
-                            }
-                        }
-                    }
+                    _sortPrice: sortPriceExpr(req.site) // site bazlı: kargo dahil fiyat > satış fiyatı
                 }
             });
             aggregatePipeline.push({

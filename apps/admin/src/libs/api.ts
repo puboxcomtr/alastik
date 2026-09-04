@@ -39,6 +39,14 @@ export const API_ENDPOINTS = {
     dashboard: {
         ecommerce: () => `${getBaseUrl()}/admin/dashboard/ecommerce`,
     },
+    analytics: {
+        overview: () => `${getBaseUrl()}/admin/analytics/overview`,
+        reports: (query?: string) => `${getBaseUrl()}/admin/analytics/reports${query ? `?${query}` : ''}`,
+        live: () => `${getBaseUrl()}/admin/analytics/live`,
+        notifications: () => `${getBaseUrl()}/admin/analytics/notifications`,
+        cards: (range: string) => `${getBaseUrl()}/admin/analytics/cards?range=${encodeURIComponent(range)}`,
+        seo: (query?: string) => `${getBaseUrl()}/admin/analytics/seo${query ? `?${query}` : ''}`,
+    },
     montage: {
         list: () => `${getBaseUrl()}/admin/montage`,
         detail: (id: string) => `${getBaseUrl()}/admin/montage/${id}`,
@@ -205,6 +213,7 @@ export const API_ENDPOINTS = {
         update: () => `${getBaseUrl()}/admin/modules/merchant`,
         priceFields: () => `${getBaseUrl()}/admin/modules/merchant/price-fields`,
         textFields: () => `${getBaseUrl()}/admin/modules/merchant/text-fields`,
+        diaCategories: () => `${getBaseUrl()}/admin/modules/merchant/dia-categories`,
     },
     akakceSettings: {
         get: () => `${getBaseUrl()}/admin/modules/akakce`,
@@ -268,15 +277,23 @@ export const API_ENDPOINTS = {
         import: () => `${getBaseUrl()}/admin/redirects/import`,
     },
     members: {
-        list: (params: { search?: string; status?: string; page?: number; limit?: number }) => {
+        list: (params: { search?: string; status?: string; page?: number; limit?: number; view?: 'table'; hasOrders?: string; from?: string; to?: string }) => {
             const query = new URLSearchParams({
                 search: params.search || '',
                 status: params.status || '',
                 page: (params.page || 1).toString(),
                 limit: (params.limit || 100).toString()
             })
+            if (params.view) query.set('view', params.view)
+            if (params.hasOrders) query.set('hasOrders', params.hasOrders)
+            if (params.from) query.set('from', params.from)
+            if (params.to) query.set('to', params.to)
             return `${getBaseUrl()}/admin/members?${query}`
         },
+        detail: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
+        annotate: (id: string) => `${getBaseUrl()}/admin/members/${id}/annotations`,
+        setStatus: (id: string) => `${getBaseUrl()}/admin/members/${id}/status`,
+        remove: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
     },
 }
 

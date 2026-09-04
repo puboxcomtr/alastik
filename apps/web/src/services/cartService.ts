@@ -13,6 +13,14 @@ export function getCartSessionId(): string {
     return sessionId;
 }
 
+// Giriş yapmış üyenin tokenı: API sepeti üyeye bağlayabilsin diye eklenir.
+// Token yoksa/geçersizse misafir akışı aynen sürer.
+function getAuthHeader(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    const token = localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // Sepeti getir
 export async function getCart() {
     const sessionId = getCartSessionId();
@@ -40,6 +48,7 @@ export async function addToCart(productKey: string, quantity: number = 1, montag
             body: JSON.stringify({ sessionId, productKey, quantity, montagePointId }),
             headers: {
                 ...(await getServerSiteHeaders()),
+                ...getAuthHeader(),
                 'Content-Type': 'application/json'
             }
         });
@@ -60,6 +69,7 @@ export async function updateCartItem(productKey: string, quantity: number) {
             body: JSON.stringify({ sessionId, productKey, quantity }),
             headers: {
                 ...(await getServerSiteHeaders()),
+                ...getAuthHeader(),
                 'Content-Type': 'application/json'
             }
         });

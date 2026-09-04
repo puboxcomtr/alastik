@@ -1,5 +1,5 @@
 const express = require('express');
-const { applySitePricingMany, salePriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
+const { applySitePricingMany, salePriceExpr, sortPriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const router = express.Router();
 const FrondSearchTerm = require('../../../models/web/catalog/FrondSearchTerm');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -12,6 +12,43 @@ const { getSiteVisibilityFilter } = require('../../../config/diaFilters');
 
 // POST /api/search/autocomplete
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Akıllı arama (alastik): "205 55 16 pirelli yaz" gibi yazımlarda mevsim kelimesi
+// ürün adında metin olarak aranmaz; diaData.ozelkod1kodu (Yaz / Kış / 4 Mevsim)
+// filtresine çevrilir. Kelime metinden çıkarılır, kalan kelimeler marka/model olarak aranır.
+const SMART_SEASON_SITES = new Set(['alastik']);
+const SEASON_WORD_RE = /(?:4|d[öo]rt)\s*mevsim|all\s*season|yazl[ıi]k|k[ıi][şs]l[ıi]k|(?<![\p{L}\d])yaz(?![\p{L}\d])|(?<![\p{L}\d])k[ıi][şs](?![\p{L}\d])/iu;
+const detectSeasonWord = (site, text) => {
+    if (!SMART_SEASON_SITES.has(site) || !text) return null;
+    const lowered = String(text).toLocaleLowerCase('tr');
+    const m = lowered.match(SEASON_WORD_RE);
+    if (!m) return null;
+    const w = m[0];
+    const code = /mevsim|season/.test(w) ? '4 Mevsim' : w.startsWith('y') ? 'Yaz' : 'Kış';
+    const rest = (lowered.slice(0, m.index) + ' ' + lowered.slice(m.index + w.length)).replace(/\s+/g, ' ').trim();
+    return { code, word: w, rest };
+};
+
+// Akıllı öneri listesi (alastik): sonuç sayfasıyla tutarlı olsun diye yalnızca bu
+// sitede yayınlanan ürünler (sites alanı) önerilir — başka sitenin ürünü sızmaz —,
+// stoklu ürünler üste alınır, aynı başlık tekrar listelenmez.
+const isSmartSite = (req) => SMART_SEASON_SITES.has(req.site);
+const findSuggestProducts = async (req, andConditions) => {
+    const smart = isSmartSite(req);
+    const conditions = smart ? [...andConditions, { sites: req.site }] : andConditions;
+    let query = WebProduct.find({ $and: conditions });
+    if (smart) query = query.sort({ 'diaData.gercek_stok': -1 }).limit(40);
+    else query = query.limit(20);
+    const products = await query.lean();
+    if (!smart) return products;
+    const seen = new Set();
+    return products.filter(p => {
+        const key = String(p.diaData?.aciklama || '').trim().toLocaleLowerCase('tr');
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    }).slice(0, 20);
+};
 
 const detectTireSize = (input) => {
     const cleaned = input.replace(/\s+/g, '').toLowerCase();
@@ -127,11 +164,20 @@ router.post('/autocomplete', async (req, res) => {
             ];
 
             // Ebat dışında ekstra metin varsa (marka/model adı), AND mantığıyla aciklama'da ara
-            if (tireSize.remainder && tireSize.remainder.length >= 2) {
-                const remainderWords = tireSize.remainder.split(/\s+/).filter(w => w.length >= 2);
+            // Akıllı arama: mevsim kelimesi ürün adında aranmaz, mevsim filtresine çevrilir
+            const acSeason = detectSeasonWord(req.site, tireSize.remainder);
+            const productRemainder = acSeason ? acSeason.rest : tireSize.remainder;
+            if (acSeason) {
+                productAndConditions.push({ 'diaData.ozelkod1kodu': acSeason.code });
+            }
+            if (productRemainder && productRemainder.length >= 2) {
+                const remainderWords = productRemainder.split(/\s+/).filter(w => w.length >= 2);
                 remainderWords.forEach(word => {
                     productAndConditions.push({
-                        'diaData.aciklama': new RegExp(escapeRegex(word), 'i')
+                        $or: [
+                            { 'diaData.aciklama': new RegExp(escapeRegex(word), 'i') },
+                            { 'diaData.marka': new RegExp(escapeRegex(word), 'i') }
+                        ]
                     });
                 });
             }
@@ -163,9 +209,7 @@ router.post('/autocomplete', async (req, res) => {
                 url: `/etiket/${t.seoUrl}`
             }));
 
-            const products = await WebProduct.find({
-                $and: productAndConditions
-            }).limit(20).lean();
+            const products = await findSuggestProducts(req, productAndConditions);
 
             results.products = products.map(p => ({
                 type: 'product',
@@ -185,9 +229,12 @@ router.post('/autocomplete', async (req, res) => {
         }
 
         // 3) GENEL ARAMA (Marka, kategori, etiket, ürün) - AND mantığı
-        const words = query.trim().split(/\s+/).filter(w => w.length >= 2);
+        // Akıllı arama: "pirelli yaz" → mevsim kelimesi filtreye, kalan "pirelli" metne
+        const generalSeason = detectSeasonWord(req.site, query.trim());
+        const generalText = generalSeason ? generalSeason.rest : query.trim();
+        const words = generalText.split(/\s+/).filter(w => w.length >= 2);
 
-        if (words.length === 0) {
+        if (words.length === 0 && !generalSeason) {
             return res.json({ success: true, data: [] });
         }
 
@@ -195,10 +242,13 @@ router.post('/autocomplete', async (req, res) => {
 
         // Marka: tek kelimeyle eşleşme (marka adı genelde tek kelimedir)
         const fullQueryRegex = new RegExp(escapeRegex(query.trim()), 'i');
+        const brandQueryRegex = generalSeason && generalText.length >= 2
+            ? new RegExp(escapeRegex(generalText), 'i')
+            : fullQueryRegex;
         const brands = await WebBrand.find({
             [`siteSettings.${req.site}.webVisible`]: true,
             [`siteSettings.${req.site}.productCount`]: { $gt: 0 },
-            diaMarkaAck: fullQueryRegex
+            diaMarkaAck: brandQueryRegex
         }).limit(5).lean();
 
         results.brands = brands.map(b => ({
@@ -236,6 +286,10 @@ router.post('/autocomplete', async (req, res) => {
             getSiteVisibilityFilter(req.site)
         ];
 
+        if (generalSeason) {
+            productConditions.push({ 'diaData.ozelkod1kodu': generalSeason.code });
+        }
+
         wordRegexes.forEach(rgx => {
             productConditions.push({
                 $or: [
@@ -247,9 +301,7 @@ router.post('/autocomplete', async (req, res) => {
             });
         });
 
-        const products = await WebProduct.find({
-            $and: productConditions
-        }).limit(20).lean();
+        const products = await findSuggestProducts(req, productConditions);
 
         results.products = products.map(p => ({
             type: 'product',
@@ -375,8 +427,15 @@ router.get('/results', async (req, res) => {
                 .replace(/[\d]{3}[\s\/\-]*[\d]{2}[\s\/\-]*r?[\d]{2}/i, '')
                 .trim();
 
-            if (extraText.length >= 2) {
-                const words = extraText.split(/\s+/).filter(w => w.length >= 2);
+            // Akıllı arama: mevsim kelimesi filtreye çevrilir (sidebar mevsim seçiliyse ona dokunulmaz)
+            const sizeSeason = !mevsim ? detectSeasonWord(req.site, extraText) : null;
+            const sizeText = sizeSeason ? sizeSeason.rest : extraText;
+            if (sizeSeason) {
+                andConditions.push({ 'diaData.ozelkod1kodu': sizeSeason.code });
+            }
+
+            if (sizeText.length >= 2) {
+                const words = sizeText.split(/\s+/).filter(w => w.length >= 2);
 
                 for (const word of words) {
                     const wordRegex = new RegExp(escapeRegex(word), 'i');
@@ -389,7 +448,13 @@ router.get('/results', async (req, res) => {
                 }
             }
         } else {
-            const words = q.trim().split(/\s+/).filter(w => w.length >= 2);
+            // Akıllı arama: "pirelli yaz" → mevsim filtresi + kalan kelimeler
+            const freeSeason = !mevsim ? detectSeasonWord(req.site, q.trim()) : null;
+            const freeText = freeSeason ? freeSeason.rest : q.trim();
+            if (freeSeason) {
+                andConditions.push({ 'diaData.ozelkod1kodu': freeSeason.code });
+            }
+            const words = freeText.split(/\s+/).filter(w => w.length >= 2);
 
             if (words.length > 0) {
                 for (const word of words) {
@@ -466,22 +531,7 @@ router.get('/results', async (req, res) => {
             aggregatePipeline.push({
                 $addFields: {
                     _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
-                    _sortPrice: {
-                        $let: {
-                            vars: {
-                                shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
-                                webPrice: { $ifNull: ['$customData.webPrice', 0] },
-                                fiyat4: salePriceExpr(req.site) // site bazlı satış fiyatı (LJA: fiyat1 * oran)
-                            },
-                            in: {
-                                $cond: [
-                                    { $gt: ['$$shipPrice', 0] },
-                                    '$$shipPrice',
-                                    { $cond: [{ $gt: ['$$webPrice', 0] }, '$$webPrice', '$$fiyat4'] }
-                                ]
-                            }
-                        }
-                    }
+                    _sortPrice: sortPriceExpr(req.site) // site bazlı: kargo dahil fiyat > satış fiyatı
                 }
             });
             aggregatePipeline.push({

@@ -704,9 +704,14 @@ class DiaStockService {
       hideBrand: existingCustomData?.hideBrand !== undefined
         ? existingCustomData.hideBrand
         : (diaProduct.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1),
-      // Üretim tarihi / stok gizleme — manuel değerler korunur
-      hideProductionDate: existingCustomData?.hideProductionDate || false,
-      hideStock: existingCustomData?.hideStock || false,
+      // Üretim tarihi gizleme — hizmet kategorisinde varsayılan açık, manuel değer korunur
+      hideProductionDate: existingCustomData?.hideProductionDate !== undefined
+        ? existingCustomData.hideProductionDate
+        : (diaProduct.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1),
+      // Stok gizleme — hizmet kategorisinde varsayılan açık, manuel değer korunur
+      hideStock: existingCustomData?.hideStock !== undefined
+        ? existingCustomData.hideStock
+        : (diaProduct.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1),
 
       // Site bazlı alanlar ve hesaplanan değerler — sync bunları asla ezmez
       siteDescriptions: existingCustomData?.siteDescriptions || {},
@@ -1220,6 +1225,12 @@ class DiaStockService {
    * DB ayarlarındaki durum/ozelkod11 kuralları + Aktarım Ayarları (dahil/hariç) birlikte uygulanır.
    */
   passesWebFilter(item, rules = getSyncRules()) {
+    // Her Zaman Dahil: ozelkod11 / b2c kurallarını ve "Hariç Bırak" listesini atlar.
+    // Kartın DIA'daki aktiflik durumu (durum) yine de geçerlidir — pasif kart yayınlanmaz.
+    if (this.zorunluDahilMatches(item, rules.zorunluDahil)) {
+        return !rules.durum || item.durum === rules.durum;
+    }
+
     const rulesPass =
       (!rules.durum || item.durum === rules.durum) &&
       (!rules.ozelkod11Kodu || item.ozelkod11kodu === rules.ozelkod11Kodu) &&
@@ -1268,6 +1279,19 @@ class DiaStockService {
     }
 
     return false;
+  }
+
+  /**
+   * Her Zaman Dahil listesi eşleşmesi.
+   * Aktarım Ayarları'ndan farkı: tek bir filterType'a bağlı değildir —
+   * ürün, kategori ve marka listelerinin HERHANGİ BİRİ eşleşirse ürün dahil edilir.
+   * (Örn. montaj hizmetleri "Hizmetlerimiz" kategorisinden, sibop kalemleri tek tek üründen gelir.)
+   */
+  zorunluDahilMatches(item, zorunluDahil) {
+    if (!zorunluDahil) return false;
+    return ['urun', 'kategori', 'marka'].some(filterType =>
+      this.aktarimMatches(item, { ...zorunluDahil, filterType })
+    );
   }
 
   /**

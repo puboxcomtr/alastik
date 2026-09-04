@@ -4,11 +4,20 @@
  */
 
 const soap = require('soap');
+const { redact } = require('../../../utils/logRedact');
 
 const WSDL_URL = 'https://otopirpossv2.netahsilatservice.com/VendorPayment/VendorPaymentService.svc?wsdl';
+// Üye işyeri kimlik bilgileri YALNIZ ortam değişkeninden okunur — kaynak koda yedek değer yazılmaz.
+// Tanımlı değilse ödeme başlatılmaz (sessizce yanlış kimlikle denemek yerine açık hata verilir).
 const AUTH = {
-    UserName: process.env.NETAHSILAT_USERNAME || 'servis2@artvinticaret.com.tr',
-    Password: process.env.NETAHSILAT_PASSWORD || 'ByAdmpws1526+'
+    UserName: process.env.NETAHSILAT_USERNAME,
+    Password: process.env.NETAHSILAT_PASSWORD
+};
+
+const assertAuthConfigured = () => {
+    if (!AUTH.UserName || !AUTH.Password) {
+        throw new Error('Netahsilat kimlik bilgileri tanımlı değil (NETAHSILAT_USERNAME / NETAHSILAT_PASSWORD)');
+    }
 };
 
 let soapClient = null;
@@ -135,6 +144,8 @@ class NetahsilatService {
                 ? cleanTurkish(`${orderNumber} ${customerName} ${siteLabel}`.replace(/\s+/g, ' ').trim())
                 : `Siparis: ${orderNumber}`;
 
+            assertAuthConfigured();
+
             const request = {
                 authInfo: AUTH,
                 parameters: {
@@ -158,11 +169,12 @@ class NetahsilatService {
                 }
             };
 
-            console.log('[Netahsilat] ProcessPayment Request:', JSON.stringify(request, null, 2));
+            // Kart numarası/CVC ve üye işyeri kimlik bilgileri log'a düz metin YAZILMAZ
+            console.log('[Netahsilat] ProcessPayment Request:', JSON.stringify(redact(request), null, 2));
 
             const [result] = await client.ProcessPaymentAsync(request);
 
-            console.log('[Netahsilat] ProcessPayment Response:', JSON.stringify(result, null, 2));
+            console.log('[Netahsilat] ProcessPayment Response:', JSON.stringify(redact(result), null, 2));
 
             const data = result?.ProcessPaymentResult;
 
@@ -203,6 +215,8 @@ class NetahsilatService {
         try {
             const client = await this.getClient();
 
+            assertAuthConfigured();
+
             const [result] = await client.CommitPaymentAsync({
                 authInfo: AUTH,
                 parameters: {
@@ -210,7 +224,7 @@ class NetahsilatService {
                 }
             });
 
-            console.log('[Netahsilat] CommitPayment Response:', JSON.stringify(result, null, 2));
+            console.log('[Netahsilat] CommitPayment Response:', JSON.stringify(redact(result), null, 2));
 
             const data = result?.CommitPaymentResult;
 

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const WebMerchantSettings = require('../../../models/plugins/merchant/WebMerchantSettings');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
+const { applySitePricingMany } = require('../../../utils/sitePricing');
 
 // Site başına ürün URL tabanı (config/sites.js'teki ilk domain)
 function getSiteUrl(site) {
@@ -10,6 +11,14 @@ function getSiteUrl(site) {
 
 function getNestedValue(obj, path) {
     return path.split('.').reduce((acc, key) => acc?.[key], obj);
+}
+
+// Göreli görsel yolları (/urun/... gibi) sitenin alan adıyla mutlak hale getirilir —
+// Google Merchant mutlak URL ister; nginx her sitede /urun'u kendi alan adından servis eder
+function absoluteImageUrl(image, siteUrl) {
+    if (!image) return '';
+    if (/^https?:\/\//i.test(image)) return image;
+    return `${siteUrl}${image.startsWith('/') ? '' : '/'}${image}`;
 }
 
 function getImage(product, imageSource) {
@@ -78,6 +87,16 @@ async function buildQuery(settings, site) {
         query['diaData.gercek_stok'] = { $gte: settings.minStock || 1 };
     }
 
+    // Eşleşmemiş XML ürünleri (DIA'da otomatik açılan -XML kartları) feed'e alınmaz
+    if (settings.excludeUnmatchedXml) {
+        query['diaData.ozelkod10kodu'] = { $ne: 'XML' };
+    }
+
+    // Hariç tutulan üst kategorilerdeki ürünler (ör. hizmetler) feed'e alınmaz
+    if (settings.excludedCategories?.length) {
+        query['diaData.m_kategoriler.kategori_aciklama_1'] = { $nin: settings.excludedCategories };
+    }
+
     return query;
 }
 
@@ -98,7 +117,7 @@ async function generateXml(settings, products, siteUrl) {
         const price = getPrice(product, settings.priceField, settings.includeTax, settings.taxRate);
         if (!price || parseFloat(price) < settings.minPrice) continue;
 
-        const image = getImage(product, settings.imageSource);
+        const image = absoluteImageUrl(getImage(product, settings.imageSource), siteUrl);
         if (!image) continue;
 
         const title = escapeXml(getNestedValue(product, settings.fieldMapping.title) || product.diaData?.aciklama || '');
@@ -154,6 +173,13 @@ async function generateFeed({ site = DEFAULT_SITE } = {}) {
     const query = await buildQuery(settings, feedSite);
     const products = await db.collection('webproducts').find(query).toArray();
 
+    // Varsayılan site dışındaki sitelerde vitrindeki satış fiyatı kuralı feed'e de uygulanır
+    // (fiyat1 × B2C oranı, XML siteData fiyatı, hizmet istisnası) — fiyat4 yerinde güncellenir.
+    // ALastik feed'i eski davranışıyla birebir kalır.
+    if (feedSite !== DEFAULT_SITE) {
+        applySitePricingMany(products, feedSite);
+    }
+
     let feed;
     if (settings.feedFormat === 'csv') {
         feed = await generateCsv(settings, products, siteUrl);
@@ -182,7 +208,7 @@ async function generateCsv(settings, products, siteUrl) {
         const price = getPrice(product, settings.priceField, settings.includeTax, settings.taxRate);
         if (!price || parseFloat(price) < settings.minPrice) continue;
 
-        const image = getImage(product, settings.imageSource);
+        const image = absoluteImageUrl(getImage(product, settings.imageSource), siteUrl);
         if (!image) continue;
 
         const title = getNestedValue(product, settings.fieldMapping.title) || product.diaData?.aciklama || '';

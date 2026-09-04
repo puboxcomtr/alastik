@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getSiteHeader } from '@/utils/activeSite'
 import { toast } from 'react-toastify'
 
 import Card from '@mui/material/Card'
@@ -121,7 +122,7 @@ const XmlMappingTable = () => {
 
             const url = API_ENDPOINTS.webxml.mappingExport(filterSource || undefined)
             const res = await fetch(url, {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) }
+                headers: { ...(token && { Authorization: `Bearer ${token}` }), ...getSiteHeader() }
             })
             if (!res.ok) throw new Error('Dışarı aktarım başarısız')
 

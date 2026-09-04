@@ -9,7 +9,9 @@
 const { SITE_SLUGS, DEFAULT_SITE } = require('./sites');
 
 const DEFAULT_AKTARIM = { mode: 'tumu', filterType: 'urun', products: [], categories: [], brands: [] };
-const DEFAULT_SYNC_RULES = { durum: 'A', ozelkod11Kodu: 'E', b2cKodu: '', hashKontrol: true, aktarim: DEFAULT_AKTARIM };
+// Her Zaman Dahil listesi — boşken hiçbir ürünü eşleştirmez (etkisizdir)
+const DEFAULT_ZORUNLU_DAHIL = { filterType: 'kategori', products: [], categories: [], brands: [] };
+const DEFAULT_SYNC_RULES = { durum: 'A', ozelkod11Kodu: 'E', b2cKodu: '', hashKontrol: true, aktarim: DEFAULT_AKTARIM, zorunluDahil: DEFAULT_ZORUNLU_DAHIL };
 
 // Site bazlı kurallar: her site kendi DiaSettings kaydından (webdia) okunur.
 // Bir ürünün hangi sitelerde yayınlanacağı (WebProduct.sites) bu kurallarla belirlenir.
@@ -38,7 +40,15 @@ function settingsToRules(s) {
         ozelkod11Kodu: String(s.sync?.ozelkod11Filtre ?? DEFAULT_SYNC_RULES.ozelkod11Kodu).trim(),
         b2cKodu: String(s.sync?.b2cFiltre ?? DEFAULT_SYNC_RULES.b2cKodu).trim(),
         hashKontrol: s.sync?.hashKontrol !== false,
-        aktarim
+        aktarim,
+        zorunluDahil: s.zorunluDahil
+            ? {
+                filterType: s.zorunluDahil.filterType || DEFAULT_ZORUNLU_DAHIL.filterType,
+                products: s.zorunluDahil.products || [],
+                categories: s.zorunluDahil.categories || [],
+                brands: s.zorunluDahil.brands || []
+            }
+            : DEFAULT_ZORUNLU_DAHIL
     };
 }
 

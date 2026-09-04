@@ -3,6 +3,7 @@ const winston = require('winston');
 const WebDia = require('../../../models/plugins/dia/DiaSettings');
 const DiaStock = require('../../../models/plugins/DiaStock');
 const WebMember = require('../../../models/web/user/WebMember');
+const { SITES } = require('../../../config/sites');
 
 /**
  * DIA Sipariş Entegrasyon Servisi (web → DIA)
@@ -38,6 +39,9 @@ const SITE_CUSTOMER_PREFIX = {
     alastik: 'AL',
     lastikjantavm: 'LJA'
 };
+
+// DIA sipariş açıklamasının 3. satırındaki teslim şekli etiketi
+const DIA_DELIVERY_LABEL = 'KARGO';
 
 class DiaOrderService {
     constructor(site) {
@@ -1412,34 +1416,21 @@ class DiaOrderService {
      * Sipariş ödeme yönteminin DIA açıklamalarında kullanılacak etiketi
      */
     getPaymentMethodLabel(order) {
+        // Sağlayıcı adı payment.gateway alanında tutulur (netahsilat / nkolay / paynet).
+        // payment.method yalnızca ödeme tipini söyler (credit_card_3d, bank_transfer...).
+        const gateway = String(order.payment?.gateway || '').toLowerCase();
+        if (gateway.startsWith('netahsilat')) return 'Netahsilat';
+        if (gateway.startsWith('nkolay')) return 'Nkolay';
+        if (gateway.startsWith('paynet')) return 'Paynet';
+
         const method = String(order.payment?.method || '').toLowerCase();
         if (method.startsWith('netahsilat')) return 'Netahsilat';
-        if (method.startsWith('nkolay')) return 'Nkolay';
-        if (method.startsWith('paynet')) return 'Paynet';
         if (method === 'bank_transfer') return 'Havale';
-        return method;
+        if (method === 'cash_on_delivery') return 'Kapıda Ödeme';
+        return gateway || method;
     }
 
-    /**
-     * Üyenin birincil aracının plakasını döner (Araçlarım'da doluysa)
-     */
-    async getVehiclePlate(order) {
-        if (!order.memberId) return '';
-        try {
-            const WebVehicle = require('../../../models/web/user/WebVehicle');
-            const vehicle = await WebVehicle.findOne({
-                memberId: order.memberId,
-                isPrimary: true,
-                isActive: true
-            }).select('userInputs.plateNumber').lean();
-            return (vehicle?.userInputs?.plateNumber || '').trim();
-        } catch (err) {
-            logger.warn('[DiaOrder] Plaka bilgisi okunamadı', { orderNumber: order.orderNumber, error: err.message });
-            return '';
-        }
-    }
-
-    buildOrderPayload(order, customer, resolvedStocks, sessionId, vehiclePlate = '') {
+    buildOrderPayload(order, customer, resolvedStocks, sessionId) {
         const siparis = this.settings.siparis || {};
         const shipping = order.shippingSnapshot || order.guestShippingAddress || {};
 
@@ -1449,21 +1440,17 @@ class DiaOrderService {
 
         const orderItems = this.buildOrderItems(order, customer, resolvedStocks);
 
-        // Açıklama düzeni siteye göre değişir:
-        // alastik → 1: müşteri adı, 2: sipariş no, 3: ödeme yöntemi
-        // lastikjantavm → 1: boş, 2: site, 3: plaka (sipariş no Ek Alan 4'te)
-        const customerFullName = (order.customerName || order.billingSnapshot?.fullName || shipping.fullName || '').trim();
-        const descriptions = this.site === 'alastik'
-            ? {
-                aciklama1: customerFullName,
-                aciklama2: order.orderNumber,
-                aciklama3: this.getPaymentMethodLabel(order)
-            }
-            : {
-                aciklama1: '',
-                aciklama2: this.site,
-                aciklama3: vehiclePlate ? `Plaka: ${vehiclePlate}` : ''
-            };
+        // Açıklama düzeni iki sitede de aynıdır (3 Eyl isteği):
+        //   1: sipariş no  2: siparişi veren  3: SİTE ADI - Ödeme Sağlayıcı - Teslim Şekli
+        const customerFullName = (order.customerName || order.billingSnapshot?.fullName || shipping.fullName || customer.unvan || '').trim();
+        const siteName = SITES[this.site]?.name || this.site;
+        const descriptions = {
+            aciklama1: order.orderNumber,
+            aciklama2: customerFullName,
+            aciklama3: [siteName, this.getPaymentMethodLabel(order), DIA_DELIVERY_LABEL]
+                .filter(Boolean)
+                .join(' - ')
+        };
 
         const kart = {
             _key_scf_carikart: parseInt(customer.key),
@@ -1648,8 +1635,7 @@ async function syncOrderToDia(order) {
         }
 
         // 3) Sipariş girişi (plaka doluysa açıklamaya eklenir)
-        const vehiclePlate = await service.getVehiclePlate(order);
-        const payload = service.buildOrderPayload(order, customer, resolvedStocks, sessionId, vehiclePlate);
+        const payload = service.buildOrderPayload(order, customer, resolvedStocks, sessionId);
 
         logger.info('[DiaOrder] Sipariş DIA\'ya gönderiliyor', {
             orderNumber,

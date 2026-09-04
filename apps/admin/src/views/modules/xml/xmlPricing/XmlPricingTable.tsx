@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getActiveSite, SITE_DEFINITIONS } from '@/utils/activeSite'
 import { toast } from 'react-toastify'
 
 import Card from '@mui/material/Card'
@@ -42,11 +43,21 @@ const KURAL_TIPLERI: { value: KuralTipi; label: string }[] = [
     { value: 'sabit_azalis', label: 'Sabit Azalış (TL)' }
 ]
 
-const PLATFORMLAR: { value: Platform; label: string }[] = [
-    { value: 'b2b', label: 'B2B' },
-    { value: 'b2c', label: 'B2C' },
-    { value: 'alastik', label: 'ALastik.com' }
-]
+// Site başına kullanılabilir platformlar. Vitrin fiyatını süren platform
+// api/src/config/sites.js (xmlPricePlatform) ile senkron tutulur:
+// alastik → 'alastik' platformu, lastikjantavm → 'b2c' platformu (site adıyla etiketlenir).
+const SITE_PLATFORMLAR: Record<string, { value: Platform; label: string }[]> = {
+    alastik: [
+        { value: 'b2b', label: 'B2B' },
+        { value: 'alastik', label: SITE_DEFINITIONS.alastik?.title || 'ALastik.com' }
+    ],
+    lastikjantavm: [
+        { value: 'b2c', label: SITE_DEFINITIONS.lastikjantavm?.title || 'LastikJantAVM' }
+    ]
+}
+
+const buildPlatformlar = (aktifSite: string): { value: Platform; label: string }[] =>
+    SITE_PLATFORMLAR[aktifSite] || SITE_PLATFORMLAR.alastik
 
 const PLATFORM_RENK: Record<Platform, 'primary' | 'secondary' | 'warning'> = {
     b2b: 'primary',
@@ -54,8 +65,8 @@ const PLATFORM_RENK: Record<Platform, 'primary' | 'secondary' | 'warning'> = {
     alastik: 'warning'
 }
 
-const bosKural = (): Omit<FiyatKurali, 'id'> => ({
-    platform: 'b2b',
+const bosKural = (platform: Platform): Omit<FiyatKurali, 'id'> => ({
+    platform,
     source: '',
     marka: '',
     tip: 'yuzde_artis',
@@ -66,12 +77,15 @@ const bosKural = (): Omit<FiyatKurali, 'id'> => ({
 const XmlPricingTable = () => {
     const router = useRouter()
 
+    // Aktif siteye göre platform seçenekleri (LJA'da b2c "LastikJantAVM" olarak görünür)
+    const platformlar = buildPlatformlar(getActiveSite())
+
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [sources, setSources] = useState<SourceOption[]>([])
     const [markalar, setMarkalar] = useState<string[]>([])
     const [kurallar, setKurallar] = useState<FiyatKurali[]>([])
-    const [yeniKural, setYeniKural] = useState<Omit<FiyatKurali, 'id'>>(bosKural())
+    const [yeniKural, setYeniKural] = useState<Omit<FiyatKurali, 'id'>>(bosKural(platformlar[0].value))
     const [filterPlatform, setFilterPlatform] = useState<string>('')
 
     const fetchMarkalar = useCallback(async (sourceCode: string) => {
@@ -132,7 +146,7 @@ const XmlPricingTable = () => {
             })
             if (res.success) {
                 toast.success('Kural eklendi')
-                setYeniKural(bosKural())
+                setYeniKural(bosKural(platformlar[0].value))
                 setMarkalar([])
                 fetchData()
             } else {
@@ -170,10 +184,11 @@ const XmlPricingTable = () => {
             </Card>
         )
     }
-    const filteredKurallar = filterPlatform ? kurallar.filter(k => k.platform === filterPlatform) : kurallar
+    // Sitenin platform listesinde olmayan (başka amaçla saklanan) kurallar bu sayfada gösterilmez
+    const gorunurKurallar = kurallar.filter(k => platformlar.some(p => p.value === k.platform))
+    const filteredKurallar = filterPlatform ? gorunurKurallar.filter(k => k.platform === filterPlatform) : gorunurKurallar
     return (
         <>
-        return (compass);
             <Grid container spacing={4}>
                 <Grid item xs={12}>
                     <Card>
@@ -198,7 +213,7 @@ const XmlPricingTable = () => {
                                     onChange={e => setYeniKural(prev => ({ ...prev, platform: e.target.value as Platform }))}
                                     sx={{ minWidth: 160 }}
                                 >
-                                    {PLATFORMLAR.map(p => (
+                                    {platformlar.map(p => (
                                         <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
                                     ))}
                                 </TextField>
@@ -281,7 +296,7 @@ const XmlPricingTable = () => {
                                     sx={{ minWidth: 160 }}
                                 >
                                     <MenuItem value=''>Tümü</MenuItem>
-                                    {PLATFORMLAR.map(p => <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>)}
+                                    {platformlar.map(p => <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>)}
                                 </TextField>
                             }
                         />
@@ -313,7 +328,7 @@ const XmlPricingTable = () => {
                                             <tr key={k.id}>
                                                 <td>
                                                     <Chip
-                                                        label={PLATFORMLAR.find(p => p.value === k.platform)?.label || k.platform}
+                                                        label={platformlar.find(p => p.value === k.platform)?.label || k.platform}
                                                         size='small'
                                                         color={PLATFORM_RENK[k.platform]}
                                                         variant='tonal'

@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from "react"
-import { useRouter } from 'next/navigation'
-import { shouldRedirectToMontage, MONTAGE_REDIRECT_PATH } from '@/src/hooks/Cart/montageRedirect'
+import { offerMontageAfterAdd } from '@/src/hooks/Cart/montageRedirect'
 import Link from "next/link"
 import Image from 'next/image'
 import Tooltip from '@mui/material/Tooltip'
@@ -17,6 +16,7 @@ import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 import {
   getProductUrl,
   getProductPrice,
+  getDisplayPrice,
   getProductOriginalPrice,
   hasProductDiscount,
   getProductImage,
@@ -36,7 +36,6 @@ export default function ProductSlideCard({ product }: Props) {
   const { theme } = useSettings()
   const { getBrand } = useBrands()
   const { addToCart } = useCart()
-  const router = useRouter()
   const { t } = useTranslations('general')
   const { definition } = useDefinition()
   const getWhatsAppUrl = () => {
@@ -81,7 +80,7 @@ export default function ProductSlideCard({ product }: Props) {
       }
 
       const added = await addToCart(product._key, 1)
-      if (added && shouldRedirectToMontage(product)) router.push(MONTAGE_REDIRECT_PATH)
+      if (added) offerMontageAfterAdd(product)
     } catch (err) {
       console.error('Sepete ekleme hatası:', err)
       toast.error('Sepete eklenemedi')
@@ -91,6 +90,8 @@ export default function ProductSlideCard({ product }: Props) {
   }
   const productUrl = getProductUrl(product)
   const price = getProductPrice(product)
+  // Kategori ayarı 'KDV Hariç' ise fiyattan KDV çıkarılıp '+ KDV' ibaresi eklenir
+  const gosterim = getDisplayPrice(product, price)
   const originalPrice = getProductOriginalPrice(product)
   const hasDiscount = hasProductDiscount(product)
   const imageUrl = getProductImage(product, theme?.defaultCatalogImage || '/lastikjantavm/assets/img/shop/pirelli.jpg')
@@ -223,7 +224,7 @@ export default function ProductSlideCard({ product }: Props) {
             )}
           </span>
           <span className="fw-bold">
-            {price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
+            {gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL{gosterim.suffix}
           </span>
         </div>
 

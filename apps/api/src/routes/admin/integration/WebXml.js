@@ -13,6 +13,13 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const XLSX = require('xlsx');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
+const { DEFAULT_SITE } = require('../../../config/sites');
+const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
+
+// XML modülü site bazlıdır: req.site (X-Site header) hangi sitenin kaynak/ürün/kural
+// verisinin görüneceğini belirler. Eski kayıtlarda site alanı yoksa varsayılan site kabul edilir.
+const docSite = (doc) => (doc && doc.site) || DEFAULT_SITE;
+const isOwnSite = (req, doc) => docSite(doc) === req.site;
 
 /**
  * GET /api/admin/webxml
@@ -27,7 +34,7 @@ router.get('/', async (req, res) => {
             isActive
         } = req.query;
 
-        const query = {};
+        const query = { site: req.site };
 
         // Arama filtresi
         if (search) {
@@ -120,14 +127,21 @@ router.post('/', async (req, res) => {
             .replace(/_+/g, '_')
             .replace(/^_|_$/g, '');
 
-        const existing = await WebXml.findOne({ code });
-        if (existing) {
-            return res.status(400).json({ success: false, message: `"${code}" kodu zaten kullanımda` });
+        let finalCode = code;
+        const existing = await WebXml.findOne({ code: finalCode });
+        if (existing && !isOwnSite(req, existing)) {
+            // Kod başka sitede kullanılıyor — site ekiyle benzersizleştir
+            finalCode = `${code}_${req.site}`;
+        }
+        const stillExisting = await WebXml.findOne({ code: finalCode });
+        if (stillExisting) {
+            return res.status(400).json({ success: false, message: `"${finalCode}" kodu zaten kullanımda` });
         }
 
         const item = await WebXml.create({
+            site: req.site,
             name: name.trim(),
-            code,
+            code: finalCode,
             format: format || 'xml',
             apiUrl: apiUrl.trim(),
             isActive: isActive ?? false,
@@ -172,7 +186,7 @@ router.post('/sync-all', async (req, res) => {
 
         const job = await xmlSyncQueue.add(
             'manual-xml-sync',
-            { type: 'manual', triggeredBy: 'admin', triggeredAt: new Date().toISOString() },
+            { type: 'manual', triggeredBy: 'admin', site: req.site, triggeredAt: new Date().toISOString() },
             { timeout: 60 * 60 * 1000 } // 1 saat timeout
         );
 
@@ -194,7 +208,7 @@ router.post('/sync-all', async (req, res) => {
 router.post('/web-sync/full', async (req, res) => {
     try {
         const XmlWebProductSyncService = require('../../../services/plugins/xml/XmlWebProductSyncService');
-        const result = await XmlWebProductSyncService.fullSync();
+        const result = await XmlWebProductSyncService.fullSync(req.site);
         res.json({
             success: true,
             message: `Tam aktarım tamamlandı — oluşturulan: ${result.created}, güncellenen: ${result.updated}, filtrelenen: ${result.filtered}, hata: ${result.errors}`,
@@ -212,7 +226,7 @@ router.post('/web-sync/full', async (req, res) => {
 router.post('/web-sync/quick', async (req, res) => {
     try {
         const XmlWebProductSyncService = require('../../../services/plugins/xml/XmlWebProductSyncService');
-        const result = await XmlWebProductSyncService.quickSync();
+        const result = await XmlWebProductSyncService.quickSync(req.site);
         res.json({
             success: true,
             message: `Hızlı sync tamamlandı — güncellenen: ${result.updated}, filtrelenen: ${result.filtered}, hata: ${result.errors}`,
@@ -231,15 +245,16 @@ router.get('/products/export', async (req, res) => {
     try {
         const { source = '' } = req.query;
 
-        const integrations = await WebXml.find({}, { code: 1, name: 1, format: 1, rules: 1 }).lean();
+        const integrations = await WebXml.find({ site: req.site }, { code: 1, name: 1, format: 1, rules: 1 }).lean();
         const intgMap = {};
         for (const i of integrations) intgMap[i.code] = i;
 
-        const getNestedValue = (obj, path) => {
-            if (!path) return '';
-            const parts = path.match(/[^.\[\]]+/g) || [];
-            return parts.reduce((acc, key) => acc?.[key] ?? '', obj);
-        };
+        if (source && !intgMap[source]) {
+            return res.status(404).json({ success: false, message: 'Kaynak bu sitede bulunamadı' });
+        }
+
+        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
+        const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const isFiltered = (item, intg) => {
             const rules = intg?.rules || {};
@@ -354,8 +369,15 @@ router.get('/mapping/export', async (req, res) => {
     try {
         const { source = '' } = req.query;
 
-        const query = {};
-        if (source) query.source = source;
+        const integrations = await WebXml.find({ site: req.site }, { code: 1, rules: 1 }).lean();
+        const intgMap = {};
+        for (const i of integrations) intgMap[i.code] = i;
+
+        if (source && !intgMap[source]) {
+            return res.status(404).json({ success: false, message: 'Kaynak bu sitede bulunamadı' });
+        }
+
+        const query = source ? { source } : { source: { $in: Object.keys(intgMap) } };
 
         const items = await XmlProduct.find(query, {
             source: 1,
@@ -364,15 +386,8 @@ router.get('/mapping/export', async (req, res) => {
             'mappedData.hedefStokKodu': 1
         }).lean();
 
-        const integrations = await WebXml.find({}, { code: 1, rules: 1 }).lean();
-        const intgMap = {};
-        for (const i of integrations) intgMap[i.code] = i;
-
-        const getNestedValue = (obj, path) => {
-            if (!path) return '';
-            const parts = path.match(/[^.\[\]]+/g) || [];
-            return parts.reduce((acc, key) => acc?.[key] ?? '', obj);
-        };
+        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
+        const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const rows = items.map(item => {
             const intg = intgMap[item.source];
@@ -420,15 +435,13 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'Excel boş' });
         }
 
-        const integrations = await WebXml.find({}, { code: 1, rules: 1 }).lean();
+        const integrations = await WebXml.find({ site: req.site }, { code: 1, rules: 1 }).lean();
         const intgMap = {};
         for (const i of integrations) intgMap[i.code] = i;
+        const siteCodes = Object.keys(intgMap);
 
-        const getNestedValue = (obj, path) => {
-            if (!path) return '';
-            const parts = path.match(/[^.\[\]]+/g) || [];
-            return parts.reduce((acc, key) => acc?.[key] ?? '', obj);
-        };
+        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
+        const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         let guncellenen = 0, atilan = 0;
 
@@ -438,10 +451,11 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
             const kaynak = String(row['Kaynak'] || '').trim();
 
             if (!xmlStokKodu) { atilan++; continue; }
+            // Başka sitenin kaynağına ait satırlar işlenmez
+            if (kaynak && !intgMap[kaynak]) { atilan++; continue; }
             const hedefBos = hedefStokKodu === '';
 
-            const query = {};
-            if (kaynak) query.source = kaynak;
+            const query = kaynak ? { source: kaynak } : { source: { $in: siteCodes } };
 
             // Önce sourceProductId ile dene
             const byId = await XmlProduct.findOne({ ...query, sourceProductId: xmlStokKodu });
@@ -547,15 +561,18 @@ router.get('/all-products', async (req, res) => {
             status = ''
         } = req.query;
 
-        // Tüm aktif entegrasyonları çek
-        const integrations = await WebXml.find({ isActive: true }).lean();
+        // Sitenin tüm aktif entegrasyonlarını çek
+        const integrations = await WebXml.find({ isActive: true, site: req.site }).lean();
         const integrationMap = {};
         for (const intg of integrations) {
             integrationMap[intg.code] = intg;
         }
 
-        const query = {};
-        if (source) query.source = source;
+        if (source && !integrationMap[source]) {
+            return res.status(404).json({ success: false, message: 'Kaynak bu sitede bulunamadı' });
+        }
+
+        const query = { source: source || { $in: Object.keys(integrationMap) } };
         if (status === 'eslesti') query['mappedData.hedefStokKodu'] = { $ne: null, $exists: true, $gt: '' };
         else if (status === 'eslestirilmedi') query.$or = [
             { mappedData: null },
@@ -576,15 +593,8 @@ router.get('/all-products', async (req, res) => {
             XmlProduct.countDocuments(query)
         ]);
 
-        const getNestedValue = (obj, path) => {
-            if (!path) return '';
-            // Array index'leri (STOK.DEPO[0].X) parçalara ayır
-            const parts = path.match(/[^.\[\]]+/g) || [];
-            return parts.reduce((acc, key) => {
-                if (acc === null || acc === undefined) return '';
-                return acc[key] ?? '';
-            }, obj);
-        };
+        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
+        const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const getSourceField = (fieldMappings, target) => {
             const m = fieldMappings.find(m => m.target === target);
@@ -666,6 +676,9 @@ router.get('/products', async (req, res) => {
         }
 
         const webXml = await WebXml.findOne({ code: source }).lean();
+        if (!webXml || !isOwnSite(req, webXml)) {
+            return res.status(404).json({ success: false, message: 'Kaynak bu sitede bulunamadı' });
+        }
         const fieldMappings = webXml?.rules?.fieldMappings || [];
 
         const getSourceField = (target) => {
@@ -673,15 +686,8 @@ router.get('/products', async (req, res) => {
             return m ? m.source : null;
         };
 
-        const getNestedValue = (obj, path) => {
-            if (!path) return '';
-            // Array index'leri (STOK.DEPO[0].X) parçalara ayır
-            const parts = path.match(/[^.\[\]]+/g) || [];
-            return parts.reduce((acc, key) => {
-                if (acc === null || acc === undefined) return '';
-                return acc[key] ?? '';
-            }, obj);
-        };
+        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
+        const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const brandField = getSourceField('marka');
         const yearField = getSourceField('uretimYili');
@@ -1204,7 +1210,7 @@ router.get('/:source/export.xml', async (req, res) => {
 // ============================================
 router.get('/pricing/rules', async (req, res) => {
     try {
-        const kurallar = await XmlPricingRule.find().sort({ platform: 1, sira: 1, createdAt: 1 }).lean();
+        const kurallar = await XmlPricingRule.find({ site: req.site }).sort({ platform: 1, sira: 1, createdAt: 1 }).lean();
         res.json({ success: true, data: kurallar.map(k => ({ ...k, id: k._id })) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1228,6 +1234,7 @@ router.post('/pricing/rules', async (req, res) => {
         }
 
         const kural = await XmlPricingRule.create({
+            site: req.site,
             platform,
             source: source || '',
             marka: marka || '',
@@ -1252,10 +1259,11 @@ router.post('/pricing/rules', async (req, res) => {
 // ============================================
 router.delete('/pricing/rules/:id', async (req, res) => {
     try {
-        const result = await XmlPricingRule.findByIdAndDelete(req.params.id);
-        if (!result) {
+        const rule = await XmlPricingRule.findById(req.params.id).lean();
+        if (!rule || !isOwnSite(req, rule)) {
             return res.status(404).json({ success: false, message: 'Kural bulunamadı' });
         }
+        await XmlPricingRule.deleteOne({ _id: rule._id });
         res.json({ success: true, message: 'Kural silindi' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1268,10 +1276,16 @@ router.delete('/pricing/rules/:id', async (req, res) => {
 // ============================================
 router.delete('/mapping/:productId', async (req, res) => {
     try {
-        const xmlProduct = await XmlProduct.findById(req.params.productId, { diaKey: 1 }).lean();
+        const xmlProduct = await XmlProduct.findById(req.params.productId, { diaKey: 1, source: 1 }).lean();
 
         if (!xmlProduct) {
             return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
+        }
+
+        // Ürünün kaynağı bu siteye ait olmalı
+        const sourceIntg = await WebXml.findOne({ code: xmlProduct.source }, { site: 1 }).lean();
+        if (sourceIntg && !isOwnSite(req, sourceIntg)) {
+            return res.status(404).json({ success: false, message: 'Ürün bu sitede bulunamadı' });
         }
 
         await XmlProduct.updateOne(
@@ -1311,7 +1325,7 @@ router.delete('/mapping/:productId', async (req, res) => {
 router.get('/:id/source-fields', async (req, res) => {
     try {
         const integration = await WebXml.findById(req.params.id).lean();
-        if (!integration) {
+        if (!integration || !isOwnSite(req, integration)) {
             return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
         }
 
@@ -1469,6 +1483,8 @@ router.get('/:id/source-fields', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
     try {
+        // Not: Detay ucu site kilidine tabi DEĞİL — id zaten tek bir kaydı işaret eder ve
+        // admin rules sayfası bu ucu sunucu tarafında (X-Site bilgisi olmadan) çağırır.
         const item = await WebXml.findById(req.params.id).lean();
 
         if (!item) {
@@ -1484,6 +1500,7 @@ router.get('/:id', async (req, res) => {
                 id: item._id,
                 name: item.name,
                 code: item.code,
+                site: docSite(item),
                 description: item.description,
                 apiUrl: item.apiUrl,
                 format: item.format,
@@ -1544,6 +1561,11 @@ router.put('/:id', async (req, res) => {
         if (dataPath !== undefined) updateData.dataPath = dataPath;
         if (notes !== undefined) updateData.notes = notes;
 
+        const owned = await WebXml.findById(req.params.id, { site: 1 }).lean();
+        if (!owned || !isOwnSite(req, owned)) {
+            return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
+        }
+
         const item = await WebXml.findByIdAndUpdate(
             req.params.id,
             { $set: updateData },
@@ -1593,6 +1615,11 @@ router.patch('/:id/status', async (req, res) => {
             });
         }
 
+        const owned = await WebXml.findById(req.params.id, { site: 1 }).lean();
+        if (!owned || !isOwnSite(req, owned)) {
+            return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
+        }
+
         const item = await WebXml.findByIdAndUpdate(
             req.params.id,
             { $set: { isActive } },
@@ -1633,7 +1660,7 @@ router.patch('/:id/status', async (req, res) => {
 router.post('/:id/sync', async (req, res) => {
     try {
         let integration = await WebXml.findById(req.params.id);
-        if (!integration) {
+        if (!integration || !isOwnSite(req, integration)) {
             return res.status(404).json({ success: false, message: 'Entegrasyon bulunamadı' });
         }
 
@@ -1782,6 +1809,21 @@ router.post('/:id/sync', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ürün listesi bulunamadı veya boş' });
         }
 
+        // Unver: STOK.DEPO array'inde DEPOID=0 (Tüm Depolar) entry'sini başa al (site kopyaları dahil)
+        if (/^unver/.test(integration.code)) {
+            products = products.map(p => {
+                const depoList = p?.STOK?.DEPO;
+                if (Array.isArray(depoList) && depoList.length > 1) {
+                    const tumDepolar = depoList.find(d => String(d?.DEPOID) === '0');
+                    if (tumDepolar) {
+                        const others = depoList.filter(d => String(d?.DEPOID) !== '0');
+                        p.STOK.DEPO = [tumDepolar, ...others];
+                    }
+                }
+                return p;
+            });
+        }
+
         const fieldMappings = integration.rules?.fieldMappings || [];
         const rules = integration.rules || {};
 
@@ -1915,7 +1957,7 @@ router.get('/:id/filter-options', async (req, res) => {
         const { id } = req.params;
 
         const webXml = await WebXml.findById(id);
-        if (!webXml) {
+        if (!webXml || !isOwnSite(req, webXml)) {
             return res.status(404).json({
                 success: false,
                 message: 'XML entegrasyonu bulunamadı'
@@ -1994,7 +2036,7 @@ router.put('/:id/rules', async (req, res) => {
         const { rules } = req.body;
 
         const webXml = await WebXml.findById(id);
-        if (!webXml) {
+        if (!webXml || !isOwnSite(req, webXml)) {
             return res.status(404).json({
                 success: false,
                 message: 'XML entegrasyonu bulunamadı'

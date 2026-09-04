@@ -77,6 +77,10 @@ router.use('/media', mediaRouter);
 const dashboardRoutes = require('./dashboard/ecommerce');
 router.use('/dashboard', dashboardRoutes);
 
+// Analizler: anasayfa ek widget'ları, Raporlar ve Canlı İzleme (site bazlı, kapı arkasında)
+const analyticsRoutes = require('./dashboard/analytics');
+router.use('/analytics', analyticsRoutes);
+
 // ============================================
 // ORDERS ROUTES
 // ============================================

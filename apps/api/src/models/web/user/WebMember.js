@@ -75,7 +75,11 @@ const webMemberSchema = new mongoose.Schema({
 
     // DIA cari eşleşmesi (ilk sipariş aktarımında doldurulur)
     diaCustomerKey: String,
-    diaCustomerCode: String
+    diaCustomerCode: String,
+
+    // Panelden verilen etiketler ve not (Üyeler sayfası)
+    adminTags: { type: [String], default: [] },
+    adminNote: { type: String, default: '' }
 
 }, {
     timestamps: true,

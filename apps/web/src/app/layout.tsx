@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { cookies, headers } from 'next/headers';
 
 import { getSiteBySlug, DEFAULT_SITE } from '@src/config/siteConfig';
+import { getGtmId } from '@src/config/tracking';
 
 // Font
 import { Inter } from "next/font/google";
@@ -37,9 +38,9 @@ import GlobalLoadingOverlay from '@components/common/GlobalLoadingOverlay';
 
 /* Modal */
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
+import MontageOfferModal from '@components/layout/Modals/MontageOffer';
 import TireSize from '@components/layout/Modals/TireSize';
 import Modal from '@components/ui/Modal';
-import LjaBannerPopup from '@components/lastikjantavm/Popup/BannerPopup';
 
 /* Theme Settings */
 import { getThemeSettings } from '@src/services/themeService';
@@ -99,10 +100,10 @@ export default async function RootLayout({
     <html lang="tr">
       <MetaHead />
       <body className={inter.variable}>
-        {/* Google Tag Manager (noscript) */}
+        {/* Google Tag Manager (noscript) — site bazlı container */}
         <noscript>
           <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-NVV296LW"
+            src={`https://www.googletagmanager.com/ns.html?id=${getGtmId(site)}`}
             height="0"
             width="0"
             style={{ display: 'none', visibility: 'hidden' }}
@@ -120,8 +121,8 @@ export default async function RootLayout({
                     <SiteFooter />
                     <Modal />
                     <TireSearchClient />
+                    {site === 'lastikjantavm' && <MontageOfferModal />}
                     <TireSize />
-                    {site === 'lastikjantavm' && <LjaBannerPopup />}
                   </FavouritesProvider>
                 </CartProvider>
               </BrandsProvider>

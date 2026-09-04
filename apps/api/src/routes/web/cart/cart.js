@@ -1,11 +1,50 @@
 const express = require('express');
-const { resolveSitePrice } = require('../../../utils/sitePricing');
+const jwt = require('jsonwebtoken');
+const { resolveSitePrice, resolveXmlShipping } = require('../../../utils/sitePricing');
 const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
 const router = express.Router();
 const WebCart = require('../../../models/web/cart/WebCart');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { loadMontagePrices, resolveMontageServicePrice } = require('../../../utils/montagePricing');
 const CartRules = require('../../../services/web/cart/CartRulesService');
+const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
+
+/**
+ * Ürünün kategori ayarına göre KDV gösterim biçimi (dahil / haric) ve oranı.
+ * Vitrinle sepetin aynı sonucu vermesi için ürün listeleme ile AYNI yardımcıyı kullanır.
+ */
+/**
+ * Giriş yapmış üyenin kimliğini sepete bağlar (admin "Sepeti" görünümü için).
+ * Token yoksa veya geçersizse SESSİZCE devam edilir — misafir sepet akışı asla etkilenmez.
+ */
+const attachMemberToCart = (req, cart) => {
+    try {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+        if (!token) return;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded?.id && String(cart.userId || '') !== String(decoded.id)) {
+            cart.userId = decoded.id;
+        }
+    } catch (e) {
+        // Misafir ya da süresi dolmuş token — yok say
+    }
+};
+
+/**
+ * Sepet kuralları (çap uyumu, önce montaj, adet kilidi, tek nokta) tüm sitelerde uygulanır.
+ * Montaj adedi lastik adedini aşamaz (daha azı alınabilir), diğer hizmetler montaj gerektirir (3 Eyl 2026 kararı).
+ */
+const cartRulesActive = () => true;
+const noReconcile = (items) => ({ items, changed: false, notes: [] });
+
+const getPriceDisplay = async (product, site) => {
+    const urun = { diaData: product.diaData };
+    fiyatAyariUygula(urun, await getFiyatAyarlari(site));
+    return {
+        priceDisplay: urun.priceDisplay === 'haric' ? 'haric' : 'dahil',
+        kdvRate: Number(urun.vatRate) > 0 ? Number(urun.vatRate) : 20
+    };
+};
 
 /**
  * Sepette gösterilecek birim fiyat
@@ -14,8 +53,12 @@ const CartRules = require('../../../services/web/cart/CartRulesService');
  */
 const getCartUnitPrice = (product, site) => {
     const isXml = product.syncInfo?.syncSource === 'xml_integration';
-    if (isXml && product.customData?.shippingIncludedPrice > 0) {
-        return product.customData.shippingIncludedPrice;
+    if (isXml) {
+        // Sitenin kendi kargo dahil fiyatı (varsayılan site global alan, diğerleri siteData.<site>)
+        const xmlShipping = resolveXmlShipping(product, site);
+        if (xmlShipping?.shippingIncludedPrice > 0) {
+            return xmlShipping.shippingIncludedPrice;
+        }
     }
     // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılan ayarda null döner
     const sitePrice = resolveSitePrice(product, site);
@@ -100,15 +143,22 @@ router.get('/:sessionId', async (req, res) => {
                 hasChanges = true;
             }
 
-            // Eski kalemlerde tür bilgisi yoksa üründen türet (kural motoru için)
-            const described = item.itemType && item.itemType !== 'product'
-                ? { itemType: item.itemType, rimSize: item.rimSize ?? null, rimRange: item.rimRange || null }
-                : CartRules.describeProduct(product);
+            // Tür bilgisi her okumada üründen türetilir (2.el lastik artık lastik sayılmaz gibi
+            // kural değişiklikleri eski sepet kalemlerine de işlesin)
+            const described = CartRules.describeProduct(product);
             if (described.itemType !== item.itemType) hasChanges = true;
+
+            // KDV gösterim ayarı her okumada tazelenir: kategori ayarı panelden değişebilir
+            // ve bu alan eklenmeden önce oluşmuş eski sepetlerde hiç yoktur
+            const kdvGosterim = await getPriceDisplay(product, req.site);
+            if (item.priceDisplay !== kdvGosterim.priceDisplay || item.kdvRate !== kdvGosterim.kdvRate) {
+                hasChanges = true;
+            }
 
             updatedItems.push({
                 ...item.toObject(),
                 ...described,
+                ...kdvGosterim,
                 unitPrice: currentPrice,
                 originalPrice: currentOriginalPrice,
                 productImage: currentImage,
@@ -118,8 +168,8 @@ router.get('/:sessionId', async (req, res) => {
             });
         }
 
-        // Kural tutarlılığı: montaj adedi = lastik adedi, montajsız diğer hizmetler düşer
-        const reconciled = CartRules.reconcile(updatedItems);
+        // Kural tutarlılığı: montaj adedi lastik adedi tavanına kırpılır, montajsız diğer hizmetler düşer
+        const reconciled = cartRulesActive(req) ? CartRules.reconcile(updatedItems) : noReconcile(updatedItems);
         if (hasChanges || reconciled.changed) {
             cart.items = reconciled.items;
             cart.lastActivity = new Date();
@@ -178,6 +228,9 @@ router.post('/add', async (req, res) => {
             cart = new WebCart({ sessionId, items: [] });
         }
 
+        // Üye giriş yaptıysa sepeti üyeye bağla (misafirse hiçbir şey değişmez)
+        attachMemberToCart(req, cart);
+
         // Ürün zaten sepette mi?
         const existingIndex = cart.items.findIndex(item => item.productKey === productKey);
         const originalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
@@ -185,16 +238,22 @@ router.post('/add', async (req, res) => {
         // Sepet kuralları (montaj: lastiğe uygun çap + lastik adedi; diğer hizmet: önce montaj)
         const described = CartRules.describeProduct(product);
         const plainItems = cart.items.map(i => i.toObject());
-        const rule = CartRules.validateAdd(plainItems.filter((_, idx) => idx !== existingIndex), { ...described, montagePointId, quantity });
+        const rulesOn = cartRulesActive(req);
+        const rule = rulesOn
+            ? CartRules.validateAdd(plainItems.filter((_, idx) => idx !== existingIndex), { ...described, montagePointId, quantity })
+            : { quantity };
         if (rule.error) {
             return res.status(400).json({ success: false, message: rule.error });
         }
-        const forcedQuantity = described.itemType === 'montage' && CartRules.hasTires(plainItems) ? rule.quantity : null;
+        // Montaj + lastikli sepette adet tavanı: mevcut + eklenen adet lastik adedini aşamaz
+        const montageCap = rulesOn && described.itemType === 'montage' && CartRules.hasTires(plainItems)
+            ? CartRules.tireCountForRange(plainItems, described.rimRange)
+            : null;
 
         // Stok tavanı kontrolü: sepetteki mevcut + eklenecek adet stoğu aşamaz
         const stock = product.diaData?.gercek_stok ?? 0;
         const currentQty = existingIndex > -1 ? cart.items[existingIndex].quantity : 0;
-        const targetQty = forcedQuantity !== null ? forcedQuantity : currentQty + quantity;
+        const targetQty = montageCap !== null ? Math.min(currentQty + quantity, montageCap) : currentQty + quantity;
         if (targetQty > stock) {
             return res.status(400).json({
                 success: false,
@@ -224,13 +283,13 @@ router.post('/add', async (req, res) => {
                 quantity: targetQty,
                 unitPrice,
                 originalPrice,
-                kdvRate: 20,
+                ...(await getPriceDisplay(product, req.site)),
                 ...described
             });
         }
 
-        // Lastik eklendiyse montaj adedini eşitle
-        const reconciled = CartRules.reconcile(cart.items.map(i => i.toObject()));
+        // Montaj adedi lastik adedi tavanını aşıyorsa kırpılır
+        const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
 
         cart.lastActivity = new Date();
@@ -259,14 +318,17 @@ router.put('/update', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Sepet bulunamadi' });
         }
 
+        // Üye giriş yaptıysa sepeti üyeye bağla (misafirse hiçbir şey değişmez)
+        attachMemberToCart(req, cart);
+
         const itemIndex = cart.items.findIndex(item => item.productKey === productKey);
         if (itemIndex === -1) {
             return res.status(404).json({ success: false, message: 'Urun sepette bulunamadi' });
         }
 
-        // Lastikli sepette montaj adedi elle değiştirilemez
+        // Lastikli sepette montaj adedi lastik adedini aşamaz
         const plainItems = cart.items.map(i => i.toObject());
-        const rule = CartRules.validateQuantity(plainItems, plainItems[itemIndex]);
+        const rule = cartRulesActive(req) ? CartRules.validateQuantity(plainItems, plainItems[itemIndex], quantity) : {};
         if (rule.error) {
             return res.status(400).json({ success: false, message: rule.error });
         }
@@ -283,8 +345,8 @@ router.put('/update', async (req, res) => {
 
         cart.items[itemIndex].quantity = quantity;
 
-        // Lastik adedi değiştiyse montaj adedini eşitle
-        const reconciled = CartRules.reconcile(cart.items.map(i => i.toObject()));
+        // Lastik adedi azaldıysa montaj adedi tavana kırpılır
+        const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
         cart.lastActivity = new Date();
 
@@ -307,16 +369,32 @@ router.delete('/remove', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Sepet bulunamadi' });
         }
 
+        const removedTire = cart.items.find(item => item.productKey === productKey && item.itemType === 'tire');
         cart.items = cart.items.filter(item => item.productKey !== productKey);
 
-        // Montaj çıktıysa diğer hizmetler düşer; lastik çıktıysa montaj adedi eşitlenir
-        const reconciled = CartRules.reconcile(cart.items.map(i => i.toObject()));
+        // Lastik silinince ona bağlı montaj da silinir (lastik ve montaj birbirine bağlıdır)
+        const removalNotes = [];
+        if (cartRulesActive(req) && removedTire && removedTire.rimSize !== null && removedTire.rimSize !== undefined) {
+            const remaining = cart.items.map(i => i.toObject());
+            const dropKeys = remaining
+                .filter(m => m.itemType === 'montage' && m.rimRange
+                    && removedTire.rimSize >= m.rimRange.min && removedTire.rimSize <= m.rimRange.max
+                    && CartRules.tireCountForRange(remaining, m.rimRange) === 0)
+                .map(m => m.productKey);
+            if (dropKeys.length > 0) {
+                cart.items = cart.items.filter(i => !dropKeys.includes(i.productKey));
+                removalNotes.push('Lastik silindiği için bağlı montaj hizmeti de sepetten çıkarıldı');
+            }
+        }
+
+        // Montaj çıktıysa diğer hizmetler düşer; lastik azaldıysa montaj adedi tavana kırpılır
+        const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
         cart.lastActivity = new Date();
 
         await cart.save();
 
-        res.json({ success: true, data: cart, message: 'Urun sepetten kaldirildi', notes: reconciled.notes });
+        res.json({ success: true, data: cart, message: 'Urun sepetten kaldirildi', notes: [...removalNotes, ...reconciled.notes] });
     } catch (error) {
         console.error('Cart remove error:', error);
         res.status(500).json({ success: false, message: error.message });

@@ -6,14 +6,17 @@ const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 class XmlShippingPriceUpdaterService {
 
     /**
-     * Tüm XML kaynaklı ürünlerin kargo dahil fiyatlarını günceller
-     * - Aktif XML kargosunu çeker
-     * - Her ürün için 1 adetlik kargo hesaplar
-     * - bulkWrite ile DB'ye yazar
+     * Sitenin XML kaynaklı ürünlerinin kargo dahil fiyatlarını günceller
+     * - Sitenin aktif XML kargosunu çeker
+     * - Her ürün için 1 adetlik kargo hesaplar (temel fiyat: varsayılan sitede webPrice,
+     *   diğer sitelerde customData.siteData.<site>.xmlPrice)
+     * - Varsayılan site global customData alanlarına, diğer siteler siteData.<site>
+     *   altına yazar (ortak üründe sahibin değerleri ezilmez)
      */
     async updateAll(site = DEFAULT_SITE) {
         const startTime = Date.now();
         const slug = SITES[site] ? site : DEFAULT_SITE;
+        const isDefaultSite = slug === DEFAULT_SITE;
         console.log(`[XmlShippingPriceUpdater] Başlıyor... (site: ${slug})`);
 
         try {
@@ -25,25 +28,33 @@ class XmlShippingPriceUpdaterService {
             }).sort({ webOrder: 1 }).lean();
 
             if (!xmlCargo) {
-                console.log('[XmlShippingPriceUpdater] Aktif XML kargosu yok, işlem atlandı');
+                console.log(`[XmlShippingPriceUpdater] Aktif XML kargosu yok (${slug}), işlem atlandı`);
                 return { success: false, message: 'Aktif XML kargosu yok', updated: 0 };
             }
 
-            // 2. Tüm XML ürünleri çek
+            // 2. Sitenin XML ürünlerini çek
             const xmlProducts = await WebProduct.find(
-                { 'syncInfo.syncSource': 'xml_integration' },
+                { 'syncInfo.syncSource': 'xml_integration', sites: slug },
                 {
                     _key: 1,
                     'diaData.anabirimdesi': 1,
-                    'customData.webPrice': 1
+                    'customData.webPrice': 1,
+                    [`customData.siteData.${slug}.xmlPrice`]: 1
                 }
             ).lean();
 
-            console.log(`[XmlShippingPriceUpdater] ${xmlProducts.length} XML ürün işlenecek`);
+            console.log(`[XmlShippingPriceUpdater] ${xmlProducts.length} XML ürün işlenecek (${slug})`);
 
             if (xmlProducts.length === 0) {
                 return { success: true, updated: 0, duration: 0 };
             }
+
+            const includedField = isDefaultSite
+                ? 'customData.shippingIncludedPrice'
+                : `customData.siteData.${slug}.shippingIncludedPrice`;
+            const perUnitField = isDefaultSite
+                ? 'customData.shippingPerUnit'
+                : `customData.siteData.${slug}.shippingPerUnit`;
 
             // 3. Her ürün için 1 adetlik kargo hesapla
             const bulkOps = [];
@@ -51,7 +62,11 @@ class XmlShippingPriceUpdaterService {
 
             for (const product of xmlProducts) {
                 const desi = product.diaData?.anabirimdesi || 0;
-                const webPrice = product.customData?.webPrice || 0;
+                // Temel satış fiyatı: sitenin kendi XML fiyatı; sahip sitede webPrice
+                const siteXmlPrice = parseFloat(product.customData?.siteData?.[slug]?.xmlPrice) || 0;
+                const webPrice = isDefaultSite
+                    ? (product.customData?.webPrice || 0)
+                    : (siteXmlPrice > 0 ? siteXmlPrice : (product.customData?.webPrice || 0));
 
                 // 1 adetlik kargo hesapla
                 const shippingPerUnit = CargoCalculatorService.calculateShippingPrice(desi, xmlCargo);
@@ -67,8 +82,8 @@ class XmlShippingPriceUpdaterService {
                         filter: { _key: product._key },
                         update: {
                             $set: {
-                                'customData.shippingIncludedPrice': shippingIncludedPrice,
-                                'customData.shippingPerUnit': Math.round(finalShippingPerUnit * 100) / 100
+                                [includedField]: shippingIncludedPrice,
+                                [perUnitField]: Math.round(finalShippingPerUnit * 100) / 100
                             }
                         }
                     }

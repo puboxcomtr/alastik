@@ -34,6 +34,18 @@ router.put('/', async (req, res) => {
     }
 });
 
+// Sitedeki DIA üst kategori adlarını getir (hariç tutma seçenekleri için)
+router.get('/dia-categories', async (req, res) => {
+    try {
+        const db = require('mongoose').connection.db;
+        const categories = await db.collection('webproducts')
+            .distinct('diaData.m_kategoriler.kategori_aciklama_1', { sites: req.site });
+        res.json({ success: true, data: categories.filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // Mevcut fiyat alanlarını getir
 router.get('/price-fields', async (req, res) => {
     try {

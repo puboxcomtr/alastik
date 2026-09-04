@@ -1,6 +1,8 @@
 'use client';
 
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '@src/config/routes';
 import { useState } from "react";
 import Tooltip from '@mui/material/Tooltip';
 import Rating from '@mui/material/Rating';
@@ -19,6 +21,8 @@ import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 import {
     getProductUrl,
     getProductPrice,
+    getProductType,
+    getDisplayPrice,
     getProductOriginalPrice,
     hasProductDiscount,
     getProductImage,
@@ -35,6 +39,7 @@ import { toast } from 'react-toastify';
 
 export default function ProductCard({ product }: ProductCardProps) {
     const [adding, setAdding] = useState(false);
+    const router = useRouter();
     const { addToCart, items } = useCart();
     const { toggleFavourite, isFavourite } = useFavourites();
     const { definition } = useDefinition();
@@ -64,7 +69,10 @@ export default function ProductCard({ product }: ProductCardProps) {
                 return;
             }
 
-            await addToCart(product._key, 1);
+            // Lastikte toast yerine montaj noktası seçimine yönlendirilir (ürün detayıyla aynı davranış)
+            const isTire = getProductType(product) === 'LASTIK';
+            const added = await addToCart(product._key, 1, isTire ? '' : undefined);
+            if (added && isTire) { router.push(ROUTES.MONTAGE_SELECT); return; }
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');
@@ -79,6 +87,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
+    // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
+    const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
@@ -227,10 +237,10 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 </del>
                             )}
                             <span className="fw-bold">
-                                {price.toLocaleString('tr-TR', {
+                                {gosterim.value.toLocaleString('tr-TR', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
-                                })} TL
+                                })} TL{gosterim.suffix}
                             </span>
                         </div>
                     </div>

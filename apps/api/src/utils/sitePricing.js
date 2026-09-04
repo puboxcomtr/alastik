@@ -13,10 +13,18 @@
  * dönüşüm, yanıt üzerindeki fiyat4 alanı ezilerek yapılır; üstü çizili liste fiyatı (fiyat1)
  * değişmez → satış fiyatı düşükse indirim etiketi kendiliğinden görünür.
  * Varsayılan ayarda (fiyat4 + none) hiçbir şeye dokunulmaz — eski davranış birebir.
+ *
+ * İstisna: 'Hizmetlerimiz' kategorisi site kuralına girmez; DIA'daki KDV dahil satış
+ * fiyatı (fiyat4) her sitede aynen gösterilir (1 Eyl 2026 kararı).
+ * İstisna 2: XML kaynaklı ürünler (syncInfo.syncSource='xml_integration') site kuralına
+ * girmez; fiyat4 zaten XML fiyat kurallarıyla site bazlı hesaplanır (1 Eyl 2026).
  */
 
 const PRICE_FIELDS = ['fiyat1', 'fiyat2', 'fiyat3', 'fiyat4'];
 const DISCOUNT_MODES = ['none', 'b2c_oran'];
+// Hizmet kategorisi site fiyat kuralından muaftır: DIA'daki KDV dahil satış fiyatı (fiyat4) aynen gösterilir
+const { SERVICE_VAT_RULE } = require('../config/diaFilters');
+const { DEFAULT_SITE } = require('../config/sites');
 const DEFAULT_PRICING = Object.freeze({ priceField: 'fiyat4', discountMode: 'none' });
 const CONFIG_TTL_MS = 60 * 1000;
 // Geç bağlama: ShippingRuleService model yükler, döngüsel require riskine karşı kullanım anında alınır
@@ -75,6 +83,10 @@ function usesCustomPricing(site) {
     return !isDefaultPricing(getPricingConfig(site));
 }
 
+function isServiceProduct(dia) {
+    return (dia.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1);
+}
+
 function parseDiscountRate(dia) {
     const m = String(dia.birimindirimorani || '').match(/([0-9]+(?:\.[0-9]+)?)/);
     let oran = m ? parseFloat(m[1]) || 0 : 0;
@@ -88,10 +100,18 @@ function parseDiscountRate(dia) {
  * doc: WebProduct (diaData'lı) veya ham DiaStock dokümanı olabilir.
  */
 function resolveSitePrice(doc, site) {
+    // XML kaynaklı ürün: sitenin kendi XML fiyatı (siteData.<site>.xmlPrice) varsa o gösterilir,
+    // yoksa sahibin XML kural fiyatı (fiyat4) aynen kalır
+    if (doc?.syncInfo?.syncSource === 'xml_integration') {
+        const siteXml = parseFloat(doc?.customData?.siteData?.[site]?.xmlPrice);
+        return siteXml > 0 ? round2(siteXml) : null;
+    }
+
     const cfg = getPricingConfig(site);
     if (isDefaultPricing(cfg)) return null;
 
     const dia = doc?.diaData || doc || {};
+    if (isServiceProduct(dia)) return null;
     const birim = (dia.m_birimler || [])[0];
     const base = parseFloat(birim?.[cfg.priceField]) || 0;
     if (base <= 0) return null;
@@ -101,6 +121,23 @@ function resolveSitePrice(doc, site) {
         if (oran > 0 && oran < 100) return round2(base * (1 - oran / 100));
     }
     return round2(base);
+}
+
+/**
+ * XML üründe sitenin kargo dahil fiyat alanları.
+ * Varsayılan site global customData alanlarını (shippingIncludedPrice/shippingPerUnit),
+ * diğer siteler customData.siteData.<site> altındaki kendi alanlarını kullanır.
+ * XML olmayan üründe null döner.
+ */
+function resolveXmlShipping(doc, site) {
+    if (doc?.syncInfo?.syncSource !== 'xml_integration') return null;
+    const src = site === DEFAULT_SITE ? doc?.customData : doc?.customData?.siteData?.[site];
+    const included = parseFloat(src?.shippingIncludedPrice) || 0;
+    const perUnit = parseFloat(src?.shippingPerUnit) || 0;
+    return {
+        shippingIncludedPrice: included > 0 ? round2(included) : 0,
+        shippingPerUnit: perUnit > 0 ? round2(perUnit) : 0
+    };
 }
 
 /**
@@ -118,6 +155,16 @@ function applySitePricing(doc, site) {
         if (!doc.diaData && typeof doc.fiyat4 !== 'undefined') {
             doc.fiyat4 = price;
         }
+    }
+    // XML üründe varsayılan site dışı: global kargo dahil / webPrice alanları sahibin (varsayılan
+    // sitenin) değerlerini taşır; vitrin bu alanları öncelikli okuduğundan sitenin kendi
+    // değerleriyle ezilir (yoksa 0 — satış fiyatına düşülür)
+    if (doc.syncInfo?.syncSource === 'xml_integration' && site !== DEFAULT_SITE) {
+        const ship = resolveXmlShipping(doc, site);
+        doc.customData = doc.customData || {};
+        doc.customData.shippingIncludedPrice = ship.shippingIncludedPrice;
+        doc.customData.shippingPerUnit = ship.shippingPerUnit;
+        if (price !== null) doc.customData.webPrice = price;
     }
     // Kural tabanlı kargo payı (Kargo Tanımları): fiyata gömülür, müşteri "ücretsiz kargo" görür
     if (doc.diaData) applyShippingToProduct(doc, site);
@@ -137,8 +184,18 @@ function applySitePricingMany(docs, site) {
  */
 function salePriceExpr(site) {
     const fiyat4 = { $ifNull: [{ $arrayElemAt: ['$diaData.m_birimler.fiyat4', 0] }, 0] };
+
+    // XML kaynaklı üründe sitenin kendi XML fiyatı (siteData.<site>.xmlPrice) öncelikli
+    const isXml = { $eq: [{ $ifNull: ['$syncInfo.syncSource', ''] }, 'xml_integration'] };
+    const siteXmlPrice = {
+        $convert: { input: `$customData.siteData.${site}.xmlPrice`, to: 'double', onError: 0, onNull: 0 }
+    };
+    const withXmlOverride = (inner) => ({
+        $cond: [{ $and: [isXml, { $gt: [siteXmlPrice, 0] }] }, siteXmlPrice, inner]
+    });
+
     const cfg = getPricingConfig(site);
-    if (isDefaultPricing(cfg)) return fiyat4;
+    if (isDefaultPricing(cfg)) return withXmlOverride(fiyat4);
 
     const base = { $ifNull: [{ $arrayElemAt: [`$diaData.m_birimler.${cfg.priceField}`, 0] }, 0] };
 
@@ -171,10 +228,59 @@ function salePriceExpr(site) {
         };
     }
 
+    const isService = {
+        $in: [SERVICE_VAT_RULE.categoryLevel1, { $ifNull: ['$diaData.m_kategoriler.kategori_aciklama_1', []] }]
+    };
+    // Hizmet ve XML kaynaklı ürünler site kuralına girmez (fiyat4 = kural sonucu / DIA fiyatı)
+    return withXmlOverride({
+        $cond: [
+            { $or: [isService, isXml] },
+            fiyat4,
+            {
+                $let: {
+                    vars: { base, f4: fiyat4 },
+                    in: { $cond: [{ $lte: ['$$base', 0] }, '$$f4', priced] }
+                }
+            }
+        ]
+    });
+}
+
+/**
+ * Liste sıralamasında kullanılan fiyat ifadesi: kargo dahil site fiyatı > (varsayılan
+ * sitede webPrice) > satış fiyatı. Varsayılan site dışında global webPrice /
+ * shippingIncludedPrice alanları sahibin değerleri olduğundan atlanır; XML ürünün
+ * kargo dahil fiyatı customData.siteData.<site> altından okunur.
+ */
+function sortPriceExpr(site) {
+    const sale = salePriceExpr(site);
+    if (site === DEFAULT_SITE) {
+        return {
+            $let: {
+                vars: {
+                    shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
+                    webPrice: { $ifNull: ['$customData.webPrice', 0] },
+                    salePrice: sale
+                },
+                in: {
+                    $cond: [
+                        { $gt: ['$$shipPrice', 0] },
+                        '$$shipPrice',
+                        { $cond: [{ $gt: ['$$webPrice', 0] }, '$$webPrice', '$$salePrice'] }
+                    ]
+                }
+            }
+        };
+    }
     return {
         $let: {
-            vars: { base, f4: fiyat4 },
-            in: { $cond: [{ $lte: ['$$base', 0] }, '$$f4', priced] }
+            vars: {
+                shipPrice: {
+                    $convert: { input: `$customData.siteData.${site}.shippingIncludedPrice`, to: 'double', onError: 0, onNull: 0 }
+                },
+                salePrice: sale
+            },
+            in: { $cond: [{ $gt: ['$$shipPrice', 0] }, '$$shipPrice', '$$salePrice'] }
         }
     };
 }
@@ -217,9 +323,11 @@ module.exports = {
     getPricingConfig,
     usesCustomPricing,
     resolveSitePrice,
+    resolveXmlShipping,
     applySitePricing,
     applySitePricingMany,
     salePriceExpr,
+    sortPriceExpr,
     pricedCondition,
     priceRangeCondition
 };

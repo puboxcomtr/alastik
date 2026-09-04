@@ -91,6 +91,11 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
         >
           {dictionary['navigation'].dashboards}
         </MenuItem>
+        <SubMenu label={dictionary['navigation'].analytics} icon={<i className='ri-bar-chart-2-line' />}>
+          <MenuItem href={`/${locale}/apps/analytics/reports`}>{dictionary['navigation'].reports}</MenuItem>
+          <MenuItem href={`/${locale}/apps/analytics/live`}>{dictionary['navigation'].live_monitoring}</MenuItem>
+          <MenuItem href={`/${locale}/apps/analytics/seo`}>{dictionary['navigation'].seo_analysis}</MenuItem>
+        </SubMenu>
 
         <MenuSection label={dictionary['navigation'].seperator}>
           <SubMenu label={dictionary['navigation'].catalog} icon={<i className='ri-shopping-bag-3-line' />}>
@@ -119,7 +124,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           </SubMenu>
           <SubMenu label={dictionary['navigation'].user_management} icon={<i className='ri-user-2-line' />}>
             <MenuItem href={`/${locale}/apps/user/list`}>{dictionary['navigation'].user}</MenuItem>
-            <MenuItem href={`/${locale}/apps/members/list`}>Site Üyeleri</MenuItem>
             <MenuItem href={`/${locale}/apps/support/list`}>{dictionary['navigation'].support}</MenuItem>
           </SubMenu>
           <MenuItem icon={<i className='ri-arrow-left-right-line' />} href={`/${locale}/apps/redirects`}>Yönlendirmeler</MenuItem>

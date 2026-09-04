@@ -71,6 +71,18 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
         if (!model || !modelKodu || model.toLowerCase() === 'yok' || modelKodu.toLowerCase() === 'yok') return;
         setEbatDialogOpen(true);
     };
+
+    // AB lastik etiketi rozetleri: değeri boş olanlar hiç gösterilmez (2.El ürünlerde genelde boştur)
+    const euLabelValue = (name: string) => {
+        const value = getProductFeature(product, name);
+        return value && value !== '-' ? value : '';
+    };
+    const euLabelBadges = [
+        { title: 'Yakıt Verimliliği', icon: 'ri-gas-station-fill', value: euLabelValue('Yakıt Verimliliği') },
+        { title: 'Islak Zeminde Frenleme', icon: 'ri-showers-fill', value: euLabelValue('Islak Zeminde Frenleme') },
+        { title: 'Gürültü Seviyesi', icon: 'ri-volume-up-fill', value: euLabelValue('Gürültü Seviyesi') },
+    ];
+
     return (
         <>
             <Grid container>
@@ -170,53 +182,25 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                             <Divider sx={{ my: 2 }} />
                         </Grid>
                         <Grid size={10}>
-                            {isLastik(product) && (
+                            {isLastik(product) && euLabelBadges.some(b => b.value) && (
                                 <div className="d-flex gap-3">
-                                    <p>
-                                        <Tooltip title='Yakıt Verimliliği' arrow placement="top">
-                                            <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
-                                                <i className="ri-gas-station-fill" style={{ fontSize: '18px', color: '#000' }}></i>
-                                                <span
-                                                    style={{
-                                                        textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
-                                                        fontSize: '14px',
-                                                        color: '#FFF'
-                                                    }}>
-                                                    {getProductFeature(product, 'Yakıt Verimliliği') || '-'}
+                                    {euLabelBadges.map(badge => badge.value && (
+                                        <p key={badge.title}>
+                                            <Tooltip title={badge.title} arrow placement="top">
+                                                <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
+                                                    <i className={badge.icon} style={{ fontSize: '18px', color: '#000' }}></i>
+                                                    <span
+                                                        style={{
+                                                            textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
+                                                            fontSize: '14px',
+                                                            color: '#FFF'
+                                                        }}>
+                                                        {badge.value}
+                                                    </span>
                                                 </span>
-                                            </span>
-                                        </Tooltip>
-                                    </p>
-                                    <p>
-                                        <Tooltip title='Islak Zeminde Frenleme' arrow placement="top">
-                                            <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
-                                                <i className="ri-showers-fill" style={{ fontSize: '18px', color: '#000' }}></i>
-                                                <span
-                                                    style={{
-                                                        textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
-                                                        fontSize: '14px',
-                                                        color: '#FFF'
-                                                    }}>
-                                                    {getProductFeature(product, 'Islak Zeminde Frenleme') || '-'}
-                                                </span>
-                                            </span>
-                                        </Tooltip>
-                                    </p>
-                                    <p>
-                                        <Tooltip title='Gürültü Seviyesi' arrow placement="top">
-                                            <span className="cursor-pointer d-flex gap-1 align-items-center badge text-body-emphasis bg-body-secondary">
-                                                <i className="ri-volume-up-fill" style={{ fontSize: '18px', color: '#000' }}></i>
-                                                <span
-                                                    style={{
-                                                        textShadow: '0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000, 0px 0px 1px #000',
-                                                        fontSize: '14px',
-                                                        color: '#FFF'
-                                                    }}>
-                                                    {getProductFeature(product, 'Gürültü Seviyesi') || '-'}
-                                                </span>
-                                            </span>
-                                        </Tooltip>
-                                    </p>
+                                            </Tooltip>
+                                        </p>
+                                    ))}
                                 </div>
                             )}
                             <ul className="p-0 m-0 gap-3">

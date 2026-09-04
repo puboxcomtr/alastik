@@ -18,7 +18,7 @@ import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Tooltip from '@mui/material/Tooltip'
 import { toast } from 'react-toastify'
-import type { DiaAktarimSettings, DiaAktarimMode, DiaAktarimFilterType, DiaAktarimProduct, DiaAktarimNamedItem } from '@/types/apps/diaTypes'
+import type { DiaAktarimSettings, DiaZorunluDahilSettings, DiaAktarimMode, DiaAktarimFilterType, DiaAktarimProduct, DiaAktarimNamedItem } from '@/types/apps/diaTypes'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 // Aktarım (ürün filtreleme) ayarları — değerler parent'ın settings state'inde tutulur,
@@ -26,11 +26,15 @@ import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 type SearchResult = DiaAktarimProduct & { qty: number }
 
 interface Props {
-  value: DiaAktarimSettings
-  onChange: (value: DiaAktarimSettings) => void
+  value: DiaAktarimSettings | DiaZorunluDahilSettings
+  onChange: (value: any) => void
+  // "Her Zaman Dahil" kartında mod seçici gizlenir; liste her zaman dahil etme anlamındadır
+  hideMode?: boolean
+  title?: string
+  selectionHint?: string
 }
 
-export default function TransferSettingsCard({ value, onChange }: Props) {
+export default function TransferSettingsCard({ value, onChange, hideMode = false, title, selectionHint }: Props) {
   // Ürün arama (yalnızca görüntüleme amaçlı yerel state)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -43,7 +47,8 @@ export default function TransferSettingsCard({ value, onChange }: Props) {
   const [listLoading, setListLoading] = useState(false)
   const [listFilter, setListFilter] = useState('')
 
-  const { mode, filterType } = value
+  const filterType = value.filterType
+  const mode: DiaAktarimMode = hideMode ? 'dahil' : (value as DiaAktarimSettings).mode
   const selectedProducts = value.products || []
   const selectedCategories = value.categories || []
   const selectedBrands = value.brands || []
@@ -54,7 +59,7 @@ export default function TransferSettingsCard({ value, onChange }: Props) {
     if (filterType === 'marka' && brands.length === 0) loadList('marka')
   }, [mode, filterType])
 
-  const update = (patch: Partial<DiaAktarimSettings>) => {
+  const update = (patch: Partial<DiaAktarimSettings> | Partial<DiaZorunluDahilSettings>) => {
     onChange({ ...value, ...patch })
   }
 
@@ -149,26 +154,28 @@ export default function TransferSettingsCard({ value, onChange }: Props) {
   return (
     <Card>
       <CardHeader
-        title="Aktarım Ayarları"
-        subheader="DİA'dan aktarılan ürünlerin sitede gösterim filtresi"
+        title={title || 'Aktarım Ayarları'}
+        subheader={selectionHint || "DİA'dan aktarılan ürünlerin sitede gösterim filtresi"}
       />
       <CardContent>
         <Grid container spacing={5}>
-          <Grid size={{ xs: 6 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="aktarim-modu-label">Aktarım Modu</InputLabel>
-              <Select
-                labelId="aktarim-modu-label"
-                label="Aktarım Modu"
-                value={mode}
-                onChange={e => update({ mode: e.target.value as DiaAktarimMode })}
-              >
-                <MenuItem value="tumu">Tüm Ürünler</MenuItem>
-                <MenuItem value="dahil">Seçilenleri Dahil Et</MenuItem>
-                <MenuItem value="haric">Seçilenleri Hariç Bırak</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+          {!hideMode && (
+            <Grid size={{ xs: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="aktarim-modu-label">Aktarım Modu</InputLabel>
+                <Select
+                  labelId="aktarim-modu-label"
+                  label="Aktarım Modu"
+                  value={mode}
+                  onChange={e => update({ mode: e.target.value as DiaAktarimMode })}
+                >
+                  <MenuItem value="tumu">Tüm Ürünler</MenuItem>
+                  <MenuItem value="dahil">Seçilenleri Dahil Et</MenuItem>
+                  <MenuItem value="haric">Seçilenleri Hariç Bırak</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
           {mode !== 'tumu' && (
             <>
               <Grid size={{ xs: 6 }}>
@@ -194,9 +201,11 @@ export default function TransferSettingsCard({ value, onChange }: Props) {
                 <Typography variant="subtitle2" color="text.secondary">
                   {filterType === 'urun' ? 'Ürün Seçimi' : filterType === 'kategori' ? 'Kategori Seçimi' : 'Marka Seçimi'} ({selectedCount} seçili)
                   {' — '}
-                  {mode === 'dahil'
-                    ? 'seçilenler, filtre kurallarına takılsa bile sitede gösterilir.'
-                    : 'seçilenler sitede gösterilmez.'}
+                  {hideMode
+                    ? 'ürün, kategori ve marka listelerinin tamamı birlikte geçerlidir; DİA\'da pasif olan kartlar yine aktarılmaz.'
+                    : mode === 'dahil'
+                      ? 'seçilenler, filtre kurallarına takılsa bile sitede gösterilir.'
+                      : 'seçilenler sitede gösterilmez.'}
                 </Typography>
               </Grid>
 

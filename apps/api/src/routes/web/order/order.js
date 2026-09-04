@@ -5,7 +5,7 @@ const WebAddress = require('../../../models/web/address/WebAddress');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
-const { resolveSitePrice } = require('../../../utils/sitePricing');
+const { resolveSitePrice, resolveXmlShipping } = require('../../../utils/sitePricing');
 const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
 const { loadMontagePrices } = require('../../../utils/montagePricing');
 
@@ -19,8 +19,9 @@ const calculateOrderPricing = async (cartItems, site) => {
     }
 
     const keys = cartItems.map(i => String(i.productKey));
+    // Site filtresi: yalnız bu sitede satılan ürünler siparişe girer (siteler arası sızmayı engeller)
     const products = await WebProduct.find(
-        { _key: { $in: keys } },
+        { _key: { $in: keys }, sites: site },
         {
             _key: 1,
             'diaData.stokkartkodu': 1,
@@ -30,6 +31,8 @@ const calculateOrderPricing = async (cartItems, site) => {
             'diaData.birimindirimorani': 1,
             'customData.webPrice': 1,
             'customData.shippingPerUnit': 1,
+            // Site bazlı XML fiyatı ve kargo payı (siteData.<site>.xmlPrice/shippingPerUnit)
+            'customData.siteData': 1,
             'syncInfo.syncSource': 1,
             // Kural tabanlı kargo payı için (ürün/marka/kategori/ebat/desi eşleşmesi)
             'diaData.marka': 1,
@@ -54,7 +57,11 @@ const calculateOrderPricing = async (cartItems, site) => {
 
     for (const cartItem of cartItems) {
         const product = productMap[String(cartItem.productKey)];
-        if (!product) continue;
+        if (!product) {
+            // Ürün bu sitede satılmıyor veya katalogdan kalkmış: kalem siparişe alınmaz
+            console.warn(`[Sipariş] Kalem atlandı — ürün ${cartItem.productKey} ${site} sitesinde bulunamadı`);
+            continue;
+        }
 
         const quantity = parseInt(cartItem.quantity) || 1;
         const isXml = product.syncInfo?.syncSource === 'xml_integration';
@@ -62,17 +69,20 @@ const calculateOrderPricing = async (cartItems, site) => {
         const montagePrice = montagePrices.get(`${montagePointId}:${cartItem.productKey}`);
 
         // Kargosuz birim fiyat
-        // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılanda webPrice > fiyat4
+        // Site fiyat kuralı önceliklidir (XML üründe siteData.<site>.xmlPrice, panel kuralı);
+        // yoksa webPrice > fiyat4 (global webPrice sahip sitenin fiyatıdır, sitePrice varken kullanılmaz)
         const sitePrice = resolveSitePrice(product, site);
         const unitPrice = typeof montagePrice === 'number'
             ? montagePrice
-            : (product.customData?.webPrice ||
-                (sitePrice !== null ? sitePrice : product.diaData?.m_birimler?.[0]?.fiyat4) ||
-                0);
+            : (sitePrice !== null
+                ? sitePrice
+                : (product.customData?.webPrice || product.diaData?.m_birimler?.[0]?.fiyat4 || 0));
 
-        // Kargo payı: XML ürünlerde senkronda yazılan sabit değer; stoklu ürünlerde Kargo Tanımları kuralları
+        // Kargo payı: XML ürünlerde senkronda yazılan site bazlı sabit değer; stoklu ürünlerde Kargo Tanımları kuralları
         const ruleShipping = isXml ? null : resolveUnitShipping(product, site, unitPrice);
-        const shippingPerUnit = isXml ? (product.customData?.shippingPerUnit || 0) : (ruleShipping?.shippingPerUnit || 0);
+        const shippingPerUnit = isXml
+            ? (resolveXmlShipping(product, site)?.shippingPerUnit || 0)
+            : (ruleShipping?.shippingPerUnit || 0);
 
         const totalPrice = Math.round(unitPrice * quantity * 100) / 100;
         const shippingTotal = Math.round(shippingPerUnit * quantity * 100) / 100;

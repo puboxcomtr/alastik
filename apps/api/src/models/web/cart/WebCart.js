@@ -10,6 +10,9 @@ const cartItemSchema = new mongoose.Schema({
     unitPrice: { type: Number, required: true },
     originalPrice: { type: Number, default: 0 },
     kdvRate: { type: Number, default: 20 },
+    // Kategori ayarı: 'haric' ise vitrinde ve sepette fiyat "KDV hariç + KDV" olarak AYRIŞTIRILIR.
+    // Ödenen tutar değişmez; KDV unitPrice'ın İÇİNDEN hesaplanır. Kaynak: utils/categoryPriceDisplay
+    priceDisplay: { type: String, enum: ['dahil', 'haric'], default: 'dahil' },
     // Montaj hizmeti: hangi anlaşmalı noktadan seçildi (kimlik satın alma sonrası açılır, sepette anonim etiket)
     montagePointId: { type: String, default: '' },
     montagePointLabel: { type: String, default: '' },
@@ -43,20 +46,40 @@ webCartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Toplam hesaplama virtual
 webCartSchema.virtual('totals').get(function () {
+    // total = müşterinin ödeyeceği tutar ve her zaman kalem tutarlarının toplamıdır.
+    // 'haric' kalemlerde KDV fiyatın İÇİNDEN çıkarılır (fiyata EKLENMEZ), böylece
+    // "Ürünler Toplamı + KDV = Toplam" olur ve ödenen tutar değişmez.
     let subtotal = 0;
     let totalKdv = 0;
+    // Montaj/hizmet kalemleri sepet özetinde ayrı satırda gösterilir
+    let montageSubtotal = 0;
 
     this.items.forEach(item => {
         const itemTotal = item.unitPrice * item.quantity;
-        const kdvAmount = itemTotal * (item.kdvRate / 100);
-        subtotal += itemTotal;
-        totalKdv += kdvAmount;
+        const isMontage = item.itemType === 'montage' || item.itemType === 'service';
+
+        let netAmount = itemTotal;
+        if (item.priceDisplay === 'haric') {
+            const rate = item.kdvRate > 0 ? item.kdvRate : 20;
+            const kdvAmount = itemTotal * rate / (100 + rate);
+            netAmount = itemTotal - kdvAmount;
+            totalKdv += kdvAmount;
+        }
+
+        subtotal += netAmount;
+        if (isMontage) montageSubtotal += netAmount;
     });
 
+    const yuvarla = (v) => Math.round(v * 100) / 100;
+
     return {
-        subtotal,
-        kdv: totalKdv,
-        total: subtotal + totalKdv,
+        // subtotal: montaj dahil tüm kalemler (KDV hariç) — eski tüketiciler için anlamı korunur
+        subtotal: yuvarla(subtotal),
+        // productsSubtotal + montage = subtotal
+        productsSubtotal: yuvarla(subtotal - montageSubtotal),
+        montage: yuvarla(montageSubtotal),
+        kdv: yuvarla(totalKdv),
+        total: yuvarla(subtotal + totalKdv),
         itemCount: this.items.reduce((sum, item) => sum + item.quantity, 0)
     };
 });

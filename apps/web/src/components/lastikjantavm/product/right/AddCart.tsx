@@ -1,8 +1,7 @@
 // apps/web/src/components/product/right/Cart.tsx
 "use client";
 import React, { useState } from "react";
-import { useRouter } from 'next/navigation';
-import { shouldRedirectToMontage, MONTAGE_REDIRECT_PATH } from '@/src/hooks/Cart/montageRedirect';
+import { offerMontageAfterAdd } from '@/src/hooks/Cart/montageRedirect';
 import { Grid, Divider, Tooltip } from "@mui/material";
 import Image from 'next/image';
 import Link from 'next/link';
@@ -32,7 +31,6 @@ export default function Cart({ product }: CartProps) {
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
-    const router = useRouter();
     const { toggleFavourite, isFavourite } = useFavourites();
     const { definition } = useDefinition();
     const getWhatsAppUrl = () => {
@@ -58,7 +56,7 @@ export default function Cart({ product }: CartProps) {
             }
 
             const added = await addToCart(product._key, quantity);
-            if (added && shouldRedirectToMontage(product)) router.push(MONTAGE_REDIRECT_PATH);
+            if (added) offerMontageAfterAdd(product);
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');
@@ -114,9 +112,11 @@ export default function Cart({ product }: CartProps) {
                 <Grid size={12}>
                     <div className="card bg-white rounded border-0 mt-3" style={{ boxShadow: '0 0 24px 0 rgba(0, 0, 0, .1)' }}>
                         <div className="card-body">
-                            <h5 className="card-title">{hasStock ? 'Adet Seçimi' : 'Stok Bilgisi'}</h5>
+                            {/* Adet/fiyat ve Sepete Ekle mobilde gizlenir; alttaki sabit satın alma çubuğu kullanılır */}
+                            <h5 className={hasStock ? 'card-title d-none d-md-block' : 'card-title'}>{hasStock ? 'Adet Seçimi' : 'Stok Bilgisi'}</h5>
                             {hasStock ? (
                                 <>
+                                    <div className='d-none d-md-block'>
                                     <div className='d-flex justify-content-between align-items-center'>
                                         <div>
                                             <div className="count-input">
@@ -165,6 +165,7 @@ export default function Cart({ product }: CartProps) {
                                         </p>
                                     </div>
                                     <hr className="m-0 p-2" />
+                                    </div>
                                     {/* Kargo Teslim Tarihi — hizmet gibi kargolanmayan ürünlerde gizlenir */}
                                     {product?.customData?.hideDelivery !== true && (
                                         <>
@@ -218,8 +219,8 @@ export default function Cart({ product }: CartProps) {
                                             </p>
                                         </div>
                                     </div>
-                                    <hr className="m-0 p-2" />
-                                    <div className='d-flex'>
+                                    <hr className="m-0 p-2 d-none d-md-block" />
+                                    <div className='d-none d-md-flex'>
                                         <Tooltip title="Sepete Ekle">
                                             <button
                                                 type="button"

@@ -754,6 +754,17 @@ export default function SettingsLastikJantAvm() {
                 onChange={aktarim => setSettings(prev => ({ ...prev, aktarim }))}
               />
             </Grid>
+
+            {/* Her Zaman Dahil — kural filtrelerini ve Hariç listesini atlayan istisna listesi */}
+            <Grid size={{ xs: 12 }}>
+              <TransferSettingsCard
+                hideMode
+                title="Her Zaman Dahil"
+                selectionHint="Burada seçilenler durum dışındaki kurallara ve Hariç Bırak listesine takılmadan siteye aktarılır"
+                value={settings.zorunluDahil}
+                onChange={zorunluDahil => setSettings(prev => ({ ...prev, zorunluDahil }))}
+              />
+            </Grid>
           </Grid>
           {/* Sağ Kolon */}
           <Grid size={{ xs: 4 }} container spacing={5}>

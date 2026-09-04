@@ -13,6 +13,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 import MenuItem from '@mui/material/MenuItem'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import { toast } from 'react-toastify'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
@@ -26,6 +27,8 @@ interface MerchantSettings {
     includeTax: boolean
     taxRate: number
     onlyInStock: boolean
+    excludeUnmatchedXml: boolean
+    excludedCategories: string[]
     minPrice: number
     minStock: number
     imageSource: string
@@ -55,6 +58,8 @@ const defaultSettings: MerchantSettings = {
     includeTax: true,
     taxRate: 20,
     onlyInStock: true,
+    excludeUnmatchedXml: false,
+    excludedCategories: [],
     minPrice: 0,
     minStock: 1,
     imageSource: 'custom_first',
@@ -81,6 +86,13 @@ export default function Settings() {
     const [saving, setSaving] = useState(false)
     const [priceFields, setPriceFields] = useState<{ key: string, value: number }[]>([])
     const [textFields, setTextFields] = useState<{ diaFields: { key: string, preview: string }[], customFields: { key: string, preview: string }[] }>({ diaFields: [], customFields: [] })
+    const [diaCategories, setDiaCategories] = useState<string[]>([])
+    const fetchDiaCategories = async () => {
+        try {
+            const data = await fetchAPI(API_ENDPOINTS.merchantSettings.diaCategories())
+            if (data.success) setDiaCategories(data.data)
+        } catch { }
+    }
     const fetchPriceFields = async () => {
         try {
             const data = await fetchAPI(API_ENDPOINTS.merchantSettings.priceFields())
@@ -97,6 +109,7 @@ export default function Settings() {
         fetchSettings()
         fetchPriceFields()
         fetchTextFields()
+        fetchDiaCategories()
     }, [])
 
     const fetchSettings = async () => {
@@ -285,6 +298,34 @@ export default function Settings() {
                                                 }
                                                 label="Sadece Stokta Olanlar"
                                             />
+                                        </Grid>
+                                        <Grid size={{ xs: 12 }}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Switch
+                                                        checked={settings.excludeUnmatchedXml}
+                                                        onChange={e => updateField('excludeUnmatchedXml', e.target.checked)}
+                                                    />
+                                                }
+                                                label="Eşleşmeyen XML Ürünlerini Gösterme"
+                                            />
+                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                Gerçek DIA stok kartıyla eşleşmemiş (otomatik -XML kartı) ürünler feed'e alınmaz.
+                                            </Typography>
+                                        </Grid>
+                                        <Grid size={{ xs: 12 }}>
+                                            <Autocomplete
+                                                multiple size="small"
+                                                options={diaCategories}
+                                                value={settings.excludedCategories || []}
+                                                onChange={(_, value) => updateField('excludedCategories', value)}
+                                                renderInput={params => (
+                                                    <TextField {...params} label="Hariç Tutulan Kategoriler" />
+                                                )}
+                                            />
+                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                Seçilen üst kategorilerdeki ürünler feed'e alınmaz.
+                                            </Typography>
                                         </Grid>
                                         <Grid size={{ xs: 6 }}>
                                             <TextField

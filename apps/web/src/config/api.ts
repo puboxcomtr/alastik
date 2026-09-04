@@ -206,6 +206,17 @@ export async function getServerSiteHeaders(): Promise<Record<string, string>> {
 }
 
 /**
+ * Istemcide birinci-taraf `sid` cookie'sini (middleware uretir) X-Session-Id olarak iletir.
+ * API oturumu bu baslikla surdurur; cross-origin cookie'ye bagimlilik kalmaz.
+ * Sunucu tarafinda bos doner (SSR cagrilari API'de oturum sayilmaz).
+ */
+function getClientSessionHeaders(): Record<string, string> {
+    if (typeof document === 'undefined') return {};
+    const match = document.cookie.match(/(?:^|;\s*)sid=([A-Za-z0-9-]+)/);
+    return match ? { 'X-Session-Id': match[1] } : {};
+}
+
+/**
  * Genel fetch helper - Server side ve client side uyumlu
  */
 export async function fetchAPI<T = any>(
@@ -219,6 +230,7 @@ export async function fetchAPI<T = any>(
             headers: {
                 'Content-Type': 'application/json',
                 ...(await getServerSiteHeaders()),
+                ...getClientSessionHeaders(),
                 ...options?.headers,
             },
         });

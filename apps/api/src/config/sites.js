@@ -30,6 +30,8 @@ const SITES = {
         active: true,
         // Sipariş numarası öneki (orderNumber üretiminde kullanılır)
         orderPrefix: 'AL',
+        // XML fiyat kurallarında bu sitenin vitrin satış fiyatını süren platform
+        xmlPricePlatform: 'alastik',
     },
 
     lastikjantavm: {
@@ -43,6 +45,8 @@ const SITES = {
         theme: 'lastikjantavm',
         active: true,
         orderPrefix: 'LJA',
+        // LJA vitrin fiyatı B2C (panelde "LastikJantAVM" olarak görünür) kurallarından hesaplanır
+        xmlPricePlatform: 'b2c',
     },
 };
 

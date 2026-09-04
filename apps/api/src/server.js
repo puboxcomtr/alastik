@@ -167,13 +167,6 @@ const searchLimiter = rateLimit({
 });
 app.use('/api/', limiter);
 app.use('/api/search', searchLimiter);
-// Attach session middleware early (if used globally)
-try {
-  const { sessionMiddleware } = require('./middleware/auth');
-  app.use(sessionMiddleware);
-} catch (e) {
-  // ignore if not available
-}
 
 // CORS configuration
 // Izinli origin'ler: sites.js domain'lerinden (https+http) turetilir + env URL'leri.
@@ -204,7 +197,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Site']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Site', 'X-Session-Id']
 };
 
 app.use(cors(corsOptions));
@@ -249,6 +242,15 @@ app.use(hpp());
 // Site cozumleme (multi-tenant) - req.site set eder
 const { siteMiddleware } = require('./middleware/site');
 app.use(siteMiddleware);
+
+// Oturum middleware'i cookieParser ve siteMiddleware'den SONRA çalışmalı:
+// aksi halde req.cookies ve req.site tanımsız kalır ve her istek yeni oturum yaratır.
+try {
+  const { sessionMiddleware } = require('./middleware/auth');
+  app.use(sessionMiddleware);
+} catch (e) {
+  // ignore if not available
+}
 
 // Compression middleware
 app.use(compression({

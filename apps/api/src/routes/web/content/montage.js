@@ -5,6 +5,8 @@ const router = express.Router();
 const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
 const { resolveMontageServicePrice } = require('../../../utils/montagePricing');
 const { isMontageServiceName, parseRimRange } = require('../../../services/web/cart/CartRulesService');
+const WebProduct = require('../../../models/web/catalog/WebProduct');
+const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
 
 // Satın alma öncesi noktalar varsayılan olarak ANONİMDİR: ad, adres, telefon, görsel ve hassas konum
 // dışarı verilmez (müşteri hizmeti satın alınca sipariş tarafında açılır). Panelde "Bilgileri Gözüksün"
@@ -15,6 +17,33 @@ const PUBLIC_FIELDS = {
 };
 
 const ANONYMOUS_NAME = 'Anlaşmalı Nokta';
+
+/**
+ * Hizmet ürünlerinin KDV gösterim ayarı: productKey → { priceDisplay, vatRate }.
+ * Kategori ayarı 'haric' olan hizmetlerde vitrin fiyatı KDV hariç gösterilir; sepette
+ * kullanılan kuralın (categoryPriceDisplay) AYNISI uygulanır ki iki ekran aynı tutarı yazsın.
+ */
+async function loadServiceVatSettings(points, site) {
+    const keys = [...new Set(
+        points.flatMap(p => (p.services || []).map(sv => String(sv.productKey || '')).filter(Boolean))
+    )];
+    const map = new Map();
+    if (!keys.length) return map;
+
+    const [products, ayarlar] = await Promise.all([
+        WebProduct.find({ _key: { $in: keys } }, { _key: 1, 'diaData.m_kategoriler': 1 }).lean(),
+        getFiyatAyarlari(site)
+    ]);
+    for (const product of products) {
+        const urun = { diaData: product.diaData };
+        fiyatAyariUygula(urun, ayarlar);
+        map.set(String(product._key), {
+            priceDisplay: urun.priceDisplay === 'haric' ? 'haric' : 'dahil',
+            vatRate: Number(urun.vatRate) > 0 ? Number(urun.vatRate) : 20
+        });
+    }
+    return map;
+}
 
 /** Konumu ~1 km hassasiyete yuvarlar: harita bölgeye yaklaşır ama noktayı ele vermez */
 function fuzzLocation(location) {
@@ -39,20 +68,34 @@ function ratingSummary(reviews = []) {
     };
 }
 
-function toPublic(point) {
+function toPublic(point, vatSettings = new Map()) {
     const { reviews, services, location, name, address, phone, image, showPublicInfo, ...rest } = point;
     const isPublicInfo = showPublicInfo === true;
     // Noktaya özel fiyat (0 = ücretsiz) > katalog fiyatı > null (Sorunuz)
-    const publicServices = (services || []).map(s => ({
-        productKey: s.productKey || '',
-        sku: s.sku || '',
-        name: s.name,
-        price: resolveMontageServicePrice(s),
-        // Sepet kuralları: montaj hizmeti mi, hangi jant çapı aralığını kapsıyor
-        isMontage: isMontageServiceName(s.name),
-        rimRange: isMontageServiceName(s.name) ? parseRimRange(s.name) : null
-    }));
+    const publicServices = (services || []).map(s => {
+        const vat = vatSettings.get(String(s.productKey || '')) || { priceDisplay: 'dahil', vatRate: 20 };
+        return {
+            productKey: s.productKey || '',
+            sku: s.sku || '',
+            name: s.name,
+            price: resolveMontageServicePrice(s),
+            // KDV gösterimi: kategori ayarı 'haric' ise vitrinde "X TL + KDV" yazılır (sepetle aynı)
+            priceDisplay: vat.priceDisplay,
+            vatRate: vat.vatRate,
+            // Sepet kuralları: montaj hizmeti mi, hangi jant çapı aralığını kapsıyor
+            isMontage: isMontageServiceName(s.name),
+            rimRange: isMontageServiceName(s.name) ? parseRimRange(s.name) : null
+        };
+    });
     const servicePrices = publicServices.map(s => s.price).filter(v => v !== null && v > 0);
+    // Vitrin kartında gösterilen montaj fiyatı: en düşük jant aralığındaki (13"-16") montaj
+    // hizmetinin 1 ADET fiyatı. Aralık okunamayan noktalarda montaj hizmetleri içindeki en ucuzu
+    // kullanılır. 0 = ücretsiz montaj (vitrinde rozet olarak gösterilir).
+    const montageServices = publicServices.filter(s => s.isMontage && s.price !== null);
+    const rangedMontage = montageServices.filter(s => s.rimRange).sort((a, b) => a.rimRange.min - b.rimRange.min);
+    const montageService = rangedMontage[0]
+        || montageServices.slice().sort((a, b) => a.price - b.price)[0]
+        || null;
     return {
         ...rest,
         isPublicInfo,
@@ -62,7 +105,12 @@ function toPublic(point) {
         image: isPublicInfo ? (image || '') : '',
         location: isPublicInfo ? { lat: location?.lat ?? null, lng: location?.lng ?? null } : fuzzLocation(location),
         services: publicServices,
+        // Tüm hizmetlerin en ucuzu (sibop vb. dahil) — kartta KULLANILMAZ, montageStartingPrice kullanılır
         startingPrice: servicePrices.length ? Math.min(...servicePrices) : null,
+        montageStartingPrice: montageService ? montageService.price : null,
+        // Başlangıç fiyatının KDV gösterimi (kart üzerindeki "…'den başlayan" metni için)
+        montageStartingPriceDisplay: montageService ? montageService.priceDisplay : 'dahil',
+        montageStartingVatRate: montageService ? montageService.vatRate : 20,
         rating: ratingSummary(reviews),
         // Yorumlar en yeniden eskiye; üye adı ve tarih dışında kişisel veri yok
         reviews: (reviews || [])
@@ -102,7 +150,8 @@ router.get('/', async (req, res) => {
             .map(([name, districts]) => ({ city: name, districts: [...districts].sort((a, b) => a.localeCompare(b, 'tr')) }))
             .sort((a, b) => a.city.localeCompare(b.city, 'tr'));
 
-        res.json({ success: true, data: points.map(toPublic), meta: { total: points.length, cities } });
+        const vatSettings = await loadServiceVatSettings(points, req.site);
+        res.json({ success: true, data: points.map(p => toPublic(p, vatSettings)), meta: { total: points.length, cities } });
     } catch (error) {
         console.error('Montaj noktaları listelenemedi:', error);
         res.status(500).json({ success: false, message: 'Montaj noktaları alınamadı' });
@@ -120,7 +169,8 @@ router.get('/:id', async (req, res) => {
             PUBLIC_FIELDS
         ).lean();
         if (!point) return res.status(404).json({ success: false, message: 'Montaj noktası bulunamadı' });
-        res.json({ success: true, data: toPublic(point) });
+        const vatSettings = await loadServiceVatSettings([point], req.site);
+        res.json({ success: true, data: toPublic(point, vatSettings) });
     } catch (error) {
         console.error('Montaj noktası alınamadı:', error);
         res.status(500).json({ success: false, message: 'Montaj noktası alınamadı' });

@@ -10,6 +10,8 @@ const WebXml = require('../../../models/plugins/xml/WebXml');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
 
 const XmlWebProductSyncService = require('./XmlWebProductSyncService');
+const { DEFAULT_SITE } = require('../../../config/sites');
+const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
 
 class XmlSyncScheduler {
     constructor() {
@@ -252,7 +254,8 @@ class XmlSyncScheduler {
             }
 
             // Unver: STOK.DEPO array'inde DEPOID=0 (Tüm Depolar) entry'sini başa al
-            if (integration.code === 'unver') {
+            // (site kopyaları da kapsanır: unver, unver_lastikjantavm ...)
+            if (/^unver/.test(integration.code)) {
                 products = products.map(p => {
                     const depoList = p?.STOK?.DEPO;
                     if (Array.isArray(depoList) && depoList.length > 1) {
@@ -344,7 +347,7 @@ class XmlSyncScheduler {
                     console.log(`[XmlSyncScheduler] ${integration.name} — ${ghostDeleted} ghost ürün silindi`);
 
                     if (affectedHedefKodlar.length > 0) {
-                        reconsolidateStats = await XmlWebProductSyncService.reconsolidate(affectedHedefKodlar);
+                        reconsolidateStats = await XmlWebProductSyncService.reconsolidate(affectedHedefKodlar, integration.site || DEFAULT_SITE);
                     }
                 }
 
@@ -363,7 +366,7 @@ class XmlSyncScheduler {
                     const getMapped = (rd, target) => {
                         const m = fm.find(f => f.target === target);
                         if (!m?.source) return null;
-                        return m.source.split('.').reduce((acc, k) => acc?.[k], rd) ?? null;
+                        return getXmlFieldValue(rd, m.source);
                     };
 
                     const zeroHedefKodlar = zeroProducts
@@ -379,7 +382,7 @@ class XmlSyncScheduler {
                         .filter(Boolean);
 
                     if (zeroHedefKodlar.length > 0) {
-                        const zeroStats = await XmlWebProductSyncService.reconsolidate(zeroHedefKodlar);
+                        const zeroStats = await XmlWebProductSyncService.reconsolidate(zeroHedefKodlar, integration.site || DEFAULT_SITE);
                         if (reconsolidateStats) {
                             reconsolidateStats.updated += zeroStats.updated;
                             reconsolidateStats.disabled += zeroStats.disabled;
@@ -447,8 +450,8 @@ class XmlSyncScheduler {
             throw new Error('Entegrasyon bulunamadı');
         }
         await this.syncIntegration(integration);
-        // DIA aktarımı kaldırıldı — XML→WebProduct sync
-        await XmlWebProductSyncService.fullSync();
+        // DIA aktarımı kaldırıldı — XML→WebProduct sync (kaynağın sitesi kapsamında)
+        await XmlWebProductSyncService.fullSync(integration.site || DEFAULT_SITE);
     }
 
     async manualFullSync() {

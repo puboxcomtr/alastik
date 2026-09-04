@@ -2,6 +2,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
 const DiaSettings = require('../../../models/plugins/dia/DiaSettings');
+const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
 
 class XmlDiaMatchService {
 
@@ -9,6 +10,7 @@ class XmlDiaMatchService {
         this.sessionId = null;
         this.sessionExpireTime = null;
         this.config = null;
+        this.loginPromise = null;
     }
 
     async loadConfig() {
@@ -29,25 +31,41 @@ class XmlDiaMatchService {
         if (this.sessionId && this.sessionExpireTime && new Date() < this.sessionExpireTime) {
             return this.sessionId;
         }
-        const response = await axios.post(`${this.config.baseURL}/api/v3/sis/json`, {
-            login: {
-                username: this.config.username,
-                password: this.config.password,
-                disconnect_same_user: "True",
-                params: { apikey: this.config.apiKey }
-            }
-        }, { timeout: 30000 });
-
-        if (response.data?.code === '200') {
-            this.sessionId = response.data.msg;
-            this.sessionExpireTime = new Date(Date.now() + 60 * 60 * 1000);
-            console.log('[XmlDiaMatchService] DIA login başarılı');
-            return this.sessionId;
-        }
-        throw new Error('DIA login başarısız');
+        // Eşzamanlı çağrılar tek login isteğini paylaşır (thundering herd önlemi)
+        if (this.loginPromise) return this.loginPromise;
+        this.loginPromise = this.doLogin().finally(() => { this.loginPromise = null; });
+        return this.loginPromise;
     }
 
-    async fetchByAnabarkod(anabarkod) {
+    async doLogin(retried = false) {
+        try {
+            const response = await axios.post(`${this.config.baseURL}/api/v3/sis/json`, {
+                login: {
+                    username: this.config.username,
+                    password: this.config.password,
+                    disconnect_same_user: "True",
+                    params: { apikey: this.config.apiKey }
+                }
+            }, { timeout: 30000 });
+
+            if (response.data?.code === '200') {
+                this.sessionId = response.data.msg;
+                this.sessionExpireTime = new Date(Date.now() + 60 * 60 * 1000);
+                console.log('[XmlDiaMatchService] DIA login başarılı');
+                return this.sessionId;
+            }
+            throw new Error(`DIA login başarısız (code: ${response.data?.code}, msg: ${String(response.data?.msg || '').slice(0, 200)})`);
+        } catch (err) {
+            if (!retried) {
+                console.warn('[XmlDiaMatchService] DIA login hatası, 5 sn sonra tekrar denenecek:', err.message);
+                await new Promise(r => setTimeout(r, 5000));
+                return this.doLogin(true);
+            }
+            throw err;
+        }
+    }
+
+    async fetchByAnabarkod(anabarkod, retried = false) {
         const sessionId = await this.login();
         const response = await axios.post(`${this.config.baseURL}/api/v3/scf/json`, {
             scf_stokkart_detay_listele: {
@@ -62,6 +80,13 @@ class XmlDiaMatchService {
 
         if (response.data?.code === '200') {
             return response.data.result?.[0] || null;
+        }
+
+        // Oturum düşmüş olabilir (başka süreç disconnect_same_user ile bağlandıysa):
+        // bir kez yeniden login olup tekrar dene — yoksa geçersiz oturum yanlış "bulunamadı" sayılır
+        if (!retried) {
+            this.sessionId = null;
+            return this.fetchByAnabarkod(anabarkod, true);
         }
         return null;
     }
@@ -196,7 +221,7 @@ class XmlDiaMatchService {
                     const getVal = (target) => {
                         const m = fieldMappings.find(m => m.target === target);
                         if (!m?.source) return null;
-                        return m.source.split('.').reduce((acc, key) => acc?.[key], rd) ?? null;
+                        return getXmlFieldValue(rd, m.source);
                     };
 
                     const stok = parseFloat(getVal('stokAdeti') || 0);
@@ -279,10 +304,8 @@ class XmlDiaMatchService {
 
                 if (i > 0 && i % 100 === 0) {
                     console.log(`[XmlDiaMatchService] ${i}/${mappedProducts.length} işlendi`);
-                    if (useLiveDia) {
-                        this.sessionId = null;
-                        await this.login();
-                    }
+                    // Not: zorla yeniden login kaldırıldı — geçersiz oturum artık
+                    // fetchByAnabarkod içinde kendiliğinden yenileniyor
                 }
             }
 

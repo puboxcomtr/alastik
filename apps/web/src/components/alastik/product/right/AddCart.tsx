@@ -1,6 +1,7 @@
 // apps/web/src/components/product/right/Cart.tsx
 "use client";
 import React, { useState } from "react";
+import { useRouter } from 'next/navigation';
 import { Grid, Divider, Tooltip } from "@mui/material";
 import Image from 'next/image';
 import Link from 'next/link';
@@ -12,7 +13,8 @@ import { useCart } from '@/src/context/CartContext';
 import { useFavourites } from '@/src/context/FavouritesContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
-import { getProductPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
+import { getProductPrice, getDisplayPrice, getDeliveryDateRange, getProductType } from '@/src/hooks/Products/productHelpers';
+import { ROUTES } from '@/src/config/routes';
 import { checkPurchaseLimit, productToLimitCheckItem, clampQuantityToStock } from '@/src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
 
@@ -23,9 +25,12 @@ interface CartProps {
 }
 
 export default function Cart({ product }: CartProps) {
+    const router = useRouter();
     const deliveryInfo = getDeliveryDateRange(product);
     const { getBrand } = useBrands();
     const price = getProductPrice(product);
+    // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
+    const gosterim = getDisplayPrice(product, price);
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
@@ -53,7 +58,10 @@ export default function Cart({ product }: CartProps) {
                 return;
             }
 
-            await addToCart(product._key, quantity);
+            // Lastiklerde toast yerine montaj noktası seçimi sayfasına yönlendirilir
+            const isTire = getProductType(product) === 'LASTIK';
+            const added = await addToCart(product._key, quantity, isTire ? '' : undefined);
+            if (added && isTire) router.push(ROUTES.MONTAGE_SELECT);
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');
@@ -109,9 +117,11 @@ export default function Cart({ product }: CartProps) {
                 <Grid size={12}>
                     <div className="card bg-white rounded border-0 mt-3" style={{ boxShadow: '0 0 24px 0 rgba(0, 0, 0, .1)' }}>
                         <div className="card-body">
-                            <h5 className="card-title">{hasStock ? 'Adet Seçimi' : 'Stok Bilgisi'}</h5>
+                            {/* Adet/fiyat ve Sepete Ekle mobilde gizlenir; alttaki sabit satın alma çubuğu kullanılır */}
+                            <h5 className={hasStock ? 'card-title d-none d-md-block' : 'card-title'}>{hasStock ? 'Adet Seçimi' : 'Stok Bilgisi'}</h5>
                             {hasStock ? (
                                 <>
+                                    <div className='d-none d-md-block'>
                                     <div className='d-flex justify-content-between align-items-center'>
                                         <div>
                                             <div className="count-input">
@@ -147,10 +157,10 @@ export default function Cart({ product }: CartProps) {
                                         </div>
                                         <div>
                                             <span className='fw-bold text-black'>
-                                                {price.toLocaleString('tr-TR', {
+                                                {gosterim.value.toLocaleString('tr-TR', {
                                                     minimumFractionDigits: 2,
                                                     maximumFractionDigits: 2
-                                                })} TL
+                                                })} TL{gosterim.suffix}
                                             </span>
                                         </div>
                                     </div>
@@ -160,6 +170,7 @@ export default function Cart({ product }: CartProps) {
                                         </p>
                                     </div>
                                     <hr className="m-0 p-2" />
+                                    </div>
                                     {/* Kargo Teslim Tarihi — hizmet gibi kargolanmayan ürünlerde gizlenir */}
                                     {product?.customData?.hideDelivery !== true && (
                                         <>
@@ -213,8 +224,8 @@ export default function Cart({ product }: CartProps) {
                                             </p>
                                         </div>
                                     </div>
-                                    <hr className="m-0 p-2" />
-                                    <div className='d-flex'>
+                                    <hr className="m-0 p-2 d-none d-md-block" />
+                                    <div className='d-none d-md-flex'>
                                         <Tooltip title="Sepete Ekle">
                                             <button
                                                 type="button"

@@ -100,6 +100,12 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
     return (
         <section id="montage__map" className="py-4">
             <Container>
+                <div className="text-center mb-4">
+                    <h1 className="fs-2 fw-bold mb-2">Montaj Noktaları</h1>
+                    <p className="text-muted mb-0">
+                        Size en yakın lastik montaj noktasını seçip lastiğinizin montajını kolayca yaptırabilirsiniz.
+                    </p>
+                </div>
                 <div className={`mn-wrap${selected ? ' has-selected' : ''}`}>
                 <div ref={containerRef} className="mn-map" />
 
@@ -140,8 +146,10 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                                                     ? <><Stars value={p.rating.average} size={13} /> <small>({p.rating.count})</small></>
                                                     : <small className='mn-noreview'>(Henüz Yorum Yapılmadı)</small>}
                                             </span>
-                                            {p.startingPrice !== null && (
-                                                <span className="mn-item-price">{p.startingPrice.toLocaleString('tr-TR')} TL'den başlayan fiyatlarla</span>
+                                            {p.montageStartingPrice !== null && (
+                                                p.montageStartingPrice === 0
+                                                    ? <span className="mn-item-price mn-item-free">Ücretsiz Montaj</span>
+                                                    : <span className="mn-item-price">{p.montageStartingPrice.toLocaleString('tr-TR')} TL&apos;den başlayan montaj fiyatı</span>
                                             )}
                                             <button
                                                 type="button"
@@ -276,6 +284,7 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                 .mn-item-rating small { color: #ddd; }
                 .mn-noreview { font-size: 11px; opacity: .55; }
                 .mn-item-price { color: #ddd; font-size: 12px; font-weight: 600; }
+                .mn-item-free { display: inline-block; align-self: flex-start; background: ${BRAND_YELLOW}; color: ${BRAND_DARK}; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
                 .mn-item-btn {
                     display: block; width: 100%; border: 0; margin-top: 6px; text-align: center;
                     background: #4a4a4a; color: #fff; font-weight: 700; font-size: 12px;

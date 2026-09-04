@@ -40,7 +40,10 @@ export type MontagePoint = {
     services: MontageService[];
     amenities: string[];
     location?: { lat: number | null; lng: number | null };
+    // Tüm hizmetlerin en ucuzu (sibop vb. dahil)
     startingPrice: number | null;
+    // En düşük jant aralığındaki (13"-16") montaj hizmetinin 1 adet fiyatı; 0 = ücretsiz montaj
+    montageStartingPrice: number | null;
     rating: { average: number | null; processAverage: number | null; locationAverage: number | null; count: number };
     reviews: MontageReview[];
 };
@@ -102,22 +105,32 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
     const [quantity, setQuantity] = useState(1);
     const [busy, setBusy] = useState(false);
 
-    // Sepet kuralları: montaj adedi = uygun çaptaki lastik adedi; diğer hizmetler montaj gerektirir
+    // Sepet kuralları: montaj adedi uygun çaptaki lastik adedini aşamaz; diğer hizmetler montaj gerektirir
     const tires = items.filter(i => i.itemType === 'tire');
     const montageInCart = items.some(i => i.itemType === 'montage');
     const matchingTireCount = service.isMontage && service.rimRange
         ? tires.filter(t => t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= service.rimRange!.min && t.rimSize <= service.rimRange!.max)
             .reduce((sum, t) => sum + t.quantity, 0)
         : 0;
-    const quantityLocked = Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0;
+    // Tavan: lastikli sepette montaj adedi en fazla uygun çaptaki lastik adedi olabilir
+    const montageCap = Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0 ? matchingTireCount : null;
+    // Müşteri adet seçmediyse varsayılan lastik adedidir
+    const [quantityTouched, setQuantityTouched] = useState(false);
     let ruleHint = '';
-    if (service.isMontage && tires.length > 0 && matchingTireCount === 0) {
+    if (service.isMontage && tires.length === 0) {
+        // Montaj yalnızca sıfır lastikle: jant, ikinci el vb. ürünlere montaj eklenemez
+        ruleHint = 'Montaj yalnızca sıfır lastik ürünleriyle satın alınabilir';
+    } else if (service.isMontage && matchingTireCount === 0) {
         ruleHint = 'Sepetinizdeki lastiklerin jant çapına uygun değil';
     } else if (!service.isMontage && !montageInCart) {
         ruleHint = 'Önce lastik montajı hizmeti seçin';
     }
     const blocked = Boolean(ruleHint) && !selected;
-    const shownQuantity = cartItem ? cartItem.quantity : quantityLocked ? matchingTireCount : quantity;
+    const shownQuantity = cartItem
+        ? cartItem.quantity
+        : montageCap !== null
+            ? (quantityTouched ? Math.min(quantity, montageCap) : montageCap)
+            : quantity;
 
     const handleSelect = async () => {
         if (!service.productKey) return;
@@ -127,7 +140,7 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
                 // Seçiliyken tekrar tıklama: hizmeti sepetten çıkarır
                 await removeItem(String(service.productKey), 'Hizmet sepetten çıkarıldı');
             } else {
-                await addToCart(service.productKey, quantity, 'Hizmet sepete eklendi', montagePointId);
+                await addToCart(service.productKey, shownQuantity, 'Hizmet sepete eklendi', montagePointId);
             }
         } catch {
             toast.error(selected ? 'Hizmet sepetten çıkarılamadı' : 'Hizmet sepete eklenemedi');
@@ -139,6 +152,7 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
     const handleQuantity = async (value: number) => {
         if (!selected) {
             setQuantity(value);
+            setQuantityTouched(true);
             return;
         }
         try {
@@ -158,8 +172,8 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
                 {ruleHint && !selected && (
                     <div className="fw-normal text-warning" style={{ fontSize: compact ? 11 : 12 }}>{ruleHint}</div>
                 )}
-                {quantityLocked && (
-                    <div className="fw-normal text-muted" style={{ fontSize: compact ? 11 : 12 }}>Adet sepetinizdeki lastik adedine göre belirlenir</div>
+                {montageCap !== null && (
+                    <div className="fw-normal text-muted" style={{ fontSize: compact ? 11 : 12 }}>En fazla lastik adediniz kadar ({montageCap}) seçilebilir</div>
                 )}
             </div>
             <select
@@ -167,10 +181,13 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
                 style={{ width: compact ? 112 : 120 }}
                 value={shownQuantity}
                 onChange={e => handleQuantity(parseInt(e.target.value))}
-                disabled={busy || quantityLocked}
+                disabled={busy}
                 aria-label="Adet"
             >
-                {[...new Set([1, 2, 3, 4, shownQuantity])].sort((a, b) => a - b).map(n => <option key={n} value={n}>{n} Adet</option>)}
+                {(montageCap !== null
+                    ? Array.from({ length: montageCap }, (_, i) => i + 1)
+                    : [...new Set([1, 2, 3, 4, shownQuantity])].sort((a, b) => a - b)
+                ).map(n => <option key={n} value={n}>{n} Adet</option>)}
             </select>
             <div className="fw-bold flex-shrink-0" style={{ width: compact ? 84 : 100, textAlign: 'right', fontSize: compact ? 14 : 17, color: 'inherit' }}>
                 {service.price === null

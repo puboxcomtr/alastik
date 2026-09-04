@@ -72,6 +72,13 @@ export async function middleware(request: NextRequest) {
     });
     response.cookies.set('site', site, { path: '/', sameSite: 'lax' });
 
+    // Oturum kimliği (sid): API oturumu, cross-origin cookie yerine x-session-id başlığıyla sürdürülür
+    // (lastikjantavm.com -> api.alastik.com üçüncü-taraf cookie engeline takılır). Tarayıcı oturumu
+    // boyunca yaşar (maxAge yok); httpOnly değildir çünkü istemci fetch'i okuyup başlığa koyar.
+    if (!request.cookies.get('sid')?.value) {
+        response.cookies.set('sid', crypto.randomUUID(), { path: '/', sameSite: 'lax' });
+    }
+
     return response;
 }
 

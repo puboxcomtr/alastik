@@ -115,6 +115,18 @@ const webDiaSchema = new mongoose.Schema({
         brands: [{ _id: false, id: String, name: String }]
     },
 
+    // Her Zaman Dahil — burada seçilenler durum/ozelkod11/b2c kurallarına ve
+    // Aktarım Ayarları'ndaki "Hariç Bırak" listesine bakılmaksızın siteye aktarılır.
+    // (Örn. montaj hizmetleri: DIA'da ozelkod11 boş olduğu için normal kuraldan geçemez,
+    //  ozelkod11'i doldurmak ise pazaryeri akışını tetikler.)
+    // mode alanı yoktur; bu liste her zaman "dahil et" anlamındadır.
+    zorunluDahil: {
+        filterType: { type: String, enum: ['urun', 'kategori', 'marka'], default: 'kategori' },
+        products: [{ _id: false, id: String, name: String, sku: String, brand: String }],
+        categories: [{ _id: false, id: String, name: String }],
+        brands: [{ _id: false, id: String, name: String }]
+    },
+
     // Senkronizasyon Ayarları
     sync: {
         urunAdlariniGuncelle: { type: Boolean, default: true },

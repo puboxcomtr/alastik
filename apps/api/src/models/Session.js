@@ -37,7 +37,7 @@ const SessionSchema = new mongoose.Schema({
     },
     userAgent: {
       type: String,
-      required: true
+      default: ''
     },
     browser: {
       name: String,
@@ -89,7 +89,8 @@ const SessionSchema = new mongoose.Schema({
     actions: [{
       type: {
         type: String,
-        enum: ['page_view', 'product_view', 'cart_add', 'cart_remove', 'search', 'login', 'logout', 'checkout'],
+        // 'conversion': markConversion() bu tipi yazar; enum'da olmadığı için kayıt sessizce başarısız oluyordu
+        enum: ['page_view', 'product_view', 'cart_add', 'cart_remove', 'search', 'login', 'logout', 'checkout', 'conversion'],
         required: true
       },
       details: mongoose.Schema.Types.Mixed,
@@ -586,8 +587,10 @@ SessionSchema.statics.getSessionAnalytics = function(startDate, endDate) {
 
 SessionSchema.statics.createGuestSession = function(sessionData) {
   const session = new this({
-    sessionId: crypto.randomBytes(32).toString('hex'),
+    // Middleware'in cookie'ye yazdığı id kullanılmalı; aksi halde cookie ile DB kaydı asla eşleşmez
+    sessionId: sessionData.sessionId || crypto.randomBytes(32).toString('hex'),
     type: 'guest',
+    site: sessionData.site,
     metadata: sessionData.metadata,
     preferences: sessionData.preferences || {}
   });

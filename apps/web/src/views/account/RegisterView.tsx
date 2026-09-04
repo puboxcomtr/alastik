@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
 import { api } from '@/src/lib/api';
+import { pushDataLayer, fireAdsConversion } from '@/src/lib/tracking';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import { ROUTES } from '@/src/config/routes';
@@ -93,15 +94,18 @@ export default function RegisterView() {
             if (result.success) {
                 toast.success(result.message || 'Üyeliğiniz başarıyla oluşturuldu');
 
-                // Google Ads conversion — kaydolma başarılı
-                if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+                // Dönüşüm olayları — kaydolma başarılı
+                if (typeof window !== 'undefined') {
                     const memberId = (result.data?.member as { _id?: string; id?: string })?._id
                         ?? (result.data?.member as { id?: string })?.id
                         ?? '';
-                    window.gtag('event', 'conversion', {
-                        send_to: 'AW-18022245202/Pp35COy98bscENLG1pFD',
+
+                    // GTM dönüşüm tetikleyicileri için dataLayer olayı (her iki site)
+                    pushDataLayer({ event: 'sign_up', transaction_id: String(memberId) });
+
+                    // Google Ads dönüşümü — sitenin etiket haritasından (config/tracking.ts)
+                    fireAdsConversion('signUp', {
                         value: 1.0,
-                        currency: 'TRY',
                         transaction_id: String(memberId)
                     });
                 }

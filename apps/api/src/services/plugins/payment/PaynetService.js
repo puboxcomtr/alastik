@@ -4,6 +4,7 @@
  */
 
 const axios = require('axios');
+const { redact } = require('../../../utils/logRedact');
 
 const PAYNET_API_URL = process.env.PAYNET_API_URL || 'https://api.paynet.com.tr';
 const PAYNET_SECRET_KEY = process.env.PAYNET_SECRET_KEY;
@@ -65,10 +66,8 @@ class PaynetService {
             // instalment gönderilmiyor = tek çekim
         };
 
-        console.log('Paynet 3D Init Request:', {
-            ...requestData,
-            pan: cardNumber.substring(0, 6) + '******'
-        });
+        // CVC ve tam kart numarası log'a YAZILMAZ (redact: PAN son 4 hane, CVC maskeli)
+        console.log('Paynet 3D Init Request:', redact(requestData));
 
         try {
             const result = await this.request('/v2/transaction/tds_initial', requestData);

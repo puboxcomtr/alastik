@@ -4,6 +4,7 @@
  */
 
 const mongoose = require('mongoose');
+const { DEFAULT_SITE, SITES } = require('../../../config/sites');
 
 // Credentials Schema
 const credentialsSchema = new mongoose.Schema({
@@ -67,6 +68,13 @@ const rulesSchema = new mongoose.Schema({
 // Ana WebXml Schema
 // ============================================
 const webXmlSchema = new mongoose.Schema({
+    // Kaynağın ait olduğu site — tüm XML modülü site bazlı ayrıdır
+    site: {
+        type: String,
+        enum: Object.keys(SITES),
+        default: DEFAULT_SITE,
+        index: true
+    },
     name: {
         type: String,
         required: true,
@@ -144,6 +152,12 @@ webXmlSchema.virtual('nextSyncAt').get(function () {
 // Static: Aktif entegrasyonları getir
 webXmlSchema.statics.getActiveIntegrations = function () {
     return this.find({ isActive: true });
+};
+
+// Static: Sitenin kaynak kodları (XmlProduct.source filtresi için)
+webXmlSchema.statics.getSiteCodes = async function (site) {
+    const rows = await this.find({ site }, { code: 1 }).lean();
+    return rows.map(r => r.code);
 };
 
 // Static: Sync zamanı gelmiş entegrasyonları getir

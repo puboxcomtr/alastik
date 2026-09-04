@@ -481,7 +481,16 @@ export const getAllLastikFeatures = (product: Product, site?: string): Array<{ l
         { label: 'Hız Endeksi', value: getSpeedIndexDisplay(hizEndeksi) },
         { label: 'Ekstra Özellikler', value: ekstraOzellikler.length > 0 ? ekstraOzellikler.join(', ') : '-' },
         { label: 'Üretim Tarihi (DOT)', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') },
-        { label: 'Garanti Süresi', value: product.customData?.warranty || '2 Yıl' },
+        // 2.El lastiklerde dolu gelir; boşsa satır gösterilmez
+        ...(getProductFeature(product, 'Diş Derinliği') !== '-'
+            ? [{ label: 'Diş Derinliği', value: getProductFeature(product, 'Diş Derinliği') }]
+            : []),
+        // Garanti: panelde girilen değer öncelikli; boşsa sıfır üründe 2 Yıl, 2.El üründe satır gizlenir
+        {
+            label: 'Garanti Süresi',
+            value: product.customData?.warranty
+                || (product.diaData?.ozelkod6kodu === 'SIFIR' ? '2 Yıl' : '')
+        },
         { label: 'Yakıt Verimliliği', value: getProductFeature(product, 'Yakıt Verimliliği') },
         { label: 'Islak Zeminde Frenleme', value: getProductFeature(product, 'Islak Zeminde Frenleme') },
         { label: 'Gürültü Seviyesi', value: `${getProductFeature(product, 'Gürültü Seviyesi')} dB` }
@@ -519,10 +528,16 @@ export const getProductSpecRows = (product: Product, site?: string): Array<{ lab
             ? getAllJantFeatures(product, site)
             : [];
 
+    // Değeri boş olan satırlar ("-", "- dB" gibi) hiç gösterilmez
+    const filled = rows.filter(r => {
+        const value = String(r.value ?? '').trim();
+        return value !== '' && value !== '-' && !/^-\s*[a-zA-Z]*$/.test(value);
+    });
+
     // Kategori ayarı açıksa stok kodu satırı listelenmez
     return (product as any)?.hideStockCode === true
-        ? rows.filter(r => r.label !== 'Stok Kodu')
-        : rows;
+        ? filled.filter(r => r.label !== 'Stok Kodu')
+        : filled;
 };
 
 /**

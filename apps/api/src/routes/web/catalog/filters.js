@@ -256,6 +256,9 @@ router.get('/tire-options', async (req, res) => {
 
         baseMatch['diaData.ozelkod7kodu'] = productType;
 
+        // "JANT" ve "2.El Jant" gibi jant türevleri jant filtre setini kullanır
+        const isJantType = /jant/i.test(productType);
+
         // Her filtre için kendi alanı hariç diğer filtreleri uygulayan match builder
         const matchFor = (excludeField) => ({
             ...baseMatch,
@@ -292,7 +295,7 @@ router.get('/tire-options', async (req, res) => {
         ];
 
         // JANT
-        if (productType === 'JANT') {
+        if (isJantType) {
             // Jant özellikleri m_urunOzellikleri üzerinden dinamik olarak çekilir
             const buildRimFeaturePipeline = (featureName) => ([
                 { $match: baseMatch },

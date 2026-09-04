@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import * as cartService from '@/src/services/cartService';
+import { pushDataLayer, fireAdsConversion } from '@/src/lib/tracking';
 
 interface CartItem {
     productKey: string;
@@ -13,6 +14,8 @@ interface CartItem {
     quantity: number;
     unitPrice: number;
     kdvRate: number;
+    /** Kategori ayarı: 'haric' ise fiyat KDV hariç gösterilir */
+    priceDisplay?: 'dahil' | 'haric';
     montagePointId?: string;
     montagePointLabel?: string;
     // Sepet kuralları: kalem türü, lastik jant çapı, montaj hizmetinin çap aralığı
@@ -22,7 +25,12 @@ interface CartItem {
 }
 
 interface CartTotals {
+    /** Tüm kalemler, KDV hariç (montaj dahil) */
     subtotal: number;
+    /** Montaj/hizmet hariç ürünler, KDV hariç */
+    productsSubtotal?: number;
+    /** Montaj ve hizmet kalemleri, KDV hariç */
+    montage?: number;
     kdv: number;
     total: number;
     itemCount: number;
@@ -75,8 +83,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (result.success) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
-                toast.success(successMessage);
+                // Boş mesaj = bildirim gösterme (mobil satın alma çubuğu kendi onay panelini açar)
+                if (successMessage) toast.success(successMessage);
                 notifyRuleNotes(result.notes);
+
+                // GTM dönüşüm tetikleyicileri için dataLayer olayı + Google Ads dönüşümü
+                const addedItem = (result.data.items || []).find((i: CartItem) => i.productKey === productKey);
+                const addedValue = addedItem ? Math.round(addedItem.unitPrice * quantity * 100) / 100 : undefined;
+                pushDataLayer({
+                    event: 'add_to_cart',
+                    item_id: productKey,
+                    quantity,
+                    value: addedValue,
+                    currency: 'TRY'
+                });
+                fireAdsConversion('addToCart', { value: addedValue ?? 1.0 });
                 return true;
             } else {
                 toast.error(result.message || 'Ürün sepetinize eklenirken hata oluştu.');
@@ -110,7 +131,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 notifyRuleNotes(result.notes);
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
-                toast.success(successMessage);
+                // Boş mesaj = bildirim gösterme
+                if (successMessage) toast.success(successMessage);
             } else {
                 toast.error(result.message || 'Silme işlemi başarısız oldu');
             }

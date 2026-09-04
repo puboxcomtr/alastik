@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
+import { ROUTES } from '@src/config/routes'
 import Image from 'next/image'
 import Tooltip from '@mui/material/Tooltip'
 import Rating from '@mui/material/Rating'
@@ -15,6 +17,8 @@ import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 import {
   getProductUrl,
   getProductPrice,
+  getProductType,
+  getDisplayPrice,
   getProductOriginalPrice,
   hasProductDiscount,
   getProductImage,
@@ -30,6 +34,7 @@ type Props = {
 export default function ProductSlideCard({ product }: Props) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [adding, setAdding] = useState(false)
+  const router = useRouter()
 
   const { theme } = useSettings()
   const { getBrand } = useBrands()
@@ -77,7 +82,13 @@ export default function ProductSlideCard({ product }: Props) {
         return
       }
 
-      await addToCart(product._key, 1)
+      // Lastikte toast yerine montaj noktası seçimine yönlendirilir (ürün detayıyla aynı davranış)
+      const isTire = getProductType(product) === 'LASTIK'
+      const added = await addToCart(product._key, 1, isTire ? '' : undefined)
+      if (added && isTire) {
+        router.push(ROUTES.MONTAGE_SELECT)
+        return
+      }
     } catch (err) {
       console.error('Sepete ekleme hatası:', err)
       toast.error('Sepete eklenemedi')
@@ -87,6 +98,8 @@ export default function ProductSlideCard({ product }: Props) {
   }
   const productUrl = getProductUrl(product)
   const price = getProductPrice(product)
+  // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
+  const gosterim = getDisplayPrice(product, price);
   const originalPrice = getProductOriginalPrice(product)
   const hasDiscount = hasProductDiscount(product)
   const imageUrl = getProductImage(product, theme?.defaultCatalogImage || '/alastik/assets/img/shop/pirelli.jpg')
@@ -219,7 +232,7 @@ export default function ProductSlideCard({ product }: Props) {
             )}
           </span>
           <span className="fw-bold">
-            {price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
+            {gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL{gosterim.suffix}
           </span>
         </div>
 

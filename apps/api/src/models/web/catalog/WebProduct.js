@@ -229,7 +229,13 @@ const customDataSchema = new mongoose.Schema({
             seoDescription: { type: String },
             shortDescription: { type: String },
             webVisible: { type: Boolean },
-            webOrder: { type: Number }
+            webOrder: { type: Number },
+            // XML kaynaklı üründe bu sitenin satış fiyatı (sahip site fiyat4'ü kullanır)
+            xmlPrice: { type: Number },
+            // XML kaynaklı üründe bu sitenin kargo dahil fiyatı (varsayılan site global
+            // customData.shippingIncludedPrice/shippingPerUnit alanlarını kullanır)
+            shippingIncludedPrice: { type: Number },
+            shippingPerUnit: { type: Number }
         };
         return acc;
     }, {}),

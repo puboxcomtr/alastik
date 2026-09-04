@@ -1,8 +1,31 @@
-import { ROUTES } from '@/src/config/routes';
 import { getProductType } from '@/src/hooks/Products/productHelpers';
 import type { Product } from '@/src/types/products';
 
-/** LJA: lastik sepete eklenince müşteri montaj noktası seçimine yönlendirilir */
-export const shouldRedirectToMontage = (product: Product): boolean => getProductType(product) === 'LASTIK';
+// Lastik sepete eklenince montaj teklifi popup'ını açan özel olay (MontageOffer modalı dinler)
+export const MONTAGE_OFFER_EVENT = 'openMontageOffer';
 
-export const MONTAGE_REDIRECT_PATH = ROUTES.MONTAGE;
+// Teklif müşteriye yalnız BİR kez sorulur; verilen yanıt tarayıcıda saklanır.
+// Anahtar sürümü artırılırsa tüm ziyaretçilere yeniden sorulur.
+export const MONTAGE_OFFER_STORAGE_KEY = 'lja_montage_offer_answered_v1';
+
+export const hasAnsweredMontageOffer = (): boolean => {
+    try {
+        return Boolean(localStorage.getItem(MONTAGE_OFFER_STORAGE_KEY));
+    } catch {
+        return true; // localStorage yoksa (gizli mod vb.) tekrar tekrar sormamak için sorulmaz
+    }
+};
+
+export const markMontageOfferAnswered = (): void => {
+    try {
+        localStorage.setItem(MONTAGE_OFFER_STORAGE_KEY, new Date().toISOString());
+    } catch { /* saklanamazsa sessizce geç */ }
+};
+
+/** LJA: lastik sepete eklendiyse ve daha önce sorulmadıysa montaj teklifi popup'ını açar */
+export const offerMontageAfterAdd = (product: Product): void => {
+    if (getProductType(product) !== 'LASTIK') return;
+    if (typeof window === 'undefined') return;
+    if (hasAnsweredMontageOffer()) return;
+    window.dispatchEvent(new CustomEvent(MONTAGE_OFFER_EVENT));
+};

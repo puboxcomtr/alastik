@@ -1,8 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
-import { shouldRedirectToMontage, MONTAGE_REDIRECT_PATH } from '@/src/hooks/Cart/montageRedirect';
+import { offerMontageAfterAdd } from '@/src/hooks/Cart/montageRedirect';
 import { useState } from "react";
 import Tooltip from '@mui/material/Tooltip';
 import Rating from '@mui/material/Rating';
@@ -39,7 +38,6 @@ import { toast } from 'react-toastify';
 export default function ProductCard({ product }: ProductCardProps) {
     const [adding, setAdding] = useState(false);
     const { addToCart } = useCart();
-    const router = useRouter();
     const { toggleFavourite, isFavourite } = useFavourites();
     const { definition } = useDefinition();
     const getWhatsAppUrl = () => {
@@ -61,7 +59,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             }
 
             const added = await addToCart(product._key, 1);
-            if (added && shouldRedirectToMontage(product)) router.push(MONTAGE_REDIRECT_PATH);
+            if (added) offerMontageAfterAdd(product);
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');

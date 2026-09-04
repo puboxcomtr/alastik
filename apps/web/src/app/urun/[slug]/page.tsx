@@ -12,6 +12,7 @@ import AlastikProductBreadcrumb from "@components/alastik/product/top/Breadcrumb
 import AlastikGallery from '@components/alastik/product/left/Gallery';
 import AlastikMiddle from '@components/alastik/product/middle/Middle';
 import AlastikAddCart from '@components/alastik/product/right/AddCart';
+import AlastikMobileBuyBar from '@components/alastik/product/right/MobileBuyBar';
 import AlastikDescription from '@components/alastik/product/bottom/Description';
 
 /* Components - LastikJantAVM */
@@ -19,6 +20,7 @@ import LjaProductBreadcrumb from "@components/lastikjantavm/product/top/Breadcru
 import LjaGallery from '@components/lastikjantavm/product/left/Gallery';
 import LjaMiddle from '@components/lastikjantavm/product/middle/Middle';
 import LjaAddCart from '@components/lastikjantavm/product/right/AddCart';
+import LjaMobileBuyBar from '@components/lastikjantavm/product/right/MobileBuyBar';
 import LjaDescription from '@components/lastikjantavm/product/bottom/Description';
 
 /* Services */
@@ -77,6 +79,7 @@ export default async function ProductDetailPage(
     const Gallery = site === 'lastikjantavm' ? LjaGallery : AlastikGallery;
     const Middle = site === 'lastikjantavm' ? LjaMiddle : AlastikMiddle;
     const AddCart = site === 'lastikjantavm' ? LjaAddCart : AlastikAddCart;
+    const MobileBuyBar = site === 'lastikjantavm' ? LjaMobileBuyBar : AlastikMobileBuyBar;
     const Description = site === 'lastikjantavm' ? LjaDescription : AlastikDescription;
 
     const { slug } = await params;
@@ -145,6 +148,19 @@ export default async function ProductDetailPage(
                 </Grid>
             </Grid>
 
+            {/* Yalnızca mobil: alta sabit fiyat + Şimdi Al + Sepete Ekle çubuğu.
+                Lastiklerde sepete ekleme sonrası aynı ebattaki diğer lastikler önerilir.
+                Bileşenin yer tutucu boşluğu (104px) DOM'daki yerinde açılır; alastik'te
+                bilgi kartı ile Açıklama arasında boşluk kalmasın diye sayfanın sonuna alınır. */}
+            {site === 'lastikjantavm' && (
+                <MobileBuyBar
+                    product={product}
+                    similar={isLastikProduct && genislik && yanak && cap
+                        ? { genislik: String(genislik), yanak: String(yanak), cap: String(cap) }
+                        : null}
+                />
+            )}
+
             <Grid className="row-fluid" container>
                 <Grid size={12}>
                     <Description
@@ -157,6 +173,15 @@ export default async function ProductDetailPage(
                     />
                 </Grid>
             </Grid>
+
+            {site !== 'lastikjantavm' && (
+                <MobileBuyBar
+                    product={product}
+                    similar={isLastikProduct && genislik && yanak && cap
+                        ? { genislik: String(genislik), yanak: String(yanak), cap: String(cap) }
+                        : null}
+                />
+            )}
         </Container>
     );
 }

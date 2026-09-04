@@ -64,7 +64,7 @@ export default function PaymentSidebar({ onSubmit, loading, disabled }: PaymentS
                         <hr />
                         <div className="d-flex justify-content-between mb-4">
                             <span className="fw-bold">Toplam</span>
-                            <span className="fw-bold fs-5 text-primary">{formatPrice(totals.subtotal)} TL</span>
+                            <span className="fw-bold fs-5 text-primary">{formatPrice(totals.total)} TL</span>
                         </div>
                         <button
                             className="btn btn-primary w-100 fw-semibold fs-6 py-3"

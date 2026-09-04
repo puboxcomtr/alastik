@@ -400,9 +400,10 @@ class DiaWorker {
             const XmlWebProductSyncService = require('../services/plugins/xml/XmlWebProductSyncService');
             const WebXml = require('../models/plugins/xml/WebXml');
 
-            // 1. Tüm aktif XML kaynaklarından ürün çek
+            // 1. Aktif XML kaynaklarından ürün çek (job.data.site verilmişse sadece o site)
+            const jobSite = job.data?.site || null;
             await job.progress({ percent: 10, message: 'XML kaynakları çekiliyor...' });
-            const integrations = await WebXml.find({ isActive: true });
+            const integrations = await WebXml.find({ isActive: true, ...(jobSite ? { site: jobSite } : {}) });
             for (const intg of integrations) {
                 try {
                     await XmlSyncScheduler.syncIntegration(intg);
@@ -417,9 +418,9 @@ class DiaWorker {
             const matchResult = await XmlDiaMatchService.matchAll({ useLiveDia });
             this.logger.info('XML-DIA eşleştirme tamamlandı', matchResult);
 
-            // 3. WebProducts sync
+            // 3. WebProducts sync (site verilmişse o sitenin kapsamında)
             await job.progress({ percent: 80, message: 'Fiyatlar webproducts\'a aktarılıyor...' });
-            const syncResult = await XmlWebProductSyncService.fullSync();
+            const syncResult = await XmlWebProductSyncService.fullSync(jobSite);
             this.logger.info('XML web sync tamamlandı', syncResult);
 
             await job.progress({ percent: 100, message: 'Tamamlandı' });

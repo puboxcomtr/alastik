@@ -16242,9 +16242,6 @@ html:not([dir=rtl]) .range-slider-ui.noUi-horizontal .noUi-handle {
     --cz-navbar-brand-font-weight: 600;
 }
 
-.main__menu {
-    border-bottom: 1px solid var(--cz-primary);
-}
 
 .navbar-brand {
     align-items: center;

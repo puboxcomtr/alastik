@@ -1,7 +1,7 @@
 // apps/api/src/routes/web/catalog/tags.js
 
 const express = require('express');
-const { applySitePricingMany, salePriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
+const { applySitePricingMany, salePriceExpr, sortPriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const router = express.Router();
 
 const WebTag = require('../../../models/web/catalog/WebTag');
@@ -349,22 +349,7 @@ router.get('/:slug/products', async (req, res) => {
             aggregatePipeline.push({
                 $addFields: {
                     _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
-                    _sortPrice: {
-                        $let: {
-                            vars: {
-                                shipPrice: { $ifNull: ['$customData.shippingIncludedPrice', 0] },
-                                webPrice: { $ifNull: ['$customData.webPrice', 0] },
-                                fiyat4: salePriceExpr(req.site) // site bazlı satış fiyatı (LJA: fiyat1 * oran)
-                            },
-                            in: {
-                                $cond: [
-                                    { $gt: ['$$shipPrice', 0] },
-                                    '$$shipPrice',
-                                    { $cond: [{ $gt: ['$$webPrice', 0] }, '$$webPrice', '$$fiyat4'] }
-                                ]
-                            }
-                        }
-                    }
+                    _sortPrice: sortPriceExpr(req.site) // site bazlı: kargo dahil fiyat > satış fiyatı
                 }
             });
             aggregatePipeline.push({

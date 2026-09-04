@@ -3,6 +3,8 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Admin = require('../models/admin/user/Admin');
 const Session = require('../models/Session');
+const { lookupLocation } = require('../utils/geoLookup');
+const { isInternalRequest } = require('../utils/requestOrigin');
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -35,10 +37,12 @@ const generateSessionId = () => {
  * IP adresini al
  */
 const getClientIP = (req) => {
-  return req.headers['x-forwarded-for'] ||
+  const raw = req.headers['x-forwarded-for'] ||
     req.connection.remoteAddress ||
     req.socket.remoteAddress ||
     (req.connection.socket ? req.connection.socket.remoteAddress : null);
+  // Vekil zincirinde ("istemci, vekil1, vekil2") gerçek istemci ilk adrestir
+  return typeof raw === 'string' ? raw.split(',')[0].trim() : raw;
 };
 
 /**
@@ -61,9 +65,15 @@ const parseUserAgent = (userAgent) => {
  * Session middleware - her request için session kontrolü
  */
 const sessionMiddleware = async (req, res, next) => {
+  // Next.js sunucusunun kendi SSR çağrıları tarayıcı cookie'si taşımaz; oturum sayılırlarsa
+  // her sayfa üretimi sunucu IP'li sahte oturumlar yaratır. Bu çağrılar kayıt dışı bırakılır.
+  if (isInternalRequest(req)) return next();
+
   try {
     const cookies = (req && req.cookies) ? req.cookies : {};
-    let sessionId = req.headers['x-session-id'] || cookies.sessionId || null;
+    // Istemciden gelen id (x-session-id basligi veya cookie) biçim kontrolünden geçmezse yok sayılır
+    const incomingId = String(req.headers['x-session-id'] || cookies.sessionId || '');
+    let sessionId = /^[A-Za-z0-9-]{16,128}$/.test(incomingId) ? incomingId : null;
     let session = null;
 
     // Session ID yoksa yeni session oluştur
@@ -72,16 +82,18 @@ const sessionMiddleware = async (req, res, next) => {
 
       const userAgent = req.headers['user-agent'] || '';
       const { browser, device } = parseUserAgent(userAgent);
+      const ipAddress = getClientIP(req);
 
       session = await Session.createGuestSession({
         sessionId,
         site: req.site,
         metadata: {
-          ipAddress: getClientIP(req),
+          ipAddress,
           userAgent: userAgent,
           browser: { name: browser },
           device: device,
-          referrer: req.headers.referer
+          referrer: req.headers.referer,
+          location: lookupLocation(ipAddress) || undefined
         }
       });
 
@@ -97,20 +109,24 @@ const sessionMiddleware = async (req, res, next) => {
       session = await Session.findBySessionId(sessionId);
 
       if (!session || session.isExpired) {
-        // Session expire olmuşsa yeni session oluştur
-        sessionId = generateSessionId();
+        // Kayıt yoksa istemcinin gönderdiği id KORUNUR (x-session-id ile gelen ilk istek); böylece sonraki
+        // istekler aynı başlıkla bu oturumu bulur. Süresi dolmuşsa aynı id ile yeniden yaratılamaz, yeni id üretilir.
+        if (session && session.isExpired) sessionId = generateSessionId();
 
         const userAgent = req.headers['user-agent'] || '';
         const { browser, device } = parseUserAgent(userAgent);
+        const ipAddress = getClientIP(req);
 
         session = await Session.createGuestSession({
           sessionId,
+          site: req.site,
           metadata: {
-            ipAddress: getClientIP(req),
+            ipAddress,
             userAgent: userAgent,
             browser: { name: browser },
             device: device,
-            referrer: req.headers.referer
+            referrer: req.headers.referer,
+            location: lookupLocation(ipAddress) || undefined
           }
         });
 

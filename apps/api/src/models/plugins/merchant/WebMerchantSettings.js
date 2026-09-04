@@ -31,6 +31,11 @@ const webMerchantSettingsSchema = new mongoose.Schema({
     onlyInStock: { type: Boolean, default: true },
     minPrice: { type: Number, default: 0 },
     minStock: { type: Number, default: 1 },
+    // Gerçek DIA stok kartıyla eşleşmemiş XML ürünlerini (otomatik -XML kartları,
+    // ozelkod10=XML) feed'e alma
+    excludeUnmatchedXml: { type: Boolean, default: false },
+    // Feed'den hariç tutulacak DIA üst kategori adları (kategori_aciklama_1)
+    excludedCategories: { type: [String], default: [] },
 
     // Görsel Ayarları
     imageSource: {

@@ -6,6 +6,7 @@ import { Container, Row, Col } from 'react-bootstrap';
 import { Package } from 'lucide-react';
 import { orderService } from '@/src/services/orderService';
 import { ROUTES } from '@/src/config/routes';
+import { pushDataLayer, fireAdsConversion } from '@/src/lib/tracking';
 
 import { Order } from '@/src/types/order';
 
@@ -29,10 +30,10 @@ export default function OrderSuccessPage() {
     const [isValidAccess, setIsValidAccess] = useState(false);
     const conversionSentRef = useRef(false);
 
-    // Google Ads conversion event — sipariş başarılı yüklendiğinde 1 kez tetikle
+    // Dönüşüm olayları — sipariş başarılı yüklendiğinde 1 kez tetikle
     useEffect(() => {
         if (!order || conversionSentRef.current) return;
-        if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+        if (typeof window === 'undefined') return;
 
         conversionSentRef.current = true;
         const orderValue = Number((order as { total?: number; totalAmount?: number; grandTotal?: number }).total
@@ -40,10 +41,17 @@ export default function OrderSuccessPage() {
             ?? (order as { grandTotal?: number }).grandTotal
             ?? 0);
 
-        window.gtag('event', 'conversion', {
-            send_to: 'AW-18022245202/qJixCKjJ8LscENLG1pFD',
+        // GTM dönüşüm tetikleyicileri için dataLayer olayı (her iki site)
+        pushDataLayer({
+            event: 'purchase',
             value: orderValue,
             currency: 'TRY',
+            transaction_id: orderNumber || ''
+        });
+
+        // Google Ads dönüşümü — sitenin etiket haritasından (config/tracking.ts)
+        fireAdsConversion('purchase', {
+            value: orderValue,
             transaction_id: orderNumber || ''
         });
     }, [order, orderNumber]);

@@ -1,5 +1,10 @@
 export interface CartTotals {
+    /** Tüm kalemler, KDV hariç (montaj dahil) */
     subtotal: number;
+    /** Montaj/hizmet hariç ürünler, KDV hariç */
+    productsSubtotal?: number;
+    /** Montaj ve hizmet kalemleri, KDV hariç */
+    montage?: number;
     kdv: number;
     total: number;
     itemCount: number;
@@ -26,6 +31,8 @@ export interface CartItem {
     unitPrice: number;
     originalPrice?: number;
     kdvRate: number;
+    // Kategori ayarı 'haric' ise satırda fiyat KDV hariç gösterilir ve '+ KDV' ibaresi eklenir
+    priceDisplay?: 'dahil' | 'haric';
 }
 
 export interface CartContentProps {

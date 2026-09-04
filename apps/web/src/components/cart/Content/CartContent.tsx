@@ -4,10 +4,11 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Tooltip } from "@mui/material";
-import { resolveSiteFromHost } from '@/src/config/siteConfig';
+import { toast } from 'react-toastify';
+import { resolveSiteFromHost, getSiteBySlug, DEFAULT_SITE, SiteSlug } from '@/src/config/siteConfig';
 
 import { getImageUrl } from '@/src/config/api';
-import { buildProductUrl } from '@/src/config/routes';
+import { buildProductUrl, ROUTES } from '@/src/config/routes';
 
 // Context
 import { useBrands } from '@/src/context/BrandsContext';
@@ -16,19 +17,71 @@ import { CartItem, CartContentProps } from '@/src/types/cart';
 
 export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: CartContentProps) {
     // Montaj bloğu: LJA'da Montaj Noktaları sayfasına, diğer sitede iletişime yönlenir
-    const [isLja, setIsLja] = useState(false);
+    const [siteSlug, setSiteSlug] = useState<SiteSlug>(DEFAULT_SITE);
+    // Site çözülene kadar alastik'e özel blok çizilmez (LJA'da anlık görünmesin)
+    const [siteResolved, setSiteResolved] = useState(false);
     useEffect(() => {
-        setIsLja(resolveSiteFromHost(window.location.host) === 'lastikjantavm');
+        setSiteSlug(resolveSiteFromHost(window.location.host));
+        setSiteResolved(true);
     }, []);
+    const isLja = siteSlug === 'lastikjantavm';
 
-    // Montaj hizmeti: sepette uygun çapta lastik varsa adedi lastik adedine kilitlidir
-    const isQuantityLocked = (item: CartItem) => {
-        if (item.itemType !== 'montage' || !item.rimRange) return false;
-        return items.some(t => t.itemType === 'tire' && t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= item.rimRange!.min && t.rimSize <= item.rimRange!.max);
+    // Butonun üzerine gelince kullanılacak vurgu rengi site temasından okunur
+    const accentColor = getSiteBySlug(siteSlug)?.theme.primary || '';
+    // Vurgu rengi açıksa üstüne siyah, koyuysa beyaz yazı gelir (okunabilirlik)
+    const readableTextOn = (hex: string): string => {
+        const value = hex.replace('#', '');
+        if (value.length !== 6) return '#000';
+        const r = parseInt(value.slice(0, 2), 16);
+        const g = parseInt(value.slice(2, 4), 16);
+        const b = parseInt(value.slice(4, 6), 16);
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#000' : '#fff';
+    };
+    const accentTextColor = readableTextOn(accentColor);
+
+    // Alastik: montaj/hizmet kalemlerinde ürün görseli ve marka logosu gösterilmez
+    const isServiceItem = (item: CartItem) =>
+        !isLja && (item.itemType === 'montage' || item.itemType === 'service' || Boolean(item.montagePointLabel));
+
+    // Montaj hizmeti: sepette uygun çapta lastik varsa adet tavanı lastik adedidir (daha azı alınabilir)
+    const montageCap = (item: CartItem): number | null => {
+        if (item.itemType !== 'montage' || !item.rimRange) return null;
+        const count = items
+            .filter(t => t.itemType === 'tire' && t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= item.rimRange!.min && t.rimSize <= item.rimRange!.max)
+            .reduce((sum, t) => sum + t.quantity, 0);
+        return count > 0 ? count : null;
+    };
+    // Artırma tavandayken buton tıklanabilir kalır ama uyarı gösterilir; azaltma serbesttir (min 1)
+    const handleIncrease = (item: CartItem) => {
+        const cap = montageCap(item);
+        if (cap !== null && item.quantity >= cap) {
+            toast.warning(`Montaj adedi sepetinizdeki lastik adedini (${cap}) aşamaz.`);
+            return;
+        }
+        onUpdateQuantity(item.productKey, item.quantity + 1);
     };
 
     const formatPrice = (price: number) => {
         return price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Kategori ayarı 'haric' olan kalemlerde (ör. İkinci El, hizmetler) fiyat KDV hariç gösterilir
+    // ve '+ KDV' ibaresi eklenir. Ödenecek tutar değişmez; KDV sepet özetinde ayrı satırda toplanır.
+    // Satırda ödenen tutar yazan kalemlerde (montaj/hizmet) KDV hariç karşılığı küçük punto ile altına yazılır
+    const vatExcludedLabel = (item: CartItem, gross: number): string | null => {
+        const isMontageItem = item.itemType === 'montage' || item.itemType === 'service';
+        if (!isMontageItem || item.priceDisplay !== 'haric' || gross <= 0) return null;
+        const rate = item.kdvRate > 0 ? item.kdvRate : 20;
+        const net = Math.round((gross / (1 + rate / 100)) * 100) / 100;
+        return `${formatPrice(net)} TL + KDV`;
+    };
+
+    const displayAmount = (item: CartItem, gross: number): { value: number; suffix: string } => {
+        // Montaj ve hizmet kalemlerinde satırda ödenen tutar yazılır; KDV kırılımı sepet özetindedir
+        const isMontageItem = item.itemType === 'montage' || item.itemType === 'service';
+        if (isMontageItem || item.priceDisplay !== 'haric') return { value: gross, suffix: '' };
+        const rate = item.kdvRate > 0 ? item.kdvRate : 20;
+        return { value: Math.round((gross / (1 + rate / 100)) * 100) / 100, suffix: ' + KDV' };
     };
     const { getBrand } = useBrands();
     return (
@@ -39,7 +92,8 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                         <div className='mb-3' key={item.productKey}>
                             <div className="p-2 border-bottom rounded">
                                 <div className="row align-items-center">
-                                    {/* Resim */}
+                                    {/* Resim — alastik'te montaj/hizmet kalemlerinde resim sütunu hiç yok */}
+                                    {!isServiceItem(item) && (
                                     <div className="col-3 col-md-2">
                                         <Link href={buildProductUrl(item.productSlug)}>
                                             {item.productImage ? (
@@ -61,9 +115,10 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                             )}
                                         </Link>
                                     </div>
+                                    )}
 
                                     {/* Bilgiler */}
-                                    <div className="col-9 col-md-4">
+                                    <div className={isServiceItem(item) ? 'col-12 col-md-6' : 'col-9 col-md-4'}>
                                         <Tooltip title="Ürünü İncele">
                                             <Link
                                                 href={`/urun/${item.productSlug}`}
@@ -77,7 +132,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                                 )}
                                             </Link>
                                         </Tooltip>
-                                        {item.brandName && (() => {
+                                        {item.brandName && !isServiceItem(item) && (() => {
                                             const brandInfo = getBrand(item.brandName);
                                             const logoUrl = brandInfo?.logo;
 
@@ -96,36 +151,63 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         })()}
                                     </div>
 
-                                    {/* Adet — montaj hizmetinde lastik varsa adet lastik adedine kilitlidir */}
+                                    {/* Adet — montaj hizmetinde lastik varsa adet lastik adedini aşamaz */}
                                     <div className="col-6 col-md-3 mt-3 mt-md-0">
-                                        <div className="d-flex align-items-center">
-                                            <button
-                                                className="btn btn-outline-secondary btn-sm"
-                                                onClick={() => onUpdateQuantity(item.productKey, item.quantity - 1)}
-                                                disabled={item.quantity <= 1 || isQuantityLocked(item)}
-                                            >
-                                                <i className="ri-subtract-line"></i>
-                                            </button>
-                                            <span className="mx-3 fw-medium">{item.quantity}</span>
-                                            <button
-                                                className="btn btn-outline-secondary btn-sm"
-                                                onClick={() => onUpdateQuantity(item.productKey, item.quantity + 1)}
-                                                disabled={isQuantityLocked(item)}
-                                            >
-                                                <i className="ri-add-line fs-6"></i>
-                                            </button>
+                                        {/* Adet kontrolü + altında çarpan ve birim fiyat (genişlik kontrole göre) */}
+                                        <div className="d-inline-block">
+                                            <div className="d-flex align-items-center">
+                                                <button
+                                                    className="btn btn-outline-secondary btn-sm"
+                                                    onClick={() => onUpdateQuantity(item.productKey, item.quantity - 1)}
+                                                    disabled={item.quantity <= 1}
+                                                >
+                                                    <i className="ri-subtract-line"></i>
+                                                </button>
+                                                <span className="mx-3 fw-medium">{item.quantity}</span>
+                                                <button
+                                                    className="btn btn-outline-secondary btn-sm"
+                                                    onClick={() => handleIncrease(item)}
+                                                >
+                                                    <i className="ri-add-line fs-6"></i>
+                                                </button>
+                                            </div>
+                                            {/* Çarpan ve birim fiyat sadece montaj/hizmet kalemlerinde gösterilir */}
+                                            {(item.itemType === 'montage' || item.itemType === 'service') && (
+                                                <div className="text-center mt-1" style={{ fontSize: '0.72rem', color: '#9a9a9a', whiteSpace: 'nowrap' }}>
+                                                    {vatExcludedLabel(item, item.unitPrice) ? (
+                                                        /* Montaj/hizmet: birim fiyat KDV hariç yazılır, satır toplamı ödenen tutardır */
+                                                        <span>&times; {vatExcludedLabel(item, item.unitPrice)}</span>
+                                                    ) : (
+                                                        <span>
+                                                            {item.unitPrice === 0
+                                                                ? 'Ücretsiz'
+                                                                : (() => {
+                                                                    const birim = displayAmount(item, item.unitPrice);
+                                                                    return `× ${formatPrice(birim.value)} TL${birim.suffix}`;
+                                                                })()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                        {isQuantityLocked(item) && (
-                                            <small className="text-muted d-block mt-1">Adet lastik adedine göre belirlenir</small>
-                                        )}
                                     </div>
 
                                     {/* Fiyat */}
                                     <div className="col-4 col-md-2 mt-3 mt-md-0 text-end">
+                                        {/* Satır toplamı: birim fiyat × adet. İndirim varsa eski toplam üstü çizili görünür */}
                                         {item.originalPrice > item.unitPrice && (
-                                            <small className="text-decoration-line-through text-muted fs-7">{formatPrice(item.originalPrice)} TL</small>
+                                            <small className="text-decoration-line-through text-muted fs-7 d-block">
+                                                {formatPrice(displayAmount(item, item.originalPrice * item.quantity).value)} TL
+                                            </small>
                                         )}
-                                        <p className="mb-0 fw-bold text-primary fs-7">{item.unitPrice === 0 ? 'Ücretsiz' : `${formatPrice(item.unitPrice)} TL`}</p>
+                                        <p className="mb-0 fw-bold text-primary fs-7">
+                                            {item.unitPrice === 0
+                                                ? 'Ücretsiz'
+                                                : (() => {
+                                                    const satir = displayAmount(item, item.unitPrice * item.quantity);
+                                                    return `${formatPrice(satir.value)} TL${satir.suffix}`;
+                                                })()}
+                                        </p>
                                     </div>
 
                                     {/* Sil */}
@@ -157,53 +239,100 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                     </div>
                 </div>
             )}
-            <div className="card mr-2 my-3 border-0" style={{ backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
-                <div className="card-body p-4">
-                    <div className="row align-items-center g-3">
-                        <div className="col">
-                            <h6 className="text-white fw-bold mb-1">
-                                Türkiye'nin 81 İlinde Montaj Hizmeti
-                            </h6>
-                            {isLja ? (
-                                <>
-                                    <p className="text-white-50 mb-0 small d-md-none">
-                                        Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
-                                    </p>
-                                    <p className="text-white-50 mb-0 small d-none d-md-block">
-                                        Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
-                                    </p>
-                                </>
-                            ) : (
-                                <>
-                                    <p className="text-white-50 mb-0 small d-md-none">
-                                        Ürününüzü teslim aldıktan sonra montaj işlemini dilediğiniz noktada gerçekleştirebilir...
-                                    </p>
-                                    <p className="text-white-50 mb-0 small d-none d-md-block">
-                                        Ürününüzü teslim aldıktan sonra montaj işlemini dilediğiniz noktada gerçekleştirebilir veya bizimle iletişime geçerek Türkiye'nin 81 ilinde profesyonel montaj hizmetimizden faydalanabilirsiniz.
-                                    </p>
-                                </>
-                            )}
-                        </div>
-                        <div className="col-12 col-md-auto">
-                            {isLja ? (
-                                <Link
-                                    href="/montaj-noktalari"
-                                    className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none">
+            {/* Alastik: siyah montaj bloğu — tamamı tıklanabilir, montaj noktası seçimine gider */}
+            {siteResolved && !isLja && (
+                <Link
+                    href={ROUTES.MONTAGE_SELECT}
+                    className="card mr-2 my-3 border-0 text-decoration-none d-block"
+                    style={{ backgroundColor: '#1a1a1a', overflow: 'hidden' }}
+                >
+                    <div className="card-body p-4">
+                        <div className="row align-items-center g-3">
+                            <div className="col">
+                                <h6 className="text-white fw-bold mb-1">
+                                    Türkiye'nin 81 İlinde Montaj Hizmeti
+                                </h6>
+                                <p className="text-white-50 mb-0 small d-md-none">
+                                    Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
+                                </p>
+                                <p className="text-white-50 mb-0 small d-none d-md-block">
+                                    Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
+                                </p>
+                            </div>
+                            <div className="col-12 col-md-auto">
+                                <span className="btn btn-primary fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2">
                                     <i className="ri-map-pin-2-fill"></i>
-                                    Montaj Noktaları
-                                </Link>
-                            ) : (
-                                <Link
-                                    href="/iletisim"
-                                    className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-white text-decoration-none">
-                                    <i className="ri-phone-fill"></i>
-                                    İletişime Geç
-                                </Link>
-                            )}
+                                    Montaj Noktası Seç
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </Link>
+            )}
+            {/* Siyah montaj bloğu yalnız LJA'da; alastik'in bloğu yukarıda */}
+            {isLja && (
+                <div className="card mr-2 my-3 border-0" style={{ backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
+                    <div className="card-body p-4">
+                        <div className="row align-items-center g-3">
+                            <div className="col">
+                                <h6 className="text-white fw-bold mb-1">
+                                    Türkiye'nin 81 İlinde Montaj Hizmeti
+                                </h6>
+                                {isLja ? (
+                                    <>
+                                        <p className="text-white-50 mb-0 small d-md-none">
+                                            Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
+                                        </p>
+                                        <p className="text-white-50 mb-0 small d-none d-md-block">
+                                            Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-white-50 mb-0 small d-md-none">
+                                            Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
+                                        </p>
+                                        <p className="text-white-50 mb-0 small d-none d-md-block">
+                                            Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                            <div className="col-12 col-md-auto">
+                                {isLja ? (
+                                    <Link
+                                        href="/montaj-noktalari"
+                                        className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none cart-cta-btn">
+                                        <i className="ri-map-pin-2-fill"></i>
+                                        Montaj Noktaları
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href={ROUTES.MONTAGE_SELECT}
+                                        className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none cart-cta-btn">
+                                        <i className="ri-map-pin-2-fill"></i>
+                                        Montaj Noktası Seç
+                                    </Link>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
+            <style jsx>{`
+                :global(.cart-cta-btn) {
+                    background-color: #fff;
+                    color: #000;
+                    border: 0;
+                    transition: background-color .15s ease, color .15s ease;
+                }
+                :global(.cart-cta-btn):hover,
+                :global(.cart-cta-btn):focus,
+                :global(.cart-cta-btn):active {
+                    background-color: ${accentColor};
+                    color: ${accentTextColor};
+                }
+            `}</style>
         </>
     );
 }

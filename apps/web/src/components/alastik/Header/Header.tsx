@@ -7,6 +7,7 @@ import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/alastik/Header/Middle/Main';
 import Navbar from '@components/alastik/Header/Navbar/Main';
 import MobileMenu from '@components/alastik/Header/MobileMenu';
+import MontageBanner from '@components/alastik/Header/MontageBanner';
 
 /* Api Connection */
 import { api } from '@src/lib/api';
@@ -28,6 +29,7 @@ export default function Header() {
 
     return (
         <>
+            <MontageBanner />
             <Middle logo={logo} siteName={siteName} onMenuOpen={() => setMenuOpen(true)} />
             <Navbar />
             <MobileMenu show={menuOpen} onClose={() => setMenuOpen(false)} />

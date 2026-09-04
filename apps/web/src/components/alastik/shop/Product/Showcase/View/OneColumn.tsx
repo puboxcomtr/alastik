@@ -1,5 +1,7 @@
 'use client';
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '@src/config/routes';
 import { useState, useEffect } from "react";
 import { Row, Col } from "react-bootstrap";
 import Rating from '@mui/material/Rating';
@@ -22,6 +24,8 @@ import { getRelatedBlogs } from '@/src/services/productService';
 import {
     getProductUrl,
     getProductPrice,
+    getProductType,
+    getDisplayPrice,
     getProductOriginalPrice,
     hasProductDiscount,
     getProductImage,
@@ -33,6 +37,7 @@ import { toast } from 'react-toastify';
 export default function OneColumn({ product }: ProductCardProps) {
     const [isFavorite, setIsFavorite] = useState(false);
     const [adding, setAdding] = useState(false);
+    const router = useRouter();
     const [blogCount, setBlogCount] = useState(0);
     const { addToCart, items } = useCart();
     const { theme } = useSettings();
@@ -64,7 +69,10 @@ export default function OneColumn({ product }: ProductCardProps) {
                 return;
             }
 
-            await addToCart(product._key, quantity);
+            // Lastikte toast yerine montaj noktası seçimine yönlendirilir (ürün detayıyla aynı davranış)
+            const isTire = getProductType(product) === 'LASTIK';
+            const added = await addToCart(product._key, quantity, isTire ? '' : undefined);
+            if (added && isTire) { router.push(ROUTES.MONTAGE_SELECT); return; }
         } catch (err) {
             console.error('Sepete ekleme hatası:', err);
             toast.error('Sepete eklenemedi');
@@ -89,6 +97,8 @@ export default function OneColumn({ product }: ProductCardProps) {
     const [quantity, setQuantity] = useState(1);
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
+    // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
+    const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
@@ -204,7 +214,7 @@ export default function OneColumn({ product }: ProductCardProps) {
                                     )
                                 )}
                                 <span className="fw-bold fs-lg">
-                                    {price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
+                                    {gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL{gosterim.suffix}
                                 </span>
                             </div>
                         </div>

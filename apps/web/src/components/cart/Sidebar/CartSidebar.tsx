@@ -38,16 +38,29 @@ export default function CartSidebar({
                         <hr />
                         <div className="d-flex justify-content-between mb-2">
                             <span className="fw-semibold text-black fs-sm">Ürünler Toplamı</span>
-                            <span>{formatPrice(totals.subtotal)} TL</span>
+                            <span>{formatPrice(totals.productsSubtotal ?? totals.subtotal)} TL</span>
                         </div>
                         <div className="d-flex justify-content-between mb-2">
                             <span className="fw-semibold text-black fs-sm">Kargo Bedeli</span>
                             <span>0 TL</span>
                         </div>
+                        <hr className="my-2" />
+                        {(totals.montage ?? 0) > 0 && (
+                            <div className="d-flex justify-content-between mb-2">
+                                <span className="fw-semibold text-black fs-sm">Montaj Fiyatı</span>
+                                <span>{formatPrice(totals.montage as number)} TL</span>
+                            </div>
+                        )}
+                        {totals.kdv > 0 && (
+                            <div className="d-flex justify-content-between mb-2">
+                                <span className="fw-semibold text-black fs-sm">KDV</span>
+                                <span>{formatPrice(totals.kdv)} TL</span>
+                            </div>
+                        )}
                         <hr />
                         <div className="d-flex justify-content-between mb-4">
                             <span className="fw-semibold text-black fs-sm">Toplam (KDV Dahil)</span>
-                            <span className="fw-bold text-primary">{formatPrice(totals.subtotal)} TL</span>
+                            <span className="fw-bold text-primary">{formatPrice(totals.total)} TL</span>
                         </div>
                         {showCheckoutButton && (
                             <button
@@ -107,12 +120,25 @@ export default function CartSidebar({
                     </div>
                     <div className="d-flex justify-content-between mb-2">
                         <span className="fs-sm text-black">Ara Toplam</span>
-                        <span className='fw-semibold fs-sm'>{formatPrice(totals.subtotal)} TL</span>
+                        <span className='fw-semibold fs-sm'>{formatPrice(totals.productsSubtotal ?? totals.subtotal)} TL</span>
                     </div>
                     <div className="d-flex justify-content-between mb-2">
                         <span className="fs-sm text-black">Kargo Bedeli</span>
                         <span className='fw-semibold fs-sm'>0 TL</span>
                     </div>
+                    <hr className="my-2" />
+                    {(totals.montage ?? 0) > 0 && (
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="fs-sm text-black">Montaj Fiyatı</span>
+                            <span className='fw-semibold fs-sm'>{formatPrice(totals.montage as number)} TL</span>
+                        </div>
+                    )}
+                    {totals.kdv > 0 && (
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="fs-sm text-black">KDV</span>
+                            <span className='fw-semibold fs-sm'>{formatPrice(totals.kdv)} TL</span>
+                        </div>
+                    )}
                     <div className="d-flex gap-2 mb-2">
                         <input
                             type="text"
@@ -147,7 +173,7 @@ export default function CartSidebar({
                             <span className='text-muted'>KDV Dahil</span>
                         </div>
                         <div className="fw-bold text-primary cart-mobile-price">
-                            {formatPrice(totals.subtotal)} TL
+                            {formatPrice(totals.total)} TL
                         </div>
                     </div>
                     <div className="d-flex flex-column">

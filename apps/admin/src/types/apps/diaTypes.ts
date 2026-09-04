@@ -91,6 +91,16 @@ export interface DiaAktarimSettings {
     brands: DiaAktarimNamedItem[]
 }
 
+// Her Zaman Dahil — durum dışındaki kurallara ve "Hariç Bırak" listesine bakılmaksızın
+// aktarılacak kalemler. Aktarım Ayarları'ndan farkı: mode yoktur (her zaman dahil eder) ve
+// ürün / kategori / marka listelerinin hepsi birlikte değerlendirilir.
+export interface DiaZorunluDahilSettings {
+    filterType: DiaAktarimFilterType
+    products: DiaAktarimProduct[]
+    categories: DiaAktarimNamedItem[]
+    brands: DiaAktarimNamedItem[]
+}
+
 // DİA Ana Ayarlar
 export interface DiaSettings {
     baseURL: string
@@ -101,6 +111,7 @@ export interface DiaSettings {
     donemKodu: number
     siparis: DiaSiparisSettings
     aktarim: DiaAktarimSettings
+    zorunluDahil: DiaZorunluDahilSettings
     sync: DiaSyncSettings
 }
 
@@ -171,6 +182,12 @@ export const defaultDiaSettings: DiaSettings = {
     aktarim: {
         mode: 'tumu',
         filterType: 'urun',
+        products: [],
+        categories: [],
+        brands: []
+    },
+    zorunluDahil: {
+        filterType: 'kategori',
         products: [],
         categories: [],
         brands: []

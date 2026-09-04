@@ -12,11 +12,20 @@ import Typography from '@mui/material/Typography'
 import { toast } from 'react-toastify'
 
 // Components Imports
-import CardStatVertical from '@views/dashboard/Vertical'
+import CardStatVertical, { CARD_RANGE_LABELS } from '@views/dashboard/Vertical'
+import type { CardRange } from '@views/dashboard/Vertical'
 import TotalProfitStackedBar from '@views/dashboard/TotalProfitStackedBar'
 import Transactions from '@views/dashboard/Transactions'
 import WebsiteStatistics from '@views/dashboard/WebsiteStatistics'
 import Table from '@views/dashboard/Table'
+
+// Analiz widget'ları (Analizler modülü — ayrı uçtan beslenir, pano yüklemesini engellemez)
+import OrderActivityCard from '@views/dashboard/analytics/OrderActivityCard'
+import CustomerGrowthCard from '@views/dashboard/analytics/CustomerGrowthCard'
+import SeasonSplitCard from '@views/dashboard/analytics/SeasonSplitCard'
+import RimSplitCard from '@views/dashboard/analytics/RimSplitCard'
+import SalesMapCard from '@views/dashboard/analytics/SalesMapCard'
+import TopProductsCard from '@views/dashboard/analytics/TopProductsCard'
 
 // API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
@@ -25,6 +34,7 @@ import type { ProfitStats } from '@views/dashboard/TotalProfitStackedBar'
 import type { TransactionItem } from '@views/dashboard/Transactions'
 import type { VisitStats } from '@views/dashboard/WebsiteStatistics'
 import type { RecentOrder } from '@views/dashboard/Table'
+import type { OverviewData } from '@views/dashboard/analytics/format'
 
 type DashboardData = {
     cards: {
@@ -50,6 +60,45 @@ const trendProps = (trend?: number) => ({
 const DashboardECommerce = () => {
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [overview, setOverview] = useState<OverviewData | null>(null)
+
+    // Üst kartların dönemi (Bugün / Son 7 Gün / Son 30 Gün); 30 gün pano verisinden gelir, diğerleri ayrıca çekilir
+    const [cardRange, setCardRange] = useState<CardRange>('30d')
+    const [rangeCards, setRangeCards] = useState<DashboardData['cards'] | null>(null)
+
+    useEffect(() => {
+        if (cardRange === '30d') {
+            setRangeCards(null)
+
+            return
+        }
+
+        let cancelled = false
+
+        const fetchCards = async () => {
+            try {
+                const res = await fetchAPI(API_ENDPOINTS.analytics.cards(cardRange), { cache: 'no-store' })
+
+                if (cancelled) return
+
+                if (res.success) {
+                    setRangeCards(res.data.cards as DashboardData['cards'])
+                } else {
+                    toast.error(res.message || 'Kart verileri yüklenemedi')
+                }
+            } catch (error) {
+                if (cancelled) return
+                console.error('Cards fetch error:', error)
+                toast.error('Kart verileri yüklenirken hata oluştu')
+            }
+        }
+
+        fetchCards()
+
+        return () => {
+            cancelled = true
+        }
+    }, [cardRange])
 
     useEffect(() => {
         const fetchDashboard = async () => {
@@ -69,7 +118,24 @@ const DashboardECommerce = () => {
             }
         }
 
+        // Analiz widget'ları ayrı yüklenir; hata verirse yalnızca kendi bölümleri gizlenir
+        const fetchOverview = async () => {
+            try {
+                const res = await fetchAPI(API_ENDPOINTS.analytics.overview(), { cache: 'no-store' })
+
+                if (res.success) {
+                    setOverview(res.data as OverviewData)
+                } else {
+                    toast.error(res.message || 'Analiz verileri yüklenemedi')
+                }
+            } catch (error) {
+                console.error('Overview fetch error:', error)
+                toast.error('Analiz verileri yüklenirken hata oluştu')
+            }
+        }
+
         fetchDashboard()
+        fetchOverview()
     }, [])
 
     if (loading) {
@@ -85,52 +151,84 @@ const DashboardECommerce = () => {
         return <Typography color='text.secondary'>Pano verileri yüklenemedi.</Typography>
     }
 
+    const cards = rangeCards ?? data.cards
+    const rangeLabel = CARD_RANGE_LABELS[cardRange]
+
     return (
         <Grid container spacing={6}>
             <Grid size={{ xs: 12, md: 12 }}>
                 <Grid container spacing={6}>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <CardStatVertical
-                            title='Satış Tutarı (30 Gün)'
-                            stats={`${formatTRY(data.cards.totalSales.value)} TL`}
+                            title={`Satış Tutarı (${rangeLabel})`}
+                            stats={`${formatTRY(cards.totalSales.value)} TL`}
                             avatarIcon='ri-wallet-2-line'
                             avatarColor='success'
-                            {...trendProps(data.cards.totalSales.trend)}
+                            activeRange={cardRange}
+                            onRangeChange={setCardRange}
+                            {...trendProps(cards.totalSales.trend)}
                         />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <CardStatVertical
-                            title='Sipariş (30 Gün)'
-                            stats={`${data.cards.totalOrders.value.toLocaleString('tr-TR')} Adet`}
+                            title={`Sipariş (${rangeLabel})`}
+                            stats={`${cards.totalOrders.value.toLocaleString('tr-TR')} Adet`}
                             avatarIcon='ri-shopping-cart-line'
                             avatarColor='info'
-                            {...trendProps(data.cards.totalOrders.trend)}
+                            activeRange={cardRange}
+                            onRangeChange={setCardRange}
+                            {...trendProps(cards.totalOrders.trend)}
                         />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <CardStatVertical
                             title='Onay Bekleyen Sipariş'
-                            stats={`${data.cards.pendingOrders.value.toLocaleString('tr-TR')} Adet`}
+                            stats={`${cards.pendingOrders.value.toLocaleString('tr-TR')} Adet`}
                             avatarIcon='ri-alarm-line'
                             avatarColor='error'
-                            trendNumber=''
-                            trend='positive'
                         />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <CardStatVertical
-                            title='Yeni Üye (30 Gün)'
-                            stats={`${data.cards.newMembers.value.toLocaleString('tr-TR')} Üye`}
+                            title={`Yeni Üye (${rangeLabel})`}
+                            stats={`${cards.newMembers.value.toLocaleString('tr-TR')} Üye`}
                             avatarIcon='ri-user-add-line'
                             avatarColor='warning'
-                            {...trendProps(data.cards.newMembers.trend)}
+                            activeRange={cardRange}
+                            onRangeChange={setCardRange}
+                            {...trendProps(cards.newMembers.trend)}
                         />
                     </Grid>
                 </Grid>
             </Grid>
+
             <Grid size={{ xs: 12, md: 12 }}>
                 <TotalProfitStackedBar profit={data.profit} />
             </Grid>
+
+            {overview ? (
+                <>
+                    <Grid size={{ xs: 12, md: 7 }}>
+                        <OrderActivityCard activity={overview.orderActivity} />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 5 }}>
+                        <CustomerGrowthCard growth={overview.customerGrowth} />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <SeasonSplitCard split={overview.seasonSplit} window={overview.window} />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 8 }}>
+                        <RimSplitCard split={overview.rimSplit} window={overview.window} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                        <SalesMapCard salesMap={overview.salesMap} window={overview.window} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                        <TopProductsCard products={overview.topProducts} />
+                    </Grid>
+                </>
+            ) : null}
+
             <Grid size={{ xs: 12, md: 4 }}>
                 <Grid container spacing={6}>
                     <Grid size={{ xs: 12 }}>

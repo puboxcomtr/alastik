@@ -6,6 +6,7 @@ import classnames from 'classnames'
 
 // API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getSiteHeader } from '@/utils/activeSite'
 
 // MUI Imports
 import type { TextFieldProps } from '@mui/material/TextField'
@@ -166,7 +167,7 @@ const XmlListTable = () => {
             const token = (session as any)?.user?.accessToken
 
             const res = await fetch(API_ENDPOINTS.webxml.productsExport(), {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) }
+                headers: { ...(token && { Authorization: `Bearer ${token}` }), ...getSiteHeader() }
             })
             if (!res.ok) throw new Error('Dışa çıkartma işlemi başarısız')
 

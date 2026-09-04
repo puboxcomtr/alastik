@@ -38,7 +38,7 @@ export default function CheckoutSummary({ onSubmit, loading, showButton = true }
                         <hr />
                         <div className="d-flex justify-content-between mb-4">
                             <span className="fw-semibold text-black fs-sm">Toplam (KDV Dahil)</span>
-                            <span className="fw-bold text-primary">{formatPrice(totals.subtotal)} TL</span>
+                            <span className="fw-bold text-primary">{formatPrice(totals.total)} TL</span>
                         </div>
                         {showButton && (
                             <button
@@ -131,7 +131,7 @@ export default function CheckoutSummary({ onSubmit, loading, showButton = true }
                             <span className='text-muted'>KDV Dahil</span>
                         </div>
                         <div className="fw-bold text-primary cart-mobile-price">
-                            {formatPrice(totals.subtotal)} TL
+                            {formatPrice(totals.total)} TL
                         </div>
                     </div>
                     <div className="d-flex flex-column">

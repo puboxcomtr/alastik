@@ -84,11 +84,11 @@ export default function CategoryTop({
                 </div>
                 <Grid container className="border-bottom pb-4 mb-4">
                     
-                    <Grid size={6}>
-                        {/* <Typography className='fw-bold' sx={{ fontSize: "14px" }}>
-                            {productCount.toLocaleString('tr-TR')} eşleşen ürün bulundu
-                        </Typography>*/}
-                    </Grid> 
+                    <Grid size={6} className="d-flex align-items-center">
+                        <Typography component="h3" variant="h6" className="fw-bold mb-0">
+                            {categoryName}
+                        </Typography>
+                    </Grid>
                     <Grid size={6} className="d-flex justify-content-end">
                         <Grid size={6} sx={{ mr: '20px' }}>
                             <FormControl fullWidth>

@@ -24,6 +24,10 @@ export const ROUTES = {
     TAG: '/etiket',
     CART: '/sepet',
     MONTAGE: '/montaj-noktalari',
+    // Montaj noktası seçim sayfası (ALastik)
+    MONTAGE_SELECT: '/montaj-noktasi-sec',
+    /** @deprecated MONTAGE_SELECT kullanılmalı — eski ad geriye dönük uyumluluk için duruyor */
+    ADDED_TO_CART: '/montaj-noktasi-sec',
     CHECKOUT: '/teslimat',
     PAYMENT: '/odeme',
     CONTACT: '/iletisim',
