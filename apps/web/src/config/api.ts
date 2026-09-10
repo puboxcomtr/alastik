@@ -18,6 +18,14 @@ export const API_ENDPOINTS = {
         rimPcd: () => `${getBaseUrl()}/tags/rim-pcd`,
         chainSize: () => `${getBaseUrl()}/tags/chain-size`,
     },
+    b2b: {
+        application: () => `${getBaseUrl()}/b2b/application`,
+        brands: () => `${getBaseUrl()}/brands`,
+        login: () => `${getBaseUrl()}/b2b/auth/login`,
+        me: () => `${getBaseUrl()}/b2b/auth/me`,
+        cariOzet: () => `${getBaseUrl()}/b2b/auth/cari-ozet`,
+        depoStok: (codes: string) => `${getBaseUrl()}/b2b/auth/depo-stok?codes=${encodeURIComponent(codes)}`,
+    },
     brands: {
         homepage: () => `${getBaseUrl()}/brands/homepage`,
         detail: (seoUrl: string) => `${getBaseUrl()}/brands/${encodeURIComponent(seoUrl)}`,

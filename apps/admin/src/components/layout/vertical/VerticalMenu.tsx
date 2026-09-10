@@ -1,3 +1,6 @@
+// React Imports
+import { useEffect, useState } from 'react'
+
 // Next Imports
 import { useParams } from 'next/navigation'
 
@@ -27,6 +30,9 @@ import StyledVerticalNavExpandIcon from '@menu/styles/vertical/StyledVerticalNav
 import menuItemStyles from '@core/styles/vertical/menuItemStyles'
 import menuSectionStyles from '@core/styles/vertical/menuSectionStyles'
 
+// Site Imports
+import { siteHasMontage, siteHasCampaigns, getMemberMenuLabels } from '@/utils/activeSite'
+
 // Menu Data Imports
 // import menuData from '@/data/navigation/verticalMenuData'
 
@@ -55,6 +61,17 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   // Vars
   const { isBreakpointReached, transitionDuration } = verticalNavOptions
   const { lang: locale } = params
+
+  // Aktif siteye göre menü görünürlüğü/etiketleri (localStorage yalnız client'ta okunur)
+  const [showMontage, setShowMontage] = useState(true)
+  const [showCampaigns, setShowCampaigns] = useState(true)
+  const [memberMenu, setMemberMenu] = useState<{ group: string; item: string } | null>(null)
+
+  useEffect(() => {
+    setShowMontage(siteHasMontage())
+    setShowCampaigns(siteHasCampaigns())
+    setMemberMenu(getMemberMenuLabels())
+  }, [])
 
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
 
@@ -113,7 +130,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/order/payment`}>{dictionary['navigation'].payment}</MenuItem>
             <MenuItem href={`/${locale}/apps/order/cart`}>{`${dictionary['navigation'].active} ${dictionary['navigation'].cart}`}</MenuItem>
           </SubMenu>
-          <MenuItem icon={<i className='ri-map-pin-2-line' />} href={`/${locale}/apps/montage/list`}>Montaj Noktaları</MenuItem>
+          {showMontage && (
+            <MenuItem icon={<i className='ri-map-pin-2-line' />} href={`/${locale}/apps/montage/list`}>Montaj Noktaları</MenuItem>
+          )}
 
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <SubMenu label={"Sayfa Yönetimi"} icon={<i className='ri-pages-line' />}>
@@ -122,19 +141,24 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/`}>{dictionary['navigation'].form}</MenuItem>
             <MenuItem href={`/${locale}/apps/`}>{dictionary['navigation'].content_settings}</MenuItem>
           </SubMenu>
-          <SubMenu label={dictionary['navigation'].user_management} icon={<i className='ri-user-2-line' />}>
-            <MenuItem href={`/${locale}/apps/user/list`}>{dictionary['navigation'].user}</MenuItem>
+          <SubMenu label={memberMenu?.group || dictionary['navigation'].user_management} icon={<i className='ri-user-2-line' />}>
+            <MenuItem href={`/${locale}/apps/user/list`}>{memberMenu?.item || dictionary['navigation'].user}</MenuItem>
+            {memberMenu && (
+              <MenuItem href={`/${locale}/apps/b2b/applications`}>Bayi Başvuruları</MenuItem>
+            )}
             <MenuItem href={`/${locale}/apps/support/list`}>{dictionary['navigation'].support}</MenuItem>
           </SubMenu>
           <MenuItem icon={<i className='ri-arrow-left-right-line' />} href={`/${locale}/apps/redirects`}>Yönlendirmeler</MenuItem>
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
-          <SubMenu label={dictionary['navigation'].campaign_management} icon={<i className='ri-gift-fill' />}>
-            <MenuItem href={`/${locale}/apps/campaign/list`}>{dictionary['navigation'].campaign}</MenuItem>
-            <MenuItem href={`/${locale}/apps/campaign/promotions`}>{dictionary['navigation'].promotions}</MenuItem>
-            <MenuItem href={`/${locale}/apps/campaign/buy-fast`}>{dictionary['navigation'].buy_fast}</MenuItem>
-            <MenuItem href={`/${locale}/apps/purchase-limits/list`}>{dictionary['navigation'].order_limit}</MenuItem>
-            <MenuItem href={`/${locale}/apps/campaign/package-creator`}>{dictionary['navigation'].package_creator}</MenuItem>
-          </SubMenu>
+          {showCampaigns && (
+            <SubMenu label={dictionary['navigation'].campaign_management} icon={<i className='ri-gift-fill' />}>
+              <MenuItem href={`/${locale}/apps/campaign/list`}>{dictionary['navigation'].campaign}</MenuItem>
+              <MenuItem href={`/${locale}/apps/campaign/promotions`}>{dictionary['navigation'].promotions}</MenuItem>
+              <MenuItem href={`/${locale}/apps/campaign/buy-fast`}>{dictionary['navigation'].buy_fast}</MenuItem>
+              <MenuItem href={`/${locale}/apps/purchase-limits/list`}>{dictionary['navigation'].order_limit}</MenuItem>
+              <MenuItem href={`/${locale}/apps/campaign/package-creator`}>{dictionary['navigation'].package_creator}</MenuItem>
+            </SubMenu>
+          )}
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <SubMenu label={"Eklentiler"} icon={<i className='ri-code-box-fill' />}>
             <MenuItem href={`/${locale}/apps/modules/dia`}>DİA E-Power</MenuItem>

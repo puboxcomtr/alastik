@@ -67,6 +67,22 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-site', site);
 
+    // B2B: bayi paneli teması kendi route ağacında yaşar (app/b2b-app) —
+    // b2b alan adından gelen sayfa istekleri görünmez şekilde oraya yönlenir.
+    // Böylece temanın global CSS'i diğer sitelere sızmaz, B2C route'ları değişmez.
+    if (site === 'b2b' && !url.pathname.startsWith('/b2b-app')) {
+        const rewriteUrl = request.nextUrl.clone();
+        rewriteUrl.pathname = `/b2b-app${url.pathname === '/' ? '' : url.pathname}`;
+        const rewriteResponse = NextResponse.rewrite(rewriteUrl, {
+            request: { headers: requestHeaders },
+        });
+        rewriteResponse.cookies.set('site', site, { path: '/', sameSite: 'lax' });
+        if (!request.cookies.get('sid')?.value) {
+            rewriteResponse.cookies.set('sid', crypto.randomUUID(), { path: '/', sameSite: 'lax' });
+        }
+        return rewriteResponse;
+    }
+
     const response = NextResponse.next({
         request: { headers: requestHeaders },
     });

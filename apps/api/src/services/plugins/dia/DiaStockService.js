@@ -1198,6 +1198,7 @@ class DiaStockService {
     if (rules.durum) query.durum = rules.durum;
     if (rules.ozelkod11Kodu) query.ozelkod11kodu = rules.ozelkod11Kodu;
     if (rules.b2cKodu) query.b2c_gonder = rules.b2cKodu;
+    if (rules.b2bKodu) query.b2b_gonder = rules.b2bKodu;
     return query;
   }
 
@@ -1234,7 +1235,8 @@ class DiaStockService {
     const rulesPass =
       (!rules.durum || item.durum === rules.durum) &&
       (!rules.ozelkod11Kodu || item.ozelkod11kodu === rules.ozelkod11Kodu) &&
-      (!rules.b2cKodu || item.b2c_gonder === rules.b2cKodu);
+      (!rules.b2cKodu || item.b2c_gonder === rules.b2cKodu) &&
+      (!rules.b2bKodu || item.b2b_gonder === rules.b2bKodu);
 
     const aktarim = rules.aktarim;
     if (!aktarim || aktarim.mode === 'tumu') return rulesPass;
@@ -1308,6 +1310,7 @@ class DiaStockService {
       ozelkod11: product.ozelkod11 || '',
       ozelkod11kodu: product.ozelkod11kodu || '',
       b2c_gonder: product.b2c_gonder || '',
+      b2b_gonder: product.b2b_gonder || '',
       durum: product.durum || '',
       gercek_stok: product.gercek_stok ?? 0,
       anabirimdesi: product.anabirimdesi ?? 0,
@@ -2571,7 +2574,7 @@ class DiaStockService {
       const allRules = getAllSyncRules();
       const ruleDocs = await DiaStock.find(
         {},
-        { _key: 1, durum: 1, ozelkod11kodu: 1, b2c_gonder: 1, stokkartkodu: 1, marka: 1, markaack: 1, 'm_kategoriler.kategori_aciklama_1': 1, 'm_kategoriler.kategori_aciklama_2': 1, 'm_kategoriler.kategori_aciklama_3': 1 }
+        { _key: 1, durum: 1, ozelkod11kodu: 1, b2c_gonder: 1, b2b_gonder: 1, stokkartkodu: 1, marka: 1, markaack: 1, 'm_kategoriler.kategori_aciklama_1': 1, 'm_kategoriler.kategori_aciklama_2': 1, 'm_kategoriler.kategori_aciklama_3': 1 }
       ).lean();
       const diaKeys = ruleDocs.filter(d => this.sitesForItem(d, allRules).length > 0).map(d => d._key);
 
@@ -2779,7 +2782,7 @@ class DiaStockService {
       const allRules = getAllSyncRules();
       const ruleDocs = await DiaStock.find(
         {},
-        { _key: 1, durum: 1, ozelkod11kodu: 1, b2c_gonder: 1, stokkartkodu: 1, marka: 1, markaack: 1, 'm_kategoriler.kategori_aciklama_1': 1, 'm_kategoriler.kategori_aciklama_2': 1, 'm_kategoriler.kategori_aciklama_3': 1 }
+        { _key: 1, durum: 1, ozelkod11kodu: 1, b2c_gonder: 1, b2b_gonder: 1, stokkartkodu: 1, marka: 1, markaack: 1, 'm_kategoriler.kategori_aciklama_1': 1, 'm_kategoriler.kategori_aciklama_2': 1, 'm_kategoriler.kategori_aciklama_3': 1 }
       ).lean();
 
       const sitesByKey = new Map();

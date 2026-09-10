@@ -40,13 +40,27 @@ const SITES = {
         domains: [
             'lastikjantavm.com',
             'www.lastikjantavm.com',
-            'demo.lastikjantavm.com',
         ],
         theme: 'lastikjantavm',
         active: true,
         orderPrefix: 'LJA',
         // LJA vitrin fiyatı B2C (panelde "LastikJantAVM" olarak görünür) kurallarından hesaplanır
         xmlPricePlatform: 'b2c',
+    },
+
+    b2b: {
+        slug: 'b2b',
+        name: 'LastikJantAVM B2B',
+        // Kalıcı adres b2b.lastikjantavm.com (eski DIA portalının DNS'i bize çevrilince);
+        // demo.lastikjantavm.com geçiş dönemi adresidir (7-8 Eyl 2026 kararları)
+        domains: [
+            'b2b.lastikjantavm.com',
+            'demo.lastikjantavm.com',
+        ],
+        theme: 'b2b',
+        active: true,
+        orderPrefix: 'B2B',
+        xmlPricePlatform: 'b2b',
     },
 };
 

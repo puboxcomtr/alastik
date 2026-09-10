@@ -61,7 +61,8 @@ class SimpleImageProcessor {
             const ext = path.extname(filename);
             const baseName = path.basename(filename, ext);
             const webpFilename = `${baseName}.webp`;
-            const webpPath = path.join(this.uploadPath, folder, webpFilename);
+            // WebP orijinalin yanına yazılır (site alt klasörlü yüklemelerde de doğru yerde kalır)
+            const webpPath = path.join(path.dirname(originalPath), webpFilename);
 
             // WebP'ye dönüştür - yüksek kalite (90%)
             await sharp(originalPath)
@@ -203,10 +204,13 @@ class SimpleImageProcessor {
     static generateImageUrls(filename, folder, generateFileUrl) {
         const ext = path.extname(filename);
         const baseName = path.basename(filename, ext);
+        // Alt klasör (ör. site öneki) korunur
+        const dir = path.dirname(filename);
+        const webpRel = dir === '.' ? `${baseName}.webp` : path.join(dir, `${baseName}.webp`);
 
         return {
             original: generateFileUrl(filename, folder),
-            webp: generateFileUrl(`${baseName}.webp`, folder)
+            webp: generateFileUrl(webpRel, folder)
         };
     }
 }

@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 const webReviewSchema = new mongoose.Schema({
-    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+    site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
 
     // Ürün
     productKey: {

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 const seoSchema = new mongoose.Schema({
     metaTitle: String,
@@ -29,7 +30,7 @@ const webBlogSchema = new mongoose.Schema({
     site: {
         type: String,
         required: true,
-        enum: ['alastik', 'lastikjantavm'],
+        enum: SITE_SLUGS,
         default: 'alastik',
         index: true
     }

@@ -4,10 +4,41 @@
 
 const STORAGE_KEY = 'admin_active_site';
 
-export const SITE_DEFINITIONS: Record<string, { label: string; title: string }> = {
-    alastik: { label: 'Alastik.com', title: 'ALastik.com' },
-    lastikjantavm: { label: 'Lastikjantavm.com', title: 'LastikJantAVM' },
+export const SITE_DEFINITIONS: Record<string, {
+    label: string;
+    title: string;
+    montage: boolean;
+    campaigns: boolean;
+    // Üye menüsü etiketleri — tanımlı değilse sözlükteki varsayılanlar kullanılır
+    memberMenu?: { group: string; item: string };
+}> = {
+    alastik: { label: 'Alastik.com', title: 'ALastik.com', montage: true, campaigns: true },
+    lastikjantavm: { label: 'Lastikjantavm.com', title: 'LastikJantAVM', montage: true, campaigns: true },
+    // B2B'de montaj noktası ve kampanya yönetimi yok (menüde gizlenir);
+    // müşteriler üye değil CARİDİR (8 Eyl kararları)
+    b2b: {
+        label: 'B2B Toptan',
+        title: 'LastikJantAVM B2B',
+        montage: false,
+        campaigns: false,
+        memberMenu: { group: 'Cari Yönetimi', item: 'Cariler' },
+    },
 };
+
+/** Aktif sitede montaj noktası modülü var mı? (menü görünürlüğü için) */
+export function siteHasMontage(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.montage === true;
+}
+
+/** Aktif sitede kampanya yönetimi var mı? (menü görünürlüğü için) */
+export function siteHasCampaigns(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.campaigns === true;
+}
+
+/** Aktif sitenin üye menüsü etiketleri (b2b: Cari Yönetimi/Cariler); yoksa null */
+export function getMemberMenuLabels(slug: string = getActiveSite()): { group: string; item: string } | null {
+    return SITE_DEFINITIONS[slug]?.memberMenu || null;
+}
 
 export const ADMIN_PANEL_TITLE = 'Yönetici Paneli';
 

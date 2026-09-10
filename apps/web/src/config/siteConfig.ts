@@ -5,7 +5,7 @@
  * Hiçbir yere site bilgisi hardcode EDİLMEZ; her katman bu dosyadan okur.
  */
 
-export type SiteSlug = 'alastik' | 'lastikjantavm';
+export type SiteSlug = 'alastik' | 'lastikjantavm' | 'b2b';
 
 export interface SiteTheme {
     primary: string;
@@ -64,7 +64,6 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
         domains: [
             'lastikjantavm.com',
             'www.lastikjantavm.com',
-            'demo.lastikjantavm.com',
         ],
         theme: {
             primary: '#e4cc15',
@@ -72,6 +71,31 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
             logo: '/logo-lastikjantavm.png',
             assetsBase: '/lastikjantavm/assets',
             themeCss: '/lastikjantavm/assets/css/theme.min.css',
+        },
+        active: true,
+    },
+
+    b2b: {
+        slug: 'b2b',
+        name: 'LastikJantAVM B2B',
+        brandTitle: 'LastikJantAVM B2B',
+        metaTitle: 'LastikJantAVM B2B | Toptan Lastik ve Jant',
+        metaDescription: 'LastikJantAVM bayi ve toptan satış platformu.',
+        favicon: '/lastikjantavm/favicon.ico',
+        // Kalıcı adres b2b.lastikjantavm.com (eski DIA portalının DNS'i bize çevrilince);
+        // demo.lastikjantavm.com geçiş dönemi adresidir (7-8 Eyl 2026 kararları)
+        domains: [
+            'b2b.lastikjantavm.com',
+            'demo.lastikjantavm.com',
+        ],
+        // Bayi paneli teması kendi CSS'ini taşır (b2b-tema.css) — LJA tema dosyası
+        // YÜKLENMEZ (Bootstrap sınıfları .card gibi ortak adlarla çakışıyor)
+        theme: {
+            primary: '#e4cc15',
+            secondary: '#313131',
+            logo: '/logo-lastikjantavm.png',
+            assetsBase: '/lastikjantavm/assets',
+            themeCss: '',
         },
         active: true,
     },

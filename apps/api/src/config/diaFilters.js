@@ -11,7 +11,7 @@ const { SITE_SLUGS, DEFAULT_SITE } = require('./sites');
 const DEFAULT_AKTARIM = { mode: 'tumu', filterType: 'urun', products: [], categories: [], brands: [] };
 // Her Zaman Dahil listesi — boşken hiçbir ürünü eşleştirmez (etkisizdir)
 const DEFAULT_ZORUNLU_DAHIL = { filterType: 'kategori', products: [], categories: [], brands: [] };
-const DEFAULT_SYNC_RULES = { durum: 'A', ozelkod11Kodu: 'E', b2cKodu: '', hashKontrol: true, aktarim: DEFAULT_AKTARIM, zorunluDahil: DEFAULT_ZORUNLU_DAHIL };
+const DEFAULT_SYNC_RULES = { durum: 'A', ozelkod11Kodu: 'E', b2cKodu: '', b2bKodu: '', hashKontrol: true, aktarim: DEFAULT_AKTARIM, zorunluDahil: DEFAULT_ZORUNLU_DAHIL };
 
 // Site bazlı kurallar: her site kendi DiaSettings kaydından (webdia) okunur.
 // Bir ürünün hangi sitelerde yayınlanacağı (WebProduct.sites) bu kurallarla belirlenir.
@@ -39,6 +39,7 @@ function settingsToRules(s) {
         durum: String(s.sync?.durumFiltre ?? DEFAULT_SYNC_RULES.durum).trim(),
         ozelkod11Kodu: String(s.sync?.ozelkod11Filtre ?? DEFAULT_SYNC_RULES.ozelkod11Kodu).trim(),
         b2cKodu: String(s.sync?.b2cFiltre ?? DEFAULT_SYNC_RULES.b2cKodu).trim(),
+        b2bKodu: String(s.sync?.b2bFiltre ?? DEFAULT_SYNC_RULES.b2bKodu).trim(),
         hashKontrol: s.sync?.hashKontrol !== false,
         aktarim,
         zorunluDahil: s.zorunluDahil
@@ -114,6 +115,7 @@ const DIA_FIELDS = [
     'gercek_stok',
     'durum',
     'b2c_gonder',
+    'b2b_gonder',
     // LJA fiyatlaması: fiyat1 üzerinden uygulanan B2C indirim oranı
     'b2c_indirimorani',
     'birimindirimorani',

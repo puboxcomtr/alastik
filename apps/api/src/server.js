@@ -365,6 +365,14 @@ app.use('/api/general-settings', webGeneralSettingsRoutes);
 const webTranslateRoutes = require('./routes/web/other/translations');
 app.use('/api/translations', webTranslateRoutes);
 
+/* B2B bayi başvuru formu */
+const webB2BApplicationRoutes = require('./routes/web/b2b/application');
+app.use('/api/b2b/application', webB2BApplicationRoutes);
+
+/* B2B bayi girişi (cari kodu veya e-posta + şifre) */
+const webB2BAuthRoutes = require('./routes/web/b2b/auth');
+app.use('/api/b2b/auth', webB2BAuthRoutes);
+
 /* * Menu * */
 const webMenuRoutes = require('./routes/web/design/menus');
 app.use('/api/menus', webMenuRoutes);

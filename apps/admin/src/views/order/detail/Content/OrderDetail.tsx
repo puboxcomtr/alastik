@@ -17,6 +17,7 @@ interface OrderItem {
     brand?: string
     sku?: string
     season?: string
+    montagePointName?: string
 }
 
 interface Pricing {
@@ -70,6 +71,11 @@ const OrderDetailContent = ({ items, pricing }: OrderDetailContentProps) => {
                                             <Typography variant='body2' color='text.secondary'>
                                                 {[item.sku, item.brand, item.season].filter(Boolean).join(' | ')}
                                             </Typography>
+                                            {item.montagePointName && (
+                                                <Typography variant='body2' color='primary.main' className='font-medium'>
+                                                    Montaj Noktası: {item.montagePointName}
+                                                </Typography>
+                                            )}
                                         </div>
                                     </div>
                                 </td>

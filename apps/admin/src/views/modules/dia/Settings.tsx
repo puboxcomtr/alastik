@@ -743,6 +743,16 @@ export default function Settings() {
                         placeholder="Boş = kapalı"
                       />
                     </Grid>
+                    <Grid size={{ xs: 4 }}>
+                      <TextField
+                        fullWidth
+                        label="B2B Göster Filtresi"
+                        value={settings.sync.b2bFiltre || ''}
+                        onChange={e => updateSync('b2bFiltre', e.target.value)}
+                        size="small"
+                        placeholder="Boş = kapalı"
+                      />
+                    </Grid>
                     <Grid size={{ xs: 12 }}>
                       <FormControlLabel
                         control={

@@ -1,9 +1,10 @@
 // apps/api/src/models/web/content/WebPage.js
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 const pageSchema = new mongoose.Schema({
     // Site (tenant) — admin Page modeliyle aynı koleksiyon; slug site başına tekildir
-    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+    site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
     title: { type: String, required: true, trim: true },
     slug: { type: String, required: true, lowercase: true, trim: true },
     content: { type: String, default: '<p></p>' },

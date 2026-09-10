@@ -390,7 +390,7 @@ router.get('/:slug/products', async (req, res) => {
         aggregatePipeline.push(
             { $skip: skip },
             { $limit: limitNum },
-            { $project: { _key: 1, customData: 1, diaData: 1 } }
+            { $project: { _key: 1, customData: 1, diaData: 1, syncInfo: 1 } }
         );
 
         const products = await WebProduct.aggregate(aggregatePipeline);

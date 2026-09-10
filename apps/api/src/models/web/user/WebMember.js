@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 const bcrypt = require('bcrypt');
 
 const webMemberSchema = new mongoose.Schema({
 
     site: {
         type: String,
-        enum: ['alastik', 'lastikjantavm'],
+        enum: SITE_SLUGS,
         default: 'alastik',
         index: true
     },

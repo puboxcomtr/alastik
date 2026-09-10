@@ -16,7 +16,9 @@ const DiaSettingsBySite = () => {
 
   if (!site) return null
 
-  return site === 'lastikjantavm' ? <SettingsLastikJantAvm /> : <Settings />
+  // B2B, LJA ile aynı ekranı kullanır (firma 1 senkron yapısı ortak) — kayıtlar
+  // aktif sitenin X-Site başlığıyla site bazlı tutulur
+  return site === 'lastikjantavm' || site === 'b2b' ? <SettingsLastikJantAvm /> : <Settings />
 }
 
 export default DiaSettingsBySite

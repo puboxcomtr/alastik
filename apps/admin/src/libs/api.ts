@@ -277,7 +277,7 @@ export const API_ENDPOINTS = {
         import: () => `${getBaseUrl()}/admin/redirects/import`,
     },
     members: {
-        list: (params: { search?: string; status?: string; page?: number; limit?: number; view?: 'table'; hasOrders?: string; from?: string; to?: string }) => {
+        list: (params: { search?: string; status?: string; page?: number; limit?: number; view?: 'table'; hasOrders?: string; from?: string; to?: string; code?: string; email?: string; phone?: string }) => {
             const query = new URLSearchParams({
                 search: params.search || '',
                 status: params.status || '',
@@ -288,9 +288,25 @@ export const API_ENDPOINTS = {
             if (params.hasOrders) query.set('hasOrders', params.hasOrders)
             if (params.from) query.set('from', params.from)
             if (params.to) query.set('to', params.to)
+            if (params.code) query.set('code', params.code)
+            if (params.email) query.set('email', params.email)
+            if (params.phone) query.set('phone', params.phone)
             return `${getBaseUrl()}/admin/members?${query}`
         },
         detail: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
+        syncDia: () => `${getBaseUrl()}/admin/members/sync-dia`,
+    },
+    b2bApplications: {
+        list: (params: { page?: number; limit?: number; status?: string; search?: string }) => {
+            const query = new URLSearchParams({
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 20).toString()
+            })
+            if (params.status) query.set('status', params.status)
+            if (params.search) query.set('search', params.search)
+            return `${getBaseUrl()}/admin/b2b-applications?${query}`
+        },
+        setStatus: (id: string) => `${getBaseUrl()}/admin/b2b-applications/${id}/status`,
         annotate: (id: string) => `${getBaseUrl()}/admin/members/${id}/annotations`,
         setStatus: (id: string) => `${getBaseUrl()}/admin/members/${id}/status`,
         remove: (id: string) => `${getBaseUrl()}/admin/members/${id}`,

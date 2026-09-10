@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 const descriptionTemplateSchema = new mongoose.Schema({
     // Şablon adı (örn. "Pirelli Scorpion Verde Açıklaması")
@@ -38,7 +39,7 @@ const descriptionTemplateSchema = new mongoose.Schema({
 
     site: {
         type: String,
-        enum: ['alastik', 'lastikjantavm'],
+        enum: SITE_SLUGS,
         default: 'alastik',
         required: true,
         index: true

@@ -4,6 +4,7 @@ const WebOrder = require('../../../models/web/order/WebOrder');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebVehicle = require('../../../models/web/user/WebVehicle');
+const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
 
 
 // Sipariş durumları (model'deki enum'a göre)
@@ -249,6 +250,34 @@ router.get('/:id', async (req, res) => {
         }
 
 
+        // Montaj noktalarını çöz (montaj hizmeti kalemlerindeki montagePointId'ler)
+        let montagePoints = [];
+        const montagePointIds = [...new Set(
+            (order.items || []).map(item => item.montagePointId).filter(Boolean)
+        )];
+        if (montagePointIds.length > 0) {
+            const points = await WebMontagePoint.find({ _id: { $in: montagePointIds } })
+                .select('name city district address phone').lean();
+            const pointMap = {};
+            points.forEach(point => {
+                pointMap[point._id.toString()] = {
+                    id: point._id.toString(),
+                    name: point.name || '',
+                    city: point.city || '',
+                    district: point.district || '',
+                    address: point.address || '',
+                    phone: point.phone || ''
+                };
+            });
+            montagePoints = montagePointIds.map(pid => pointMap[pid]).filter(Boolean);
+            order.items = order.items.map(item => ({
+                ...item,
+                montagePointName: item.montagePointId
+                    ? (pointMap[item.montagePointId]?.name || '')
+                    : ''
+            }));
+        }
+
         let customerName = order.customerName || '';
         if (!customerName && order.memberSnapshot) {
             customerName = `${order.memberSnapshot.firstName || ''} ${order.memberSnapshot.lastName || ''}`.trim();
@@ -320,6 +349,7 @@ router.get('/:id', async (req, res) => {
             billingAddress: order.billingSnapshot || null,
             shippingAddress: order.shippingSnapshot || null,
             items: order.items || [],
+            montagePoints: montagePoints,
             pricing: order.pricing || {},
 
             payment: {

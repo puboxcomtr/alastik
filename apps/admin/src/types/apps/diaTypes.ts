@@ -64,6 +64,7 @@ export interface DiaSyncSettings {
     durumFiltre: string
     ozelkod11Filtre: string
     b2cFiltre: string
+    b2bFiltre: string
     hashKontrol: boolean
 }
 
@@ -202,6 +203,7 @@ export const defaultDiaSettings: DiaSettings = {
         durumFiltre: 'A',
         ozelkod11Filtre: 'E',
         b2cFiltre: '',
+        b2bFiltre: '',
         hashKontrol: true
     }
 }

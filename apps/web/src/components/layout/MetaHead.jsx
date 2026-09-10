@@ -43,10 +43,14 @@ export default async function MetaHead() {
           <meta name="google-site-verification" content="yubc1j2taIzdyUWWFlVWkSAYzwU8L_q-aEKtX1zdGh4" />
         )}
 
-        {/* CSS Files */}
+        {/* CSS Files — themeCss tanımsız sitelerde (b2b) tema dosyası yüklenmez */}
         <link rel="stylesheet" href="/alastik/assets/icons/cartzilla-icons.min.css" />
-        <link rel="preload" href={themeCss} as="style" />
-        <link rel="stylesheet" href={themeCss} id="theme-styles" />
+        {themeCss ? (
+          <>
+            <link rel="preload" href={themeCss} as="style" />
+            <link rel="stylesheet" href={themeCss} id="theme-styles" />
+          </>
+        ) : null}
       </head>
       {/* Google Ads (gtag.js) — site bazlı hesap (config/tracking.ts) */}
       <Script

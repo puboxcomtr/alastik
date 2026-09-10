@@ -254,7 +254,7 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                         </Typography>
                     )}
 
-                    {!diaSynced && !diaCancelled && (
+                    {!diaCancelled && (
                         <Button
                             variant='outlined'
                             size='small'
@@ -262,7 +262,7 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                             disabled={diaLoading}
                             startIcon={diaLoading ? <CircularProgress size={16} /> : <i className='ri-upload-cloud-2-line' />}
                         >
-                            {diaLoading ? 'Gönderiliyor...' : 'DIA\'ya Gönder'}
+                            {diaLoading ? 'Gönderiliyor...' : diaSynced ? 'DIA Eksiklerini Tamamla' : 'DIA\'ya Gönder'}
                         </Button>
                     )}
                 </div>
@@ -293,11 +293,12 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
 
                 {/* Manuel DIA gönderimi onayı (banka havalesi vb.) */}
                 <Dialog open={sendDialogOpen} onClose={() => setSendDialogOpen(false)}>
-                    <DialogTitle>DIA&apos;ya Gönder</DialogTitle>
+                    <DialogTitle>{diaSynced ? 'DIA Eksiklerini Tamamla' : 'DIA\'ya Gönder'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            İşlemi gerçekten onaylıyor musunuz? DIA&apos;da ilgili kayıtlar
-                            oluşturulacaktır (cari hesap, sipariş ve fatura).
+                            {diaSynced
+                                ? 'Sipariş DIA\'ya aktarılmış durumda; mevcut kayıtlara dokunulmaz, yalnız eksik kalan adımlar (şirketler arası sipariş / fatura) tamamlanır. Onaylıyor musunuz?'
+                                : 'İşlemi gerçekten onaylıyor musunuz? DIA\'da ilgili kayıtlar oluşturulacaktır (cari hesap, sipariş ve fatura).'}
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>

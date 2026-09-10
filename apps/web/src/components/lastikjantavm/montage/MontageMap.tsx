@@ -21,39 +21,42 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
     const mapRef = useRef<LeafletMap | null>(null);
     const markersRef = useRef<Record<string, Marker>>({});
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const [search, setSearch] = useState('');
-    // İstanbul varsayılan açık gelir (kullanıcı kararı)
-    // Açılışta bilgileri açık ilk nokta (panelde "Bilgileri Gözüksün") seçili gelir; yoksa liste kapalı başlar
+    // İl/ilçe seçimi: önce il seçilir, sonra o ildeki ilçeler gelir (kullanıcı kararı)
     const defaultPoint = useMemo(() => points.find(p => p.isPublicInfo) || null, [points]);
-    const [openCity, setOpenCity] = useState<string>(defaultPoint?.city || 'İstanbul');
+    const [secilenIl, setSecilenIl] = useState<string>('');
+    const [secilenIlce, setSecilenIlce] = useState<string>('');
     const [activeId, setActiveId] = useState<string>(defaultPoint?._id || '');
     const [selected, setSelected] = useState<MontagePoint | null>(defaultPoint);
 
-    // İl bazlı gruplar (çok noktalı iller akordeon olur)
-    const groups = useMemo(() => {
-        const map = new Map<string, MontagePoint[]>();
-        for (const p of points) {
-            const key = p.city || 'Diğer';
-            if (!map.has(key)) map.set(key, []);
-            map.get(key)!.push(p);
-        }
-        // İstanbul, Ankara, İzmir en üstte; kalan iller alfabetik
+    // İl listesi (noktalardan türetilir, İstanbul/Ankara/İzmir üstte)
+    const iller = useMemo(() => {
+        const set = new Set<string>();
+        for (const p of points) if (p.city) set.add(p.city);
         const PRIORITY: Record<string, number> = { 'İstanbul': 1, 'Ankara': 2, 'İzmir': 3 };
-        return [...map.entries()]
-            .map(([city, list]) => ({ city, list: list.sort((a, b) => a.name.localeCompare(b.name, 'tr')) }))
-            .sort((a, b) => (PRIORITY[a.city] || 99) - (PRIORITY[b.city] || 99) || a.city.localeCompare(b.city, 'tr'));
+        return [...set].sort((a, b) => (PRIORITY[a] || 99) - (PRIORITY[b] || 99) || a.localeCompare(b, 'tr'));
     }, [points]);
 
-    const filteredGroups = useMemo(() => {
-        if (!search.trim()) return groups;
-        const q = search.toLocaleLowerCase('tr-TR');
-        return groups
-            .map(g => ({
-                city: g.city,
-                list: g.list.filter(p => `${p.district} ${p.city}`.toLocaleLowerCase('tr-TR').includes(q))
-            }))
-            .filter(g => g.list.length > 0);
-    }, [groups, search]);
+    // Seçili ildeki ilçeler
+    const ilceler = useMemo(() => {
+        if (!secilenIl) return [];
+        const set = new Set<string>();
+        for (const p of points) if (p.city === secilenIl && p.district) set.add(p.district);
+        return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+    }, [points, secilenIl]);
+
+    // Sol listede gösterilecek noktalar: il seçilmeden boş; il seçilince o il,
+    // ilçe de seçilince o ilçe filtrelenir
+    const listeNoktalari = useMemo(() => {
+        if (!secilenIl) return [];
+        return points
+            .filter(p => p.city === secilenIl && (!secilenIlce || p.district === secilenIlce))
+            .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    }, [points, secilenIl, secilenIlce]);
+
+    const ilDegistir = (il: string) => {
+        setSecilenIl(il);
+        setSecilenIlce('');
+    };
 
     // Harita kurulumu
     useEffect(() => {
@@ -65,8 +68,10 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
             const map = L.map(containerRef.current, { center: TURKEY_CENTER, zoom: 6, minZoom: 5, scrollWheelZoom: true });
             // Açılışta Türkiye'nin tamamı görünür şekilde sığdır
             map.fitBounds([[35.8, 25.6], [42.2, 44.9]], { padding: [8, 8] });
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            // Esri World Street Map — API anahtarı gerektirmez, şehir/il isimleri net
+            // (CARTO ücretsiz basemap'i anahtar zorunlu kılıp "API KEY REQUIRED" filigranı basıyordu)
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap katkıda bulunanları',
                 maxZoom: 19
             }).addTo(map);
 
@@ -112,57 +117,59 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                 <aside className="mn-panel">
                     <div className="mn-panel-head">
                         <div className="mn-title">Montaj <span>Noktaları</span></div>
-                        <input
-                            className="mn-search"
-                            placeholder="Nokta, il veya ilçe arayın..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                        <div className="mn-secim">
+                            <select
+                                className="mn-select"
+                                aria-label="İl"
+                                value={secilenIl}
+                                onChange={e => ilDegistir(e.target.value)}
+                            >
+                                <option value="">İl Seçiniz</option>
+                                {iller.map(il => <option key={il} value={il}>{il}</option>)}
+                            </select>
+                            <select
+                                className="mn-select"
+                                aria-label="İlçe"
+                                value={secilenIlce}
+                                disabled={!secilenIl}
+                                onChange={e => setSecilenIlce(e.target.value)}
+                            >
+                                <option value="">{secilenIl ? 'Tüm İlçeler' : 'İlçe Seçiniz'}</option>
+                                {ilceler.map(ilce => <option key={ilce} value={ilce}>{ilce}</option>)}
+                            </select>
+                        </div>
                     </div>
 
                     <div className="mn-list">
-                        {filteredGroups.length === 0 && (
-                            <div className="mn-empty">Aramanızla eşleşen montaj noktası bulunamadı.</div>
+                        {!secilenIl && (
+                            <div className="mn-empty">Montaj noktalarını görmek için bir il seçin.</div>
                         )}
-                        {filteredGroups.map(group => {
-                            // Tüm iller akordeon: yalnız seçili il (varsayılan İstanbul) açık gelir; aramada hepsi açılır
-                            const expanded = openCity === group.city || Boolean(search.trim());
-                            return (
-                                <div key={group.city}>
-                                    <button
-                                        type="button"
-                                        className="mn-group"
-                                        onClick={() => setOpenCity(openCity === group.city ? '' : group.city)}
-                                    >
-                                        <span>{group.city} ({group.list.length} Nokta)</span>
-                                        <i className={expanded ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} />
-                                    </button>
-                                    {expanded && group.list.map(p => (
-                                        <div key={p._id} className={`mn-item ${activeId === p._id ? 'active' : ''}`} onClick={() => { focusPoint(p); setSelected(p); }} role="button" tabIndex={0}>
-                                            <span className="mn-item-name">{p.isPublicInfo ? p.name : 'ANLAŞMALI NOKTA'}</span>
-                                            <span className="mn-item-city">{p.city}{p.district ? ` / ${p.district}` : ''}</span>
-                                            <span className="mn-item-rating">
-                                                {p.rating.count > 0
-                                                    ? <><Stars value={p.rating.average} size={13} /> <small>({p.rating.count})</small></>
-                                                    : <small className='mn-noreview'>(Henüz Yorum Yapılmadı)</small>}
-                                            </span>
-                                            {p.montageStartingPrice !== null && (
-                                                p.montageStartingPrice === 0
-                                                    ? <span className="mn-item-price mn-item-free">Ücretsiz Montaj</span>
-                                                    : <span className="mn-item-price">{p.montageStartingPrice.toLocaleString('tr-TR')} TL&apos;den başlayan montaj fiyatı</span>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className="mn-item-btn"
-                                                onClick={e => { e.stopPropagation(); focusPoint(p); setSelected(p); }}
-                                            >
-                                                Hizmetleri Gör
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        })}
+                        {secilenIl && listeNoktalari.length === 0 && (
+                            <div className="mn-empty">Seçiminize uygun montaj noktası bulunamadı.</div>
+                        )}
+                        {listeNoktalari.map(p => (
+                            <div key={p._id} className={`mn-item ${activeId === p._id ? 'active' : ''}`} onClick={() => { focusPoint(p); setSelected(p); }} role="button" tabIndex={0}>
+                                <span className="mn-item-name">{p.isPublicInfo ? p.name : 'ANLAŞMALI NOKTA'}</span>
+                                <span className="mn-item-city">{p.city}{p.district ? ` / ${p.district}` : ''}</span>
+                                <span className="mn-item-rating">
+                                    {p.rating.count > 0
+                                        ? <><Stars value={p.rating.average} size={13} /> <small>({p.rating.count})</small></>
+                                        : <small className='mn-noreview'>(Henüz Yorum Yapılmadı)</small>}
+                                </span>
+                                {p.montageStartingPrice !== null && (
+                                    p.montageStartingPrice === 0
+                                        ? <span className="mn-item-price mn-item-free">Ücretsiz Montaj</span>
+                                        : <span className="mn-item-price">{p.montageStartingPrice.toLocaleString('tr-TR')} TL&apos;den başlayan montaj fiyatı</span>
+                                )}
+                                <button
+                                    type="button"
+                                    className="mn-item-btn"
+                                    onClick={e => { e.stopPropagation(); focusPoint(p); setSelected(p); }}
+                                >
+                                    Hizmetleri Gör
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 </aside>
 
@@ -249,10 +256,17 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
 
             <style jsx>{`
                 .mn-wrap {
-                    position: relative; height: 640px; border-radius: 14px; overflow: hidden;
+                    position: sticky; top: 16px; height: 640px; border-radius: 14px; overflow: hidden;
                     box-shadow: 0 6px 24px rgba(0,0,0,.12); border: 1px solid #e5e5e5;
                 }
                 .mn-map { position: absolute; inset: 0; z-index: 1; }
+                .mn-secim { margin-top: 12px; display: flex; gap: 8px; }
+                .mn-select {
+                    flex: 1; min-width: 0; background: #2a2a2a; border: 1px solid #3a3a3a; color: #fff;
+                    border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none; cursor: pointer;
+                }
+                .mn-select:disabled { opacity: .5; cursor: not-allowed; }
+                .mn-select option { color: #fff; background: #2a2a2a; }
                 .mn-panel {
                     position: absolute; top: 26px; left: 26px; bottom: 26px; width: 390px; z-index: 500;
                     background: #1c1c1c; border-radius: 14px; display: flex; flex-direction: column;

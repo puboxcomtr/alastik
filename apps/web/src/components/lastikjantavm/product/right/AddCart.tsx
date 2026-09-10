@@ -23,6 +23,9 @@ interface CartProps {
     product: Product;
 }
 
+// Gel Al Nakit: 2.El ürünlerde mağazadan teslim + nakit ödemede satış fiyatına uygulanan indirim oranı
+const PICKUP_CASH_DISCOUNT_RATE = 0.10;
+
 export default function Cart({ product }: CartProps) {
     const deliveryInfo = getDeliveryDateRange(product);
     const { getBrand } = useBrands();
@@ -39,6 +42,11 @@ export default function Cart({ product }: CartProps) {
         return `https://wa.me/${formatted}`;
     };
     const hasStock = product.diaData?.gercek_stok > 0;
+    // Gel Al Nakit Fiyatı yalnız İkinci El kategorisindeki ürünlerde gösterilir
+    const isSecondHand = (product.diaData?.m_kategoriler || []).some(
+        (k: any) => String(k?.kategori_aciklama_1 || '').startsWith('İkinci El')
+    );
+    const pickupCashValue = Math.round(gosterim.value * (1 - PICKUP_CASH_DISCOUNT_RATE) * 100) / 100;
     const handleAddToCart = async () => {
         if (adding) return;
         setAdding(true);
@@ -159,6 +167,36 @@ export default function Cart({ product }: CartProps) {
                                             </span>
                                         </div>
                                     </div>
+                                    {isSecondHand && (
+                                        <div
+                                            className="mt-2 rounded"
+                                            style={{ background: '#1a1a1a', whiteSpace: 'nowrap', padding: '10px 14px' }}
+                                        >
+                                            {/* Satırlar eşleşir: üstte başlık ↔ rozet, altta Montaj Dahil ↔ fiyat (aynı y hizası) */}
+                                            <div className="d-flex justify-content-between align-items-center" style={{ gap: 8 }}>
+                                                <span className="fw-bold" style={{ fontSize: 13, color: '#fff' }}>
+                                                    Gel Al Nakit Fiyatı
+                                                </span>
+                                                <span
+                                                    className="rounded fw-bold"
+                                                    style={{ background: '#e4cc15', color: '#1a1a1a', fontSize: 11, padding: '1px 6px', lineHeight: '16px' }}
+                                                >
+                                                    %{Math.round(PICKUP_CASH_DISCOUNT_RATE * 100)} İndirim
+                                                </span>
+                                            </div>
+                                            <div className="d-flex justify-content-between align-items-center" style={{ gap: 8, marginTop: 4 }}>
+                                                <span style={{ fontSize: 11, color: '#c9c9c9' }}>
+                                                    Montaj Dahil
+                                                </span>
+                                                <span className="fw-bold" style={{ fontSize: 13, color: '#fff' }}>
+                                                    {pickupCashValue.toLocaleString('tr-TR', {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2
+                                                    })} TL{gosterim.suffix}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div>
                                         <p className='productshipping_info'>
                                             Belirtilen fiyat, kargo bedeli hariçtir. Toplam tutarı <span className="text-underline">sepet aşamasında görüntüleyebilirsiniz.</span>

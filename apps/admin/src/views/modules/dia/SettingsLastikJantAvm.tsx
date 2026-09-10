@@ -29,10 +29,12 @@ import TransferSettingsCard from '@/views/modules/dia/TransferSettingsCard'
 import { DiaKeySelect, DiaKeyMultiSelect } from '@/views/modules/dia/DiaKeyFields'
 import type { DiaSiparisOptions } from '@/views/modules/dia/DiaKeyFields'
 
-// LastikJantAVM DİA ayarları — site bazlı kayıt yapılır; senkronizasyon ortak süreçtir (tüm sitelerin kurallarını uygular).
-const SITE_HEADERS = { 'X-Site': 'lastikjantavm' }
+// LastikJantAVM ve B2B DİA ayarları — site bazlı kayıt yapılır (aktif sitenin
+// X-Site başlığıyla); senkronizasyon ortak süreçtir (tüm sitelerin kurallarını uygular).
+import { getSiteHeader } from '@/utils/activeSite'
 
 export default function SettingsLastikJantAvm() {
+  const SITE_HEADERS = getSiteHeader()
   const [settings, setSettings] = useState<DiaSettings>(defaultDiaSettings)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -728,6 +730,16 @@ export default function SettingsLastikJantAvm() {
                         label="B2C Göster Filtresi"
                         value={settings.sync.b2cFiltre}
                         onChange={e => updateSync('b2cFiltre', e.target.value)}
+                        size="small"
+                        placeholder="Boş = kapalı"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 4 }}>
+                      <TextField
+                        fullWidth
+                        label="B2B Göster Filtresi"
+                        value={settings.sync.b2bFiltre || ''}
+                        onChange={e => updateSync('b2bFiltre', e.target.value)}
                         size="small"
                         placeholder="Boş = kapalı"
                       />

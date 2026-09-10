@@ -15,6 +15,9 @@ export default function MontageStickyBar() {
     const montageSelected = items.some(i => i.itemType === 'montage');
 
     return (
+        <>
+        {/* Fixed bar akıştan çıktığı için içeriğin altında eşit boşluk bırakılır */}
+        <div style={{ height: 72 }} aria-hidden="true" />
         <div className="lja-montage-bar">
             <Container className="d-flex align-items-center justify-content-between gap-3 py-2">
                 <div className="d-flex flex-column">
@@ -26,12 +29,13 @@ export default function MontageStickyBar() {
                 </Link>
             </Container>
             <style>{`
-                .lja-montage-bar { position: sticky; bottom: 0; z-index: 1030; background: #fff; border-top: 1px solid #e0e5eb; box-shadow: 0 -4px 16px rgba(0,0,0,.08); }
+                .lja-montage-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030; background: #fff; border-top: 1px solid #e0e5eb; box-shadow: 0 -4px 16px rgba(0,0,0,.08); }
                 @media (max-width: 575.98px) {
                     .lja-montage-bar .btn { font-size: 13px; padding: 8px 12px; }
                     .lja-montage-bar .fs-5 { font-size: 16px !important; }
                 }
             `}</style>
         </div>
+        </>
     );
 }

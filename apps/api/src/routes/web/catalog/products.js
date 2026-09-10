@@ -85,7 +85,7 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
         const products = await WebProduct.aggregate([
             { $match: filter },
             { $sample: { size: limit } },
-            { $project: { _key: 1, customData: 1, diaData: 1 } }
+            { $project: { _key: 1, customData: 1, diaData: 1, syncInfo: 1 } }
         ]);
 
         applySitePricingMany(products, req.site);
@@ -520,7 +520,7 @@ router.get('/filter', async (req, res) => {
         aggregatePipeline.push(
             { $skip: skip },
             { $limit: limitNum },
-            { $project: { _key: 1, customData: 1, diaData: 1 } }
+            { $project: { _key: 1, customData: 1, diaData: 1, syncInfo: 1 } }
         );
 
         const products = await WebProduct.aggregate(aggregatePipeline);

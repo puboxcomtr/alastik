@@ -8,8 +8,13 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
 // MUI Imports
+import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Checkbox from '@mui/material/Checkbox'
+import Collapse from '@mui/material/Collapse'
+import InputAdornment from '@mui/material/InputAdornment'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
@@ -31,6 +36,7 @@ import MemberDeleteDialog from './MemberDeleteDialog'
 import type { MemberFilters } from './MemberTableFilters'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { getActiveSite, getMemberMenuLabels } from '@/utils/activeSite'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
@@ -46,7 +52,61 @@ const MembersView = () => {
     const [rowSelection, setRowSelection] = useState({})
     const [data, setData] = useState<MemberRow[]>([])
     const [loading, setLoading] = useState(true)
-    const [filters, setFilters] = useState<MemberFilters>({ search: '', status: '', hasOrders: '', from: '', to: '' })
+    const [filters, setFilters] = useState<MemberFilters & { code?: string; email?: string; phone?: string }>({ search: '', status: '', hasOrders: '', from: '', to: '' })
+
+    // Cari modu (b2b): filtre kartı gizlenir; Filtreler + arama çubuğu + DIA senkron butonu gösterilir.
+    // Cari ekleme YOKTUR — cariler yalnız DIA'dan gelir (8 Eyl kararı).
+    const [cariMode, setCariMode] = useState(false)
+    const [syncing, setSyncing] = useState(false)
+    const [cariSearch, setCariSearch] = useState('')
+
+    // Filtre paneli (toggle) — taslak değerler Ara'ya basınca listeye uygulanır
+    const EMPTY_CARI_FILTERS = { code: '', email: '', phone: '', status: '', hasOrders: '', from: '', to: '' }
+    const [filtersOpen, setFiltersOpen] = useState(false)
+    const [draft, setDraft] = useState({ ...EMPTY_CARI_FILTERS })
+
+    const applyCariFilters = () => {
+        setFilters(f => ({ ...f, ...draft }))
+        setPage(1)
+    }
+
+    const resetCariFilters = () => {
+        setDraft({ ...EMPTY_CARI_FILTERS })
+        setFilters(f => ({ ...f, ...EMPTY_CARI_FILTERS }))
+        setPage(1)
+        setFiltersOpen(false)
+    }
+
+    useEffect(() => {
+        setCariMode(!!getMemberMenuLabels(getActiveSite()))
+    }, [])
+
+    // Arama: yazarken 400ms bekleyip listeye uygular
+    useEffect(() => {
+        if (!cariMode) return
+        const timer = setTimeout(() => {
+            setFilters(f => ({ ...f, search: cariSearch }))
+            setPage(1)
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [cariSearch, cariMode])
+
+    const handleSyncDia = async () => {
+        try {
+            setSyncing(true)
+            const res = await fetchAPI(API_ENDPOINTS.members.syncDia(), { method: 'POST' })
+            if (res?.success) {
+                toast.success(res.message || 'Cari senkronu tamamlandı')
+                setFilters(f => ({ ...f })) // listeyi tazele
+            } else {
+                toast.error(res?.message || 'Cari senkronu başarısız')
+            }
+        } catch (error) {
+            toast.error('Cari senkronu sırasında hata oluştu')
+        } finally {
+            setSyncing(false)
+        }
+    }
 
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
@@ -205,7 +265,98 @@ const MembersView = () => {
     return (
         <>
             <Card>
-                <MemberTableFilters onFilterChange={f => { setFilters(f); setPage(1) }} />
+                {cariMode ? (
+                    <div className='flex items-center gap-3 p-4'>
+                        <Button
+                            variant='outlined'
+                            color='secondary'
+                            onClick={() => setFiltersOpen(open => !open)}
+                            startIcon={<i className='ri-equalizer-line' />}
+                            endIcon={<i className={filtersOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} />}
+                        >
+                            Filtreler
+                        </Button>
+                        <TextField
+                            fullWidth
+                            size='small'
+                            value={cariSearch}
+                            onChange={e => setCariSearch(e.target.value)}
+                            placeholder='Cari adı, cari kodu veya e-postaya göre arama yapabilirsiniz.'
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position='start'>
+                                        <i className='ri-search-line' />
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                        <Button
+                            variant='contained'
+                            disabled={syncing}
+                            onClick={handleSyncDia}
+                            startIcon={syncing ? <CircularProgress size={18} color='inherit' /> : <i className='ri-refresh-line' />}
+                            style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                        >
+                            {syncing ? 'Senkronize Ediliyor...' : 'Carileri Senkronize Et'}
+                        </Button>
+                    </div>
+                ) : (
+                    <MemberTableFilters onFilterChange={f => { setFilters(f); setPage(1) }} />
+                )}
+                {cariMode && (
+                    <Collapse in={filtersOpen} timeout='auto' unmountOnExit>
+                        <div className='px-4 pb-4'>
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                    gap: '16px 24px'
+                                }}
+                            >
+                                <div>
+                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Cari Kodu</Typography>
+                                    <TextField fullWidth size='small' value={draft.code} onChange={e => setDraft(d => ({ ...d, code: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>E-posta</Typography>
+                                    <TextField fullWidth size='small' value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Telefon</Typography>
+                                    <TextField fullWidth size='small' value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Durum</Typography>
+                                    <TextField select fullWidth size='small' value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value }))}>
+                                        <MenuItem value=''>Tümü</MenuItem>
+                                        <MenuItem value='active'>Aktif</MenuItem>
+                                        <MenuItem value='suspended'>Pasif</MenuItem>
+                                        <MenuItem value='pending'>Onay Bekliyor</MenuItem>
+                                    </TextField>
+                                </div>
+                                <div>
+                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Sipariş Durumu</Typography>
+                                    <TextField select fullWidth size='small' value={draft.hasOrders} onChange={e => setDraft(d => ({ ...d, hasOrders: e.target.value }))}>
+                                        <MenuItem value=''>Tümü</MenuItem>
+                                        <MenuItem value='yes'>Sipariş Vermiş</MenuItem>
+                                        <MenuItem value='no'>Sipariş Vermemiş</MenuItem>
+                                    </TextField>
+                                </div>
+                                <div>
+                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Kayıt Tarihi</Typography>
+                                    <div className='flex gap-2'>
+                                        <TextField fullWidth size='small' type='date' value={draft.from} onChange={e => setDraft(d => ({ ...d, from: e.target.value }))} />
+                                        <TextField fullWidth size='small' type='date' value={draft.to} onChange={e => setDraft(d => ({ ...d, to: e.target.value }))} />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className='flex gap-3 mt-4'>
+                                <Button variant='outlined' color='secondary' onClick={resetCariFilters}>Vazgeç</Button>
+                                <Button variant='contained' onClick={applyCariFilters}>Ara</Button>
+                            </div>
+                        </div>
+                    </Collapse>
+                )}
                 <Divider />
                 <div style={{ position: 'relative' }}>
                     {loading && (

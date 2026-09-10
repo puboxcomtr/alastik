@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 const sliderItemSchema = new mongoose.Schema({
     image: {
@@ -22,8 +23,8 @@ const sliderItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const sliderSchema = new mongoose.Schema({
-    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
-    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+    site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
+    site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
     name: {
         type: String,
         required: true

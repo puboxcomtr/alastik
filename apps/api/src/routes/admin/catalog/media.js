@@ -22,7 +22,11 @@ const upload = multer({
             if (!MEDIA_FOLDERS[folder]) {
                 return cb(new Error(`Geçersiz klasör: ${folder}`));
             }
-            const uploadPath = getUploadPath(folder);
+            // Ürün görselleri ORTAK havuzdur; diğer klasörlerde yeni yüklemeler
+            // seçili sitenin alt klasörüne gider (8 Eyl kararı: site bazlı medya)
+            const uploadPath = folder === 'urun'
+                ? getUploadPath(folder)
+                : getUploadPath(folder, req.site);
             try {
                 if (!require('fs').existsSync(uploadPath)) {
                     require('fs').mkdirSync(uploadPath, { recursive: true });
@@ -74,13 +78,15 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
         }
         const uploadedFiles = [];
         for (const file of req.files) {
+            // Site bölmeli klasörlerde adres site alt klasörünü içerir
+            const relName = folder === 'urun' ? file.filename : path.join(req.site, file.filename);
             const fileInfo = {
                 id: Date.now() + Math.random().toString(36).substring(2, 11),
-                filename: file.filename,
+                filename: relName,
                 originalname: file.originalname,
-                url: generateFileUrl(file.filename, folder),
+                url: generateFileUrl(relName, folder),
                 // WebP URL'leri de ekle
-                urls: SimpleImageProcessor.generateImageUrls(file.filename, folder, generateFileUrl),
+                urls: SimpleImageProcessor.generateImageUrls(relName, folder, generateFileUrl),
                 size: file.size,
                 mimetype: file.mimetype,
                 folder: folder,
@@ -270,6 +276,18 @@ router.get('/list', async (req, res) => {
         const uploadPath = getUploadPath(folder);
         try {
             let scanned = await getFolderFiles(folder, uploadPath);
+
+            // Site bölmesi (ürün görselleri hariç): site alt klasöründeki dosyalar
+            // yalnız o sitede görünür; kök/eski dosyalar LJA'nın sayılır (8 Eyl kararı)
+            if (folder !== 'urun') {
+                const { SITE_SLUGS } = require('../../../config/sites');
+                const site = req.site;
+                scanned = scanned.filter(f => {
+                    const seg = String(f.relPath).split(path.sep)[0];
+                    if (SITE_SLUGS.includes(seg)) return seg === site;
+                    return site === 'lastikjantavm';
+                });
+            }
 
             // Ürün Görselleri: dekupe (arka plan temizleme) durumu filtresi + rozet bilgisi
             let processedSet = null;

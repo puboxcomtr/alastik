@@ -85,6 +85,10 @@ const webDiaSchema = new mongoose.Schema({
         tedarikciOdemePlaniKey: { type: Number, default: 0 },
         // Şirketler arası faturada kullanılacak fiyat alanı (stok kartı birimlerindeki fiyatN)
         sirketlerArasiFiyatNo: { type: Number, default: 5 },
+        // Şirketler arası zincire GİRMEYECEK üst kategoriler (kategori_aciklama_1).
+        // Hizmet kalemleri (montaj vb.) fiziki mal değildir; kaynak firma
+        // siparişine yazılmaz, yalnız bu firmadaki müşteri siparişinde kalır
+        sirketlerArasiHaricKategoriler: { type: [String], default: [] },
 
         // Sipariş aktarımından sonra otomatik satış faturası kes (stok çıkışı faturayla oluşur)
         faturaOtomatik: { type: Boolean, default: false },
@@ -139,8 +143,26 @@ const webDiaSchema = new mongoose.Schema({
         durumFiltre: { type: String, default: 'A' },        // boş = durum filtresi yok
         ozelkod11Filtre: { type: String, default: 'E' },    // boş = ozelkod11 filtresi yok
         b2cFiltre: { type: String, default: '' },           // boş = b2c_gonder filtresi yok (DIA "B2C Göster")
+        b2bFiltre: { type: String, default: '' },           // boş = b2b_gonder filtresi yok (DIA "B2B Göster")
+        // Cari senkronunda süzgeç: cari kartı özel kod 2 (ör. bayi segmenti F4); boş = tüm cariler
+        cariOzelKod2Filtre: { type: String, default: '' },
         hashKontrol: { type: Boolean, default: true },      // değişmeyen ürünleri hash ile atla
         lastCardSyncAt: { type: Date, default: null }       // tarih filtreli kart senkronunun son başarılı başlangıç zamanı
+    },
+    // B2B vitrininde stok tooltip'inde gösterilecek depolar (DIA _key + görünen ad)
+    vitrinDepolari: {
+        type: [{ ad: String, key: Number }],
+        default: []
+    },
+
+    // Kritik stok kontrolü: DIA senkronu gecikmeli olduğundan (30 dk), düşük
+    // stoklu ürünlerde aşırı satışı (oversell) önlemek için sipariş anında
+    // gerçek stok − o ürünün açık (bekleyen) siparişleri hesabı yapılır.
+    // Yalnız esik ve altındaki stoklu ürünlerde devreye girer (bol stokta
+    // ekstra sorgu yapılmaz). Yetersizse kalem siparişten çıkarılır.
+    kritikStok: {
+        kontrolAktif: { type: Boolean, default: false },
+        esik: { type: Number, default: 5 }
     }
 }, {
     timestamps: true,

@@ -4,6 +4,7 @@ const WebOrder = require('../../../models/web/order/WebOrder');
 const WebAddress = require('../../../models/web/address/WebAddress');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
+const WebDia = require('../../../models/plugins/dia/DiaSettings');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 const { resolveSitePrice, resolveXmlShipping } = require('../../../utils/sitePricing');
 const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
@@ -39,7 +40,9 @@ const calculateOrderPricing = async (cartItems, site) => {
             'diaData.anabirimdesi': 1,
             'diaData.ozelkod7kodu': 1,
             'diaData.m_kategoriler': 1,
-            'diaData.m_urunOzellikleri': 1
+            'diaData.m_urunOzellikleri': 1,
+            // Kritik stok kontrolü için gerçek stok
+            'diaData.gercek_stok': 1
         }
     ).lean();
 
@@ -48,10 +51,38 @@ const calculateOrderPricing = async (cartItems, site) => {
         productMap[p._key] = p;
     }
 
+    // Kritik stok kontrolü ayarı (site bazlı). Kapalıysa ekstra sorgu yapılmaz.
+    // Amaç: DIA senkronu gecikmeli olduğundan, düşük stoklu üründe iki müşterinin
+    // aynı tek stoğu ayrı ayrı sipariş etmesini (oversell) engellemek. Kontrol
+    // yalnız esik ve altındaki stoklu ürünlerde çalışır.
+    const diaSet = await WebDia.getSettings(site).catch(() => null);
+    const kritikAktif = !!diaSet?.kritikStok?.kontrolAktif;
+    const kritikEsik = Number(diaSet?.kritikStok?.esik) || 5;
+
+    // Kritik ürünlerin açık (bekleyen, henüz teslim/iptal olmamış) sipariş adetleri.
+    // Kullanılabilir = gerçek stok − açık siparişler; senkronun bayat DB stoğuna
+    // güvenmek yerine platformda halihazırda beklemekte olan siparişleri düşer.
+    const acikSiparisMap = {};
+    if (kritikAktif) {
+        const kritikKeys = products
+            .filter(p => Number(p.diaData?.gercek_stok || 0) <= kritikEsik)
+            .map(p => p._key);
+        if (kritikKeys.length) {
+            const acik = await WebOrder.aggregate([
+                { $match: { site, isActive: true, status: { $in: ['pending', 'confirmed', 'processing', 'shipped'] } } },
+                { $unwind: '$items' },
+                { $match: { 'items.productKey': { $in: kritikKeys } } },
+                { $group: { _id: '$items.productKey', toplam: { $sum: '$items.quantity' } } }
+            ]);
+            for (const a of acik) acikSiparisMap[a._id] = a.toplam;
+        }
+    }
+
     // Montaj noktasına bağlı hizmetlerde noktaya özel fiyat (0 = ücretsiz) geçerlidir
     const montagePrices = await loadMontagePrices(cartItems, site);
 
     const items = [];
+    const cikarilanlar = [];
     let subtotal = 0;
     let shippingCost = 0;
 
@@ -64,6 +95,25 @@ const calculateOrderPricing = async (cartItems, site) => {
         }
 
         const quantity = parseInt(cartItem.quantity) || 1;
+
+        // Kritik stok: gerçek stok ≤ eşik olan üründe, açık siparişler düşülünce
+        // istenen adet karşılanmıyorsa kalem siparişten çıkarılır (oversell koruması).
+        if (kritikAktif) {
+            const stok = Number(product.diaData?.gercek_stok || 0);
+            if (stok <= kritikEsik) {
+                const kullanilabilir = stok - (acikSiparisMap[product._key] || 0);
+                if (quantity > kullanilabilir) {
+                    cikarilanlar.push({
+                        productKey: product._key,
+                        stockCode: product.diaData?.stokkartkodu || '',
+                        name: product.diaData?.aciklama || '',
+                        istenen: quantity,
+                        kalan: Math.max(0, kullanilabilir)
+                    });
+                    continue;
+                }
+            }
+        }
         const isXml = product.syncInfo?.syncSource === 'xml_integration';
         const montagePointId = String(cartItem.montagePointId || '');
         const montagePrice = montagePrices.get(`${montagePointId}:${cartItem.productKey}`);
@@ -115,7 +165,7 @@ const calculateOrderPricing = async (cartItems, site) => {
         currency: 'TRY'
     };
 
-    return { items, pricing };
+    return { items, pricing, cikarilanlar };
 };
 
 // POST - Yeni sipariş oluştur
@@ -137,7 +187,17 @@ router.post('/', async (req, res) => {
         } = req.body;
 
         // Backend'de items ve pricing hesapla (frontend'den gelene güvenme)
-        const { items, pricing } = await calculateOrderPricing(rawItems, req.site);
+        const { items, pricing, cikarilanlar } = await calculateOrderPricing(rawItems, req.site);
+
+        // Kritik stok koruması: tüm kalemler stok yetersizliğinden çıkarıldıysa
+        // sipariş oluşturulmaz; kısmî çıkarma varsa sipariş devam eder, uyarı döner.
+        if (items.length === 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Sepetinizdeki ürünlerin stoğu tükendi. Lütfen sepetinizi güncelleyin.',
+                cikarilanlar: cikarilanlar || []
+            });
+        }
 
         // Sipariş numarası oluştur (önek siteye göre: AL / LJA)
         const orderNumber = await WebOrder.generateOrderNumber(req.site);
@@ -365,7 +425,9 @@ router.post('/', async (req, res) => {
         res.json({
             success: true,
             data: order,
-            message: 'Sipariş başarıyla oluşturuldu'
+            message: 'Sipariş başarıyla oluşturuldu',
+            // Kritik stok nedeniyle çıkarılan kalemler (varsa) — frontend uyarı gösterir
+            ...(cikarilanlar && cikarilanlar.length ? { cikarilanlar } : {})
         });
 
     } catch (error) {

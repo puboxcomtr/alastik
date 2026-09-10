@@ -18,6 +18,7 @@ import OrderStatus from '@/views/order/detail/Content/OrderStatus'
 import OrderNote from '@/views/order/detail/Content/OrderNote'
 import CustomerDetail from '@/views/order/detail/Content/CustomerDetail'
 import CarInformation from '@/views/order/detail/Content/CarInformation'
+import MontageInformation from '@/views/order/detail/Content/MontageInformation'
 
 const OrderDetailPage = () => {
   const params = useParams()
@@ -124,6 +125,7 @@ const OrderDetailPage = () => {
               onStatusChange={(newStatus) => setOrder({ ...order, status: newStatus })}
             />
             <OrderNote orderId={order.id} adminNote={order.adminNote} />
+            <MontageInformation montagePoints={order.montagePoints} />
             <CustomerDetail
               isGuest={order.isGuest}
               memberInfo={order.memberInfo}

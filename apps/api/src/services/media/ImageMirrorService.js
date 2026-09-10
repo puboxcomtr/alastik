@@ -172,8 +172,24 @@ async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
         const ext = CONTENT_TYPE_EXTENSIONS[contentType] || extensionFromUrl(url);
         if (!ext) return null; // görsel değil ya da tanınmayan tür
 
-        const buffer = Buffer.from(response.data);
+        let buffer = Buffer.from(response.data);
         if (!buffer.length || buffer.length > MAX_BYTES) return null;
+
+        // Büyük görseller indirilirken optimize edilir (9 Eyl disk krizi önlemi):
+        // uzun kenar 1600px, png palette / jpeg mozjpeg. Başarısız olursa orijinal yazılır.
+        if (buffer.length > 400 * 1024 && ['.png', '.jpg', '.jpeg'].includes(ext)) {
+            try {
+                const sharp = require('sharp');
+                let islem = sharp(buffer, { failOn: 'none' })
+                    .rotate()
+                    .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
+                islem = ext === '.png'
+                    ? islem.png({ palette: true, quality: 80, effort: 7 })
+                    : islem.jpeg({ quality: 82, mozjpeg: true });
+                const optimized = await islem.toBuffer();
+                if (optimized.length < buffer.length) buffer = optimized;
+            } catch { /* optimizasyon hatası görüntü aynalamayı engellemesin */ }
+        }
 
         const slug = fileNameBase ? slugify(fileNameBase) : null;
         const fileName = slug

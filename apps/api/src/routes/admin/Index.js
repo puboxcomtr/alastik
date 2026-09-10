@@ -101,6 +101,10 @@ router.use('/redirects', redirectRoutes);
 const memberRoutes = require('./user/members');
 router.use('/members', memberRoutes);
 
+// B2B bayi başvuruları (login sayfasındaki başvuru formu kayıtları)
+const b2bApplicationRoutes = require('./user/b2bApplications');
+router.use('/b2b-applications', b2bApplicationRoutes);
+
 const blogRoutes = require('./content/blogs');
 router.use('/blogs', blogRoutes);
 

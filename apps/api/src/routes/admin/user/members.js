@@ -40,6 +40,12 @@ router.get('/', async (req, res) => {
             if (dateRe.test(req.query.from || '')) match.createdAt.$gte = new Date(`${req.query.from}T00:00:00+03:00`);
             if (dateRe.test(req.query.to || '')) match.createdAt.$lt = new Date(new Date(`${req.query.to}T00:00:00+03:00`).getTime() + 24 * 60 * 60 * 1000);
         }
+        // Cari filtre paneli: alan bazlı aramalar
+        const fieldRegex = v => new RegExp(String(v).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        if (req.query.code?.trim()) match.diaCustomerCode = fieldRegex(req.query.code);
+        if (req.query.email?.trim()) match.email = fieldRegex(req.query.email);
+        if (req.query.phone?.trim()) match.phone = fieldRegex(req.query.phone);
+
         if (req.query.hasOrders === 'yes' || req.query.hasOrders === 'no') {
             const memberIds = await WebOrder.distinct('memberId', { site: req.site, isActive: true, memberId: { $ne: null } });
             match._id = req.query.hasOrders === 'yes' ? { $in: memberIds } : { $nin: memberIds };
@@ -292,6 +298,138 @@ router.delete('/:id', async (req, res) => {
         res.json({ success: true, data: member, message: 'Üye silindi olarak işaretlendi' });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Üye silinemedi' });
+    }
+});
+
+/**
+ * POST /sync-dia — DIA carilerini üye listesine senkronlar (B2B cari yönetimi).
+ * Sitenin DIA bağlantısı kullanılır; sync.cariOzelKod2Filtre doluysa (ör. F4)
+ * yalnız o segmentteki cariler alınır. Mevcutlar diaCustomerCode ile güncellenir,
+ * yeniler kullanılamaz rastgele şifreyle açılır (gerçek şifre bayi akışıyla kurulur).
+ */
+router.post('/sync-dia', async (req, res) => {
+    try {
+        const crypto = require('crypto');
+        const { DiaOrderService } = require('../../../services/plugins/dia/DiaOrderService');
+        const WebDia = require('../../../models/plugins/dia/DiaSettings');
+
+        const settings = await WebDia.getSettings(req.site);
+        if (!settings?.baseURL || !settings?.username) {
+            return res.status(400).json({ success: false, message: 'Bu site için DIA bağlantı ayarları eksik' });
+        }
+        const segmentKodu = String(settings.sync?.cariOzelKod2Filtre || '').trim().toUpperCase();
+
+        const svc = new DiaOrderService(req.site);
+        svc.settings = settings;
+        svc.firmaKodu = settings.firmaKodu || 1;
+        svc.donemKodu = settings.donemKodu || 1;
+        await svc.login();
+
+        // Tüm cariler sayfalanarak taranır (DIA listele filtreleri güvenilir değil —
+        // segment süzgeci istemci tarafında uygulanır); oturum düşerse yeniden girilir
+        const fetchPage = async (offset) => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const resp = await svc.sendRequest('/api/v3/scf/json', {
+                    scf_carikart_listele: {
+                        session_id: svc.sessionId,
+                        firma_kodu: svc.firmaKodu,
+                        donem_kodu: svc.donemKodu,
+                        filters: [],
+                        sorts: '',
+                        params: { selectedcolumns: ['_key', 'carikartkodu', 'unvan', 'eposta', 'telefon1', 'durum', 'ozelkod2kod'] },
+                        limit: 500,
+                        offset
+                    }
+                });
+                if (Array.isArray(resp?.result)) return resp.result;
+                svc.sessionId = null;
+                await svc.login();
+            }
+            return null;
+        };
+
+        const cariler = [];
+        let taranan = 0;
+        for (let offset = 0; offset < 50000; offset += 500) {
+            const rows = await fetchPage(offset);
+            if (rows === null) {
+                return res.status(502).json({ success: false, message: 'DIA cari listesi alınamadı, lütfen tekrar deneyin' });
+            }
+            taranan += rows.length;
+            for (const r of rows) {
+                if (r.durum !== 'A') continue;
+                const kod = String(r.ozelkod2kod || '').trim().toUpperCase();
+                if (segmentKodu && kod !== segmentKodu) continue;
+                const unvan = String(r.unvan || '').trim();
+                if (new RegExp(`^${segmentKodu || 'F\\d+'} CARİLER$`, 'i').test(unvan)) continue; // tanım kartları
+                cariler.push(r);
+            }
+            if (rows.length < 500) break;
+        }
+
+        // Aynı e-postayı paylaşanlarda ilki gerçek adresi alır, sonrakiler cari koduyla benzersizleşir
+        const seen = new Set();
+        const ops = cariler.map(c => {
+            let email = String(c.eposta || '').trim().toLowerCase();
+            if (!email || !email.includes('@')) {
+                email = `${String(c.carikartkodu).toLowerCase()}@eposta-tanimsiz.b2b`;
+            } else if (seen.has(email)) {
+                const [local, domain] = email.split('@');
+                email = `${local}+${String(c.carikartkodu).toLowerCase().replace(/[^a-z0-9]/g, '')}@${domain}`;
+            }
+            seen.add(email);
+
+            const unvan = String(c.unvan || '').trim();
+            const words = unvan.split(/\s+/);
+            const firstName = words.length > 1 ? words.slice(0, -1).join(' ') : unvan;
+            const lastName = words.length > 1 ? words[words.length - 1] : '.';
+
+            return {
+                updateOne: {
+                    filter: { site: req.site, diaCustomerCode: c.carikartkodu },
+                    update: {
+                        $set: {
+                            firstName, lastName, email,
+                            phone: String(c.telefon1 || '').trim() || '-',
+                            diaCustomerKey: String(c._key),
+                            diaCustomerCode: c.carikartkodu,
+                            status: 'active',
+                            updatedAt: new Date()
+                        },
+                        $setOnInsert: {
+                            site: req.site,
+                            password: crypto.randomBytes(32).toString('hex'),
+                            marketingConsent: false,
+                            termsAccepted: false,
+                            createdAt: new Date()
+                        }
+                    },
+                    upsert: true
+                }
+            };
+        });
+
+        let yeni = 0, guncellenen = 0, hata = 0;
+        const db = mongoose.connection.db;
+        for (let i = 0; i < ops.length; i += 500) {
+            try {
+                const r = await db.collection('webmembers').bulkWrite(ops.slice(i, i + 500), { ordered: false });
+                yeni += r.upsertedCount; guncellenen += r.modifiedCount;
+            } catch (e) {
+                const r = e.result || {};
+                yeni += r.upsertedCount || 0; guncellenen += r.modifiedCount || 0;
+                hata += (e.writeErrors || []).length;
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Cari senkronu tamamlandı: ${yeni} yeni, ${guncellenen} güncellendi${hata ? `, ${hata} hata` : ''}`,
+            data: { taranan, eslesen: cariler.length, yeni, guncellenen, hata, segment: segmentKodu || 'tümü' }
+        });
+    } catch (error) {
+        console.error('Cari senkron hatası:', error);
+        res.status(500).json({ success: false, message: `Cari senkronu başarısız: ${error.message}` });
     }
 });
 

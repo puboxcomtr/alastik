@@ -8,6 +8,10 @@ import AlastikHomePage from '@src/views/alastik/HomePage';
 import LastikJantAvmHomePage from '@src/views/lastikjantavm/HomePage';
 
 export async function generateMetadata(): Promise<Metadata> {
+  // B2B (demo alan adı) arama motorlarına kapalıdır
+  if (headers().get('x-site') === 'b2b') {
+    return { robots: { index: false, follow: false } };
+  }
   const seo = await getSeo();
   const homepage = seo?.homepage;
   if (!homepage?.title) {

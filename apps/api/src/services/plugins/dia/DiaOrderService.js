@@ -529,7 +529,141 @@ class DiaOrderService {
             }
         }
 
+        // Hizmet kalemi sipariş firmasında kartsızsa kart otomatik açılır (7 Eyl kurgusu):
+        // hizmetler stok tutulmadığından sipariş firmasından satılır, transfer/zincir gerekmez
+        if (!sameFirm) {
+            try {
+                return await this.maybeCreateServiceCard(item, searchCode);
+            } catch (error) {
+                logger.error('[DiaOrder] Hizmet kartı otomatik açılamadı', {
+                    stockCode: searchCode, error: error.message
+                });
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * Şirketler arası hariç kategorideki (hizmet) bir kalemin stok kartını
+     * sipariş firmasında açar; kart bilgileri kaynak firmadaki karttan kopyalanır.
+     * Kalem hariç kategoride değilse null döner (lastik vb. kartlar otomatik açılmaz).
+     */
+    async maybeCreateServiceCard(item, searchCode) {
+        const siparis = this.settings.siparis || {};
+        const excludedCategories = (siparis.sirketlerArasiHaricKategoriler || []).filter(Boolean);
+        if (!excludedCategories.length || !item.productKey) return null;
+
+        const sourceStock = await DiaStock.findOne({ _key: item.productKey })
+            .select('_key stokkartkodu aciklama m_kategoriler.kategori_aciklama_1')
+            .lean();
+        if (!sourceStock) return null;
+
+        const isService = (sourceStock.m_kategoriler || [])
+            .some(category => excludedCategories.includes(category.kategori_aciklama_1));
+        if (!isService) return null;
+
+        const sessionId = await this.ensureSession();
+        const sourceFirma = this.settings.firmaKodu || 1;
+        const sourceDonem = this.settings.donemKodu || this.donemKodu;
+
+        // Kaynak firmadaki kartın temel alanları (listele: değerler string döner,
+        // int64 anahtarlarda hassasiyet kaybı olmaz)
+        const cardResp = await this.sendRequest('/api/v3/scf/json', {
+            scf_stokkart_listele: {
+                session_id: sessionId,
+                firma_kodu: sourceFirma,
+                donem_kodu: sourceDonem,
+                filters: [{ field: 'stokkartkodu', operator: '=', value: String(searchCode) }],
+                sorts: '',
+                params: { selectedcolumns: ['_key', 'stokkartkodu', 'aciklama', 'stokkartturu', 'kdvsatis', 'kdvsatistoptan', 'kdvalis'] },
+                limit: 1,
+                offset: 0
+            }
+        });
+        const sourceCard = Array.isArray(cardResp?.result) ? cardResp.result[0] : null;
+        if (!sourceCard) return null;
+
+        // Kaynak kartın birim satırından sistem birim anahtarı (AD vb.)
+        const unitResp = await this.sendRequest('/api/v3/scf/json', {
+            scf_stokkart_birimleri_listele: {
+                session_id: sessionId,
+                firma_kodu: sourceFirma,
+                donem_kodu: sourceDonem,
+                filters: [{ field: '_key_scf_stokkart', operator: '=', value: String(sourceCard._key) }],
+                sorts: '',
+                params: {},
+                limit: 1,
+                offset: 0
+            }
+        });
+        const sourceUnit = Array.isArray(unitResp?.result) ? unitResp.result[0] : null;
+        const sisUnitKey = sourceUnit?._key_sis_stok_birim_listesi;
+        if (!sisUnitKey) {
+            throw new Error(`Kaynak kartın birim tanımı okunamadı: ${searchCode}`);
+        }
+
+        logger.info('[DiaOrder] Hizmet kartı sipariş firmasında açılıyor', {
+            stockCode: searchCode,
+            firmaKodu: this.firmaKodu
+        });
+
+        const createResp = await this.sendRequest('/api/v3/scf/json', {
+            scf_stokkart_ekle: {
+                session_id: sessionId,
+                firma_kodu: this.firmaKodu,
+                donem_kodu: this.donemKodu,
+                kart: {
+                    stokkartkodu: sourceCard.stokkartkodu,
+                    aciklama: sourceCard.aciklama,
+                    stokkartturu: sourceCard.stokkartturu,
+                    durum: 'A',
+                    kdvsatis: sourceCard.kdvsatis,
+                    kdvsatistoptan: sourceCard.kdvsatistoptan,
+                    kdvalis: sourceCard.kdvalis,
+                    m_birimler: [{
+                        _key_sis_stok_birim_listesi: String(sisUnitKey),
+                        anabirim: '1',
+                        carpan: '1.000000'
+                    }]
+                }
+            }
+        });
+
+        // 200 = eklendi, 501 = zaten mevcut — her iki durumda geri sorgula
+        if (createResp?.code !== '200' && createResp?.code !== '501') {
+            throw new Error(`DIA hizmet kartı açılamadı (${createResp?.code}): ${createResp?.msg || 'bilinmeyen hata'}`);
+        }
+
+        const verifyResp = await this.sendRequest('/api/v3/scf/json', {
+            scf_stokkart_listele: {
+                session_id: sessionId,
+                firma_kodu: this.firmaKodu,
+                donem_kodu: this.donemKodu,
+                filters: [{ field: 'stokkartkodu', operator: '=', value: String(searchCode) }],
+                sorts: '',
+                params: { selectedcolumns: ['_key', 'stokkartkodu'] },
+                limit: 1,
+                offset: 0
+            }
+        });
+        const created = Array.isArray(verifyResp?.result) ? verifyResp.result[0] : null;
+        if (!created) {
+            throw new Error(`Hizmet kartı açıldı ama geri sorgulanamadı: ${searchCode}`);
+        }
+
+        const unitKey = await this.findStockUnitKey(created._key);
+        if (!unitKey) {
+            throw new Error(`Hizmet kartının birim satırı bulunamadı: ${searchCode}`);
+        }
+
+        logger.info('[DiaOrder] Hizmet kartı açıldı', {
+            stockCode: searchCode,
+            stockKey: created._key,
+            firmaKodu: this.firmaKodu
+        });
+
+        return { stockKey: parseInt(created._key), unitKey, stockCode: created.stokkartkodu };
     }
 
     async findStockUnitKey(stockKey) {
@@ -826,14 +960,13 @@ class DiaOrderService {
             _key_sis_seviyekodu: siparis.faturaSeviyeKodKey || siparis.siparisSeviyeKodKey || 0,
             dovizkuru: '1.000000',
             raporlamadovizkuru: '1.000000',
-            // alastik: müşteri adı + sipariş no + 'ALastik <ÖDEME YÖNTEMİ>' (17 Ağu isteği)
-            aciklama1: this.site === 'alastik'
-                ? (order.customerName || order.billingSnapshot?.fullName || '').trim()
-                : `Web sipariş ${order.orderNumber}`,
-            aciklama2: this.site === 'alastik' ? order.orderNumber : this.site,
-            aciklama3: this.site === 'alastik'
-                ? `ALastik ${this.getPaymentMethodLabel(order).toLocaleUpperCase('tr-TR')}`
-                : '',
+            // Açıklama düzeni siparişle aynıdır (3-4 Eyl isteği, iki site ortak):
+            //   1: sipariş no  2: siparişi veren  3: SİTE ADI - Ödeme Sağlayıcı - Teslim Şekli
+            aciklama1: order.orderNumber,
+            aciklama2: (order.customerName || order.billingSnapshot?.fullName || '').trim(),
+            aciklama3: [SITES[this.site]?.name || this.site, this.getPaymentMethodLabel(order), DIA_DELIVERY_LABEL]
+                .filter(Boolean)
+                .join(' - '),
             m_kalemler: items,
             net: diaOrder.net,
             netdvz: diaOrder.netdvz || diaOrder.net,
@@ -892,6 +1025,27 @@ class DiaOrderService {
         const row = Array.isArray(response?.result) ? response.result[0] : null;
         const price = parseFloat(row?.[`fiyat${priceNo}`]) || 0;
         return price;
+    }
+
+    /**
+     * İrsaliye DIA'da var mı — fisno ile (stok hareketi mükerrer korunması)
+     */
+    async checkDispatchExists(fisno) {
+        const sessionId = await this.ensureSession();
+        const response = await this.sendRequest('/api/v3/scf/json', {
+            scf_irsaliye_listele: {
+                session_id: sessionId,
+                firma_kodu: this.firmaKodu,
+                donem_kodu: this.donemKodu,
+                filters: [{ field: 'fisno', operator: '=', value: fisno }],
+                sorts: '',
+                params: { selectedcolumns: ['_key', 'fisno'] },
+                limit: 2,
+                offset: 0
+            }
+        });
+        const row = Array.isArray(response?.result) ? response.result[0] : null;
+        return row ? { exists: true, diaKey: String(row._key) } : { exists: false };
     }
 
     /**
@@ -1070,7 +1224,7 @@ class DiaOrderService {
      * DIA WS'nin alış faturasına otomatik bağladığı irsaliye stok işlemez;
      * giriş bu ayrı irsaliyeyle yapılır. items: createSimpleInvoice ile aynı.
      */
-    async createIncomingDispatch({ fisno, cariKey, depoKey, subeKey, items, description }) {
+    async createIncomingDispatch({ fisno, cariKey, depoKey, subeKey, items, description, turu = 1 }) {
         const sessionId = await this.ensureSession();
         const now = new Date();
 
@@ -1084,7 +1238,7 @@ class DiaOrderService {
             return {
                 _key_kalemturu: item.stockKey,
                 _key_scf_kalem_birimleri: item.unitKey,
-                _key_sis_depo_source: depoKey,
+                _key_sis_depo_source: item.depoKey || depoKey,
                 _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
                 kalemturu: 'MLZM',
                 miktar: this.formatDecimal(item.quantity),
@@ -1108,7 +1262,7 @@ class DiaOrderService {
                 firma_kodu: this.firmaKodu,
                 donem_kodu: this.donemKodu,
                 kart: {
-                    turu: 1,
+                    turu,
                     fisno,
                     tarih: now.toISOString().slice(0, 10),
                     saat: now.toTimeString().slice(0, 8),
@@ -1139,7 +1293,7 @@ class DiaOrderService {
         });
 
         if (response?.code !== '200') {
-            throw new Error(`Giriş irsaliyesi oluşturulamadı [${fisno}] (${response?.code}): ${response?.msg || 'bilinmeyen hata'}`);
+            throw new Error(`${turu === 2 ? 'Çıkış' : 'Giriş'} irsaliyesi oluşturulamadı [${fisno}] (${response?.code}): ${response?.msg || 'bilinmeyen hata'}`);
         }
         return String(response.key);
     }
@@ -1181,7 +1335,7 @@ class DiaOrderService {
                 firma_kodu: this.firmaKodu,
                 donem_kodu: this.donemKodu,
                 kart: {
-                    turu: 1,
+                    turu,
                     fisno,
                     tarih: now.toISOString().slice(0, 10),
                     saat: now.toTimeString().slice(0, 8),
@@ -1732,9 +1886,8 @@ async function maybeRunInterCompanyChain(service, order) {
     if (hasXmlItem) return null; // XML üründe kaynak stok ALastik depolarında değil — zincir çalışmaz
 
     const integration = order.diaIntegration || {};
-    if (integration.diaSourceOrderKey) {
-        return { success: true, existing: true };
-    }
+    // Kaynak sipariş açılmış olsa da devam edilir: eksik kalan stok hareketi
+    // irsaliyeleri ("DIA Eksiklerini Tamamla" ile) tamamlanabilsin
 
     const WebOrder = require('../../../models/web/order/WebOrder');
     const DiaStock = require('../../../models/plugins/DiaStock');
@@ -1755,12 +1908,25 @@ async function maybeRunInterCompanyChain(service, order) {
             throw new Error('Şirketler arası ayarlar eksik (depo öncelik listesi / ara cari kodu)');
         }
 
+        // Hariç kategorilerdeki kalemler (hizmet vb.) zincire girmez —
+        // fiziki mal olmadığından kaynak firmadan alınmaz, stok bu firmada eksiye düşer
+        const excludedCategories = (siparis.sirketlerArasiHaricKategoriler || []).filter(Boolean);
+
         // Kaynak firma kalemleri: DiaStock kartları + fiyatN (KDV hariç)
         const srcItems = [];
         for (const item of order.items) {
             const stock = await DiaStock.findOne({ _key: item.productKey })
-                .select('_key anabirimkey stokkartkodu aciklama').lean();
+                .select('_key anabirimkey stokkartkodu aciklama m_kategoriler.kategori_aciklama_1').lean();
             if (!stock) throw new Error(`Kaynak firmada stok kartı bulunamadı: ${item.stockCode || item.name}`);
+
+            const isExcluded = excludedCategories.length > 0 && (stock.m_kategoriler || [])
+                .some(category => excludedCategories.includes(category.kategori_aciklama_1));
+            if (isExcluded) {
+                logger.info('[DiaOrder] Şirketler arası zincirden hariç tutuldu (kategori)', {
+                    orderNumber, stockCode: stock.stokkartkodu
+                });
+                continue;
+            }
 
             const quantity = parseFloat(item.quantity) || 1;
             const price = await src.getUnitPriceByNo(stock._key, priceNo);
@@ -1777,6 +1943,12 @@ async function maybeRunInterCompanyChain(service, order) {
             });
         }
 
+        // Tüm kalemler hariç kategorideyse kaynak firma siparişi gerekmez
+        if (!srcItems.length) {
+            logger.info('[DiaOrder] Şirketler arası zincir atlandı: zincire girecek kalem yok', { orderNumber });
+            return { success: true, skipped: true };
+        }
+
         // Belgelerde ortak açıklama: "Web sipariş <no> - <müşteri adı>"
         const customerName = (order.customerName || order.billingSnapshot?.fullName || '').trim();
         const customerLabel = customerName ? `Web sipariş ${orderNumber} - ${customerName}` : `Web sipariş ${orderNumber}`;
@@ -1784,27 +1956,90 @@ async function maybeRunInterCompanyChain(service, order) {
         const araCari = await src.findCustomerByCode(siparis.araCariKodu);
         if (!araCari) throw new Error(`Kaynak firmada ara cari bulunamadı: ${siparis.araCariKodu}`);
 
-        // Kaynak firmada YALNIZCA şirketler arası satış siparişi oluşturulur —
-        // transfer, fatura ve sevk kaynak firmada MUHASEBE tarafından manuel yapılır
-        const existing = await src.checkOrderExists(orderNumber);
-        const sourceOrderKey = existing.exists ? existing.diaKey : await src.createSourceOrder({
-            fisno: orderNumber,
-            cariKey: parseInt(araCari.key),
-            depoKey: toDepo || depotKeys[0],
-            depotKeys,
-            subeKey: siparis.kaynakSubeKey || 0,
-            planKey: siparis.kaynakOdemePlaniKey,
-            elemanKey: siparis.kaynakSatisElemaniKey,
-            seviyeKey: siparis.kaynakSeviyeKodKey,
-            items: srcItems,
-            description: customerLabel,
-            orderNumber
-        });
+        // Kaynak firmada şirketler arası satış siparişi (faturasız) — zaten açıksa atlanır
+        let sourceOrderKey = integration.diaSourceOrderKey;
+        if (!sourceOrderKey) {
+            const existing = await src.checkOrderExists(orderNumber);
+            sourceOrderKey = existing.exists ? existing.diaKey : await src.createSourceOrder({
+                fisno: orderNumber,
+                cariKey: parseInt(araCari.key),
+                depoKey: toDepo || depotKeys[0],
+                depotKeys,
+                subeKey: siparis.kaynakSubeKey || 0,
+                planKey: siparis.kaynakOdemePlaniKey,
+                elemanKey: siparis.kaynakSatisElemaniKey,
+                seviyeKey: siparis.kaynakSeviyeKodKey,
+                items: srcItems,
+                description: customerLabel,
+                orderNumber
+            });
 
-        await WebOrder.updateOne({ _id: order._id }, { $set: { 'diaIntegration.diaSourceOrderKey': sourceOrderKey } });
-        integration.diaSourceOrderKey = sourceOrderKey;
+            await WebOrder.updateOne({ _id: order._id }, { $set: { 'diaIntegration.diaSourceOrderKey': sourceOrderKey } });
+            integration.diaSourceOrderKey = sourceOrderKey;
 
-        logger.info('[DiaOrder] Kaynak firma siparişi oluşturuldu (fatura/sevk muhasebede)', { orderNumber, sourceOrderKey });
+            logger.info('[DiaOrder] Kaynak firma siparişi oluşturuldu (fatura/sevk muhasebede)', { orderNumber, sourceOrderKey });
+        }
+
+        // STOK HAREKETLERİ (9 Eyl kararı): fatura BİZDEN KESİLMEZ; yalnız irsaliyeler:
+        //   1) F1 ÇIKIŞ irsaliyesi (<no>-C): Artvin'den AKD carisine — F1 stoğu düşer
+        //   2) F2 GİRİŞ irsaliyesi (<no>-G): tedarikçiden bu firmaya — F2 stoğu girer
+        // Muhasebe faturaları bu irsaliyelere bağlayarak keser. Her adım mükerrer korumalı.
+        const cikisFisno = `${orderNumber}-C`;
+        if (!integration.diaOutgoingDispatchKey) {
+            // Kalemler stok bulunan depolara bölünür (sipariş oluşturmayla aynı öncelik mantığı) —
+            // tek depodan kesmek E-TİCARET gibi stoksuz depolarda "Eksi Stok" engeline takılıyordu
+            const cikisItems = [];
+            for (const srcItem of srcItems) {
+                const dagitim = await src.allocateSourceDepots(srcItem.stockCode, srcItem.quantity, depotKeys, toDepo || depotKeys[0]);
+                for (const pay of dagitim) {
+                    cikisItems.push({ ...srcItem, quantity: pay.quantity, depoKey: pay.depoKey });
+                }
+            }
+
+            const mevcutCikis = await src.checkDispatchExists(cikisFisno);
+            const cikisKey = mevcutCikis.exists ? mevcutCikis.diaKey : await src.createIncomingDispatch({
+                turu: 2,
+                fisno: cikisFisno,
+                cariKey: parseInt(araCari.key),
+                depoKey: cikisItems[0]?.depoKey || toDepo || depotKeys[0],
+                subeKey: siparis.kaynakSubeKey || 0,
+                items: cikisItems,
+                description: customerLabel
+            });
+            await WebOrder.updateOne({ _id: order._id }, { $set: { 'diaIntegration.diaOutgoingDispatchKey': cikisKey } });
+            integration.diaOutgoingDispatchKey = cikisKey;
+            logger.info('[DiaOrder] F1 çıkış irsaliyesi kesildi (stok düştü)', { orderNumber, cikisKey });
+        }
+
+        const girisFisno = `${orderNumber}-G`;
+        if (!integration.diaIncomingDispatchKey) {
+            if (!siparis.tedarikciCariKodu) throw new Error('Şirketler arası tedarikçi cari kodu tanımsız');
+            const tedarikci = await service.findCustomerByCode(siparis.tedarikciCariKodu);
+            if (!tedarikci) throw new Error(`Tedarikçi cari bulunamadı: ${siparis.tedarikciCariKodu}`);
+
+            // F2 kalemleri: kartlar bu firmada farklı anahtar taşır, kodla çözülür
+            const f2Items = [];
+            for (const srcItem of srcItems) {
+                const f2Stock = await service.resolveStockItem({ stockCode: srcItem.stockCode });
+                if (!f2Stock) throw new Error(`Bu firmada stok kartı bulunamadı: ${srcItem.stockCode}`);
+                f2Items.push({ ...srcItem, stockKey: f2Stock.stockKey, unitKey: f2Stock.unitKey });
+            }
+
+            const mevcutGiris = await service.checkDispatchExists(girisFisno);
+            const girisKey = mevcutGiris.exists ? mevcutGiris.diaKey : await service.createIncomingDispatch({
+                turu: 1,
+                fisno: girisFisno,
+                cariKey: parseInt(tedarikci.key),
+                depoKey: siparis.depoKey,
+                subeKey: siparis.subeKey || 0,
+                items: f2Items,
+                description: customerLabel
+            });
+            await WebOrder.updateOne({ _id: order._id }, { $set: { 'diaIntegration.diaIncomingDispatchKey': girisKey } });
+            integration.diaIncomingDispatchKey = girisKey;
+            logger.info('[DiaOrder] F2 giriş irsaliyesi kesildi (stok girdi)', { orderNumber, girisKey });
+        }
+
         return { success: true };
     } catch (error) {
         logger.error('[DiaOrder] Şirketler arası sipariş hatası', { orderNumber, error: error.message });

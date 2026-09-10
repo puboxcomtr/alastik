@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 
 const addressSnapshotSchema = new mongoose.Schema({
@@ -134,6 +135,9 @@ const diaIntegrationSchema = new mongoose.Schema({
     diaSourceOrderKey: String,
     diaTransferKey: String,
     diaSourceInvoiceKey: String,
+    // Stok hareketi irsaliyeleri (9 Eyl): F1 çıkış (-C) ve F2 giriş (-G)
+    diaOutgoingDispatchKey: String,
+    diaIncomingDispatchKey: String,
     diaPurchaseInvoiceKey: String,
     diaPurchaseDispatchKey: String,
     // Eşzamanlı aktarım kilidi (yarış koruması)
@@ -144,7 +148,7 @@ const diaIntegrationSchema = new mongoose.Schema({
 
 // Ana WebOrder Schema
 const webOrderSchema = new mongoose.Schema({
-    site: { type: String, enum: ['alastik', 'lastikjantavm'], default: 'alastik', index: true },
+    site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
     // Sipariş Numarası
     orderNumber: {
         type: String,
