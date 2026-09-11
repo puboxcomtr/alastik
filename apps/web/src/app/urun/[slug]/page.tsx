@@ -118,8 +118,44 @@ export default async function ProductDetailPage(
     const mainCategory = product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1;
     const categorySlug = await getCategorySlugByName(mainCategory);
 
+    // Google Merchant/Shopping: yalnız LJA ürün sayfasına yapısal fiyat verisi (JSON-LD).
+    // Fiyat, feed ile BİREBİR aynı satış fiyatıdır (KDV dahil) — "Hatalı fiyat / KDV eksik"
+    // uyarıları giderilir. ALastik'e dokunulmaz (feed fiyat alanı farklı, zaten onaylı).
+    const ljaSalePrice = site === 'lastikjantavm'
+        ? Number(product.diaData?.m_birimler?.[0]?.fiyat4) || 0
+        : 0;
+    const ljaImagePath = product.diaData?.m_resimler?.[0]?.aws_url || product.customData?.featuredImage || '';
+    const ljaImageUrl = ljaImagePath
+        ? (ljaImagePath.startsWith('http') ? ljaImagePath : `https://lastikjantavm.com${ljaImagePath}`)
+        : '';
+    const ljaJsonLd = ljaSalePrice > 0 ? {
+        '@context': 'https://schema.org/',
+        '@type': 'Product',
+        name: product.diaData?.aciklama || '',
+        ...(ljaImageUrl ? { image: [ljaImageUrl] } : {}),
+        sku: product.diaData?.stokkartkodu || product._key,
+        ...(product.diaData?.marka ? { brand: { '@type': 'Brand', name: product.diaData.marka } } : {}),
+        offers: {
+            '@type': 'Offer',
+            url: `https://lastikjantavm.com/urun/${slug}`,
+            priceCurrency: 'TRY',
+            price: ljaSalePrice.toFixed(2),
+            itemCondition: 'https://schema.org/NewCondition',
+            availability: (Number(product.diaData?.gercek_stok) || 0) > 0
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            priceValidUntil: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
+        }
+    } : null;
+
     return (
         <Container style={{ background: "#f6f6f6" }}>
+            {ljaJsonLd && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(ljaJsonLd) }}
+                />
+            )}
             <Grid className="row-fluid" container>
                 <Grid size={12}>
                     <ProductBreadcrumb
