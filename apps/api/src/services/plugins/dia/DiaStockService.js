@@ -3944,11 +3944,24 @@ class DiaStockService {
           : [];
         const subMap = new Map(subs.map(p => [p._key, (p.customData.customImages || []).filter(i => !i.temsiliYedek)]));
 
+        // Manuel görsel koruması: elle GERÇEK görsel yüklenmiş (temsiliYedek olmayan
+        // customImages) ürünlerde diaData.m_resimler ÜZERİNE YAZILMAZ; sadece lastDiaSync
+        // güncellenir. temsiliYedek (vekil) görseller korumaya girmez — gerçek görsel gelince değişir.
+        const korumaKeys = getSyncRules().manuelGorselKoru
+          ? new Set((await WebProduct.find(
+              {
+                _key: { $in: diaStocks.map(d => d._key) },
+                'customData.customImages': { $elemMatch: { temsiliYedek: { $ne: true } } }
+              },
+              { _key: 1 }
+            ).lean()).map(p => p._key))
+          : new Set();
+
         const webOps = diaStocks.map(dia => {
-          const set = {
-            'diaData.m_resimler': mirrored.get(dia._key) || dia.m_resimler || [],
-            'syncInfo.lastDiaSync': new Date()
-          };
+          const set = { 'syncInfo.lastDiaSync': new Date() };
+          if (!korumaKeys.has(dia._key)) {
+            set['diaData.m_resimler'] = mirrored.get(dia._key) || dia.m_resimler || [];
+          }
           if (subMap.has(dia._key)) set['customData.customImages'] = subMap.get(dia._key);
           return { updateOne: { filter: { _key: dia._key }, update: { $set: set } } };
         });

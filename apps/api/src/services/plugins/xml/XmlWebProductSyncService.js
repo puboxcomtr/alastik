@@ -451,7 +451,7 @@ class XmlWebProductSyncService {
                     // Mevcut ürün — m_birimler'i çekip güncelle
                     const existingProduct = await WebProduct.findOne(
                         { _key: diaKey },
-                        { 'diaData.m_birimler': 1, 'syncInfo.xmlSource': 1 }
+                        { 'diaData.m_birimler': 1, 'diaData.m_resimler': 1, 'syncInfo.xmlSource': 1, 'customData.customImages': 1 }
                     ).lean();
 
                     // Ürün başka sitenin kaynağından oluşmuşsa: siteyi ekle ve bu sitenin
@@ -487,12 +487,33 @@ class XmlWebProductSyncService {
                         )
                         : [{ birimadi: 'Adet', birimkod: 'AD', carpan: 1, fiyat1: hamFiyatUpd, fiyat4: hamFiyatUpd, miktar: gercekStok }];
 
+                    // Görsel güncelleme: manuel görsel korumalı (customImages dolu) ürünlerde
+                    // görsel üzerine yazılmaz. Değilse kaynak görsel aynalanıp güncellenir —
+                    // aksi halde mevcut XML ürünlerinin görselleri HİÇ yenilenmiyordu.
+                    const { getSyncRules } = require('../../../config/diaFilters');
+                    const gorselKorumali = getSyncRules(site).manuelGorselKoru
+                        && (existingProduct?.customData?.customImages?.length > 0);
+                    let gorselSet = {};
+                    if (!gorselKorumali && (diaData.m_resimler || []).length > 0) {
+                        try {
+                            const ImageMirrorService = require('../../media/ImageMirrorService');
+                            const aynaliGorseller = await ImageMirrorService.mirrorProductImages(
+                                diaData.m_resimler || [],
+                                diaData.aciklama || diaData.stokkartkodu || diaKey
+                            );
+                            gorselSet = { 'diaData.m_resimler': aynaliGorseller };
+                        } catch (imgErr) {
+                            console.warn(`[XmlWebProductSync] Görsel güncelleme hatası (${diaKey}):`, imgErr.message);
+                        }
+                    }
+
                     bulkOps.push({
                         updateOne: {
                             // Başka sitenin kaynağından oluşmuş ürün ezilmez (xmlSource site kapsamı)
                             filter: { _key: diaKey, 'syncInfo.xmlSource': { $in: siteCodes } },
                             update: {
                                 $set: {
+                                    ...gorselSet,
                                     'diaData.gercek_stok': gercekStok,
                                     'diaData.anabirimdesi': parseFloat(diaData.anabirimdesi) || 0,
                                     'diaData.ozelkod5': diaData.ozelkod5 || '',

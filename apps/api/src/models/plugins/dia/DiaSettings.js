@@ -147,6 +147,9 @@ const webDiaSchema = new mongoose.Schema({
         // Cari senkronunda süzgeç: cari kartı özel kod 2 (ör. bayi segmenti F4); boş = tüm cariler
         cariOzelKod2Filtre: { type: String, default: '' },
         hashKontrol: { type: Boolean, default: true },      // değişmeyen ürünleri hash ile atla
+        // Manuel görsel koruması: customData.customImages dolu (elle görsel yüklenmiş)
+        // ürünlerde sync görsel üzerine yazmaz; fiyat/stok yine güncellenir.
+        manuelGorselKoru: { type: Boolean, default: true },
         lastCardSyncAt: { type: Date, default: null }       // tarih filtreli kart senkronunun son başarılı başlangıç zamanı
     },
     // B2B vitrininde stok tooltip'inde gösterilecek depolar (DIA _key + görünen ad)

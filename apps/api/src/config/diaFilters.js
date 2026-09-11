@@ -41,6 +41,7 @@ function settingsToRules(s) {
         b2cKodu: String(s.sync?.b2cFiltre ?? DEFAULT_SYNC_RULES.b2cKodu).trim(),
         b2bKodu: String(s.sync?.b2bFiltre ?? DEFAULT_SYNC_RULES.b2bKodu).trim(),
         hashKontrol: s.sync?.hashKontrol !== false,
+        manuelGorselKoru: s.sync?.manuelGorselKoru !== false,
         aktarim,
         zorunluDahil: s.zorunluDahil
             ? {
