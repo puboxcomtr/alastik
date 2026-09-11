@@ -1,7 +1,7 @@
 import { KategoriKatalog } from "@components/b2b-tema/kategori-katalog";
 
 /** Slug'ı okunabilir başlığa çevirir: "otomobil-lastikleri" → "Otomobil Lastikleri". */
-function baslikYap(slug: string): string {
+function makeTitle(slug: string): string {
   return slug
     .split("-")
     .filter(Boolean)
@@ -15,7 +15,7 @@ export default async function KategoriPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const baslik = baslikYap(slug);
+  const baslik = makeTitle(slug);
 
   return (
     <>

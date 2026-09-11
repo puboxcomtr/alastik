@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-export type BannerGoruntu = {
+export type BannerImage = {
   id: string;
   baslik: string;
-  gorselUrl: string;
+  imageUrl: string;
   link: string | null;
 };
 
@@ -18,9 +18,9 @@ const SURUKLEME_ESIGI_PX = 50;
  * kendiliğinden döner, altta noktalarla gezinilir ve fare/parmakla sağa-sola
  * sürüklenerek kaydırılabilir. Bannerlar admin panelinden yönetilir.
  */
-export function BannerDonen({ bannerlar }: { bannerlar: BannerGoruntu[] }) {
+export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
   const [sira, setSira] = useState(0);
-  const adet = bannerlar.length;
+  const adet = banners.length;
 
   // Sürükleme takibi: basılan nokta + anlık kayma (görsel geri bildirim için)
   const baslangicX = useRef<number | null>(null);
@@ -40,7 +40,7 @@ export function BannerDonen({ bannerlar }: { bannerlar: BannerGoruntu[] }) {
   }, [adet, surukleniyor]);
 
   if (adet === 0) return null;
-  const aktif = bannerlar[Math.min(sira, adet - 1)];
+  const aktif = banners[Math.min(sira, adet - 1)];
   if (!aktif) return null;
 
   const suruklemeBaslat = (x: number) => {
@@ -71,7 +71,7 @@ export function BannerDonen({ bannerlar }: { bannerlar: BannerGoruntu[] }) {
     // Dış adresten gelen banner görseli; optimize edilmeden gösterilir.
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={aktif.gorselUrl}
+      src={aktif.imageUrl}
       alt={aktif.baslik}
       className="banner-gorsel"
       draggable={false}
@@ -116,7 +116,7 @@ export function BannerDonen({ bannerlar }: { bannerlar: BannerGoruntu[] }) {
 
       {adet > 1 ? (
         <div className="banner-noktalar">
-          {bannerlar.map((b, i) => (
+          {banners.map((b, i) => (
             <button
               key={b.id}
               type="button"

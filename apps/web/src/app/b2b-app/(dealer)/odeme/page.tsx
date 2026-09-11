@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { AlertIcon } from "@components/b2b-tema/icons";
 import { formatKurus } from "@components/b2b-tema/lib/format";
-import { BAYI, BEKLEYEN_SIPARIS_KURUS, CARI_OZET } from "@components/b2b-tema/lib/ornek-veri";
+import { DEALER, PENDING_ORDER_KURUS, ACCOUNT_SUMMARY } from "@components/b2b-tema/lib/ornek-veri";
 
 /**
  * Ödeme Yap: cari durum özeti + ödeme kanalları. Online tahsilat (sanal POS)
  * bu şablonda yalnızca yer tutucudur.
  */
 export default function OdemePage() {
-  const vadesiGecen = CARI_OZET.vadesiGecenKurus;
+  const overdue = ACCOUNT_SUMMARY.overdueKurus;
 
   return (
     <>
@@ -23,32 +23,32 @@ export default function OdemePage() {
       </div>
 
       <div className="cards">
-        <div className={`card${CARI_OZET.bakiyeKurus > 0 ? " tinted-red" : ""}`}>
+        <div className={`card${ACCOUNT_SUMMARY.balanceKurus > 0 ? " tinted-red" : ""}`}>
           <div className="label">Toplam Bakiye</div>
-          <div className={`value${CARI_OZET.bakiyeKurus > 0 ? " danger" : ""}`}>
-            {formatKurus(CARI_OZET.bakiyeKurus)}
+          <div className={`value${ACCOUNT_SUMMARY.balanceKurus > 0 ? " danger" : ""}`}>
+            {formatKurus(ACCOUNT_SUMMARY.balanceKurus)}
           </div>
         </div>
-        <div className={`card${vadesiGecen > 0 ? " tinted-red" : ""}`}>
+        <div className={`card${overdue > 0 ? " tinted-red" : ""}`}>
           <div className="label">Vadesi Geçen</div>
-          <div className={`value${vadesiGecen > 0 ? " danger" : ""}`}>
-            {formatKurus(vadesiGecen)}
+          <div className={`value${overdue > 0 ? " danger" : ""}`}>
+            {formatKurus(overdue)}
           </div>
         </div>
         <div className="card tinted-yellow">
           <div className="label">Bekleyen Sipariş Tutarı</div>
-          <div className="value">{formatKurus(BEKLEYEN_SIPARIS_KURUS)}</div>
+          <div className="value">{formatKurus(PENDING_ORDER_KURUS)}</div>
         </div>
         <div className="card">
           <div className="label">Ödeme Vadesi</div>
-          <div className="value">{BAYI.odemeVadeGun} gün</div>
+          <div className="value">{DEALER.paymentTermDays} gün</div>
         </div>
       </div>
 
-      {vadesiGecen > 0 ? (
+      {overdue > 0 ? (
         <div className="alert error">
           <strong>Gecikmiş ödemeniz var.</strong> Vadesi geçen{" "}
-          {formatKurus(vadesiGecen)} tutarındaki borcunuz için lütfen
+          {formatKurus(overdue)} tutarındaki borcunuz için lütfen
           temsilcinizle iletişime geçin.
         </div>
       ) : null}
@@ -59,7 +59,7 @@ export default function OdemePage() {
           <div className="label">Havale / EFT</div>
           <p className="note" style={{ marginTop: "0.5rem" }}>
             Banka hesap bilgileri temsilciniz tarafından paylaşılır. Ödeme
-            açıklamasına cari kodunuzu ({BAYI.cariKodu}) yazmayı unutmayın.
+            açıklamasına cari kodunuzu ({DEALER.accountCode}) yazmayı unutmayın.
           </p>
         </div>
         <div className="card">

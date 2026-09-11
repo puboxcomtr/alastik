@@ -13,7 +13,7 @@ function basHarfleriBuyut(metin: string): string {
         .join(' ');
 }
 
-export function HosgeldinBasligi() {
+export function WelcomeHeading() {
     const [ad, setAd] = useState('');
 
     useEffect(() => {

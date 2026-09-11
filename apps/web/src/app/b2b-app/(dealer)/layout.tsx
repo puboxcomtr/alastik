@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { HesapMenu } from "@components/b2b-tema/hesap-menu";
+import { AccountMenu } from "@components/b2b-tema/hesap-menu";
 import { NavLinks } from "@components/b2b-tema/nav-links";
-import { SepetPaneli } from "@components/b2b-tema/sepet-paneli";
-import { SepetSaglayici } from "@components/b2b-tema/sepet-durumu";
+import { CartPanel } from "@components/b2b-tema/sepet-paneli";
+import { CartProvider } from "@components/b2b-tema/sepet-durumu";
 import { OturumKapisi } from "@components/b2b-tema/oturum-kapisi";
-import { BAYI } from "@components/b2b-tema/lib/ornek-veri";
+import { DEALER } from "@components/b2b-tema/lib/ornek-veri";
 import { API_ENDPOINTS } from "@src/config/api";
 
 type MenuKaydi = {
@@ -50,9 +50,9 @@ async function ustMenuyuGetir(): Promise<NavItem[]> {
       next: { revalidate: 60 },
     });
     const json = await res.json();
-    const kayitlar: MenuKaydi[] = json?.success ? json.data : [];
-    if (!kayitlar.length) return yedek;
-    return kayitlar.map((m) => ({
+    const records: MenuKaydi[] = json?.success ? json.data : [];
+    if (!records.length) return yedek;
+    return records.map((m) => ({
       href: menuHref(m),
       label: m.name,
       ...(m.children?.length
@@ -74,7 +74,7 @@ export default async function DealerLayout({
 
   return (
     <OturumKapisi>
-    <SepetSaglayici>
+    <CartProvider>
       <header className="topnav">
         <div className="topnav-ic">
           <Link className="brand" href="/">
@@ -93,13 +93,13 @@ export default async function DealerLayout({
             ]}
           />
           <div className="right">
-            <HesapMenu email={BAYI.eposta} unvan={BAYI.kisaUnvan} />
-            <SepetPaneli />
+            <AccountMenu email={DEALER.eposta} unvan={DEALER.kisaUnvan} />
+            <CartPanel />
           </div>
         </div>
       </header>
       <main className="page">{children}</main>
-    </SepetSaglayici>
+    </CartProvider>
     </OturumKapisi>
   );
 }

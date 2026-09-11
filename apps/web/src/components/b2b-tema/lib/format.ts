@@ -38,7 +38,7 @@ export function gunFormat(d: Date | null): string {
   });
 }
 
-export const DURUM_ETIKET: Record<string, string> = {
+export const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Taslak",
   SUBMITTED: "Alındı",
   CONFIRMED: "Onaylandı",

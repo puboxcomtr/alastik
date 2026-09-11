@@ -4,18 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeftIcon } from "@components/b2b-tema/icons";
-import { useSepet } from "@components/b2b-tema/sepet-durumu";
-import { toastGoster } from "@components/b2b-tema/toast";
+import { useCart } from "@components/b2b-tema/sepet-durumu";
+import { showToast } from "@components/b2b-tema/toast";
 import { formatKurus } from "@components/b2b-tema/lib/format";
-import { KALAN_LIMIT_KURUS, KDV_BPS } from "@components/b2b-tema/lib/ornek-veri";
+import { REMAINING_LIMIT_KURUS, VAT_BPS } from "@components/b2b-tema/lib/ornek-veri";
 
 export default function SepetPage() {
-  const sepet = useSepet();
+  const sepet = useCart();
   const router = useRouter();
-  const [odemeTipi, setOdemeTipi] = useState<"vadeli" | "pesin">("vadeli");
-  const [gonderildi, setGonderildi] = useState(false);
+  const [paymentType, setPaymentType] = useState<"vadeli" | "pesin">("vadeli");
+  const [submitted, setSubmitted] = useState(false);
 
-  const limitAsimi = sepet.toplamKurus > KALAN_LIMIT_KURUS;
+  const limitAsimi = sepet.totalKurus > REMAINING_LIMIT_KURUS;
 
   return (
     <>
@@ -31,7 +31,7 @@ export default function SepetPage() {
         </Link>
       </div>
 
-      {gonderildi ? (
+      {submitted ? (
         <div className="alert warn">
           Bu bir tasarım şablonudur — sipariş oluşturulmadı. Gerçek uygulamada
           sipariş sunucuda tek işlemde yaratılmalı, fiyat ve stok orada
@@ -39,7 +39,7 @@ export default function SepetPage() {
         </div>
       ) : null}
 
-      {sepet.satirlar.length === 0 ? (
+      {sepet.lines.length === 0 ? (
         <div className="card">
           <p className="note">
             Sepetiniz boş. <Link href="/lastik">Lastik aramaya başlayın</Link>.
@@ -62,18 +62,18 @@ export default function SepetPage() {
                 </tr>
               </thead>
               <tbody>
-                {sepet.satirlar.map((s) => (
+                {sepet.lines.map((s) => (
                   <tr key={`${s.productId}:${s.warehouseId}`}>
                     <td>
                       <div className="urun-adi">
-                        {s.urun.ebat} {s.urun.desen}
+                        {s.urun.size} {s.urun.pattern}
                       </div>
                       <div className="sku">
-                        {s.urun.marka} · {s.urun.stokKodu}
+                        {s.urun.marka} · {s.urun.stockCode}
                       </div>
                     </td>
                     <td>
-                      <span className="badge info">{s.depoAd}</span>
+                      <span className="badge info">{s.warehouseName}</span>
                     </td>
                     <td>
                       <span className="stepper acikta">
@@ -81,8 +81,8 @@ export default function SepetPage() {
                           type="button"
                           aria-label="Azalt"
                           onClick={() => {
-                            sepet.adetGuncelle(s.productId, s.warehouseId, s.adet - 1);
-                            toastGoster(s.adet - 1 <= 0 ? "Sepetten çıkarıldı" : "Adet güncellendi", "bilgi");
+                            sepet.setQty(s.productId, s.warehouseId, s.adet - 1);
+                            showToast(s.adet - 1 <= 0 ? "Sepetten çıkarıldı" : "Adet güncellendi", "bilgi");
                           }}
                         >
                           −
@@ -92,8 +92,8 @@ export default function SepetPage() {
                           type="button"
                           aria-label="Artır"
                           onClick={() => {
-                            sepet.adetGuncelle(s.productId, s.warehouseId, s.adet + 1);
-                            toastGoster("Adet güncellendi", "ok");
+                            sepet.setQty(s.productId, s.warehouseId, s.adet + 1);
+                            showToast("Adet güncellendi", "ok");
                           }}
                         >
                           +
@@ -104,7 +104,7 @@ export default function SepetPage() {
                     <td className="num">{formatKurus(s.matrahKurus)}</td>
                     <td className="num">
                       {formatKurus(s.kdvKurus)}
-                      <div className="fiyat-kdv">%{KDV_BPS / 100}</div>
+                      <div className="fiyat-kdv">%{VAT_BPS / 100}</div>
                     </td>
                     <td className="num">
                       <strong>{formatKurus(s.satirToplamKurus)}</strong>
@@ -114,8 +114,8 @@ export default function SepetPage() {
                         className="danger-outline"
                         type="button"
                         onClick={() => {
-                          sepet.cikar(s.productId, s.warehouseId);
-                          toastGoster("Sepetten çıkarıldı", "bilgi");
+                          sepet.removeItem(s.productId, s.warehouseId);
+                          showToast("Sepetten çıkarıldı", "bilgi");
                         }}
                       >
                         Kaldır
@@ -138,14 +138,14 @@ export default function SepetPage() {
             </div>
             <div className="row grand">
               <span>Genel Toplam</span>
-              <span>{formatKurus(sepet.toplamKurus)}</span>
+              <span>{formatKurus(sepet.totalKurus)}</span>
             </div>
           </div>
 
           {limitAsimi ? (
             <div className="alert warn" style={{ marginTop: "1rem" }}>
               Sepet toplamı kalan kredi limitinizi (
-              {formatKurus(Math.max(0, KALAN_LIMIT_KURUS))}) aşıyor. Limit
+              {formatKurus(Math.max(0, REMAINING_LIMIT_KURUS))}) aşıyor. Limit
               artışı için bizimle iletişime geçebilirsiniz.
             </div>
           ) : null}
@@ -155,8 +155,8 @@ export default function SepetPage() {
               className="danger-outline"
               type="button"
               onClick={() => {
-                sepet.temizle();
-                toastGoster("Sepetiniz temizlendi", "bilgi");
+                sepet.clear();
+                showToast("Sepetiniz temizlendi", "bilgi");
               }}
             >
               Sepeti Temizle
@@ -164,9 +164,9 @@ export default function SepetPage() {
             <div className="actions-row" style={{ justifyContent: "flex-end" }}>
             <select
               className="mini"
-              value={odemeTipi}
+              value={paymentType}
               onChange={(e) =>
-                setOdemeTipi(e.target.value === "pesin" ? "pesin" : "vadeli")
+                setPaymentType(e.target.value === "pesin" ? "pesin" : "vadeli")
               }
             >
               <option value="vadeli">Vadeli (cari vadeniz)</option>
@@ -175,7 +175,7 @@ export default function SepetPage() {
             <button
               className="primary"
               onClick={() => {
-                setGonderildi(true);
+                setSubmitted(true);
                 router.push("/siparisler");
               }}
             >

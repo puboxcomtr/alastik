@@ -1,4 +1,4 @@
-import { KatalogJant } from "@components/b2b-tema/katalog-jant";
+import { RimCatalog } from "@components/b2b-tema/katalog-jant";
 
 export default function JantPage() {
   return (
@@ -12,7 +12,7 @@ export default function JantPage() {
           </p>
         </div>
       </div>
-      <KatalogJant />
+      <RimCatalog />
     </>
   );
 }

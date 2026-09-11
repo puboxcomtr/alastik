@@ -55,17 +55,17 @@ export function NavLinks({ items }: { items: NavItem[] }) {
   // butonun altında kalmaya devam eder.
   useEffect(() => {
     if (!acik) return;
-    function guncelle(): void {
+    function update(): void {
       const dugme = dugmeRef.current;
       if (!dugme) return;
       setKonum(panelKonumu(dugme, panelRef.current?.offsetWidth ?? VARSAYILAN_GENISLIK));
     }
-    guncelle();
-    window.addEventListener("resize", guncelle);
-    window.addEventListener("scroll", guncelle, true);
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
     return () => {
-      window.removeEventListener("resize", guncelle);
-      window.removeEventListener("scroll", guncelle, true);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
     };
   }, [acik]);
 

@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { CalendarIcon } from "@components/b2b-tema/icons";
-import { SiparisAdimlari } from "@components/b2b-tema/adimlar";
-import { IptalButonu } from "@components/b2b-tema/iptal-butonu";
-import { DURUM_ETIKET, formatKurus, formatTarih } from "@components/b2b-tema/lib/format";
-import { SIPARISLER } from "@components/b2b-tema/lib/ornek-veri";
+import { OrderSteps } from "@components/b2b-tema/adimlar";
+import { CancelButton } from "@components/b2b-tema/iptal-butonu";
+import { STATUS_LABEL, formatKurus, formatTarih } from "@components/b2b-tema/lib/format";
+import { ORDERS } from "@components/b2b-tema/lib/ornek-veri";
 
 export default function SiparislerPage() {
   const istatistik = {
-    toplam: SIPARISLER.length,
-    bekleyen: SIPARISLER.filter((s) => s.durum === "SUBMITTED").length,
-    islemde: SIPARISLER.filter((s) =>
+    toplam: ORDERS.length,
+    bekleyen: ORDERS.filter((s) => s.durum === "SUBMITTED").length,
+    processing: ORDERS.filter((s) =>
       ["CONFIRMED", "PREPARING", "SHIPPED"].includes(s.durum),
     ).length,
-    teslim: SIPARISLER.filter((s) => s.durum === "DELIVERED").length,
+    teslim: ORDERS.filter((s) => s.durum === "DELIVERED").length,
   };
 
   return (
@@ -38,7 +38,7 @@ export default function SiparislerPage() {
         </div>
         <div className="card">
           <div className="label">İşlemde</div>
-          <div className="value">{istatistik.islemde}</div>
+          <div className="value">{istatistik.processing}</div>
         </div>
         <div className="card tinted-green">
           <div className="label">Teslim</div>
@@ -46,8 +46,8 @@ export default function SiparislerPage() {
         </div>
       </div>
 
-      {SIPARISLER.map((s) => {
-        const toplamAdet = s.kalemler.reduce((t, k) => t + k.adet, 0);
+      {ORDERS.map((s) => {
+        const totalQty = s.lines.reduce((t, k) => t + k.adet, 0);
         return (
           <div className="order-card" key={s.id}>
             <div className="head">
@@ -62,12 +62,12 @@ export default function SiparislerPage() {
                         : "info"
                   }`}
                 >
-                  {DURUM_ETIKET[s.durum]}
+                  {STATUS_LABEL[s.durum]}
                 </span>
                 {s.erpSiparisNo ? (
                   <span className="badge gray"> ERP: {s.erpSiparisNo}</span>
                 ) : null}
-                {s.iptalTalepNedeni && s.durum !== "CANCELLED" ? (
+                {s.cancelRequestReason && s.durum !== "CANCELLED" ? (
                   <span className="badge warn">İptal talebi iletildi</span>
                 ) : null}
                 <div className="tarih">
@@ -76,40 +76,40 @@ export default function SiparislerPage() {
               </div>
             </div>
 
-            <SiparisAdimlari durum={s.durum} />
+            <OrderSteps durum={s.durum} />
 
             <div className="items-box">
               <div className="row">
-                <strong>{s.kalemler.length} kalem ürün</strong> · Toplam{" "}
-                {toplamAdet} adet
+                <strong>{s.lines.length} kalem ürün</strong> · Toplam{" "}
+                {totalQty} adet
               </div>
-              {s.kalemler.slice(0, 3).map((k) => (
+              {s.lines.slice(0, 3).map((k) => (
                 <div className="row" key={k.id}>
-                  {k.urunAdi} ×{k.adet}{" "}
-                  <span className="badge info">{k.depoAd}</span>
+                  {k.productName} ×{k.adet}{" "}
+                  <span className="badge info">{k.warehouseName}</span>
                 </div>
               ))}
-              {s.kalemler.length > 3 ? (
+              {s.lines.length > 3 ? (
                 <div className="row note">
-                  +{s.kalemler.length - 3} kalem daha
+                  +{s.lines.length - 3} kalem daha
                 </div>
               ) : null}
             </div>
 
             <div className="foot">
               <div>
-                <div className="tutar">{formatKurus(s.toplamKurus)}</div>
+                <div className="tutar">{formatKurus(s.totalKurus)}</div>
                 <div className="odeme">
-                  {s.odemeTipi === "vadeli"
+                  {s.paymentType === "vadeli"
                     ? `Vadeli · ${s.vadeGun} gün`
                     : "Peşin"}
                 </div>
               </div>
               <div className="actions">
-                {s.durum === "SUBMITTED" ? <IptalButonu talep={false} /> : null}
+                {s.durum === "SUBMITTED" ? <CancelButton talep={false} /> : null}
                 {["CONFIRMED", "PREPARING", "SHIPPED"].includes(s.durum) &&
-                !s.iptalTalepNedeni ? (
-                  <IptalButonu talep={true} />
+                !s.cancelRequestReason ? (
+                  <CancelButton talep={true} />
                 ) : null}
                 <Link className="btn-primary" href={`/siparisler/${s.id}`}>
                   Detay

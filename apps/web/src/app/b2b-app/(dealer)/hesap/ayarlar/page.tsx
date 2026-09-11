@@ -1,6 +1,6 @@
-import { ParolaFormu } from "@components/b2b-tema/parola-formu";
+import { PasswordForm } from "@components/b2b-tema/parola-formu";
 import { formatKurus } from "@components/b2b-tema/lib/format";
-import { BAYI } from "@components/b2b-tema/lib/ornek-veri";
+import { DEALER } from "@components/b2b-tema/lib/ornek-veri";
 
 /**
  * Hesap Ayarları. Ünvan, cari kodu, kredi limiti ve iskonto salt okunur
@@ -24,27 +24,27 @@ export default function HesapAyarlariPage() {
         <dl className="bilgi-listesi">
           <div>
             <dt>Ünvan</dt>
-            <dd>{BAYI.unvan}</dd>
+            <dd>{DEALER.unvan}</dd>
           </div>
           <div>
             <dt>E-posta</dt>
-            <dd>{BAYI.eposta}</dd>
+            <dd>{DEALER.eposta}</dd>
           </div>
           <div>
             <dt>Cari Kodu</dt>
-            <dd className="sku">{BAYI.cariKodu}</dd>
+            <dd className="sku">{DEALER.accountCode}</dd>
           </div>
           <div>
             <dt>Kredi Limiti</dt>
-            <dd>{formatKurus(BAYI.krediLimitiKurus)}</dd>
+            <dd>{formatKurus(DEALER.creditLimitKurus)}</dd>
           </div>
           <div>
             <dt>Ödeme Vadesi</dt>
-            <dd>{BAYI.odemeVadeGun} gün</dd>
+            <dd>{DEALER.paymentTermDays} gün</dd>
           </div>
           <div>
             <dt>Ticari İskonto</dt>
-            <dd>%{(BAYI.iskontoBps / 100).toLocaleString("tr-TR")}</dd>
+            <dd>%{(DEALER.discountBps / 100).toLocaleString("tr-TR")}</dd>
           </div>
         </dl>
         <p className="note">
@@ -54,7 +54,7 @@ export default function HesapAyarlariPage() {
 
       <div className="card">
         <h3 className="kart-baslik">Parola Değiştir</h3>
-        <ParolaFormu sinif="banner-form" />
+        <PasswordForm sinif="banner-form" />
       </div>
     </>
   );

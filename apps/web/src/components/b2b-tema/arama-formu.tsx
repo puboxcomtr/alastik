@@ -7,7 +7,7 @@ import { SearchIcon } from "@components/b2b-tema/icons";
  * Katalog arama kutusu. Arama tarayıcıda yapıldığı için sayfa yenilenmez;
  * girilen metin `onAra` ile yukarı bildirilir.
  */
-export function AramaFormu({
+export function SearchForm({
   q,
   onAra,
   placeholder = "Ebat ürün kodu ile arayabilirsiniz",

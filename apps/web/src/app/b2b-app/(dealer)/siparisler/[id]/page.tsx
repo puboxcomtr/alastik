@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, CalendarIcon } from "@components/b2b-tema/icons";
-import { SiparisAdimlari } from "@components/b2b-tema/adimlar";
-import { IptalButonu } from "@components/b2b-tema/iptal-butonu";
-import { DURUM_ETIKET, formatKurus, formatTarih } from "@components/b2b-tema/lib/format";
-import { SIPARISLER, siparisBul } from "@components/b2b-tema/lib/ornek-veri";
+import { OrderSteps } from "@components/b2b-tema/adimlar";
+import { CancelButton } from "@components/b2b-tema/iptal-butonu";
+import { STATUS_LABEL, formatKurus, formatTarih } from "@components/b2b-tema/lib/format";
+import { ORDERS, findOrder } from "@components/b2b-tema/lib/ornek-veri";
 
 /** Statik dışa aktarımda her sipariş için ayrı sayfa üretilir. */
 export function generateStaticParams(): Array<{ id: string }> {
-  return SIPARISLER.map((s) => ({ id: s.id }));
+  return ORDERS.map((s) => ({ id: s.id }));
 }
 
 export default async function SiparisDetay({
@@ -17,7 +17,7 @@ export default async function SiparisDetay({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const siparis = siparisBul(id);
+  const siparis = findOrder(id);
   if (!siparis) notFound();
 
   return (
@@ -35,7 +35,7 @@ export default async function SiparisDetay({
                     : "info"
               }`}
             >
-              {DURUM_ETIKET[siparis.durum]}
+              {STATUS_LABEL[siparis.durum]}
             </span>
           </h1>
           <p className="sub">
@@ -47,18 +47,18 @@ export default async function SiparisDetay({
         </Link>
       </div>
 
-      <SiparisAdimlari durum={siparis.durum} />
+      <OrderSteps durum={siparis.durum} />
 
-      {siparis.iptalTalepNedeni && siparis.durum !== "CANCELLED" ? (
+      {siparis.cancelRequestReason && siparis.durum !== "CANCELLED" ? (
         <div className="alert warn" style={{ marginTop: "1rem" }}>
-          İptal talebiniz iletildi: &quot;{siparis.iptalTalepNedeni}&quot; —
+          İptal talebiniz iletildi: &quot;{siparis.cancelRequestReason}&quot; —
           ekibimiz inceleyecek.
         </div>
       ) : null}
       {siparis.durum === "CANCELLED" ? (
         <div className="alert error" style={{ marginTop: "1rem" }}>
           Sipariş iptal edildi
-          {siparis.iptalNedeni ? `: "${siparis.iptalNedeni}"` : "."}
+          {siparis.cancelReason ? `: "${siparis.cancelReason}"` : "."}
         </div>
       ) : null}
 
@@ -79,23 +79,23 @@ export default async function SiparisDetay({
             </tr>
           </thead>
           <tbody>
-            {siparis.kalemler.map((k) => (
+            {siparis.lines.map((k) => (
               <tr key={k.id}>
                 <td>
-                  <div className="urun-adi">{k.urunAdi}</div>
+                  <div className="urun-adi">{k.productName}</div>
                   <div className="sku">
-                    {k.marka} · {k.stokKodu}
+                    {k.marka} · {k.stockCode}
                     {k.ozelFiyat ? " · özel fiyat" : ""}
                   </div>
                 </td>
                 <td>
-                  <span className="badge info">{k.depoAd}</span>
+                  <span className="badge info">{k.warehouseName}</span>
                 </td>
                 <td className="num">{k.adet}</td>
                 <td className="num">{formatKurus(k.listeBirimKurus)}</td>
                 <td className="num">
-                  {k.iskontoBps > 0
-                    ? `%${(k.iskontoBps / 100).toLocaleString("tr-TR")}`
+                  {k.discountBps > 0
+                    ? `%${(k.discountBps / 100).toLocaleString("tr-TR")}`
                     : k.kampanyaIndirimKurus > 0
                       ? formatKurus(k.kampanyaIndirimKurus)
                       : "—"}
@@ -126,12 +126,12 @@ export default async function SiparisDetay({
         </div>
         <div className="row grand">
           <span>Genel Toplam</span>
-          <span>{formatKurus(siparis.toplamKurus)}</span>
+          <span>{formatKurus(siparis.totalKurus)}</span>
         </div>
         <div className="row">
           <span>Ödeme</span>
           <span>
-            {siparis.odemeTipi === "vadeli"
+            {siparis.paymentType === "vadeli"
               ? `Vadeli · ${siparis.vadeGun} gün`
               : "Peşin"}
           </span>
@@ -142,10 +142,10 @@ export default async function SiparisDetay({
         className="actions-row"
         style={{ justifyContent: "flex-end", marginTop: "1rem" }}
       >
-        {siparis.durum === "SUBMITTED" ? <IptalButonu talep={false} /> : null}
+        {siparis.durum === "SUBMITTED" ? <CancelButton talep={false} /> : null}
         {["CONFIRMED", "PREPARING", "SHIPPED"].includes(siparis.durum) &&
-        !siparis.iptalTalepNedeni ? (
-          <IptalButonu talep={true} />
+        !siparis.cancelRequestReason ? (
+          <CancelButton talep={true} />
         ) : null}
       </div>
     </>

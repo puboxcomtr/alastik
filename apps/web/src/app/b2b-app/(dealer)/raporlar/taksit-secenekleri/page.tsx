@@ -1,5 +1,5 @@
-import { VeriKaynagi } from "@components/b2b-tema/veri-kaynagi";
-import { TAKSIT_SECENEKLERI } from "@components/b2b-tema/lib/ornek-veri";
+import { DataSource } from "@components/b2b-tema/veri-kaynagi";
+import { INSTALLMENT_OPTIONS } from "@components/b2b-tema/lib/ornek-veri";
 
 const TAKSITLER = [2, 3, 4, 5, 6, 9, 12];
 
@@ -13,7 +13,7 @@ const TAKSITLER = [2, 3, 4, 5, 6, 9, 12];
 export default function TaksitSecenekleriPage() {
   // Yalnızca tabloda gerçekten geçen taksit sayıları kolon olur.
   const kolonlar = TAKSITLER.filter((t) =>
-    TAKSIT_SECENEKLERI.some((s) => s.taksitler.some((k) => k.adet === t)),
+    INSTALLMENT_OPTIONS.some((s) => s.installments.some((k) => k.adet === t)),
   );
 
   return (
@@ -30,11 +30,11 @@ export default function TaksitSecenekleriPage() {
         </div>
       </div>
 
-      <VeriKaynagi
+      <DataSource
         kaynak="Örnek veri"
         ayrinti="lib/ornek-veri.ts → TAKSIT_SECENEKLERI"
-        tarihAlani="—"
-        iptalKurali="—"
+        dateField="—"
+        cancelRule="—"
         tazelik="örnek veri"
         kapsamUyarisi={
           "Bu bilgiler POS sağlayıcısından canlı alınmaz; elle girilen " +
@@ -57,13 +57,13 @@ export default function TaksitSecenekleriPage() {
             </tr>
           </thead>
           <tbody>
-            {TAKSIT_SECENEKLERI.map((s) => (
+            {INSTALLMENT_OPTIONS.map((s) => (
               <tr key={s.banka}>
                 <td>
                   <strong>{s.banka}</strong>
                 </td>
                 {kolonlar.map((t) => {
-                  const taksit = s.taksitler.find((k) => k.adet === t);
+                  const taksit = s.installments.find((k) => k.adet === t);
                   return (
                     <td key={t} className="num">
                       {taksit ? (

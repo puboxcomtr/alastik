@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CsvIndir } from "@components/b2b-tema/csv-indir";
-import { VeriKaynagi } from "@components/b2b-tema/veri-kaynagi";
-import { DURUM_ETIKET, formatKurus, gunFormat } from "@components/b2b-tema/lib/format";
-import { SIPARISLER } from "@components/b2b-tema/lib/ornek-veri";
+import { CsvDownload } from "@components/b2b-tema/csv-indir";
+import { DataSource } from "@components/b2b-tema/veri-kaynagi";
+import { STATUS_LABEL, formatKurus, gunFormat } from "@components/b2b-tema/lib/format";
+import { ORDERS } from "@components/b2b-tema/lib/ornek-veri";
 
 type Satir = {
   anahtar: string;
   tarih: Date;
-  siparisNo: string;
+  orderNo: string;
   durum: string;
-  urunAd: string;
-  stokKodu: string;
+  productName: string;
+  stockCode: string;
   marka: string;
   adet: number;
   birimFiyatKurus: number;
@@ -28,22 +28,22 @@ export default function SiparisRaporuPage() {
   const [bitis, setBitis] = useState("");
   const [getirildi, setGetirildi] = useState(false);
 
-  const satirlar = useMemo<Satir[]>(() => {
+  const lines = useMemo<Satir[]>(() => {
     if (!getirildi) return [];
-    return SIPARISLER.filter((s) => s.durum !== "CANCELLED")
+    return ORDERS.filter((s) => s.durum !== "CANCELLED")
       .filter((s) => {
         if (baslangic && s.createdAt < new Date(`${baslangic}T00:00:00Z`)) return false;
         if (bitis && s.createdAt > new Date(`${bitis}T23:59:59Z`)) return false;
         return true;
       })
       .flatMap((s) =>
-        s.kalemler.map((k) => ({
+        s.lines.map((k) => ({
           anahtar: k.id,
           tarih: s.createdAt,
-          siparisNo: s.no,
+          orderNo: s.no,
           durum: s.durum,
-          urunAd: k.urunAdi,
-          stokKodu: k.stokKodu,
+          productName: k.productName,
+          stockCode: k.stockCode,
           marka: k.marka,
           adet: k.adet,
           birimFiyatKurus: k.birimFiyatKurus,
@@ -53,7 +53,7 @@ export default function SiparisRaporuPage() {
       .sort((a, b) => b.tarih.getTime() - a.tarih.getTime());
   }, [getirildi, baslangic, bitis]);
 
-  const toplam = satirlar.reduce((t, s) => t + s.satirToplamKurus, 0);
+  const toplam = lines.reduce((t, s) => t + s.satirToplamKurus, 0);
 
   return (
     <>
@@ -67,8 +67,8 @@ export default function SiparisRaporuPage() {
             olarak indirin.
           </p>
         </div>
-        {satirlar.length > 0 ? (
-          <CsvIndir
+        {lines.length > 0 ? (
+          <CsvDownload
             dosyaAdi="siparis-raporu.csv"
             basliklar={[
               "Tarih",
@@ -81,12 +81,12 @@ export default function SiparisRaporuPage() {
               "Birim Fiyat",
               "Satır Toplam",
             ]}
-            satirlar={satirlar.map((s) => [
+            lines={lines.map((s) => [
               gunFormat(s.tarih),
-              s.siparisNo,
-              DURUM_ETIKET[s.durum] ?? s.durum,
-              s.urunAd,
-              s.stokKodu,
+              s.orderNo,
+              STATUS_LABEL[s.durum] ?? s.durum,
+              s.productName,
+              s.stockCode,
               s.marka,
               s.adet,
               (s.birimFiyatKurus / 100).toFixed(2),
@@ -96,11 +96,11 @@ export default function SiparisRaporuPage() {
         ) : null}
       </div>
 
-      <VeriKaynagi
+      <DataSource
         kaynak="Örnek veri"
         ayrinti="lib/ornek-veri.ts → SIPARISLER + kalemler"
-        tarihAlani="sipariş oluşturma tarihi"
-        iptalKurali="iptal edilen siparişler tamamen dışlanır"
+        dateField="sipariş oluşturma tarihi"
+        cancelRule="iptal edilen siparişler tamamen dışlanır"
         tazelik="örnek veri"
         kapsamUyarisi={
           "Yalnızca bu panelden verilen siparişler sayılır. Telefon/e-posta " +
@@ -154,7 +154,7 @@ export default function SiparisRaporuPage() {
       ) : (
         <>
           <p className="note" style={{ margin: "0.6rem 0" }}>
-            {satirlar.length.toLocaleString("tr-TR")} kalem · Toplam{" "}
+            {lines.length.toLocaleString("tr-TR")} kalem · Toplam{" "}
             <strong>{formatKurus(toplam)}</strong> (KDV dahil, iptaller hariç)
           </p>
           <div className="tablewrap">
@@ -172,18 +172,18 @@ export default function SiparisRaporuPage() {
                 </tr>
               </thead>
               <tbody>
-                {satirlar.map((s) => (
+                {lines.map((s) => (
                   <tr key={s.anahtar}>
                     <td>{gunFormat(s.tarih)}</td>
-                    <td className="sku">{s.siparisNo}</td>
+                    <td className="sku">{s.orderNo}</td>
                     <td>
                       <span className="badge info">
-                        {DURUM_ETIKET[s.durum] ?? s.durum}
+                        {STATUS_LABEL[s.durum] ?? s.durum}
                       </span>
                     </td>
                     <td>
-                      {s.urunAd}
-                      <div className="note">{s.stokKodu}</div>
+                      {s.productName}
+                      <div className="note">{s.stockCode}</div>
                     </td>
                     <td>{s.marka}</td>
                     <td className="num">{s.adet}</td>
@@ -193,7 +193,7 @@ export default function SiparisRaporuPage() {
                     </td>
                   </tr>
                 ))}
-                {satirlar.length === 0 ? (
+                {lines.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="note" style={{ padding: "2rem" }}>
                       Seçilen aralıkta sipariş yok.

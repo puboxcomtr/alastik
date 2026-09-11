@@ -270,7 +270,7 @@ export function DortMevsimIcon({ size = 18, className }: IconProps) {
 }
 
 /** Jantta mevsim yoktur (mevsim null) — ikon yerine tire gösterilir. */
-export function MevsimIcon({
+export function SeasonIcon({
   mevsim,
   size = 18,
 }: {

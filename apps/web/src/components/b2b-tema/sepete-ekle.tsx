@@ -1,9 +1,9 @@
 "use client";
 
-import { useSepet } from "./sepet-durumu";
-import { toastGoster } from "./toast";
+import { useCart } from "./sepet-durumu";
+import { showToast } from "./toast";
 import { CartIcon } from "./icons";
-import type { StokSatiri } from "@components/b2b-tema/lib/ornek-veri";
+import type { StockRow } from "@components/b2b-tema/lib/ornek-veri";
 
 /**
  * Ürün satırındaki sepet kontrolü.
@@ -16,35 +16,35 @@ import type { StokSatiri } from "@components/b2b-tema/lib/ornek-veri";
  * Depo adı satırda yazılmaz: filtrede depo seçiliyse o, değilse stoğu en çok
  * olan depo kullanılır. Adet, deponun kullanılabilir stoğunu aşamaz.
  */
-export function SepeteEkle({
+export function AddToCart({
   productId,
-  depolar,
-  varsayilanDepoId,
-  baslangicAdet = 1,
+  warehouses,
+  defaultWarehouseId,
+  initialQty = 1,
 }: {
   productId: string;
-  depolar: StokSatiri[];
-  varsayilanDepoId?: string | undefined;
+  warehouses: StockRow[];
+  defaultWarehouseId?: string | undefined;
   /** Eklenirken önerilen adet — jantta en az sipariş miktarı. */
-  baslangicAdet?: number;
+  initialQty?: number;
 }) {
-  const sepet = useSepet();
-    const sepetteki = sepet.bul(productId);
+  const sepet = useCart();
+    const cartItem = sepet.find(productId);
 
   // Sepetteki satırın deposu esastır; değilse filtre deposu, o da yoksa
   // stoğu en çok olan depo.
   const depo =
-    (sepetteki
-      ? depolar.find((d) => d.warehouseId === sepetteki.warehouseId)
+    (cartItem
+      ? warehouses.find((d) => d.warehouseId === cartItem.warehouseId)
       : undefined) ??
-    depolar.find((d) => d.warehouseId === varsayilanDepoId) ??
-    [...depolar].sort((a, b) => b.kullanilabilir - a.kullanilabilir)[0];
+    warehouses.find((d) => d.warehouseId === defaultWarehouseId) ??
+    [...warehouses].sort((a, b) => b.available - a.available)[0];
 
   // Depo bulunursa stoğuyla sınırlı; depo eşleşmezse (stok tooltip'i çekilince
   // warehouseId değişebilir) adet kilitlenmesin diye makul bir tavan uygulanır.
-  const maks = depo ? Math.min(depo.kullanilabilir, 500) : 500;
+  const maks = depo ? Math.min(depo.available, 500) : 500;
 
-  if (!sepetteki) {
+  if (!cartItem) {
     return (
       <button
         className="iconbtn hazir"
@@ -53,12 +53,12 @@ export function SepeteEkle({
         disabled={!depo}
         onClick={() => {
           if (!depo) return;
-          sepet.ekle({
+          sepet.addItem({
             productId,
             warehouseId: depo.warehouseId,
-            adet: Math.max(1, Math.min(baslangicAdet, maks || 1)),
+            adet: Math.max(1, Math.min(initialQty, maks || 1)),
           });
-          toastGoster("Sepete eklendi", "ok");
+          showToast("Sepete eklendi", "ok");
         }}
       >
         <CartIcon size={17} />
@@ -66,10 +66,10 @@ export function SepeteEkle({
     );
   }
 
-  const guncelle = (adet: number) =>
-    sepet.adetGuncelle(
+  const update = (adet: number) =>
+    sepet.setQty(
       productId,
-      sepetteki.warehouseId,
+      cartItem.warehouseId,
       Math.max(1, Math.min(adet, maks || 1)),
     );
 
@@ -80,28 +80,28 @@ export function SepeteEkle({
         <button
           type="button"
           onClick={() => {
-            guncelle(sepetteki.adet - 1);
-            toastGoster("Adet güncellendi", "bilgi");
+            update(cartItem.adet - 1);
+            showToast("Adet güncellendi", "bilgi");
           }}
-          disabled={sepetteki.adet <= 1}
+          disabled={cartItem.adet <= 1}
           aria-label="Azalt"
           title={
-            sepetteki.adet <= 1 ? "En az 1 adet — kaldırmak için Vazgeç" : "Azalt"
+            cartItem.adet <= 1 ? "En az 1 adet — kaldırmak için Vazgeç" : "Azalt"
           }
         >
           −
         </button>
-        <input readOnly value={sepetteki.adet} aria-label="Adet" tabIndex={-1} />
+        <input readOnly value={cartItem.adet} aria-label="Adet" tabIndex={-1} />
         <button
           type="button"
           onClick={() => {
-            guncelle(sepetteki.adet + 1);
-            toastGoster("Adet güncellendi", "ok");
+            update(cartItem.adet + 1);
+            showToast("Adet güncellendi", "ok");
           }}
-          disabled={sepetteki.adet >= maks}
+          disabled={cartItem.adet >= maks}
           aria-label="Artır"
           title={
-            sepetteki.adet >= maks
+            cartItem.adet >= maks
               ? `Bu depoda en fazla ${maks} adet kullanılabilir`
               : "Artır"
           }
@@ -113,8 +113,8 @@ export function SepeteEkle({
         type="button"
         className="vazgec"
         onClick={() => {
-          sepet.cikar(productId, sepetteki.warehouseId);
-          toastGoster("Sepetten çıkarıldı", "bilgi");
+          sepet.removeItem(productId, cartItem.warehouseId);
+          showToast("Sepetten çıkarıldı", "bilgi");
         }}
       >
         Vazgeç

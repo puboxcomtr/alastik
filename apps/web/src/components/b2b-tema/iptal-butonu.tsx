@@ -11,18 +11,18 @@ import { CloseIcon } from "./icons";
  * kendi iptal ucunuza istek atın (siparişin durumu, stok iadesi ve iptal
  * nedeni sunucuda tek işlemde ele alınmalıdır).
  */
-export function IptalButonu({
+export function CancelButton({
   talep,
 }: {
   /** true → onaylanmış sipariş için iptal TALEBİ; false → doğrudan iptal */
   talep: boolean;
 }) {
-  const [gonderildi, setGonderildi] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   function calistir() {
     const neden = window.prompt(talep ? "İptal talebi nedeni:" : "İptal nedeni:");
     if (!neden || neden.trim().length < 2) return;
-    setGonderildi(true);
+    setSubmitted(true);
     window.alert(
       "Bu bir tasarım şablonudur — istek gönderilmedi.\n\n" +
         `Girilen neden: ${neden.trim()}`,
@@ -30,7 +30,7 @@ export function IptalButonu({
   }
 
   return (
-    <button className="danger-outline" onClick={calistir} disabled={gonderildi}>
+    <button className="danger-outline" onClick={calistir} disabled={submitted}>
       {talep ? (
         "İptal Talebi"
       ) : (

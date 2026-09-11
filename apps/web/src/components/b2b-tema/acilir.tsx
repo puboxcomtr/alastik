@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "./icons";
 
-export type AcilirSecenek = { deger: string; etiket: string };
+export type DropdownOption = { deger: string; etiket: string };
 
 /**
  * Siteye ait açılır kutu — tarayıcının/işletim sisteminin kendi seçim menüsü
@@ -13,25 +13,25 @@ export type AcilirSecenek = { deger: string; etiket: string };
  * tutar. Seçenek sayısı eşiği aşınca panelin içine arama kutusu gelir —
  * 280 ebat elle taranamaz.
  */
-export function Acilir({
+export function Dropdown({
   baslik,
-  secenekler,
+  options,
   deger,
   onSec,
-  aramaEsigi = 12,
+  searchThreshold = 12,
 }: {
   /** Boş seçimde görünen etiket: "Mevsim", "Marka" … */
   baslik: string;
-  secenekler: AcilirSecenek[];
+  options: DropdownOption[];
   deger?: string | undefined;
   onSec: (deger: string) => void;
-  aramaEsigi?: number;
+  searchThreshold?: number;
 }) {
   const [acik, setAcik] = useState(false);
   const [arama, setArama] = useState("");
   const kutuRef = useRef<HTMLDivElement>(null);
 
-  const secili = secenekler.find((s) => s.deger === deger);
+  const secili = options.find((s) => s.deger === deger);
 
   useEffect(() => {
     if (!acik) return;
@@ -58,10 +58,10 @@ export function Acilir({
   // Panel içi arama da ayraca takılmasın: "2055" → "205/55R16" bulunmalı.
   const sadelestir = (m: string) =>
     m.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
-  const aranan = sadelestir(arama);
-  const suzulmus = aranan
-    ? secenekler.filter((s) => sadelestir(s.etiket).includes(aranan))
-    : secenekler;
+  const query = sadelestir(arama);
+  const suzulmus = query
+    ? options.filter((s) => sadelestir(s.etiket).includes(query))
+    : options;
 
   return (
     <div
@@ -82,7 +82,7 @@ export function Acilir({
 
       {acik ? (
         <div className="acilir-panel" role="listbox">
-          {secenekler.length >= aramaEsigi ? (
+          {options.length >= searchThreshold ? (
             <input
               className="acilir-arama"
               type="text"

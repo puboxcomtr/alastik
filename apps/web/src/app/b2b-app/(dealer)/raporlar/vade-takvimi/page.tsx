@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { VeriKaynagi } from "@components/b2b-tema/veri-kaynagi";
+import { DataSource } from "@components/b2b-tema/veri-kaynagi";
 import { formatKurus, formatTarih, gunFormat } from "@components/b2b-tema/lib/format";
-import { BAYI, BUGUN, CARI_OZET } from "@components/b2b-tema/lib/ornek-veri";
+import { DEALER, TODAY, ACCOUNT_SUMMARY } from "@components/b2b-tema/lib/ornek-veri";
 
 const AYLAR = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -18,11 +18,11 @@ const GUNLER = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"];
  * gecikmiş sayılmaz.
  */
 export default function VadeTakvimiPage() {
-  const [yil, setYil] = useState(BUGUN.getUTCFullYear());
-  const [ay, setAy] = useState(BUGUN.getUTCMonth());
+  const [yil, setYil] = useState(TODAY.getUTCFullYear());
+  const [ay, setAy] = useState(TODAY.getUTCMonth());
   const [listeGorunumu, setListeGorunumu] = useState(false);
 
-  const acikFaturalar = CARI_OZET.faturalar.filter((f) => f.kalanKurus > 0);
+  const acikFaturalar = ACCOUNT_SUMMARY.invoices.filter((f) => f.kalanKurus > 0);
 
   // Vade tarihi olan açık faturalar gün bazında toplanır.
   const gunToplam = new Map<string, number>();
@@ -56,7 +56,7 @@ export default function VadeTakvimiPage() {
     setAy(yeni.getUTCMonth());
   }
 
-  const bugunAnahtar = BUGUN.toISOString().slice(0, 10);
+  const bugunAnahtar = TODAY.toISOString().slice(0, 10);
   const acikToplam = acikFaturalar.reduce((t, f) => t + f.kalanKurus, 0);
 
   return (
@@ -71,30 +71,30 @@ export default function VadeTakvimiPage() {
         </div>
       </div>
 
-      <VeriKaynagi
+      <DataSource
         kaynak="Örnek veri"
         ayrinti="lib/ornek-veri.ts → CARI_OZET.faturalar"
-        tarihAlani="vade tarihi"
-        iptalKurali="iptal edilmiş ve borç niteliğinde olmayan faturalar takvime GİRMEZ"
-        tazelik={`${formatTarih(BAYI.sonSenkronAt)} itibarıyla (örnek)`}
+        dateField="vade tarihi"
+        cancelRule="iptal edilmiş ve borç niteliğinde olmayan faturalar takvime GİRMEZ"
+        tazelik={`${formatTarih(DEALER.sonSenkronAt)} itibarıyla (örnek)`}
       />
 
       <div className="rapor-kartlar">
         <div className="rapor-kart kirmizi">
           <div className="etiket">⚠ Geçmiş Vadeler</div>
-          <div className="deger">{formatKurus(CARI_OZET.vadesiGecenKurus)}</div>
+          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.overdueKurus)}</div>
         </div>
         <div className="rapor-kart">
           <div className="etiket">📅 Bu Ay Vadesi</div>
-          <div className="deger">{formatKurus(CARI_OZET.buAyVadesiKurus)}</div>
+          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.buAyVadesiKurus)}</div>
         </div>
         <div className="rapor-kart vurgulu">
           <div className="etiket">🗓 Gelecek 30 Gün</div>
-          <div className="deger">{formatKurus(CARI_OZET.gelecek30GunKurus)}</div>
+          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.gelecek30GunKurus)}</div>
         </div>
         <div className="rapor-kart">
           <div className="etiket">Σ Toplam Vadeli</div>
-          <div className="deger">{formatKurus(CARI_OZET.toplamVadeliKurus)}</div>
+          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.totalTermKurus)}</div>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export default function VadeTakvimiPage() {
                       "—"
                     )}
                   </td>
-                  <td>{f.odemePlani ?? "—"}</td>
+                  <td>{f.paymentPlan ?? "—"}</td>
                   <td className="num">{formatKurus(f.netKurus)}</td>
                   <td className="num">
                     <strong>{formatKurus(f.kalanKurus)}</strong>
@@ -171,8 +171,8 @@ export default function VadeTakvimiPage() {
                 type="button"
                 className="btn-ghost"
                 onClick={() => {
-                  setYil(BUGUN.getUTCFullYear());
-                  setAy(BUGUN.getUTCMonth());
+                  setYil(TODAY.getUTCFullYear());
+                  setAy(TODAY.getUTCMonth());
                 }}
               >
                 📅 Bugüne git

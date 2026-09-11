@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Acilir } from "@components/b2b-tema/acilir";
-import { AramaFormu } from "@components/b2b-tema/arama-formu";
-import { SepeteEkle } from "@components/b2b-tema/sepete-ekle";
+import { Dropdown } from "@components/b2b-tema/acilir";
+import { SearchForm } from "@components/b2b-tema/arama-formu";
+import { AddToCart } from "@components/b2b-tema/sepete-ekle";
 import { formatKurus } from "@components/b2b-tema/lib/format";
-import { JANTLAR, JANT_SECENEKLERI, toplamStok, type Jant } from "@components/b2b-tema/lib/ornek-veri";
+import { RIMS, RIM_OPTIONS, totalStock, type Rim } from "@components/b2b-tema/lib/ornek-veri";
 
 const SAYFA_BOYU = 60;
 
-type Filtre = {
+type Filter = {
   q: string;
   cap: string;
   bijon: string;
@@ -18,7 +18,7 @@ type Filtre = {
   ikinciEl: boolean;
 };
 
-const BOS_FILTRE: Filtre = {
+const BOS_FILTRE: Filter = {
   q: "",
   cap: "",
   bijon: "",
@@ -37,21 +37,21 @@ function sadelestir(metin: string): string {
   return metin.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
 }
 
-function eslesiyorMu(jant: Jant, f: Filtre): boolean {
+function matches(jant: Rim, f: Filter): boolean {
   if (f.q) {
     const havuz = sadelestir(
-      `${jant.ebat} ${jant.desen} ${jant.aracMarkasi ?? ""} ${jant.bijonAralikKodu ?? ""} ${jant.stokKodu}`,
+      `${jant.size} ${jant.pattern} ${jant.vehicleBrand ?? ""} ${jant.bijonAralikKodu ?? ""} ${jant.stockCode}`,
     );
     if (!havuz.includes(sadelestir(f.q))) return false;
   }
-  if (f.cap && String(jant.jantCapi) !== f.cap) return false;
+  if (f.cap && String(jant.rimDiameter) !== f.cap) return false;
   if (f.bijon && jant.bijonAralikKodu !== f.bijon) return false;
-  if (f.arac && jant.aracMarkasi !== f.arac) return false;
+  if (f.arac && jant.vehicleBrand !== f.arac) return false;
   if (f.depo) {
-    const depoStok = jant.stoklar.find((s) => s.warehouseId === f.depo);
-    if (!depoStok || depoStok.kullanilabilir === 0) return false;
+    const warehouseStock = jant.stocks.find((s) => s.warehouseId === f.depo);
+    if (!warehouseStock || warehouseStock.available === 0) return false;
   }
-  if (jant.urunDurumu !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
+  if (jant.productStatus !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
   return true;
 }
 
@@ -60,69 +60,69 @@ function eslesiyorMu(jant: Jant, f: Filtre): boolean {
  * (aynı arama barı, aynı açılır kutu, aynı tablo ve sepet kontrolü) ama
  * filtreler ve kolonlar janta özgü: çap, bijon aralığı, araç markası.
  */
-export function KatalogJant() {
-  const [filtre, setFiltre] = useState<Filtre>(BOS_FILTRE);
+export function RimCatalog() {
+  const [filtre, setFiltre] = useState<Filter>(BOS_FILTRE);
   const [sayfa, setSayfa] = useState(1);
 
-  const eslesenler = useMemo(
-    () => JANTLAR.filter((j) => eslesiyorMu(j, filtre)),
+  const matched = useMemo(
+    () => RIMS.filter((j) => matches(j, filtre)),
     [filtre],
   );
 
-  const toplam = eslesenler.length;
+  const toplam = matched.length;
   const sonSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYU));
   const gecerliSayfa = Math.min(sayfa, sonSayfa);
-  const gorunen = eslesenler.slice(
+  const visible = matched.slice(
     (gecerliSayfa - 1) * SAYFA_BOYU,
     gecerliSayfa * SAYFA_BOYU,
   );
 
-  function guncelle(parca: Partial<Filtre>): void {
+  function update(parca: Partial<Filter>): void {
     setFiltre((onceki) => ({ ...onceki, ...parca }));
     setSayfa(1);
   }
 
   return (
     <>
-      <AramaFormu
+      <SearchForm
         q={filtre.q}
-        onAra={(q) => guncelle({ q })}
+        onAra={(q) => update({ q })}
         placeholder="Jant ara — çap, bijon aralığı, araç markası veya ürün kodu..."
       />
 
       <div className="filterbar">
-        <Acilir
+        <Dropdown
           baslik="Jant Çapı"
           deger={filtre.cap}
-          onSec={(cap) => guncelle({ cap })}
-          secenekler={JANT_SECENEKLERI.caplar.map((c) => ({
+          onSec={(cap) => update({ cap })}
+          options={RIM_OPTIONS.caplar.map((c) => ({
             deger: String(c),
             etiket: `${c}"`,
           }))}
         />
-        <Acilir
+        <Dropdown
           baslik="Bijon Aralığı"
           deger={filtre.bijon}
-          onSec={(bijon) => guncelle({ bijon })}
-          secenekler={JANT_SECENEKLERI.bijonlar.map((b) => ({
+          onSec={(bijon) => update({ bijon })}
+          options={RIM_OPTIONS.bijonlar.map((b) => ({
             deger: b,
             etiket: b,
           }))}
         />
-        <Acilir
+        <Dropdown
           baslik="Araç Markası"
           deger={filtre.arac}
-          onSec={(arac) => guncelle({ arac })}
-          secenekler={JANT_SECENEKLERI.aracMarkalari.map((a) => ({
+          onSec={(arac) => update({ arac })}
+          options={RIM_OPTIONS.vehicleBrands.map((a) => ({
             deger: a,
             etiket: a,
           }))}
         />
-        <Acilir
+        <Dropdown
           baslik="Depo"
           deger={filtre.depo}
-          onSec={(depo) => guncelle({ depo })}
-          secenekler={JANT_SECENEKLERI.depolar.map((d) => ({
+          onSec={(depo) => update({ depo })}
+          options={RIM_OPTIONS.warehouses.map((d) => ({
             deger: d.id,
             etiket: d.ad,
           }))}
@@ -132,7 +132,7 @@ export function KatalogJant() {
           type="button"
           className={`ozellik-cip ikinciel-cip${filtre.ikinciEl ? " secili" : ""}`}
           title="Basılıyken yalnızca 2. el jantlar listelenir"
-          onClick={() => guncelle({ ikinciEl: !filtre.ikinciEl })}
+          onClick={() => update({ ikinciEl: !filtre.ikinciEl })}
         >
           Sadece 2. El Jantlar
         </button>
@@ -169,24 +169,24 @@ export function KatalogJant() {
             </tr>
           </thead>
           <tbody>
-            {gorunen.map((jant) => {
-              const stokluDepolar = jant.stoklar.filter(
-                (s) => s.kullanilabilir > 0,
+            {visible.map((jant) => {
+              const inStockWarehouses = jant.stocks.filter(
+                (s) => s.available > 0,
               );
-              const kullanilabilir = toplamStok(jant.stoklar);
+              const available = totalStock(jant.stocks);
               const fiyat = jant.fiyat;
               return (
                 <tr key={jant.id}>
-                  <td className="sku">{jant.stokKodu}</td>
+                  <td className="sku">{jant.stockCode}</td>
                   <td>
                     <div className="urun-hucre">
                       <span className="urun-gorsel bos" aria-hidden="true" />
                       <div>
                         <div className="urun-adi">
-                          {jant.ebat} {jant.desen}
+                          {jant.size} {jant.pattern}
                         </div>
                         <div className="urun-alt">
-                          {jant.urunDurumu === "ikinciEl" ? (
+                          {jant.productStatus === "ikinciEl" ? (
                             <span className="badge gray">2. El</span>
                           ) : null}
                           {jant.stepne ? (
@@ -207,13 +207,13 @@ export function KatalogJant() {
                     </div>
                   </td>
                   <td>
-                    <strong>{jant.aracMarkasi ?? jant.marka}</strong>
+                    <strong>{jant.vehicleBrand ?? jant.marka}</strong>
                   </td>
                   <td className="num">
-                    {jant.jantCapi !== null ? `${jant.jantCapi}"` : "—"}
-                    {jant.jantGenisligiX10 !== null ? (
+                    {jant.rimDiameter !== null ? `${jant.rimDiameter}"` : "—"}
+                    {jant.rimWidthX10 !== null ? (
                       <div className="fiyat-kdv">
-                        {olcekliGoster(jant.jantGenisligiX10, 10)}J
+                        {olcekliGoster(jant.rimWidthX10, 10)}J
                       </div>
                     ) : null}
                   </td>
@@ -232,16 +232,16 @@ export function KatalogJant() {
                   </td>
                   <td>
                     <span
-                      className={`stok-pill${kullanilabilir === 0 ? " yok" : ""}`}
-                      title={jant.stoklar
-                        .map((s) => `${s.depoAd}: ${s.kullanilabilir}`)
+                      className={`stok-pill${available === 0 ? " yok" : ""}`}
+                      title={jant.stocks
+                        .map((s) => `${s.warehouseName}: ${s.available}`)
                         .join(" · ")}
                     >
-                      {kullanilabilir === 0
+                      {available === 0
                         ? "Yok"
-                        : kullanilabilir >= 20
+                        : available >= 20
                           ? "20+"
-                          : kullanilabilir}
+                          : available}
                     </span>
                   </td>
                   <td className="num">
@@ -264,12 +264,12 @@ export function KatalogJant() {
                     )}
                   </td>
                   <td className="sepet-kol">
-                    {fiyat && stokluDepolar.length > 0 ? (
-                      <SepeteEkle
+                    {fiyat && inStockWarehouses.length > 0 ? (
+                      <AddToCart
                         productId={jant.id}
-                        depolar={stokluDepolar}
-                        varsayilanDepoId={filtre.depo || undefined}
-                        baslangicAdet={jant.minSiparisMiktari}
+                        warehouses={inStockWarehouses}
+                        defaultWarehouseId={filtre.depo || undefined}
+                        initialQty={jant.minSiparisMiktari}
                       />
                     ) : (
                       <span className="note">—</span>
@@ -278,7 +278,7 @@ export function KatalogJant() {
                 </tr>
               );
             })}
-            {gorunen.length === 0 ? (
+            {visible.length === 0 ? (
               <tr>
                 <td colSpan={9} className="note" style={{ padding: "2rem" }}>
                   Filtrelere uyan jant bulunamadı.

@@ -4,37 +4,37 @@
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
-interface VitrinUrun {
+interface ShowcaseProduct {
     _key: string;
     diaData?: { aciklama?: string; stokkartkodu?: string; marka?: string; m_resimler?: { aws_url?: string }[]; m_birimler?: { fiyat4?: string | number }[] };
     customData?: { seoUrl?: string; webPrice?: number; featuredImage?: string };
 }
 
-interface Vitrin {
+interface Showcase {
     key: string;
     title: string;
     subtitle: string;
-    products: VitrinUrun[];
+    products: ShowcaseProduct[];
 }
 
 const MEDIA = process.env.NEXT_PUBLIC_MEDIA_URL || '';
 
-function gorsel(u: VitrinUrun): string {
+function gorsel(u: ShowcaseProduct): string {
     const f = u.customData?.featuredImage;
     if (f) return f.startsWith('http') || f.startsWith('/') ? f : `${MEDIA}/${f}`;
     const r = u.diaData?.m_resimler?.[0]?.aws_url || '';
     return r || '/lastikjant-logo.png';
 }
 
-function fiyatKdvHaric(u: VitrinUrun): string {
+function priceExclVat(u: ShowcaseProduct): string {
     // Vitrin fiyatı KDV hariç (bayi fiyatı) — webPrice / 1.20
     const webPrice = Number(u.customData?.webPrice || 0);
     const haric = webPrice > 0 ? webPrice / 1.2 : 0;
     return haric > 0 ? haric.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL' : '';
 }
 
-export function Vitrin() {
-    const [vitrin, setVitrin] = useState<Vitrin | null>(null);
+export function Showcase() {
+    const [vitrin, setVitrin] = useState<Showcase | null>(null);
 
     useEffect(() => {
         fetch(API_ENDPOINTS.showcases.homepage(), { headers: { 'X-Site': 'b2b' } })
@@ -55,7 +55,7 @@ export function Vitrin() {
             </div>
             <div className="vitrin-grid">
                 {vitrin.products.map(u => {
-                    const fiyat = fiyatKdvHaric(u);
+                    const fiyat = priceExclVat(u);
                     return (
                         <a key={u._key} href={u.customData?.seoUrl ? `/urun/${u.customData.seoUrl}` : '#'} className="vitrin-kart">
                             <div className="vitrin-gorsel">

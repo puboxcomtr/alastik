@@ -1,4 +1,4 @@
-import { Katalog } from "@components/b2b-tema/katalog";
+import { Catalog } from "@components/b2b-tema/katalog";
 
 export default function LastikPage() {
   return (
@@ -12,7 +12,7 @@ export default function LastikPage() {
           </p>
         </div>
       </div>
-      <Katalog />
+      <Catalog />
     </>
   );
 }

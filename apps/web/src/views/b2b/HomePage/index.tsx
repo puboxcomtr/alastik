@@ -8,15 +8,15 @@ import B2BLogin from '@src/views/b2b/Login';
 
 const site = SITES.b2b;
 
-interface BayiBilgi {
+interface DealerInfo {
     name: string;
     email: string;
-    cariKodu: string;
+    accountCode: string;
 }
 
 const B2BHomePage = () => {
     const [checking, setChecking] = useState(true);
-    const [bayi, setBayi] = useState<BayiBilgi | null>(null);
+    const [bayi, setBayi] = useState<DealerInfo | null>(null);
 
     useEffect(() => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
@@ -65,7 +65,7 @@ const B2BHomePage = () => {
                         <div style={{ color: '#ffffff', fontSize: 13, fontWeight: 700, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {bayi.name}
                         </div>
-                        <div style={{ color: '#9a9a9a', fontSize: 11 }}>Cari Kodu: {bayi.cariKodu || '-'}</div>
+                        <div style={{ color: '#9a9a9a', fontSize: 11 }}>Cari Kodu: {bayi.accountCode || '-'}</div>
                     </div>
                     <button
                         type='button'

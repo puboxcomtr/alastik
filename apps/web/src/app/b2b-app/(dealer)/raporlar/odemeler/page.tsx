@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { VeriKaynagi } from "@components/b2b-tema/veri-kaynagi";
+import { DataSource } from "@components/b2b-tema/veri-kaynagi";
 import { formatKurus, gunFormat } from "@components/b2b-tema/lib/format";
-import { ODEMELER } from "@components/b2b-tema/lib/ornek-veri";
+import { PAYMENTS } from "@components/b2b-tema/lib/ornek-veri";
 
 type Sekme = "tumu" | "gecerli" | "iptal";
 
@@ -18,19 +18,19 @@ export default function OdemelerPage() {
   const [q, setQ] = useState("");
 
   // Örnek veride iptal kaydı yok; sekme yine de tasarımda yer alıyor.
-  const gecerli = ODEMELER;
-  const iptaller: typeof ODEMELER = [];
+  const gecerli = PAYMENTS;
+  const iptaller: typeof PAYMENTS = [];
   const gecerliToplam = gecerli.reduce((t, o) => t + o.tutarKurus, 0);
 
   const secilen =
-    sekme === "iptal" ? iptaller : sekme === "gecerli" ? gecerli : ODEMELER;
-  const aranan = q.trim().toLocaleLowerCase("tr");
-  const listelenen = aranan
+    sekme === "iptal" ? iptaller : sekme === "gecerli" ? gecerli : PAYMENTS;
+  const query = q.trim().toLocaleLowerCase("tr");
+  const listelenen = query
     ? secilen.filter(
         (o) =>
-          o.belgeNo.toLocaleLowerCase("tr").includes(aranan) ||
-          o.kasaAdi.toLocaleLowerCase("tr").includes(aranan) ||
-          (o.aciklama ?? "").toLocaleLowerCase("tr").includes(aranan),
+          o.belgeNo.toLocaleLowerCase("tr").includes(query) ||
+          o.kasaAdi.toLocaleLowerCase("tr").includes(query) ||
+          (o.aciklama ?? "").toLocaleLowerCase("tr").includes(query),
       )
     : secilen;
 
@@ -41,17 +41,17 @@ export default function OdemelerPage() {
           <h1>Kasa Tahsilatları</h1>
           <p className="sub">
             Kasadan geçen tahsilat kayıtlarınız —{" "}
-            {ODEMELER.length.toLocaleString("tr-TR")} işlem. Bu liste tüm
+            {PAYMENTS.length.toLocaleString("tr-TR")} işlem. Bu liste tüm
             ödemelerinizi kapsamaz (aşağıdaki kapsam notuna bakın).
           </p>
         </div>
       </div>
 
-      <VeriKaynagi
+      <DataSource
         kaynak="Örnek veri"
         ayrinti="lib/ornek-veri.ts → ODEMELER (yalnızca kasa işlemleri)"
-        tarihAlani="işlem tarihi"
-        iptalKurali="iptaller ayrı sekmede, toplama katılmaz"
+        dateField="işlem tarihi"
+        cancelRule="iptaller ayrı sekmede, toplama katılmaz"
         tazelik="örnek veri"
         kapsamUyarisi={
           "Bu ekran YALNIZCA kasadan geçen tahsilatları gösterir. Banka " +
@@ -77,7 +77,7 @@ export default function OdemelerPage() {
         </div>
         <div className="rapor-kart">
           <div className="etiket">Σ Kayıt sayısı</div>
-          <div className="deger">{ODEMELER.length}</div>
+          <div className="deger">{PAYMENTS.length}</div>
           <div className="note">iptaller dahil</div>
         </div>
       </div>
@@ -85,7 +85,7 @@ export default function OdemelerPage() {
       <div className="actions-row" style={{ marginBottom: "0.8rem", flexWrap: "wrap" }}>
         {(
           [
-            ["tumu", `Tümü (${ODEMELER.length})`],
+            ["tumu", `Tümü (${PAYMENTS.length})`],
             ["gecerli", `Geçerli (${gecerli.length})`],
             ["iptal", `İptal (${iptaller.length})`],
           ] as const

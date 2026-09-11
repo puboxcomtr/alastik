@@ -1,9 +1,9 @@
-import { ParolaFormu } from "@components/b2b-tema/parola-formu";
+import { PasswordForm } from "@components/b2b-tema/parola-formu";
 import { formatKurus } from "@components/b2b-tema/lib/format";
-import { BAYI } from "@components/b2b-tema/lib/ornek-veri";
+import { DEALER } from "@components/b2b-tema/lib/ornek-veri";
 
 const KULLANICILAR = [
-  { id: "u1", email: BAYI.eposta, durum: "aktif", createdAt: new Date("2025-11-04") },
+  { id: "u1", email: DEALER.eposta, durum: "aktif", createdAt: new Date("2025-11-04") },
   { id: "u2", email: "satinalma@bayi.com", durum: "aktif", createdAt: new Date("2026-02-17") },
   { id: "u3", email: "muhasebe@bayi.com", durum: "pasif", createdAt: new Date("2026-05-29") },
 ];
@@ -25,27 +25,27 @@ export default function HesapPage() {
         <div className="card">
           <div className="label">Unvan</div>
           <div className="value" style={{ fontSize: "1.05rem" }}>
-            {BAYI.unvan}
+            {DEALER.unvan}
           </div>
         </div>
         <div className="card">
           <div className="label">Cari Kodu</div>
           <div className="value" style={{ fontSize: "1.05rem" }}>
-            {BAYI.cariKodu}
+            {DEALER.accountCode}
           </div>
         </div>
         <div className="card">
           <div className="label">Kredi Limiti</div>
-          <div className="value">{formatKurus(BAYI.krediLimitiKurus)}</div>
+          <div className="value">{formatKurus(DEALER.creditLimitKurus)}</div>
         </div>
         <div className="card">
           <div className="label">Ödeme Vadesi</div>
-          <div className="value">{BAYI.odemeVadeGun} gün</div>
+          <div className="value">{DEALER.paymentTermDays} gün</div>
         </div>
         <div className="card">
           <div className="label">Bayi İskontosu</div>
           <div className="value">
-            %{(BAYI.iskontoBps / 100).toLocaleString("tr-TR")}
+            %{(DEALER.discountBps / 100).toLocaleString("tr-TR")}
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function HesapPage() {
       </p>
 
       <h2 className="section">Parola Değiştir</h2>
-      <ParolaFormu />
+      <PasswordForm />
 
       <h2 className="section">Hesap Kullanıcıları</h2>
       <div className="tablewrap">
@@ -72,7 +72,7 @@ export default function HesapPage() {
               <tr key={u.id}>
                 <td>
                   {u.email}
-                  {u.email === BAYI.eposta ? (
+                  {u.email === DEALER.eposta ? (
                     <span className="badge brand" style={{ marginLeft: "0.5rem" }}>
                       Siz
                     </span>

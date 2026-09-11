@@ -9,7 +9,7 @@ import { useState } from "react";
  * hiçbir yere iletilmez ve saklanmaz. Gerçek uygulamada gönderimi kendi
  * ucunuza bağlayın (mevcut parola doğrulaması sunucuda yapılmalıdır).
  */
-export function ParolaFormu({ sinif = "form-grid" }: { sinif?: string }) {
+export function PasswordForm({ sinif = "form-grid" }: { sinif?: string }) {
   const [uyari, setUyari] = useState(false);
 
   return (

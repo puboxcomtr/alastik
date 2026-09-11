@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { formatKurus, formatTarih, gunFormat } from "@components/b2b-tema/lib/format";
 import {
-  CARI_OZET,
-  KALAN_LIMIT_KURUS,
-  TOPLAM_RISK_KURUS,
+  ACCOUNT_SUMMARY,
+  REMAINING_LIMIT_KURUS,
+  TOTAL_RISK_KURUS,
 } from "@components/b2b-tema/lib/ornek-veri";
 import {
   AlertIcon,
@@ -18,13 +18,13 @@ import {
  * açık faturalar.
  */
 export default function CariPage() {
-  const ozet = CARI_OZET;
-  const borclu = ozet.bakiyeKurus > 0;
-  const limitKullanimYuzde =
-    ozet.krediLimitiKurus > 0
-      ? Math.min(100, Math.round((TOPLAM_RISK_KURUS * 100) / ozet.krediLimitiKurus))
+  const ozet = ACCOUNT_SUMMARY;
+  const borclu = ozet.balanceKurus > 0;
+  const limitUsagePct =
+    ozet.creditLimitKurus > 0
+      ? Math.min(100, Math.round((TOTAL_RISK_KURUS * 100) / ozet.creditLimitKurus))
       : 0;
-  const gecikmisler = ozet.faturalar.filter(
+  const gecikmisler = ozet.invoices.filter(
     (f) => f.gecikmeGun !== null && f.gecikmeGun > 0,
   );
 
@@ -34,7 +34,7 @@ export default function CariPage() {
         <div>
           <h1>Cari Hesap Özeti</h1>
           <p className="sub">
-            {ozet.unvan} · Cari: {ozet.cariKodu} · Güncelleme:{" "}
+            {ozet.unvan} · Cari: {ozet.accountCode} · Güncelleme:{" "}
             {formatTarih(ozet.sonSenkronAt)}
           </p>
         </div>
@@ -49,7 +49,7 @@ export default function CariPage() {
         <div className="alert warn">
           <AlertIcon size={17} /> Vadesi {gecikmisler[0]?.gecikmeGun} gün geçen{" "}
           {gecikmisler.length} faturanız var — toplam{" "}
-          <strong>{formatKurus(ozet.vadesiGecenKurus)}</strong>. Sipariş
+          <strong>{formatKurus(ozet.overdueKurus)}</strong>. Sipariş
           süreçlerinizin aksamaması için ödenmesi gerekir.
         </div>
       ) : null}
@@ -63,7 +63,7 @@ export default function CariPage() {
               {ozet.borcAlacakYonu === "B" ? "BORÇLU" : "ALACAKLI"}
             </span>
           </div>
-          <div className="tutar">{formatKurus(Math.abs(ozet.bakiyeKurus))}</div>
+          <div className="tutar">{formatKurus(Math.abs(ozet.balanceKurus))}</div>
           <div className="kirilim">
             <span className="borc">
               Borç <strong>{formatKurus(ozet.borcToplamKurus)}</strong>
@@ -73,33 +73,33 @@ export default function CariPage() {
             </span>
           </div>
           <div className="dip">
-            Ödeme planı: {ozet.odemePlani} · Son ödemeniz:{" "}
+            Ödeme planı: {ozet.paymentPlan} · Son ödemeniz:{" "}
             {gunFormat(ozet.sonOdemeTarihi)}
           </div>
         </section>
 
         <section className="cari-limit">
           <div className="etiket">Kredi Limiti</div>
-          <div className="tutar">{formatKurus(ozet.krediLimitiKurus)}</div>
+          <div className="tutar">{formatKurus(ozet.creditLimitKurus)}</div>
           <div className="cubuk" aria-hidden="true">
-            <span style={{ width: `${limitKullanimYuzde}%` }} />
+            <span style={{ width: `${limitUsagePct}%` }} />
           </div>
           <div className="limit-kirilim">
             <div>
               <span className="k-etiket">Kullanılan</span>
-              <strong>{formatKurus(TOPLAM_RISK_KURUS)}</strong>
+              <strong>{formatKurus(TOTAL_RISK_KURUS)}</strong>
             </div>
             <div className="sag">
               <span className="k-etiket">Kullanılabilir</span>
-              <strong className={KALAN_LIMIT_KURUS < 0 ? "danger" : "ok"}>
-                {formatKurus(KALAN_LIMIT_KURUS)}
+              <strong className={REMAINING_LIMIT_KURUS < 0 ? "danger" : "ok"}>
+                {formatKurus(REMAINING_LIMIT_KURUS)}
               </strong>
             </div>
           </div>
-          {ozet.bekleyenSiparisKurus > 0 ? (
+          {ozet.pendingOrderKurus > 0 ? (
             <div className="dip">
               Kullanılan tutara henüz faturalanmamış{" "}
-              {formatKurus(ozet.bekleyenSiparisKurus)} sipariş dahildir.
+              {formatKurus(ozet.pendingOrderKurus)} sipariş dahildir.
             </div>
           ) : null}
         </section>
@@ -139,10 +139,10 @@ export default function CariPage() {
 
       {/* ── Vade kovaları ── */}
       <div className="cards">
-        <div className={`card${ozet.vadesiGecenKurus > 0 ? " tinted-red" : ""}`}>
+        <div className={`card${ozet.overdueKurus > 0 ? " tinted-red" : ""}`}>
           <div className="label">Geçmiş Vadeler</div>
-          <div className={`value${ozet.vadesiGecenKurus > 0 ? " danger" : ""}`}>
-            {formatKurus(ozet.vadesiGecenKurus)}
+          <div className={`value${ozet.overdueKurus > 0 ? " danger" : ""}`}>
+            {formatKurus(ozet.overdueKurus)}
           </div>
           <div className="note">
             Ortalama gecikme {ozet.ortalamaGecikmeGun} gün
@@ -158,7 +158,7 @@ export default function CariPage() {
         </div>
         <div className="card">
           <div className="label">Toplam Vadeli</div>
-          <div className="value">{formatKurus(ozet.toplamVadeliKurus)}</div>
+          <div className="value">{formatKurus(ozet.totalTermKurus)}</div>
         </div>
       </div>
 
@@ -178,14 +178,14 @@ export default function CariPage() {
             </tr>
           </thead>
           <tbody>
-            {ozet.faturalar.map((f) => {
+            {ozet.invoices.map((f) => {
               const gecikti = f.gecikmeGun !== null && f.gecikmeGun > 0;
               return (
                 <tr key={f.fisNo}>
                   <td className="sku">{f.fisNo}</td>
                   <td>{gunFormat(f.tarih)}</td>
                   <td>{gunFormat(f.vadeTarihi)}</td>
-                  <td className="note">{f.odemePlani ?? "—"}</td>
+                  <td className="note">{f.paymentPlan ?? "—"}</td>
                   <td className="num">{formatKurus(f.netKurus)}</td>
                   <td className="num">
                     <strong>{formatKurus(f.kalanKurus)}</strong>

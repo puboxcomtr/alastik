@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { CardIcon, OrdersIcon, UserIcon, WalletIcon } from "./icons";
 
 /** Üst bardaki hesap menüsü: ayarlar, siparişler, ödeme, çıkış. */
-export function HesapMenu({
+export function AccountMenu({
   email,
   unvan,
 }: {

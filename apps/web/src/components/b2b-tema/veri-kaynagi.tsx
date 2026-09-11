@@ -5,11 +5,11 @@
  * yazar; kullanıcı hangi rakamın nereden geldiğini tahmin etmek zorunda
  * kalmaz. Farklı kaynaklar tek toplamda sessizce birleştirilmez.
  */
-export function VeriKaynagi({
+export function DataSource({
   kaynak,
   ayrinti,
-  tarihAlani,
-  iptalKurali,
+  dateField,
+  cancelRule,
   tazelik,
   kapsamUyarisi,
 }: {
@@ -18,9 +18,9 @@ export function VeriKaynagi({
   /** Kullanılan tablo ya da servis ucu. */
   ayrinti: string;
   /** Filtrenin dayandığı tarih alanı. */
-  tarihAlani: string;
+  dateField: string;
   /** İptal/iade kayıtlarının işlenişi. */
-  iptalKurali: string;
+  cancelRule: string;
   /** "27.07.2026 11:45 itibarıyla" gibi; canlı raporlarda "her açılışta". */
   tazelik: string;
   /** Bilinen kapsam eksiği varsa açık uyarı (sarı şerit). */
@@ -36,10 +36,10 @@ export function VeriKaynagi({
           <strong>Kaynak:</strong> {ayrinti}
         </span>
         <span>
-          <strong>Tarih alanı:</strong> {tarihAlani}
+          <strong>Tarih alanı:</strong> {dateField}
         </span>
         <span>
-          <strong>İptal/iade:</strong> {iptalKurali}
+          <strong>İptal/iade:</strong> {cancelRule}
         </span>
         <span>
           <strong>Veri zamanı:</strong> {tazelik}

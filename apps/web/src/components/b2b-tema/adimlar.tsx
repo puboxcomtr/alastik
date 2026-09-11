@@ -1,7 +1,7 @@
-import type { SiparisDurumu } from "@components/b2b-tema/lib/ornek-veri";
+import type { OrderStatus } from "@components/b2b-tema/lib/ornek-veri";
 import { CheckIcon, CloseIcon } from "./icons";
 
-const SIRA: SiparisDurumu[] = [
+const SIRA: OrderStatus[] = [
   "SUBMITTED",
   "CONFIRMED",
   "PREPARING",
@@ -10,7 +10,7 @@ const SIRA: SiparisDurumu[] = [
 ];
 
 /** 5 adımlı sipariş ilerleme göstergesi (tamamlananlar sarı). */
-export function SiparisAdimlari({ durum }: { durum: SiparisDurumu }) {
+export function OrderSteps({ durum }: { durum: OrderStatus }) {
   if (durum === "CANCELLED") {
     return (
       <div className="steps">

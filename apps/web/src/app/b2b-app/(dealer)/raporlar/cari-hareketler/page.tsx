@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CsvIndir } from "@components/b2b-tema/csv-indir";
-import { VeriKaynagi } from "@components/b2b-tema/veri-kaynagi";
+import { CsvDownload } from "@components/b2b-tema/csv-indir";
+import { DataSource } from "@components/b2b-tema/veri-kaynagi";
 import { formatKurus, formatTarih, gunFormat } from "@components/b2b-tema/lib/format";
-import { BAYI, BUGUN, CARI_HAREKETLER, CARI_OZET } from "@components/b2b-tema/lib/ornek-veri";
+import { DEALER, TODAY, ACCOUNT_LEDGER, ACCOUNT_SUMMARY } from "@components/b2b-tema/lib/ornek-veri";
 
-const BU_YIL = BUGUN.getFullYear();
+const BU_YIL = TODAY.getFullYear();
 const YILLAR = [BU_YIL, BU_YIL - 1, BU_YIL - 2];
 
 /**
@@ -22,8 +22,8 @@ export default function CariHareketlerPage() {
   const [baslangic, setBaslangic] = useState("");
   const [bitis, setBitis] = useState("");
 
-  const hareketler = useMemo(() => {
-    return CARI_HAREKETLER.filter((h) => {
+  const ledgerRows = useMemo(() => {
+    return ACCOUNT_LEDGER.filter((h) => {
       if (yil && h.tarih.getFullYear() !== Number(yil)) return false;
       if (baslangic && h.tarih < new Date(`${baslangic}T00:00:00Z`)) return false;
       if (bitis && h.tarih > new Date(`${bitis}T23:59:59Z`)) return false;
@@ -32,7 +32,7 @@ export default function CariHareketlerPage() {
   }, [yil, baslangic, bitis]);
 
   // İptaller listelenir ama TOPLAMLARA katılmaz.
-  const gecerliler = hareketler.filter((h) => !h.iptal);
+  const gecerliler = ledgerRows.filter((h) => !h.iptal);
   const kontrolBorc = gecerliler.reduce((t, h) => t + h.borcKurus, 0);
   const kontrolAlacak = gecerliler.reduce((t, h) => t + h.alacakKurus, 0);
 
@@ -41,10 +41,10 @@ export default function CariHareketlerPage() {
    * kapsamaz (açılış devri ve kasadan geçmeyen ödemeler yok) — mutabakatın
    * tutmadığı durumun tasarımı da görünsün diye.
    */
-  const borcFark = Math.abs(CARI_OZET.borcToplamKurus - kontrolBorc);
-  const alacakFark = Math.abs(CARI_OZET.alacakToplamKurus - kontrolAlacak);
-  const bakiyeGosterilebilir = borcFark <= 1 && alacakFark <= 1;
-  const borclu = CARI_OZET.bakiyeKurus > 0;
+  const borcFark = Math.abs(ACCOUNT_SUMMARY.borcToplamKurus - kontrolBorc);
+  const alacakFark = Math.abs(ACCOUNT_SUMMARY.alacakToplamKurus - kontrolAlacak);
+  const balanceVisible = borcFark <= 1 && alacakFark <= 1;
+  const borclu = ACCOUNT_SUMMARY.balanceKurus > 0;
 
   let yuruyen = 0;
 
@@ -55,7 +55,7 @@ export default function CariHareketlerPage() {
           <h1>Cari Hareketler</h1>
           <p className="sub">Hesap hareketlerinizi ve bakiyenizi görüntüleyin.</p>
         </div>
-        <CsvIndir
+        <CsvDownload
           dosyaAdi={`cari-hareketler-${yil || "tumu"}.csv`}
           basliklar={[
             "Belge Tarihi",
@@ -66,11 +66,11 @@ export default function CariHareketlerPage() {
             "Alacak",
             "İptal",
           ]}
-          satirlar={hareketler.map((h) => [
+          lines={ledgerRows.map((h) => [
             gunFormat(h.tarih),
             gunFormat(h.vadeTarihi),
             h.belgeNo,
-            h.islemTipi,
+            h.txnType,
             (h.borcKurus / 100).toFixed(2),
             (h.alacakKurus / 100).toFixed(2),
             h.iptal ? "evet" : "hayır",
@@ -78,12 +78,12 @@ export default function CariHareketlerPage() {
         />
       </div>
 
-      <VeriKaynagi
+      <DataSource
         kaynak="Örnek veri"
         ayrinti="lib/ornek-veri.ts → CARI_HAREKETLER (satırlar) · CARI_OZET (özet kartlar)"
-        tarihAlani="belge tarihi"
-        iptalKurali="iptaller listelenir, rozetle işaretlenir, TOPLAMLARA katılmaz"
-        tazelik={`örnek veri · ${formatTarih(BAYI.sonSenkronAt)} anlık görüntüsü`}
+        dateField="belge tarihi"
+        cancelRule="iptaller listelenir, rozetle işaretlenir, TOPLAMLARA katılmaz"
+        tazelik={`örnek veri · ${formatTarih(DEALER.sonSenkronAt)} anlık görüntüsü`}
         kapsamUyarisi={
           "Bu ekran bir tasarım şablonudur; satırlar gerçek muhasebe kaydı " +
           "değildir. Gerçek veriye bağlanırken kasadan geçmeyen ödemeler " +
@@ -96,18 +96,18 @@ export default function CariHareketlerPage() {
       <div className="rapor-kartlar">
         <div className="rapor-kart kirmizi">
           <div className="etiket">↙ Toplam Borç</div>
-          <div className="deger">{formatKurus(CARI_OZET.borcToplamKurus)}</div>
+          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.borcToplamKurus)}</div>
           <div className="note">cari kart rakamı</div>
         </div>
         <div className="rapor-kart yesil">
           <div className="etiket">↗ Toplam Alacak</div>
-          <div className="deger">{formatKurus(CARI_OZET.alacakToplamKurus)}</div>
+          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.alacakToplamKurus)}</div>
           <div className="note">cari kart rakamı</div>
         </div>
         <div className={`rapor-kart${borclu ? " kirmizi" : " yesil"}`}>
           <div className="etiket">💳 Net Bakiye (geçerli)</div>
           <div className="deger">
-            {formatKurus(Math.abs(CARI_OZET.bakiyeKurus))}
+            {formatKurus(Math.abs(ACCOUNT_SUMMARY.balanceKurus))}
             <span style={{ fontSize: "0.8rem", fontWeight: 600, marginLeft: 6 }}>
               {borclu ? "Borçlu" : "Alacaklı"}
             </span>
@@ -145,10 +145,10 @@ export default function CariHareketlerPage() {
         <div className="rapor-kart">
           <div className="etiket">Mutabakat</div>
           <div className="deger">
-            {bakiyeGosterilebilir ? "✓ Tutuyor" : "✕ Tutmuyor"}
+            {balanceVisible ? "✓ Tutuyor" : "✕ Tutmuyor"}
           </div>
           <div className="note">
-            {bakiyeGosterilebilir
+            {balanceVisible
               ? "yürüyen bakiye yayınlandı"
               : "yürüyen bakiye gizlendi"}
           </div>
@@ -210,11 +210,11 @@ export default function CariHareketlerPage() {
           ✕
         </button>
         <span className="chip">
-          {hareketler.length.toLocaleString("tr-TR")} kayıt gösteriliyor
+          {ledgerRows.length.toLocaleString("tr-TR")} kayıt gösteriliyor
         </span>
       </div>
 
-      {!bakiyeGosterilebilir ? (
+      {!balanceVisible ? (
         <div className="alert warn">
           <strong>Yürüyen bakiye gösterilemiyor.</strong> Listelenen satırların
           toplamı resmi cari rakamıyla örtüşmüyor; tahmini bir bakiye
@@ -232,11 +232,11 @@ export default function CariHareketlerPage() {
               <th>İşlem Tipi</th>
               <th className="num">Borç</th>
               <th className="num">Alacak</th>
-              {bakiyeGosterilebilir ? <th className="num">Bakiye</th> : null}
+              {balanceVisible ? <th className="num">Bakiye</th> : null}
             </tr>
           </thead>
           <tbody>
-            {hareketler.map((h, i) => {
+            {ledgerRows.map((h, i) => {
               if (!h.iptal) yuruyen += h.borcKurus - h.alacakKurus;
               return (
                 <tr
@@ -254,7 +254,7 @@ export default function CariHareketlerPage() {
                     ) : null}
                   </td>
                   <td>
-                    {h.islemTipi}
+                    {h.txnType}
                     <div className="note">
                       {h.kaynak === "fatura" ? "fatura" : "kasa işlemi"}
                     </div>
@@ -278,13 +278,13 @@ export default function CariHareketlerPage() {
                       "—"
                     )}
                   </td>
-                  {bakiyeGosterilebilir ? (
+                  {balanceVisible ? (
                     <td className="num">{h.iptal ? "—" : formatKurus(yuruyen)}</td>
                   ) : null}
                 </tr>
               );
             })}
-            {hareketler.length === 0 ? (
+            {ledgerRows.length === 0 ? (
               <tr>
                 <td colSpan={7} className="note" style={{ padding: "2rem" }}>
                   Seçilen aralıkta hareket yok.

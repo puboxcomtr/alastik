@@ -8,21 +8,21 @@
  * Excel'in Türkçe yerelinde ayraç olarak noktalı virgül beklenir; BOM da
  * eklenir ki Türkçe karakterler bozulmasın.
  */
-export function CsvIndir({
+export function CsvDownload({
   dosyaAdi,
   basliklar,
-  satirlar,
+  lines,
 }: {
   dosyaAdi: string;
   basliklar: string[];
-  satirlar: Array<Array<string | number>>;
+  lines: Array<Array<string | number>>;
 }) {
   function indir(): void {
     const kacir = (h: string | number): string => {
       const metin = String(h);
       return /[";\n]/.test(metin) ? `"${metin.replace(/"/g, '""')}"` : metin;
     };
-    const icerik = [basliklar, ...satirlar]
+    const icerik = [basliklar, ...lines]
       .map((satir) => satir.map(kacir).join(";"))
       .join("\r\n");
     const blob = new Blob([`﻿${icerik}`], {

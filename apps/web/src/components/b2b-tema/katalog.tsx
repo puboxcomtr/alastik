@@ -1,32 +1,32 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Acilir } from "@components/b2b-tema/acilir";
-import { AramaFormu } from "@components/b2b-tema/arama-formu";
-import { MevsimIcon } from "@components/b2b-tema/icons";
-import { SepeteEkle } from "@components/b2b-tema/sepete-ekle";
+import { Dropdown } from "@components/b2b-tema/acilir";
+import { SearchForm } from "@components/b2b-tema/arama-formu";
+import { SeasonIcon } from "@components/b2b-tema/icons";
+import { AddToCart } from "@components/b2b-tema/sepete-ekle";
 import { formatKurus } from "@components/b2b-tema/lib/format";
 import {
-  LASTIKLER,
-  toplamStok,
-  type Lastik,
-  type Mevsim,
-  type UrunDurumu,
+  TIRES,
+  totalStock,
+  type Tire,
+  type Season,
+  type ProductStatus,
 } from "@components/b2b-tema/lib/ornek-veri";
 
 const SAYFA_BOYU = 10; // İlk gösterim ve "Daha Fazla Göster" adımı
 
-const MEVSIM_ETIKET: Record<string, string> = { yaz: "Yaz", kis: "Kış", dortMevsim: "4 Mevsim" };
+const SEASON_LABEL: Record<string, string> = { yaz: "Yaz", kis: "Kış", dortMevsim: "4 Mevsim" };
 
 // Sıralanabilir sütunlar ve karşılık gelen değer çıkarıcıları
 type SiralamaAlani = "stokKodu" | "ebat" | "marka" | "mevsim" | "dot" | "stok" | "fiyat";
 type Yon = "asc" | "desc";
 
-type Filtre = {
+type Filter = {
   q: string;
   marka: string;
   mevsim: string;
-  ebat: string;
+  size: string;
   dot: string;
   depo: string;
   ikinciEl: boolean;
@@ -36,11 +36,11 @@ type Filtre = {
   xl: boolean;
 };
 
-const BOS_FILTRE: Filtre = {
+const BOS_FILTRE: Filter = {
   q: "",
   marka: "",
   mevsim: "",
-  ebat: "",
+  size: "",
   dot: "",
   depo: "",
   ikinciEl: false,
@@ -61,28 +61,28 @@ function sadelestir(metin: string): string {
   return metin.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
 }
 
-function eslesiyorMu(urun: Lastik, f: Filtre): boolean {
+function matches(urun: Tire, f: Filter): boolean {
   if (f.q) {
-    const aranan = sadelestir(f.q);
+    const query = sadelestir(f.q);
     const havuz = sadelestir(
-      `${urun.ebat} ${urun.desen} ${urun.marka} ${urun.stokKodu}`,
+      `${urun.size} ${urun.pattern} ${urun.marka} ${urun.stockCode}`,
     );
-    if (!havuz.includes(aranan)) return false;
+    if (!havuz.includes(query)) return false;
   }
   if (f.marka && urun.marka !== f.marka) return false;
-  if (f.mevsim && urun.mevsim !== (f.mevsim as Mevsim)) return false;
-  if (f.ebat && urun.ebat !== f.ebat) return false;
-  if (f.dot && String(urun.dotYili) !== f.dot) return false;
+  if (f.mevsim && urun.mevsim !== (f.mevsim as Season)) return false;
+  if (f.size && urun.size !== f.size) return false;
+  if (f.dot && String(urun.dotYear) !== f.dot) return false;
   if (f.depo) {
-    const depoStok = urun.stoklar.find((s) => s.warehouseId === f.depo);
-    if (!depoStok || depoStok.kullanilabilir === 0) return false;
+    const warehouseStock = urun.stocks.find((s) => s.warehouseId === f.depo);
+    if (!warehouseStock || warehouseStock.available === 0) return false;
   }
   /**
    * "Sadece 2. El Lastikler" çipi: basılı değilse YALNIZCA sıfır ürün görünür,
    * basılıysa yalnızca 2. el. İkisini birlikte listeleyen bir durum yok —
    * toptan alıcı için sıfır ve 2. el ayrı işler.
    */
-  if (urun.urunDurumu !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
+  if (urun.productStatus !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
   if (f.rft && !urun.rft) return false;
   if (f.cTipi && !urun.cTipi) return false;
   if (f.ev && !urun.ev) return false;
@@ -97,85 +97,85 @@ function eslesiyorMu(urun: Lastik, f: Filtre): boolean {
  * Gerçek uygulamada bu bileşen fiyat ve stoğu sunucudan istemeli; fiyat
  * istemcide hesaplanmamalıdır.
  */
-export function Katalog(
-  { urunler, sabitDurum, baslik }: { urunler?: Lastik[]; sabitDurum?: UrunDurumu; baslik?: string } = {},
+export function Catalog(
+  { products, sabitDurum, baslik }: { products?: Tire[]; sabitDurum?: ProductStatus; baslik?: string } = {},
 ) {
-  const kaynak = urunler ?? LASTIKLER;
+  const kaynak = products ?? TIRES;
   // sabitDurum verilirse blok tek türe kilitlenir (sekme gizlenir), filtre o
   // duruma göre başlatılır ve Temizle bu başlangıca döner.
-  const bosFiltre: Filtre = sabitDurum
+  const bosFiltre: Filter = sabitDurum
     ? { ...BOS_FILTRE, ikinciEl: sabitDurum === "ikinciEl" }
     : BOS_FILTRE;
-  const [filtre, setFiltre] = useState<Filtre>(bosFiltre);
+  const [filtre, setFiltre] = useState<Filter>(bosFiltre);
   const [sayfa, setSayfa] = useState(1);
   const [siralama, setSiralama] = useState<{ alan: SiralamaAlani; yon: Yon } | null>(null);
 
-  const eslesenler = useMemo(
-    () => kaynak.filter((u) => eslesiyorMu(u, filtre)),
+  const matched = useMemo(
+    () => kaynak.filter((u) => matches(u, filtre)),
     [filtre, kaynak],
   );
 
   // Sütun başlığına tıklanınca aktif sıralama uygulanır (yoksa orijinal sıra)
-  const siralanmis = useMemo(() => {
-    if (!siralama) return eslesenler;
-    const deger = (u: Lastik): string | number => {
+  const sorted = useMemo(() => {
+    if (!siralama) return matched;
+    const deger = (u: Tire): string | number => {
       switch (siralama.alan) {
-        case "stokKodu": return u.stokKodu || "";
-        case "ebat": return u.ebat || "";
+        case "stokKodu": return u.stockCode || "";
+        case "ebat": return u.size || "";
         case "marka": return u.marka || "";
-        case "mevsim": return MEVSIM_ETIKET[u.mevsim] || u.mevsim;
-        case "dot": return u.dotYili ?? -Infinity;
-        case "stok": return toplamStok(u.stoklar);
+        case "mevsim": return SEASON_LABEL[u.mevsim] || u.mevsim;
+        case "dot": return u.dotYear ?? -Infinity;
+        case "stok": return totalStock(u.stocks);
         case "fiyat": return u.fiyat?.birimNetKurus ?? -Infinity;
       }
     };
     const carpan = siralama.yon === "asc" ? 1 : -1;
-    return [...eslesenler].sort((a, b) => {
+    return [...matched].sort((a, b) => {
       const da = deger(a), db = deger(b);
       if (typeof da === "number" && typeof db === "number") return (da - db) * carpan;
       return String(da).localeCompare(String(db), "tr") * carpan;
     });
-  }, [eslesenler, siralama]);
+  }, [matched, siralama]);
 
   // Filtre seçenekleri gerçek ürünlerden türetilir (ne varsa o gelir)
-  const secenekler = useMemo(() => {
-    const markaSet = new Set<string>();
-    const mevsimSet = new Set<Mevsim>();
+  const options = useMemo(() => {
+    const brandSet = new Set<string>();
+    const seasonSet = new Set<Season>();
     const dotSet = new Set<number>();
-    const depoMap = new Map<string, string>();
+    const warehouseMap = new Map<string, string>();
     for (const u of kaynak) {
       // Filtre seçenekleri aktif sekmenin (Sıfır/2.El) ürünlerinden türetilir
-      if (u.urunDurumu !== (filtre.ikinciEl ? "ikinciEl" : "sifir")) continue;
-      if (u.marka) markaSet.add(u.marka);
-      if (u.mevsim) mevsimSet.add(u.mevsim);
-      if (u.dotYili != null) dotSet.add(u.dotYili);
-      for (const st of u.stoklar) depoMap.set(st.warehouseId, st.depoAd);
+      if (u.productStatus !== (filtre.ikinciEl ? "ikinciEl" : "sifir")) continue;
+      if (u.marka) brandSet.add(u.marka);
+      if (u.mevsim) seasonSet.add(u.mevsim);
+      if (u.dotYear != null) dotSet.add(u.dotYear);
+      for (const st of u.stocks) warehouseMap.set(st.warehouseId, st.warehouseName);
     }
     return {
-      markalar: [...markaSet].sort((a, b) => a.localeCompare(b, "tr")),
-      mevsimler: [...mevsimSet].map((m) => ({ deger: m, etiket: MEVSIM_ETIKET[m] || m })),
+      brands: [...brandSet].sort((a, b) => a.localeCompare(b, "tr")),
+      seasons: [...seasonSet].map((m) => ({ deger: m, etiket: SEASON_LABEL[m] || m })),
       dotlar: [...dotSet].sort((a, b) => b - a),
-      depolar: [...depoMap.entries()].map(([id, ad]) => ({ id, ad })),
+      warehouses: [...warehouseMap.entries()].map(([id, ad]) => ({ id, ad })),
     };
   }, [kaynak, filtre.ikinciEl]);
 
-  const toplam = eslesenler.length;
+  const toplam = matched.length;
   // Load-more: baştan sayfa*SAYFA_BOYU kadar ürün gösterilir (sıralanmış, kümülatif)
-  const gorunen = siralanmis.slice(0, sayfa * SAYFA_BOYU);
-  const dahaVar = toplam > gorunen.length;
+  const visible = sorted.slice(0, sayfa * SAYFA_BOYU);
+  const dahaVar = toplam > visible.length;
 
-  const filtreAktif = Boolean(
+  const filterActive = Boolean(
     filtre.q ||
       filtre.marka ||
       filtre.mevsim ||
-      filtre.ebat ||
+      filtre.size ||
       filtre.dot ||
       filtre.depo ||
       CIPLER.some((c) => filtre[c.anahtar]),
   );
 
   /** Filtre değişince ilk sayfaya dönülür. */
-  function guncelle(parca: Partial<Filtre>): void {
+  function update(parca: Partial<Filter>): void {
     setFiltre((onceki) => ({ ...onceki, ...parca }));
     setSayfa(1);
   }
@@ -206,14 +206,14 @@ export function Katalog(
           <button
             type="button"
             className={!filtre.ikinciEl ? "aktif" : undefined}
-            onClick={() => guncelle({ ikinciEl: false })}
+            onClick={() => update({ ikinciEl: false })}
           >
             Sıfır Lastik
           </button>
           <button
             type="button"
             className={filtre.ikinciEl ? "aktif" : undefined}
-            onClick={() => guncelle({ ikinciEl: true })}
+            onClick={() => update({ ikinciEl: true })}
           >
             2.El Lastik
           </button>
@@ -221,34 +221,34 @@ export function Katalog(
       )}
 
       <div className="arama-blok">
-        <AramaFormu q={filtre.q} onAra={(q) => guncelle({ q })} formId="lastik-arama" butonGizle />
+        <SearchForm q={filtre.q} onAra={(q) => update({ q })} formId="lastik-arama" butonGizle />
         <select
           aria-label="Mevsim"
           value={filtre.mevsim}
-          onChange={(e) => guncelle({ mevsim: e.target.value })}
+          onChange={(e) => update({ mevsim: e.target.value })}
         >
           <option value="">Mevsim Seçiniz</option>
-          {secenekler.mevsimler.map((m) => (
+          {options.seasons.map((m) => (
             <option key={m.deger} value={m.deger}>{m.etiket}</option>
           ))}
         </select>
         <select
           aria-label="Marka"
           value={filtre.marka}
-          onChange={(e) => guncelle({ marka: e.target.value })}
+          onChange={(e) => update({ marka: e.target.value })}
         >
           <option value="">Marka Seçiniz</option>
-          {secenekler.markalar.map((m) => (
+          {options.brands.map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>
         <select
           aria-label="DOT"
           value={filtre.dot}
-          onChange={(e) => guncelle({ dot: e.target.value })}
+          onChange={(e) => update({ dot: e.target.value })}
         >
           <option value="">DOT Seçiniz</option>
-          {secenekler.dotlar.map((d) => (
+          {options.dotlar.map((d) => (
             <option key={d} value={String(d)}>{d}</option>
           ))}
         </select>
@@ -259,10 +259,10 @@ export function Katalog(
           aria-label="Depo"
           className="fs2-select"
           value={filtre.depo}
-          onChange={(e) => guncelle({ depo: e.target.value })}
+          onChange={(e) => update({ depo: e.target.value })}
         >
           <option value="">Depo Seçiniz</option>
-          {secenekler.depolar.map((d) => (
+          {options.warehouses.map((d) => (
             <option key={d.id} value={d.id}>{d.ad}</option>
           ))}
         </select>
@@ -273,7 +273,7 @@ export function Katalog(
               <input
                 type="checkbox"
                 checked={Boolean(filtre[c.anahtar])}
-                onChange={() => guncelle({ [c.anahtar]: !filtre[c.anahtar] })}
+                onChange={() => update({ [c.anahtar]: !filtre[c.anahtar] })}
               />
               {c.etiket}
             </label>
@@ -283,7 +283,7 @@ export function Katalog(
         <button type="submit" form="lastik-arama" className="ara-buton">
           Ara
         </button>
-        {filtreAktif ? (
+        {filterActive ? (
           <button
             type="button"
             className="temizle-buton"
@@ -312,32 +312,32 @@ export function Katalog(
             </tr>
           </thead>
           <tbody>
-            {gorunen.map((urun) => {
-              const stokluDepolar = urun.stoklar.filter(
-                (s) => s.kullanilabilir > 0,
+            {visible.map((urun) => {
+              const inStockWarehouses = urun.stocks.filter(
+                (s) => s.available > 0,
               );
-              const kullanilabilir = toplamStok(urun.stoklar);
+              const available = totalStock(urun.stocks);
               const fiyat = urun.fiyat;
               return (
                 <tr key={urun.id}>
-                  <td className="sku">{urun.stokKodu}</td>
+                  <td className="sku">{urun.stockCode}</td>
                   <td>
                     <div className="urun-hucre">
-                      {urun.gorselUrl ? (
+                      {urun.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img className="urun-gorsel" src={urun.gorselUrl} alt={urun.desen} loading="lazy" />
+                        <img className="urun-gorsel" src={urun.imageUrl} alt={urun.pattern} loading="lazy" />
                       ) : (
                         <span className="urun-gorsel bos" aria-hidden="true" />
                       )}
                       <div>
                         <div className="urun-adi">
-                          {urun.tamAd ? (
-                            urun.tamAd
+                          {urun.fullName ? (
+                            urun.fullName
                           ) : (
                             <>
-                              {urun.ebat}
-                              {urun.yukHizEndeksi ? ` ${urun.yukHizEndeksi}` : ""}{" "}
-                              {urun.desen}
+                              {urun.size}
+                              {urun.loadSpeedIndex ? ` ${urun.loadSpeedIndex}` : ""}{" "}
+                              {urun.pattern}
                             </>
                           )}
                         </div>
@@ -345,34 +345,34 @@ export function Katalog(
                     </div>
                   </td>
                   <td>
-                    {urun.markaLogoUrl ? (
+                    {urun.brandLogoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img className="marka-logo" src={urun.markaLogoUrl} alt={urun.marka} title={urun.marka} loading="lazy" />
+                      <img className="marka-logo" src={urun.brandLogoUrl} alt={urun.marka} title={urun.marka} loading="lazy" />
                     ) : (
                       <strong>{urun.marka}</strong>
                     )}
                   </td>
                   <td>
-                    <MevsimIcon mevsim={urun.mevsim} />
+                    <SeasonIcon mevsim={urun.mevsim} />
                   </td>
-                  <td>{urun.dotYili ?? "—"}</td>
+                  <td>{urun.dotYear ?? "—"}</td>
                   <td>
                     <span className="stok-hucre">
                       <span
-                        className={`stok-pill${kullanilabilir === 0 ? " yok" : ""}`}
+                        className={`stok-pill${available === 0 ? " yok" : ""}`}
                       >
-                        {kullanilabilir === 0
+                        {available === 0
                           ? "Yok"
-                          : kullanilabilir >= 20
+                          : available >= 20
                             ? "20+"
-                            : kullanilabilir}
+                            : available}
                       </span>
-                      {urun.stoklar.length > 0 && (
+                      {urun.stocks.length > 0 && (
                         <span className="stok-tooltip" role="tooltip">
-                          {urun.stoklar.map((s) => (
+                          {urun.stocks.map((s) => (
                             <span key={s.warehouseId} className="stok-tooltip-satir">
-                              <span>{s.depoAd}</span>
-                              <strong>{s.kullanilabilir}</strong>
+                              <span>{s.warehouseName}</span>
+                              <strong>{s.available}</strong>
                             </span>
                           ))}
                         </span>
@@ -388,7 +388,7 @@ export function Katalog(
                           </div>
                         ) : null}
                         <div
-                          className={`fiyat-net${fiyat.fiyatKaynagi === "ozel_fiyat" ? " kampanya" : ""}`}
+                          className={`fiyat-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
                         >
                           {formatKurus(fiyat.birimNetKurus)}
                         </div>
@@ -401,11 +401,11 @@ export function Katalog(
                     )}
                   </td>
                   <td className="sepet-kol">
-                    {fiyat && stokluDepolar.length > 0 ? (
-                      <SepeteEkle
+                    {fiyat && inStockWarehouses.length > 0 ? (
+                      <AddToCart
                         productId={urun.id}
-                        depolar={stokluDepolar}
-                        varsayilanDepoId={filtre.depo || undefined}
+                        warehouses={inStockWarehouses}
+                        defaultWarehouseId={filtre.depo || undefined}
                       />
                     ) : (
                       <span className="note">—</span>
@@ -414,7 +414,7 @@ export function Katalog(
                 </tr>
               );
             })}
-            {gorunen.length === 0 ? (
+            {visible.length === 0 ? (
               <tr>
                 <td colSpan={8} className="note" style={{ padding: "2rem" }}>
                   Filtrelere uyan ürün bulunamadı.
@@ -434,7 +434,7 @@ export function Katalog(
           >
             Daha Fazla Göster
             <span className="daha-fazla-sayi">
-              {gorunen.length.toLocaleString("tr-TR")} / {toplam.toLocaleString("tr-TR")}
+              {visible.length.toLocaleString("tr-TR")} / {toplam.toLocaleString("tr-TR")}
             </span>
           </button>
         </div>

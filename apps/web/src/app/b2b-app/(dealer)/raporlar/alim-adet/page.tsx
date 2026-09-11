@@ -1,16 +1,16 @@
-import { CsvIndir } from "@components/b2b-tema/csv-indir";
-import { VeriKaynagi } from "@components/b2b-tema/veri-kaynagi";
+import { CsvDownload } from "@components/b2b-tema/csv-indir";
+import { DataSource } from "@components/b2b-tema/veri-kaynagi";
 import { formatKurus } from "@components/b2b-tema/lib/format";
-import { ALIM_ADETLERI } from "@components/b2b-tema/lib/ornek-veri";
+import { PURCHASE_ROWS } from "@components/b2b-tema/lib/ornek-veri";
 
 /**
  * Bayi Alım Adet Raporu — dönem bazlı alış özeti.
  * "Adet" ürün adedidir (sipariş satırı sayısı değil).
  */
 export default function AlimAdetPage() {
-  const toplamLastik = ALIM_ADETLERI.reduce((t, s) => t + s.lastikAdet, 0);
-  const toplamJant = ALIM_ADETLERI.reduce((t, s) => t + s.jantAdet, 0);
-  const toplamTutar = ALIM_ADETLERI.reduce((t, s) => t + s.tutarKurus, 0);
+  const totalTire = PURCHASE_ROWS.reduce((t, s) => t + s.tireQty, 0);
+  const totalRim = PURCHASE_ROWS.reduce((t, s) => t + s.rimQty, 0);
+  const toplamTutar = PURCHASE_ROWS.reduce((t, s) => t + s.tutarKurus, 0);
 
   return (
     <>
@@ -24,24 +24,24 @@ export default function AlimAdetPage() {
             Dönem bazlı alış özeti — toplam ürün adedi ve tutar.
           </p>
         </div>
-        <CsvIndir
+        <CsvDownload
           dosyaAdi="alim-adet-raporu.csv"
           basliklar={["Dönem", "Lastik Adet", "Jant Adet", "Sipariş", "Tutar"]}
-          satirlar={ALIM_ADETLERI.map((s) => [
+          lines={PURCHASE_ROWS.map((s) => [
             s.donem,
-            s.lastikAdet,
-            s.jantAdet,
-            s.siparisAdet,
+            s.tireQty,
+            s.rimQty,
+            s.orderQty,
             (s.tutarKurus / 100).toFixed(2),
           ])}
         />
       </div>
 
-      <VeriKaynagi
+      <DataSource
         kaynak="Örnek veri"
         ayrinti="lib/ornek-veri.ts → ALIM_ADETLERI"
-        tarihAlani="sipariş oluşturma tarihi"
-        iptalKurali="iptal edilen siparişler dışlanır; iade düşümü yok"
+        dateField="sipariş oluşturma tarihi"
+        cancelRule="iptal edilen siparişler dışlanır; iade düşümü yok"
         tazelik="örnek veri"
         kapsamUyarisi={
           "Yalnızca bu panelden verilen siparişler sayılır; panel dışından " +
@@ -52,12 +52,12 @@ export default function AlimAdetPage() {
       <div className="rapor-kartlar">
         <div className="rapor-kart">
           <div className="etiket">Toplam Lastik</div>
-          <div className="deger">{toplamLastik.toLocaleString("tr-TR")}</div>
+          <div className="deger">{totalTire.toLocaleString("tr-TR")}</div>
           <div className="note">adet</div>
         </div>
         <div className="rapor-kart">
           <div className="etiket">Toplam Jant</div>
-          <div className="deger">{toplamJant.toLocaleString("tr-TR")}</div>
+          <div className="deger">{totalRim.toLocaleString("tr-TR")}</div>
           <div className="note">adet</div>
         </div>
         <div className="rapor-kart vurgulu">
@@ -66,7 +66,7 @@ export default function AlimAdetPage() {
         </div>
         <div className="rapor-kart">
           <div className="etiket">Dönem</div>
-          <div className="deger">{ALIM_ADETLERI.length}</div>
+          <div className="deger">{PURCHASE_ROWS.length}</div>
           <div className="note">ay</div>
         </div>
       </div>
@@ -83,14 +83,14 @@ export default function AlimAdetPage() {
             </tr>
           </thead>
           <tbody>
-            {ALIM_ADETLERI.map((s) => (
+            {PURCHASE_ROWS.map((s) => (
               <tr key={s.donem}>
                 <td>{s.donem}</td>
                 <td className="num">
-                  <strong>{s.lastikAdet}</strong>
+                  <strong>{s.tireQty}</strong>
                 </td>
-                <td className="num">{s.jantAdet}</td>
-                <td className="num">{s.siparisAdet}</td>
+                <td className="num">{s.rimQty}</td>
+                <td className="num">{s.orderQty}</td>
                 <td className="num">{formatKurus(s.tutarKurus)}</td>
               </tr>
             ))}
