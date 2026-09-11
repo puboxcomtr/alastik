@@ -87,6 +87,22 @@ export default async function ProductDetailPage(
     if (!product) {
         notFound();
     }
+
+    // Sayfaya gömülen ürün verisinden gereksiz/gizli ham fiyat alanlarını temizle:
+    // yalnız gösterim fiyatı (fiyat4) ve üstü çizili liste fiyatı (fiyat1) kalır.
+    // fiyat2/fiyat3/fiyat10 (KDV hariç) + kdvdurumu alanları hem maliyet/marj sızıntısı
+    // hem de Google'ın yanlış fiyat okumasına (Hatalı fiyat/KDV eksik) yol açıyordu.
+    if (product?.diaData?.m_birimler?.length) {
+        product.diaData.m_birimler = product.diaData.m_birimler.map((b: any) => ({
+            birimadi: b.birimadi,
+            birimkod: b.birimkod,
+            carpan: b.carpan,
+            fiyat1: b.fiyat1,
+            fiyat4: b.fiyat4,
+            miktar: b.miktar
+        }));
+    }
+
     const parseRimDiameter = (cap: string): number => {
         const match = cap?.match(/\d+/);
         return match ? parseInt(match[0]) : 0;
@@ -118,28 +134,27 @@ export default async function ProductDetailPage(
     const mainCategory = product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1;
     const categorySlug = await getCategorySlugByName(mainCategory);
 
-    // Google Merchant/Shopping: yalnız LJA ürün sayfasına yapısal fiyat verisi (JSON-LD).
-    // Fiyat, feed ile BİREBİR aynı satış fiyatıdır (KDV dahil) — "Hatalı fiyat / KDV eksik"
-    // uyarıları giderilir. ALastik'e dokunulmaz (feed fiyat alanı farklı, zaten onaylı).
-    const ljaSalePrice = site === 'lastikjantavm'
-        ? Number(product.diaData?.m_birimler?.[0]?.fiyat4) || 0
-        : 0;
-    const ljaImagePath = product.diaData?.m_resimler?.[0]?.aws_url || product.customData?.featuredImage || '';
-    const ljaImageUrl = ljaImagePath
-        ? (ljaImagePath.startsWith('http') ? ljaImagePath : `https://lastikjantavm.com${ljaImagePath}`)
+    // Google Merchant/Shopping: ürün sayfasına yapısal fiyat verisi (JSON-LD).
+    // Fiyat = sayfada görünen satış fiyatı (fiyat4) = feed fiyatı (LJA: fiyat1×B2C,
+    // ALastik: fiyat2). Google'a fiyatı net söyleyerek "Hatalı fiyat / KDV eksik" giderilir.
+    const siteDomain = site === 'lastikjantavm' ? 'https://lastikjantavm.com' : 'https://alastik.com';
+    const salePrice = Number(product.diaData?.m_birimler?.[0]?.fiyat4) || 0;
+    const jsonLdImagePath = product.diaData?.m_resimler?.[0]?.aws_url || product.customData?.featuredImage || '';
+    const jsonLdImageUrl = jsonLdImagePath
+        ? (jsonLdImagePath.startsWith('http') ? jsonLdImagePath : `${siteDomain}${jsonLdImagePath}`)
         : '';
-    const ljaJsonLd = ljaSalePrice > 0 ? {
+    const productJsonLd = salePrice > 0 ? {
         '@context': 'https://schema.org/',
         '@type': 'Product',
         name: product.diaData?.aciklama || '',
-        ...(ljaImageUrl ? { image: [ljaImageUrl] } : {}),
+        ...(jsonLdImageUrl ? { image: [jsonLdImageUrl] } : {}),
         sku: product.diaData?.stokkartkodu || product._key,
         ...(product.diaData?.marka ? { brand: { '@type': 'Brand', name: product.diaData.marka } } : {}),
         offers: {
             '@type': 'Offer',
-            url: `https://lastikjantavm.com/urun/${slug}`,
+            url: `${siteDomain}/urun/${slug}`,
             priceCurrency: 'TRY',
-            price: ljaSalePrice.toFixed(2),
+            price: salePrice.toFixed(2),
             itemCondition: 'https://schema.org/NewCondition',
             availability: (Number(product.diaData?.gercek_stok) || 0) > 0
                 ? 'https://schema.org/InStock'
@@ -150,10 +165,10 @@ export default async function ProductDetailPage(
 
     return (
         <Container style={{ background: "#f6f6f6" }}>
-            {ljaJsonLd && (
+            {productJsonLd && (
                 <script
                     type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(ljaJsonLd) }}
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
                 />
             )}
             <Grid className="row-fluid" container>
