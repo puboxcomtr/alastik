@@ -18,6 +18,20 @@ const SAYFA_BOYU = 10; // İlk gösterim ve "Daha Fazla Göster" adımı
 
 const SEASON_LABEL: Record<string, string> = { yaz: "Yaz", kis: "Kış", dortMevsim: "4 Mevsim" };
 
+/** Sayfa numarası dizisi: ilk, son, geçerli ve komşuları; aradaki boşluklar "…". */
+function sayfaNumaralari(cur: number, total: number): (number | "...")[] {
+  const set = new Set<number>([1, total, cur, cur - 1, cur + 1]);
+  const nums = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const out: (number | "...")[] = [];
+  let prev = 0;
+  for (const n of nums) {
+    if (n - prev > 1) out.push("...");
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}
+
 // Sıralanabilir sütunlar ve karşılık gelen değer çıkarıcıları
 type SiralamaAlani = "stokKodu" | "ebat" | "marka" | "mevsim" | "dot" | "stok" | "fiyat";
 type Yon = "asc" | "desc";
@@ -56,18 +70,29 @@ const CIPLER = [
   { anahtar: "xl", etiket: "XL" },
 ] as const;
 
-/** Arama ayraca takılmasın: "2055" → "205/55 R16" bulunmalı. */
+/** Arama ayraca takılmasın: "2055" → "205/55 R16" bulunmalı (marka/model metni için). */
 function sadelestir(metin: string): string {
   return metin.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
 }
 
-function matches(urun: Tire, f: Filter): boolean {
+/** Yalnız rakamlar — ebat aramasında ayraç ve R harfi göz ardı edilir:
+ *  "2055516", "205 55 16", "205/55R16", "205 55 R16" hepsi "2055516" olur. */
+function sadeceRakam(metin: string): string {
+  return metin.replace(/[^0-9]/g, "");
+}
+
+function matches(urun: Tire, f: Filter, ignoreStatus = false): boolean {
   if (f.q) {
     const query = sadelestir(f.q);
     const havuz = sadelestir(
       `${urun.size} ${urun.pattern} ${urun.marka} ${urun.stockCode}`,
     );
-    if (!havuz.includes(query)) return false;
+    // Ebat/stok kodu rakam eşleşmesi (R harfi ve ayraçlardan bağımsız)
+    const rakamQuery = sadeceRakam(f.q);
+    const rakamHavuz = sadeceRakam(`${urun.size} ${urun.stockCode}`);
+    const metinEsler = havuz.includes(query);
+    const rakamEsler = rakamQuery.length >= 3 && rakamHavuz.includes(rakamQuery);
+    if (!metinEsler && !rakamEsler) return false;
   }
   if (f.marka && urun.marka !== f.marka) return false;
   if (f.mevsim && urun.mevsim !== (f.mevsim as Season)) return false;
@@ -82,7 +107,7 @@ function matches(urun: Tire, f: Filter): boolean {
    * basılıysa yalnızca 2. el. İkisini birlikte listeleyen bir durum yok —
    * toptan alıcı için sıfır ve 2. el ayrı işler.
    */
-  if (urun.productStatus !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
+  if (!ignoreStatus && urun.productStatus !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
   if (f.rft && !urun.rft) return false;
   if (f.cTipi && !urun.cTipi) return false;
   if (f.ev && !urun.ev) return false;
@@ -98,7 +123,20 @@ function matches(urun: Tire, f: Filter): boolean {
  * istemcide hesaplanmamalıdır.
  */
 export function Catalog(
-  { products, sabitDurum, baslik }: { products?: Tire[]; sabitDurum?: ProductStatus; baslik?: string } = {},
+  { products, sabitDurum, baslik, tabsGizle, serverPage, serverTotalPages, onServerPageChange, serverLoading }: {
+    products?: Tire[];
+    sabitDurum?: ProductStatus;
+    baslik?: string;
+    /** Sıfır/2.El sekmelerini gizler ve durum filtresini uygulamaz (kategori sayfası
+     *  tek tip ürün içerir; ürünler doğrudan listelenir). */
+    tabsGizle?: boolean;
+    /** Kategori sayfası: sunucu tarafı sayfalama. Verilirse istemci "Daha Fazla"
+     *  yerine sayfa numaraları gösterilir ve tüm sayfa ürünleri listelenir. */
+    serverPage?: number;
+    serverTotalPages?: number;
+    onServerPageChange?: (page: number) => void;
+    serverLoading?: boolean;
+  } = {},
 ) {
   const kaynak = products ?? TIRES;
   // sabitDurum verilirse blok tek türe kilitlenir (sekme gizlenir), filtre o
@@ -111,8 +149,8 @@ export function Catalog(
   const [siralama, setSiralama] = useState<{ alan: SiralamaAlani; yon: Yon } | null>(null);
 
   const matched = useMemo(
-    () => kaynak.filter((u) => matches(u, filtre)),
-    [filtre, kaynak],
+    () => kaynak.filter((u) => matches(u, filtre, tabsGizle)),
+    [filtre, kaynak, tabsGizle],
   );
 
   // Sütun başlığına tıklanınca aktif sıralama uygulanır (yoksa orijinal sıra)
@@ -126,7 +164,7 @@ export function Catalog(
         case "mevsim": return SEASON_LABEL[u.mevsim] || u.mevsim;
         case "dot": return u.dotYear ?? -Infinity;
         case "stok": return totalStock(u.stocks);
-        case "fiyat": return u.fiyat?.birimNetKurus ?? -Infinity;
+        case "fiyat": return u.fiyat?.kdvDahilBirimKurus ?? -Infinity;
       }
     };
     const carpan = siralama.yon === "asc" ? 1 : -1;
@@ -144,12 +182,18 @@ export function Catalog(
     const dotSet = new Set<number>();
     const warehouseMap = new Map<string, string>();
     for (const u of kaynak) {
-      // Filtre seçenekleri aktif sekmenin (Sıfır/2.El) ürünlerinden türetilir
-      if (u.productStatus !== (filtre.ikinciEl ? "ikinciEl" : "sifir")) continue;
+      // Filtre seçenekleri aktif sekmenin (Sıfır/2.El) ürünlerinden türetilir.
+      // Sekmesiz modda (kategori) durum ayrımı yok, tüm ürünlerden türetilir.
+      if (!tabsGizle && u.productStatus !== (filtre.ikinciEl ? "ikinciEl" : "sifir")) continue;
       if (u.marka) brandSet.add(u.marka);
       if (u.mevsim) seasonSet.add(u.mevsim);
       if (u.dotYear != null) dotSet.add(u.dotYear);
-      for (const st of u.stocks) warehouseMap.set(st.warehouseId, st.warehouseName);
+      // "merkez" = depo verisi gelmeden önceki/kalan fallback; filtreye eklenmez
+      // (tutarsız "Merkez" seçeneğine yol açıyordu). Yalnız gerçek depolar listelenir.
+      for (const st of u.stocks) {
+        if (st.warehouseId === "merkez") continue;
+        warehouseMap.set(st.warehouseId, st.warehouseName);
+      }
     }
     return {
       brands: [...brandSet].sort((a, b) => a.localeCompare(b, "tr")),
@@ -157,12 +201,14 @@ export function Catalog(
       dotlar: [...dotSet].sort((a, b) => b - a),
       warehouses: [...warehouseMap.entries()].map(([id, ad]) => ({ id, ad })),
     };
-  }, [kaynak, filtre.ikinciEl]);
+  }, [kaynak, filtre.ikinciEl, tabsGizle]);
 
   const toplam = matched.length;
-  // Load-more: baştan sayfa*SAYFA_BOYU kadar ürün gösterilir (sıralanmış, kümülatif)
-  const visible = sorted.slice(0, sayfa * SAYFA_BOYU);
-  const dahaVar = toplam > visible.length;
+  // Sunucu sayfalama modunda (kategori sayfası) tüm sayfa ürünleri gösterilir;
+  // aksi halde (anasayfa vitrini) istemcide "Daha Fazla" ile 10'ar açılır.
+  const sunucuSayfali = typeof serverPage === "number";
+  const visible = sunucuSayfali ? sorted : sorted.slice(0, sayfa * SAYFA_BOYU);
+  const dahaVar = !sunucuSayfali && toplam > visible.length;
 
   const filterActive = Boolean(
     filtre.q ||
@@ -199,7 +245,7 @@ export function Catalog(
   return (
     <>
       {/* sabitDurum'da blok başlığı; aksi halde Sıfır / 2.El sekmeleri */}
-      {sabitDurum ? (
+      {tabsGizle ? null : sabitDurum ? (
         baslik ? <h2 className="vitrin-baslik">{baslik}</h2> : null
       ) : (
         <div className="katalog-tabs">
@@ -307,7 +353,7 @@ export function Catalog(
               <th className="sortable" onClick={() => siralamaTikla("mevsim")}>Mevsim{okIsareti("mevsim")}</th>
               <th className="sortable" onClick={() => siralamaTikla("dot")}>DOT{okIsareti("dot")}</th>
               <th className="sortable" onClick={() => siralamaTikla("stok")}>Stok{okIsareti("stok")}</th>
-              <th className="num sortable" onClick={() => siralamaTikla("fiyat")}>Fiyat (KDV hariç){okIsareti("fiyat")}</th>
+              <th className="num sortable" onClick={() => siralamaTikla("fiyat")}>Fiyat{okIsareti("fiyat")}</th>
               <th className="sepet-kol">Sepet</th>
             </tr>
           </thead>
@@ -381,21 +427,11 @@ export function Catalog(
                   </td>
                   <td className="num">
                     {fiyat ? (
-                      <>
-                        {fiyat.birimNetKurus < fiyat.listeBirimKurus ? (
-                          <div className="fiyat-liste">
-                            {formatKurus(fiyat.listeBirimKurus)}
-                          </div>
-                        ) : null}
-                        <div
-                          className={`fiyat-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
-                        >
-                          {formatKurus(fiyat.birimNetKurus)}
-                        </div>
-                        <div className="fiyat-kdv">
-                          KDV dahil {formatKurus(fiyat.kdvDahilBirimKurus)}
-                        </div>
-                      </>
+                      <div
+                        className={`fiyat-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
+                      >
+                        {formatKurus(fiyat.kdvDahilBirimKurus)}
+                      </div>
                     ) : (
                       <span className="note">Fiyat tanımsız</span>
                     )}
@@ -425,7 +461,43 @@ export function Catalog(
         </table>
       </div>
 
-      {dahaVar ? (
+      {sunucuSayfali ? (
+        (serverTotalPages ?? 1) > 1 ? (
+          <nav className="sayfalama" aria-label="Sayfalar">
+            <button
+              type="button"
+              className="pasif"
+              disabled={(serverPage ?? 1) <= 1 || serverLoading}
+              onClick={() => onServerPageChange?.((serverPage ?? 1) - 1)}
+            >
+              ← Önceki
+            </button>
+            {sayfaNumaralari(serverPage ?? 1, serverTotalPages ?? 1).map((n, i) =>
+              n === "..." ? (
+                <span key={`e${i}`} className="bilgi">…</span>
+              ) : (
+                <button
+                  type="button"
+                  key={n}
+                  className={n === serverPage ? "aktif" : undefined}
+                  disabled={serverLoading}
+                  onClick={() => onServerPageChange?.(n)}
+                >
+                  {n}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              className="pasif"
+              disabled={(serverPage ?? 1) >= (serverTotalPages ?? 1) || serverLoading}
+              onClick={() => onServerPageChange?.((serverPage ?? 1) + 1)}
+            >
+              Sonraki →
+            </button>
+          </nav>
+        ) : null
+      ) : dahaVar ? (
         <div className="daha-fazla">
           <button
             type="button"

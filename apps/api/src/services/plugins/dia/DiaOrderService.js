@@ -813,6 +813,37 @@ class DiaOrderService {
     }
 
     /**
+     * Bir depodaki birden çok stok kodunun gerçek stoğunu TEK DIA çağrısıyla döner
+     * (stokkartkodu IN filtresi). { stokkartkodu: adet } eşlemesi döner.
+     * N ürün için depo başına 1 çağrı = toplam depo sayısı kadar çağrı yapılır.
+     */
+    async getDepotStockBatch(stockCodes, depoKey) {
+        const codes = (stockCodes || []).map(c => String(c)).filter(Boolean);
+        if (codes.length === 0) return {};
+
+        const sessionId = await this.ensureSession();
+        const response = await this.sendRequest('/api/v3/scf/json', {
+            scf_stokkart_detay_listele: {
+                session_id: sessionId,
+                firma_kodu: this.firmaKodu,
+                donem_kodu: this.donemKodu,
+                filters: [{ field: 'stokkartkodu', operator: 'IN', value: codes.join(',') }],
+                sorts: '',
+                params: { _key_sis_depo: depoKey, _key_sis_depo_filtre: depoKey, tarih: '2099-12-31' },
+                limit: codes.length,
+                offset: 0
+            }
+        });
+
+        const rows = Array.isArray(response?.result) ? response.result : [];
+        const map = {};
+        for (const r of rows) {
+            if (r?.stokkartkodu) map[r.stokkartkodu] = parseFloat(r.gercek_stok) || 0;
+        }
+        return map;
+    }
+
+    /**
      * Fatura depo öncelik listesini döner (ayardan, virgülle ayrılmış _key)
      */
     getInvoiceDepotKeys() {

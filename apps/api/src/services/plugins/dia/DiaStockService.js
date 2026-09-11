@@ -3927,7 +3927,9 @@ class DiaStockService {
         const mirrored = new Map();
         for (const d of diaStocks) {
           try {
-            mirrored.set(d._key, await imageMirror.mirrorProductImages(d.m_resimler || [], d.aciklama || d.stokkartkodu));
+            // refresh: kaynakta AYNI URL ile içerik değişmişse (HTTP conditional ile algılanır)
+            // görsel yeni isimle yeniden indirilir; böylece "eski görsel kalıyor" sorunu kalıcı çözülür.
+            mirrored.set(d._key, await imageMirror.mirrorProductImages(d.m_resimler || [], d.aciklama || d.stokkartkodu, { refresh: true }));
           } catch (error) {
             this.logger.warn('Görsel aynalama atlandı (syncImagesToWebProducts)', { key: d._key, error: error.message });
           }

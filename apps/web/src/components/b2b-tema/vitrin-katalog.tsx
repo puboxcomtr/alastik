@@ -140,7 +140,7 @@ export function ShowcaseCatalog() {
             const kodlar = ham.map(u => u.diaData?.stokkartkodu).filter(Boolean).join(',');
             const token = localStorage.getItem('authToken');
             if (kodlar && token) {
-                fetch(API_ENDPOINTS.b2b.depoStok(kodlar), { headers: { Authorization: `Bearer ${token}` } })
+                fetch(API_ENDPOINTS.b2b.depoStok(kodlar), { headers: { 'X-Site': 'b2b', Authorization: `Bearer ${token}` } })
                     .then(r => r.json())
                     .then(dRes => {
                         if (!dRes?.success) return;
@@ -150,10 +150,15 @@ export function ShowcaseCatalog() {
                             const kod = rawProduct?.diaData?.stokkartkodu || '';
                             const warehouses = map[kod];
                             if (!warehouses) return u;
-                            return {
-                                ...u,
-                                stocks: warehouses.map(d => ({ warehouseId: d.ad, warehouseName: d.ad, available: d.adet })),
-                            };
+                            // Depo dağılımı gercek_stok'tan azsa (stok listelenmemiş bir depoda),
+                            // toplam kaybolmasın diye kalan "Merkez" olarak eklenir.
+                            const prevTotal = u.stocks.reduce((s, st) => s + st.available, 0);
+                            const depotSum = warehouses.reduce((s, d) => s + d.adet, 0);
+                            const stocks = warehouses.map(d => ({ warehouseId: d.ad, warehouseName: d.ad, available: d.adet }));
+                            if (prevTotal > depotSum) {
+                                stocks.push({ warehouseId: 'merkez', warehouseName: 'Merkez', available: prevTotal - depotSum });
+                            }
+                            return { ...u, stocks };
                         }));
                     })
                     .catch(() => {});

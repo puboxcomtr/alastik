@@ -141,7 +141,94 @@ async function ensureRenameMap() {
     return renameMap || new Map();
 }
 
-async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
+// ── Tazelik (freshness) altyapısı ─────────────────────────────────────────────
+// Ayna kaynak URL'e göre önbelleklendiği için, kaynakta AYNI URL ile içerik değişince
+// eski kopya kalıyordu. imagerenames kaydına kaynağın etag/lastModified'ı saklanır;
+// refresh modunda (gece full sync) HTTP conditional istekle değişim algılanır:
+// 304 → değişmemiş (bedava), 200 → değişmiş, yeni içerik YENİ isimle indirilir (cache kırılır).
+const FRESHNESS_TTL_MS = 6 * 60 * 60 * 1000; // aynı görsel en fazla 6 saatte bir kontrol edilir
+
+async function getMirrorRecord(hash) {
+    try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection?.readyState !== 1) return null;
+        return await mongoose.connection.db.collection('imagerenames').findOne({ hash });
+    } catch { return null; }
+}
+
+async function upsertMirrorRecord(hash, fields) {
+    try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection?.readyState !== 1) return;
+        await mongoose.connection.db.collection('imagerenames')
+            .updateOne({ hash }, { $set: { hash, ...fields } }, { upsert: true });
+        // Bellek haritasını da güncelle ki aynı çalışmada tutarlı olsun
+        if (fields.file && renameMap) renameMap.set(hash, fields.file);
+    } catch { /* sessiz geç */ }
+}
+
+/**
+ * Kaynak görselin değişip değişmediğini kontrol eder.
+ * - Kayıtta etag/lastModified yoksa: yalnız HEAD ile temel bilgiyi kurar (indirmez), değişmemiş sayar.
+ * - Varsa: conditional GET (If-None-Match/If-Modified-Since). 304 → değişmemiş; 200 → değişmiş (buffer döner).
+ */
+async function checkSourceFreshness(url, rec) {
+    const baseHeaders = { 'User-Agent': 'AlastikImageMirror/1.0' };
+    try {
+        if (!rec?.etag && !rec?.lastModified) {
+            const head = await axios.head(url, { timeout: DOWNLOAD_TIMEOUT_MS, validateStatus: s => s === 200, headers: baseHeaders });
+            return { changed: false, etag: head.headers['etag'] || null, lastModified: head.headers['last-modified'] || null };
+        }
+        const headers = { ...baseHeaders };
+        if (rec.etag) headers['If-None-Match'] = rec.etag;
+        if (rec.lastModified) headers['If-Modified-Since'] = rec.lastModified;
+        const resp = await axios.get(url, {
+            responseType: 'arraybuffer', timeout: DOWNLOAD_TIMEOUT_MS,
+            maxContentLength: MAX_BYTES, maxBodyLength: MAX_BYTES,
+            validateStatus: s => s === 200 || s === 304, headers
+        });
+        if (resp.status === 304) return { changed: false };
+        return {
+            changed: true,
+            buffer: Buffer.from(resp.data),
+            contentType: String(resp.headers['content-type'] || '').split(';')[0].trim().toLowerCase(),
+            etag: resp.headers['etag'] || null,
+            lastModified: resp.headers['last-modified'] || null
+        };
+    } catch {
+        // Kontrol başarısızsa mevcut kopya korunur (kırık görsel riskini almayız)
+        return { changed: false, error: true };
+    }
+}
+
+/** İndirilen buffer'ı optimize edip diske yazar; web yolunu döner. */
+async function bufferToMirror(buffer, url, ext, fileNameBase, reserved) {
+    if (!buffer.length || buffer.length > MAX_BYTES) return null;
+    if (buffer.length > 400 * 1024 && ['.png', '.jpg', '.jpeg'].includes(ext)) {
+        try {
+            const sharp = require('sharp');
+            let islem = sharp(buffer, { failOn: 'none' })
+                .rotate()
+                .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
+            islem = ext === '.png' ? islem.png({ palette: true, quality: 80, effort: 7 }) : islem.jpeg({ quality: 82, mozjpeg: true });
+            const optimized = await islem.toBuffer();
+            if (optimized.length < buffer.length) buffer = optimized;
+        } catch { /* optimizasyon hatası aynalamayı engellemesin */ }
+    }
+    const slug = fileNameBase ? slugify(fileNameBase) : null;
+    const fileName = slug
+        ? nextAvailableName(slug, ext, reserved)
+        : `${crypto.createHash('sha1').update(url).digest('hex')}${ext}`;
+    reserved.add(path.basename(fileName, path.extname(fileName)));
+    const target = targetFor(fileName);
+    await fsp.mkdir(MIRROR_ROOT, { recursive: true });
+    const tmpPath = `${target.diskPath}.${process.pid}.tmp`;
+    await fsp.writeFile(tmpPath, buffer);
+    await fsp.rename(tmpPath, target.diskPath);
+    return { webPath: target.webPath, fileName };
+}
+
+async function mirrorOne(url, fileNameBase = null, reserved = new Set(), opts = {}) {
     if (!isExternal(url)) return null;
 
     // İNDİRMEDEN ÖNCE: bu URL daha önce aynalandıysa mevcut dosyayı kullan — üzerine yazma,
@@ -149,13 +236,38 @@ async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
     const hash = crypto.createHash('sha1').update(String(url)).digest('hex');
     const map = await ensureRenameMap();
     const mapped = map.get(hash);
+    let mevcutDosya = null;
     if (mapped && fs.existsSync(path.join(MIRROR_ROOT, mapped))) {
-        return `/${MIRROR_DIR_NAME}/${mapped}`;
-    }
-    for (const ext of ALLOWED_EXTENSIONS) {
-        if (fs.existsSync(path.join(MIRROR_ROOT, `${hash}${ext}`))) {
-            return `/${MIRROR_DIR_NAME}/${hash}${ext}`;
+        mevcutDosya = mapped;
+    } else {
+        for (const ext of ALLOWED_EXTENSIONS) {
+            if (fs.existsSync(path.join(MIRROR_ROOT, `${hash}${ext}`))) { mevcutDosya = `${hash}${ext}`; break; }
         }
+    }
+
+    if (mevcutDosya) {
+        // refresh modunda ve son kontrol bayatsa: kaynakta içerik değişmiş mi bak
+        if (opts.refresh) {
+            const rec = await getMirrorRecord(hash);
+            const bayat = !rec?.checkedAt || (Date.now() - new Date(rec.checkedAt).getTime() > FRESHNESS_TTL_MS);
+            if (bayat) {
+                const fresh = await checkSourceFreshness(url, rec);
+                if (fresh.changed && fresh.buffer) {
+                    const ext = CONTENT_TYPE_EXTENSIONS[fresh.contentType] || extensionFromUrl(url) || path.extname(mevcutDosya);
+                    const yeni = await bufferToMirror(fresh.buffer, url, ext, fileNameBase, reserved);
+                    if (yeni) {
+                        // Eski dosyayı sil (yeni isimle indirildi → URL değişti, cache kırılır)
+                        fsp.unlink(path.join(MIRROR_ROOT, mevcutDosya)).catch(() => {});
+                        await upsertMirrorRecord(hash, { file: yeni.fileName, etag: fresh.etag, lastModified: fresh.lastModified, checkedAt: new Date() });
+                        return yeni.webPath;
+                    }
+                } else {
+                    // Değişmemiş: sadece kontrol zamanını (ve varsa yeni etag temelini) güncelle
+                    await upsertMirrorRecord(hash, { file: mevcutDosya, checkedAt: new Date(), ...(fresh.etag ? { etag: fresh.etag } : {}), ...(fresh.lastModified ? { lastModified: fresh.lastModified } : {}) });
+                }
+            }
+        }
+        return `/${MIRROR_DIR_NAME}/${mevcutDosya}`;
     }
 
     try {
@@ -172,40 +284,21 @@ async function mirrorOne(url, fileNameBase = null, reserved = new Set()) {
         const ext = CONTENT_TYPE_EXTENSIONS[contentType] || extensionFromUrl(url);
         if (!ext) return null; // görsel değil ya da tanınmayan tür
 
-        let buffer = Buffer.from(response.data);
-        if (!buffer.length || buffer.length > MAX_BYTES) return null;
+        // Optimize edip diske yazar (uzun kenar 1600px, png palette / jpeg mozjpeg)
+        const yeni = await bufferToMirror(Buffer.from(response.data), url, ext, fileNameBase, reserved);
+        if (!yeni) return null;
 
-        // Büyük görseller indirilirken optimize edilir (9 Eyl disk krizi önlemi):
-        // uzun kenar 1600px, png palette / jpeg mozjpeg. Başarısız olursa orijinal yazılır.
-        if (buffer.length > 400 * 1024 && ['.png', '.jpg', '.jpeg'].includes(ext)) {
-            try {
-                const sharp = require('sharp');
-                let islem = sharp(buffer, { failOn: 'none' })
-                    .rotate()
-                    .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
-                islem = ext === '.png'
-                    ? islem.png({ palette: true, quality: 80, effort: 7 })
-                    : islem.jpeg({ quality: 82, mozjpeg: true });
-                const optimized = await islem.toBuffer();
-                if (optimized.length < buffer.length) buffer = optimized;
-            } catch { /* optimizasyon hatası görüntü aynalamayı engellemesin */ }
+        // refresh modunda gelecekteki tazelik kontrolü için etag/lastModified temeli saklanır
+        if (opts.refresh) {
+            await upsertMirrorRecord(hash, {
+                file: yeni.fileName,
+                etag: response.headers['etag'] || null,
+                lastModified: response.headers['last-modified'] || null,
+                checkedAt: new Date()
+            });
         }
 
-        const slug = fileNameBase ? slugify(fileNameBase) : null;
-        const fileName = slug
-            ? nextAvailableName(slug, ext, reserved)
-            : `${crypto.createHash('sha1').update(url).digest('hex')}${ext}`;
-        reserved.add(path.basename(fileName, path.extname(fileName)));
-
-        const target = targetFor(fileName);
-        await fsp.mkdir(MIRROR_ROOT, { recursive: true });
-
-        // Yarım dosya servis edilmesin: önce geçici ada yaz, sonra taşı
-        const tmpPath = `${target.diskPath}.${process.pid}.tmp`;
-        await fsp.writeFile(tmpPath, buffer);
-        await fsp.rename(tmpPath, target.diskPath);
-
-        return target.webPath;
+        return yeni.webPath;
     } catch {
         return null;
     }
@@ -245,7 +338,7 @@ async function ensureSuppress() {
     return suppressSets || { hashes: new Set(), files: new Set() };
 }
 
-async function mirrorProductImages(images, productName) {
+async function mirrorProductImages(images, productName, opts = {}) {
     if (!Array.isArray(images) || images.length === 0) return images || [];
 
     const reserved = new Set();
@@ -270,7 +363,7 @@ async function mirrorProductImages(images, productName) {
             continue;
         }
 
-        const local = await mirrorOne(img.aws_url, productName, reserved);
+        const local = await mirrorOne(img.aws_url, productName, reserved, opts);
 
         if (local) {
             result.push({ ...img, aws_url: local, source_url: img.source_url || img.aws_url });

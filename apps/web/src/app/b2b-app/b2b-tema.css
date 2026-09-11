@@ -1502,19 +1502,6 @@ table.data th.sepet-kol {
   background: #f4f6f8;
 }
 
-/* Yapışkan sütunun soluna, kayarken içerik geçişini belli eden ince gölge. */
-table.data th.sepet-kol::before,
-table.data td.sepet-kol::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -10px;
-  width: 10px;
-  pointer-events: none;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.06), transparent);
-}
-
 .sku {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
@@ -1553,6 +1540,15 @@ table.data td.sepet-kol::before {
 .sayfalama button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Geçerli sayfa: marka rengi zemin */
+.sayfalama button.aktif {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary-active);
+  color: var(--brand-black);
+  font-weight: 800;
+  opacity: 1;
 }
 
 .sayfalama .bilgi {
@@ -3490,3 +3486,20 @@ img.marka-logo {
   line-height: 1.2;
 }
 .stok-tooltip-satir strong { color: var(--brand-primary); font-size: 1rem; }
+
+/* En üstteki satırda tooltip yukarı açılınca tablo/başlık kenarına takılıp
+   kırpılıyordu; ilk satırda AŞAĞI açılır ve ok yönü ters çevrilir. */
+table.data tbody tr:first-child .stok-tooltip {
+  bottom: auto;
+  top: calc(100% + 10px);
+  transform: translateX(-50%) translateY(-4px);
+}
+table.data tbody tr:first-child .stok-hucre:hover .stok-tooltip {
+  transform: translateX(-50%) translateY(0);
+}
+table.data tbody tr:first-child .stok-tooltip::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--brand-dark);
+}

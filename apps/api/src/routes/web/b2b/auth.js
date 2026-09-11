@@ -186,30 +186,35 @@ router.get('/depo-stok', authMiddleware, async (req, res) => {
         const depolar = Array.isArray(settings.vitrinDepolari) ? settings.vitrinDepolari : [];
         if (depolar.length === 0) return res.json({ success: true, data: {} });
 
-        const { DiaOrderService } = require('../../../services/plugins/dia/DiaOrderService');
-        let svc = null;
         const sonuc = {};
-
+        const eksik = [];
         for (const kod of kodlar) {
             const cached = depoStokCache.get(kod);
-            if (cached && Date.now() - cached.at < DEPO_STOK_TTL_MS) {
-                sonuc[kod] = cached.data;
-                continue;
-            }
-            if (!svc) {
-                svc = new DiaOrderService(req.site);
-                svc.settings = settings;
-                svc.firmaKodu = settings.firmaKodu || 1;
-                svc.donemKodu = settings.donemKodu || 1;
-                await svc.login();
-            }
-            const satirlar = [];
+            if (cached && Date.now() - cached.at < DEPO_STOK_TTL_MS) sonuc[kod] = cached.data;
+            else eksik.push(kod);
+        }
+
+        if (eksik.length > 0) {
+            const { DiaOrderService } = require('../../../services/plugins/dia/DiaOrderService');
+            const svc = new DiaOrderService(req.site);
+            svc.settings = settings;
+            svc.firmaKodu = settings.firmaKodu || 1;
+            svc.donemKodu = settings.donemKodu || 1;
+            await svc.login();
+
+            // Her depo için TEK toplu DIA çağrısı (stokkartkodu IN) — eskiden ürün×depo
+            // sayısınca çağrı yapılıyordu (100 ürün = 300 çağrı, çok yavaş). Artık depo
+            // sayısı kadar çağrı (3) yapılır.
+            const depoMaps = [];
             for (const d of depolar) {
-                const adet = await svc.getDepotStock(kod, d.key).catch(() => 0);
-                satirlar.push({ ad: d.ad, adet: Math.max(0, Math.floor(adet)) });
+                const map = await svc.getDepotStockBatch(eksik, d.key).catch(() => ({}));
+                depoMaps.push({ ad: d.ad, map });
             }
-            depoStokCache.set(kod, { at: Date.now(), data: satirlar });
-            sonuc[kod] = satirlar;
+            for (const kod of eksik) {
+                const satirlar = depoMaps.map(dm => ({ ad: dm.ad, adet: Math.max(0, Math.floor(dm.map[kod] || 0)) }));
+                depoStokCache.set(kod, { at: Date.now(), data: satirlar });
+                sonuc[kod] = satirlar;
+            }
         }
 
         res.json({ success: true, data: sonuc });
