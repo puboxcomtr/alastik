@@ -7,18 +7,17 @@
  * kuruş tam sayısı olarak vermek yeterlidir.
  */
 
+// Sembol sonda gösterilir: "987,66₺" (Intl'in "₺987,66" düzeni yerine)
 const TL = new Intl.NumberFormat("tr-TR", {
-  style: "currency",
-  currency: "TRY",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
 export function formatKurus(kurus: number): string {
-  return TL.format(kurus / 100);
+  return `${TL.format(kurus / 100)}₺`;
 }
 
-export function formatTarih(d: Date): string {
+export function formatDate(d: Date): string {
   return d.toLocaleString("tr-TR", {
     day: "2-digit",
     month: "2-digit",
@@ -29,7 +28,7 @@ export function formatTarih(d: Date): string {
 }
 
 /** Sadece gün/ay/yıl — vade ve belge tarihlerinde saat gürültü yapıyor. */
-export function gunFormat(d: Date | null): string {
+export function formatDay(d: Date | null): string {
   if (!d) return "—";
   return d.toLocaleDateString("tr-TR", {
     day: "2-digit",

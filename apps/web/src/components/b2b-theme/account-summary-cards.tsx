@@ -3,8 +3,8 @@
 // Vadesi geçen borç, DIA ekstre servisine bağlanana kadar "—" gösterilir.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
-import { formatKurus } from '@components/b2b-tema/lib/format';
-import { ACCOUNT_SUMMARY, REMAINING_LIMIT_KURUS, PENDING_ORDER_KURUS, DEALER } from '@components/b2b-tema/lib/ornek-veri';
+import { formatKurus } from '@components/b2b-theme/lib/format';
+import { ACCOUNT_SUMMARY, REMAINING_LIMIT_KURUS, PENDING_ORDER_KURUS, DEALER } from '@components/b2b-theme/lib/sample-data';
 
 // STİL SEÇİM MODU: true iken kartlar örnek verinin dolu senaryosuyla çizilir
 // (kırmızı borç, yeşil kalan limit, gecikmiş ödeme) — tasarım seçimi bitince
@@ -41,26 +41,26 @@ export function AccountSummaryCards() {
     const kalan = SAMPLE_MODE ? REMAINING_LIMIT_KURUS : (ozet?.remainingLimitKurus ?? 0);
     const bekleyen = SAMPLE_MODE ? PENDING_ORDER_KURUS : (ozet?.pendingOrderKurus ?? 0);
     const totalLimit = SAMPLE_MODE ? DEALER.creditLimitKurus : (ozet?.totalLimitKurus ?? 0);
-    const yukleniyor = !SAMPLE_MODE && ozet === null;
+    const loading = !SAMPLE_MODE && ozet === null;
     // Vade tarihi: DIA ekstre servisine bağlanınca gerçek vadeden gelecek
     const vadeTarihi = '30.09.2026';
-    const deger = (kurus: number) => (yukleniyor ? '…' : formatKurus(kurus));
+    const value = (kurus: number) => (loading ? '…' : formatKurus(kurus));
 
     return (
         <div className="cards">
             <div className="card">
                 <div className="label">Bakiye</div>
-                <div className={`value${bakiye < 0 ? ' danger' : ''}`}>{deger(bakiye)}</div>
+                <div className={`value${bakiye < 0 ? ' danger' : ''}`}>{value(bakiye)}</div>
                 <div className="note">Vade: {vadeTarihi}</div>
             </div>
             <div className="card">
                 <div className="label">Toplam Limit</div>
-                <div className={`value${totalLimit < 0 ? ' danger' : ''}`}>{deger(totalLimit)}</div>
+                <div className={`value${totalLimit < 0 ? ' danger' : ''}`}>{value(totalLimit)}</div>
                 <div className="note">Cari limitiniz — bu tutara kadar sipariş verebilirsiniz.</div>
             </div>
             <div className="card">
                 <div className="label">Kalan Limit</div>
-                <div className={`value${kalan < 0 ? ' danger' : ''}`}>{deger(kalan)}</div>
+                <div className={`value${kalan < 0 ? ' danger' : ''}`}>{value(kalan)}</div>
                 <div className="note">
                     {bekleyen > 0
                         ? `${formatKurus(bekleyen)} bekleyen sipariş dahil`
@@ -70,7 +70,7 @@ export function AccountSummaryCards() {
             <div className="card">
                 <div className="label">Vadesi Geçen Borç</div>
                 <div className={`value${(overdue ?? 0) < 0 ? ' danger' : ''}`}>
-                    {yukleniyor ? '…' : overdue === null ? '—' : formatKurus(overdue)}
+                    {loading ? '…' : overdue === null ? '—' : formatKurus(overdue)}
                 </div>
                 <div className="note">
                     {(overdue ?? 0) > 0 ? 'Gecikmiş ödemeniz var.' : 'Gecikmiş ödemeniz bulunmuyor.'}

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { AlertIcon } from "@components/b2b-tema/icons";
-import { formatKurus } from "@components/b2b-tema/lib/format";
-import { DEALER, PENDING_ORDER_KURUS, ACCOUNT_SUMMARY } from "@components/b2b-tema/lib/ornek-veri";
+import { AlertIcon } from "@components/b2b-theme/icons";
+import { formatKurus } from "@components/b2b-theme/lib/format";
+import { DEALER, PENDING_ORDER_KURUS, ACCOUNT_SUMMARY } from "@components/b2b-theme/lib/sample-data";
 
 /**
  * Ödeme Yap: cari durum özeti + ödeme kanalları. Online tahsilat (sanal POS)

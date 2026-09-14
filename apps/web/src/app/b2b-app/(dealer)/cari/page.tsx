@@ -1,17 +1,17 @@
 import Link from "next/link";
-import { formatKurus, formatTarih, gunFormat } from "@components/b2b-tema/lib/format";
+import { formatKurus, formatDate, formatDay } from "@components/b2b-theme/lib/format";
 import {
   ACCOUNT_SUMMARY,
   REMAINING_LIMIT_KURUS,
   TOTAL_RISK_KURUS,
-} from "@components/b2b-tema/lib/ornek-veri";
+} from "@components/b2b-theme/lib/sample-data";
 import {
   AlertIcon,
   CalendarIcon,
   CardIcon,
   CartIcon,
   OrdersIcon,
-} from "@components/b2b-tema/icons";
+} from "@components/b2b-theme/icons";
 
 /**
  * Cari Hesap Özeti: bakiye, borç/alacak kırılımı, kredi limiti kullanımı ve
@@ -35,7 +35,7 @@ export default function CariPage() {
           <h1>Cari Hesap Özeti</h1>
           <p className="sub">
             {ozet.unvan} · Cari: {ozet.accountCode} · Güncelleme:{" "}
-            {formatTarih(ozet.sonSenkronAt)}
+            {formatDate(ozet.sonSenkronAt)}
           </p>
         </div>
         <div className="head-actions">
@@ -55,9 +55,9 @@ export default function CariPage() {
       ) : null}
 
       {/* ── Bakiye + limit ── */}
-      <div className="cari-ust">
-        <section className={`cari-bakiye${borclu ? " borclu" : ""}`}>
-          <div className="etiket">
+      <div className="account-top">
+        <section className={`account-balance${borclu ? " borclu" : ""}`}>
+          <div className="label">
             Güncel Bakiye
             <span className="yon">
               {ozet.borcAlacakYonu === "B" ? "BORÇLU" : "ALACAKLI"}
@@ -74,23 +74,23 @@ export default function CariPage() {
           </div>
           <div className="dip">
             Ödeme planı: {ozet.paymentPlan} · Son ödemeniz:{" "}
-            {gunFormat(ozet.sonOdemeTarihi)}
+            {formatDay(ozet.sonOdemeTarihi)}
           </div>
         </section>
 
-        <section className="cari-limit">
-          <div className="etiket">Kredi Limiti</div>
+        <section className="account-limit">
+          <div className="label">Kredi Limiti</div>
           <div className="tutar">{formatKurus(ozet.creditLimitKurus)}</div>
           <div className="cubuk" aria-hidden="true">
             <span style={{ width: `${limitUsagePct}%` }} />
           </div>
-          <div className="limit-kirilim">
+          <div className="limit-breakdown">
             <div>
-              <span className="k-etiket">Kullanılan</span>
+              <span className="k-label">Kullanılan</span>
               <strong>{formatKurus(TOTAL_RISK_KURUS)}</strong>
             </div>
             <div className="sag">
-              <span className="k-etiket">Kullanılabilir</span>
+              <span className="k-label">Kullanılabilir</span>
               <strong className={REMAINING_LIMIT_KURUS < 0 ? "danger" : "ok"}>
                 {formatKurus(REMAINING_LIMIT_KURUS)}
               </strong>
@@ -106,7 +106,7 @@ export default function CariPage() {
       </div>
 
       {/* ── Hızlı erişim ── */}
-      <div className="cari-kisayol">
+      <div className="account-shortcut">
         <Link href="/lastik" className="kisayol">
           <CartIcon size={18} />
           <div>
@@ -183,8 +183,8 @@ export default function CariPage() {
               return (
                 <tr key={f.fisNo}>
                   <td className="sku">{f.fisNo}</td>
-                  <td>{gunFormat(f.tarih)}</td>
-                  <td>{gunFormat(f.vadeTarihi)}</td>
+                  <td>{formatDay(f.tarih)}</td>
+                  <td>{formatDay(f.vadeTarihi)}</td>
                   <td className="note">{f.paymentPlan ?? "—"}</td>
                   <td className="num">{formatKurus(f.netKurus)}</td>
                   <td className="num">
@@ -212,7 +212,7 @@ export default function CariPage() {
 
       <p className="note" style={{ marginTop: "1rem" }}>
         Toplam tahsilatınız {formatKurus(ozet.alacakToplamKurus)}, son ödeme{" "}
-        {gunFormat(ozet.sonOdemeTarihi)}. Ayrıntı için temsilcinizle
+        {formatDay(ozet.sonOdemeTarihi)}. Ayrıntı için temsilcinizle
         görüşebilirsiniz.
       </p>
     </>

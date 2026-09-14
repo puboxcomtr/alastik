@@ -1,4 +1,4 @@
-import { Catalog } from "@components/b2b-tema/katalog";
+import { Catalog } from "@components/b2b-theme/catalog";
 
 export default function LastikPage() {
   return (

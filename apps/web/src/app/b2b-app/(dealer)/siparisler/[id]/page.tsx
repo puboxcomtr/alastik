@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, CalendarIcon } from "@components/b2b-tema/icons";
-import { OrderSteps } from "@components/b2b-tema/adimlar";
-import { CancelButton } from "@components/b2b-tema/iptal-butonu";
-import { STATUS_LABEL, formatKurus, formatTarih } from "@components/b2b-tema/lib/format";
-import { ORDERS, findOrder } from "@components/b2b-tema/lib/ornek-veri";
+import { ArrowLeftIcon, CalendarIcon } from "@components/b2b-theme/icons";
+import { OrderSteps } from "@components/b2b-theme/steps";
+import { CancelButton } from "@components/b2b-theme/cancel-button";
+import { STATUS_LABEL, formatKurus, formatDate } from "@components/b2b-theme/lib/format";
+import { ORDERS, findOrder } from "@components/b2b-theme/lib/sample-data";
 
-/** Statik dışa aktarımda her sipariş için ayrı sayfa üretilir. */
+/** Statik dışa aktarımda her sipariş için ayrı page üretilir. */
 export function generateStaticParams(): Array<{ id: string }> {
   return ORDERS.map((s) => ({ id: s.id }));
 }
@@ -39,7 +39,7 @@ export default async function SiparisDetay({
             </span>
           </h1>
           <p className="sub">
-            <CalendarIcon size={13} /> {formatTarih(siparis.createdAt)}
+            <CalendarIcon size={13} /> {formatDate(siparis.createdAt)}
           </p>
         </div>
         <Link className="btn-ghost" href="/siparisler">
@@ -82,7 +82,7 @@ export default async function SiparisDetay({
             {siparis.lines.map((k) => (
               <tr key={k.id}>
                 <td>
-                  <div className="urun-adi">{k.productName}</div>
+                  <div className="product-name">{k.productName}</div>
                   <div className="sku">
                     {k.marka} · {k.stockCode}
                     {k.ozelFiyat ? " · özel fiyat" : ""}
@@ -104,7 +104,7 @@ export default async function SiparisDetay({
                 <td className="num">{formatKurus(k.matrahKurus)}</td>
                 <td className="num">
                   {formatKurus(k.kdvKurus)}
-                  <div className="fiyat-kdv">%{k.kdvBps / 100}</div>
+                  <div className="price-vat">%{k.kdvBps / 100}</div>
                 </td>
                 <td className="num">
                   <strong>{formatKurus(k.satirToplamKurus)}</strong>

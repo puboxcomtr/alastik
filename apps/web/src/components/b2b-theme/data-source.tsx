@@ -6,7 +6,7 @@
  * kalmaz. Farklı kaynaklar tek toplamda sessizce birleştirilmez.
  */
 export function DataSource({
-  kaynak,
+  source,
   ayrinti,
   dateField,
   cancelRule,
@@ -14,7 +14,7 @@ export function DataSource({
   kapsamUyarisi,
 }: {
   /** "Örnek veri", "ERP (canlı)", "Platform" … */
-  kaynak: string;
+  source: string;
   /** Kullanılan tablo ya da servis ucu. */
   ayrinti: string;
   /** Filtrenin dayandığı tarih alanı. */
@@ -28,9 +28,9 @@ export function DataSource({
 }) {
   return (
     <>
-      <div className="veri-kaynagi">
-        <span className={`vk-etiket${kaynak === "Platform" ? " platform" : ""}`}>
-          {kaynak}
+      <div className="data-source">
+        <span className={`vk-label${source === "Platform" ? " platform" : ""}`}>
+          {source}
         </span>
         <span>
           <strong>Kaynak:</strong> {ayrinti}

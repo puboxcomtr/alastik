@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { AccountMenu } from "@components/b2b-tema/hesap-menu";
-import { NavLinks } from "@components/b2b-tema/nav-links";
-import { CartPanel } from "@components/b2b-tema/sepet-paneli";
-import { CartProvider } from "@components/b2b-tema/sepet-durumu";
-import { OturumKapisi } from "@components/b2b-tema/oturum-kapisi";
-import { DEALER } from "@components/b2b-tema/lib/ornek-veri";
+import { AccountMenu } from "@components/b2b-theme/account-menu";
+import { NavLinks } from "@components/b2b-theme/nav-links";
+import { CartPanel } from "@components/b2b-theme/cart-panel";
+import { CartProvider } from "@components/b2b-theme/cart-status";
+import { SessionGate } from "@components/b2b-theme/session-gate";
+import { DEALER } from "@components/b2b-theme/lib/sample-data";
 import { API_ENDPOINTS } from "@src/config/api";
 
 type MenuKaydi = {
@@ -28,7 +28,7 @@ function menuHref(menu: MenuKaydi): string {
   const d = menu.linkData || {};
   switch (menu.menuType) {
     case "category": return d.categoryUrl ? `/kategori/${d.categoryUrl}` : "#";
-    case "page": return d.pageUrl ? `/sayfa/${d.pageUrl}` : "#";
+    case "page": return d.pageUrl ? `/page/${d.pageUrl}` : "#";
     case "brand": return d.brandUrl ? `/marka/${d.brandUrl}` : "#";
     case "product": return d.productUrl ? `/urun/${d.productUrl}` : "#";
     default: return d.url || "#";
@@ -73,10 +73,10 @@ export default async function DealerLayout({
   const ustMenu = await ustMenuyuGetir();
 
   return (
-    <OturumKapisi>
+    <SessionGate>
     <CartProvider>
       <header className="topnav">
-        <div className="topnav-ic">
+        <div className="topnav-inner">
           <Link className="brand" href="/">
             <Image
               src="/lastikjant-logo.png"
@@ -100,6 +100,6 @@ export default async function DealerLayout({
       </header>
       <main className="page">{children}</main>
     </CartProvider>
-    </OturumKapisi>
+    </SessionGate>
   );
 }

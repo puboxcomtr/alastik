@@ -1,6 +1,6 @@
-import { PasswordForm } from "@components/b2b-tema/parola-formu";
-import { formatKurus } from "@components/b2b-tema/lib/format";
-import { DEALER } from "@components/b2b-tema/lib/ornek-veri";
+import { PasswordForm } from "@components/b2b-theme/password-form";
+import { formatKurus } from "@components/b2b-theme/lib/format";
+import { DEALER } from "@components/b2b-theme/lib/sample-data";
 
 const KULLANICILAR = [
   { id: "u1", email: DEALER.eposta, durum: "aktif", createdAt: new Date("2025-11-04") },

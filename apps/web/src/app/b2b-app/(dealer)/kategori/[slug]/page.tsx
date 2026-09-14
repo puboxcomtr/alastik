@@ -1,4 +1,4 @@
-import { KategoriKatalog } from "@components/b2b-tema/kategori-katalog";
+import { CategoryCatalog } from "@components/b2b-theme/category-catalog";
 
 /** Slug'ı okunabilir başlığa çevirir: "otomobil-lastikleri" → "Otomobil Lastikleri". */
 function makeTitle(slug: string): string {
@@ -15,19 +15,20 @@ export default async function KategoriPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const baslik = makeTitle(slug);
+  const title = makeTitle(slug);
 
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>{baslik}</h1>
+          <h1>{title}</h1>
           <p className="sub">
-            Ebat, marka, mevsim ve üretim yılı (DOT) ile süzebilirsiniz.
+            LastikJantAVM güvencesiyle ürünleri toptan fiyatlarla güvenle
+            sipariş edebilirsiniz.
           </p>
         </div>
       </div>
-      <KategoriKatalog kategori={slug} />
+      <CategoryCatalog kategori={slug} />
     </>
   );
 }

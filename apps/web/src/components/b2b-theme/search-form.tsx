@@ -1,27 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { SearchIcon } from "@components/b2b-tema/icons";
+import { useEffect, useState } from "react";
+import { SearchIcon } from "@components/b2b-theme/icons";
 
 /**
- * Katalog arama kutusu. Arama tarayıcıda yapıldığı için sayfa yenilenmez;
- * girilen metin `onAra` ile yukarı bildirilir.
+ * Katalog query kutusu. Arama tarayıcıda yapıldığı için page yenilenmez;
+ * girilen text `onSearch` ile yukarı bildirilir.
  */
 export function SearchForm({
   q,
-  onAra,
+  onSearch,
   placeholder = "Ebat ürün kodu ile arayabilirsiniz",
   formId,
   butonGizle = false,
 }: {
   q: string;
-  onAra: (q: string) => void;
+  onSearch: (q: string) => void;
   placeholder?: string;
   /** Dışarıdaki bir submit butonunun form={formId} ile bağlanabilmesi için */
   formId?: string;
   butonGizle?: boolean;
 }) {
-  const [metin, setMetin] = useState(q);
+  const [text, setMetin] = useState(q);
+
+  // Dışarıdan q değişince (ör. Temizle) kutuyu eşitle
+  useEffect(() => {
+    setMetin(q);
+  }, [q]);
 
   return (
     <form
@@ -29,14 +34,14 @@ export function SearchForm({
       className="searchbar"
       onSubmit={(e) => {
         e.preventDefault();
-        onAra(metin.trim());
+        onSearch(text.trim());
       }}
     >
       <input
         type="search"
         name="q"
         placeholder={placeholder}
-        value={metin}
+        value={text}
         onChange={(e) => setMetin(e.target.value)}
       />
       {butonGizle ? null : (

@@ -88,7 +88,7 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
             'b2b.lastikjantavm.com',
             'demo.lastikjantavm.com',
         ],
-        // Bayi paneli teması kendi CSS'ini taşır (b2b-tema.css) — LJA tema dosyası
+        // Bayi paneli teması kendi CSS'ini taşır (b2b-theme.css) — LJA tema dosyası
         // YÜKLENMEZ (Bootstrap sınıfları .card gibi ortak adlarla çakışıyor)
         theme: {
             primary: '#e4cc15',

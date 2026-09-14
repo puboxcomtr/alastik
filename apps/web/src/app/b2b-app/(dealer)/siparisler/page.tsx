@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { CalendarIcon } from "@components/b2b-tema/icons";
-import { OrderSteps } from "@components/b2b-tema/adimlar";
-import { CancelButton } from "@components/b2b-tema/iptal-butonu";
-import { STATUS_LABEL, formatKurus, formatTarih } from "@components/b2b-tema/lib/format";
-import { ORDERS } from "@components/b2b-tema/lib/ornek-veri";
+import { CalendarIcon } from "@components/b2b-theme/icons";
+import { OrderSteps } from "@components/b2b-theme/steps";
+import { CancelButton } from "@components/b2b-theme/cancel-button";
+import { STATUS_LABEL, formatKurus, formatDate } from "@components/b2b-theme/lib/format";
+import { ORDERS } from "@components/b2b-theme/lib/sample-data";
 
 export default function SiparislerPage() {
   const istatistik = {
@@ -71,7 +71,7 @@ export default function SiparislerPage() {
                   <span className="badge warn">İptal talebi iletildi</span>
                 ) : null}
                 <div className="tarih">
-                  <CalendarIcon size={13} /> {formatTarih(s.createdAt)}
+                  <CalendarIcon size={13} /> {formatDate(s.createdAt)}
                 </div>
               </div>
             </div>

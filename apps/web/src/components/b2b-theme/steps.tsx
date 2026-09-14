@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@components/b2b-tema/lib/ornek-veri";
+import type { OrderStatus } from "@components/b2b-theme/lib/sample-data";
 import { CheckIcon, CloseIcon } from "./icons";
 
 const SIRA: OrderStatus[] = [

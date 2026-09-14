@@ -4,8 +4,8 @@
 // dönüştürülüp mevcut Katalog bileşenine beslenir.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
-import { Catalog } from '@components/b2b-tema/katalog';
-import type { Tire, Season, ProductStatus } from '@components/b2b-tema/lib/ornek-veri';
+import { Catalog } from '@components/b2b-theme/catalog';
+import type { Tire, Season, ProductStatus } from '@components/b2b-theme/lib/sample-data';
 
 export interface RawProduct {
     _key: string;
@@ -22,7 +22,18 @@ export interface RawProduct {
         m_resimler?: { aws_url?: string }[];
         m_birimler?: { fiyat4?: string | number }[];
     };
-    customData?: { seoUrl?: string; webPrice?: number; shippingIncludedPrice?: number; featuredImage?: string };
+    customData?: { seoUrl?: string; webPrice?: number; shippingIncludedPrice?: number; featuredImage?: string; delivery?: string };
+    syncInfo?: { syncSource?: string };
+}
+
+// Sevkiyat süresi: kendi stoğumuz (DIA, XML değil) her zaman "Aynı Gün". XML
+// ürünlerde kendi sevkiyat alanı (customData.delivery) esas alınır; alan
+// dolu değilse (varsayılan same_day dahil) tedarikçi ürünü için "1-2 Gün".
+function resolveShipping(u: RawProduct): string {
+    const isXml = u.syncInfo?.syncSource === 'xml_integration';
+    if (!isXml) return 'Aynı Gün';
+    if (u.customData?.delivery === 'next_week') return '3-5 Gün';
+    return '1-2 Gün';
 }
 
 const SEASON_MAP: Record<string, Season> = {
@@ -100,6 +111,8 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>): Tir
         ev: /\bEV\b/i.test(ad),
         xl: /\bXL\b/i.test(ad),
         imageUrl: u.customData?.featuredImage || u.diaData?.m_resimler?.[0]?.aws_url || null,
+        sevkiyat: resolveShipping(u),
+        slug: u.customData?.seoUrl || (u.diaData?.stokkartkodu || u._key),
         stocks: [{ warehouseId: 'merkez', warehouseName: 'Merkez', available: stok }],
         fiyat: netKurus > 0
             ? { listeBirimKurus: kdvDahilKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste' }
@@ -127,17 +140,17 @@ export function ShowcaseCatalog() {
             // _key ile tekilleştirilir.
             const showcases = showcaseRes?.success && Array.isArray(showcaseRes.data) ? showcaseRes.data : [];
             const gorulen = new Set<string>();
-            const ham: RawProduct[] = [];
+            const raw: RawProduct[] = [];
             for (const v of showcases) {
                 for (const p of (v?.products || [])) {
-                    if (p?._key && !gorulen.has(p._key)) { gorulen.add(p._key); ham.push(p); }
+                    if (p?._key && !gorulen.has(p._key)) { gorulen.add(p._key); raw.push(p); }
                 }
             }
-            const list = ham.map(u => rawToTire(u, brandLogo));
+            const list = raw.map(u => rawToTire(u, brandLogo));
             setUrunler(list);
 
             // Depo bazlı stok (Maslak/Şişli/Fabrika) — tooltip için ayrıca çekilir
-            const kodlar = ham.map(u => u.diaData?.stokkartkodu).filter(Boolean).join(',');
+            const kodlar = raw.map(u => u.diaData?.stokkartkodu).filter(Boolean).join(',');
             const token = localStorage.getItem('authToken');
             if (kodlar && token) {
                 fetch(API_ENDPOINTS.b2b.depoStok(kodlar), { headers: { 'X-Site': 'b2b', Authorization: `Bearer ${token}` } })
@@ -146,7 +159,7 @@ export function ShowcaseCatalog() {
                         if (!dRes?.success) return;
                         const map = dRes.data as Record<string, { ad: string; adet: number }[]>;
                         setUrunler(prev => (prev || list).map(u => {
-                            const rawProduct = ham.find(h => h._key === u.id);
+                            const rawProduct = raw.find(h => h._key === u.id);
                             const kod = rawProduct?.diaData?.stokkartkodu || '';
                             const warehouses = map[kod];
                             if (!warehouses) return u;

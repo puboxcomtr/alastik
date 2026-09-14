@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CsvDownload } from "@components/b2b-tema/csv-indir";
-import { DataSource } from "@components/b2b-tema/veri-kaynagi";
-import { STATUS_LABEL, formatKurus, gunFormat } from "@components/b2b-tema/lib/format";
-import { ORDERS } from "@components/b2b-tema/lib/ornek-veri";
+import { CsvDownload } from "@components/b2b-theme/csv-download";
+import { DataSource } from "@components/b2b-theme/data-source";
+import { STATUS_LABEL, formatKurus, formatDay } from "@components/b2b-theme/lib/format";
+import { ORDERS } from "@components/b2b-theme/lib/sample-data";
 
 type Satir = {
   anahtar: string;
@@ -60,7 +60,7 @@ export default function SiparisRaporuPage() {
       <div className="page-head">
         <div>
           <h1>
-            Sipariş Raporu <span className="baslik-etiket">Platform Siparişleri</span>
+            Sipariş Raporu <span className="title-label">Platform Siparişleri</span>
           </h1>
           <p className="sub">
             Tarih aralığına göre sipariş detaylarınız — listeleyin ve CSV
@@ -82,7 +82,7 @@ export default function SiparisRaporuPage() {
               "Satır Toplam",
             ]}
             lines={lines.map((s) => [
-              gunFormat(s.tarih),
+              formatDay(s.tarih),
               s.orderNo,
               STATUS_LABEL[s.durum] ?? s.durum,
               s.productName,
@@ -97,7 +97,7 @@ export default function SiparisRaporuPage() {
       </div>
 
       <DataSource
-        kaynak="Örnek veri"
+        source="Örnek veri"
         ayrinti="lib/ornek-veri.ts → SIPARISLER + kalemler"
         dateField="sipariş oluşturma tarihi"
         cancelRule="iptal edilen siparişler tamamen dışlanır"
@@ -174,7 +174,7 @@ export default function SiparisRaporuPage() {
               <tbody>
                 {lines.map((s) => (
                   <tr key={s.anahtar}>
-                    <td>{gunFormat(s.tarih)}</td>
+                    <td>{formatDay(s.tarih)}</td>
                     <td className="sku">{s.orderNo}</td>
                     <td>
                       <span className="badge info">

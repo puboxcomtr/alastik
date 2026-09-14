@@ -1,7 +1,7 @@
-import { CsvDownload } from "@components/b2b-tema/csv-indir";
-import { DataSource } from "@components/b2b-tema/veri-kaynagi";
-import { formatKurus } from "@components/b2b-tema/lib/format";
-import { PURCHASE_ROWS } from "@components/b2b-tema/lib/ornek-veri";
+import { CsvDownload } from "@components/b2b-theme/csv-download";
+import { DataSource } from "@components/b2b-theme/data-source";
+import { formatKurus } from "@components/b2b-theme/lib/format";
+import { PURCHASE_ROWS } from "@components/b2b-theme/lib/sample-data";
 
 /**
  * Bayi Alım Adet Raporu — dönem bazlı alış özeti.
@@ -18,7 +18,7 @@ export default function AlimAdetPage() {
         <div>
           <h1>
             Bayi Alım Adet Raporu{" "}
-            <span className="baslik-etiket">Platform Siparişleri</span>
+            <span className="title-label">Platform Siparişleri</span>
           </h1>
           <p className="sub">
             Dönem bazlı alış özeti — toplam ürün adedi ve tutar.
@@ -38,7 +38,7 @@ export default function AlimAdetPage() {
       </div>
 
       <DataSource
-        kaynak="Örnek veri"
+        source="Örnek veri"
         ayrinti="lib/ornek-veri.ts → ALIM_ADETLERI"
         dateField="sipariş oluşturma tarihi"
         cancelRule="iptal edilen siparişler dışlanır; iade düşümü yok"
@@ -49,24 +49,24 @@ export default function AlimAdetPage() {
         }
       />
 
-      <div className="rapor-kartlar">
-        <div className="rapor-kart">
-          <div className="etiket">Toplam Lastik</div>
-          <div className="deger">{totalTire.toLocaleString("tr-TR")}</div>
+      <div className="report-cards">
+        <div className="report-card">
+          <div className="label">Toplam Lastik</div>
+          <div className="value">{totalTire.toLocaleString("tr-TR")}</div>
           <div className="note">adet</div>
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">Toplam Jant</div>
-          <div className="deger">{totalRim.toLocaleString("tr-TR")}</div>
+        <div className="report-card">
+          <div className="label">Toplam Jant</div>
+          <div className="value">{totalRim.toLocaleString("tr-TR")}</div>
           <div className="note">adet</div>
         </div>
-        <div className="rapor-kart vurgulu">
-          <div className="etiket">Toplam Tutar (KDV dahil)</div>
-          <div className="deger">{formatKurus(toplamTutar)}</div>
+        <div className="report-card vurgulu">
+          <div className="label">Toplam Tutar (KDV dahil)</div>
+          <div className="value">{formatKurus(toplamTutar)}</div>
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">Dönem</div>
-          <div className="deger">{PURCHASE_ROWS.length}</div>
+        <div className="report-card">
+          <div className="label">Dönem</div>
+          <div className="value">{PURCHASE_ROWS.length}</div>
           <div className="note">ay</div>
         </div>
       </div>

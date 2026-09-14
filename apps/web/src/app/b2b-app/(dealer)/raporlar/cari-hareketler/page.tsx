@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CsvDownload } from "@components/b2b-tema/csv-indir";
-import { DataSource } from "@components/b2b-tema/veri-kaynagi";
-import { formatKurus, formatTarih, gunFormat } from "@components/b2b-tema/lib/format";
-import { DEALER, TODAY, ACCOUNT_LEDGER, ACCOUNT_SUMMARY } from "@components/b2b-tema/lib/ornek-veri";
+import { CsvDownload } from "@components/b2b-theme/csv-download";
+import { DataSource } from "@components/b2b-theme/data-source";
+import { formatKurus, formatDate, formatDay } from "@components/b2b-theme/lib/format";
+import { DEALER, TODAY, ACCOUNT_LEDGER, ACCOUNT_SUMMARY } from "@components/b2b-theme/lib/sample-data";
 
 const BU_YIL = TODAY.getFullYear();
 const YILLAR = [BU_YIL, BU_YIL - 1, BU_YIL - 2];
@@ -67,8 +67,8 @@ export default function CariHareketlerPage() {
             "İptal",
           ]}
           lines={ledgerRows.map((h) => [
-            gunFormat(h.tarih),
-            gunFormat(h.vadeTarihi),
+            formatDay(h.tarih),
+            formatDay(h.vadeTarihi),
             h.belgeNo,
             h.txnType,
             (h.borcKurus / 100).toFixed(2),
@@ -79,11 +79,11 @@ export default function CariHareketlerPage() {
       </div>
 
       <DataSource
-        kaynak="Örnek veri"
+        source="Örnek veri"
         ayrinti="lib/ornek-veri.ts → CARI_HAREKETLER (satırlar) · CARI_OZET (özet kartlar)"
         dateField="belge tarihi"
         cancelRule="iptaller listelenir, rozetle işaretlenir, TOPLAMLARA katılmaz"
-        tazelik={`örnek veri · ${formatTarih(DEALER.sonSenkronAt)} anlık görüntüsü`}
+        tazelik={`örnek veri · ${formatDate(DEALER.sonSenkronAt)} anlık görüntüsü`}
         kapsamUyarisi={
           "Bu ekran bir tasarım şablonudur; satırlar gerçek muhasebe kaydı " +
           "değildir. Gerçek veriye bağlanırken kasadan geçmeyen ödemeler " +
@@ -93,20 +93,20 @@ export default function CariHareketlerPage() {
       />
 
       <h2 className="section">Resmi Cari Toplamları</h2>
-      <div className="rapor-kartlar">
-        <div className="rapor-kart kirmizi">
-          <div className="etiket">↙ Toplam Borç</div>
-          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.borcToplamKurus)}</div>
+      <div className="report-cards">
+        <div className="report-card kirmizi">
+          <div className="label">↙ Toplam Borç</div>
+          <div className="value">{formatKurus(ACCOUNT_SUMMARY.borcToplamKurus)}</div>
           <div className="note">cari kart rakamı</div>
         </div>
-        <div className="rapor-kart yesil">
-          <div className="etiket">↗ Toplam Alacak</div>
-          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.alacakToplamKurus)}</div>
+        <div className="report-card yesil">
+          <div className="label">↗ Toplam Alacak</div>
+          <div className="value">{formatKurus(ACCOUNT_SUMMARY.alacakToplamKurus)}</div>
           <div className="note">cari kart rakamı</div>
         </div>
-        <div className={`rapor-kart${borclu ? " kirmizi" : " yesil"}`}>
-          <div className="etiket">💳 Net Bakiye (geçerli)</div>
-          <div className="deger">
+        <div className={`report-card${borclu ? " kirmizi" : " yesil"}`}>
+          <div className="label">💳 Net Bakiye (geçerli)</div>
+          <div className="value">
             {formatKurus(Math.abs(ACCOUNT_SUMMARY.balanceKurus))}
             <span style={{ fontSize: "0.8rem", fontWeight: 600, marginLeft: 6 }}>
               {borclu ? "Borçlu" : "Alacaklı"}
@@ -119,10 +119,10 @@ export default function CariHareketlerPage() {
       <h2 className="section">
         Bu Ekranda Listelenen Hareketlerin Kontrol Toplamı
       </h2>
-      <div className="rapor-kartlar">
-        <div className="rapor-kart">
-          <div className="etiket">Listelenen borç</div>
-          <div className="deger">{formatKurus(kontrolBorc)}</div>
+      <div className="report-cards">
+        <div className="report-card">
+          <div className="label">Listelenen borç</div>
+          <div className="value">{formatKurus(kontrolBorc)}</div>
           {borcFark > 1 ? (
             <div className="note" style={{ color: "var(--danger)" }}>
               resmi rakamdan {formatKurus(borcFark)} farklı
@@ -131,9 +131,9 @@ export default function CariHareketlerPage() {
             <div className="note">resmi rakamla örtüşüyor</div>
           )}
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">Listelenen alacak</div>
-          <div className="deger">{formatKurus(kontrolAlacak)}</div>
+        <div className="report-card">
+          <div className="label">Listelenen alacak</div>
+          <div className="value">{formatKurus(kontrolAlacak)}</div>
           {alacakFark > 1 ? (
             <div className="note" style={{ color: "var(--danger)" }}>
               resmi rakamdan {formatKurus(alacakFark)} farklı
@@ -142,9 +142,9 @@ export default function CariHareketlerPage() {
             <div className="note">resmi rakamla örtüşüyor</div>
           )}
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">Mutabakat</div>
-          <div className="deger">
+        <div className="report-card">
+          <div className="label">Mutabakat</div>
+          <div className="value">
             {balanceVisible ? "✓ Tutuyor" : "✕ Tutmuyor"}
           </div>
           <div className="note">
@@ -243,8 +243,8 @@ export default function CariHareketlerPage() {
                   key={`${h.belgeNo}-${i}`}
                   style={h.iptal ? { opacity: 0.5 } : undefined}
                 >
-                  <td>{gunFormat(h.tarih)}</td>
-                  <td>{gunFormat(h.vadeTarihi)}</td>
+                  <td>{formatDay(h.tarih)}</td>
+                  <td>{formatDay(h.vadeTarihi)}</td>
                   <td className="sku">
                     {h.belgeNo}
                     {h.iptal ? (
@@ -256,7 +256,7 @@ export default function CariHareketlerPage() {
                   <td>
                     {h.txnType}
                     <div className="note">
-                      {h.kaynak === "fatura" ? "fatura" : "kasa işlemi"}
+                      {h.source === "fatura" ? "fatura" : "kasa işlemi"}
                     </div>
                     {h.aciklama ? <div className="note">{h.aciklama}</div> : null}
                   </td>

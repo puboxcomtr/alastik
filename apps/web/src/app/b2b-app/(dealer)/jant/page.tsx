@@ -1,4 +1,4 @@
-import { RimCatalog } from "@components/b2b-tema/katalog-jant";
+import { RimCatalog } from "@components/b2b-theme/rim-catalog";
 
 export default function JantPage() {
   return (

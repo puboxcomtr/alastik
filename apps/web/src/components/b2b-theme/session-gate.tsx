@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
-export function OturumKapisi({ children }: { children: React.ReactNode }) {
+export function SessionGate({ children }: { children: React.ReactNode }) {
     const [hazir, setHazir] = useState(false);
 
     useEffect(() => {

@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeftIcon } from "@components/b2b-tema/icons";
-import { useCart } from "@components/b2b-tema/sepet-durumu";
-import { showToast } from "@components/b2b-tema/toast";
-import { formatKurus } from "@components/b2b-tema/lib/format";
-import { REMAINING_LIMIT_KURUS, VAT_BPS } from "@components/b2b-tema/lib/ornek-veri";
+import { ArrowLeftIcon } from "@components/b2b-theme/icons";
+import { useCart } from "@components/b2b-theme/cart-status";
+import { showToast } from "@components/b2b-theme/toast";
+import { formatKurus } from "@components/b2b-theme/lib/format";
+import { REMAINING_LIMIT_KURUS, VAT_BPS } from "@components/b2b-theme/lib/sample-data";
 
 export default function SepetPage() {
   const sepet = useCart();
@@ -65,7 +65,7 @@ export default function SepetPage() {
                 {sepet.lines.map((s) => (
                   <tr key={`${s.productId}:${s.warehouseId}`}>
                     <td>
-                      <div className="urun-adi">
+                      <div className="product-name">
                         {s.urun.size} {s.urun.pattern}
                       </div>
                       <div className="sku">
@@ -104,7 +104,7 @@ export default function SepetPage() {
                     <td className="num">{formatKurus(s.matrahKurus)}</td>
                     <td className="num">
                       {formatKurus(s.kdvKurus)}
-                      <div className="fiyat-kdv">%{VAT_BPS / 100}</div>
+                      <div className="price-vat">%{VAT_BPS / 100}</div>
                     </td>
                     <td className="num">
                       <strong>{formatKurus(s.satirToplamKurus)}</strong>

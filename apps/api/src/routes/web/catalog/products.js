@@ -17,6 +17,8 @@ const Setting = require('../../../models/admin/settings/Setting');
 
 // Kategori fiyat gösterim ayarı (KDV dahil/hariç) — ortak yardımcı, sepet de aynısını kullanır
 const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
+// Depo bazlı stok filtresi (b2b) — canlı DIA depo stoğuyla süzer
+const { filterCodesByDepot, getDepotList } = require('../../../services/plugins/dia/depotStockFilter');
 
 router.get('/similar-by-order/:orderNumber', async (req, res) => {
     try {
@@ -124,6 +126,7 @@ router.get('/filter', async (req, res) => {
             // Ortak parametreler
             arac,
             marka,
+            depo,
             fiyatMin,
             fiyatMax,
             limit,
@@ -225,6 +228,10 @@ router.get('/filter', async (req, res) => {
         }
 
         const andConditions = [];
+        // Kategori düzeyi koşullar (kategori eşleşmesi + hariç tutulanlar). Kullanıcı
+        // filtrelerinden (marka/mevsim/DOT…) ayrı tutulur ki facet listesi (tüm
+        // markalar/mevsimler/DOT'lar) seçili filtreden bağımsız, eksiksiz üretilebilsin.
+        const categoryConditions = [];
 
         // Hariç tutulacak kategori (örn. marka sayfasında Sıfır sekmesi için ikinci-el dışlanır)
         if (req.query.haricKategori) {
@@ -232,7 +239,7 @@ router.get('/filter', async (req, res) => {
             const excludeCategories = await WebCategory.find({ slug: { $in: excludeSlugs } }).lean();
             for (const exCat of excludeCategories) {
                 if (!exCat.diaCategory) continue;
-                andConditions.push({
+                categoryConditions.push({
                     'diaData.m_kategoriler': {
                         $not: {
                             $elemMatch: {
@@ -246,7 +253,7 @@ router.get('/filter', async (req, res) => {
 
         if (webCategory?.diaCategory) {
             const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
-            andConditions.push({
+            categoryConditions.push({
                 'diaData.m_kategoriler': {
                     $elemMatch: {
                         [diaLevel]: webCategory.diaCategory
@@ -264,7 +271,7 @@ router.get('/filter', async (req, res) => {
                     }
                 }));
             if (orClauses.length > 0) {
-                andConditions.push({ $or: orClauses });
+                categoryConditions.push({ $or: orClauses });
             }
         }
         // ==========================================
@@ -442,6 +449,30 @@ router.get('/filter', async (req, res) => {
                 });
             }
         }
+
+        // Serbest metin arama (q): marka/model/açıklama/stok kodu + ebat. Ebat rakam
+        // bazlı eşleşir — "2055516", "205 55 16", "205/55R16" hepsi aynı kabul edilir
+        // (rakamlar arasına ayraç/harf serbest). Kategorinin TÜM ürünlerinde arar.
+        if (req.query.q && String(req.query.q).trim()) {
+            const q = String(req.query.q).trim();
+            const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const rx = new RegExp(esc, 'i');
+            const or = [
+                { 'diaData.aciklama': rx },
+                { 'diaData.marka': rx },
+                { 'diaData.stokkartkodu': rx },
+                { 'diaData.ozelkod3kodu': rx },
+                { 'diaData.ozelkod5kodu': rx }
+            ];
+            const rakam = q.replace(/[^0-9]/g, '');
+            if (rakam.length >= 3) {
+                const esnek = new RegExp(rakam.split('').join('\\D*'), 'i');
+                or.push({ 'diaData.ozelkod3kodu': esnek });
+                or.push({ 'diaData.stokkartkodu': esnek });
+                or.push({ 'diaData.aciklama': esnek });
+            }
+            andConditions.push({ $or: or });
+        }
         if (ozelkod5) {
             andConditions.push({
                 'diaData.ozelkod5kodu': ozelkod5
@@ -454,8 +485,41 @@ router.get('/filter', async (req, res) => {
             andConditions.push(priceCondition);
         }
 
-        if (andConditions.length > 0) {
-            filter['$and'] = andConditions;
+        // Facet için baz (kategori koşulları var, kullanıcı filtreleri YOK)
+        const baseFilterForFacets = { ...filter };
+        const allConditions = [...categoryConditions, ...andConditions];
+        if (allConditions.length > 0) {
+            filter['$and'] = allConditions;
+        }
+        if (categoryConditions.length > 0) {
+            baseFilterForFacets['$and'] = categoryConditions;
+        }
+
+        // Depo filtresi (b2b): seçilen depoda stoğu olan ürünlere daralt. Depo stoğu
+        // yalnız kendi stok (DIA) ürünlerinde vardır; XML ürünler dışlanır. Aday
+        // kodlar (kategori + marka/mevsim/DOT + kendi stok) toplanır, canlı depo
+        // stoğuna göre süzülür ve nihai sorgu bu kodlara kilitlenir. Böylece depo
+        // filtresi TÜM sayfalara işler (yalnız görünen sayfaya değil).
+        if (depo) {
+            try {
+                const adayFilter = {
+                    ...filter,
+                    'syncInfo.syncSource': { $in: ['dia_api', 'dia_missing_sync'] },
+                    'diaData.gercek_stok': { $gt: 0 }
+                };
+                const adaylar = await WebProduct.find(adayFilter)
+                    .select('diaData.stokkartkodu')
+                    .limit(3000)
+                    .lean();
+                const kodlar = adaylar.map(p => p.diaData?.stokkartkodu).filter(Boolean);
+                const izinli = await filterCodesByDepot(req.site, depo, kodlar);
+                // izinli null ise depo bulunamadı → filtre yok sayılır
+                if (izinli) {
+                    filter['$and'] = [...(filter['$and'] || []), { 'diaData.stokkartkodu': { $in: [...izinli] } }];
+                }
+            } catch (depoErr) {
+                console.error('Depo filtresi hatası:', depoErr.message);
+            }
         }
 
         const skip = (pageNum - 1) * limitNum;
@@ -525,6 +589,36 @@ router.get('/filter', async (req, res) => {
 
         const products = await WebProduct.aggregate(aggregatePipeline);
 
+        // Facet listeleri (yalnız ?facets=1 ile) — kategorinin TÜM marka/mevsim/DOT
+        // değerleri, seçili filtreden bağımsız. Filtre panelindeki select'leri eksiksiz
+        // doldurmak için kullanılır (o anki sayfanın ürünlerine bağlı kalmaz).
+        let facets = null;
+        if (req.query.facets === '1') {
+            const facetRes = await WebProduct.aggregate([
+                { $match: baseFilterForFacets },
+                {
+                    $group: {
+                        _id: null,
+                        brands: { $addToSet: '$diaData.marka' },
+                        seasons: { $addToSet: '$diaData.ozelkod1kodu' },
+                        dots: { $addToSet: '$diaData.ekalan5' }
+                    }
+                }
+            ]);
+            const g = facetRes[0] || {};
+            // b2b depoları (vitrinDepolari) — depo select'ini doldurmak için
+            let depots = [];
+            try {
+                depots = (await getDepotList(req.site)).map(d => d.ad).filter(Boolean);
+            } catch { /* depo ayarı yoksa boş */ }
+            facets = {
+                brands: (g.brands || []).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'tr')),
+                seasons: (g.seasons || []).filter(Boolean),
+                dots: (g.dots || []).filter(d => /^(19|20)\d{2}$/.test(String(d))).sort((a, b) => Number(b) - Number(a)),
+                depots
+            };
+        }
+
         // Kategori bazlı fiyat gösterim ayarı (tek sorgu, önbellekli)
         const fiyatAyarlari = await getFiyatAyarlari(req.site);
 
@@ -548,7 +642,8 @@ router.get('/filter', async (req, res) => {
                     productsPerPage: limitNum,
                     hasNextPage: pageNum < totalPages,
                     hasPrevPage: pageNum > 1
-                }
+                },
+                ...(facets ? { facets } : {})
             }
         });
     } catch (error) {

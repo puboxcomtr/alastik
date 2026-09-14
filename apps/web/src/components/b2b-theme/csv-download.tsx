@@ -19,8 +19,8 @@ export function CsvDownload({
 }) {
   function indir(): void {
     const kacir = (h: string | number): string => {
-      const metin = String(h);
-      return /[";\n]/.test(metin) ? `"${metin.replace(/"/g, '""')}"` : metin;
+      const text = String(h);
+      return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
     };
     const icerik = [basliklar, ...lines]
       .map((satir) => satir.map(kacir).join(";"))

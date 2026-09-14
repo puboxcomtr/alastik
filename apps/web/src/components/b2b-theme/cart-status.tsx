@@ -14,7 +14,7 @@ import {
   TIRES,
   type Rim,
   type Tire,
-} from "@components/b2b-tema/lib/ornek-veri";
+} from "@components/b2b-theme/lib/sample-data";
 
 /**
  * SEPET — yalnızca tarayıcıda yaşar.
@@ -27,14 +27,42 @@ import {
 
 const CART_STORAGE_KEY = "ornek-sepet-v1";
 
+// Ürün sepete eklenirken GERÇEK verisinin (DB'den gelen ad/fiyat/depo) anlık
+// kopyası — sepet widget'ı bu değerleri örnek veriden değil bundan gösterir.
+// (Nihai fiyat/stok siparişte sunucuda yeniden doğrulanır.)
+export type CartSnapshot = {
+  marka: string;
+  brandLogoUrl?: string | null;
+  size: string;
+  pattern: string;
+  stockCode: string;
+  imageUrl?: string | null;
+  birimNetKurus: number; // KDV hariç birim fiyat
+  kdvDahilBirimKurus: number;
+  warehouseName?: string;
+};
+
 export type CartRecord = {
   productId: string;
   warehouseId: string;
   adet: number;
+  snapshot?: CartSnapshot;
+};
+
+// Sepet satırındaki ürünün gösterim alt kümesi (hem gerçek snapshot hem örnek
+// veri bu şekle indirgenir; UI yalnız bu alanları kullanır).
+export type CartLineProduct = {
+  id: string;
+  stockCode: string;
+  marka: string;
+  brandLogoUrl: string | null;
+  size: string;
+  pattern: string;
+  imageUrl: string | null;
 };
 
 export type CartLine = CartRecord & {
-  urun: Tire | Rim;
+  urun: CartLineProduct;
   warehouseName: string;
   birimNetKurus: number;
   matrahKurus: number;
@@ -65,9 +93,9 @@ function findProduct(id: string): Tire | Rim | undefined {
 function kayitlariOku(): CartRecord[] {
   if (typeof window === "undefined") return [];
   try {
-    const ham = window.localStorage.getItem(CART_STORAGE_KEY);
-    if (!ham) return [];
-    const cozulen: unknown = JSON.parse(ham);
+    const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const cozulen: unknown = JSON.parse(raw);
     if (!Array.isArray(cozulen)) return [];
     return cozulen.filter(
       (k): k is CartRecord =>
@@ -100,8 +128,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const deger = useMemo<CartState>(() => {
+  const value = useMemo<CartState>(() => {
     const lines: CartLine[] = records.flatMap((k) => {
+      // Gerçek ürün: eklenirken kaydedilen snapshot'tan (DB değerleri)
+      if (k.snapshot) {
+        const s = k.snapshot;
+        const matrah = s.birimNetKurus * k.adet;
+        const kdv = Math.round((matrah * VAT_BPS) / 10000);
+        return [
+          {
+            ...k,
+            urun: {
+              id: k.productId,
+              stockCode: s.stockCode,
+              marka: s.marka,
+              brandLogoUrl: s.brandLogoUrl ?? null,
+              size: s.size,
+              pattern: s.pattern,
+              imageUrl: s.imageUrl ?? null,
+            },
+            warehouseName: s.warehouseName ?? "—",
+            birimNetKurus: s.birimNetKurus,
+            matrahKurus: matrah,
+            kdvKurus: kdv,
+            satirToplamKurus: matrah + kdv,
+          },
+        ];
+      }
+      // Snapshot yoksa (örnek veri / eski kayıt) örnek veriden çöz
       const urun = findProduct(k.productId);
       if (!urun?.fiyat) return [];
       const depo = urun.stocks.find((s) => s.warehouseId === k.warehouseId);
@@ -110,7 +164,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [
         {
           ...k,
-          urun,
+          urun: {
+            id: urun.id,
+            stockCode: urun.stockCode,
+            marka: urun.marka,
+            brandLogoUrl: ("brandLogoUrl" in urun ? urun.brandLogoUrl : null) ?? null,
+            size: urun.size,
+            pattern: urun.pattern,
+            imageUrl: urun.imageUrl ?? null,
+          },
           warehouseName: depo?.warehouseName ?? "—",
           birimNetKurus: urun.fiyat.birimNetKurus,
           matrahKurus: matrah,
@@ -171,11 +233,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [records, yaz]);
 
-  return <Baglam.Provider value={deger}>{children}</Baglam.Provider>;
+  return <Baglam.Provider value={value}>{children}</Baglam.Provider>;
 }
 
 export function useCart(): CartState {
-  const deger = useContext(Baglam);
-  if (!deger) throw new Error("useSepet, SepetSaglayici içinde kullanılmalı");
-  return deger;
+  const value = useContext(Baglam);
+  if (!value) throw new Error("useSepet, SepetSaglayici içinde kullanılmalı");
+  return value;
 }

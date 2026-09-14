@@ -1,6 +1,6 @@
-import { PasswordForm } from "@components/b2b-tema/parola-formu";
-import { formatKurus } from "@components/b2b-tema/lib/format";
-import { DEALER } from "@components/b2b-tema/lib/ornek-veri";
+import { PasswordForm } from "@components/b2b-theme/password-form";
+import { formatKurus } from "@components/b2b-theme/lib/format";
+import { DEALER } from "@components/b2b-theme/lib/sample-data";
 
 /**
  * Hesap Ayarları. Ünvan, cari kodu, kredi limiti ve iskonto salt okunur
@@ -20,8 +20,8 @@ export default function HesapAyarlariPage() {
       </div>
 
       <div className="card">
-        <h3 className="kart-baslik">Hesap Bilgileri</h3>
-        <dl className="bilgi-listesi">
+        <h3 className="card-title">Hesap Bilgileri</h3>
+        <dl className="info-list">
           <div>
             <dt>Ünvan</dt>
             <dd>{DEALER.unvan}</dd>
@@ -53,7 +53,7 @@ export default function HesapAyarlariPage() {
       </div>
 
       <div className="card">
-        <h3 className="kart-baslik">Parola Değiştir</h3>
+        <h3 className="card-title">Parola Değiştir</h3>
         <PasswordForm sinif="banner-form" />
       </div>
     </>

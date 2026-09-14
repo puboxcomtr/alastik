@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Dropdown } from "@components/b2b-tema/acilir";
-import { SearchForm } from "@components/b2b-tema/arama-formu";
-import { AddToCart } from "@components/b2b-tema/sepete-ekle";
-import { formatKurus } from "@components/b2b-tema/lib/format";
-import { RIMS, RIM_OPTIONS, totalStock, type Rim } from "@components/b2b-tema/lib/ornek-veri";
+import { Dropdown } from "@components/b2b-theme/dropdown";
+import { SearchForm } from "@components/b2b-theme/search-form";
+import { AddToCart } from "@components/b2b-theme/add-to-cart";
+import { formatKurus } from "@components/b2b-theme/lib/format";
+import { RIMS, RIM_OPTIONS, totalStock, type Rim } from "@components/b2b-theme/lib/sample-data";
 
-const SAYFA_BOYU = 60;
+const PAGE_SIZE = 60;
 
 type Filter = {
   q: string;
@@ -28,21 +28,21 @@ const BOS_FILTRE: Filter = {
 };
 
 /** "85" → "8.5", "6645" → "66.45" — tam sayı saklanan ölçüler gösterime döner. */
-function olcekliGoster(deger: number | null, bolen: number): string {
-  if (deger === null) return "—";
-  return String(Number((deger / bolen).toFixed(2)));
+function olcekliGoster(value: number | null, bolen: number): string {
+  if (value === null) return "—";
+  return String(Number((value / bolen).toFixed(2)));
 }
 
-function sadelestir(metin: string): string {
-  return metin.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
+function normalizeText(text: string): string {
+  return text.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
 }
 
 function matches(jant: Rim, f: Filter): boolean {
   if (f.q) {
-    const havuz = sadelestir(
+    const havuz = normalizeText(
       `${jant.size} ${jant.pattern} ${jant.vehicleBrand ?? ""} ${jant.bijonAralikKodu ?? ""} ${jant.stockCode}`,
     );
-    if (!havuz.includes(sadelestir(f.q))) return false;
+    if (!havuz.includes(normalizeText(f.q))) return false;
   }
   if (f.cap && String(jant.rimDiameter) !== f.cap) return false;
   if (f.bijon && jant.bijonAralikKodu !== f.bijon) return false;
@@ -57,82 +57,82 @@ function matches(jant: Rim, f: Filter): boolean {
 
 /**
  * Jant katalogu — lastik katalogundakiyle AYNI tasarım öğelerini kullanır
- * (aynı arama barı, aynı açılır kutu, aynı tablo ve sepet kontrolü) ama
- * filtreler ve kolonlar janta özgü: çap, bijon aralığı, araç markası.
+ * (aynı query barı, aynı açılır kutu, aynı tablo ve sepet kontrolü) ama
+ * filters ve kolonlar janta özgü: çap, bijon aralığı, araç markası.
  */
 export function RimCatalog() {
-  const [filtre, setFiltre] = useState<Filter>(BOS_FILTRE);
-  const [sayfa, setSayfa] = useState(1);
+  const [filter, setFilter] = useState<Filter>(BOS_FILTRE);
+  const [page, setPage] = useState(1);
 
   const matched = useMemo(
-    () => RIMS.filter((j) => matches(j, filtre)),
-    [filtre],
+    () => RIMS.filter((j) => matches(j, filter)),
+    [filter],
   );
 
   const toplam = matched.length;
-  const sonSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYU));
-  const gecerliSayfa = Math.min(sayfa, sonSayfa);
+  const sonSayfa = Math.max(1, Math.ceil(toplam / PAGE_SIZE));
+  const gecerliSayfa = Math.min(page, sonSayfa);
   const visible = matched.slice(
-    (gecerliSayfa - 1) * SAYFA_BOYU,
-    gecerliSayfa * SAYFA_BOYU,
+    (gecerliSayfa - 1) * PAGE_SIZE,
+    gecerliSayfa * PAGE_SIZE,
   );
 
   function update(parca: Partial<Filter>): void {
-    setFiltre((onceki) => ({ ...onceki, ...parca }));
-    setSayfa(1);
+    setFilter((onceki) => ({ ...onceki, ...parca }));
+    setPage(1);
   }
 
   return (
     <>
       <SearchForm
-        q={filtre.q}
-        onAra={(q) => update({ q })}
+        q={filter.q}
+        onSearch={(q) => update({ q })}
         placeholder="Jant ara — çap, bijon aralığı, araç markası veya ürün kodu..."
       />
 
       <div className="filterbar">
         <Dropdown
-          baslik="Jant Çapı"
-          deger={filtre.cap}
-          onSec={(cap) => update({ cap })}
+          title="Jant Çapı"
+          value={filter.cap}
+          onSelect={(cap) => update({ cap })}
           options={RIM_OPTIONS.caplar.map((c) => ({
-            deger: String(c),
-            etiket: `${c}"`,
+            value: String(c),
+            label: `${c}"`,
           }))}
         />
         <Dropdown
-          baslik="Bijon Aralığı"
-          deger={filtre.bijon}
-          onSec={(bijon) => update({ bijon })}
+          title="Bijon Aralığı"
+          value={filter.bijon}
+          onSelect={(bijon) => update({ bijon })}
           options={RIM_OPTIONS.bijonlar.map((b) => ({
-            deger: b,
-            etiket: b,
+            value: b,
+            label: b,
           }))}
         />
         <Dropdown
-          baslik="Araç Markası"
-          deger={filtre.arac}
-          onSec={(arac) => update({ arac })}
+          title="Araç Markası"
+          value={filter.arac}
+          onSelect={(arac) => update({ arac })}
           options={RIM_OPTIONS.vehicleBrands.map((a) => ({
-            deger: a,
-            etiket: a,
+            value: a,
+            label: a,
           }))}
         />
         <Dropdown
-          baslik="Depo"
-          deger={filtre.depo}
-          onSec={(depo) => update({ depo })}
+          title="Depo"
+          value={filter.depo}
+          onSelect={(depo) => update({ depo })}
           options={RIM_OPTIONS.warehouses.map((d) => ({
-            deger: d.id,
-            etiket: d.ad,
+            value: d.id,
+            label: d.ad,
           }))}
         />
 
         <button
           type="button"
-          className={`ozellik-cip ikinciel-cip${filtre.ikinciEl ? " secili" : ""}`}
+          className={`feature-chip secondhand-chip${filter.ikinciEl ? " selected" : ""}`}
           title="Basılıyken yalnızca 2. el jantlar listelenir"
-          onClick={() => update({ ikinciEl: !filtre.ikinciEl })}
+          onClick={() => update({ ikinciEl: !filter.ikinciEl })}
         >
           Sadece 2. El Jantlar
         </button>
@@ -141,15 +141,15 @@ export function RimCatalog() {
           type="button"
           className="clear"
           onClick={() => {
-            setFiltre(BOS_FILTRE);
-            setSayfa(1);
+            setFilter(BOS_FILTRE);
+            setPage(1);
           }}
         >
           Temizle
         </button>
         <span className="chip">
           {toplam.toLocaleString("tr-TR")} jant
-          {sonSayfa > 1 ? ` · sayfa ${gecerliSayfa}/${sonSayfa}` : ""}
+          {sonSayfa > 1 ? ` · page ${gecerliSayfa}/${sonSayfa}` : ""}
         </span>
       </div>
 
@@ -165,7 +165,7 @@ export function RimCatalog() {
               <th className="num">ET</th>
               <th>Stok</th>
               <th className="num">Fiyat (KDV hariç)</th>
-              <th className="sepet-kol">Sepet</th>
+              <th className="actions-col">Sepet</th>
             </tr>
           </thead>
           <tbody>
@@ -179,13 +179,13 @@ export function RimCatalog() {
                 <tr key={jant.id}>
                   <td className="sku">{jant.stockCode}</td>
                   <td>
-                    <div className="urun-hucre">
-                      <span className="urun-gorsel bos" aria-hidden="true" />
+                    <div className="product-cell">
+                      <span className="product-image bos" aria-hidden="true" />
                       <div>
-                        <div className="urun-adi">
+                        <div className="product-name">
                           {jant.size} {jant.pattern}
                         </div>
-                        <div className="urun-alt">
+                        <div className="product-sub">
                           {jant.productStatus === "ikinciEl" ? (
                             <span className="badge gray">2. El</span>
                           ) : null}
@@ -212,7 +212,7 @@ export function RimCatalog() {
                   <td className="num">
                     {jant.rimDiameter !== null ? `${jant.rimDiameter}"` : "—"}
                     {jant.rimWidthX10 !== null ? (
-                      <div className="fiyat-kdv">
+                      <div className="price-vat">
                         {olcekliGoster(jant.rimWidthX10, 10)}J
                       </div>
                     ) : null}
@@ -220,7 +220,7 @@ export function RimCatalog() {
                   <td>
                     {jant.bijonAralikKodu ?? "—"}
                     {jant.gobekCapiX100 !== null ? (
-                      <div className="fiyat-kdv">
+                      <div className="price-vat">
                         göbek {olcekliGoster(jant.gobekCapiX100, 100)}
                       </div>
                     ) : null}
@@ -232,7 +232,7 @@ export function RimCatalog() {
                   </td>
                   <td>
                     <span
-                      className={`stok-pill${available === 0 ? " yok" : ""}`}
+                      className={`stock-pill${available === 0 ? " yok" : ""}`}
                       title={jant.stocks
                         .map((s) => `${s.warehouseName}: ${s.available}`)
                         .join(" · ")}
@@ -248,14 +248,14 @@ export function RimCatalog() {
                     {fiyat ? (
                       <>
                         {fiyat.birimNetKurus < fiyat.listeBirimKurus ? (
-                          <div className="fiyat-liste">
+                          <div className="price-list">
                             {formatKurus(fiyat.listeBirimKurus)}
                           </div>
                         ) : null}
-                        <div className="fiyat-net">
+                        <div className="price-net">
                           {formatKurus(fiyat.birimNetKurus)}
                         </div>
-                        <div className="fiyat-kdv">
+                        <div className="price-vat">
                           KDV dahil {formatKurus(fiyat.kdvDahilBirimKurus)}
                         </div>
                       </>
@@ -263,12 +263,12 @@ export function RimCatalog() {
                       <span className="note">Fiyat tanımsız</span>
                     )}
                   </td>
-                  <td className="sepet-kol">
+                  <td className="actions-col">
                     {fiyat && inStockWarehouses.length > 0 ? (
                       <AddToCart
                         productId={jant.id}
                         warehouses={inStockWarehouses}
-                        defaultWarehouseId={filtre.depo || undefined}
+                        defaultWarehouseId={filter.depo || undefined}
                         initialQty={jant.minSiparisMiktari}
                       />
                     ) : (
@@ -290,25 +290,25 @@ export function RimCatalog() {
       </div>
 
       {sonSayfa > 1 ? (
-        <nav className="sayfalama" aria-label="Sayfalar">
+        <nav className="pagination" aria-label="Sayfalar">
           <button
             type="button"
             className="pasif"
             disabled={gecerliSayfa <= 1}
-            onClick={() => setSayfa(gecerliSayfa - 1)}
+            onClick={() => setPage(gecerliSayfa - 1)}
           >
             ← Önceki
           </button>
           <span className="bilgi">
-            {((gecerliSayfa - 1) * SAYFA_BOYU + 1).toLocaleString("tr-TR")}–
-            {Math.min(gecerliSayfa * SAYFA_BOYU, toplam).toLocaleString("tr-TR")} /{" "}
+            {((gecerliSayfa - 1) * PAGE_SIZE + 1).toLocaleString("tr-TR")}–
+            {Math.min(gecerliSayfa * PAGE_SIZE, toplam).toLocaleString("tr-TR")} /{" "}
             {toplam.toLocaleString("tr-TR")}
           </span>
           <button
             type="button"
             className="pasif"
             disabled={gecerliSayfa >= sonSayfa}
-            onClick={() => setSayfa(gecerliSayfa + 1)}
+            onClick={() => setPage(gecerliSayfa + 1)}
           >
             Sonraki →
           </button>

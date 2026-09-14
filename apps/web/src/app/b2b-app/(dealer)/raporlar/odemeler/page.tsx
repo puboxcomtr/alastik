@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { DataSource } from "@components/b2b-tema/veri-kaynagi";
-import { formatKurus, gunFormat } from "@components/b2b-tema/lib/format";
-import { PAYMENTS } from "@components/b2b-tema/lib/ornek-veri";
+import { DataSource } from "@components/b2b-theme/data-source";
+import { formatKurus, formatDay } from "@components/b2b-theme/lib/format";
+import { PAYMENTS } from "@components/b2b-theme/lib/sample-data";
 
 type Sekme = "tumu" | "gecerli" | "iptal";
 
@@ -48,7 +48,7 @@ export default function OdemelerPage() {
       </div>
 
       <DataSource
-        kaynak="Örnek veri"
+        source="Örnek veri"
         ayrinti="lib/ornek-veri.ts → ODEMELER (yalnızca kasa işlemleri)"
         dateField="işlem tarihi"
         cancelRule="iptaller ayrı sekmede, toplama katılmaz"
@@ -62,22 +62,22 @@ export default function OdemelerPage() {
       />
 
       <h2 className="section">Kasa Tahsilatları Özeti</h2>
-      <div className="rapor-kartlar">
-        <div className="rapor-kart yesil">
-          <div className="etiket">✓ Geçerli kayıtlar</div>
-          <div className="deger">{formatKurus(gecerliToplam)}</div>
+      <div className="report-cards">
+        <div className="report-card yesil">
+          <div className="label">✓ Geçerli kayıtlar</div>
+          <div className="value">{formatKurus(gecerliToplam)}</div>
           <div className="note">
             {gecerli.length} işlem · yalnızca kasa tahsilatları toplamı
           </div>
         </div>
-        <div className="rapor-kart kirmizi">
-          <div className="etiket">✕ İptal edilmiş</div>
-          <div className="deger">{iptaller.length}</div>
+        <div className="report-card kirmizi">
+          <div className="label">✕ İptal edilmiş</div>
+          <div className="value">{iptaller.length}</div>
           <div className="note">iptal işaretli kayıt</div>
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">Σ Kayıt sayısı</div>
-          <div className="deger">{PAYMENTS.length}</div>
+        <div className="report-card">
+          <div className="label">Σ Kayıt sayısı</div>
+          <div className="value">{PAYMENTS.length}</div>
           <div className="note">iptaller dahil</div>
         </div>
       </div>
@@ -89,14 +89,14 @@ export default function OdemelerPage() {
             ["gecerli", `Geçerli (${gecerli.length})`],
             ["iptal", `İptal (${iptaller.length})`],
           ] as const
-        ).map(([anahtar, etiket]) => (
+        ).map(([anahtar, label]) => (
           <button
             key={anahtar}
             type="button"
-            className={`ozellik-cip${sekme === anahtar ? " secili" : ""}`}
+            className={`feature-chip${sekme === anahtar ? " selected" : ""}`}
             onClick={() => setSekme(anahtar)}
           >
-            {etiket}
+            {label}
           </button>
         ))}
       </div>
@@ -113,7 +113,7 @@ export default function OdemelerPage() {
 
       <div style={{ marginTop: "0.9rem" }}>
         {listelenen.map((o) => (
-          <div className="odeme-kart" key={o.belgeNo}>
+          <div className="payment-card" key={o.belgeNo}>
             <div className="ust">
               <div>
                 <span className="fisno">#{o.belgeNo}</span>{" "}
@@ -128,7 +128,7 @@ export default function OdemelerPage() {
               <div className="tutar">{formatKurus(o.tutarKurus)}</div>
             </div>
             <div className="alt">
-              <span>📅 {gunFormat(o.tarih)}</span>
+              <span>📅 {formatDay(o.tarih)}</span>
             </div>
           </div>
         ))}

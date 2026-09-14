@@ -12,51 +12,51 @@ export function AccountMenu({
   email: string;
   unvan: string;
 }) {
-  const [acik, setAcik] = useState(false);
+  const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!acik) return;
+    if (!open) return;
     function disaTiklama(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAcik(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", disaTiklama);
     return () => document.removeEventListener("mousedown", disaTiklama);
-  }, [acik]);
+  }, [open]);
 
   return (
-    <div className="hesap-wrap" ref={ref}>
+    <div className="account-wrap" ref={ref}>
       <button
-        className="hesap-btn"
-        onClick={() => setAcik((v) => !v)}
-        aria-expanded={acik}
+        className="account-btn"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         aria-label="Hesabım"
         data-tip="Hesabım"
       >
         <UserIcon size={19} />
       </button>
-      {acik ? (
-        <div className="hesap-menu">
+      {open ? (
+        <div className="account-menu">
           <div className="kim">
             <strong>{unvan}</strong>
             <span>{email}</span>
           </div>
-          <Link href="/cari" onClick={() => setAcik(false)}>
+          <Link href="/cari" onClick={() => setOpen(false)}>
             <WalletIcon size={16} /> Cari Özet
           </Link>
-          <Link href="/siparisler" onClick={() => setAcik(false)}>
+          <Link href="/siparisler" onClick={() => setOpen(false)}>
             <OrdersIcon size={16} /> Siparişlerim
           </Link>
-          <Link href="/odeme" onClick={() => setAcik(false)}>
+          <Link href="/odeme" onClick={() => setOpen(false)}>
             <CardIcon size={16} /> Ödeme Yap
           </Link>
-          <Link href="/hesap/ayarlar" onClick={() => setAcik(false)}>
+          <Link href="/hesap/ayarlar" onClick={() => setOpen(false)}>
             <UserIcon size={16} /> Hesap Ayarları
           </Link>
           <a
             href="/giris"
             onClick={() => {
-              setAcik(false);
+              setOpen(false);
               localStorage.removeItem("authToken");
               document.cookie = "authToken=; path=/; max-age=0";
             }}

@@ -60,6 +60,10 @@ export type Tire = {
   imageUrl: string | null;
   stocks: StockRow[];
   fiyat: Price | null;
+  /** Sevkiyat süresi etiketi: kendi stok "Aynı Gün", XML ürün "1-2 Gün" (veya alanı). */
+  sevkiyat?: string;
+  /** Ürün detay sayfası slug'ı (customData.seoUrl); yoksa stok kodu. */
+  slug?: string;
 };
 
 export type Rim = {
@@ -136,7 +140,7 @@ export type AccountLedgerRow = {
   vadeTarihi: Date | null;
   belgeNo: string;
   txnType: string;
-  kaynak: "fatura" | "kasa";
+  source: "fatura" | "kasa";
   aciklama: string | null;
   borcKurus: number;
   alacakKurus: number;
@@ -166,7 +170,7 @@ export type InstallmentOption = {
 
 export type Banner = {
   id: string;
-  baslik: string;
+  title: string;
   imageUrl: string;
   link: string | null;
 };
@@ -209,7 +213,7 @@ export const CONTACT = {
 export const BANNERS: Banner[] = [
   {
     id: "b1",
-    baslik: "Kış lastiğinde sezon öncesi bayi fiyatları",
+    title: "Kış lastiğinde sezon öncesi bayi fiyatları",
     imageUrl:
       "data:image/svg+xml;utf8," +
       encodeURIComponent(
@@ -225,7 +229,7 @@ export const BANNERS: Banner[] = [
   },
   {
     id: "b2",
-    baslik: "Jant kataloğu güncellendi",
+    title: "Jant kataloğu güncellendi",
     imageUrl:
       "data:image/svg+xml;utf8," +
       encodeURIComponent(
@@ -246,10 +250,10 @@ export const BANNERS: Banner[] = [
  * Sabit (deterministik) sözde-rastgele üretici. `Math.random` kullanılmaz:
  * liste her derlemede aynı çıksın, ekran görüntüleri oynamasın.
  */
-function tohum(metin: string): number {
+function tohum(text: string): number {
   let h = 2166136261;
-  for (let i = 0; i < metin.length; i++) {
-    h ^= metin.charCodeAt(i);
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
   return (h >>> 0) / 4294967295;
@@ -524,22 +528,22 @@ export const TOTAL_RISK_KURUS = ACCOUNT_SUMMARY.balanceKurus + PENDING_ORDER_KUR
 export const REMAINING_LIMIT_KURUS = DEALER.creditLimitKurus - TOTAL_RISK_KURUS;
 
 export const ACCOUNT_LEDGER: AccountLedgerRow[] = [
-  { tarih: gunEkle(TODAY, -78), vadeTarihi: gunEkle(TODAY, -18), belgeNo: "SFT2026000412", txnType: "Satış Faturası", kaynak: "fatura", aciklama: null, borcKurus: 148_500_00, alacakKurus: 0, iptal: false },
-  { tarih: gunEkle(TODAY, -74), vadeTarihi: null, belgeNo: "THS2026000208", txnType: "Nakit Tahsilat", kaynak: "kasa", aciklama: "Merkez kasa", borcKurus: 0, alacakKurus: 100_000_00, iptal: false },
-  { tarih: gunEkle(TODAY, -66), vadeTarihi: gunEkle(TODAY, -6), belgeNo: "SFT2026000455", txnType: "Satış Faturası", kaynak: "fatura", aciklama: null, borcKurus: 92_300_00, alacakKurus: 0, iptal: false },
-  { tarih: gunEkle(TODAY, -60), vadeTarihi: null, belgeNo: "IAD2026000031", txnType: "İade Faturası", kaynak: "fatura", aciklama: "2 adet hasarlı ürün iadesi", borcKurus: 0, alacakKurus: 18_400_00, iptal: false },
-  { tarih: gunEkle(TODAY, -49), vadeTarihi: gunEkle(TODAY, 11), belgeNo: "SFT2026000501", txnType: "Satış Faturası", kaynak: "fatura", aciklama: null, borcKurus: 214_750_00, alacakKurus: 0, iptal: false },
-  { tarih: gunEkle(TODAY, -44), vadeTarihi: null, belgeNo: "SFT2026000499", txnType: "Satış Faturası", kaynak: "fatura", aciklama: "Hatalı kesildi", borcKurus: 12_000_00, alacakKurus: 0, iptal: true },
-  { tarih: gunEkle(TODAY, -38), vadeTarihi: null, belgeNo: "THS2026000244", txnType: "Kredi Kartı Tahsilat", kaynak: "kasa", aciklama: "Sanal POS", borcKurus: 0, alacakKurus: 150_000_00, iptal: false },
-  { tarih: gunEkle(TODAY, -33), vadeTarihi: gunEkle(TODAY, 27), belgeNo: "SFT2026000538", txnType: "Satış Faturası", kaynak: "fatura", aciklama: null, borcKurus: 63_900_00, alacakKurus: 0, iptal: false },
-  { tarih: gunEkle(TODAY, -21), vadeTarihi: null, belgeNo: "THS2026000271", txnType: "Nakit Tahsilat", kaynak: "kasa", aciklama: "Merkez kasa", borcKurus: 0, alacakKurus: 75_000_00, iptal: false },
-  { tarih: gunEkle(TODAY, -14), vadeTarihi: gunEkle(TODAY, 46), belgeNo: "SFT2026000572", txnType: "Satış Faturası", kaynak: "fatura", aciklama: null, borcKurus: 121_400_00, alacakKurus: 0, iptal: false },
-  { tarih: gunEkle(TODAY, -9), vadeTarihi: null, belgeNo: "THS2026000288", txnType: "Nakit Tahsilat", kaynak: "kasa", aciklama: "Merkez kasa", borcKurus: 0, alacakKurus: 60_000_00, iptal: false },
-  { tarih: gunEkle(TODAY, -5), vadeTarihi: gunEkle(TODAY, 55), belgeNo: "SFT2026000590", txnType: "Satış Faturası", kaynak: "fatura", aciklama: null, borcKurus: 47_250_00, alacakKurus: 0, iptal: false },
+  { tarih: gunEkle(TODAY, -78), vadeTarihi: gunEkle(TODAY, -18), belgeNo: "SFT2026000412", txnType: "Satış Faturası", source: "fatura", aciklama: null, borcKurus: 148_500_00, alacakKurus: 0, iptal: false },
+  { tarih: gunEkle(TODAY, -74), vadeTarihi: null, belgeNo: "THS2026000208", txnType: "Nakit Tahsilat", source: "kasa", aciklama: "Merkez kasa", borcKurus: 0, alacakKurus: 100_000_00, iptal: false },
+  { tarih: gunEkle(TODAY, -66), vadeTarihi: gunEkle(TODAY, -6), belgeNo: "SFT2026000455", txnType: "Satış Faturası", source: "fatura", aciklama: null, borcKurus: 92_300_00, alacakKurus: 0, iptal: false },
+  { tarih: gunEkle(TODAY, -60), vadeTarihi: null, belgeNo: "IAD2026000031", txnType: "İade Faturası", source: "fatura", aciklama: "2 adet hasarlı ürün iadesi", borcKurus: 0, alacakKurus: 18_400_00, iptal: false },
+  { tarih: gunEkle(TODAY, -49), vadeTarihi: gunEkle(TODAY, 11), belgeNo: "SFT2026000501", txnType: "Satış Faturası", source: "fatura", aciklama: null, borcKurus: 214_750_00, alacakKurus: 0, iptal: false },
+  { tarih: gunEkle(TODAY, -44), vadeTarihi: null, belgeNo: "SFT2026000499", txnType: "Satış Faturası", source: "fatura", aciklama: "Hatalı kesildi", borcKurus: 12_000_00, alacakKurus: 0, iptal: true },
+  { tarih: gunEkle(TODAY, -38), vadeTarihi: null, belgeNo: "THS2026000244", txnType: "Kredi Kartı Tahsilat", source: "kasa", aciklama: "Sanal POS", borcKurus: 0, alacakKurus: 150_000_00, iptal: false },
+  { tarih: gunEkle(TODAY, -33), vadeTarihi: gunEkle(TODAY, 27), belgeNo: "SFT2026000538", txnType: "Satış Faturası", source: "fatura", aciklama: null, borcKurus: 63_900_00, alacakKurus: 0, iptal: false },
+  { tarih: gunEkle(TODAY, -21), vadeTarihi: null, belgeNo: "THS2026000271", txnType: "Nakit Tahsilat", source: "kasa", aciklama: "Merkez kasa", borcKurus: 0, alacakKurus: 75_000_00, iptal: false },
+  { tarih: gunEkle(TODAY, -14), vadeTarihi: gunEkle(TODAY, 46), belgeNo: "SFT2026000572", txnType: "Satış Faturası", source: "fatura", aciklama: null, borcKurus: 121_400_00, alacakKurus: 0, iptal: false },
+  { tarih: gunEkle(TODAY, -9), vadeTarihi: null, belgeNo: "THS2026000288", txnType: "Nakit Tahsilat", source: "kasa", aciklama: "Merkez kasa", borcKurus: 0, alacakKurus: 60_000_00, iptal: false },
+  { tarih: gunEkle(TODAY, -5), vadeTarihi: gunEkle(TODAY, 55), belgeNo: "SFT2026000590", txnType: "Satış Faturası", source: "fatura", aciklama: null, borcKurus: 47_250_00, alacakKurus: 0, iptal: false },
 ];
 
 export const PAYMENTS: Payment[] = ACCOUNT_LEDGER.filter(
-  (h) => h.kaynak === "kasa" && !h.iptal,
+  (h) => h.source === "kasa" && !h.iptal,
 ).map((h) => ({
   tarih: h.tarih,
   belgeNo: h.belgeNo,

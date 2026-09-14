@@ -41,20 +41,20 @@ function panelKonumu(dugme: HTMLElement, panelGenisligi: number): Konum {
  */
 export function NavLinks({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
-  const [acik, setAcik] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
   const [konum, setKonum] = useState<Konum | null>(null);
   const kokRef = useRef<HTMLElement>(null);
   const dugmeRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
-    setAcik(null); // sayfa değişince menü kapanır
+    setOpen(null); // page değişince menü kapanır
   }, [pathname]);
 
   // Panel açıkken gerçek genişlikle konumu tazeler; kaydırma/yeniden boyutlandırmada
   // butonun altında kalmaya devam eder.
   useEffect(() => {
-    if (!acik) return;
+    if (!open) return;
     function update(): void {
       const dugme = dugmeRef.current;
       if (!dugme) return;
@@ -67,11 +67,11 @@ export function NavLinks({ items }: { items: NavItem[] }) {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [acik]);
+  }, [open]);
 
   useEffect(() => {
     function disariTik(e: MouseEvent): void {
-      if (!kokRef.current?.contains(e.target as Node)) setAcik(null);
+      if (!kokRef.current?.contains(e.target as Node)) setOpen(null);
     }
     document.addEventListener("mousedown", disariTik);
     return () => document.removeEventListener("mousedown", disariTik);
@@ -89,23 +89,23 @@ export function NavLinks({ items }: { items: NavItem[] }) {
           .join(" ");
 
         if (item.alt) {
-          const menuAcik = acik === item.href;
+          const menuAcik = open === item.href;
           return (
-            <span className="nav-acilir" key={item.href}>
+            <span className="nav-dropdown" key={item.href}>
               <button
                 type="button"
                 ref={menuAcik ? dugmeRef : null}
-                className={`nav-acilir-dugme ${sinif}`.trim()}
+                className={`nav-dropdown-button ${sinif}`.trim()}
                 aria-expanded={menuAcik}
                 onClick={(e) => {
                   if (menuAcik) {
-                    setAcik(null);
+                    setOpen(null);
                     return;
                   }
                   // İlk konum tıklama anında ölçülür: panel ilk karede doğru
                   // yerde çizilir, efekt yalnızca gerçek genişlikle tazeler.
                   setKonum(panelKonumu(e.currentTarget, VARSAYILAN_GENISLIK));
-                  setAcik(item.href);
+                  setOpen(item.href);
                 }}
               >
                 {item.label}
@@ -127,7 +127,7 @@ export function NavLinks({ items }: { items: NavItem[] }) {
               </button>
               {menuAcik && konum ? (
                 <span
-                  className="nav-acilir-panel"
+                  className="nav-dropdown-panel"
                   ref={panelRef}
                   style={{ top: konum.top, left: konum.left }}
                 >
@@ -135,7 +135,7 @@ export function NavLinks({ items }: { items: NavItem[] }) {
                     <Link
                       key={a.href}
                       href={a.href}
-                      className={pathname === a.href ? "secili" : undefined}
+                      className={pathname === a.href ? "selected" : undefined}
                     >
                       {a.label}
                     </Link>

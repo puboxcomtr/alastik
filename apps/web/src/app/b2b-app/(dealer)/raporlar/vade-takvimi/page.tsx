@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { DataSource } from "@components/b2b-tema/veri-kaynagi";
-import { formatKurus, formatTarih, gunFormat } from "@components/b2b-tema/lib/format";
-import { DEALER, TODAY, ACCOUNT_SUMMARY } from "@components/b2b-tema/lib/ornek-veri";
+import { DataSource } from "@components/b2b-theme/data-source";
+import { formatKurus, formatDate, formatDay } from "@components/b2b-theme/lib/format";
+import { DEALER, TODAY, ACCOUNT_SUMMARY } from "@components/b2b-theme/lib/sample-data";
 
 const AYLAR = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -72,43 +72,43 @@ export default function VadeTakvimiPage() {
       </div>
 
       <DataSource
-        kaynak="Örnek veri"
+        source="Örnek veri"
         ayrinti="lib/ornek-veri.ts → CARI_OZET.faturalar"
         dateField="vade tarihi"
         cancelRule="iptal edilmiş ve borç niteliğinde olmayan faturalar takvime GİRMEZ"
-        tazelik={`${formatTarih(DEALER.sonSenkronAt)} itibarıyla (örnek)`}
+        tazelik={`${formatDate(DEALER.sonSenkronAt)} itibarıyla (örnek)`}
       />
 
-      <div className="rapor-kartlar">
-        <div className="rapor-kart kirmizi">
-          <div className="etiket">⚠ Geçmiş Vadeler</div>
-          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.overdueKurus)}</div>
+      <div className="report-cards">
+        <div className="report-card kirmizi">
+          <div className="label">⚠ Geçmiş Vadeler</div>
+          <div className="value">{formatKurus(ACCOUNT_SUMMARY.overdueKurus)}</div>
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">📅 Bu Ay Vadesi</div>
-          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.buAyVadesiKurus)}</div>
+        <div className="report-card">
+          <div className="label">📅 Bu Ay Vadesi</div>
+          <div className="value">{formatKurus(ACCOUNT_SUMMARY.buAyVadesiKurus)}</div>
         </div>
-        <div className="rapor-kart vurgulu">
-          <div className="etiket">🗓 Gelecek 30 Gün</div>
-          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.gelecek30GunKurus)}</div>
+        <div className="report-card vurgulu">
+          <div className="label">🗓 Gelecek 30 Gün</div>
+          <div className="value">{formatKurus(ACCOUNT_SUMMARY.gelecek30GunKurus)}</div>
         </div>
-        <div className="rapor-kart">
-          <div className="etiket">Σ Toplam Vadeli</div>
-          <div className="deger">{formatKurus(ACCOUNT_SUMMARY.totalTermKurus)}</div>
+        <div className="report-card">
+          <div className="label">Σ Toplam Vadeli</div>
+          <div className="value">{formatKurus(ACCOUNT_SUMMARY.totalTermKurus)}</div>
         </div>
       </div>
 
       <div className="actions-row" style={{ marginBottom: "0.9rem" }}>
         <button
           type="button"
-          className={`ozellik-cip${!listeGorunumu ? " secili" : ""}`}
+          className={`feature-chip${!listeGorunumu ? " selected" : ""}`}
           onClick={() => setListeGorunumu(false)}
         >
           📅 Takvim Görünümü
         </button>
         <button
           type="button"
-          className={`ozellik-cip${listeGorunumu ? " secili" : ""}`}
+          className={`feature-chip${listeGorunumu ? " selected" : ""}`}
           onClick={() => setListeGorunumu(true)}
         >
           ☰ Açık Faturalar ({acikFaturalar.length})
@@ -134,8 +134,8 @@ export default function VadeTakvimiPage() {
               {acikFaturalar.map((f) => (
                 <tr key={f.fisNo}>
                   <td className="sku">{f.fisNo}</td>
-                  <td>{gunFormat(f.tarih)}</td>
-                  <td>{gunFormat(f.vadeTarihi)}</td>
+                  <td>{formatDay(f.tarih)}</td>
+                  <td>{formatDay(f.vadeTarihi)}</td>
                   <td>
                     {f.gecikmeGun !== null && f.gecikmeGun > 0 ? (
                       <span className="badge danger">
@@ -187,7 +187,7 @@ export default function VadeTakvimiPage() {
           </div>
 
           <div className="takvim">
-            <div className="takvim-bas">
+            <div className="calendar-head">
               <span>HAFTA</span>
               {GUNLER.map((g) => (
                 <span key={g}>{g}</span>
@@ -199,8 +199,8 @@ export default function VadeTakvimiPage() {
                 0,
               );
               return (
-                <div className="takvim-hafta" key={i}>
-                  <div className="hafta-toplam">
+                <div className="calendar-week" key={i}>
+                  <div className="week-total">
                     Toplam
                     <strong>
                       {haftaToplam > 0 ? formatKurus(haftaToplam) : "0 TL"}
@@ -214,7 +214,7 @@ export default function VadeTakvimiPage() {
                       <div
                         key={anahtar}
                         className={[
-                          "takvim-gun",
+                          "calendar-day",
                           disAy ? "dis" : "",
                           tutar ? "vadeli" : "",
                           anahtar === bugunAnahtar ? "bugun" : "",

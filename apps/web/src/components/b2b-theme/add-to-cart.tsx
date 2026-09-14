@@ -1,9 +1,9 @@
 "use client";
 
-import { useCart } from "./sepet-durumu";
+import { useCart, type CartSnapshot } from "./cart-status";
 import { showToast } from "./toast";
 import { CartIcon } from "./icons";
-import type { StockRow } from "@components/b2b-tema/lib/ornek-veri";
+import type { StockRow } from "@components/b2b-theme/lib/sample-data";
 
 /**
  * Ürün satırındaki sepet kontrolü.
@@ -21,17 +21,20 @@ export function AddToCart({
   warehouses,
   defaultWarehouseId,
   initialQty = 1,
+  product,
 }: {
   productId: string;
   warehouses: StockRow[];
   defaultWarehouseId?: string | undefined;
   /** Eklenirken önerilen adet — jantta en az sipariş miktarı. */
   initialQty?: number;
+  /** Gerçek ürün verisi (ad/fiyat/görsel) — sepet widget'ı bundan gösterir. */
+  product?: Omit<CartSnapshot, "warehouseName">;
 }) {
   const sepet = useCart();
     const cartItem = sepet.find(productId);
 
-  // Sepetteki satırın deposu esastır; değilse filtre deposu, o da yoksa
+  // Sepetteki satırın deposu esastır; değilse filter deposu, o da yoksa
   // stoğu en çok olan depo.
   const depo =
     (cartItem
@@ -57,6 +60,9 @@ export function AddToCart({
             productId,
             warehouseId: depo.warehouseId,
             adet: Math.max(1, Math.min(initialQty, maks || 1)),
+            snapshot: product
+              ? { ...product, warehouseName: depo.warehouseName }
+              : undefined,
           });
           showToast("Sepete eklendi", "ok");
         }}
@@ -74,7 +80,7 @@ export function AddToCart({
     );
 
   return (
-    <div className="satir-sepet">
+    <div className="row-cart">
       <span className="stepper acikta">
         {/* Adet 1'in ALTINA inmez; satırı silmek için "Vazgeç" kullanılır. */}
         <button

@@ -1,5 +1,5 @@
-import { DataSource } from "@components/b2b-tema/veri-kaynagi";
-import { INSTALLMENT_OPTIONS } from "@components/b2b-tema/lib/ornek-veri";
+import { DataSource } from "@components/b2b-theme/data-source";
+import { INSTALLMENT_OPTIONS } from "@components/b2b-theme/lib/sample-data";
 
 const TAKSITLER = [2, 3, 4, 5, 6, 9, 12];
 
@@ -21,7 +21,7 @@ export default function TaksitSecenekleriPage() {
       <div className="page-head">
         <div>
           <h1>
-            Taksit Seçenekleri <span className="baslik-etiket">Bilgilendirme</span>
+            Taksit Seçenekleri <span className="title-label">Bilgilendirme</span>
           </h1>
           <p className="sub">
             Kredi kartıyla yapılabilen taksit sayıları. Bu tablo ekibimiz
@@ -31,7 +31,7 @@ export default function TaksitSecenekleriPage() {
       </div>
 
       <DataSource
-        kaynak="Örnek veri"
+        source="Örnek veri"
         ayrinti="lib/ornek-veri.ts → TAKSIT_SECENEKLERI"
         dateField="—"
         cancelRule="—"
@@ -67,7 +67,7 @@ export default function TaksitSecenekleriPage() {
                   return (
                     <td key={t} className="num">
                       {taksit ? (
-                        <span className="taksit-var" title={taksit.aciklama}>
+                        <span className="has-installment" title={taksit.aciklama}>
                           ✓
                         </span>
                       ) : (

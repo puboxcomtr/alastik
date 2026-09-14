@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useCart } from "./sepet-durumu";
+import { useCart } from "./cart-status";
 import { showToast } from "./toast";
-import { formatKurus } from "@components/b2b-tema/lib/format";
+import { formatKurus } from "@components/b2b-theme/lib/format";
 import { ArrowRightIcon, CartIcon, CloseIcon, TrashIcon } from "./icons";
 
 /** Üst bardan açılan sepet paneli. */
 export function CartPanel() {
-  const [acik, setAcik] = useState(false);
+  const [open, setOpen] = useState(false);
   const router = useRouter();
   const sepet = useCart();
   
@@ -18,7 +18,7 @@ export function CartPanel() {
       <button
         className="cart-btn"
         data-tip="Sepetim"
-        onClick={() => setAcik(true)}
+        onClick={() => setOpen(true)}
         aria-label="Sepeti aç"
       >
         <CartIcon size={19} />
@@ -27,16 +27,16 @@ export function CartPanel() {
         ) : null}
       </button>
 
-      {acik ? (
+      {open ? (
         <div
           className="drawer-overlay"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setAcik(false);
+            if (e.target === e.currentTarget) setOpen(false);
           }}
         >
           <aside className="drawer">
             <div className="drawer-head">
-              <span className="ikon-kutu">
+              <span className="icon-box">
                 <CartIcon size={19} />
               </span>
               <div>
@@ -45,7 +45,7 @@ export function CartPanel() {
               </div>
               <button
                 className="kapat"
-                onClick={() => setAcik(false)}
+                onClick={() => setOpen(false)}
                 aria-label="Kapat"
               >
                 <CloseIcon size={16} />
@@ -69,13 +69,24 @@ export function CartPanel() {
                     >
                       <TrashIcon size={15} />
                     </button>
-                    <div className="marka">{s.urun.marka}</div>
-                    <div className="ad">
+                    <div className="marka">
+                      {s.urun.brandLogoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          className="marka-logo"
+                          src={s.urun.brandLogoUrl}
+                          alt={s.urun.marka}
+                          title={s.urun.marka}
+                        />
+                      ) : (
+                        s.urun.marka
+                      )}
+                    </div>
+                    <div className="ad" title={`${s.urun.size} ${s.urun.pattern}`}>
                       {s.urun.size} {s.urun.pattern}
                     </div>
                     <div className="etiketler">
                       <span className="sku">{s.urun.stockCode}</span>
-                      <span className="badge info">{s.warehouseName}</span>
                     </div>
                     <div className="alt-row">
                       <span className="stepper">
@@ -107,10 +118,10 @@ export function CartPanel() {
                         </button>
                       </span>
                       <div style={{ textAlign: "right" }}>
-                        <div className="fiyat-kdv">
+                        <div className="price-vat">
                           Birim {formatKurus(s.birimNetKurus)}
                         </div>
-                        <div className="fiyat-net">
+                        <div className="price-net">
                           {formatKurus(s.satirToplamKurus)}
                         </div>
                       </div>
@@ -121,7 +132,7 @@ export function CartPanel() {
             </div>
 
             <div className="drawer-foot">
-              <div className="toplam-row">
+              <div className="total-row">
                 <div>
                   <div className="label" style={{ fontWeight: 700 }}>
                     Toplam Tutar
@@ -135,7 +146,7 @@ export function CartPanel() {
                   className="primary"
                   disabled={sepet.lines.length === 0}
                   onClick={() => {
-                    setAcik(false);
+                    setOpen(false);
                     router.push("/sepet");
                   }}
                 >

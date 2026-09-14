@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export type BannerImage = {
   id: string;
-  baslik: string;
+  title: string;
   imageUrl: string;
   link: string | null;
 };
@@ -72,16 +72,16 @@ export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={aktif.imageUrl}
-      alt={aktif.baslik}
-      className="banner-gorsel"
+      alt={aktif.title}
+      className="banner-image"
       draggable={false}
     />
   );
 
   return (
-    <section className="banner-alani" aria-label="Duyurular">
+    <section className="banner-area" aria-label="Duyurular">
       <div
-        className="banner-cerceve"
+        className="banner-frame"
         style={{
           cursor: adet > 1 ? (surukleniyor ? "grabbing" : "grab") : undefined,
           transform: kaymaPx ? `translateX(${kaymaPx * 0.25}px)` : undefined,
@@ -115,7 +115,7 @@ export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
       </div>
 
       {adet > 1 ? (
-        <div className="banner-noktalar">
+        <div className="banner-dots">
           {banners.map((b, i) => (
             <button
               key={b.id}

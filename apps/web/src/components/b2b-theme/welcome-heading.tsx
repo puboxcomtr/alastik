@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
 /** Türkçe kurallarıyla her kelimenin yalnız baş harfini büyütür */
-function basHarfleriBuyut(metin: string): string {
-    return metin
+function basHarfleriBuyut(text: string): string {
+    return text
         .toLocaleLowerCase('tr-TR')
         .split(/\s+/)
         .map(k => (k ? k.charAt(0).toLocaleUpperCase('tr-TR') + k.slice(1) : k))

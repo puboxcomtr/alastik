@@ -3,32 +3,32 @@ import Link from "next/link";
 const RAPORLAR = [
   {
     href: "/raporlar/cari-hareketler",
-    baslik: "Cari Hareketler",
+    title: "Cari Hareketler",
     aciklama: "Borç/alacak dökümü, yürüyen bakiye ve CSV indirme.",
   },
   {
     href: "/raporlar/vade-takvimi",
-    baslik: "Vade Takvimi",
+    title: "Vade Takvimi",
     aciklama: "Açık faturaların aylık vade dağılımı ve gecikme durumu.",
   },
   {
     href: "/raporlar/siparis-raporu",
-    baslik: "Sipariş Raporu",
+    title: "Sipariş Raporu",
     aciklama: "Tarih aralığına göre sipariş kalemleri ve tutarlar.",
   },
   {
     href: "/raporlar/alim-adet",
-    baslik: "Bayi Alım Adet Raporu",
+    title: "Bayi Alım Adet Raporu",
     aciklama: "Dönem bazlı lastik/jant adedi ve toplam alış tutarı.",
   },
   {
     href: "/raporlar/odemeler",
-    baslik: "Kasa Tahsilatları",
+    title: "Kasa Tahsilatları",
     aciklama: "Kasadan geçen tahsilat kayıtları (kapsam notuyla birlikte).",
   },
   {
     href: "/raporlar/taksit-secenekleri",
-    baslik: "Taksit Seçenekleri",
+    title: "Taksit Seçenekleri",
     aciklama: "Kredi kartıyla yapılabilen taksit sayıları — bilgilendirme.",
   },
 ];
@@ -46,11 +46,11 @@ export default function RaporlarPage() {
         </div>
       </div>
 
-      <div className="cari-kisayol">
+      <div className="account-shortcut">
         {RAPORLAR.map((r) => (
           <Link key={r.href} href={r.href} className="kisayol">
             <div>
-              <strong>{r.baslik}</strong>
+              <strong>{r.title}</strong>
               <span>{r.aciklama}</span>
             </div>
           </Link>

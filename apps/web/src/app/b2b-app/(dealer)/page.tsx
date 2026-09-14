@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { BannerCarousel } from "@components/b2b-tema/banner-donen";
-import { WelcomeHeading } from "@components/b2b-tema/hosgeldin-basligi";
-import { AccountSummaryCards } from "@components/b2b-tema/cari-ozet-kartlari";
-import { ShowcaseCatalog } from "@components/b2b-tema/vitrin-katalog";
-import { BANNERS } from "@components/b2b-tema/lib/ornek-veri";
+import { BannerCarousel } from "@components/b2b-theme/banner-carousel";
+import { WelcomeHeading } from "@components/b2b-theme/welcome-heading";
+import { AccountSummaryCards } from "@components/b2b-theme/account-summary-cards";
+import { ShowcaseCatalog } from "@components/b2b-theme/showcase-catalog";
+import { BANNERS } from "@components/b2b-theme/lib/sample-data";
 
 /**
- * Bayi anasayfası: üstte cari/vade kartları, altında arama + filtreler +
+ * Bayi anasayfası: üstte cari/vade kartları, altında query + filters +
  * ürün tablosu.
  */
 export default function DealerHome() {

@@ -28,6 +28,24 @@ export function TireIcon({ size = 18, className }: IconProps) {
   );
 }
 
+export function EditIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </svg>
+  );
+}
+
+export function ViewIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 export function OrdersIcon({ size = 18, className }: IconProps) {
   return (
     <svg {...svgProps(size)} className={className}>
@@ -197,7 +215,7 @@ export function AlertIcon({ size = 18, className }: IconProps) {
 
 /**
  * YAZ — DOLU güneş: ortada dolu disk (r=5) + 8 kısa ışın (r 7.4→10.1).
- * Renk currentColor; .ikon-yaz sınıfı var(--mevsim-yaz) verir.
+ * Renk currentColor; .icon-summer sınıfı var(--mevsim-yaz) verir.
  */
 export function SunIcon({ size = 18, className }: IconProps) {
   return (
@@ -240,28 +258,28 @@ export function DortMevsimIcon({ size = 18, className }: IconProps) {
   return (
     <svg {...svgProps(size)} className={className} aria-label="4 Mevsim lastiği">
       {/* sol: dolu yarım güneş diski */}
-      <path className="mv-gunes-dolu" d="M12 7A5 5 0 0 0 12 17Z" />
+      <path className="mv-sun-filled" d="M12 7A5 5 0 0 0 12 17Z" />
       {/* sol: ışınlar */}
       <path
-        className="mv-gunes"
+        className="mv-sun"
         strokeWidth={2.1}
         d="M9.36 5.63L8.36 3.22M5.63 9.36L3.22 8.36M5.63 14.64L3.22 15.64M9.36 18.37L8.36 20.78"
       />
       {/* sağ: kar tanesi kolları */}
       <path
-        className="mv-kar"
+        className="mv-snow"
         strokeWidth={1.7}
         d="M12 12L16.7 3.86M12 12L21.4 12M12 12L16.7 20.14"
       />
       {/* sağ: dış çıkıntılar */}
       <path
-        className="mv-kar"
+        className="mv-snow"
         strokeWidth={1.7}
         d="M17.52 5.84L15.2 6.46L14.58 4.14M20.1 13.7L18.4 12L20.1 10.3M14.58 19.86L15.2 17.54L17.52 18.16"
       />
       {/* sağ: iç çıkıntılar — ok işareti okunuşunu kırar */}
       <path
-        className="mv-kar"
+        className="mv-snow"
         strokeWidth={1.5}
         d="M15.44 8.59L13.7 9.06L13.23 7.32M16.67 13.27L15.4 12L16.67 10.73M13.23 16.68L13.7 14.94L15.44 15.41"
       />
@@ -278,9 +296,9 @@ export function SeasonIcon({
   size?: number;
 }) {
   if (mevsim === null) return <span className="note">—</span>;
-  if (mevsim === "kis") return <SnowIcon size={size} className="ikon-kis" />;
+  if (mevsim === "kis") return <SnowIcon size={size} className="icon-winter" />;
   if (mevsim === "dortMevsim") return <DortMevsimIcon size={size} />;
-  return <SunIcon size={size} className="ikon-yaz" />;
+  return <SunIcon size={size} className="icon-summer" />;
 }
 
 export function ChevronDownIcon({ size = 16, className }: IconProps) {

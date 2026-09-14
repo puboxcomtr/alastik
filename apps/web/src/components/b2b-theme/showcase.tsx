@@ -49,24 +49,24 @@ export function Showcase() {
 
     return (
         <section className="vitrin">
-            <div className="vitrin-head">
+            <div className="showcase-head">
                 <h2>{vitrin.title}</h2>
                 {vitrin.subtitle ? <p>{vitrin.subtitle}</p> : null}
             </div>
-            <div className="vitrin-grid">
+            <div className="showcase-grid">
                 {vitrin.products.map(u => {
                     const fiyat = priceExclVat(u);
                     return (
-                        <a key={u._key} href={u.customData?.seoUrl ? `/urun/${u.customData.seoUrl}` : '#'} className="vitrin-kart">
-                            <div className="vitrin-gorsel">
+                        <a key={u._key} href={u.customData?.seoUrl ? `/urun/${u.customData.seoUrl}` : '#'} className="showcase-card">
+                            <div className="showcase-image">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={gorsel(u)} alt={u.diaData?.aciklama || ''} loading="lazy" />
                             </div>
-                            <div className="vitrin-bilgi">
-                                {u.diaData?.marka ? <span className="vitrin-marka">{u.diaData.marka}</span> : null}
-                                <span className="vitrin-ad">{u.diaData?.aciklama || ''}</span>
+                            <div className="showcase-info">
+                                {u.diaData?.marka ? <span className="showcase-brand">{u.diaData.marka}</span> : null}
+                                <span className="showcase-name">{u.diaData?.aciklama || ''}</span>
                                 {fiyat ? (
-                                    <span className="vitrin-fiyat">
+                                    <span className="showcase-price">
                                         {fiyat} <small>+ KDV</small>
                                     </span>
                                 ) : null}
