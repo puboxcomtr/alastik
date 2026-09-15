@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { Catalog, type ServerOptions, type ServerFilters } from '@components/b2b-theme/catalog';
+import { SpinnerIcon } from '@components/b2b-theme/icons';
 import { rawToTire, normalizeBrand, type RawProduct } from '@components/b2b-theme/showcase-catalog';
 import type { Tire } from '@components/b2b-theme/lib/sample-data';
 
@@ -29,21 +30,26 @@ function seasonRawToKey(raw: string): string | null {
 
 const BOS: ServerFilters = { q: '', marka: '', mevsim: '', dot: '', depo: '' };
 
+type SortState = { field: string; dir: 'asc' | 'desc' } | null;
+
 export function CategoryCatalog({ kategori }: { kategori?: string }) {
     const [products, setUrunler] = useState<Tire[] | null>(null);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
     const [filters, setFilters] = useState<ServerFilters>(BOS);
+    const [sort, setSort] = useState<SortState>(null);
     const [facet, setFacet] = useState<ServerOptions>({ brands: [], seasons: [], dots: [], warehouses: [] });
     const markaLogo = useRef<Record<string, string>>({});
     const firstLoad = useRef(true);
 
     // ── URL ↔ durum ────────────────────────────────────────────────
     // Başlangıç durumunu adres çubuğundan oku (client-only)
-    function readFromUrl(): { page: number; filters: ServerFilters } {
-        if (typeof window === 'undefined') return { page: 1, filters: BOS };
+    function readFromUrl(): { page: number; filters: ServerFilters; sort: SortState } {
+        if (typeof window === 'undefined') return { page: 1, filters: BOS, sort: null };
         const q = new URLSearchParams(window.location.search);
+        const sortField = q.get('sort') || '';
+        const sortDir = q.get('dir') === 'desc' ? 'desc' : 'asc';
         return {
             page: Math.max(1, parseInt(q.get('page') || '1', 10) || 1),
             filters: {
@@ -53,11 +59,12 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                 dot: q.get('dot') || '',
                 depo: q.get('depo') || '',
             },
+            sort: sortField ? { field: sortField, dir: sortDir } : null,
         };
     }
 
     // Durumu adres çubuğuna yaz (Next yeniden render tetiklemeden)
-    function writeUrl(s: number, f: ServerFilters): void {
+    function writeUrl(s: number, f: ServerFilters, srt: SortState): void {
         if (typeof window === 'undefined') return;
         const q = new URLSearchParams();
         if (f.q) q.set('q', f.q);
@@ -65,6 +72,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         if (f.mevsim) q.set('mevsim', f.mevsim);
         if (f.dot) q.set('dot', f.dot);
         if (f.depo) q.set('depo', f.depo);
+        if (srt) { q.set('sort', srt.field); q.set('dir', srt.dir); }
         if (s > 1) q.set('page', String(s));
         const qs = q.toString();
         const url = window.location.pathname + (qs ? `?${qs}` : '');
@@ -98,8 +106,8 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             .catch(() => {});
     }
 
-    // Bir sayfayı verilen filtrelerle çeker (mevcut listeyi bu sayfanınkiyle değiştirir)
-    function loadPage(p: number, f: ServerFilters) {
+    // Bir sayfayı verilen filtre+sıralamayla çeker (sıralama SUNUCUDA, tüm ürünlerde)
+    function loadPage(p: number, f: ServerFilters, srt: SortState) {
         setLoading(true);
         const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(p) });
         if (kategori) params.set('category', kategori);
@@ -108,6 +116,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         if (f.mevsim) params.set('mevsim', SEASON_API[f.mevsim] || f.mevsim);
         if (f.dot) params.set('uretim', f.dot);
         if (f.depo) params.set('depo', f.depo);
+        if (srt) { params.set('sortBy', srt.field); params.set('sortOrder', srt.dir); }
         fetch(`${API_ENDPOINTS.products.filter()}?${params.toString()}`, { headers: { 'X-Site': 'b2b' } })
             .then(r => r.json())
             .then(res => {
@@ -153,6 +162,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         const baslat = readFromUrl();
         setPage(baslat.page);
         setFilters(baslat.filters);
+        setSort(baslat.sort);
         fetch(API_ENDPOINTS.b2b.brands(), { headers: { 'X-Site': 'b2b' } })
             .then(r => r.json())
             .then(brandRes => {
@@ -166,7 +176,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             .catch(() => {})
             .finally(() => {
                 loadFacets();
-                loadPage(baslat.page, baslat.filters);
+                loadPage(baslat.page, baslat.filters, baslat.sort);
                 firstLoad.current = false;
             });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +188,8 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             const s = readFromUrl();
             setPage(s.page);
             setFilters(s.filters);
-            loadPage(s.page, s.filters);
+            setSort(s.sort);
+            loadPage(s.page, s.filters, s.sort);
         }
         window.addEventListener('popstate', geriIleri);
         return () => window.removeEventListener('popstate', geriIleri);
@@ -189,8 +200,8 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
     function changePage(p: number) {
         if (p < 1 || p > totalPages || p === page) return;
         setPage(p);
-        writeUrl(p, filters);
-        loadPage(p, filters);
+        writeUrl(p, filters, sort);
+        loadPage(p, filters, sort);
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -198,12 +209,29 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         const yeni = { ...filters, ...parca };
         setFilters(yeni);
         setPage(1);
-        writeUrl(1, yeni);
-        loadPage(1, yeni);
+        writeUrl(1, yeni, sort);
+        loadPage(1, yeni, sort);
+    }
+
+    // Sütun başlığı: aynı sütun ise yön değişir, farklıysa artan başlar.
+    // Sıralama SUNUCUDA tüm ürünlere uygulanır, 1. sayfaya dönülür, URL'e yazılır.
+    function onSortChange(field: string) {
+        const yeni: SortState =
+            sort && sort.field === field
+                ? { field, dir: sort.dir === 'asc' ? 'desc' : 'asc' }
+                : { field, dir: 'asc' };
+        setSort(yeni);
+        setPage(1);
+        writeUrl(1, filters, yeni);
+        loadPage(1, filters, yeni);
     }
 
     if (products === null) {
-        return <p className="note" style={{ padding: '1rem 0' }}>Ürünler yükleniyor…</p>;
+        return (
+            <p className="note loading-row" style={{ padding: '1rem 0' }}>
+                <SpinnerIcon size={18} className="loading-brand" /> Ürünler yükleniyor…
+            </p>
+        );
     }
     return (
         <Catalog
@@ -216,6 +244,8 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             serverFilters={filters}
             onServerFilterChange={onFilterChange}
             serverOptions={facet}
+            serverSort={sort}
+            onServerSortChange={onSortChange}
         />
     );
 }

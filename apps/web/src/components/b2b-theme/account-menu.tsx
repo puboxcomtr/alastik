@@ -2,18 +2,31 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { API_ENDPOINTS } from "@src/config/api";
 import { CardIcon, OrdersIcon, UserIcon, WalletIcon } from "./icons";
 
-/** Üst bardaki hesap menüsü: ayarlar, siparişler, ödeme, çıkış. */
-export function AccountMenu({
-  email,
-  unvan,
-}: {
-  email: string;
-  unvan: string;
-}) {
+/** Üst bardaki hesap menüsü: oturumdaki cari bilgisi + ayarlar, siparişler, ödeme, çıkış. */
+export function AccountMenu() {
   const [open, setOpen] = useState(false);
+  const [cari, setCari] = useState<{ unvan: string; email: string; cariKodu: string } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Oturumdaki bayinin gerçek cari bilgisi (/me) çekilir.
+  useEffect(() => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!t) return;
+    fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${t}`, "X-Site": "b2b" } })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && res.data) {
+          setCari({ unvan: res.data.name || "", email: res.data.email || "", cariKodu: res.data.cariKodu || "" });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const unvan = cari?.unvan || "Bayi";
+  const email = cari?.email || "";
 
   useEffect(() => {
     if (!open) return;
@@ -38,8 +51,9 @@ export function AccountMenu({
       {open ? (
         <div className="account-menu">
           <div className="kim">
-            <strong>{unvan}</strong>
-            <span>{email}</span>
+            <strong title={unvan}>{unvan}</strong>
+            {email ? <span>{email}</span> : null}
+            {cari?.cariKodu ? <span className="kim-cari">{cari.cariKodu}</span> : null}
           </div>
           <Link href="/cari" onClick={() => setOpen(false)}>
             <WalletIcon size={16} /> Cari Özet

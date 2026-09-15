@@ -25,6 +25,9 @@ export const API_ENDPOINTS = {
         me: () => `${getBaseUrl()}/b2b/auth/me`,
         cariOzet: () => `${getBaseUrl()}/b2b/auth/cari-ozet`,
         depoStok: (codes: string) => `${getBaseUrl()}/b2b/auth/depo-stok?codes=${encodeURIComponent(codes)}`,
+        adresler: () => `${getBaseUrl()}/b2b/auth/adresler`,
+        adresEkle: () => `${getBaseUrl()}/b2b/auth/adres`,
+        odemeYontemleri: () => `${getBaseUrl()}/b2b/auth/odeme-yontemleri`,
     },
     brands: {
         homepage: () => `${getBaseUrl()}/brands/homepage`,

@@ -4,6 +4,7 @@
 // geçersiz oturumda çıkışa zorlanır.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
+import { SpinnerIcon } from '@components/b2b-theme/icons';
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
     const [hazir, setHazir] = useState(false);
@@ -30,8 +31,8 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
 
     if (!hazir) {
         return (
-            <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b6b68' }}>
-                Yükleniyor...
+            <div className="loading-row" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b6b68' }}>
+                <SpinnerIcon size={20} className="loading-brand" /> Yükleniyor...
             </div>
         );
     }

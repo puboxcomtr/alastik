@@ -5,7 +5,8 @@ import { Dropdown } from "@components/b2b-theme/dropdown";
 import { AutoComplete } from "@components/b2b-theme/autocomplete";
 import { SearchForm } from "@components/b2b-theme/search-form";
 import { AddToCart } from "@components/b2b-theme/add-to-cart";
-import { SeasonIcon } from "@components/b2b-theme/icons";
+import { SeasonIcon, SpinnerIcon } from "@components/b2b-theme/icons";
+import { AbLabel } from "@components/b2b-theme/ab-label";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 import {
   TIRES,
@@ -136,7 +137,7 @@ export type ServerFilters = { q: string; marka: string; mevsim: string; dot: str
 
 export function Catalog(
   { products, sabitDurum, title, tabsGizle, serverPage, serverTotalPages, onServerPageChange, serverLoading,
-    serverFilters, onServerFilterChange, serverOptions }: {
+    serverFilters, onServerFilterChange, serverOptions, serverSort, onServerSortChange }: {
     products?: Tire[];
     sabitDurum?: ProductStatus;
     title?: string;
@@ -155,6 +156,10 @@ export function Catalog(
     serverFilters?: ServerFilters;
     onServerFilterChange?: (parca: Partial<ServerFilters>) => void;
     serverOptions?: ServerOptions;
+    /** Kategori sayfası: sütun sıralaması SUNUCUDA (tüm ürünlerde) yapılır ve
+     *  URL'e yansır. Verilirse başlık tıklaması ebeveyne bildirilir. */
+    serverSort?: { field: string; dir: "asc" | "desc" } | null;
+    onServerSortChange?: (field: string) => void;
   } = {},
 ) {
   const source = products ?? TIRES;
@@ -283,8 +288,13 @@ export function Catalog(
     if (serverFiltreli) onServerFilterChange!({ q: "", marka: "", mevsim: "", dot: "", depo: "" });
   }
 
-  /** Sütun başlığına tıklama: aynı sütun ise yön değişir, farklıysa artan başlar. */
+  /** Sütun başlığına tıklama: sunucu modunda ebeveyne bildirilir (tüm ürünler
+   *  sunucuda sıralanır); aksi halde istemcide görünen sayfa sıralanır. */
   function onSortClick(alan: SiralamaAlani): void {
+    if (onServerSortChange) {
+      onServerSortChange(alan);
+      return;
+    }
     setSortState((o) =>
       o && o.alan === alan
         ? { alan, yon: o.yon === "asc" ? "desc" : "asc" }
@@ -295,6 +305,10 @@ export function Catalog(
 
   /** Aktif sıralama sütunundaki ok işareti (▲ artan / ▼ azalan). */
   function sortArrow(alan: SiralamaAlani): string {
+    if (onServerSortChange) {
+      if (!serverSort || serverSort.field !== alan) return "";
+      return serverSort.dir === "asc" ? " ▲" : " ▼";
+    }
     if (!sortState || sortState.alan !== alan) return "";
     return sortState.yon === "asc" ? " ▲" : " ▼";
   }
@@ -382,10 +396,15 @@ export function Catalog(
       </div>
 
       <div className={`tablewrap${serverLoading ? " loading" : ""}`}>
-        {serverLoading ? <div className="table-loading">Filtreleniyor…</div> : null}
+        {serverLoading ? (
+          <div className="table-loading">
+            <SpinnerIcon size={20} className="loading-brand" /> Filtreleniyor…
+          </div>
+        ) : null}
         <table className="data">
           <thead>
             <tr>
+              <th className="gorsel-col">Görsel</th>
               <th className="sortable" onClick={() => onSortClick("stokKodu")}>Stok Kodu{sortArrow("stokKodu")}</th>
               <th className="sortable" onClick={() => onSortClick("ebat")}>Ebat / Model{sortArrow("ebat")}</th>
               <th className="sortable" onClick={() => onSortClick("marka")}>Marka{sortArrow("marka")}</th>
@@ -406,34 +425,35 @@ export function Catalog(
               const fiyat = urun.fiyat;
               return (
                 <tr key={urun.id}>
+                  <td className="gorsel-col">
+                    {urun.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        className="product-image tiklanir"
+                        src={urun.imageUrl}
+                        alt={urun.pattern}
+                        loading="lazy"
+                        onClick={() => setBuyukGorsel(urun.imageUrl)}
+                      />
+                    ) : (
+                      <span className="product-image bos" aria-hidden="true" />
+                    )}
+                  </td>
                   <td className="sku">{urun.stockCode}</td>
                   <td>
-                    <div className="product-cell">
-                      {urun.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          className="product-image tiklanir"
-                          src={urun.imageUrl}
-                          alt={urun.pattern}
-                          loading="lazy"
-                          onClick={() => setBuyukGorsel(urun.imageUrl)}
-                        />
-                      ) : (
-                        <span className="product-image bos" aria-hidden="true" />
-                      )}
-                      <div>
-                        <div className="product-name">
-                          {urun.fullName ? (
-                            urun.fullName
-                          ) : (
-                            <>
-                              {urun.size}
-                              {urun.loadSpeedIndex ? ` ${urun.loadSpeedIndex}` : ""}{" "}
-                              {urun.pattern}
-                            </>
-                          )}
-                        </div>
+                    <div className="ad-etiket-wrap">
+                      <div className="product-name">
+                        {urun.fullName ? (
+                          urun.fullName
+                        ) : (
+                          <>
+                            {urun.size}
+                            {urun.loadSpeedIndex ? ` ${urun.loadSpeedIndex}` : ""}{" "}
+                            {urun.pattern}
+                          </>
+                        )}
                       </div>
+                      {urun.label ? <AbLabel label={urun.label} /> : null}
                     </div>
                   </td>
                   <td>
@@ -509,6 +529,8 @@ export function Catalog(
                           pattern: urun.fullName ?? urun.pattern,
                           stockCode: urun.stockCode,
                           imageUrl: urun.imageUrl,
+                          dotYear: urun.dotYear,
+                          mevsim: urun.mevsim,
                           birimNetKurus: fiyat.birimNetKurus,
                           kdvDahilBirimKurus: fiyat.kdvDahilBirimKurus,
                         }}
@@ -522,7 +544,7 @@ export function Catalog(
             })}
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={9} className="note" style={{ padding: "2rem" }}>
+                <td colSpan={10} className="note" style={{ padding: "2rem" }}>
                   Filtrelere uyan ürün bulunamadı.
                 </td>
               </tr>

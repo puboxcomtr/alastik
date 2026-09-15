@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useCart } from "./cart-status";
 import { showToast } from "./toast";
 import { formatKurus } from "@components/b2b-theme/lib/format";
+import { AnimatedMoney } from "@components/b2b-theme/animated-money";
 import { ArrowRightIcon, CartIcon, CloseIcon, TrashIcon } from "./icons";
 
 /** Üst bardan açılan sepet paneli. */
@@ -69,24 +70,39 @@ export function CartPanel() {
                     >
                       <TrashIcon size={15} />
                     </button>
-                    <div className="marka">
-                      {s.urun.brandLogoUrl ? (
+                    <div className="satir-ust">
+                      {s.urun.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          className="marka-logo"
-                          src={s.urun.brandLogoUrl}
+                          className="satir-gorsel"
+                          src={s.urun.imageUrl}
                           alt={s.urun.marka}
-                          title={s.urun.marka}
+                          loading="lazy"
                         />
                       ) : (
-                        s.urun.marka
+                        <span className="satir-gorsel bos" aria-hidden="true" />
                       )}
-                    </div>
-                    <div className="ad" title={`${s.urun.size} ${s.urun.pattern}`}>
-                      {s.urun.size} {s.urun.pattern}
-                    </div>
-                    <div className="etiketler">
-                      <span className="sku">{s.urun.stockCode}</span>
+                      <div className="satir-bilgi">
+                        <div className="marka">
+                          {s.urun.brandLogoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              className="marka-logo"
+                              src={s.urun.brandLogoUrl}
+                              alt={s.urun.marka}
+                              title={s.urun.marka}
+                            />
+                          ) : (
+                            s.urun.marka
+                          )}
+                        </div>
+                        <div className="ad" title={`${s.urun.size} ${s.urun.pattern}`}>
+                          {s.urun.size} {s.urun.pattern}
+                        </div>
+                        <div className="etiketler">
+                          <span className="sku">{s.urun.stockCode}</span>
+                        </div>
+                      </div>
                     </div>
                     <div className="alt-row">
                       <span className="stepper">
@@ -119,10 +135,10 @@ export function CartPanel() {
                       </span>
                       <div style={{ textAlign: "right" }}>
                         <div className="price-vat">
-                          Birim {formatKurus(s.birimNetKurus)}
+                          Birim {formatKurus(s.kdvDahilBirimKurus)}
                         </div>
                         <div className="price-net">
-                          {formatKurus(s.satirToplamKurus)}
+                          <AnimatedMoney kurus={s.satirToplamKurus} />
                         </div>
                       </div>
                     </div>
@@ -137,9 +153,8 @@ export function CartPanel() {
                   <div className="label" style={{ fontWeight: 700 }}>
                     Toplam Tutar
                   </div>
-                  <div className="note">{sepet.totalQty} adet · KDV dahil</div>
                 </div>
-                <div className="tutar">{formatKurus(sepet.totalKurus)}</div>
+                <div className="tutar"><AnimatedMoney kurus={sepet.totalKurus} /></div>
               </div>
               <div className="aksiyon">
                 <button

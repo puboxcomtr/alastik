@@ -71,7 +71,7 @@ a {
 
 /* Header içeriği, sayfa içeriğiyle (main.page) aynı hizada durur */
 .topnav-inner {
-  max-width: 1240px;
+  max-width: 1480px;
   width: 100%;
   height: 100%;
   margin: 0 auto;
@@ -183,6 +183,7 @@ a {
   right: 0;
   top: calc(100% + 8px);
   min-width: 220px;
+  max-width: 280px;
   background: var(--brand-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -201,11 +202,22 @@ a {
   display: block;
   font-size: 0.85rem;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .account-menu .kim span {
+  display: block;
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.account-menu .kim .kim-cari {
+  margin-top: 0.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
 }
 
 .account-menu a,
@@ -651,6 +663,33 @@ button.linkbtn:hover {
   margin-bottom: 0.75rem;
 }
 
+/* Sepet satırı: görsel + bilgi yan yana (silme butonuna çarpmasın) */
+.drawer .satir .satir-ust {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding-right: 1.6rem;
+}
+
+.drawer .satir .satir-gorsel {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.drawer .satir .satir-gorsel.bos {
+  background: var(--border);
+}
+
+.drawer .satir .satir-bilgi {
+  flex: 1;
+  min-width: 0;
+}
+
 .drawer .satir .marka {
   font-size: 0.72rem;
   letter-spacing: 0.05em;
@@ -964,7 +1003,7 @@ button.linkbtn:hover {
 
 /* ── Sayfa ────────────────────────────────────────────── */
 main.page {
-  max-width: 1240px;
+  max-width: 1480px;
   margin: 0 auto;
   padding: 1rem 1.5rem 4rem;
 }
@@ -1117,6 +1156,17 @@ h2.section {
 .spin {
   animation: donen 0.7s linear infinite;
   transform-origin: center;
+}
+
+/* Yükleniyor göstergesi — dönen ikon sarı (marka rengi) */
+.loading-brand {
+  color: var(--brand-primary);
+}
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 @keyframes donen {
@@ -1461,7 +1511,7 @@ h2.section {
   background: var(--brand-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 table.data {
@@ -1648,8 +1698,111 @@ table.data th.actions-col {
 }
 
 .product-name {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
+  color: #52525b;
+}
+
+/* Ürün adına gelince AB Lastik Etiketi popover'ı */
+.ad-etiket-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* AB etiketi olan ürün adında imleç el (hover'da bilgi çıkar) */
+.ad-etiket-wrap:has(.ab-label-pop) {
+  cursor: pointer;
+}
+
+.ad-etiket-wrap .ab-label-pop {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 300px;
+  padding: 12px 14px;
+  background: var(--brand-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.12s, transform 0.12s;
+  pointer-events: none;
+}
+
+.ad-etiket-wrap:hover .ab-label-pop {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.ab-label-pop .abl-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
+.ab-label-pop .abl-rows {
+  display: flex;
+  gap: 0.9rem;
+}
+
+.ab-label-pop .abl-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.ab-label-pop .abl-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ab-label-pop .abl-name {
+  white-space: nowrap;
+}
+
+.ab-label-pop .abl-ic {
+  display: inline-flex;
+}
+
+.ab-label-pop .abl-ic.wet {
+  color: #2f8fd6;
+}
+
+.ab-label-pop .abl-ic.noise {
+  color: #e0a01b;
+}
+
+.ab-label-pop .abl-ic.fuel {
+  color: #2fa15a;
+}
+
+.ab-label-pop .abl-val {
+  margin-top: 0.15rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* Tabloda görsel sütunu (en başta) — önizleme biraz daha büyük */
+table.data .gorsel-col {
+  width: 92px;
+  text-align: center;
+}
+
+table.data .gorsel-col .product-image {
+  width: 68px;
+  height: 68px;
+  flex: none;
 }
 
 .product-sub {
@@ -2072,6 +2225,649 @@ input.mini {
   padding-top: 0.7rem;
   font-weight: 800;
   font-size: 1.05rem;
+}
+
+/* ── Sepet sayfası: iki kolon (sol içerik / sağ özet) ─────────────── */
+.cart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Sol: teslimat + ödeme yöntemi · Sağ: ürünler + sipariş özeti */
+.cart-left,
+.cart-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+/* Teslimat ile Ödeme Yöntemi cardları arası biraz daha ferah */
+.cart-left {
+  gap: 1.5rem;
+}
+
+/* Teslimat adresi kartı (taslak) */
+.delivery-card .delivery-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.delivery-card .delivery-top .cart-card-title {
+  padding: 0;
+  border-bottom: none;
+}
+
+.delivery-card .delivery-change {
+  border: 1px solid var(--brand-primary);
+  background: var(--primary-soft, #fbf6d4);
+  color: var(--brand-black);
+  font-weight: 700;
+  font-size: 0.82rem;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.delivery-card .delivery-change:hover {
+  background: var(--brand-primary);
+}
+
+.delivery-card .adres-metin.bos {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.delivery-card .delivery-body {
+  padding-top: 0.8rem;
+}
+
+.delivery-card .delivery-name {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.delivery-card .delivery-address {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Adres listesi (DIA cariden) */
+.delivery-card {
+  padding-bottom: 1rem;
+}
+
+.delivery-card .adres-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0.15rem 0.4rem;
+}
+
+.delivery-card .adres-secenek {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.delivery-card .adres-secenek.secili {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 1px var(--brand-primary);
+}
+
+.delivery-card .adres-secenek input[type="radio"] {
+  display: none;
+}
+
+.delivery-card .adres-govde {
+  min-width: 0;
+}
+
+.delivery-card .adres-baslik {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.delivery-card .adres-rozet {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--brand-black);
+  background: var(--primary-soft, #fbf6d4);
+  border: 1px solid var(--brand-primary);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.delivery-card .adres-metin {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-top: 0.15rem;
+  line-height: 1.35;
+}
+
+.delivery-card .adres-alt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+/* Yeni adres formu */
+.delivery-card .delivery-empty {
+  padding: 1.1rem 0.15rem 0.6rem;
+}
+
+/* Adres ekleme popup'ı (modal) */
+.adres-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.adres-modal {
+  width: min(600px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--brand-surface);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: drawer-overlay-in 0.15s ease both;
+}
+
+.adres-modal .adres-modal-head h3 {
+  font-size: 1.15rem;
+}
+
+.adres-modal .adres-form {
+  gap: 0.7rem;
+}
+
+.adres-modal .adres-form input,
+.adres-modal .adres-form textarea,
+.adres-modal .adres-form select {
+  padding: 0.7rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+.adres-modal .adres-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.adres-modal .adres-modal-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.adres-modal .adres-modal-kapat {
+  border: none;
+  background: transparent;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.adres-modal .adres-modal-kapat:hover {
+  color: var(--text);
+}
+
+.adres-modal .adres-form {
+  border-top: none;
+  margin-top: 0;
+  padding: 1.2rem;
+}
+
+.delivery-card .adres-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
+}
+
+.delivery-card .adres-form input,
+.delivery-card .adres-form textarea,
+.delivery-card .adres-form select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--brand-surface);
+}
+
+.delivery-card .adres-form select {
+  cursor: pointer;
+  height: 40px;
+}
+
+/* Tıklayınca odak çerçevesi/outline çıkmasın — sınır sabit kalsın */
+.delivery-card .adres-form input:focus,
+.delivery-card .adres-form textarea:focus,
+.delivery-card .adres-form select:focus {
+  outline: none;
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.delivery-card .adres-form select:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.delivery-card .adres-form-satir {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.delivery-card .adres-form-satir input {
+  flex: 1;
+}
+
+.delivery-card .adres-form .primary {
+  margin-top: 0.2rem;
+}
+
+/* Sol: tek card, ürünler içinde satır satır (aralarında divider) */
+.cart-card {
+  background: var(--brand-surface);
+  border: 1px solid #d3d9df;
+  border-radius: var(--radius);
+  padding: 0.2rem 1.25rem 0.6rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.cart-card .cart-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cart-card .cart-line {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.cart-card .cart-line:first-of-type {
+  border-top: none;
+}
+
+.cart-card .cli-image {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f6f6f4;
+}
+
+.cart-card .cli-image.bos {
+  display: inline-block;
+}
+
+.cart-card .cli-main {
+  min-width: 0;
+}
+
+/* Ürün adı: küçük font, tek satır (taşarsa "…") */
+.cart-card .product-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  color: var(--text);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ürün adının altında: marka + yıl + mevsim ikonu + stok kodu */
+.cart-card .cli-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.cart-card .cli-brand-row .brand-logo {
+  height: 26px;
+  width: auto;
+  max-width: 110px;
+  object-fit: contain;
+}
+
+.cart-card .cli-brand-row .cli-brand-name {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.cart-card .cli-year {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cart-card .cli-sku {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Adet (küçük) + kaldır ikonu — ürün adının altında yan yana */
+.cart-card .cli-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.cart-card .cli-stepper button {
+  width: 26px;
+  height: 28px;
+}
+
+.cart-card .cli-stepper input {
+  width: 32px;
+  height: 28px;
+}
+
+.cart-card .cli-remove {
+  border: 1px solid var(--border);
+  background: var(--brand-surface);
+  color: var(--muted);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cart-card .cli-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Sağ: üstte adet stepper, altında satır toplamı */
+.cart-card .cli-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+/* Adet 1 iken "−" yerine çöp ikonu */
+.cart-card .cli-stepper .stepper-remove {
+  color: var(--muted);
+}
+
+.cart-card .cli-stepper .stepper-remove:hover {
+  color: var(--danger);
+  background: rgba(217, 45, 32, 0.07);
+}
+
+.cart-card .cli-total {
+  font-weight: 800;
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sepetiniz kartının altındaki özet (Ara Toplam / KDV / Toplam) */
+.cart-summary {
+  border-top: 1px solid var(--border);
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+}
+
+.cart-summary .summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.32rem 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-summary .summary-row.grand {
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+  padding-top: 0.7rem;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.cart-summary .summary-warning {
+  margin: 0.8rem 0 0;
+}
+
+.cart-summary .summary-order {
+  width: 100%;
+  margin-top: 0.9rem;
+}
+
+.cart-summary .summary-clear {
+  width: 100%;
+  margin-top: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.4rem;
+}
+
+.cart-summary .summary-clear:hover {
+  color: var(--danger);
+}
+
+/* Ödeme yöntemi kartı (Sepetiniz altında) — seçilebilir kart grid'i.
+   Başlık Teslimat Adresi gibi: alt çizgi (base kuraldan gelir) + grid'e boşluk. */
+.payment-method-card .cart-card-title {
+  margin-bottom: 1.1rem;
+}
+
+.payment-method-card .payment-method-sub {
+  margin: 0.2rem 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  padding-bottom: 0.6rem;
+}
+
+/* Sepet satırında marka iskonto rozeti */
+.cart-line .cli-indirim {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--brand-black);
+  background: var(--primary-soft, #fbf6d4);
+  border: 1px solid var(--brand-primary);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+/* Özet iskonto satırı */
+.cart-summary .summary-row.indirim {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.payment-option {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.payment-option:hover {
+  border-color: #c9d0d6;
+}
+
+.payment-option.secili {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 1px var(--brand-primary);
+}
+
+.payment-option .po-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding-bottom: 0.55rem;
+  margin-bottom: 0.55rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.payment-option .po-top input[type="radio"] {
+  display: none;
+}
+
+.payment-option .po-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.payment-option .po-info .po-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.payment-option .po-discount {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #159c5b;
+}
+
+.payment-option .po-discount-amount {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+@media (max-width: 520px) {
+  .payment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sağdaki sipariş özeti kartı (ürünlerin altında) */
+.summary-card {
+  background: var(--brand-surface);
+  border: 1px solid #d3d9df;
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.summary-card h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 0.8rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.summary-card .summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.32rem 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-card .summary-row.indirim {
+  color: #159c5b;
+  font-weight: 600;
+}
+
+.summary-card .summary-row.grand {
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+  padding-top: 0.7rem;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.summary-card .summary-vat-note {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.summary-card .summary-warning {
+  margin: 0.8rem 0 0;
+}
+
+.summary-card .summary-order {
+  width: 100%;
+  margin-top: 0.9rem;
+}
+
+.summary-card .summary-clear {
+  width: 100%;
+  margin-top: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.4rem;
+}
+
+.summary-card .summary-clear:hover {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .cart-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Login ────────────────────────────────────────────── */
@@ -3251,6 +4047,7 @@ input.mini {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   background: rgba(255, 255, 255, 0.6);
   color: var(--brand-black);
   font-size: 1.05rem;

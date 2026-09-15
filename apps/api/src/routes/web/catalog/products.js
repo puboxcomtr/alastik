@@ -532,7 +532,18 @@ router.get('/filter', async (req, res) => {
         // - Fiyat sıralamasında frontend ile aynı mantık: shippingIncludedPrice > webPrice > fiyat4
         const aggregatePipeline = [{ $match: filter }];
 
-        if (sortBy === 'price') {
+        // b2b tablo sütun başlığı sıralaması (tüm ürünlerde, sayfa bazlı değil)
+        const COLUMN_SORT = {
+            stokKodu: 'diaData.stokkartkodu',
+            ebat: 'diaData.ozelkod3kodu',
+            marka: 'diaData.marka',
+            mevsim: 'diaData.ozelkod1kodu',
+            dot: 'diaData.ekalan5',
+            stok: 'diaData.gercek_stok',
+            sevkiyat: 'syncInfo.syncSource'
+        };
+
+        if (sortBy === 'price' || sortBy === 'fiyat') {
             // Fiyata göre — 2 katman: önce stoklular, sonra stoksuzlar
             aggregatePipeline.push({
                 $addFields: {
@@ -548,6 +559,20 @@ router.get('/filter', async (req, res) => {
             aggregatePipeline.push({
                 $sort: { sortPriority: 1, _sortPrice: sortOrder === 'asc' ? 1 : -1 }
             });
+        } else if (COLUMN_SORT[sortBy]) {
+            const yon = sortOrder === 'desc' ? -1 : 1;
+            if (sortBy === 'stok') {
+                // Stok sıralamasında ÖNCE kendi stoğumuz (dia), SONRA XML ürünleri;
+                // her grup kendi içinde stok adedine göre sıralanır.
+                aggregatePipeline.push({
+                    $addFields: { _isXml: { $cond: [{ $eq: ['$syncInfo.syncSource', 'xml_integration'] }, 1, 0] } }
+                });
+                aggregatePipeline.push({
+                    $sort: { _isXml: 1, 'diaData.gercek_stok': yon, 'diaData.stokkartkodu': 1 }
+                });
+            } else {
+                aggregatePipeline.push({ $sort: { [COLUMN_SORT[sortBy]]: yon, 'diaData.stokkartkodu': 1 } });
+            }
         } else if (sortBy === 'sales') {
             aggregatePipeline.push({ $sort: { 'customData.salesCount': -1, 'diaData.gercek_stok': -1 } });
         } else if (sortBy === 'rating') {

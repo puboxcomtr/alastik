@@ -2,30 +2,51 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ArrowLeftIcon } from "@components/b2b-theme/icons";
+import { useEffect, useState } from "react";
+import { ArrowLeftIcon, SeasonIcon, TrashIcon } from "@components/b2b-theme/icons";
 import { useCart } from "@components/b2b-theme/cart-status";
 import { showToast } from "@components/b2b-theme/toast";
 import { formatKurus } from "@components/b2b-theme/lib/format";
-import { REMAINING_LIMIT_KURUS, VAT_BPS } from "@components/b2b-theme/lib/sample-data";
+import { AnimatedMoney } from "@components/b2b-theme/animated-money";
+import { DeliveryAddress } from "@components/b2b-theme/delivery-address";
+import { REMAINING_LIMIT_KURUS } from "@components/b2b-theme/lib/sample-data";
+import { API_ENDPOINTS } from "@src/config/api";
+import {
+  B2bPricing,
+  computeDiscountedTotals,
+  lineDiscountPct,
+} from "@components/b2b-theme/lib/payment-pricing";
 
 export default function SepetPage() {
   const sepet = useCart();
   const router = useRouter();
-  const [paymentType, setPaymentType] = useState<"vadeli" | "pesin">("vadeli");
+  const [pricing, setPricing] = useState<B2bPricing | null>(null);
+  const [paymentId, setPaymentId] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const limitAsimi = sepet.totalKurus > REMAINING_LIMIT_KURUS;
+  // Ödeme yöntemleri + marka bazlı iskonto haritası (carinin segmentine göre)
+  useEffect(() => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!t) return;
+    fetch(API_ENDPOINTS.b2b.odemeYontemleri(), {
+      headers: { Authorization: `Bearer ${t}`, "X-Site": "b2b" },
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && res.data) {
+          setPricing(res.data);
+          setPaymentId((prev) => prev || res.data.methods?.[0]?.id || "");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const totals = computeDiscountedTotals(sepet.lines, pricing, paymentId);
+  const limitExceeded = totals.totalKurus > REMAINING_LIMIT_KURUS;
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Sepetim</h1>
-          <p className="sub">
-            Tutarlar örnek fiyat listesinden hesaplanır.
-          </p>
-        </div>
+      <div className="page-head" style={{ justifyContent: "flex-end" }}>
         <Link className="btn-ghost" href="/lastik">
           <ArrowLeftIcon size={15} /> Alışverişe devam
         </Link>
@@ -46,47 +67,114 @@ export default function SepetPage() {
           </p>
         </div>
       ) : (
-        <>
-          <div className="tablewrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Ürün</th>
-                  <th>Depo</th>
-                  <th>Adet</th>
-                  <th className="num">Birim Net</th>
-                  <th className="num">Matrah</th>
-                  <th className="num">KDV</th>
-                  <th className="num">Satır Toplam</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sepet.lines.map((s) => (
-                  <tr key={`${s.productId}:${s.warehouseId}`}>
-                    <td>
-                      <div className="product-name">
+        <div className="cart-layout">
+          {/* SOL: teslimat adresi + ödeme yöntemi */}
+          <div className="cart-left">
+            <DeliveryAddress />
+
+            <div className="cart-card payment-method-card">
+              <h2 className="cart-card-title">Ödeme Yöntemi</h2>
+              {pricing && pricing.methods.length > 0 ? (
+                <div className="payment-grid">
+                  {pricing.methods.map((m) => {
+                    const ind = computeDiscountedTotals(sepet.lines, pricing, m.id).indirimToplamKurus;
+                    const secili = m.id === paymentId;
+                    return (
+                      <label
+                        key={m.id}
+                        className={`payment-option${secili ? " secili" : ""}`}
+                      >
+                        <div className="po-top">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            checked={secili}
+                            onChange={() => setPaymentId(m.id)}
+                          />
+                          <div className="po-info">
+                            <div className="po-title">{m.title}</div>
+                          </div>
+                        </div>
+                        <div className="po-discount">
+                          {m.discountPct > 0 ? `İskonto %${m.discountPct}` : "İskonto yok"}
+                        </div>
+                        {ind > 0 ? (
+                          <div className="po-discount-amount">≈ {formatKurus(ind)} indirim</div>
+                        ) : null}
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="note" style={{ padding: "0.6rem 0" }}>
+                  {pricing ? "Bu cari için tanımlı ödeme yöntemi bulunamadı." : "Ödeme yöntemleri yükleniyor…"}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* SAĞ: ürünler + sipariş özeti */}
+          <aside className="cart-right">
+            <div className="cart-card">
+              <h2 className="cart-card-title">Sepetiniz</h2>
+              {sepet.lines.map((s) => {
+                const disc = lineDiscountPct(pricing, s.urun.marka, paymentId);
+                const satirKurus = Math.round(s.kdvDahilBirimKurus * s.adet * (1 - disc / 100));
+                return (
+                  <div className="cart-line" key={`${s.productId}:${s.warehouseId}`}>
+                    {s.urun.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="cli-image" src={s.urun.imageUrl} alt={s.urun.marka} loading="lazy" />
+                    ) : (
+                      <span className="cli-image bos" aria-hidden="true" />
+                    )}
+
+                    <div className="cli-main">
+                      <div className="product-name" title={`${s.urun.size} ${s.urun.pattern}`}>
                         {s.urun.size} {s.urun.pattern}
                       </div>
-                      <div className="sku">
-                        {s.urun.marka} · {s.urun.stockCode}
+
+                      <div className="cli-brand-row">
+                        {s.urun.brandLogoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className="brand-logo" src={s.urun.brandLogoUrl} alt={s.urun.marka} title={s.urun.marka} />
+                        ) : (
+                          <strong className="cli-brand-name">{s.urun.marka}</strong>
+                        )}
+                        {s.urun.dotYear ? <span className="cli-year">{s.urun.dotYear}</span> : null}
+                        <SeasonIcon mevsim={s.urun.mevsim} size={16} />
+                        <span className="cli-sku">{s.urun.stockCode}</span>
+                        {disc > 0 ? <span className="cli-indirim">%{disc} iskonto</span> : null}
                       </div>
-                    </td>
-                    <td>
-                      <span className="badge info">{s.warehouseName}</span>
-                    </td>
-                    <td>
-                      <span className="stepper acikta">
-                        <button
-                          type="button"
-                          aria-label="Azalt"
-                          onClick={() => {
-                            sepet.setQty(s.productId, s.warehouseId, s.adet - 1);
-                            showToast(s.adet - 1 <= 0 ? "Sepetten çıkarıldı" : "Adet güncellendi", "bilgi");
-                          }}
-                        >
-                          −
-                        </button>
+                    </div>
+
+                    <div className="cli-right">
+                      <span className="stepper acikta cli-stepper">
+                        {s.adet === 1 ? (
+                          <button
+                            type="button"
+                            className="stepper-remove"
+                            aria-label="Kaldır"
+                            title="Kaldır"
+                            onClick={() => {
+                              sepet.removeItem(s.productId, s.warehouseId);
+                              showToast("Sepetten çıkarıldı", "bilgi");
+                            }}
+                          >
+                            <TrashIcon size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label="Azalt"
+                            onClick={() => {
+                              sepet.setQty(s.productId, s.warehouseId, s.adet - 1);
+                              showToast("Adet güncellendi", "bilgi");
+                            }}
+                          >
+                            −
+                          </button>
+                        )}
                         <input readOnly value={s.adet} aria-label="Adet" tabIndex={-1} />
                         <button
                           type="button"
@@ -99,91 +187,64 @@ export default function SepetPage() {
                           +
                         </button>
                       </span>
-                    </td>
-                    <td className="num">{formatKurus(s.birimNetKurus)}</td>
-                    <td className="num">{formatKurus(s.matrahKurus)}</td>
-                    <td className="num">
-                      {formatKurus(s.kdvKurus)}
-                      <div className="price-vat">%{VAT_BPS / 100}</div>
-                    </td>
-                    <td className="num">
-                      <strong>{formatKurus(s.satirToplamKurus)}</strong>
-                    </td>
-                    <td>
-                      <button
-                        className="danger-outline"
-                        type="button"
-                        onClick={() => {
-                          sepet.removeItem(s.productId, s.warehouseId);
-                          showToast("Sepetten çıkarıldı", "bilgi");
-                        }}
-                      >
-                        Kaldır
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div className="cli-total"><AnimatedMoney kurus={satirKurus} /></div>
+                    </div>
+                  </div>
+                );
+              })}
 
-          <div className="totals">
-            <div className="row">
-              <span>Matrah (KDV hariç)</span>
-              <span>{formatKurus(sepet.matrahToplamKurus)}</span>
-            </div>
-            <div className="row">
-              <span>KDV</span>
-              <span>{formatKurus(sepet.kdvToplamKurus)}</span>
-            </div>
-            <div className="row grand">
-              <span>Genel Toplam</span>
-              <span>{formatKurus(sepet.totalKurus)}</span>
-            </div>
-          </div>
+              {/* Sepetiniz kartının altında özet */}
+              <div className="cart-summary">
+                <div className="summary-row">
+                  <span>Ara Toplam</span>
+                  <span><AnimatedMoney kurus={totals.matrahToplamKurus} /></span>
+                </div>
+                <div className="summary-row">
+                  <span>KDV</span>
+                  <span><AnimatedMoney kurus={totals.kdvToplamKurus} /></span>
+                </div>
+                {totals.indirimToplamKurus > 0 ? (
+                  <div className="summary-row indirim">
+                    <span>İskonto</span>
+                    <span>− <AnimatedMoney kurus={totals.indirimToplamKurus} /></span>
+                  </div>
+                ) : null}
+                <div className="summary-row grand">
+                  <span>Toplam</span>
+                  <span><AnimatedMoney kurus={totals.totalKurus} /></span>
+                </div>
 
-          {limitAsimi ? (
-            <div className="alert warn" style={{ marginTop: "1rem" }}>
-              Sepet toplamı kalan kredi limitinizi (
-              {formatKurus(Math.max(0, REMAINING_LIMIT_KURUS))}) aşıyor. Limit
-              artışı için bizimle iletişime geçebilirsiniz.
-            </div>
-          ) : null}
+                {limitExceeded ? (
+                  <div className="alert warn summary-warning">
+                    Sepet toplamı kalan kredi limitinizi (
+                    {formatKurus(Math.max(0, REMAINING_LIMIT_KURUS))}) aşıyor.
+                  </div>
+                ) : null}
 
-          <div className="actions-row" style={{ justifyContent: "space-between", marginTop: "1rem" }}>
-            <button
-              className="danger-outline"
-              type="button"
-              onClick={() => {
-                sepet.clear();
-                showToast("Sepetiniz temizlendi", "bilgi");
-              }}
-            >
-              Sepeti Temizle
-            </button>
-            <div className="actions-row" style={{ justifyContent: "flex-end" }}>
-            <select
-              className="mini"
-              value={paymentType}
-              onChange={(e) =>
-                setPaymentType(e.target.value === "pesin" ? "pesin" : "vadeli")
-              }
-            >
-              <option value="vadeli">Vadeli (cari vadeniz)</option>
-              <option value="pesin">Peşin</option>
-            </select>
-            <button
-              className="primary"
-              onClick={() => {
-                setSubmitted(true);
-                router.push("/siparisler");
-              }}
-            >
-              Sipariş Ver
-            </button>
+                <button
+                  className="primary summary-order"
+                  onClick={() => {
+                    setSubmitted(true);
+                    router.push("/siparisler");
+                  }}
+                >
+                  Sipariş Ver
+                </button>
+
+                <button
+                  className="summary-clear"
+                  type="button"
+                  onClick={() => {
+                    sepet.clear();
+                    showToast("Sepetiniz temizlendi", "bilgi");
+                  }}
+                >
+                  Sepeti Temizle
+                </button>
+              </div>
             </div>
-          </div>
-        </>
+          </aside>
+        </div>
       )}
     </>
   );

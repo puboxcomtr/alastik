@@ -119,6 +119,7 @@ const DiaStockSchema = new mongoose.Schema({
   fiyat2: Number,
   fiyat3: Number,
   fiyat4: Number,
+  fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
   fiyat10: Number,
   sontuketicifiyati: Number,
 
@@ -238,6 +239,7 @@ const DiaStockSchema = new mongoose.Schema({
     fiyat2: Number,
     fiyat3: Number,
     fiyat4: Number,
+    fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
     fiyat10: Number,
     kdvdurumu1: String,
     kdvdurumu2: String,

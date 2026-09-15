@@ -994,7 +994,11 @@ class DiaOrderService {
             // Açıklama düzeni siparişle aynıdır (3-4 Eyl isteği, iki site ortak):
             //   1: sipariş no  2: siparişi veren  3: SİTE ADI - Ödeme Sağlayıcı - Teslim Şekli
             aciklama1: order.orderNumber,
-            aciklama2: (order.customerName || order.billingSnapshot?.fullName || '').trim(),
+            aciklama2: (order.customerName
+                || order.billingSnapshot?.fullName
+                || order.shippingSnapshot?.fullName
+                || order.billingSnapshot?.companyName
+                || '').trim(),
             aciklama3: [SITES[this.site]?.name || this.site, this.getPaymentMethodLabel(order), DIA_DELIVERY_LABEL]
                 .filter(Boolean)
                 .join(' - '),

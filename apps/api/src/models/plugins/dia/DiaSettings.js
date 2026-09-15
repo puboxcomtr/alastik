@@ -12,6 +12,12 @@ const webDiaSchema = new mongoose.Schema({
     firmaKodu: { type: Number, default: 1 },
     donemKodu: { type: Number, default: 2 },
 
+    // Web (b2c) stoğunun hesaplanacağı depo key'leri (virgülle). Boşsa DIA'nın
+    // tüm-depo toplamı kullanılır. Dolu ise ürün stoğu YALNIZ bu depoların
+    // toplamıdır (ör. MASLAK,MERKEZ) — E-Ticaret/Toptan gibi depolar sayılmaz.
+    // XML/XMLA (tedarikçi) ürünleri bu daraltmadan etkilenmez.
+    webStokDepolari: { type: String, default: '' },
+
     // Sipariş Entegrasyonu
     siparis: {
         // Vitrinde oluşan siparişin DIA'ya gönderilmesi açık mı

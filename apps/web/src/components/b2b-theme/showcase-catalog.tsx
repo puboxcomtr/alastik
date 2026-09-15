@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { Catalog } from '@components/b2b-theme/catalog';
+import { SpinnerIcon } from '@components/b2b-theme/icons';
 import type { Tire, Season, ProductStatus } from '@components/b2b-theme/lib/sample-data';
 
 export interface RawProduct {
@@ -20,7 +21,8 @@ export interface RawProduct {
         ekalan5?: string; // üretim yılı (DOT) — sıfır ve 2.El lastikte dolu, ör. "2026"
         m_kategoriler?: { kategori_aciklama_1?: string }[];
         m_resimler?: { aws_url?: string }[];
-        m_birimler?: { fiyat4?: string | number }[];
+        m_birimler?: { fiyat4?: string | number; fiyat4Ham?: string | number }[];
+        m_urunOzellikleri?: { ozellikadi?: string; detayaciklama?: string }[];
     };
     customData?: { seoUrl?: string; webPrice?: number; shippingIncludedPrice?: number; featuredImage?: string; delivery?: string };
     syncInfo?: { syncSource?: string };
@@ -77,21 +79,41 @@ export function normalizeBrand(s: string): string {
 }
 
 export function rawToTire(u: RawProduct, brandLogo: Record<string, string>): Tire {
-    // Fiyat kaynağı: XML üründe webPrice, kendi DIA ürünümüzde m_birimler[0].fiyat4
-    // (satış fiyatı). Değer KDV dahil kabul edilir; KDV hariç net = /1.2.
+    // Fiyat kaynağı: XML üründe webPrice; kendi DIA ürünümüzde F4 TOPTAN fiyatı
+    // = m_birimler[0].fiyat4Ham (DIA ham fiyat4). fiyat4 alanı ALastik/B2C için
+    // __dinamik__16 ile ezilir; b2b/toptan ham fiyatı kullanmalı. Ham yoksa
+    // (henüz senkronlanmadıysa) fiyat4'e düşülür. Değer KDV dahil; net = /1.2.
     const satisFiyat = Number(u.customData?.webPrice)
+        || Number(u.diaData?.m_birimler?.[0]?.fiyat4Ham)
         || Number(u.diaData?.m_birimler?.[0]?.fiyat4)
         || 0;
     const netKurus = satisFiyat > 0 ? Math.round((satisFiyat / 1.2) * 100) : 0;
     const kdvDahilKurus = satisFiyat > 0 ? Math.round(satisFiyat * 100) : 0;
     const stok = Number(u.diaData?.gercek_stok || 0);
+    // XML (tedarikçi) ürünlerinin fiziksel deposu yok; stok "Fabrika" olarak
+    // etiketlenir (kendi stokta "Merkez"; canlı depo verisi gelince değişir).
+    const isXmlProduct = u.syncInfo?.syncSource === 'xml_integration';
     const durum: ProductStatus = isSecondHand(u) ? 'ikinciEl' : 'sifir';
     const ad = u.diaData?.aciklama || '';
 
     const brandName = u.diaData?.marka || '';
     const logo = brandLogo[normalizeBrand(brandName)] || null;
 
+    // AB Lastik Etiketi — DIA ürün özelliklerinden (boş olanlar atlanır)
+    const ozellik = (ad2: string): string => {
+        const v = (u.diaData?.m_urunOzellikleri || [])
+            .find(o => (o.ozellikadi || '').trim() === ad2)?.detayaciklama;
+        return String(v || '').trim();
+    };
+    const label = {
+        yolTutus: ozellik('Islak Zeminde Frenleme'),
+        yakit: ozellik('Yakıt Verimliliği'),
+        gurultu: ozellik('Gürültü Seviyesi'),
+    };
+    const hasLabel = Boolean(label.yolTutus || label.yakit || label.gurultu);
+
     return {
+        label: hasLabel ? label : undefined,
         id: u._key,
         stockCode: (u.diaData?.stokkartkodu || u._key).replace(/-XML$/i, ''),
         marka: brandName,
@@ -113,7 +135,11 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>): Tir
         imageUrl: u.customData?.featuredImage || u.diaData?.m_resimler?.[0]?.aws_url || null,
         sevkiyat: resolveShipping(u),
         slug: u.customData?.seoUrl || (u.diaData?.stokkartkodu || u._key),
-        stocks: [{ warehouseId: 'merkez', warehouseName: 'Merkez', available: stok }],
+        stocks: [{
+            warehouseId: isXmlProduct ? 'fabrika' : 'merkez',
+            warehouseName: isXmlProduct ? 'Fabrika' : 'Merkez',
+            available: stok,
+        }],
         fiyat: netKurus > 0
             ? { listeBirimKurus: kdvDahilKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste' }
             : null,
@@ -180,7 +206,11 @@ export function ShowcaseCatalog() {
     }, []);
 
     if (products === null) {
-        return <p className="note" style={{ padding: '1rem 0' }}>Ürünler yükleniyor…</p>;
+        return (
+            <p className="note loading-row" style={{ padding: '1rem 0' }}>
+                <SpinnerIcon size={18} className="loading-brand" /> Ürünler yükleniyor…
+            </p>
+        );
     }
 
     // Sekmeli tek katalog: "Sıfır Lastik" sekmesi sıfır ürünleri, "2.El Lastik"

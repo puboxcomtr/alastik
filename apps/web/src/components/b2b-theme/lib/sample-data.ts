@@ -64,6 +64,8 @@ export type Tire = {
   sevkiyat?: string;
   /** Ürün detay sayfası slug'ı (customData.seoUrl); yoksa stok kodu. */
   slug?: string;
+  /** AB Lastik Etiketi (yalnız dolu alanlar). Hepsi boşsa alan tanımsızdır. */
+  label?: { yolTutus?: string; yakit?: string; gurultu?: string };
 };
 
 export type Rim = {
@@ -586,6 +588,24 @@ export const INSTALLMENT_OPTIONS: InstallmentOption[] = [
       { adet: 12, aciklama: "Vade farkı uygulanır" },
     ],
   },
+];
+
+/**
+ * Sepet ödeme yöntemleri (bayiye özel iskontolarla). discountBps = binde
+ * (800 = %8.00). indirim tutarı sepet toplamından hesaplanır.
+ * NOT: Şablon verisidir; gerçekte panelden/cari koşullarından gelmeli.
+ */
+export type PaymentMethod = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  discountBps: number;
+};
+
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  { id: "kk-tek", title: "Anında K.K. Tek Çekim", discountBps: 800 },
+  { id: "kk-taksit", title: "Anında Kredi Kartı Taksit", discountBps: 600 },
+  { id: "premium-30", title: "Premium Bayi Özel 30 Gün", subtitle: "30 Gün", discountBps: 700 },
 ];
 
 /* ─────────────────────────── Yardımcılar ─────────────────────────── */

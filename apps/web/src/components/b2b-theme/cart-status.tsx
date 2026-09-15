@@ -13,6 +13,7 @@ import {
   VAT_BPS,
   TIRES,
   type Rim,
+  type Season,
   type Tire,
 } from "@components/b2b-theme/lib/sample-data";
 
@@ -37,6 +38,8 @@ export type CartSnapshot = {
   pattern: string;
   stockCode: string;
   imageUrl?: string | null;
+  dotYear?: number | null;
+  mevsim?: Season;
   birimNetKurus: number; // KDV hariç birim fiyat
   kdvDahilBirimKurus: number;
   warehouseName?: string;
@@ -59,12 +62,15 @@ export type CartLineProduct = {
   size: string;
   pattern: string;
   imageUrl: string | null;
+  dotYear: number | null;
+  mevsim: Season;
 };
 
 export type CartLine = CartRecord & {
   urun: CartLineProduct;
   warehouseName: string;
   birimNetKurus: number;
+  kdvDahilBirimKurus: number; // KDV dahil birim fiyat (b2b'de gösterilen)
   matrahKurus: number;
   kdvKurus: number;
   satirToplamKurus: number;
@@ -77,20 +83,20 @@ type CartState = {
   matrahToplamKurus: number;
   kdvToplamKurus: number;
   totalKurus: number;
-  addItem: (kayit: CartRecord) => void;
+  addItem: (record: CartRecord) => void;
   setQty: (productId: string, warehouseId: string, adet: number) => void;
   removeItem: (productId: string, warehouseId: string) => void;
   clear: () => void;
   find: (productId: string) => CartRecord | null;
 };
 
-const Baglam = createContext<CartState | null>(null);
+const CartContext = createContext<CartState | null>(null);
 
 function findProduct(id: string): Tire | Rim | undefined {
   return TIRES.find((l) => l.id === id) ?? RIMS.find((j) => j.id === id);
 }
 
-function kayitlariOku(): CartRecord[] {
+function readRecords(): CartRecord[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(CART_STORAGE_KEY);
@@ -111,18 +117,18 @@ function kayitlariOku(): CartRecord[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [records, setKayitlar] = useState<CartRecord[]>([]);
+  const [records, setRecords] = useState<CartRecord[]>([]);
 
   // Sunucuda ve ilk çizimde boş başlanır; kayıtlar bağlanmadan sonra okunur ki
   // sunucu çıktısı ile istemci çıktısı ayrışmasın (hydration uyuşmazlığı).
   useEffect(() => {
-    setKayitlar(kayitlariOku());
+    setRecords(readRecords());
   }, []);
 
-  const yaz = useCallback((yeni: CartRecord[]) => {
-    setKayitlar(yeni);
+  const writeRecords = useCallback((nextRecords: CartRecord[]) => {
+    setRecords(nextRecords);
     try {
-      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(yeni));
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextRecords));
     } catch {
       // Depolama kapalıysa sepet yalnızca bu sekmede yaşar; hata gösterilmez.
     }
@@ -146,9 +152,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               size: s.size,
               pattern: s.pattern,
               imageUrl: s.imageUrl ?? null,
+              dotYear: s.dotYear ?? null,
+              mevsim: s.mevsim ?? "yaz",
             },
             warehouseName: s.warehouseName ?? "—",
             birimNetKurus: s.birimNetKurus,
+            kdvDahilBirimKurus: s.kdvDahilBirimKurus,
             matrahKurus: matrah,
             kdvKurus: kdv,
             satirToplamKurus: matrah + kdv,
@@ -172,9 +181,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             size: urun.size,
             pattern: urun.pattern,
             imageUrl: urun.imageUrl ?? null,
+            dotYear: "dotYear" in urun ? urun.dotYear : null,
+            mevsim: "mevsim" in urun ? urun.mevsim : "yaz",
           },
           warehouseName: depo?.warehouseName ?? "—",
           birimNetKurus: urun.fiyat.birimNetKurus,
+          kdvDahilBirimKurus: urun.fiyat.kdvDahilBirimKurus,
           matrahKurus: matrah,
           kdvKurus: kdv,
           satirToplamKurus: matrah + kdv,
@@ -188,32 +200,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return {
       records,
       lines,
-      totalQty: records.reduce((t, k) => t + k.adet, 0),
+      // Badge/sayaç: yalnız GÖRÜNEN satırlardan (çözülemeyen eski kayıtlar sayılmaz)
+      totalQty: lines.reduce((t, s) => t + s.adet, 0),
       matrahToplamKurus: matrahToplam,
       kdvToplamKurus: kdvToplam,
       totalKurus: matrahToplam + kdvToplam,
-      addItem: (kayit) => {
-        const mevcut = records.find(
-          (k) => k.productId === kayit.productId && k.warehouseId === kayit.warehouseId,
+      addItem: (record) => {
+        const existing = records.find(
+          (k) => k.productId === record.productId && k.warehouseId === record.warehouseId,
         );
-        yaz(
-          mevcut
+        writeRecords(
+          existing
             ? records.map((k) =>
-                k === mevcut ? { ...k, adet: k.adet + kayit.adet } : k,
+                k === existing ? { ...k, adet: k.adet + record.adet } : k,
               )
-            : [...records, kayit],
+            : [...records, record],
         );
       },
       setQty: (productId, warehouseId, adet) => {
         if (adet <= 0) {
-          yaz(
+          writeRecords(
             records.filter(
               (k) => !(k.productId === productId && k.warehouseId === warehouseId),
             ),
           );
           return;
         }
-        yaz(
+        writeRecords(
           records.map((k) =>
             k.productId === productId && k.warehouseId === warehouseId
               ? { ...k, adet }
@@ -222,22 +235,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         );
       },
       removeItem: (productId, warehouseId) => {
-        yaz(
+        writeRecords(
           records.filter(
             (k) => !(k.productId === productId && k.warehouseId === warehouseId),
           ),
         );
       },
-      clear: () => yaz([]),
+      clear: () => writeRecords([]),
       find: (productId) => records.find((k) => k.productId === productId) ?? null,
     };
-  }, [records, yaz]);
+  }, [records, writeRecords]);
 
-  return <Baglam.Provider value={value}>{children}</Baglam.Provider>;
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart(): CartState {
-  const value = useContext(Baglam);
+  const value = useContext(CartContext);
   if (!value) throw new Error("useSepet, SepetSaglayici içinde kullanılmalı");
   return value;
 }

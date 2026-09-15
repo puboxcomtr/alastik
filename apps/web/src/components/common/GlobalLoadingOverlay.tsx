@@ -54,9 +54,9 @@ export default function GlobalLoadingOverlay() {
             }}
         >
             <div
-                className="spinner-border text-primary"
+                className="spinner-border"
                 role="status"
-                style={{ width: '3rem', height: '3rem' }}
+                style={{ width: '3rem', height: '3rem', color: 'var(--brand-primary, #0d6efd)' }}
             >
                 <span className="visually-hidden">Yükleniyor...</span>
             </div>

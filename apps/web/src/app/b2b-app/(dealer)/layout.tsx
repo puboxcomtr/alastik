@@ -5,7 +5,6 @@ import { NavLinks } from "@components/b2b-theme/nav-links";
 import { CartPanel } from "@components/b2b-theme/cart-panel";
 import { CartProvider } from "@components/b2b-theme/cart-status";
 import { SessionGate } from "@components/b2b-theme/session-gate";
-import { DEALER } from "@components/b2b-theme/lib/sample-data";
 import { API_ENDPOINTS } from "@src/config/api";
 
 type MenuKaydi = {
@@ -93,7 +92,7 @@ export default async function DealerLayout({
             ]}
           />
           <div className="right">
-            <AccountMenu email={DEALER.eposta} unvan={DEALER.kisaUnvan} />
+            <AccountMenu />
             <CartPanel />
           </div>
         </div>

@@ -17,6 +17,7 @@ const diaUnitSchema = new mongoose.Schema({
     fiyat2: Number,
     fiyat3: Number,
     fiyat4: Number,
+    fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
     fiyat10: Number,
     kdvdurumu1: String,
     kdvdurumu2: String,
@@ -194,6 +195,8 @@ const customDataSchema = new mongoose.Schema({
     seoDescription: String,
     seoUrl: { type: String, sparse: true },
     seoKeywords: [String],
+    // SEO analizi: bu içeriğin hedeflediği odak anahtar kelime
+    focusKeyword: String,
 
     // Web Görünüm
     webOrder: { type: Number, default: 0 },

@@ -140,6 +140,7 @@ class DiaStockService {
         this.diaApiConfig.password = settings.password;
         this.diaApiConfig.firmaKodu = settings.firmaKodu;
         this.diaApiConfig.donemKodu = settings.donemKodu;
+        this.diaApiConfig.webStokDepolari = settings.webStokDepolari || '';
         this.logger.info('DIA config DB\'den yüklendi', {
           baseURL: settings.baseURL,
           firmaKodu: settings.firmaKodu,
@@ -370,6 +371,11 @@ class DiaStockService {
         } : null
       });
 
+      // Web stoğu daraltması: gercek_stok/fiili_stok yalnız ayardaki depoların
+      // (ör. MASLAK,MERKEZ) toplamına indirilir; E-Ticaret/Toptan gibi depolar
+      // web'de satılabilir sayılmaz. XML/XMLA (tedarikçi) ürünleri hariç.
+      stockData = await this.applyWebStockDepots(stockData, sessionId, params);
+
       return stockData;
 
     } catch (error) {
@@ -400,6 +406,89 @@ class DiaStockService {
       throw error;
     }
   }
+
+  /** Web stoğunun hesaplanacağı depo key'leri (ayardan; boşsa []). */
+  getWebStockDepots() {
+    return String(this.diaApiConfig.webStokDepolari || '')
+      .split(',')
+      .map(x => parseInt(String(x).trim()))
+      .filter(Boolean);
+  }
+
+  /**
+   * Verilen stok kodlarının TEK depodaki gercek_stok/fiili_stok'unu döner.
+   * { stokkartkodu: { gercek, fiili } } — depo filtreli tek DIA çağrısı.
+   */
+  async fetchDepotStockMap(sessionId, codes, depoKey) {
+    if (!Array.isArray(codes) || codes.length === 0) return {};
+    const payload = {
+      scf_stokkart_detay_listele: {
+        session_id: sessionId,
+        firma_kodu: this.diaApiConfig.firmaKodu,
+        donem_kodu: this.diaApiConfig.donemKodu,
+        filters: [{ field: 'stokkartkodu', operator: 'IN', value: codes.join(',') }],
+        sorts: '',
+        params: { _key_sis_depo: depoKey, _key_sis_depo_filtre: depoKey, tarih: '2099-12-31' },
+        fields: ['_key', 'stokkartkodu', 'gercek_stok', 'fiili_stok'],
+        limit: codes.length,
+        offset: 0,
+        _cache_bypass: Date.now(),
+        nocache: true
+      }
+    };
+    const endpoint = `${this.diaApiConfig.baseURL}/api/v3/scf/json`;
+    const resp = await this.axiosInstance.post(endpoint, payload);
+    const map = {};
+    if (resp?.data?.code === '200') {
+      for (const r of (resp.data.result || [])) {
+        if (r?.stokkartkodu) {
+          map[String(r.stokkartkodu)] = {
+            gercek: parseFloat(r.gercek_stok) || 0,
+            fiili: parseFloat(r.fiili_stok) || 0
+          };
+        }
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Batch'teki (kendi stok) ürünlerin gercek_stok/fiili_stok'unu, ayardaki
+   * depoların (webStokDepolari, ör. MASLAK+MERKEZ) toplamına indirir.
+   * Ayar boşsa veya batch boşsa dokunmaz. XML/XMLA ürünleri hariç tutulur —
+   * onların stoğu bu depolarda tutulmaz, tedarikçi stoğuyla yönetilir.
+   */
+  async applyWebStockDepots(stockData, sessionId, params) {
+    const depots = this.getWebStockDepots();
+    if (!depots.length || !Array.isArray(stockData) || stockData.length === 0) return stockData;
+
+    const hedef = stockData.filter(it => it?.stokkartkodu && !String(it.stokkartkodu).includes('-XML'));
+    if (!hedef.length) return stockData;
+
+    const codes = [...new Set(hedef.map(it => String(it.stokkartkodu)))];
+    try {
+      const maps = [];
+      for (const depoKey of depots) {
+        maps.push(await this.fetchDepotStockMap(sessionId, codes, depoKey));
+      }
+      for (const item of hedef) {
+        const kod = String(item.stokkartkodu);
+        let gercek = 0, fiili = 0;
+        for (const m of maps) { const v = m[kod]; if (v) { gercek += v.gercek; fiili += v.fiili; } }
+        item.gercek_stok = gercek;
+        item.fiili_stok = fiili;
+      }
+      this.logger.info('Web stoğu depo bazına indirildi (webStokDepolari)', {
+        depots, urunAdedi: hedef.length
+      });
+    } catch (e) {
+      // Depo stoğu çekilemezse ürünü stoksuz göstermek yerine mevcut (toplam)
+      // stoğu korumak daha güvenli — senkron devam etsin.
+      this.logger.warn('Web stoğu depo daraltması yapılamadı, toplam stok korunuyor', { error: e.message });
+    }
+    return stockData;
+  }
+
   /**
    * Batch halinde stok verilerini getir *
    */
@@ -1301,6 +1390,9 @@ class DiaStockService {
    */
   generateProductHash(product) {
     const hashData = {
+      // Sürüm damgası: fiyat4Ham (b2b toptan) alanı eklendiğinde tüm ürünlerin
+      // bir kez yeniden işlenip bu alanın doldurulması için hash'i değiştirir.
+      _hashSurumu: 'b2b-fiyat4ham-v1',
       stokkartkodu: product.stokkartkodu || '',
       aciklama: product.aciklama || '',
       anabarkod: product.anabarkod || '',
@@ -1984,6 +2076,14 @@ class DiaStockService {
       }
     });
 
+    // Ham fiyat4 (DIA'nın gerçek F4 toptan fiyatı) — b2b/toptan bunu kullanır.
+    // __dinamik__16 ise ALastik (B2C) dinamik fiyatıdır; yalnız B2C fiyat4'ünü ezer.
+    let hamFiyat4 = 0;
+    if (item.fiyat4 !== undefined && item.fiyat4 !== null && item.fiyat4 !== '') {
+      const of = parseFloat(item.fiyat4);
+      if (!isNaN(of) && of > 0) hamFiyat4 = of;
+    }
+
     let finalFiyat4 = null;
     if (item.__dinamik__16 !== undefined && item.__dinamik__16 !== null && item.__dinamik__16 !== '') {
       const dinamikFiyat = parseFloat(item.__dinamik__16);
@@ -1991,11 +2091,8 @@ class DiaStockService {
         finalFiyat4 = dinamikFiyat;
       }
     }
-    if (finalFiyat4 === null && item.fiyat4 !== undefined && item.fiyat4 !== null && item.fiyat4 !== '') {
-      const orijinalFiyat = parseFloat(item.fiyat4);
-      if (!isNaN(orijinalFiyat) && orijinalFiyat > 0) {
-        finalFiyat4 = orijinalFiyat;
-      }
+    if (finalFiyat4 === null && hamFiyat4 > 0) {
+      finalFiyat4 = hamFiyat4;
     }
     // Hizmet kategorisi KDV kuralı (yalnızca Hizmetlerimiz + kdvdurumu4='H')
     finalFiyat4 = this.applyServiceVatToFiyat4(
@@ -2004,10 +2101,19 @@ class DiaStockService {
       cleaned.m_birimler && cleaned.m_birimler[0],
       cleaned.kdvsatis
     );
+    // Ham fiyat4'e de aynı hizmet-KDV kuralı uygulanır (tutarlılık için).
+    hamFiyat4 = this.applyServiceVatToFiyat4(
+      hamFiyat4,
+      cleaned.m_kategoriler,
+      cleaned.m_birimler && cleaned.m_birimler[0],
+      cleaned.kdvsatis
+    );
 
-    cleaned.fiyat4 = finalFiyat4;
+    cleaned.fiyat4 = finalFiyat4;       // B2C (ALastik/LJA) — __dinamik__16 override'lı
+    cleaned.fiyat4Ham = hamFiyat4;      // b2b/toptan — DIA ham F4 fiyatı
     if (cleaned.m_birimler && cleaned.m_birimler[0]) {
       cleaned.m_birimler[0].fiyat4 = finalFiyat4;
+      cleaned.m_birimler[0].fiyat4Ham = hamFiyat4;
     }
 
     return cleaned;
