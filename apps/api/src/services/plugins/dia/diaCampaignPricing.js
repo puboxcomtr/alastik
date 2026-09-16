@@ -107,6 +107,28 @@ function buildBrandMap(campaigns) {
     return brandMap;
 }
 
+/**
+ * "Gel Al" teslimatının ek iskonto artışını DIA sabit Gel-Al kampanyalarından
+ * dinamik çıkarır. Kampanya adındaki SON yüzde Gel-Al artışıdır:
+ *   "…| -Cari+Gel-Al %1"                 → 1
+ *   "…| -Nakit(Anında)+ Gel-Al %7+%1"    → 1  (son %)
+ * Bulunamazsa 0 (Gel-Al farkı yok). Hardcode yok — DIA değişirse yansır.
+ */
+function extractGelAlBonus(campaigns) {
+  for (const p of campaigns) {
+    const a = String(p.aciklama || '');
+    if (!/sabit fiyatl/i.test(a)) continue;
+    const tail = a.split('|').slice(1).join('|');
+    if (!/gel[\s-]*al/i.test(tail)) continue;
+    const all = tail.match(/%\s*(\d+)/g);
+    if (all && all.length) {
+      const last = all[all.length - 1].match(/(\d+)/);
+      if (last) return parseInt(last[1], 10);
+    }
+  }
+  return 0;
+}
+
 /** Her ödeme yöntemi için en sık görülen iskonto (kart başlığında gösterim). */
 function representativeDiscounts(brandMap) {
     const rep = {};
@@ -136,11 +158,17 @@ async function getB2bPaymentPricing(site, segment) {
     const brandMap = buildBrandMap(campaigns);
     const rep = representativeDiscounts(brandMap);
     const methods = PAYMENT_METHODS.map(m => ({ ...m, discountPct: rep[m.id] || 0 }));
+    // Tüm ürünler SABİT fiyatlama tipinde ve sabit kampanya marka ayrımı yapmadan
+    // hepsini kapsıyor. Markası haritada olmayan ürünler de SABİT oranını (havale
+    // %7, KK tek %5, taksit %3) alsın diye varsayılan iskonto = SABİT oranları.
+    // (marka=* "Diğer Markalar" kampanyası varsa taban, SABİT onun üstüne biner.)
     const data = {
         segment: normBrand(segment),
         methods,
         brandMap,
-        defaultDiscounts: brandMap['*'] || {}
+        defaultDiscounts: { ...(brandMap['*'] || {}), ...(brandMap['SABIT'] || {}) },
+        // "Gel Al" teslimatının ek iskontosu (DIA sabit Gel-Al kampanyalarından)
+        gelAlBonus: extractGelAlBonus(campaigns)
     };
     CACHE.set(key, { at: Date.now(), data });
     return data;
@@ -156,4 +184,57 @@ function discountFor(pricing, brandName, methodId) {
     return 0;
 }
 
-module.exports = { getB2bPaymentPricing, discountFor, PAYMENT_METHODS };
+const cariRateCache = new Map();
+
+/**
+ * Segment için "Sabit Fiyatlı Ürünler <segment> | Cari" kampanyasının fiyat
+ * kartındaki oranı döner: { tanimlifiyat, fiyatyuzde, artieksi }. Cari satış
+ * fiyatı = fiyat<tanimlifiyat> × (fiyatyuzde/100) (artieksi '-' ise indirim).
+ * DIA'da oran değişirse (ör. 50→52) buradan otomatik yansır — hardcode yok.
+ */
+async function getSabitCariRate(site, segment) {
+    const key = `${site}:${normBrand(segment)}`;
+    const cached = cariRateCache.get(key);
+    if (cached && Date.now() - cached.at < TTL_MS) return cached.data;
+
+    // Güvenli varsayılan (kampanya bulunamazsa fiyat1 × %50)
+    let data = { tanimlifiyat: 1, fiyatyuzde: 50, artieksi: '-' };
+    try {
+        const svc = new DiaOrderService(site);
+        await svc.init().catch(() => {});
+        await svc.login();
+        const F = { session_id: svc.sessionId, firma_kodu: svc.firmaKodu, donem_kodu: svc.donemKodu };
+
+        const r = await svc.sendRequest('/api/v3/scf/json', {
+            scf_kampanya_listele: { ...F, limit: 2000, offset: 0 }
+        });
+        const seg = normBrand(segment);
+        const re = new RegExp(`(^|;)${seg}(;|$)`);
+        const rows = (Array.isArray(r?.result) ? r.result : [])
+            .filter(p => p.b2b === 'E' && re.test(normBrand(p.ozelkod2cari)));
+        const cariKamp = rows.find(p => {
+            const a = String(p.aciklama || '');
+            const tail = a.split('|').slice(1).join('|');
+            return /sabit fiyatl/i.test(a) && !/gel[\s-]*al/i.test(tail) && methodOf(tail) === 'cari';
+        });
+        if (cariKamp && cariKamp.kodu) {
+            const fr = await svc.sendRequest('/api/v3/scf/json', {
+                scf_fiyatkart_listele: { ...F, filters: [{ field: 'scf_kampanya_kodu', operator: '=', value: cariKamp.kodu }], limit: 1, offset: 0 }
+            });
+            const row = Array.isArray(fr?.result) ? fr.result[0] : null;
+            if (row && parseFloat(row.fiyatyuzde) > 0) {
+                data = {
+                    tanimlifiyat: parseInt(row.tanimlifiyat) || 1,
+                    fiyatyuzde: parseFloat(row.fiyatyuzde),
+                    artieksi: row.fiyatartieksi || '-'
+                };
+            }
+        }
+    } catch (e) {
+        // varsayılana düşülür
+    }
+    cariRateCache.set(key, { at: Date.now(), data });
+    return data;
+}
+
+module.exports = { getB2bPaymentPricing, getSabitCariRate, discountFor, PAYMENT_METHODS };

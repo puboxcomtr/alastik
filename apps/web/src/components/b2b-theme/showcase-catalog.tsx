@@ -21,7 +21,7 @@ export interface RawProduct {
         ekalan5?: string; // üretim yılı (DOT) — sıfır ve 2.El lastikte dolu, ör. "2026"
         m_kategoriler?: { kategori_aciklama_1?: string }[];
         m_resimler?: { aws_url?: string }[];
-        m_birimler?: { fiyat4?: string | number; fiyat4Ham?: string | number }[];
+        m_birimler?: { fiyat1?: string | number; fiyat4?: string | number; fiyat4Ham?: string | number }[];
         m_urunOzellikleri?: { ozellikadi?: string; detayaciklama?: string }[];
     };
     customData?: { seoUrl?: string; webPrice?: number; shippingIncludedPrice?: number; featuredImage?: string; delivery?: string };
@@ -78,17 +78,28 @@ export function normalizeBrand(s: string): string {
         .replace(/[^a-z0-9]/g, '');
 }
 
-export function rawToTire(u: RawProduct, brandLogo: Record<string, string>): Tire {
-    // Fiyat kaynağı: XML üründe webPrice; kendi DIA ürünümüzde F4 TOPTAN fiyatı
-    // = m_birimler[0].fiyat4Ham (DIA ham fiyat4). fiyat4 alanı ALastik/B2C için
-    // __dinamik__16 ile ezilir; b2b/toptan ham fiyatı kullanmalı. Ham yoksa
-    // (henüz senkronlanmadıysa) fiyat4'e düşülür. Değer KDV dahil; net = /1.2.
-    const satisFiyat = Number(u.customData?.webPrice)
-        || Number(u.diaData?.m_birimler?.[0]?.fiyat4Ham)
-        || Number(u.diaData?.m_birimler?.[0]?.fiyat4)
-        || 0;
+export type CariOran = { tanimlifiyat?: number; fiyatyuzde?: number };
+
+export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cariOran?: CariOran): Tire {
+    // Fiyat kurgusu (b2b):
+    //  - Kendi (Sabit) ürün: LİSTE fiyatı = m_birimler[0].fiyat1; satış (Cari)
+    //    fiyatı = fiyat1 × (Cari oranı). Oran DIA'daki "Sabit Fiyatlı Ürünler
+    //    <segment> | Cari" fiyat kartından gelir (/fiyat-orani → fiyatyuzde); yoksa
+    //    varsayılan %50. Üstü çizili liste + oranlı satış.
+    //  - XML (tedarikçi) ürün: webPrice geçerli; XML'de iskonto YOK, üstü çizili
+    //    liste de yok (liste = satış). Değerler KDV dahil; net = /1.2.
+    const xmlKaynak = u.syncInfo?.syncSource === 'xml_integration'
+        || /-XML$/i.test(u.diaData?.stokkartkodu || '');
+    const oran = (Number(cariOran?.fiyatyuzde) > 0 ? Number(cariOran?.fiyatyuzde) : 50) / 100;
+    const listeFiyat = xmlKaynak
+        ? (Number(u.customData?.webPrice) || 0)
+        : (Number(u.diaData?.m_birimler?.[0]?.fiyat1) || 0);
+    const satisFiyat = xmlKaynak
+        ? listeFiyat
+        : Math.round(listeFiyat * oran * 100) / 100;
     const netKurus = satisFiyat > 0 ? Math.round((satisFiyat / 1.2) * 100) : 0;
     const kdvDahilKurus = satisFiyat > 0 ? Math.round(satisFiyat * 100) : 0;
+    const listeKurus = listeFiyat > 0 ? Math.round(listeFiyat * 100) : kdvDahilKurus;
     const stok = Number(u.diaData?.gercek_stok || 0);
     // XML (tedarikçi) ürünlerinin fiziksel deposu yok; stok "Fabrika" olarak
     // etiketlenir (kendi stokta "Merkez"; canlı depo verisi gelince değişir).
@@ -133,6 +144,7 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>): Tir
         ev: /\bEV\b/i.test(ad),
         xl: /\bXL\b/i.test(ad),
         imageUrl: u.customData?.featuredImage || u.diaData?.m_resimler?.[0]?.aws_url || null,
+        xml: xmlKaynak,
         sevkiyat: resolveShipping(u),
         slug: u.customData?.seoUrl || (u.diaData?.stokkartkodu || u._key),
         stocks: [{
@@ -141,7 +153,7 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>): Tir
             available: stok,
         }],
         fiyat: netKurus > 0
-            ? { listeBirimKurus: kdvDahilKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste' }
+            ? { listeBirimKurus: listeKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste' }
             : null,
     };
 }
@@ -150,11 +162,14 @@ export function ShowcaseCatalog() {
     const [products, setUrunler] = useState<Tire[] | null>(null);
 
     useEffect(() => {
-        // Marka logoları ve vitrin ürünleri paralel çekilir
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+        // Marka logoları, vitrin ürünleri ve Cari fiyat oranı paralel çekilir
         Promise.all([
             fetch(API_ENDPOINTS.b2b.brands(), { headers: { 'X-Site': 'b2b' } }).then(r => r.json()).catch(() => null),
             fetch(API_ENDPOINTS.showcases.homepage(), { headers: { 'X-Site': 'b2b' } }).then(r => r.json()).catch(() => null),
-        ]).then(([brandRes, showcaseRes]) => {
+            token ? fetch(API_ENDPOINTS.b2b.fiyatOrani(), { headers: { Authorization: `Bearer ${token}`, 'X-Site': 'b2b' } }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+        ]).then(([brandRes, showcaseRes, oranRes]) => {
+            const cariOran: CariOran | undefined = (oranRes?.success && oranRes.data) ? oranRes.data : undefined;
             const brandLogo: Record<string, string> = {};
             const brands = brandRes?.data || brandRes?.brands || [];
             for (const m of brands) {
@@ -172,7 +187,7 @@ export function ShowcaseCatalog() {
                     if (p?._key && !gorulen.has(p._key)) { gorulen.add(p._key); raw.push(p); }
                 }
             }
-            const list = raw.map(u => rawToTire(u, brandLogo));
+            const list = raw.map(u => rawToTire(u, brandLogo, cariOran));
             setUrunler(list);
 
             // Depo bazlı stok (Maslak/Şişli/Fabrika) — tooltip için ayrıca çekilir

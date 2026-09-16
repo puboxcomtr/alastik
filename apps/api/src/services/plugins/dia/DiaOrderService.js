@@ -690,59 +690,119 @@ class DiaOrderService {
 
     // ==================== SİPARİŞ ====================
 
+    /**
+     * Bir kalemin mali değerleri. Liste fiyatı (listUnitPrice = fiyat1) satış
+     * fiyatından (unitPrice) yüksekse aradaki fark İSKONTO olarak işlenir; DIA'da
+     * birim=liste, indirim1=iskonto% girilir ki müşteri iskontosunu görsün.
+     * Liste yoksa/eşitse iskonto 0 — eski (KDV dahil) yapı korunur (LJA/ALastik).
+     * Değerler KDV hariç döner; net KDV hariç = brüt − iskonto.
+     */
+    lineFinancials(item) {
+        const qty = parseFloat(item.quantity) || 1;
+        const vatRate = parseFloat(item.vatRate) || 20;
+        const shippingPerUnit = parseFloat(item.shippingPerUnit)
+            || ((parseFloat(item.shippingTotal) || 0) / qty) || 0;
+        const finalKdvDahil = (parseFloat(item.unitPrice) || 0) + shippingPerUnit; // ödenen birim (KDV dahil)
+        let listeKdvDahil = parseFloat(item.listUnitPrice) || finalKdvDahil;        // liste birim (fiyat1, KDV dahil)
+        if (listeKdvDahil < finalKdvDahil) listeKdvDahil = finalKdvDahil;           // negatif iskonto olmasın
+        // İskonto oranları AYRI ve ZİNCİRLİ satırlar (ör. [Cari %50, Gel Al %1]).
+        // Verilmemişse liste-satış farkından tek oran hesaplanır (geriye dönük).
+        const r6 = n => Math.round(n * 1e6) / 1e6;
+        // POZİSYONEL: indirim1=Cari, indirim2=ödeme yöntemi, indirim3=Gel Al.
+        // Aradaki 0'lar korunur (Cari+Gel Al → [50, 0, 1] → Gel Al indirim3'e düşer);
+        // yalnız SONDAKİ 0'lar atılır (gereksiz boş indirim satırı olmasın).
+        let rates = Array.isArray(item.discountRates)
+            ? item.discountRates.map(r => parseFloat(r) || 0)
+            : [];
+        while (rates.length && Math.abs(rates[rates.length - 1]) < 0.000001) rates.pop();
+        if (!rates.length && listeKdvDahil > finalKdvDahil) {
+            rates = [r6((1 - finalKdvDahil / listeKdvDahil) * 100)];
+        }
+        const div = 1 + vatRate / 100;
+        const listeHaric = r6(listeKdvDahil / div);
+        let factor = 1;
+        for (const r of rates) if (r > 0.000001) factor *= (1 - r / 100);
+        const grossHaric = r6(listeHaric * qty);
+        const netHaric = r6(grossHaric * factor);
+        const indirimHaric = r6(grossHaric - netHaric);
+        const kdv = r6(netHaric * vatRate / 100);
+        return { qty, vatRate, shippingPerUnit, finalKdvDahil, listeHaric, rates, grossHaric, indirimHaric, netHaric, kdv, hasDiscount: rates.some(r => r > 0.000001) };
+    }
+
+    /** Sipariş kalemleri + kart toplamları. { items, totals }. */
     buildOrderItems(order, customer, resolvedStocks) {
         const siparis = this.settings.siparis || {};
         const items = [];
         let lineNo = 1;
         const today = new Date().toISOString().slice(0, 10);
+        let toplam = 0, toplamindirim = 0, toplamkdv = 0;
 
         for (const item of order.items) {
             const stock = resolvedStocks.get(item);
             if (!stock) continue;
 
-            const quantity = parseFloat(item.quantity) || 1;
-            // Kargo bedeli ayrı kalem olarak GÖSTERİLMEZ (17 Ağu kararı) —
-            // birim kargo payı ürün birim fiyatına dahil edilir; böylece DIA
-            // fiş toplamı müşterinin ödediği tutarla birebir eşleşir
-            const shippingPerUnit = parseFloat(item.shippingPerUnit)
-                || ((parseFloat(item.shippingTotal) || 0) / quantity)
-                || 0;
-            const unitPrice = (parseFloat(item.unitPrice) || 0) + shippingPerUnit;
-            const vatRate = parseFloat(item.vatRate) || 20;
-            const lineTotal = unitPrice * quantity;
-            // Fiyatlar KDV dahil (kdvdurumu: D) — KDV tutarı içten hesaplanır
-            const vatAmount = (lineTotal * vatRate) / (100 + vatRate);
+            const f = this.lineFinancials(item);
+            toplam += f.netHaric;
+            toplamindirim += f.indirimHaric;
+            toplamkdv += f.kdv;
 
-            items.push({
+            const ortak = {
                 _key_scf_carikart: parseInt(customer.key),
                 _key_kalemturu: stock.stockKey,
                 _key_scf_kalem_birimleri: stock.unitKey,
-                _key_sis_depo_source: siparis.depoKey,
+                _key_sis_depo_source: stock.depoKey || siparis.depoKey,
                 _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
                 kalemturu: 'MLZM',
-                anamiktar: this.formatDecimal(quantity),
-                miktar: this.formatDecimal(quantity),
-                birimfiyati: this.formatDecimal(unitPrice),
-                sonbirimfiyati: this.formatDecimal(unitPrice),
-                yerelbirimfiyati: this.formatDecimal(unitPrice),
-                tutari: this.formatDecimal(lineTotal),
+                anamiktar: this.formatDecimal(f.qty),
+                miktar: this.formatDecimal(f.qty),
                 dovizkuru: '1.000000',
-                kdv: this.formatDecimal(vatRate),
-                kdvdurumu: 'D',
-                kdvtutari: this.formatDecimal(vatAmount),
+                kdv: this.formatDecimal(f.vatRate),
                 daraadet: '0.000000',
                 note: item.name || '',
-                note2: shippingPerUnit > 0 ? 'Kargo dahil' : '',
+                note2: f.shippingPerUnit > 0 ? 'Kargo dahil' : '',
                 onay: 'KABUL',
                 rezervasyon: 'H',
                 siptarih: today,
                 sirano: lineNo
-            });
+            };
 
+            if (f.hasDiscount) {
+                // İskontolu (b2b): birim = LİSTE (KDV hariç); iskonto oranları AYRI
+                // satırlarda — indirim1=Cari %50, indirim2=Gel Al %1 ... (zincirli)
+                const kalem = {
+                    ...ortak,
+                    birimfiyati: this.formatDecimal(f.listeHaric),
+                    sonbirimfiyati: this.formatDecimal(f.listeHaric),
+                    yerelbirimfiyati: this.formatDecimal(f.listeHaric),
+                    tutari: this.formatDecimal(f.grossHaric),
+                    kdvdurumu: 'H',
+                    kdvtutari: this.formatDecimal(f.kdv)
+                };
+                f.rates.forEach((r, i) => { kalem['indirim' + (i + 1)] = this.formatDecimal(r); });
+                items.push(kalem);
+            } else {
+                // İskontosuz (LJA/ALastik): eski KDV dahil yapı korunur
+                items.push({
+                    ...ortak,
+                    birimfiyati: this.formatDecimal(f.finalKdvDahil),
+                    sonbirimfiyati: this.formatDecimal(f.finalKdvDahil),
+                    yerelbirimfiyati: this.formatDecimal(f.finalKdvDahil),
+                    tutari: this.formatDecimal(f.finalKdvDahil * f.qty),
+                    kdvdurumu: 'D',
+                    kdvtutari: this.formatDecimal(f.kdv)
+                });
+            }
             lineNo++;
         }
 
-        return items;
+        const r6 = n => Math.round(n * 1e6) / 1e6;
+        const totals = {
+            toplam: this.formatDecimal(r6(toplam)),
+            toplamindirim: this.formatDecimal(r6(toplamindirim)),
+            toplamkdv: this.formatDecimal(r6(toplamkdv)),
+            net: this.formatDecimal(r6(toplam + toplamkdv))
+        };
+        return { items, totals };
     }
 
     /**
@@ -1585,9 +1645,19 @@ class DiaOrderService {
     resolvePaymentPlanKey(order) {
         const siparis = this.settings.siparis || {};
         const payment = order.payment || {};
+        // "Şubeden Gel Al" teslimatında ilgili "+ Gel Al" planı seçilir.
+        const gelAl = order.shipping?.method === 'gelAl' || order.deliveryMethod === 'gelAl';
+        const pick = (gelAlKey, normalKey) => (gelAl && gelAlKey) ? gelAlKey : (normalKey || gelAlKey || 0);
+
+        // Cari (vadeli/açık hesap): DIA sipariş yine ödeme planı ister.
+        // Normal: "30 GÜN VADE"; Gel Al: "Cari Sipariş + Gel Al".
+        if (payment.method === 'cari') {
+            return pick(siparis.odemePlaniCariGelAlKey, siparis.odemePlaniCariKey)
+                || siparis.odemePlaniHavaleKey || siparis.odemePlaniTekCekimKey || 0;
+        }
 
         if (payment.method === 'bank_transfer') {
-            return siparis.odemePlaniHavaleKey || 0;
+            return pick(siparis.odemePlaniHavaleGelAlKey, siparis.odemePlaniHavaleKey);
         }
 
         const installment = Math.max(
@@ -1596,9 +1666,9 @@ class DiaOrderService {
         );
 
         if (installment > 1) {
-            return siparis.odemePlaniTaksitliKey || 0;
+            return pick(siparis.odemePlaniTaksitliGelAlKey, siparis.odemePlaniTaksitliKey);
         }
-        return siparis.odemePlaniTekCekimKey || 0;
+        return pick(siparis.odemePlaniTekCekimGelAlKey, siparis.odemePlaniTekCekimKey);
     }
 
     /**
@@ -1627,7 +1697,7 @@ class DiaOrderService {
         const dateStr = orderDate.toISOString().slice(0, 10);
         const timeStr = orderDate.toTimeString().slice(0, 8);
 
-        const orderItems = this.buildOrderItems(order, customer, resolvedStocks);
+        const { items: orderItems, totals: kartTotals } = this.buildOrderItems(order, customer, resolvedStocks);
 
         // Açıklama düzeni iki sitede de aynıdır (3 Eyl isteği):
         //   1: sipariş no  2: siparişi veren  3: SİTE ADI - Ödeme Sağlayıcı - Teslim Şekli
@@ -1641,10 +1711,12 @@ class DiaOrderService {
                 .join(' - ')
         };
 
+        // Başlık deposu: ilk kalemin (öncelik listesinden seçilen) deposu; yoksa ayar
+        const headerDepoKey = orderItems[0]?._key_sis_depo_source || siparis.depoKey;
         const kart = {
             _key_scf_carikart: parseInt(customer.key),
             _key_sis_sube_source: siparis.subeKey,
-            _key_sis_depo_source: siparis.depoKey,
+            _key_sis_depo_source: headerDepoKey,
             _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
             _key_sis_doviz_raporlama: DIA_CURRENCY_KEY_TRY,
             turu: 2,
@@ -1663,14 +1735,16 @@ class DiaOrderService {
             // Sipariş numarası her iki sitede de Ek Alan 4'te taşınır
             ekalan4: order.orderNumber,
             m_kalemler: orderItems,
-            net: this.formatDecimal(order.pricing?.total),
-            netdvz: this.formatDecimal(order.pricing?.total),
-            toplam: this.formatDecimal(order.pricing?.subtotal),
-            toplamdvz: this.formatDecimal(order.pricing?.subtotal),
-            toplamindirim: this.formatDecimal(order.pricing?.discountAmount || 0),
-            toplamindirimdvz: this.formatDecimal(order.pricing?.discountAmount || 0),
-            toplamkdv: this.formatDecimal(order.pricing?.vatAmount || 0),
-            toplamkdvdvz: this.formatDecimal(order.pricing?.vatAmount || 0),
+            // Toplamlar kalemlerden hesaplanır (kalemlerle birebir tutmalı, yoksa DIA reddeder):
+            // Ara Toplam = net mal bedeli, İskonto = liste−satış farkı, Genel Toplam = ödenen
+            net: kartTotals.net,
+            netdvz: kartTotals.net,
+            toplam: kartTotals.toplam,
+            toplamdvz: kartTotals.toplam,
+            toplamindirim: kartTotals.toplamindirim,
+            toplamindirimdvz: kartTotals.toplamindirim,
+            toplamkdv: kartTotals.toplamkdv,
+            toplamkdvdvz: kartTotals.toplamkdv,
             toplammasraf: '0.000000',
             toplammasrafdvz: '0.000000',
             sevkadresi1: this.buildAddressText(shipping),
@@ -1682,7 +1756,9 @@ class DiaOrderService {
             teslimat_ceptel: this.normalizePhone(shipping.phone || order.customerPhone || ''),
             teslimat_telefon: this.normalizePhone(shipping.phone || order.customerPhone || ''),
             teslimat_ilce: shipping.districtName || '',
-            teslimat_key_sis_sehirler: 0
+            teslimat_key_sis_sehirler: 0,
+            // Sevk/Teslimat adresi referansı — DIA "Sevk Adresi" bölümü bunu okur
+            _key_scf_carikart_adresleri: parseInt(shipping.diaAddressKey) || 0
         };
 
         // Satış elemanı — firma ayarında zorunlu olabilir, ayarlardan gelir
@@ -1698,6 +1774,11 @@ class DiaOrderService {
         // Kargo firması — ayarlardan gelir (örn. ARAS KARGO)
         if (siparis.kargoFirmaKey) {
             kart._key_krg_firma = siparis.kargoFirmaKey;
+        }
+
+        // Yetki kodu — ayardan (ör. "2026HAK")
+        if (siparis.siparisYetkiKodu) {
+            kart.yetkikodu = siparis.siparisYetkiKodu;
         }
 
         // Ödeme planı — siparişin ödeme yöntemine göre seçilir
@@ -1718,13 +1799,46 @@ class DiaOrderService {
             }
         };
     }
+
+    /**
+     * Carinin fatura (ana) adresini döner — teslimat adresi verilmediğinde sevk
+     * adresi olarak kullanılır. { street, cityName, districtName, phone } ya da null.
+     */
+    async fetchFaturaAddress(customerKey) {
+        const sessionId = await this.ensureSession();
+        const r = await this.sendRequest('/api/v3/scf/json', {
+            scf_carikart_adresleri_listele: {
+                session_id: sessionId,
+                firma_kodu: this.firmaKodu,
+                donem_kodu: this.donemKodu,
+                filters: [{ field: '_key_scf_carikart', operator: '=', value: parseInt(customerKey) }],
+                limit: 50,
+                offset: 0
+            }
+        });
+        const list = Array.isArray(r?.result) ? r.result : [];
+        if (!list.length) return null;
+        // Fatura (ana) adresi: anaadres='1'; yoksa teslimat olmayan ilk; yoksa ilk
+        const fatura = list.find(a => String(a.anaadres) === '1')
+            || list.find(a => a.adrestipi !== 'T')
+            || list[0];
+        if (!fatura) return null;
+        const adres = [fatura.adres1, fatura.adres2].filter(x => x && String(x).trim()).join(' ').trim();
+        return {
+            diaAddressKey: parseInt(fatura._key) || 0, // DIA adres kaydı — "Sevk Adresi" bölümü bunu okur
+            street: adres,
+            cityName: fatura._key_sis_sehirler?.sehiradi || fatura.sehir || fatura.sehiradi || '',
+            districtName: fatura.ilce || '',
+            phone: fatura.ceptel || ''
+        };
+    }
 }
 
 /**
  * Ana giriş: siparişi DIA'ya aktarır ve sonucu order.diaIntegration'a yazar.
  * Dönen değer: { success, skipped?, message, diaOrderKey?, diaCustomerKey? }
  */
-async function syncOrderToDia(order) {
+async function _syncOrderToDia(order) {
     const orderNumber = order?.orderNumber;
     const WebOrderModel = require('../../../models/web/order/WebOrder');
 
@@ -1821,6 +1935,43 @@ async function syncOrderToDia(order) {
         }
         if (unresolvedItems.length > 0) {
             logger.warn('[DiaOrder] Bazı kalemler DIA stok kartıyla eşleşmedi, atlanıyor', { orderNumber, unresolvedItems });
+        }
+
+        // 2b) Sipariş deposu: öncelik listesinden (ör. MASLAK, MERKEZ) stoğu yeten
+        // ilk depo kalem bazında seçilir; hiçbirinde yetmezse son öncelikli depo.
+        const siparisAyar = service.settings.siparis || {};
+        const depoOncelik = String(siparisAyar.siparisDepoKeys || '')
+            .split(',').map(v => parseInt(String(v).trim())).filter(Boolean);
+        if (depoOncelik.length) {
+            const codes = [...resolvedStocks.values()].map(s => s.stockCode).filter(Boolean);
+            const depoStok = {};
+            for (const dk of depoOncelik) {
+                depoStok[dk] = await service.getDepotStockBatch(codes, dk).catch(() => ({}));
+            }
+            for (const [item, stock] of resolvedStocks) {
+                const qty = parseFloat(item.quantity) || 1;
+                let secilen = depoOncelik[depoOncelik.length - 1]; // yedek: son öncelikli (MERKEZ)
+                for (const dk of depoOncelik) {
+                    if ((depoStok[dk]?.[stock.stockCode] || 0) >= qty) { secilen = dk; break; }
+                }
+                stock.depoKey = secilen;
+                logger.info('[DiaOrder] Sipariş deposu seçildi', { stockCode: stock.stockCode, depoKey: secilen, qty });
+            }
+        }
+
+        // 2c) Teslimat (sevk) adresi yoksa carinin FATURA (ana) adresi kullanılır
+        const ship = order.shippingSnapshot || {};
+        const sevkVar = ship.street || ship.address || ship.neighborhoodName;
+        if (!sevkVar) {
+            try {
+                const fatura = await service.fetchFaturaAddress(customer.key);
+                if (fatura && fatura.street) {
+                    order.shippingSnapshot = { ...ship, ...fatura };
+                    logger.info('[DiaOrder] Sevk adresi fatura adresinden alındı', { orderNumber });
+                }
+            } catch (e) {
+                logger.warn('[DiaOrder] Fatura adresi çekilemedi', { orderNumber, error: e.message });
+            }
         }
 
         // 3) Sipariş girişi (plaka doluysa açıklamaya eklenir)
@@ -2164,7 +2315,7 @@ async function applySyncResult(order, result) {
  * irsaliyesi silinerek stok iade edilir, DIA siparişi silinir.
  * Sonuç: { success, skipped?, message }
  */
-async function cancelOrderInDia(order) {
+async function _cancelOrderInDia(order) {
     const orderNumber = order?.orderNumber;
     const WebOrder = require('../../../models/web/order/WebOrder');
 
@@ -2310,6 +2461,25 @@ function syncOrderToDiaBackground(order, source) {
                 error: error.message
             });
         });
+}
+
+// b2b siparişleri ws_ART_B2B kullanıcısını paylaştığı için (cari sync dahil),
+// b2b sipariş oluşturma/iptali B2B kilidinde sıraya alınır — kendi aralarında
+// çakışmasınlar. alastik/LJA (Ws_alastik_B2C) sarılmaz, davranışları değişmez.
+async function syncOrderToDia(order) {
+    if (order?.site === 'b2b') {
+        const { withDiaLock, B2B_LOCK_KEY } = require('./diaLock');
+        return withDiaLock(() => _syncOrderToDia(order), { label: 'b2b-order-sync', key: B2B_LOCK_KEY, waitMs: 180000 });
+    }
+    return _syncOrderToDia(order);
+}
+
+async function cancelOrderInDia(order) {
+    if (order?.site === 'b2b') {
+        const { withDiaLock, B2B_LOCK_KEY } = require('./diaLock');
+        return withDiaLock(() => _cancelOrderInDia(order), { label: 'b2b-order-cancel', key: B2B_LOCK_KEY, waitMs: 180000 });
+    }
+    return _cancelOrderInDia(order);
 }
 
 module.exports = {

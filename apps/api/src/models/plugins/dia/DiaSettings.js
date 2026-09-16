@@ -18,6 +18,10 @@ const webDiaSchema = new mongoose.Schema({
     // XML/XMLA (tedarikçi) ürünleri bu daraltmadan etkilenmez.
     webStokDepolari: { type: String, default: '' },
 
+    // b2b: segmenti (özelkod2) tanımsız carilerde kullanılacak varsayılan segment
+    // (ör. F4). Ödeme yöntemi/iskonto bu segmentin DIA kampanyalarından gelir.
+    b2bVarsayilanSegment: { type: String, default: '' },
+
     // Sipariş Entegrasyonu
     siparis: {
         // Vitrinde oluşan siparişin DIA'ya gönderilmesi açık mı
@@ -32,6 +36,9 @@ const webDiaSchema = new mongoose.Schema({
         // DIA'nın iç kayıt anahtarları (_key). Kod alanlarından farklıdır.
         subeKey: { type: Number, default: 0 },
         depoKey: { type: Number, default: 0 },
+        // Sipariş kalemi deposu öncelik listesi (ör. "7741979,2034" = MASLAK,MERKEZ).
+        // Kalem, stoğu yeten ilk depoya yazılır; hiçbirinde yetmezse son depo. Boşsa depoKey kullanılır.
+        siparisDepoKeys: { type: String, default: '' },
 
         // Cari politikası: her müşteri için ayrı cari mi açılsın, yoksa
         // tüm siparişler tek bir genel cariye mi yazılsın
@@ -70,6 +77,13 @@ const webDiaSchema = new mongoose.Schema({
         odemePlaniTekCekimKey: { type: Number, default: 0 },
         odemePlaniTaksitliKey: { type: Number, default: 0 },
         odemePlaniHavaleKey: { type: Number, default: 0 },
+        odemePlaniCariKey: { type: Number, default: 0 }, // Cari (vadeli) siparişte kullanılır (ör. 30 GÜN VADE)
+        // "Şubeden Gel Al" teslimatında ödeme yöntemine göre kullanılan "+ Gel Al" planları
+        odemePlaniCariGelAlKey: { type: Number, default: 0 },
+        odemePlaniHavaleGelAlKey: { type: Number, default: 0 },
+        odemePlaniTekCekimGelAlKey: { type: Number, default: 0 },
+        odemePlaniTaksitliGelAlKey: { type: Number, default: 0 },
+        siparisYetkiKodu: { type: String, default: '' }, // Sipariş kartı yetki kodu (ör. "2026HAK")
 
         // ŞİRKETLER ARASI AKIŞ — fiziki stok kaynak firmada olan siteler için
         // (örn. ALastik/firma 2: mal Artvin Ticaret/firma 1'den alınır).

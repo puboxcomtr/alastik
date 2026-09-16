@@ -107,7 +107,7 @@ export default function CariPage() {
 
       {/* ── Hızlı erişim ── */}
       <div className="account-shortcut">
-        <Link href="/lastik" className="kisayol">
+        <Link href="/" className="kisayol">
           <CartIcon size={18} />
           <div>
             <strong>Sipariş Ver</strong>

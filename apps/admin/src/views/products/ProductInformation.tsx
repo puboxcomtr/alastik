@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 
 // MUI Imports
 import Divider from '@mui/material/Divider'
@@ -42,18 +42,22 @@ interface ProductInformationProps {
 
 interface EditorToolbarProps {
   editor: Editor | null
+  htmlMode: boolean
+  onToggleHtml: () => void
 }
 
 // ============================================
 // EDITOR TOOLBAR COMPONENT
 // ============================================
-const EditorToolbar = ({ editor }: EditorToolbarProps) => {
+const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) => {
   if (!editor) {
     return null
   }
 
   return (
     <div className='flex flex-wrap gap-x-3 gap-y-1 pbs-5 pbe-4 pli-5'>
+      {!htmlMode && (
+        <>
       {/* Başlık H2 */}
       <CustomIconButton
         {...(editor.isActive('heading', { level: 2 }) && { color: 'primary' })}
@@ -252,6 +256,19 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
       >
         <i className='ri-link-unlink' />
       </CustomIconButton>
+        </>
+      )}
+
+      {/* HTML kaynak kodu geçişi */}
+      <CustomIconButton
+        {...(htmlMode && { color: 'primary' })}
+        variant='outlined'
+        size='small'
+        onClick={onToggleHtml}
+        title={htmlMode ? 'Görsel editöre dön' : 'HTML kaynak kodu'}
+      >
+        <i className={classnames('ri-code-s-slash-line', { 'text-textSecondary': !htmlMode })} />
+      </CustomIconButton>
     </div>
   )
 }
@@ -262,6 +279,10 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
 const ProductInformation = ({ product }: ProductInformationProps) => {
   // Context
   const { updateField } = useProductUpdate()
+
+  // HTML kaynak kodu modu (görsel editör ↔ ham HTML)
+  const [htmlMode, setHtmlMode] = useState(false)
+  const [htmlValue, setHtmlValue] = useState('')
 
   // Editor initialization
   const editor = useEditor({
@@ -293,6 +314,22 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
       }
     }
   }, [product, editor])
+
+  // Görsel editör ↔ HTML kaynak kodu geçişi
+  const toggleHtml = () => {
+    if (!editor) return
+
+    if (!htmlMode) {
+      // Görselden HTML'e: mevcut içeriği ham HTML olarak göster
+      setHtmlValue(editor.getHTML())
+      setHtmlMode(true)
+    } else {
+      // HTML'den görsele: düzenlenen HTML'i editöre uygula (ve kaydet)
+      editor.commands.setContent(htmlValue, false)
+      updateField('customDescription', editor.getHTML())
+      setHtmlMode(false)
+    }
+  }
 
   return (
     <Card>
@@ -350,13 +387,41 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
         <Typography className='mb-1'>Ürün Açıklaması</Typography>
         <Card className='p-0 border shadow-none'>
           <CardContent className='p-0'>
-            <EditorToolbar editor={editor} />
+            <EditorToolbar editor={editor} htmlMode={htmlMode} onToggleHtml={toggleHtml} />
             <Divider className='mli-5' />
-            <EditorContent
-              editor={editor}
-              className='overflow-y-auto flex'
-              style={{ minHeight: '400px', maxHeight: '400px' }}
-            />
+            {htmlMode ? (
+              <TextField
+                fullWidth
+                multiline
+                value={htmlValue}
+                onChange={e => {
+                  setHtmlValue(e.target.value)
+                  updateField('customDescription', e.target.value)
+                }}
+                placeholder='HTML kaynak kodu...'
+                slotProps={{
+                  input: {
+                    style: { fontFamily: 'monospace', fontSize: '0.85rem', alignItems: 'flex-start' }
+                  }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    minHeight: '400px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    alignItems: 'flex-start',
+                    borderRadius: 0
+                  },
+                  '& fieldset': { border: 'none' }
+                }}
+              />
+            ) : (
+              <EditorContent
+                editor={editor}
+                className='overflow-y-auto flex'
+                style={{ minHeight: '400px', maxHeight: '400px' }}
+              />
+            )}
           </CardContent>
         </Card>
       </CardContent>

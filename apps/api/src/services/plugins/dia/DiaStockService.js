@@ -490,6 +490,66 @@ class DiaStockService {
   }
 
   /**
+   * Web stoğunu (gercek_stok/fiili_stok) TÜM dia_api web ürünleri için ayardaki
+   * depoların (webStokDepolari = MASLAK+MERKEZ) toplamına günceller. Incremental
+   * senkronun kaçırdığı stok-hareketi değişikliklerini yakalamak için zamanlanmış
+   * çalışır (stok kartının _date'i değişmese bile stok güncel kalır).
+   * Verimli: web ürün kodlarını depo başına tek çağrıyla sorgular.
+   */
+  async refreshWebDepotStock() {
+    await this.loadConfig();
+    const depots = this.getWebStockDepots();
+    if (!depots.length) return { skipped: true, reason: 'webStokDepolari boş' };
+
+    const docs = await WebProduct.find(
+      { 'syncInfo.syncSource': 'dia_api', 'diaData.stokkartkodu': { $exists: true } },
+      { 'diaData.stokkartkodu': 1 }
+    ).lean();
+    const codes = [...new Set(docs.map(d => d.diaData && d.diaData.stokkartkodu)
+      .filter(k => k && !String(k).includes('-XML')))];
+    if (!codes.length) return { updated: 0, total: 0 };
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    let updated = 0;
+    const B = 400;
+    for (let i = 0; i < codes.length; i += B) {
+      const chunk = codes.slice(i, i + B);
+      let maps = null;
+      for (let t = 1; t <= 4 && !maps; t++) {
+        try {
+          const sid = await this.loginAsync();
+          const ms = [];
+          for (const d of depots) ms.push(await this.fetchDepotStockMap(sid, chunk, d));
+          // DIA bazen hata fırlatmadan boş sonuç döner (eşzamanlı erişim). Bir depo
+          // map'i tamamen boşsa bu geçici hatadır — asla 0 yazma, yeni oturumla dene.
+          if (ms.every(m => Object.keys(m).length > 0)) maps = ms;
+          else { this.cachedSessionId = null; this.sessionExpireTime = null; await sleep(3000 * t); }
+        } catch (e) {
+          this.cachedSessionId = null; this.sessionExpireTime = null;
+          await sleep(3000 * t);
+        }
+      }
+      if (!maps) continue; // chunk çözülemedi — mevcut stok korunur, 0'la ezilmez
+      const wpOps = [], dsOps = [];
+      for (const kod of chunk) {
+        // DIA bu kodu hiçbir depoda döndürmediyse veriyi bilmiyoruz demektir —
+        // ürünü atla (mevcut stoğu koru). Gerçek 0 stok bile depo satırı döner.
+        if (!maps.some(m => m[kod] != null)) continue;
+        let g = 0, f = 0;
+        for (const m of maps) { const v = m[kod]; if (v) { g += v.gercek; f += v.fiili; } }
+        wpOps.push({ updateOne: { filter: { 'diaData.stokkartkodu': kod }, update: { $set: { 'diaData.gercek_stok': g, 'diaData.fiili_stok': f, 'diaData.m_birimler.0.gercek_stok': g } } } });
+        dsOps.push({ updateOne: { filter: { stokkartkodu: kod }, update: { $set: { gercek_stok: g, fiili_stok: f } } } });
+      }
+      if (!wpOps.length) continue;
+      try { const r = await WebProduct.bulkWrite(wpOps, { ordered: false }); updated += r.modifiedCount; } catch (e) { /* devam */ }
+      try { await DiaStock.bulkWrite(dsOps, { ordered: false }); } catch (e) { /* devam */ }
+      await sleep(200);
+    }
+    this.logger.info('Web stok tazeleme tamamlandı (webStokDepolari)', { depots, urun: codes.length, guncellenen: updated });
+    return { updated, total: codes.length };
+  }
+
+  /**
    * Batch halinde stok verilerini getir *
    */
   async fetchAllStockFromDia(batchSize = null) {

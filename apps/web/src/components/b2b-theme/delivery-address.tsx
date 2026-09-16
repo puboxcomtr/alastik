@@ -146,6 +146,7 @@ export function DeliveryAddress() {
                 checked={selectedId === a.id}
                 onChange={() => setSelectedId(a.id)}
               />
+              <span className="adres-radio" aria-hidden="true" />
               <div className="adres-govde">
                 <div className="adres-baslik">
                   {a.baslik}

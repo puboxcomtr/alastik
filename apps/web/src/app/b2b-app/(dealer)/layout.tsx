@@ -39,10 +39,8 @@ function menuHref(menu: MenuKaydi): string {
  * API'ye erişilemez ya da menü boşsa varsayılan Lastik/Jant yedeği kullanılır.
  */
 async function ustMenuyuGetir(): Promise<NavItem[]> {
-  const yedek: NavItem[] = [
-    { href: "/lastik", label: "Lastik" },
-    { href: "/jant", label: "Jant" },
-  ];
+  // Menü DB'den (kategoriler) gelir; API boş/erişilemezse boş menü ile devam.
+  const yedek: NavItem[] = [];
   try {
     const res = await fetch(API_ENDPOINTS.menus.header(), {
       headers: { "X-Site": "b2b" },

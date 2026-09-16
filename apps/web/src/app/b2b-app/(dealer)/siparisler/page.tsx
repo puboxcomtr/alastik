@@ -22,7 +22,7 @@ export default function SiparislerPage() {
           <h1>Siparişlerim</h1>
           <p className="sub">Sipariş geçmişinizi takip edin</p>
         </div>
-        <Link className="btn-primary" href="/lastik">
+        <Link className="btn-primary" href="/">
           Yeni Sipariş
         </Link>
       </div>

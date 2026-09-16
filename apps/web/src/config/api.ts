@@ -28,6 +28,8 @@ export const API_ENDPOINTS = {
         adresler: () => `${getBaseUrl()}/b2b/auth/adresler`,
         adresEkle: () => `${getBaseUrl()}/b2b/auth/adres`,
         odemeYontemleri: () => `${getBaseUrl()}/b2b/auth/odeme-yontemleri`,
+        fiyatOrani: () => `${getBaseUrl()}/b2b/auth/fiyat-orani`,
+        siparis: () => `${getBaseUrl()}/b2b/auth/siparis`,
     },
     brands: {
         homepage: () => `${getBaseUrl()}/brands/homepage`,

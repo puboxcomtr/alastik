@@ -8,6 +8,7 @@ export type B2bPricing = {
   methods: B2bPaymentMethod[];
   brandMap: Record<string, Record<string, number>>;
   defaultDiscounts: Record<string, number>;
+  gelAlBonus?: number; // "Gel Al" teslimatının ek iskonto artışı (DIA'dan)
 };
 
 /** Marka adını backend ile aynı biçimde normalize eder (Türkçe → ASCII fold). */
@@ -32,7 +33,7 @@ export function lineDiscountPct(
 }
 
 export type CartLineLike = {
-  urun: { marka: string };
+  urun: { marka: string; xml?: boolean };
   kdvDahilBirimKurus: number;
   adet: number;
 };
@@ -44,19 +45,28 @@ export type DiscountedTotals = {
   indirimToplamKurus: number; // orijinale göre toplam tasarruf
 };
 
-/** Seçilen ödeme yöntemine göre sepet toplamlarını (satır satır iskontolu) hesaplar. */
+/**
+ * Seçilen ödeme yöntemi + teslimat yöntemine göre sepet toplamlarını (satır satır
+ * iskontolu) hesaplar. "Gel Al" teslimatı seçiliyse ödeme iskontosunun üstüne
+ * DIA'dan gelen Gel-Al artışı (gelAlBonus) eklenir. XML ürünlerde iskonto yok.
+ */
 export function computeDiscountedTotals(
   lines: CartLineLike[],
   pricing: B2bPricing | null,
   methodId: string,
+  gelAl = false,
 ): DiscountedTotals {
+  const bonus = gelAl ? (pricing?.gelAlBonus ?? 0) : 0;
   let kdvDahil = 0;
   let origKdvDahil = 0;
   for (const l of lines) {
     const satir = l.kdvDahilBirimKurus * l.adet;
     origKdvDahil += satir;
-    const d = lineDiscountPct(pricing, l.urun.marka, methodId);
-    kdvDahil += Math.round(satir * (1 - d / 100));
+    // XML (tedarikçi) ürünlerde ödeme/teslimat iskontosu uygulanmaz.
+    // Ödeme ve Gel Al iskontoları ZİNCİRLİ uygulanır (DIA çoklu indirim ile birebir).
+    const payPct = l.urun.xml ? 0 : lineDiscountPct(pricing, l.urun.marka, methodId);
+    const gaPct = l.urun.xml ? 0 : bonus;
+    kdvDahil += Math.round(satir * (1 - payPct / 100) * (1 - gaPct / 100));
   }
   const matrah = Math.round(kdvDahil / 1.2);
   return {

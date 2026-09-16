@@ -4,6 +4,9 @@ const Queue = require('bull');
 const winston = require('winston');
 const workerConfig = require('../config/worker.config');
 const DiaStockService = require('../services/plugins/dia/DiaStockService');
+const { withDiaLock, B2B_LOCK_KEY } = require('../services/plugins/dia/diaLock');
+const { syncB2bCari } = require('../services/plugins/dia/b2bCariSync');
+const { syncB2bAddresses } = require('../services/plugins/dia/b2bAddress');
 
 class DiaWorker {
     constructor() {
@@ -70,6 +73,12 @@ class DiaWorker {
                 redis: workerConfig.redis,
                 defaultJobOptions: workerConfig.queue.defaultJobOptions,
                 settings: queueSettings
+            }),
+            // b2b cari bilgileri (bakiye/limit/segment) DIA'dan Mongo'ya sync
+            b2bCariSync: new Queue('b2b-cari-sync', {
+                redis: workerConfig.redis,
+                defaultJobOptions: workerConfig.queue.defaultJobOptions,
+                settings: queueSettings
             })
         };
 
@@ -85,37 +94,56 @@ class DiaWorker {
      */
     setupProcessors() {
         console.log('setupProcessors() ÇAĞRILDI!');
+        // Tüm DIA işleri tek WS oturumunu paylaştığı için (DIA aynı kullanıcıda
+        // tek oturuma izin verir), süreçler-arası DIA kilidiyle SIRAYA alınırlar
+        // — asla üst üste binmez. Kilit "en iyi çaba"dır (Redis yoksa iş çalışır).
         // Full Sync - Scheduled job processor
         this.queues.fullSync.process('scheduled-full-sync', (job) => {
-            return this.processFullSync(job);
+            return withDiaLock(() => this.processFullSync(job), { label: 'fullSync' });
         });
         // Full Sync - Manual job processor
         this.queues.fullSync.process('manual-full-sync', (job) => {
-            return this.processFullSync(job);
+            return withDiaLock(() => this.processFullSync(job), { label: 'fullSync(manual)' });
         });
         // Light Sync - Scheduled job processor
         this.queues.lightSync.process('scheduled-light-sync', (job) => {
-            return this.processLightSync(job);
+            return withDiaLock(() => this.processLightSync(job), { label: 'lightSync' });
         });
         // Light Sync - Manual job processor
         this.queues.lightSync.process('manual-light-sync', (job) => {
-            return this.processLightSync(job);
+            return withDiaLock(() => this.processLightSync(job), { label: 'lightSync(manual)' });
         });
         // Stok Sync - saatlik tam stok taraması
         this.queues.stockSync.process('scheduled-stock-sync', (job) => {
-            return this.processStockSync(job);
+            return withDiaLock(() => this.processStockSync(job), { label: 'stockSync' });
         });
         this.queues.stockSync.process('manual-stock-sync', (job) => {
-            return this.processStockSync(job);
+            return withDiaLock(() => this.processStockSync(job), { label: 'stockSync(manual)' });
         });
         this.queues.xmlSync.process('manual-xml-sync', (job) => {
-            return this.processXmlSync(job);
+            return withDiaLock(() => this.processXmlSync(job), { label: 'xmlSync' });
         });
         this.queues.tagSync.process('scheduled-tag-sync', (job) => {
-            return this.processTagSync(job);
+            return withDiaLock(() => this.processTagSync(job), { label: 'tagSync' });
         });
         this.queues.tagSync.process('manual-tag-sync', (job) => {
-            return this.processTagSync(job);
+            return withDiaLock(() => this.processTagSync(job), { label: 'tagSync(manual)' });
+        });
+        // b2b cari sync — b2b farklı DIA kullanıcısı (ws_ART_B2B) kullandığı için
+        // AYRI kilitte (B2B_LOCK_KEY) çalışır; worker'ın Ws_alastik_B2C senkronlarını
+        // beklemez, onları bloklamaz. Kendi içinde (b2b sipariş/adres) sıraya girer.
+        this.queues.b2bCariSync.process('scheduled-b2b-cari-sync', (job) => {
+            return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync', key: B2B_LOCK_KEY, waitMs: 300000 });
+        });
+        this.queues.b2bCariSync.process('manual-b2b-cari-sync', (job) => {
+            return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });
+        });
+        // b2b adres sync (günlük, cari başına çağrı — uzun sürer, gece çalışır)
+        this.queues.b2bCariSync.process('scheduled-b2b-address-sync', (job) => {
+            return withDiaLock(() => this.processB2bAddressSync(job), { label: 'b2bAddressSync', key: B2B_LOCK_KEY, waitMs: 300000 });
+        });
+        this.queues.b2bCariSync.process('manual-b2b-address-sync', (job) => {
+            return withDiaLock(() => this.processB2bAddressSync(job), { label: 'b2bAddressSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });
         });
         console.log('Processor kayıtları TAMAMLANDI!');
     }
@@ -307,6 +335,37 @@ class DiaWorker {
     }
 
     /**
+     * b2b cari bilgileri sync (bakiye/limit/segment) — DIA'dan Mongo'ya.
+     * b2b DIA kullanıcısı (ws_ART_B2B) ile, ayrı kilitte çalışır.
+     */
+    async processB2bCariSync(job) {
+        const t0 = Date.now();
+        this.logger.info('=== B2B CARİ SYNC BAŞLANGICI ===', { jobId: job.id, timestamp: new Date().toISOString() });
+        try {
+            const r = await syncB2bCari(this.logger);
+            this.logger.info('=== B2B CARİ SYNC TAMAMLANDI ===', { ...r, duration: `${Date.now() - t0}ms` });
+            return { success: true, ...r };
+        } catch (error) {
+            this.logger.error('B2B cari sync hatası', { jobId: job.id, error: error.message });
+            throw error;
+        }
+    }
+
+    /** b2b cari adresleri sync (günlük, cari başına çağrı) → WebMember.diaCari.addresses */
+    async processB2bAddressSync(job) {
+        const t0 = Date.now();
+        this.logger.info('=== B2B ADRES SYNC BAŞLANGICI ===', { jobId: job.id, timestamp: new Date().toISOString() });
+        try {
+            const r = await syncB2bAddresses(this.logger);
+            this.logger.info('=== B2B ADRES SYNC TAMAMLANDI ===', { ...r, duration: `${Date.now() - t0}ms` });
+            return { success: true, ...r };
+        } catch (error) {
+            this.logger.error('B2B adres sync hatası', { jobId: job.id, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
      * Saatlik stok senkronu (tam tarama — stok hareketleri kart _date'ini
      * değiştirmediği için tarih filtresiyle yakalanamaz)
      */
@@ -336,6 +395,11 @@ class DiaWorker {
 
             await job.progress(25);
             const result = await this.diaService.syncOnlyStocks();
+            await job.progress(70);
+            // Tam MASLAK+MERKEZ tazelemesi: incremental stok sync'in kaçırdığı
+            // stok-hareketi (kart _date'i değişmeyen) değişikliklerini yakalar.
+            const depotResult = await this.diaService.refreshWebDepotStock();
+            this.logger.info('Web stok tazeleme (stockSync içinde)', depotResult);
             await job.progress(100);
 
             const duration = Date.now() - startTime;
@@ -560,6 +624,35 @@ class DiaWorker {
                 {
                     repeat: { cron: stockSyncCron, tz: 'Europe/Istanbul' },
                     timeout: workerConfig.worker.lightSyncTimeout
+                }
+            );
+
+            // b2b Cari Sync — her 30 dk (:05,:35). b2b DIA kullanıcısı (ws_ART_B2B)
+            // ile ayrı kilitte; worker'ın Ws_alastik_B2C senkronlarını beklemez.
+            const b2bCariCron = process.env.B2B_CARI_SYNC_CRON || '5,35 * * * *';
+            const existingB2bRepeats = await this.queues.b2bCariSync.getRepeatableJobs();
+            for (const job of existingB2bRepeats) {
+                await this.queues.b2bCariSync.removeRepeatableByKey(job.key);
+            }
+            await this.queues.b2bCariSync.add(
+                'scheduled-b2b-cari-sync',
+                { type: 'scheduled' },
+                {
+                    repeat: { cron: b2bCariCron, tz: 'Europe/Istanbul' },
+                    timeout: 1800000
+                }
+            );
+
+            // b2b Adres Sync — günlük (04:00). Cari başına çağrı gerektiği için uzun
+            // sürer (~birkaç dk), gece çalışır. Gün içinde /adres eklenince + ilk
+            // erişimde lazy doldurmayla zaten güncel kalır.
+            const b2bAddressCron = process.env.B2B_ADRES_SYNC_CRON || '0 4 * * *';
+            await this.queues.b2bCariSync.add(
+                'scheduled-b2b-address-sync',
+                { type: 'scheduled' },
+                {
+                    repeat: { cron: b2bAddressCron, tz: 'Europe/Istanbul' },
+                    timeout: 3600000
                 }
             );
 

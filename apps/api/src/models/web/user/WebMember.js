@@ -78,6 +78,26 @@ const webMemberSchema = new mongoose.Schema({
     diaCustomerKey: String,
     diaCustomerCode: String,
 
+    // DIA cari bilgileri — worker'da periyodik sync ile DIA'dan çekilir (b2b).
+    // Uçlar (cari-özet, segment) canlı DIA yerine buradan okur.
+    diaCari: {
+        bakiyeKurus: { type: Number, default: 0 },
+        borcKurus: { type: Number, default: 0 },
+        alacakKurus: { type: Number, default: 0 },
+        riskLimitiKurus: { type: Number, default: 0 },
+        segment: { type: String, default: '' }, // ozelkod2 (ör. F4)
+        syncedAt: { type: Date },
+        // Cari adresleri (fatura + teslimat) — mapDiaAddresses biçiminde; /adresler buradan okur
+        addresses: {
+            type: [{
+                id: String, baslik: String, teslimat: Boolean, ana: Boolean,
+                adres: String, il: String, ilce: String, telefon: String
+            }],
+            default: undefined
+        },
+        addressesSyncedAt: { type: Date }
+    },
+
     // Panelden verilen etiketler ve not (Üyeler sayfası)
     adminTags: { type: [String], default: [] },
     adminNote: { type: String, default: '' }

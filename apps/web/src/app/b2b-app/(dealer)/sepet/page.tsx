@@ -17,12 +17,74 @@ import {
   lineDiscountPct,
 } from "@components/b2b-theme/lib/payment-pricing";
 
+// Teslimat yöntemleri (sepette gösterim sırası). id = sipariş/işlem anahtarı.
+// "Şubeden Gel Al" (gelAl) DIA Gel-Al kampanyasının ek iskontosunu getirir.
+const DELIVERY_METHODS = [
+  { id: "standartSevkiyat", title: "Standart Sevkiyat" },
+  { id: "gelAl", title: "Şubeden Gel Al" },
+  { id: "kargo", title: "Kargo ile Sevkiyat" },
+];
+
+type BankAccount = {
+  _id: string;
+  name?: string;
+  accountName?: string;
+  iban?: string;
+  processingTime?: string;
+};
+
 export default function SepetPage() {
   const sepet = useCart();
   const router = useRouter();
   const [pricing, setPricing] = useState<B2bPricing | null>(null);
   const [paymentId, setPaymentId] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [deliveryId, setDeliveryId] = useState(DELIVERY_METHODS[0].id);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Siparişi oluştur → sunucuda WebOrder + DIA aktarımı
+  async function siparisVer() {
+    const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!token) {
+      showToast("Oturum bulunamadı, tekrar giriş yapın.", "hata");
+      return;
+    }
+    if (sepet.lines.length === 0 || submitting) return;
+    setSubmitting(true);
+    try {
+      const items = sepet.lines.map(s => ({ stockCode: s.urun.stockCode, quantity: s.adet }));
+      const res = await fetch(API_ENDPOINTS.b2b.siparis(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-Site": "b2b"
+        },
+        body: JSON.stringify({ items, paymentMethod: paymentId, deliveryMethod: deliveryId })
+      }).then(r => r.json());
+      if (res?.success && res.data) {
+        showToast("Siparişiniz oluşturuldu.", "ok");
+        sepet.clear();
+        router.push("/siparisler");
+      } else {
+        showToast(res?.message || "Sipariş oluşturulamadı.", "hata");
+      }
+    } catch {
+      showToast("Sipariş oluşturulamadı.", "hata");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Banka hesapları (havale ile ödeme seçilince gösterilir) — site bazlı (b2b)
+  useEffect(() => {
+    fetch(API_ENDPOINTS.payment.bankAccounts(), { headers: { "X-Site": "b2b" } })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && Array.isArray(res.data)) setBankAccounts(res.data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Ödeme yöntemleri + marka bazlı iskonto haritası (carinin segmentine göre)
   useEffect(() => {
@@ -41,65 +103,54 @@ export default function SepetPage() {
       .catch(() => {});
   }, []);
 
-  const totals = computeDiscountedTotals(sepet.lines, pricing, paymentId);
+  const gelAlSecili = deliveryId === "gelAl";
+  const gelAlBonus = gelAlSecili ? pricing?.gelAlBonus ?? 0 : 0;
+  const totals = computeDiscountedTotals(sepet.lines, pricing, paymentId, gelAlSecili);
   const limitExceeded = totals.totalKurus > REMAINING_LIMIT_KURUS;
 
   return (
     <>
       <div className="page-head" style={{ justifyContent: "flex-end" }}>
-        <Link className="btn-ghost" href="/lastik">
+        <Link className="btn-ghost" href="/">
           <ArrowLeftIcon size={15} /> Alışverişe devam
         </Link>
       </div>
 
-      {submitted ? (
-        <div className="alert warn">
-          Bu bir tasarım şablonudur — sipariş oluşturulmadı. Gerçek uygulamada
-          sipariş sunucuda tek işlemde yaratılmalı, fiyat ve stok orada
-          yeniden doğrulanmalıdır.
-        </div>
-      ) : null}
 
       {sepet.lines.length === 0 ? (
         <div className="card">
           <p className="note">
-            Sepetiniz boş. <Link href="/lastik">Lastik aramaya başlayın</Link>.
+            Sepetiniz boş. <Link href="/">Lastik aramaya başlayın</Link>.
           </p>
         </div>
       ) : (
         <div className="cart-layout">
           {/* SOL: teslimat adresi + ödeme yöntemi */}
           <div className="cart-left">
-            <DeliveryAddress />
+            {/* Şubeden Gel Al'da teslimat adresi sorulmaz (üründen şubede teslim) */}
+            {!gelAlSecili ? <DeliveryAddress /> : null}
 
             <div className="cart-card payment-method-card">
               <h2 className="cart-card-title">Ödeme Yöntemi</h2>
               {pricing && pricing.methods.length > 0 ? (
                 <div className="payment-grid">
                   {pricing.methods.map((m) => {
-                    const ind = computeDiscountedTotals(sepet.lines, pricing, m.id).indirimToplamKurus;
                     const secili = m.id === paymentId;
                     return (
                       <label
                         key={m.id}
                         className={`payment-option${secili ? " secili" : ""}`}
                       >
-                        <div className="po-top">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            checked={secili}
-                            onChange={() => setPaymentId(m.id)}
-                          />
-                          <div className="po-info">
-                            <div className="po-title">{m.title}</div>
-                          </div>
-                        </div>
-                        <div className="po-discount">
-                          {m.discountPct > 0 ? `İskonto %${m.discountPct}` : "İskonto yok"}
-                        </div>
-                        {ind > 0 ? (
-                          <div className="po-discount-amount">≈ {formatKurus(ind)} indirim</div>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          checked={secili}
+                          onChange={() => setPaymentId(m.id)}
+                        />
+                        <span className="po-radio" aria-hidden="true" />
+                        <span className="po-title">{m.title}</span>
+                        {m.discountPct > 0 ? (
+                          <span className="po-discount">%{m.discountPct} İskonto</span>
                         ) : null}
                       </label>
                     );
@@ -111,6 +162,47 @@ export default function SepetPage() {
                 </p>
               )}
             </div>
+
+            {paymentId === "havale" ? (
+              <div className="cart-card bank-accounts-card">
+                <h2 className="cart-card-title">Banka Hesap Bilgilerimiz</h2>
+                {bankAccounts.length > 0 ? (
+                  <div className="bank-list">
+                    {bankAccounts.map((b) => (
+                      <div className="bank-item" key={b._id}>
+                        <div className="bank-item-head">
+                          <strong className="bank-name">{b.name}</strong>
+                          {b.accountName ? (
+                            <span className="bank-holder">{b.accountName}</span>
+                          ) : null}
+                        </div>
+                        {b.iban ? (
+                          <div className="bank-iban-row">
+                            <code className="bank-iban">{b.iban}</code>
+                            <button
+                              type="button"
+                              className="bank-copy"
+                              onClick={() => {
+                                navigator.clipboard
+                                  ?.writeText(b.iban || "")
+                                  .then(() => showToast("IBAN kopyalandı", "ok"))
+                                  .catch(() => {});
+                              }}
+                            >
+                              Kopyala
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="note" style={{ padding: "0.6rem 0" }}>
+                    Tanımlı banka hesabı bulunamadı.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* SAĞ: ürünler + sipariş özeti */}
@@ -118,8 +210,9 @@ export default function SepetPage() {
             <div className="cart-card">
               <h2 className="cart-card-title">Sepetiniz</h2>
               {sepet.lines.map((s) => {
-                const disc = lineDiscountPct(pricing, s.urun.marka, paymentId);
-                const satirKurus = Math.round(s.kdvDahilBirimKurus * s.adet * (1 - disc / 100));
+                const payPct = s.urun.xml ? 0 : lineDiscountPct(pricing, s.urun.marka, paymentId);
+                const gaPct = s.urun.xml ? 0 : gelAlBonus;
+                const satirKurus = Math.round(s.kdvDahilBirimKurus * s.adet * (1 - payPct / 100) * (1 - gaPct / 100));
                 return (
                   <div className="cart-line" key={`${s.productId}:${s.warehouseId}`}>
                     {s.urun.imageUrl ? (
@@ -144,7 +237,6 @@ export default function SepetPage() {
                         {s.urun.dotYear ? <span className="cli-year">{s.urun.dotYear}</span> : null}
                         <SeasonIcon mevsim={s.urun.mevsim} size={16} />
                         <span className="cli-sku">{s.urun.stockCode}</span>
-                        {disc > 0 ? <span className="cli-indirim">%{disc} iskonto</span> : null}
                       </div>
                     </div>
 
@@ -193,8 +285,26 @@ export default function SepetPage() {
                 );
               })}
 
-              {/* Sepetiniz kartının altında özet */}
+              {/* Sepetiniz kartının altında teslimat yöntemi + özet */}
               <div className="cart-summary">
+                <div className="summary-teslimat">
+                  <label htmlFor="teslimatSelect">Teslimat Yöntemi</label>
+                  <select
+                    id="teslimatSelect"
+                    className="teslimat-select"
+                    value={deliveryId}
+                    onChange={(e) => setDeliveryId(e.target.value)}
+                  >
+                    {DELIVERY_METHODS.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.title}
+                        {d.id === "gelAl" && (pricing?.gelAlBonus ?? 0) > 0
+                          ? ` (+%${pricing?.gelAlBonus} iskonto)`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="summary-row">
                   <span>Ara Toplam</span>
                   <span><AnimatedMoney kurus={totals.matrahToplamKurus} /></span>
@@ -223,12 +333,10 @@ export default function SepetPage() {
 
                 <button
                   className="primary summary-order"
-                  onClick={() => {
-                    setSubmitted(true);
-                    router.push("/siparisler");
-                  }}
+                  onClick={siparisVer}
+                  disabled={submitting || sepet.lines.length === 0}
                 >
-                  Sipariş Ver
+                  {submitting ? "Sipariş oluşturuluyor…" : "Sipariş Ver"}
                 </button>
 
                 <button

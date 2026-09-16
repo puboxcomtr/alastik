@@ -60,6 +60,8 @@ export type Tire = {
   imageUrl: string | null;
   stocks: StockRow[];
   fiyat: Price | null;
+  /** XML (tedarikçi) kaynaklı ürün — ödeme yöntemi iskontosu uygulanmaz. */
+  xml?: boolean;
   /** Sevkiyat süresi etiketi: kendi stok "Aynı Gün", XML ürün "1-2 Gün" (veya alanı). */
   sevkiyat?: string;
   /** Ürün detay sayfası slug'ı (customData.seoUrl); yoksa stok kodu. */
@@ -227,7 +229,7 @@ export const BANNERS: Banner[] = [
            <text x="60" y="165" fill="#f3f3f1" font-family="system-ui,sans-serif" font-size="24">Stoklarla sınırlı · örnek görsel</text>
          </svg>`,
       ),
-    link: "/lastik",
+    link: "/",
   },
   {
     id: "b2",
@@ -242,7 +244,7 @@ export const BANNERS: Banner[] = [
            <text x="60" y="165" fill="#dbe6ff" font-family="system-ui,sans-serif" font-size="24">Çap, bijon ve ET ile süzün · örnek görsel</text>
          </svg>`,
       ),
-    link: "/jant",
+    link: "/",
   },
 ];
 

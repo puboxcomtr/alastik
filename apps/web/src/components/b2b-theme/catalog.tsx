@@ -9,7 +9,6 @@ import { SeasonIcon, SpinnerIcon } from "@components/b2b-theme/icons";
 import { AbLabel } from "@components/b2b-theme/ab-label";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 import {
-  TIRES,
   totalStock,
   type Tire,
   type Season,
@@ -162,7 +161,7 @@ export function Catalog(
     onServerSortChange?: (field: string) => void;
   } = {},
 ) {
-  const source = products ?? TIRES;
+  const source = products ?? [];
   // sabitDurum verilirse blok tek türe kilitlenir (sekme gizlenir), filter o
   // duruma göre başlatılır ve Temizle bu başlangıca döner.
   const emptyFilter: Filter = sabitDurum
@@ -506,10 +505,17 @@ export function Catalog(
                   </td>
                   <td className="num">
                     {fiyat ? (
-                      <div
-                        className={`price-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
-                      >
-                        {formatKurus(fiyat.kdvDahilBirimKurus)}
+                      <div className="fiyat-hucre">
+                        {fiyat.listeBirimKurus > fiyat.kdvDahilBirimKurus ? (
+                          <span className="price-liste">
+                            {formatKurus(fiyat.listeBirimKurus)}
+                          </span>
+                        ) : null}
+                        <div
+                          className={`price-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
+                        >
+                          {formatKurus(fiyat.kdvDahilBirimKurus)}
+                        </div>
                       </div>
                     ) : (
                       <span className="note">Fiyat tanımsız</span>
@@ -533,6 +539,7 @@ export function Catalog(
                           mevsim: urun.mevsim,
                           birimNetKurus: fiyat.birimNetKurus,
                           kdvDahilBirimKurus: fiyat.kdvDahilBirimKurus,
+                          xml: urun.xml,
                         }}
                       />
                     ) : (

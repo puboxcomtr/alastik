@@ -42,7 +42,9 @@ const orderItemSchema = new mongoose.Schema({
     stockCode: String,            // stokkartkodu
     name: String,
     quantity: { type: Number, required: true },
-    unitPrice: { type: Number, required: true },          // Kargosuz birim fiyat (gerçek webPrice)
+    unitPrice: { type: Number, required: true },          // Kargosuz birim fiyat (gerçek webPrice / final satış)
+    listUnitPrice: { type: Number, default: 0 },           // Liste birim fiyat (fiyat1) — DIA'da iskonto tabanı
+    discountRates: { type: [Number], default: undefined }, // Zincirli iskonto oranları (Cari, ödeme, Gel Al) — DIA indirim1..N
     totalPrice: { type: Number, required: true },          // unitPrice × quantity (kargosuz)
     shippingPerUnit: { type: Number, default: 0 },         // 1 adetlik kargo (XML için, DIA'da 0)
     shippingTotal: { type: Number, default: 0 },           // Toplam kargo (shippingPerUnit × quantity)
@@ -66,7 +68,7 @@ const pricingSchema = new mongoose.Schema({
 const paymentSchema = new mongoose.Schema({
     method: {
         type: String,
-        enum: ['credit_card', 'credit_card_3d', 'bank_transfer', 'cash_on_delivery', 'netahsilat_installment'],
+        enum: ['credit_card', 'credit_card_3d', 'bank_transfer', 'cash_on_delivery', 'netahsilat_installment', 'cari'],
         required: true
     },
     status: {

@@ -43,6 +43,7 @@ export type CartSnapshot = {
   birimNetKurus: number; // KDV hariç birim fiyat
   kdvDahilBirimKurus: number;
   warehouseName?: string;
+  xml?: boolean; // XML (tedarikçi) ürün — ödeme yöntemi iskontosu uygulanmaz
 };
 
 export type CartRecord = {
@@ -64,6 +65,7 @@ export type CartLineProduct = {
   imageUrl: string | null;
   dotYear: number | null;
   mevsim: Season;
+  xml?: boolean;
 };
 
 export type CartLine = CartRecord & {
@@ -154,6 +156,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               imageUrl: s.imageUrl ?? null,
               dotYear: s.dotYear ?? null,
               mevsim: s.mevsim ?? "yaz",
+              xml: s.xml ?? false,
             },
             warehouseName: s.warehouseName ?? "—",
             birimNetKurus: s.birimNetKurus,
@@ -183,6 +186,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             imageUrl: urun.imageUrl ?? null,
             dotYear: "dotYear" in urun ? urun.dotYear : null,
             mevsim: "mevsim" in urun ? urun.mevsim : "yaz",
+            xml: "xml" in urun ? urun.xml : false,
           },
           warehouseName: depo?.warehouseName ?? "—",
           birimNetKurus: urun.fiyat.birimNetKurus,

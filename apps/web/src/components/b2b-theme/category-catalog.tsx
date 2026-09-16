@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { Catalog, type ServerOptions, type ServerFilters } from '@components/b2b-theme/catalog';
 import { SpinnerIcon } from '@components/b2b-theme/icons';
-import { rawToTire, normalizeBrand, type RawProduct } from '@components/b2b-theme/showcase-catalog';
+import { rawToTire, normalizeBrand, type RawProduct, type CariOran } from '@components/b2b-theme/showcase-catalog';
 import type { Tire } from '@components/b2b-theme/lib/sample-data';
 
 const PAGE_SIZE = 50; // her sayfada gösterilecek ürün sayısı
@@ -41,6 +41,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
     const [sort, setSort] = useState<SortState>(null);
     const [facet, setFacet] = useState<ServerOptions>({ brands: [], seasons: [], dots: [], warehouses: [] });
     const markaLogo = useRef<Record<string, string>>({});
+    const cariOran = useRef<CariOran>({ tanimlifiyat: 1, fiyatyuzde: 50 });
     const firstLoad = useRef(true);
 
     // ── URL ↔ durum ────────────────────────────────────────────────
@@ -122,7 +123,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             .then(res => {
                 const raw: RawProduct[] = res?.data?.products || res?.products || [];
                 setTotalPages(res?.data?.pagination?.totalPages || 1);
-                setUrunler(raw.map(u => rawToTire(u, markaLogo.current)));
+                setUrunler(raw.map(u => rawToTire(u, markaLogo.current, cariOran.current)));
                 setLoading(false);
                 applyDepotStock(raw);
             })
@@ -163,22 +164,27 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         setPage(baslat.page);
         setFilters(baslat.filters);
         setSort(baslat.sort);
-        fetch(API_ENDPOINTS.b2b.brands(), { headers: { 'X-Site': 'b2b' } })
-            .then(r => r.json())
-            .then(brandRes => {
-                const map: Record<string, string> = {};
-                for (const m of (brandRes?.data || brandRes?.brands || [])) {
-                    if (m?.name && m?.logo) map[normalizeBrand(m.name)] = m.logo;
-                    if (m?.diaBrand && m?.logo) map[normalizeBrand(m.diaBrand)] = m.logo;
-                }
-                markaLogo.current = map;
-            })
-            .catch(() => {})
-            .finally(() => {
-                loadFacets();
-                loadPage(baslat.page, baslat.filters, baslat.sort);
-                firstLoad.current = false;
-            });
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+        Promise.all([
+            fetch(API_ENDPOINTS.b2b.brands(), { headers: { 'X-Site': 'b2b' } })
+                .then(r => r.json())
+                .then(brandRes => {
+                    const map: Record<string, string> = {};
+                    for (const m of (brandRes?.data || brandRes?.brands || [])) {
+                        if (m?.name && m?.logo) map[normalizeBrand(m.name)] = m.logo;
+                        if (m?.diaBrand && m?.logo) map[normalizeBrand(m.diaBrand)] = m.logo;
+                    }
+                    markaLogo.current = map;
+                }).catch(() => {}),
+            // Cari fiyat oranı (fiyat1 × %?) — DIA kampanya fiyat kartından dinamik
+            token ? fetch(API_ENDPOINTS.b2b.fiyatOrani(), { headers: { Authorization: `Bearer ${token}`, 'X-Site': 'b2b' } })
+                .then(r => r.json())
+                .then(res => { if (res?.success && res.data) cariOran.current = res.data; }).catch(() => {}) : Promise.resolve(),
+        ]).finally(() => {
+            loadFacets();
+            loadPage(baslat.page, baslat.filters, baslat.sort);
+            firstLoad.current = false;
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [kategori]);
 
