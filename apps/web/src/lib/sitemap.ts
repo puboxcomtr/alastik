@@ -25,7 +25,7 @@ export function getSiteBase(): string {
     return `https://${site.domains[0]}`;
 }
 
-export async function fetchSitemapData(type: 'pages' | 'products' | 'categories' | 'blog' | 'tags'): Promise<SitemapEntry[]> {
+export async function fetchSitemapData(type: 'pages' | 'products' | 'categories' | 'blog' | 'tags' | 'brands'): Promise<SitemapEntry[]> {
     try {
         const base = API_ENDPOINTS.definition.get().replace(/\/definition$/, '');
         const res = await fetch(`${base}/sitemap-data/${type}`, {

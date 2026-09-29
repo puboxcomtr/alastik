@@ -8,6 +8,7 @@ export async function GET() {
     return xmlResponse(sitemapIndexXml([
         `${base}/sitemap-sayfalar.xml`,
         `${base}/sitemap-kategoriler.xml`,
+        `${base}/sitemap-markalar.xml`,
         `${base}/sitemap-urunler.xml`,
         `${base}/sitemap-etiketler.xml`,
         `${base}/sitemap-blog.xml`
