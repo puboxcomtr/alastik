@@ -302,8 +302,13 @@ mongoose.connect(process.env.MONGODB_URI, {
     // Kargo kuralları (stoklu ürünlerde fiyata gömülü kargo payı)
     await require('./services/web/cargo/ShippingRuleService').loadShippingRules();
     // XML Kontrolü
-    const xmlSyncScheduler = require('./services/plugins/xml/XmlSyncScheduler');
-    xmlSyncScheduler.start();
+    // XML_SCHEDULER=false ise başlatılmaz (dev ortamı canlı veritabanını paylaştığı için)
+    if (process.env.XML_SCHEDULER !== 'false') {
+      const xmlSyncScheduler = require('./services/plugins/xml/XmlSyncScheduler');
+      xmlSyncScheduler.start();
+    } else {
+      logger.info('XmlSyncScheduler devre dışı (XML_SCHEDULER=false)');
+    }
     // SEO: gece içerik taraması + Search Console anlık görüntüsü
     try {
       require('./services/seo/SeoScheduler').start();
