@@ -26,6 +26,7 @@ import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
 // Component Imports
 import CustomTabList from '@/@core/components/mui/TabList'
+import SeoLivePanel from '@/views/seo-module/SeoLivePanel'
 
 // Type Imports
 import type { ProductEnventoryProps } from '@/types/apps/productTypes'
@@ -41,6 +42,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
   const [seoTitle, setSeoTitle] = useState('')
   const [seoDescription, setSeoDescription] = useState('')
   const [seoUrl, setSeoUrl] = useState('')
+  const [focusKeyword, setFocusKeyword] = useState('')
   const [delivery, setDelivery] = useState('same_day')
   const [activeTab, setActiveTab] = useState('seo')
 
@@ -49,6 +51,7 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
     setSeoTitle(product.seoTitle || '')
     setSeoDescription(product.seoDescription || '')
     setSeoUrl(product.seoUrl || '')
+    setFocusKeyword(product.focusKeyword || '')
     setDelivery(product.delivery || 'same_day')
   }, [product])
 
@@ -84,6 +87,12 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
 
     setSeoUrl(cleanUrl)
     updateField('seoUrl', cleanUrl)
+  }
+
+  // Odak anahtar kelime değişiklik handler (SEO analizi)
+  const handleFocusKeywordChange = (value: string) => {
+    setFocusKeyword(value)
+    updateField('focusKeyword', value)
   }
 
   // Delivery değişiklik handler
@@ -193,6 +202,22 @@ const ProductEnventory = ({ product }: ProductEnventoryProps) => {
                         }}
                       />
                     </FormControl>
+                  </Grid>
+
+                  {/* SEO analizi: odak kelime + canlı kriter kontrolü (SEO > İçerik Analizi ile aynı motor) */}
+                  <Grid size={{ xs: 12 }}>
+                    <SeoLivePanel
+                      type='product'
+                      focusKeyword={focusKeyword}
+                      onFocusKeywordChange={handleFocusKeywordChange}
+                      title={seoTitle || product.name || ''}
+                      description={seoDescription}
+                      slug={seoUrl}
+                      content={product.description || product.customDescription || ''}
+                      keywords={product.seoKeywords || []}
+                      refId={product._key}
+                      galleryImages={(product.images?.length || 0) + (product.customImages?.length || 0)}
+                    />
                   </Grid>
                 </Grid>
               </FormGroup>

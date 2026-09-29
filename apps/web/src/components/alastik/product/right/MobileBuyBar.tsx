@@ -13,7 +13,7 @@ import { useCart } from '@/src/context/CartContext';
 import { ROUTES } from '@/src/config/routes';
 import { API_ENDPOINTS } from '@/src/config/api';
 import { isLogged } from '@/src/hooks/Theme/useAuth';
-import { getProductPrice, getDisplayPrice, getProductUrl, getProductImage, getProductType } from '@/src/hooks/Products/productHelpers';
+import { getProductPrice, getDisplayPrice, getProductUrl, getProductImage, getProductType, isPriceHidden, PRICE_HIDDEN_LABEL } from '@/src/hooks/Products/productHelpers';
 import { checkPurchaseLimit, productToLimitCheckItem } from '@/src/hooks/Products/purchaseLimitHelpers';
 
 export interface SimilarSizeQuery {
@@ -49,6 +49,7 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
     if (!hasStock) return null;
 
     const price = getProductPrice(product);
+    const priceHidden = isPriceHidden(product);
     // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
     // Lastiklerde "Sepete Git" montaj noktası seçimine, diğer ürünlerde sepete gider
@@ -85,7 +86,7 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
     };
 
     const handleAddToCart = async () => {
-        if (busy) return;
+        if (busy || priceHidden) return;
         setBusy('add');
         // Öneriler basıldığı anda paralel yüklenir, panel açılınca hazır olur
         loadSuggestions();
@@ -109,7 +110,7 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
     };
 
     const handleBuyNow = async () => {
-        if (busy) return;
+        if (busy || priceHidden) return;
         setBusy('buy');
         try {
             const added = await addOne(true);
@@ -145,7 +146,7 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
             >
                 <div className="d-flex align-items-center gap-2">
                     <span className="fw-bold text-black" style={{ fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
-                        {formatTL(gosterim.value)} TL{gosterim.suffix}
+                        {priceHidden ? PRICE_HIDDEN_LABEL : `${formatTL(gosterim.value)} TL${gosterim.suffix}`}
                     </span>
                     {/* Şimdi Al dar, Sepete Ekle geniş */}
                     <button
@@ -153,7 +154,7 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
                         className="btn btn-outline-primary"
                         style={{ flex: '1 1 0', minWidth: 0, paddingTop: 12, paddingBottom: 12 }}
                         onClick={handleBuyNow}
-                        disabled={busy !== null}
+                        disabled={busy !== null || priceHidden}
                     >
                         {busy === 'buy' ? '...' : 'Şimdi Al'}
                     </button>
@@ -162,7 +163,7 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
                         className="btn btn-primary"
                         style={{ flex: '1.4 1 0', minWidth: 0, paddingTop: 12, paddingBottom: 12 }}
                         onClick={handleAddToCart}
-                        disabled={busy !== null}
+                        disabled={busy !== null || priceHidden}
                     >
                         {busy === 'add' ? 'Ekleniyor...' : 'Sepete Ekle'}
                     </button>

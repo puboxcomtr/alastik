@@ -23,6 +23,8 @@ router.get('/providers', async (req, res) => {
             providers = { [type]: providers[type] };
         }
 
+        // Sağlayıcı kataloğu koddan gelir; tarayıcı ESKİ sürümü cache'lememeli
+        res.set('Cache-Control', 'no-store');
         res.json({
             success: true,
             data: providers
@@ -318,6 +320,29 @@ router.put('/:id', async (req, res) => {
         if (priority !== undefined) method.priority = priority;
         if (apiCredentials) method.apiCredentials = apiCredentials;
 
+        // Kredi kartı: her sitede Tek Çekim / Taksitli için EN FAZLA 1 POS.
+        // İkinci bir yöntemde aynı rol açılmak istenirse uyarı ver (reddet).
+        if (creditCardSettings && method.type === 'credit_card') {
+            if (creditCardSettings.tekCekimAktif === true) {
+                const other = await PaymentMethod.findOne({
+                    _id: { $ne: method._id }, site: method.site, type: 'credit_card',
+                    isDeleted: { $ne: true }, 'creditCardSettings.tekCekimAktif': true
+                });
+                if (other) {
+                    return res.status(400).json({ success: false, message: `Bu site için Tek Çekim zaten "${other.name}" yönteminde aktif. Aynı anda yalnızca 1 yöntem seçilebilir; önce onu kapatın.` });
+                }
+            }
+            if (creditCardSettings.taksitAktif === true) {
+                const other = await PaymentMethod.findOne({
+                    _id: { $ne: method._id }, site: method.site, type: 'credit_card',
+                    isDeleted: { $ne: true }, 'creditCardSettings.taksitAktif': true
+                });
+                if (other) {
+                    return res.status(400).json({ success: false, message: `Bu site için Taksitli zaten "${other.name}" yönteminde aktif. Aynı anda yalnızca 1 yöntem seçilebilir; önce onu kapatın.` });
+                }
+            }
+        }
+
         if (creditCardSettings && method.type === 'credit_card') {
             method.creditCardSettings = { ...method.creditCardSettings, ...creditCardSettings };
         }
@@ -330,6 +355,11 @@ router.put('/:id', async (req, res) => {
 
         // Kimlik bilgileri değişmiş olabilir; servis önbelleğini temizle
         if (method.provider === 'nkolay') NkolayService.clearCredentials();
+
+        // Kredi kartı rol bayrakları değişmiş olabilir → türetilen seçenek cache'ini düşür.
+        if (method.type === 'credit_card') {
+            try { require('../../../services/plugins/payment/creditCardOptions').invalidate(method.site); } catch (_) { /* geç */ }
+        }
 
         res.json({
             success: true,
@@ -370,6 +400,10 @@ router.patch('/:id/toggle', async (req, res) => {
         await method.save();
 
         if (method.provider === 'nkolay') NkolayService.clearCredentials();
+        // Kredi kartı aktif/pasif → türetilen Tek Çekim/Taksitli durumu değişebilir.
+        if (method.type === 'credit_card') {
+            try { require('../../../services/plugins/payment/creditCardOptions').invalidate(method.site); } catch (_) { /* geç */ }
+        }
 
         res.json({
             success: true,

@@ -31,7 +31,9 @@ import {
     getProductSeason,
     isJant,
     isSetLastik,
-    getProductFeature
+    getProductFeature,
+    isPriceHidden,
+    PRICE_HIDDEN_LABEL
 } from '@src/hooks/Products/productHelpers';
 
 import { checkPurchaseLimit, productToLimitCheckItem, canAddToCartStock } from '@src/hooks/Products/purchaseLimitHelpers';
@@ -49,7 +51,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         return `https://wa.me/${formatted}`;
     };
     const handleAddToCart = async () => {
-        if (adding) return;
+        if (adding || priceHidden) return;
 
         const currentInCart = items.find(i => i.productKey === product._key)?.quantity ?? 0;
         const stockCheck = canAddToCartStock(product, currentInCart, 1);
@@ -87,6 +89,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
+    const priceHidden = isPriceHidden(product);
     // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
@@ -228,7 +231,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                             </div>
                         )}
                         <div className="d-flex flex-column flex-md-row justify-content-end align-items-end gap-1 gap-md-2">
-                            {hasDiscount && (
+                            {!priceHidden && hasDiscount && (
                                 <del className="text-body-tertiary fw-normal">
                                     {originalPrice?.toLocaleString('tr-TR', {
                                         minimumFractionDigits: 2,
@@ -237,10 +240,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 </del>
                             )}
                             <span className="fw-bold">
-                                {gosterim.value.toLocaleString('tr-TR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })} TL{gosterim.suffix}
+                                {priceHidden
+                                    ? PRICE_HIDDEN_LABEL
+                                    : `${gosterim.value.toLocaleString('tr-TR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })} TL${gosterim.suffix}`}
                             </span>
                         </div>
                     </div>
@@ -253,9 +258,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 className="product-card-button btn btn-icon btn-primary animate-slide-end w-100 mt-3"
                                 aria-label="Sepete Ekle"
                                 onClick={handleAddToCart}
-                                disabled={adding}
+                                disabled={adding || priceHidden}
                             >
-                                {adding ? 'Ekleniyor...' : t('addToCart')}
+                                {priceHidden ? PRICE_HIDDEN_LABEL : (adding ? 'Ekleniyor...' : t('addToCart'))}
                             </button>
                         </Tooltip>
                     ) : (

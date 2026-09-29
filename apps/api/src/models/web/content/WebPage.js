@@ -12,7 +12,9 @@ const pageSchema = new mongoose.Schema({
     seo: {
         metaTitle: { type: String, default: '' },
         metaDescription: { type: String, default: '' },
-        metaKeywords: { type: [String], default: [] }
+        metaKeywords: { type: [String], default: [] },
+        // SEO analizi: odak anahtar kelime
+        focusKeyword: { type: String, default: '' }
     },
     status: { type: String, enum: ['draft', 'published', 'archived'], default: 'published' },
     template: { type: String, enum: ['default', 'full-width', 'landing', 'contact'], default: 'default' },

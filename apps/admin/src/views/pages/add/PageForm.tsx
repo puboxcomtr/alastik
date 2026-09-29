@@ -1,5 +1,7 @@
 'use client'
 
+import SeoLivePanel from '@/views/seo-module/SeoLivePanel'
+
 import { useState } from 'react'
 import { getSiteUrl } from '@/utils/activeSite'
 import { useRouter } from 'next/navigation'
@@ -397,7 +399,8 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
         seo: {
             metaTitle: page?.seo?.metaTitle || '',
             metaDescription: page?.seo?.metaDescription || '',
-            metaKeywords: page?.seo?.metaKeywords?.join(', ') || ''
+            metaKeywords: page?.seo?.metaKeywords?.join(', ') || '',
+            focusKeyword: (page?.seo as { focusKeyword?: string } | undefined)?.focusKeyword || ''
         }
     })
 
@@ -514,7 +517,8 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                 seo: {
                     metaTitle: formData.seo.metaTitle,
                     metaDescription: formData.seo.metaDescription,
-                    metaKeywords: formData.seo.metaKeywords.split(',').map(k => k.trim()).filter(Boolean)
+                    metaKeywords: formData.seo.metaKeywords.split(',').map(k => k.trim()).filter(Boolean),
+                    focusKeyword: formData.seo.focusKeyword.trim()
                 }
             }
 
@@ -777,6 +781,20 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                                     seo: { ...prev.seo, metaKeywords: e.target.value }
                                                 }))}
                                                 helperText='Virgülle ayırarak yazın'
+                                            />
+                                        </Grid>
+
+                                        {/* SEO analizi: odak kelime + canlı kriter kontrolü */}
+                                        <Grid size={{ xs: 12 }}>
+                                            <SeoLivePanel
+                                                type='page'
+                                                focusKeyword={formData.seo.focusKeyword}
+                                                onFocusKeywordChange={value => setFormData(prev => ({ ...prev, seo: { ...prev.seo, focusKeyword: value } }))}
+                                                title={formData.seo.metaTitle || formData.title}
+                                                description={formData.seo.metaDescription || formData.excerpt}
+                                                slug={formData.slug}
+                                                content={() => (editor?.getHTML() || '')}
+                                                keywords={formData.seo.metaKeywords.split(',').map(k => k.trim()).filter(Boolean)}
                                             />
                                         </Grid>
                                     </Grid>

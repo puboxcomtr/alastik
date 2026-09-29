@@ -12,6 +12,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 // Partials
 import SearchBox from '@components/lastikjantavm/Header/Middle/Partials/SearchBox';
 import ActionButtons from '@components/lastikjantavm/Header/Middle/Partials/ActionButton';
+import UstLinks from '@components/common/UstLinks';
 
 // Routes
 import { ROUTES } from '@/src/config/routes';
@@ -27,6 +28,13 @@ export default function Main({ logo, siteName, onMenuOpen }: MiddleProps) {
 
     return (
         <Container className="navbar navbar-expand-lg d-block p-0">
+            {/* Üst ikonlu hızlı linkler (panelden Menü Yönetimi > Üst Linkler) —
+                hesap ikonlarıyla aynı sağ kenarda hizalanır */}
+            <Row className='row-fluid'>
+                <Col xs="12" className="d-flex justify-content-end">
+                    <UstLinks />
+                </Col>
+            </Row>
             <Row className='row-fluid align-items-center py-2 py-lg-3'>
                 <Col xs="8" lg="3" className={mobileSearchOpen ? 'd-none d-lg-block' : ''}>
                     <Link prefetch={false} href={ROUTES.HOME} className="navbar-brand fs-2 py-0 m-0 me-auto me-sm-n5">

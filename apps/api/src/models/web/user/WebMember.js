@@ -59,6 +59,8 @@ const webMemberSchema = new mongoose.Schema({
     activatedAt: Date,
 
     // Güvenlik
+    // Varsayılan şifre (12345) ile giriş yapıldıysa true → panelde zorunlu şifre değiştirme
+    mustChangePassword: { type: Boolean, default: false },
     lastLoginAt: Date,
     loginAttempts: {
         type: Number,
@@ -87,6 +89,23 @@ const webMemberSchema = new mongoose.Schema({
         riskLimitiKurus: { type: Number, default: 0 },
         segment: { type: String, default: '' }, // ozelkod2 (ör. F4)
         syncedAt: { type: Date },
+        // Faturadan türetilen finansal veri (b2b finans senkronu, günlük) — uçlar
+        // (/alim-adet, /vade-takvimi, /cari-ozet overdue) canlı DIA yerine bunu okur.
+        purchaseStats: { type: mongoose.Schema.Types.Mixed }, // { revenue, quantity, totals, years }
+        dueItems: {
+            type: [{ date: String, amount: Number, invoiceNo: String }],
+            default: undefined
+        },
+        // Fatura bazlı vade durumu (yaşlandırma) — /vade-durumu ucu buradan okur
+        agingItems: {
+            type: [{
+                issueDate: String, dueDate: String, invoiceNo: String,
+                totalKurus: Number, paidKurus: Number, remainingKurus: Number
+            }],
+            default: undefined
+        },
+        overdueKurus: { type: Number }, // vadesi geçen borç (FIFO)
+        financeSyncedAt: { type: Date },
         // Cari adresleri (fatura + teslimat) — mapDiaAddresses biçiminde; /adresler buradan okur
         addresses: {
             type: [{

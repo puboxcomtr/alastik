@@ -6,43 +6,23 @@ const PAYMENT_PROVIDERS = {
             name: 'Netahsilat',
             logo: '/images/providers/netahsilat.png',
             description: 'Türkiye\'nin lider sanal pos sağlayıcısı',
+            // PirPos SOAP servisi yalnız API kullanıcı adı + şifre kullanır.
+            // (Client Code / Store Key / Hash Key bu entegrasyonda kullanılmaz.)
             requiredFields: [
-                {
-                    key: 'clientCode',
-                    label: 'Client Code',
-                    type: 'text',
-                    required: true,
-                    placeholder: 'XXXXXX',
-                    help: 'Netahsilat tarafından verilen müşteri kodu'
-                },
-                {
-                    key: 'storeKey',
-                    label: 'Store Key',
-                    type: 'text',
-                    required: true,
-                    placeholder: 'YYYYYY',
-                    help: 'Mağaza anahtarı'
-                },
                 {
                     key: 'username',
                     label: 'API Kullanıcı Adı',
                     type: 'text',
                     required: true,
-                    placeholder: 'api_user'
+                    placeholder: 'api_user',
+                    help: 'NetTahsilat PirPos API kullanıcı adı'
                 },
                 {
                     key: 'password',
                     label: 'API Şifre',
                     type: 'password',
                     required: true,
-                    help: 'API erişim şifresi'
-                },
-                {
-                    key: 'hashKey',
-                    label: 'Hash Key',
-                    type: 'password',
-                    required: true,
-                    help: 'İşlem güvenlik anahtarı'
+                    help: 'NetTahsilat PirPos API şifresi'
                 }
             ],
             settings: {
@@ -79,6 +59,28 @@ const PAYMENT_PROVIDERS = {
             },
             modes: [
                 { value: 'live', label: 'Canlı Mod', apiUrl: 'https://paynkolay.nkolayislem.com.tr' }
+            ]
+        },
+        paynet: {
+            code: 'paynet',
+            name: 'Paynet',
+            logo: '/images/providers/paynet.png',
+            description: 'Tek çekim kredi kartı ödemeleri (3D Secure)',
+            color: '#00b2a9',
+            icon: '💳',
+            requiredFields: [
+                { key: 'publishableKey', label: 'Publishable Key', type: 'text', required: true, placeholder: 'pbk_...', help: 'Frontend kart token için (pbk_ ile başlar)' },
+                { key: 'secretKey', label: 'Secret Key', type: 'password', required: true, help: 'Sunucuda tahsilat için gizli anahtar (Basic Auth)' }
+            ],
+            settings: {
+                supportedCurrency: ['TRY'],
+                has3DSecure: true,
+                hasInstallment: false,
+                maxInstallment: 1
+            },
+            modes: [
+                { value: 'test', label: 'Test Modu', apiUrl: 'https://api.dev.paynet.com.tr' },
+                { value: 'live', label: 'Canlı Mod', apiUrl: 'https://api.paynet.com.tr' }
             ]
         }
     },

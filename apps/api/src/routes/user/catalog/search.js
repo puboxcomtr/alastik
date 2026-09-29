@@ -399,75 +399,75 @@ router.get('/results', async (req, res) => {
                     { 'diaData.anabarkod': stockRegex }
                 ]
             });
-        } else if (tireMatch) {
-            const [, queryWidth, queryAspect, queryDiameter] = tireMatch;
-            const { genislik, yanak, yukseklik, jant, cap } = req.query;
-            const finalWidth = genislik || queryWidth;
-            const finalAspect = yanak || yukseklik || queryAspect;
-            const finalDiameter = jant || cap || queryDiameter;
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: finalWidth }
-                }
-            });
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: { ozellikadi: 'Yanak', detayaciklama: finalAspect }
-                }
-            });
-            andConditions.push({
-                'diaData.m_urunOzellikleri': {
-                    $elemMatch: {
-                        ozellikadi: 'Jant Çapı',
-                        detayaciklama: { $regex: new RegExp(`^R?${finalDiameter}C?$|^${finalDiameter}\\s*İnç$`, 'i') }
-                    }
-                }
-            });
-            const extraText = q
-                .replace(/[\d]{3}[\s\/\-]*[\d]{2}[\s\/\-]*r?[\d]{2}/i, '')
-                .trim();
-
-            // Akıllı arama: mevsim kelimesi filtreye çevrilir (sidebar mevsim seçiliyse ona dokunulmaz)
-            const sizeSeason = !mevsim ? detectSeasonWord(req.site, extraText) : null;
-            const sizeText = sizeSeason ? sizeSeason.rest : extraText;
-            if (sizeSeason) {
-                andConditions.push({ 'diaData.ozelkod1kodu': sizeSeason.code });
-            }
-
-            if (sizeText.length >= 2) {
-                const words = sizeText.split(/\s+/).filter(w => w.length >= 2);
-
-                for (const word of words) {
-                    const wordRegex = new RegExp(escapeRegex(word), 'i');
-                    andConditions.push({
-                        $or: [
-                            { 'diaData.aciklama': wordRegex },
-                            { 'diaData.marka': wordRegex }
-                        ]
-                    });
-                }
-            }
         } else {
-            // Akıllı arama: "pirelli yaz" → mevsim filtresi + kalan kelimeler
+            // Akıllı arama (b2b /products/filter ile aynı mantık): mevsim kelimesi →
+            // filtre; RAKAMLAR (ebat/kod) esnek eşleşir ("195 50 16" = "1955016" =
+            // "195/50R16"); HARF kelimeleri (marka/model) ayrı ayrı; TÜM parçalar
+            // birlikte (AND) sağlanır. Ebat ozelkod3kodu üzerinden yakalanır —
+            // m_urunOzellikleri (Genişlik/Yanak/Jant) eksik ürünler de gelir.
             const freeSeason = !mevsim ? detectSeasonWord(req.site, q.trim()) : null;
             const freeText = freeSeason ? freeSeason.rest : q.trim();
             if (freeSeason) {
                 andConditions.push({ 'diaData.ozelkod1kodu': freeSeason.code });
             }
-            const words = freeText.split(/\s+/).filter(w => w.length >= 2);
 
-            if (words.length > 0) {
-                for (const word of words) {
-                    const wordRegex = new RegExp(escapeRegex(word), 'i');
-                    andConditions.push({
-                        $or: [
-                            { 'diaData.aciklama': wordRegex },
-                            { 'diaData.marka': wordRegex },
-                            { 'diaData.stokkartkodu': wordRegex },
-                            { 'diaData.anabarkod': wordRegex }
-                        ]
-                    });
+            // Rakamlar → ebat/ürün kodu esnek eşleşmesi (ayraç/R harfi serbest)
+            const rakam = freeText.replace(/[^0-9]/g, '');
+            if (rakam.length >= 3) {
+                const esnek = new RegExp(rakam.split('').join('\\D*'), 'i');
+                // Kısa rakam (3-6, ör. "205" genişlik / "20555") YALNIZ ebat alanında
+                // aranır — stok kodu/açıklamada 1..2..3 gibi gevşek eşleşip alakasız
+                // ürün getiriyordu. Gerçek stok kodu aramaları zaten isStockCode (>=5
+                // hane, tam eşleşme) ile ayrı işlenir. Tam ebat/uzun rakamda (>=7, ör.
+                // 2055516 veya 205551691 yük endeksli) stok kodu + açıklama da eklenir.
+                const rakamOr = [{ 'diaData.ozelkod3kodu': esnek }];
+                if (rakam.length >= 7) {
+                    rakamOr.push({ 'diaData.stokkartkodu': esnek });
+                    rakamOr.push({ 'diaData.aciklama': esnek });
                 }
+                andConditions.push({ $or: rakamOr });
+            }
+
+            // Harf kelimeleri (rakam içermeyen, en az 2 harf) → marka/model
+            const kelimeler = freeText.split(/\s+/).filter(w => w.length >= 2 && /[a-zçğıiöşü]/i.test(w) && !/\d/.test(w));
+            for (const word of kelimeler) {
+                const wordRegex = new RegExp(escapeRegex(word), 'i');
+                andConditions.push({
+                    $or: [
+                        { 'diaData.aciklama': wordRegex },
+                        { 'diaData.marka': wordRegex }
+                    ]
+                });
+            }
+
+            // Ne yeterli rakam ne harf kelimesi çıktıysa ham metni geniş ara
+            if (rakam.length < 3 && kelimeler.length === 0) {
+                const rgx = new RegExp(escapeRegex(freeText), 'i');
+                andConditions.push({
+                    $or: [
+                        { 'diaData.aciklama': rgx },
+                        { 'diaData.marka': rgx },
+                        { 'diaData.stokkartkodu': rgx },
+                        { 'diaData.anabarkod': rgx }
+                    ]
+                });
+            }
+        }
+
+        // Sidebar ebat filtreleri (genislik/yanak/jant query paramları) — q'dan
+        // bağımsız; seçiliyse yapısal özellik eşleşmesiyle ayrıca daraltır.
+        {
+            const { genislik, yanak, yukseklik, jant, cap } = req.query;
+            if (genislik) {
+                andConditions.push({ 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: genislik } } });
+            }
+            const yanakVal = yanak || yukseklik;
+            if (yanakVal) {
+                andConditions.push({ 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Yanak', detayaciklama: yanakVal } } });
+            }
+            const jantVal = jant || cap;
+            if (jantVal) {
+                andConditions.push({ 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Jant Çapı', detayaciklama: { $regex: new RegExp(`^R?${jantVal}C?$|^${jantVal}\\s*İnç$`, 'i') } } } });
             }
         }
         if (marka) {

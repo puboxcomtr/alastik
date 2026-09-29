@@ -276,7 +276,7 @@ const EditSliderForm = ({ sliderId }: { sliderId: string }) => {
                                                             <TextField fullWidth type='number' label='Sıra' value={slider.order} onChange={(e) => handleSliderChange(slider.id, 'order', e.target.value)} />
                                                         </Grid>
                                                         <Grid size={{ xs: 12, sm: 5 }}>
-                                                            <TextField fullWidth label='Açıklama *' placeholder='Slider açıklaması' value={slider.description} onChange={(e) => handleSliderChange(slider.id, 'description', e.target.value)} required />
+                                                            <TextField fullWidth label='Açıklama' placeholder='Slider açıklaması' value={slider.description} onChange={(e) => handleSliderChange(slider.id, 'description', e.target.value)} required />
                                                         </Grid>
                                                         <Grid size={{ xs: 12, sm: 4 }} style={{ position: 'relative' }}>
                                                             {sliders.length > 1 && (

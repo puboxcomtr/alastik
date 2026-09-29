@@ -6,9 +6,11 @@ const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebDia = require('../../../models/plugins/dia/DiaSettings');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
-const { resolveSitePrice, resolveXmlShipping } = require('../../../utils/sitePricing');
+const { resolveSitePrice, resolveXmlShipping, PRICE_HIDDEN } = require('../../../utils/sitePricing');
 const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
 const { loadMontagePrices } = require('../../../utils/montagePricing');
+const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
+const { withDiaLock } = require('../../../services/plugins/dia/diaLock');
 
 /**
  * Sepet ürünleri için backend'de items + pricing hesapla
@@ -52,30 +54,51 @@ const calculateOrderPricing = async (cartItems, site) => {
     }
 
     // Kritik stok kontrolü ayarı (site bazlı). Kapalıysa ekstra sorgu yapılmaz.
-    // Amaç: DIA senkronu gecikmeli olduğundan, düşük stoklu üründe iki müşterinin
-    // aynı tek stoğu ayrı ayrı sipariş etmesini (oversell) engellemek. Kontrol
-    // yalnız esik ve altındaki stoklu ürünlerde çalışır.
+    // Amaç: stoğu olmayan ürünün satılmasını (oversell) engellemek. İki katmanlı:
+    //   1) CANLI DIA stoğu (webStokDepolari = MASLAK+MERKEZ) sipariş anında çekilir
+    //      → kesin. Böylece senkron bayat kalsa bile stoksuz ürün satılamaz.
+    //   2) Canlı DIA erişilemezse (oturum çakışması/boş yanıt) DB stoğuna düşülür,
+    //      ancak yalnız esik ve altı stoklu üründe blok — dolu stoğu OLAN ürün
+    //      canlı okuma yapılamadı diye HAKSIZ bloklanmaz (satış baltalanmasın).
+    // XML ürünler stok kontrolünden hariçtir (stokları tedarikçi tarafında).
     const diaSet = await WebDia.getSettings(site).catch(() => null);
     const kritikAktif = !!diaSet?.kritikStok?.kontrolAktif;
     const kritikEsik = Number(diaSet?.kritikStok?.esik) || 5;
 
-    // Kritik ürünlerin açık (bekleyen, henüz teslim/iptal olmamış) sipariş adetleri.
-    // Kullanılabilir = gerçek stok − açık siparişler; senkronun bayat DB stoğuna
-    // güvenmek yerine platformda halihazırda beklemekte olan siparişleri düşer.
-    const acikSiparisMap = {};
-    if (kritikAktif) {
-        const kritikKeys = products
-            .filter(p => Number(p.diaData?.gercek_stok || 0) <= kritikEsik)
-            .map(p => p._key);
-        if (kritikKeys.length) {
-            const acik = await WebOrder.aggregate([
-                { $match: { site, isActive: true, status: { $in: ['pending', 'confirmed', 'processing', 'shipped'] } } },
-                { $unwind: '$items' },
-                { $match: { 'items.productKey': { $in: kritikKeys } } },
-                { $group: { _id: '$items.productKey', toplam: { $sum: '$items.quantity' } } }
-            ]);
-            for (const a of acik) acikSiparisMap[a._id] = a.toplam;
+    // Stok kontrolüne dahil (kendi stok / non-XML, stokkartkodu olan) ürünler
+    const stokKontrolUrunler = kritikAktif
+        ? products.filter(p => p.syncInfo?.syncSource !== 'xml_integration' && p.diaData?.stokkartkodu)
+        : [];
+
+    // Sipariş anında CANLI DIA stoğu (worker ile aynı WS kullanıcısı → diaLock ile
+    // seri; kilit kısa süre beklenir, alınamazsa best-effort çalışır/boş dönerse
+    // DB'ye düşülür → checkout bloklanmaz). null = canlı okuma başarısız.
+    let liveStokMap = null;
+    if (stokKontrolUrunler.length) {
+        const codes = [...new Set(stokKontrolUrunler.map(p => String(p.diaData.stokkartkodu)))];
+        try {
+            liveStokMap = await withDiaLock(
+                async () => new DiaStockService().fetchLiveStockSum(codes),
+                { label: 'order-live-stock', waitMs: 6000, ttlMs: 30000 }
+            );
+        } catch (e) {
+            liveStokMap = null; // canlı okuma başarısız → DB yedeğine düş
         }
+    }
+
+    // İlgili ürünlerin açık (bekleyen, henüz teslim/iptal olmamış) sipariş adetleri.
+    // Kullanılabilir = stok − açık siparişler; web siparişleri DIA'da yalnız sipariş
+    // (fiziksel stok hareketi değil) olduğu için gercek_stok'a yansımaz, düşülmeli.
+    const acikSiparisMap = {};
+    if (stokKontrolUrunler.length) {
+        const kontrolKeys = stokKontrolUrunler.map(p => p._key);
+        const acik = await WebOrder.aggregate([
+            { $match: { site, isActive: true, status: { $in: ['pending', 'confirmed', 'processing', 'shipped'] } } },
+            { $unwind: '$items' },
+            { $match: { 'items.productKey': { $in: kontrolKeys } } },
+            { $group: { _id: '$items.productKey', toplam: { $sum: '$items.quantity' } } }
+        ]);
+        for (const a of acik) acikSiparisMap[a._id] = a.toplam;
     }
 
     // Montaj noktasına bağlı hizmetlerde noktaya özel fiyat (0 = ücretsiz) geçerlidir
@@ -96,16 +119,28 @@ const calculateOrderPricing = async (cartItems, site) => {
 
         const quantity = parseInt(cartItem.quantity) || 1;
 
-        // Kritik stok: gerçek stok ≤ eşik olan üründe, açık siparişler düşülünce
-        // istenen adet karşılanmıyorsa kalem siparişten çıkarılır (oversell koruması).
-        if (kritikAktif) {
-            const stok = Number(product.diaData?.gercek_stok || 0);
-            if (stok <= kritikEsik) {
+        // Stok kontrolü (yalnız kendi stok / non-XML ürünlerde). Kullanılabilir =
+        // stok − açık siparişler. İstenen adet karşılanmıyorsa kalem çıkarılır.
+        //   • Canlı DIA okundu → o stoğu kullan (kesin), her zaman kontrol et.
+        //   • Canlı okunamadı → DB stoğuna düş, yalnız esik ve altı stokta blok
+        //     (dolu stoklu ürünü haksız bloklamamak için — satış baltalanmasın).
+        const stokKod = product.diaData?.stokkartkodu;
+        const isXmlStok = product.syncInfo?.syncSource === 'xml_integration';
+        if (kritikAktif && !isXmlStok && stokKod) {
+            const liveStok = liveStokMap ? liveStokMap[String(stokKod)] : undefined;
+            let stok, kontrolEt;
+            if (liveStok !== undefined) {
+                stok = liveStok; kontrolEt = true;               // canlı: kesin
+            } else {
+                stok = Number(product.diaData?.gercek_stok || 0); // DB yedeği
+                kontrolEt = stok <= kritikEsik;                   // yalnız düşük stok
+            }
+            if (kontrolEt) {
                 const kullanilabilir = stok - (acikSiparisMap[product._key] || 0);
                 if (quantity > kullanilabilir) {
                     cikarilanlar.push({
                         productKey: product._key,
-                        stockCode: product.diaData?.stokkartkodu || '',
+                        stockCode: stokKod || '',
                         name: product.diaData?.aciklama || '',
                         istenen: quantity,
                         kalan: Math.max(0, kullanilabilir)
@@ -122,6 +157,17 @@ const calculateOrderPricing = async (cartItems, site) => {
         // Site fiyat kuralı önceliklidir (XML üründe siteData.<site>.xmlPrice, panel kuralı);
         // yoksa webPrice > fiyat4 (global webPrice sahip sitenin fiyatıdır, sitePrice varken kullanılmaz)
         const sitePrice = resolveSitePrice(product, site);
+        // Fiyat gizli (__dinamik__16 seçili + dinamik yok): sipariş dışı bırakılır (sepete de eklenemez)
+        if (sitePrice === PRICE_HIDDEN && typeof montagePrice !== 'number') {
+            cikarilanlar.push({
+                productKey: product._key,
+                stockCode: stokKod || '',
+                name: product.diaData?.aciklama || '',
+                istenen: quantity,
+                kalan: 0
+            });
+            continue;
+        }
         const unitPrice = typeof montagePrice === 'number'
             ? montagePrice
             : (sitePrice !== null

@@ -43,6 +43,9 @@ export type CreditCardSettings = {
   supportedCurrency?: string[]
   commission?: number
   installmentRates?: number[]
+  // Bu yöntem, sitesi için Tek Çekim / Taksitli rolünü üstlenir mi (site başına maks 1)
+  tekCekimAktif?: boolean
+  taksitAktif?: boolean
 }
 
 // Bank Transfer Settings

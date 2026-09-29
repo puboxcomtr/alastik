@@ -106,6 +106,26 @@ const seoSettingsSchema = new mongoose.Schema({
         }
     },
 
+    // İçerik SEO analizi eşikleri (SEO > Ayarlar) — kriter motoru bunları okur
+    analysis: {
+        titleMin: { type: Number, default: 30 },
+        titleMax: { type: Number, default: 60 },
+        descriptionMin: { type: Number, default: 70 },
+        descriptionMax: { type: Number, default: 160 },
+        densityMin: { type: Number, default: 0.5 },
+        densityMax: { type: Number, default: 2.5 },
+        minWords: {
+            blog: { type: Number, default: 600 },
+            page: { type: Number, default: 300 },
+            product: { type: Number, default: 150 },
+            category: { type: Number, default: 100 },
+            brand: { type: Number, default: 100 },
+            tag: { type: Number, default: 100 }
+        },
+        goodScore: { type: Number, default: 80 },
+        fairScore: { type: Number, default: 50 }
+    },
+
     site: {
         type: String,
         required: true,

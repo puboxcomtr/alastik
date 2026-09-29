@@ -1,220 +1,155 @@
-import Link from "next/link";
-import { formatKurus, formatDate, formatDay } from "@components/b2b-theme/lib/format";
-import {
-  ACCOUNT_SUMMARY,
-  REMAINING_LIMIT_KURUS,
-  TOTAL_RISK_KURUS,
-} from "@components/b2b-theme/lib/sample-data";
-import {
-  AlertIcon,
-  CalendarIcon,
-  CardIcon,
-  CartIcon,
-  OrdersIcon,
-} from "@components/b2b-theme/icons";
+"use client";
 
-/**
- * Cari Hesap Özeti: bakiye, borç/alacak kırılımı, kredi limiti kullanımı ve
- * açık faturalar.
- */
+// Cari Hesap Özeti — bakiye + borç/alacak, vadesi geçen borç, hesap bilgileri ve
+// parola işlemleri (tek sayfa). Kaynak: /cari-ozet + /vade-takvimi + /me (hepsi DB).
+import { useEffect, useMemo, useState } from "react";
+import { API_ENDPOINTS } from "@src/config/api";
+import { AlertIcon, SpinnerIcon } from "@components/b2b-theme/icons";
+
+interface Ozet {
+  cariKodu: string;
+  balanceKurus: number;
+  borcKurus: number;
+  alacakKurus: number;
+  overdueKurus: number | null;
+}
+interface DueItem { date: string; amount: number; invoiceNo: string; }
+
+const nf = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (kurus: number) => `${nf.format((kurus || 0) / 100)} TL`;
+
+function daysBetween(a: string, b: string): number {
+  const d1 = new Date(`${a}T00:00:00`).getTime();
+  const d2 = new Date(`${b}T00:00:00`).getTime();
+  return Math.round((d2 - d1) / 86400000);
+}
+
 export default function CariPage() {
-  const ozet = ACCOUNT_SUMMARY;
-  const borclu = ozet.balanceKurus > 0;
-  const limitUsagePct =
-    ozet.creditLimitKurus > 0
-      ? Math.min(100, Math.round((TOTAL_RISK_KURUS * 100) / ozet.creditLimitKurus))
-      : 0;
-  const gecikmisler = ozet.invoices.filter(
-    (f) => f.gecikmeGun !== null && f.gecikmeGun > 0,
-  );
+  const [ozet, setOzet] = useState<Ozet | null>(null);
+  const [me, setMe] = useState<{ name: string; email: string; cariKodu: string } | null>(null);
+  const [items, setItems] = useState<DueItem[]>([]);
+  const [today, setToday] = useState("");
+  const [error, setError] = useState(false);
+
+  // Parola formu
+  const [mevcut, setMevcut] = useState("");
+  const [yeni, setYeni] = useState("");
+  const [tekrar, setTekrar] = useState("");
+  const [pwDurum, setPwDurum] = useState<{ tip: "ok" | "err"; mesaj: string } | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) { setError(true); return; }
+    const h = { Authorization: `Bearer ${token}`, "X-Site": "b2b" };
+    Promise.all([
+      fetch(API_ENDPOINTS.b2b.cariOzet(), { headers: h }).then((r) => r.json()),
+      fetch(API_ENDPOINTS.b2b.dueDates(), { headers: h }).then((r) => r.json()).catch(() => null),
+      fetch(API_ENDPOINTS.b2b.me(), { headers: h }).then((r) => r.json()).catch(() => null),
+    ]).then(([o, v, m]) => {
+      if (o?.success && o.data) setOzet(o.data); else setError(true);
+      if (v?.success && v.data) { setItems(v.data.items || []); setToday(v.data.today || ""); }
+      if (m?.success && m.data) setMe(m.data);
+    }).catch(() => setError(true));
+  }, []);
+
+  const overdueDays = useMemo(() => {
+    if (!items.length || !today) return 0;
+    const past = items.filter((it) => it.date < today).map((it) => it.date).sort();
+    return past.length ? Math.max(0, daysBetween(past[0], today)) : 0;
+  }, [items, today]);
+
+  async function parolaGuncelle(e: React.FormEvent) {
+    e.preventDefault();
+    setPwDurum(null);
+    if (yeni !== tekrar) { setPwDurum({ tip: "err", mesaj: "Yeni parolalar eşleşmiyor." }); return; }
+    if (yeni.length < 4) { setPwDurum({ tip: "err", mesaj: "Yeni parola en az 4 karakter olmalıdır." }); return; }
+    const token = localStorage.getItem("authToken");
+    if (!token) { setPwDurum({ tip: "err", mesaj: "Oturum bulunamadı." }); return; }
+    setPwBusy(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.b2b.sifreDegistir(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Site": "b2b" },
+        body: JSON.stringify({ currentPassword: mevcut, newPassword: yeni }),
+      });
+      const d = await res.json();
+      if (d?.success) { setPwDurum({ tip: "ok", mesaj: d.message || "Parolanız güncellendi." }); setMevcut(""); setYeni(""); setTekrar(""); }
+      else setPwDurum({ tip: "err", mesaj: d?.message || "Parola değiştirilemedi." });
+    } catch { setPwDurum({ tip: "err", mesaj: "Bir hata oluştu." }); }
+    finally { setPwBusy(false); }
+  }
+
+  if (error) {
+    return (
+      <>
+        <div className="page-head"><div><h1>Cari Hesap Özeti</h1></div></div>
+        <p className="note">Cari bilgileriniz şu an yüklenemedi.</p>
+      </>
+    );
+  }
+
+  const overdue = ozet?.overdueKurus ?? 0;
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Cari Hesap Özeti</h1>
-          <p className="sub">
-            {ozet.unvan} · Cari: {ozet.accountCode} · Güncelleme:{" "}
-            {formatDate(ozet.sonSenkronAt)}
-          </p>
-        </div>
-        <div className="head-actions">
-          <Link className="btn-primary" href="/odeme">
-            <CardIcon size={16} /> Ödeme Yap
-          </Link>
-        </div>
-      </div>
+      <div className="page-head"><div><h1>Cari Hesap Özeti</h1></div></div>
 
-      {gecikmisler.length > 0 ? (
-        <div className="alert warn">
-          <AlertIcon size={17} /> Vadesi {gecikmisler[0]?.gecikmeGun} gün geçen{" "}
-          {gecikmisler.length} faturanız var — toplam{" "}
-          <strong>{formatKurus(ozet.overdueKurus)}</strong>. Sipariş
-          süreçlerinizin aksamaması için ödenmesi gerekir.
-        </div>
-      ) : null}
-
-      {/* ── Bakiye + limit ── */}
-      <div className="account-top">
-        <section className={`account-balance${borclu ? " borclu" : ""}`}>
-          <div className="label">
-            Güncel Bakiye
-            <span className="yon">
-              {ozet.borcAlacakYonu === "B" ? "BORÇLU" : "ALACAKLI"}
-            </span>
+      {/* ── Üst sıra: Bakiye + Vadesi Geçen ── */}
+      <div className="cari-grid">
+        <section className="cari-card cari-balance">
+          <div className="cari-card-head">
+            <span className="cari-card-title">Bakiye</span>
           </div>
-          <div className="tutar">{formatKurus(Math.abs(ozet.balanceKurus))}</div>
-          <div className="kirilim">
-            <span className="borc">
-              Borç <strong>{formatKurus(ozet.borcToplamKurus)}</strong>
-            </span>
-            <span className="alacak">
-              Alacak <strong>{formatKurus(ozet.alacakToplamKurus)}</strong>
-            </span>
-          </div>
-          <div className="dip">
-            Ödeme planı: {ozet.paymentPlan} · Son ödemeniz:{" "}
-            {formatDay(ozet.sonOdemeTarihi)}
-          </div>
-        </section>
-
-        <section className="account-limit">
-          <div className="label">Kredi Limiti</div>
-          <div className="tutar">{formatKurus(ozet.creditLimitKurus)}</div>
-          <div className="cubuk" aria-hidden="true">
-            <span style={{ width: `${limitUsagePct}%` }} />
-          </div>
-          <div className="limit-breakdown">
-            <div>
-              <span className="k-label">Kullanılan</span>
-              <strong>{formatKurus(TOTAL_RISK_KURUS)}</strong>
-            </div>
-            <div className="sag">
-              <span className="k-label">Kullanılabilir</span>
-              <strong className={REMAINING_LIMIT_KURUS < 0 ? "danger" : "ok"}>
-                {formatKurus(REMAINING_LIMIT_KURUS)}
-              </strong>
-            </div>
-          </div>
-          {ozet.pendingOrderKurus > 0 ? (
-            <div className="dip">
-              Kullanılan tutara henüz faturalanmamış{" "}
-              {formatKurus(ozet.pendingOrderKurus)} sipariş dahildir.
+          <div className="cari-big">{ozet ? money(Math.abs(ozet.balanceKurus)) : "…"}</div>
+          {ozet ? (
+            <div className="cari-pills">
+              <span className="cari-pill"><i className="dot red" /> Borç <strong>{money(ozet.borcKurus)}</strong></span>
+              <span className="cari-pill"><i className="dot green" /> Alacak <strong>{money(ozet.alacakKurus)}</strong></span>
             </div>
           ) : null}
         </section>
+
+        <section className="cari-card cari-overdue">
+          <div className="cari-card-head">
+            <span className="cari-ico warn"><AlertIcon size={20} /></span>
+            <span className="cari-card-title">Vadesi Geçen Borç</span>
+            {overdueDays > 0 ? <span className="cari-badge gecikme">{overdueDays} GÜN GECİKME</span> : null}
+          </div>
+          <div className="cari-big orange">{ozet ? money(overdue) : "…"}</div>
+          <div className="cari-overdue-foot">
+            <span className="cari-note">{overdue > 0 ? "Geciken bakiyenizin ödenmesi gerekmektedir." : "Vadesi geçen borcunuz bulunmuyor."}</span>
+            {overdue > 0 ? <a className="cari-btn-odeme" href="/odeme">Ödeme Yap</a> : null}
+          </div>
+        </section>
       </div>
 
-      {/* ── Hızlı erişim ── */}
-      <div className="account-shortcut">
-        <Link href="/" className="kisayol">
-          <CartIcon size={18} />
-          <div>
-            <strong>Sipariş Ver</strong>
-            <span>Lastik ve jant katalogu</span>
-          </div>
-        </Link>
-        <Link href="/siparisler" className="kisayol">
-          <OrdersIcon size={18} />
-          <div>
-            <strong>Siparişlerim</strong>
-            <span>Durum ve geçmiş</span>
-          </div>
-        </Link>
-        <Link href="/odeme" className="kisayol">
-          <CardIcon size={18} />
-          <div>
-            <strong>Ödeme Yap</strong>
-            <span>Havale/EFT bilgileri</span>
-          </div>
-        </Link>
-        <Link href="/hesap/ayarlar" className="kisayol">
-          <CalendarIcon size={18} />
-          <div>
-            <strong>Hesap Ayarları</strong>
-            <span>Parola ve bilgiler</span>
-          </div>
-        </Link>
-      </div>
+      {/* ── Alt sıra: Hesap Bilgileri + Şifre İşlemleri ── */}
+      <div className="cari-grid" style={{ marginTop: "1.1rem" }}>
+        <section className="cari-card">
+          <h3 className="cari-block-title">Hesap Bilgileri</h3>
+          {!me ? (
+            <p className="note loading-row"><SpinnerIcon size={16} className="loading-brand" /> Yükleniyor…</p>
+          ) : (
+            <div className="cari-info">
+              <div><span className="k">Cari Kodu:</span><span className="v">{ozet?.cariKodu || me.cariKodu || "—"}</span></div>
+              <div><span className="k">Firma:</span><span className="v">{me.name || "—"}</span></div>
+              <div><span className="k">E-Mail:</span><span className="v">{me.email || "—"}</span></div>
+            </div>
+          )}
+        </section>
 
-      {/* ── Vade kovaları ── */}
-      <div className="cards">
-        <div className={`card${ozet.overdueKurus > 0 ? " tinted-red" : ""}`}>
-          <div className="label">Geçmiş Vadeler</div>
-          <div className={`value${ozet.overdueKurus > 0 ? " danger" : ""}`}>
-            {formatKurus(ozet.overdueKurus)}
-          </div>
-          <div className="note">
-            Ortalama gecikme {ozet.ortalamaGecikmeGun} gün
-          </div>
-        </div>
-        <div className="card tinted-yellow">
-          <div className="label">Bu Ay Vadesi</div>
-          <div className="value">{formatKurus(ozet.buAyVadesiKurus)}</div>
-        </div>
-        <div className="card">
-          <div className="label">Gelecek 30 Gün</div>
-          <div className="value">{formatKurus(ozet.gelecek30GunKurus)}</div>
-        </div>
-        <div className="card">
-          <div className="label">Toplam Vadeli</div>
-          <div className="value">{formatKurus(ozet.totalTermKurus)}</div>
-        </div>
+        <section className="cari-card">
+          <h3 className="cari-block-title">Şifre İşlemleri</h3>
+          {pwDurum ? <div className={`alert ${pwDurum.tip === "ok" ? "success" : "warn"}`}>{pwDurum.mesaj}</div> : null}
+          <form className="cari-pw-form" onSubmit={parolaGuncelle}>
+            <input type="password" autoComplete="current-password" placeholder="Eski Şifre" required value={mevcut} onChange={(e) => setMevcut(e.target.value)} />
+            <input type="password" autoComplete="new-password" placeholder="Yeni Şifre" minLength={4} required value={yeni} onChange={(e) => setYeni(e.target.value)} />
+            <input type="password" autoComplete="new-password" placeholder="Yeni Şifre Tekrar" minLength={4} required value={tekrar} onChange={(e) => setTekrar(e.target.value)} />
+            <button type="submit" className="cari-btn-guncelle" disabled={pwBusy}>{pwBusy ? "Güncelleniyor…" : "Güncelle"}</button>
+          </form>
+        </section>
       </div>
-
-      {/* ── Açık faturalar ── */}
-      <h2 className="section">Açık Faturalar ve Vadeler</h2>
-      <div className="tablewrap">
-        <table className="data">
-          <thead>
-            <tr>
-              <th>Fatura No</th>
-              <th>Tarih</th>
-              <th>Vade</th>
-              <th>Ödeme Planı</th>
-              <th className="num">Fatura Tutarı</th>
-              <th className="num">Kalan</th>
-              <th>Durum</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ozet.invoices.map((f) => {
-              const gecikti = f.gecikmeGun !== null && f.gecikmeGun > 0;
-              return (
-                <tr key={f.fisNo}>
-                  <td className="sku">{f.fisNo}</td>
-                  <td>{formatDay(f.tarih)}</td>
-                  <td>{formatDay(f.vadeTarihi)}</td>
-                  <td className="note">{f.paymentPlan ?? "—"}</td>
-                  <td className="num">{formatKurus(f.netKurus)}</td>
-                  <td className="num">
-                    <strong>{formatKurus(f.kalanKurus)}</strong>
-                  </td>
-                  <td>
-                    {f.gecikmeGun === null ? (
-                      <span className="badge gray">Vade yok</span>
-                    ) : gecikti ? (
-                      <span className="badge danger">
-                        {f.gecikmeGun} gün gecikmiş
-                      </span>
-                    ) : (
-                      <span className="badge ok">
-                        {Math.abs(f.gecikmeGun)} gün kaldı
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <p className="note" style={{ marginTop: "1rem" }}>
-        Toplam tahsilatınız {formatKurus(ozet.alacakToplamKurus)}, son ödeme{" "}
-        {formatDay(ozet.sonOdemeTarihi)}. Ayrıntı için temsilcinizle
-        görüşebilirsiniz.
-      </p>
     </>
   );
 }

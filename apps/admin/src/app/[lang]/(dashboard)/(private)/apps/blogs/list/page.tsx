@@ -6,7 +6,7 @@ import classnames from 'classnames'
 
 /* API */
 import { fetchBlogs, deleteBlog, type BlogType } from '@/utils/api/blogs'
-import { API_ENDPOINTS, fetchAPI } from '@libs/api'
+import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 import { getSiteUrl } from '@/utils/activeSite'
 
 /* MUI */
@@ -242,7 +242,19 @@ const BlogListTable = () => {
             columnHelper.accessor('title', {
                 header: 'Blog Başlığı',
                 cell: ({ row }) => (
-                    <div className='flex flex-col items-start group'>
+                    <div className='flex items-center' style={{ gap: '10px' }}>
+                        {row.original.featuredImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={getImageUrl(row.original.featuredImage)}
+                                alt=''
+                                style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-image.png' }}
+                            />
+                        ) : (
+                            <div style={{ width: 44, height: 44, borderRadius: 6, backgroundColor: '#f0f0f0', flexShrink: 0 }} />
+                        )}
+                        <div className='flex flex-col items-start group'>
                         <div className='flex items-center gap-2'>
                             <Typography className='font-medium' color='text.primary'>
                                 {row.original.title}
@@ -261,9 +273,19 @@ const BlogListTable = () => {
                                 </IconButton>
                             </Tooltip>
                         </div>
-                        <Typography variant='body2' color='text.secondary'>
-                            /{row.original.slug}
+                        <Typography
+                            variant='body2'
+                            color='primary'
+                            component='a'
+                            href={`${getSiteUrl()}/blog/${row.original.slug}`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            onClick={e => e.stopPropagation()}
+                            sx={{ textDecoration: 'none', wordBreak: 'break-all', '&:hover': { textDecoration: 'underline' } }}
+                        >
+                            {getSiteUrl()}/blog/{row.original.slug}
                         </Typography>
+                        </div>
                     </div>
                 )
             }),
@@ -389,15 +411,26 @@ const BlogListTable = () => {
                         placeholder='Blog başlığı ile arama'
                         className='max-sm:is-full'
                     />
-                    <Button
-                        color='primary'
-                        variant='contained'
-                        className='max-sm:is-full is-auto'
-                        startIcon={<i className='ri-add-line' />}
-                        onClick={() => router.push('/tr/apps/blogs/add')}
-                    >
-                        Yeni Blog Ekle
-                    </Button>
+                    <div className='flex items-center gap-3 max-sm:is-full max-sm:flex-col'>
+                        <Button
+                            color='primary'
+                            variant='outlined'
+                            className='max-sm:is-full is-auto'
+                            startIcon={<i className='ri-folder-2-line' />}
+                            onClick={() => router.push('/tr/apps/blogs/categories')}
+                        >
+                            Blog Kategorileri
+                        </Button>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            className='max-sm:is-full is-auto'
+                            startIcon={<i className='ri-add-line' />}
+                            onClick={() => router.push('/tr/apps/blogs/add')}
+                        >
+                            Yeni Blog Ekle
+                        </Button>
+                    </div>
                 </div>
                 <div className='overflow-x-auto'>
                     <table className={tableStyles.table}>

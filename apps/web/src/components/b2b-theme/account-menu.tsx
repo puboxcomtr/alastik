@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
-import { CardIcon, OrdersIcon, UserIcon, WalletIcon } from "./icons";
+import { CalendarIcon, CardIcon, FileIcon, OrdersIcon, UserIcon, WalletIcon } from "./icons";
 
 /** Üst bardaki hesap menüsü: oturumdaki cari bilgisi + ayarlar, siparişler, ödeme, çıkış. */
 export function AccountMenu() {
@@ -60,6 +60,15 @@ export function AccountMenu() {
           </Link>
           <Link href="/siparisler" onClick={() => setOpen(false)}>
             <OrdersIcon size={16} /> Siparişlerim
+          </Link>
+          <Link href="/odemelerim" onClick={() => setOpen(false)}>
+            <WalletIcon size={16} /> Ödemelerim
+          </Link>
+          <Link href="/raporlar/cari-hareketler" onClick={() => setOpen(false)}>
+            <FileIcon size={16} /> Cari Hesap Ekstresi
+          </Link>
+          <Link href="/raporlar/vade-durumu" onClick={() => setOpen(false)}>
+            <CalendarIcon size={16} /> Vade Durumu
           </Link>
           <Link href="/odeme" onClick={() => setOpen(false)}>
             <CardIcon size={16} /> Ödeme Yap

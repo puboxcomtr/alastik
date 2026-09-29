@@ -1,0 +1,13 @@
+{
+  "name": "bayi-paneli-tasarim",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @b2b/web dev",
+    "build": "pnpm --filter @b2b/web build",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

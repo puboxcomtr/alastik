@@ -6,6 +6,7 @@ const WebTag = require('../../../models/web/catalog/WebTag');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 const { MAIN_DIA_FILTERS, getSiteVisibilityFilter, getVehicleTypeLabel } = require('../../../config/diaFilters');
 const { salePriceExpr, usesCustomPricing } = require('../../../utils/sitePricing');
+const { buildSearchQueryConditions } = require('../../../utils/smartSearch');
 
 function buildBaseMatch(site) {
     const baseMatch = {
@@ -94,62 +95,12 @@ router.get('/tire-options', async (req, res) => {
         const baseMatch = buildBaseMatch(req.site);
         let productType = 'LASTİK';
 
-        // Arama (q) filtresi - search.js'deki mantığın aynısı
-        if (q && q.length >= 2) {
-            const isStockCode = /^\d{5,}-\d+/.test(q.trim());
-            const cleaned = q.replace(/[\s\-]+/g, '').toLowerCase();
-            const tireMatch = isStockCode ? null : cleaned.match(/(\d{3})\/?(\d{2})r?(\d{2})/i);
-
-            if (tireMatch) {
-                const [, queryWidth, queryAspect, queryDiameter] = tireMatch;
-                const finalWidth = req.query.genislik || queryWidth;
-                const finalAspect = req.query.yanak || req.query.yukseklik || queryAspect;
-                const finalDiameter = req.query.jant || req.query.cap || queryDiameter;
-
-                // m_urunOzellikleri üzerinden ebat eşleştir
-                if (!baseMatch['$and']) baseMatch['$and'] = [];
-                baseMatch['$and'].push(
-                    { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: finalWidth } } },
-                    { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Yanak', detayaciklama: finalAspect } } },
-                    {
-                        'diaData.m_urunOzellikleri': {
-                            $elemMatch: {
-                                ozellikadi: 'Jant Çapı',
-                                detayaciklama: { $regex: new RegExp(`^R?${finalDiameter}C?$|^${finalDiameter}\\s*İnç$`, 'i') }
-                            }
-                        }
-                    }
-                );
-
-                const extraText = q.replace(/[\d]{3}[\s\/\-]*[\d]{2}[\s\/\-]*r?[\d]{2}/i, '').trim();
-                if (extraText.length >= 2) {
-                    const WebBrand = require('../../../models/web/catalog/WebBrand');
-                    const brandMatch = await WebBrand.findOne({
-                        $or: [
-                            { diaMarkaAck: { $regex: new RegExp(`^${extraText}$`, 'i') } },
-                            { diaBrand: { $regex: new RegExp(`^${extraText}$`, 'i') } },
-                            { name: { $regex: new RegExp(`^${extraText}$`, 'i') } }
-                        ],
-                        [`siteSettings.${req.site}.webVisible`]: true
-                    }).select('diaMarkaAck').lean();
-
-                    if (brandMatch) {
-                        baseMatch['diaData.marka'] = brandMatch.diaMarkaAck;
-                    } else {
-                        baseMatch['$and'].push({ 'diaData.aciklama': { $regex: new RegExp(extraText, 'i') } });
-                    }
-                }
-            } else {
-                const regex = new RegExp(q, 'i');
-                if (!baseMatch['$and']) baseMatch['$and'] = [];
-                baseMatch['$and'].push({
-                    $or: [
-                        { 'diaData.aciklama': regex },
-                        { 'diaData.marka': regex },
-                        { 'diaData.stokkartkodu': regex },
-                        { 'diaData.anabarkod': regex }
-                    ]
-                });
+        // Arama (q) filtresi — /search/results ile AYNI akıllı mantık (ortak util).
+        // Böylece facet'ler (marka/ebat vb.) arama sonuçlarıyla birebir örtüşür.
+        if (q && String(q).length >= 2) {
+            const searchConditions = buildSearchQueryConditions(req.site, q);
+            if (searchConditions.length > 0) {
+                baseMatch['$and'] = (baseMatch['$and'] || []).concat(searchConditions);
             }
         }
 

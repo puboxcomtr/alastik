@@ -20,6 +20,7 @@ router.get('/bank-transfer', async (req, res) => {
             name: acc.providerMeta?.displayName || acc.name,
             logo: acc.providerMeta?.logo,
             accountName: acc.bankTransferSettings?.accountName,
+            branchName: acc.bankTransferSettings?.branchName,
             iban: acc.bankTransferSettings?.iban,
             processingTime: acc.bankTransferSettings?.processingTime
         }));
@@ -27,6 +28,18 @@ router.get('/bank-transfer', async (req, res) => {
         res.json({ success: true, data: formatted });
     } catch (error) {
         console.error('Banka hesapları hatası:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET /credit-card-options — site bazlı Tek Çekim / Taksitli aktif mi (public)
+// Kaynak: credit_card yöntemlerinin detay bayrakları (tekCekimAktif/taksitAktif).
+router.get('/credit-card-options', async (req, res) => {
+    try {
+        const { getCreditCardOptions } = require('../../../services/plugins/payment/creditCardOptions');
+        const data = await getCreditCardOptions(req.site);
+        res.json({ success: true, data });
+    } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });

@@ -1,5 +1,7 @@
 'use client'
 
+import SeoLivePanel from '@/views/seo-module/SeoLivePanel'
+
 import { useState, useEffect } from 'react'
 import { getSiteUrl } from '@/utils/activeSite'
 import { useRouter } from 'next/navigation'
@@ -10,6 +12,7 @@ import Card from '@mui/material/Card'
 import Box from '@mui/material/Box'
 import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
+import Autocomplete from '@mui/material/Autocomplete'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
@@ -52,6 +55,7 @@ import { toast } from 'react-toastify'
 
 /* API */
 import { createBlog, updateBlog, type BlogType } from '@/utils/api/blogs'
+import { fetchBlogCategories, type BlogCategoryType } from '@/utils/api/blogCategories'
 
 /* Components */
 import CustomIconButton from '@/@core/components/mui/IconButton'
@@ -382,6 +386,18 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
     const [featuredImage, setFeaturedImage] = useState<string>(blog?.featuredImage || '')
     const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
 
+    // Blog kategorileri (çoklu seçim) — bir yazı birden fazla kategoriye eklenebilir
+    const [categoryOptions, setCategoryOptions] = useState<BlogCategoryType[]>([])
+    const [selectedCategories, setSelectedCategories] = useState<string[]>(
+        (blog?.categories || []).map((c: any) => (typeof c === 'string' ? c : c?._id)).filter(Boolean)
+    )
+
+    useEffect(() => {
+        fetchBlogCategories()
+            .then(res => { if (res?.success) setCategoryOptions(res.data || []) })
+            .catch(() => {})
+    }, [])
+
     const [isHtmlMode, setIsHtmlMode] = useState(false)
 
     useEffect(() => {
@@ -406,7 +422,8 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
         seo: {
             metaTitle: blog?.seo?.metaTitle || '',
             metaDescription: blog?.seo?.metaDescription || '',
-            metaKeywords: blog?.seo?.metaKeywords?.join(', ') || ''
+            metaKeywords: blog?.seo?.metaKeywords?.join(', ') || '',
+            focusKeyword: (blog?.seo as { focusKeyword?: string } | undefined)?.focusKeyword || ''
         }
     })
 
@@ -580,10 +597,12 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                 excerpt: formData.excerpt,
                 status: formData.status,
                 featuredImage: featuredImage,
+                categories: selectedCategories,
                 seo: {
                     metaTitle: formData.seo.metaTitle,
                     metaDescription: formData.seo.metaDescription,
-                    metaKeywords: formData.seo.metaKeywords.split(',').map(k => k.trim()).filter(Boolean)
+                    metaKeywords: formData.seo.metaKeywords.split(',').map(k => k.trim()).filter(Boolean),
+                    focusKeyword: formData.seo.focusKeyword.trim()
                 }
             }
 
@@ -748,6 +767,120 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                             </Card>
                         </Grid>
 
+                        {/* Blog Kategorileri (çoklu seçim — bir yazı birden fazla kategoride) */}
+                        <Grid size={{ xs: 12 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant='h6' className='mb-4'>
+                                        Blog Kategorileri
+                                    </Typography>
+                                    <Autocomplete
+                                        multiple
+                                        options={categoryOptions}
+                                        getOptionLabel={(o) => o.name}
+                                        value={categoryOptions.filter(o => selectedCategories.includes(o._id))}
+                                        onChange={(_e, val) => setSelectedCategories(val.map(v => v._id))}
+                                        isOptionEqualToValue={(o, v) => o._id === v._id}
+                                        renderInput={(params) => (
+                                            <TextField {...params} placeholder='Kategori seçiniz' />
+                                        )}
+                                        noOptionsText='Kategori bulunamadı'
+                                    />
+                                </CardContent>
+                            </Card>
+                        </Grid>
+
+                        {/* Öne Çıkarılmış Görsel */}
+                        <Grid size={{ xs: 12 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant='h6' className='mb-4'>
+                                        Öne Çıkarılmış Görsel
+                                    </Typography>
+                                    <Grid container spacing={5}>
+                                        <Grid size={{ xs: 12 }}>
+                                            {featuredImage ? (
+                                                <Box>
+                                                    <Box
+                                                        sx={{
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            paddingTop: '56.25%',
+                                                            borderRadius: 2,
+                                                            overflow: 'hidden',
+                                                            border: '1px solid',
+                                                            borderColor: 'grey.300'
+                                                        }}
+                                                    >
+                                                        <img
+                                                            src={getImageUrl(featuredImage)}
+                                                            alt='Öne çıkarılmış görsel'
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 0,
+                                                                left: 0,
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement
+                                                                target.src = '/images/placeholder-image.png'
+                                                            }}
+                                                        />
+                                                        <IconButton
+                                                            sx={{
+                                                                position: 'absolute',
+                                                                top: 8,
+                                                                right: 8,
+                                                                backgroundColor: 'error.main',
+                                                                color: 'white',
+                                                                '&:hover': {
+                                                                    backgroundColor: 'error.dark'
+                                                                }
+                                                            }}
+                                                            onClick={handleRemoveImage}
+                                                        >
+                                                            <i className='ri-delete-bin-line' />
+                                                        </IconButton>
+                                                    </Box>
+                                                    <Button
+                                                        variant='outlined'
+                                                        fullWidth
+                                                        sx={{ mt: 2 }}
+                                                        onClick={() => setMediaLibraryOpen(true)}
+                                                        startIcon={<i className='ri-refresh-line' />}
+                                                    >
+                                                        Görseli Değiştir
+                                                    </Button>
+                                                </Box>
+                                            ) : (
+                                                <Box>
+                                                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                                                        <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
+                                                        <Typography color="text.secondary" sx={{ mt: 2 }}>
+                                                            Henüz görsel eklenmemiş
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            Aşağıdaki butona tıklayarak görsel ekleyebilirsiniz
+                                                        </Typography>
+                                                    </Box>
+                                                    <Button
+                                                        variant='contained'
+                                                        fullWidth
+                                                        onClick={() => setMediaLibraryOpen(true)}
+                                                        startIcon={<i className='ri-image-add-line' />}
+                                                    >
+                                                        Görsel Ekle
+                                                    </Button>
+                                                </Box>
+                                            )}
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -860,96 +993,20 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                                                 helperText='Virgülle ayırarak yazın'
                                             />
                                         </Grid>
-                                    </Grid>
-                                </CardContent>
-                            </Card>
-                        </Grid>
 
-                        {/* Öne Çıkarılmış Görsel*/}
-                        <Grid size={{ xs: 12 }}>
-                            <Card>
-                                <CardContent>
-                                    <Typography variant='h6' className='mb-4'>
-                                        Öne Çıkarılmış Görsel
-                                    </Typography>
-                                    <Grid container spacing={5}>
+                                        {/* SEO analizi: odak kelime + canlı kriter kontrolü */}
                                         <Grid size={{ xs: 12 }}>
-                                            {featuredImage ? (
-                                                <Box>
-                                                    <Box
-                                                        sx={{
-                                                            position: 'relative',
-                                                            width: '100%',
-                                                            paddingTop: '56.25%',
-                                                            borderRadius: 2,
-                                                            overflow: 'hidden',
-                                                            border: '1px solid',
-                                                            borderColor: 'grey.300'
-                                                        }}
-                                                    >
-                                                        <img
-                                                            src={getImageUrl(featuredImage)}
-                                                            alt='Öne çıkarılmış görsel'
-                                                            style={{
-                                                                position: 'absolute',
-                                                                top: 0,
-                                                                left: 0,
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'cover'
-                                                            }}
-                                                            onError={(e) => {
-                                                                const target = e.target as HTMLImageElement
-                                                                target.src = '/images/placeholder-image.png'
-                                                            }}
-                                                        />
-                                                        <IconButton
-                                                            sx={{
-                                                                position: 'absolute',
-                                                                top: 8,
-                                                                right: 8,
-                                                                backgroundColor: 'error.main',
-                                                                color: 'white',
-                                                                '&:hover': {
-                                                                    backgroundColor: 'error.dark'
-                                                                }
-                                                            }}
-                                                            onClick={handleRemoveImage}
-                                                        >
-                                                            <i className='ri-delete-bin-line' />
-                                                        </IconButton>
-                                                    </Box>
-                                                    <Button
-                                                        variant='outlined'
-                                                        fullWidth
-                                                        sx={{ mt: 2 }}
-                                                        onClick={() => setMediaLibraryOpen(true)}
-                                                        startIcon={<i className='ri-refresh-line' />}
-                                                    >
-                                                        Görseli Değiştir
-                                                    </Button>
-                                                </Box>
-                                            ) : (
-                                                <Box>
-                                                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                                                        <i className='ri-image-line' style={{ fontSize: 64, color: '#ccc' }} />
-                                                        <Typography color="text.secondary" sx={{ mt: 2 }}>
-                                                            Henüz görsel eklenmemiş
-                                                        </Typography>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Aşağıdaki butona tıklayarak görsel ekleyebilirsiniz
-                                                        </Typography>
-                                                    </Box>
-                                                    <Button
-                                                        variant='contained'
-                                                        fullWidth
-                                                        onClick={() => setMediaLibraryOpen(true)}
-                                                        startIcon={<i className='ri-image-add-line' />}
-                                                    >
-                                                        Görsel Ekle
-                                                    </Button>
-                                                </Box>
-                                            )}
+                                            <SeoLivePanel
+                                                type='blog'
+                                                focusKeyword={formData.seo.focusKeyword}
+                                                onFocusKeywordChange={value => setFormData(prev => ({ ...prev, seo: { ...prev.seo, focusKeyword: value } }))}
+                                                title={formData.seo.metaTitle || formData.title}
+                                                description={formData.seo.metaDescription || formData.excerpt}
+                                                slug={formData.slug}
+                                                content={() => (isHtmlMode ? htmlContent : (editor?.getHTML() || ''))}
+                                                keywords={formData.seo.metaKeywords.split(',').map(k => k.trim()).filter(Boolean)}
+                                                refId={blog?._id}
+                                            />
                                         </Grid>
                                     </Grid>
                                 </CardContent>

@@ -61,6 +61,15 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
     const [loading, setLoading] = useState(false);
     const [binChecked, setBinChecked] = useState(false);
 
+    // Site bazlı kredi kartı seçenekleri (panelden aç/kapa). Site, Origin'den çözülür.
+    const [cardOpts, setCardOpts] = useState<{ tekCekim: boolean; taksit: boolean }>({ tekCekim: true, taksit: true });
+    useEffect(() => {
+        fetch(API_ENDPOINTS.payment.creditCardOptions())
+            .then(r => r.json())
+            .then(d => { if (d?.success && d.data) setCardOpts({ tekCekim: d.data.tekCekim !== false, taksit: d.data.taksit !== false }); })
+            .catch(() => {});
+    }, []);
+
     // Kart numarası formatla
     const formatCardNumber = (value: string) => {
         const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
@@ -115,12 +124,19 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     setSelectedInstallment(1);
                     setSelectedVPosId(0);
                 } else if (data.hasInstallment && data.installments) {
-                    // Taksit seçeneklerini göster (1'den büyük olanlar)
-                    const multiInstallments = data.installments.filter((i: Installment) => i.installment > 1);
+                    // Taksit seçeneklerini göster (1'den büyük olanlar) — taksit kapalıysa gizle
+                    const multiInstallments = cardOpts.taksit
+                        ? data.installments.filter((i: Installment) => i.installment > 1)
+                        : [];
                     setInstallments(multiInstallments);
-                    // Varsayılan: tek çekim (Nkolay)
-                    setSelectedInstallment(1);
-                    setSelectedVPosId(0);
+                    // Varsayılan: tek çekim açıksa tek çekim; kapalıysa ilk taksit.
+                    if (cardOpts.tekCekim || !multiInstallments.length) {
+                        setSelectedInstallment(1);
+                        setSelectedVPosId(0);
+                    } else {
+                        setSelectedInstallment(multiInstallments[0].installment);
+                        setSelectedVPosId(multiInstallments[0].vPosId);
+                    }
                 } else {
                     setInstallments([]);
                     setSelectedInstallment(1);
@@ -288,7 +304,7 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                 </div>
 
                 {/* Banka Kartı: Tek Çekim */}
-                {cardInfo && cardInfo.isDebitCard && (
+                {cardInfo && cardInfo.isDebitCard && cardOpts.tekCekim && (
                     <div className="col-12">
                         <hr />
                         <div
@@ -320,7 +336,8 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                         <hr />
                         <h6>Ödeme Seçenekleri</h6>
                         <div className="d-flex flex-column gap-2">
-                            {/* Tek Çekim (Nkolay) */}
+                            {/* Tek Çekim (Nkolay) — site ayarı kapalıysa gizli */}
+                            {cardOpts.tekCekim && (
                             <div
                                 onClick={handleSinglePaymentSelect}
                                 className={`d-flex align-items-center justify-content-between p-3 rounded-3 border ${selectedInstallment === 1 ? 'border-primary border-1' : 'border-secondary-subtle'}`}
@@ -347,6 +364,7 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                                     </span>
                                 </div>
                             </div>
+                            )}
 
                             {/* Taksitli Seçenekler (Netahsilat) */}
                             {installments
@@ -395,8 +413,8 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     </div>
                 )}
 
-                {/* Kredi Kartı Taksit Yok: Sadece Tek Çekim */}
-                {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length === 0 && (
+                {/* Kredi Kartı Taksit Yok: Sadece Tek Çekim (tek çekim kapalıysa gizli) */}
+                {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length === 0 && cardOpts.tekCekim && (
                     <div className="col-12">
                         <hr />
                         <div

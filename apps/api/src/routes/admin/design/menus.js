@@ -276,6 +276,20 @@ router.get('/', async (req, res) => {
                 }
             }
 
+            // Blog kategori menüsü ise
+            if (menu.menuType === 'blogCategory' && menu.linkData?.blogCategoryId) {
+                try {
+                    const BlogCategory = require('../../../models/admin/content/BlogCategory');
+                    const bc = await BlogCategory.findOne({ _id: menu.linkData.blogCategoryId, site: req.site })
+                        .select('name slug').lean();
+                    if (bc) {
+                        enriched.linkData = { ...enriched.linkData, blogCategoryName: bc.name, blogCategoryUrl: bc.slug };
+                    }
+                } catch (err) {
+                    console.error('Blog kategori bulunamadı:', menu.linkData.blogCategoryId, err);
+                }
+            }
+
             // Ürün menüsü ise
             if (menu.menuType === 'product' && menu.linkData?.productId) {
                 try {
@@ -419,6 +433,10 @@ router.get('/:id', async (req, res) => {
             if (menu.menuType === 'category' && menu.linkData?.categoryId) {
                 const c = await WebCategory.findById(menu.linkData.categoryId).select('name seoUrl').lean();
                 if (c) menu.linkData = { ...menu.linkData, categoryName: c.name, categoryUrl: c.seoUrl };
+            } else if (menu.menuType === 'blogCategory' && menu.linkData?.blogCategoryId) {
+                const BlogCategory = require('../../../models/admin/content/BlogCategory');
+                const bc = await BlogCategory.findOne({ _id: menu.linkData.blogCategoryId, site: req.site }).select('name slug').lean();
+                if (bc) menu.linkData = { ...menu.linkData, blogCategoryName: bc.name, blogCategoryUrl: bc.slug };
             } else if (menu.menuType === 'page' && menu.linkData?.pageId) {
                 const pg = await Page.findById(menu.linkData.pageId).select('title slug').lean();
                 if (pg) menu.linkData = { ...menu.linkData, pageTitle: pg.title, pageUrl: pg.slug };
@@ -466,7 +484,7 @@ router.get('/:id', async (req, res) => {
 // Yeni menü oluştur
 router.post('/', async (req, res) => {
     try {
-        const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive } = req.body;
+        const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive, icon } = req.body;
 
         // Validasyon
         if (!name || !name.trim()) {
@@ -477,14 +495,14 @@ router.post('/', async (req, res) => {
         }
 
         // 'heading' eklendi
-        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
+        if (!menuType || !['link', 'category', 'blogCategory', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
             });
         }
 
-        if (!displayArea || !['header', 'footer', 'mobile', 'general', 'blog'].includes(displayArea)) {
+        if (!displayArea || !['header', 'footer', 'mobile', 'general', 'blog', 'ustlink'].includes(displayArea)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir gösterilecek alan seçmelisiniz'
@@ -510,6 +528,13 @@ router.post('/', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Kategori seçimi zorunludur'
+            });
+        }
+
+        if (menuType === 'blogCategory' && !linkData.blogCategoryId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Blog kategori seçimi zorunludur'
             });
         }
 
@@ -560,6 +585,7 @@ router.post('/', async (req, res) => {
             parentId: finalParentId,
             order: order || 0,
             isActive: isActive !== undefined ? isActive : true,
+            icon: typeof icon === 'string' ? icon.trim() : '',
             site: req.site
         });
 
@@ -583,7 +609,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive } = req.body;
+        const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive, icon } = req.body;
 
         const menu = await Menu.findOne({ _id: id, site: req.site });
         if (!menu) {
@@ -602,7 +628,7 @@ router.put('/:id', async (req, res) => {
         }
 
         // 'heading' eklendi
-        if (!menuType || !['link', 'category', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
+        if (!menuType || !['link', 'category', 'blogCategory', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
                 message: 'Geçerli bir menü tipi seçmelisiniz'
@@ -628,6 +654,13 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Kategori seçimi zorunludur'
+            });
+        }
+
+        if (menuType === 'blogCategory' && !linkData.blogCategoryId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Blog kategori seçimi zorunludur'
             });
         }
 
@@ -657,6 +690,7 @@ router.put('/:id', async (req, res) => {
         menu.linkData = linkData;
         menu.openNewTab = openNewTab;
         menu.displayArea = displayArea;
+        if (icon !== undefined) menu.icon = typeof icon === 'string' ? icon.trim() : '';
         // Seviye üst menüden türetilir; parentId gönderilmediyse mevcut hiyerarşi korunur
         if (parentId) {
             const parentMenu = await Menu.findOne({ _id: parentId, site: req.site });

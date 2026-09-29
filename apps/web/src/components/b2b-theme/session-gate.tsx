@@ -1,32 +1,60 @@
 'use client';
-// Bayi paneli oturum kapısı: token yoksa giriş sayfasına yönlendirir.
-// Token varlığı hızlı kontrol edilir; derin doğrulama /me ucuyla yapılır ve
-// geçersiz oturumda çıkışa zorlanır.
+// Bayi paneli oturum kapısı. İki oturum türü:
+//  - Bayi/impersonation (authToken): normal panel.
+//  - Plasiyer (plasiyerToken, henüz bayi seçmemiş): panele girer, bayi seçim modalı açılır.
+// Varsayılan şifre (12345) ile girişte zorunlu şifre değiştirme modalı açılır.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { SpinnerIcon } from '@components/b2b-theme/icons';
+import { MandatoryPasswordChange } from '@components/b2b-theme/mandatory-password-change';
+import { PlasiyerBayiSecModal } from '@components/b2b-theme/plasiyer-bayi-sec-modal';
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
     const [hazir, setHazir] = useState(false);
+    const [sifreBayi, setSifreBayi] = useState(false);       // bayi zorunlu şifre
+    const [sifrePlasiyer, setSifrePlasiyer] = useState(false); // plasiyer zorunlu şifre
+    const [bayiSec, setBayiSec] = useState(false);           // plasiyer bayi seçim modalı
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-            window.location.href = '/giris';
+        const authToken = localStorage.getItem('authToken');
+        const plasiyerToken = localStorage.getItem('plasiyerToken');
+
+        if (authToken) {
+            fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${authToken}` } })
+                .then(r => r.json())
+                .then(d => {
+                    if (d?.success) {
+                        if (d.data?.mustChangePassword) setSifreBayi(true);
+                        setHazir(true);
+                    } else {
+                        localStorage.removeItem('authToken');
+                        document.cookie = 'authToken=; path=/; max-age=0';
+                        window.location.href = '/giris';
+                    }
+                })
+                .catch(() => setHazir(true));
             return;
         }
-        fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.json())
-            .then(d => {
-                if (d?.success) {
-                    setHazir(true);
-                } else {
-                    localStorage.removeItem('authToken');
-                    document.cookie = 'authToken=; path=/; max-age=0';
-                    window.location.href = '/giris';
-                }
-            })
-            .catch(() => setHazir(true)); // API geçici erişilemezse panel açık kalır
+
+        if (plasiyerToken) {
+            fetch(API_ENDPOINTS.b2b.plasiyerMe(), { headers: { Authorization: `Bearer ${plasiyerToken}` } })
+                .then(r => r.json())
+                .then(d => {
+                    if (d?.success) {
+                        const devam = sessionStorage.getItem('plasiyerDevam') === '1';
+                        if (d.data?.mustChangePassword) setSifrePlasiyer(true);
+                        else if (!devam) setBayiSec(true); // "plasiyer olarak devam" seçilmediyse bayi seçim modalı
+                        setHazir(true);
+                    } else {
+                        localStorage.removeItem('plasiyerToken');
+                        window.location.href = '/giris';
+                    }
+                })
+                .catch(() => setHazir(true));
+            return;
+        }
+
+        window.location.href = '/giris';
     }, []);
 
     if (!hazir) {
@@ -36,5 +64,23 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
-    return <>{children}</>;
+
+    return (
+        <>
+            {children}
+            {sifreBayi ? <MandatoryPasswordChange onDone={() => setSifreBayi(false)} /> : null}
+            {sifrePlasiyer ? (
+                <MandatoryPasswordChange
+                    endpoint={API_ENDPOINTS.b2b.plasiyerSifreDegistir()}
+                    tokenKey="plasiyerToken"
+                    onDone={() => { setSifrePlasiyer(false); setBayiSec(true); }}
+                />
+            ) : null}
+            {bayiSec ? (
+                <PlasiyerBayiSecModal
+                    onDevamEt={() => { try { sessionStorage.setItem('plasiyerDevam', '1'); } catch { } setBayiSec(false); }}
+                />
+            ) : null}
+        </>
+    );
 }

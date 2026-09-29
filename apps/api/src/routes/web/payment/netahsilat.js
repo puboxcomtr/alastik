@@ -20,7 +20,7 @@ router.get('/bin/:bin', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçerli 6 haneli BIN gerekli' });
         }
 
-        const result = await NetahsilatService.getPosByBin(bin);
+        const result = await NetahsilatService.getPosByBin(bin, req.site);
         return res.json(result);
     } catch (error) {
         console.error('BIN sorgulama hatası:', error);
@@ -124,7 +124,7 @@ router.post('/3d-callback', async (req, res) => {
 
         // İşlem başarılıysa CommitPayment yap
         if (status === 'SUCCESS' && paymentGuid) {
-            const commitResult = await NetahsilatService.commitPayment(paymentGuid);
+            const commitResult = await NetahsilatService.commitPayment(paymentGuid, req.site);
             console.log('CommitPayment Result:', commitResult);
 
             if (commitResult.success) {
@@ -204,7 +204,7 @@ router.post('/3d-commit', async (req, res) => {
         }
 
         // CommitPayment çağır
-        const commitResult = await NetahsilatService.commitPayment(paymentGuid);
+        const commitResult = await NetahsilatService.commitPayment(paymentGuid, req.site);
 
         if (commitResult.success) {
             // Siparişi bul ve güncelle
@@ -292,7 +292,7 @@ router.post('/3d-commit', async (req, res) => {
 router.get('/transaction/:orderNumber', async (req, res) => {
     try {
         const { orderNumber } = req.params;
-        const result = await NetahsilatService.getTransaction(orderNumber);
+        const result = await NetahsilatService.getTransaction(orderNumber, req.site);
         return res.json(result);
     } catch (error) {
         console.error('Transaction sorgulama hatası:', error);

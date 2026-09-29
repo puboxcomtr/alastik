@@ -245,7 +245,13 @@ const OrderListTable = () => {
                 cell: ({ row }) => (
                     <div className='flex flex-col'>
                         <div className='flex items-center gap-2'>
-                            <Typography className='font-medium' color='text.primary'>
+                            <Typography
+                                className='font-medium'
+                                color='text.primary'
+                                noWrap
+                                title={row.original.customerName}
+                                sx={{ maxWidth: 260 }}
+                            >
                                 {row.original.customerName}
                             </Typography>
                             {row.original.isGuest && (

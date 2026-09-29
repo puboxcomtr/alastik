@@ -1,298 +1,181 @@
 "use client";
 
-import { useMemo, useState } from "react";
+// Cari Hesap Ekstresi — DIA hesap hareketleri (borç/alacak + yürüyen bakiye).
+// Kaynak: /cari-ekstre (DB-öncelikli, gecelik senkron). Yıl filtresi + arama + Excel.
+import { useEffect, useMemo, useState } from "react";
+import { API_ENDPOINTS } from "@src/config/api";
 import { CsvDownload } from "@components/b2b-theme/csv-download";
-import { DataSource } from "@components/b2b-theme/data-source";
-import { formatKurus, formatDate, formatDay } from "@components/b2b-theme/lib/format";
-import { DEALER, TODAY, ACCOUNT_LEDGER, ACCOUNT_SUMMARY } from "@components/b2b-theme/lib/sample-data";
+import { SearchIcon, SpinnerIcon } from "@components/b2b-theme/icons";
+import { Pagination } from "@components/b2b-theme/pagination";
 
-const BU_YIL = TODAY.getFullYear();
-const YILLAR = [BU_YIL, BU_YIL - 1, BU_YIL - 2];
+const PER_PAGE = 30;
 
-/**
- * Cari Hareketler.
- *
- * Resmi cari toplamları ile ekranda listelenen satırların kontrol toplamı
- * AYRI kartlarda gösterilir; tek toplamda birleştirilmez. Yürüyen bakiye
- * yalnızca ikisi örtüşürse yayınlanır — örtüşmüyorsa tahmini bakiye
- * üretmek yerine gizlenir ve nedeni yazılır.
- */
-export default function CariHareketlerPage() {
-  const [yil, setYil] = useState(String(BU_YIL));
-  const [baslangic, setBaslangic] = useState("");
-  const [bitis, setBitis] = useState("");
+interface Movement {
+  tarih: string; vade: string; fisno: string; belgeNo?: string;
+  tur: string; aciklama: string; borc: number; alacak: number; bakiye: number; odeme: boolean;
+}
+interface EkstreData {
+  movements: Movement[];
+  summary: { count: number; openingKurus: number; debitKurus: number; creditKurus: number; balanceKurus: number };
+  generatedAt?: string | null;
+}
 
-  const ledgerRows = useMemo(() => {
-    return ACCOUNT_LEDGER.filter((h) => {
-      if (yil && h.tarih.getFullYear() !== Number(yil)) return false;
-      if (baslangic && h.tarih < new Date(`${baslangic}T00:00:00Z`)) return false;
-      if (bitis && h.tarih > new Date(`${bitis}T23:59:59Z`)) return false;
-      return true;
-    }).sort((a, b) => a.tarih.getTime() - b.tarih.getTime());
-  }, [yil, baslangic, bitis]);
+const nf = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (v: number) => nf.format(v || 0);
+const kurusTL = (k: number) => `${nf.format((k || 0) / 100)} TL`;
+function formatDateTime(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("tr-TR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+function gun(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
 
-  // İptaller listelenir ama TOPLAMLARA katılmaz.
-  const gecerliler = ledgerRows.filter((h) => !h.iptal);
-  const kontrolBorc = gecerliler.reduce((t, h) => t + h.borcKurus, 0);
-  const kontrolAlacak = gecerliler.reduce((t, h) => t + h.alacakKurus, 0);
+type SortKey = "tarih" | "vade" | "fisno" | "belgeNo" | "borc" | "alacak" | "bakiye";
 
-  /**
-   * Bu şablonda listelenen satırlar bilinçli olarak resmi toplamın tamamını
-   * kapsamaz (açılış devri ve kasadan geçmeyen ödemeler yok) — mutabakatın
-   * tutmadığı durumun tasarımı da görünsün diye.
-   */
-  const borcFark = Math.abs(ACCOUNT_SUMMARY.borcToplamKurus - kontrolBorc);
-  const alacakFark = Math.abs(ACCOUNT_SUMMARY.alacakToplamKurus - kontrolAlacak);
-  const balanceVisible = borcFark <= 1 && alacakFark <= 1;
-  const borclu = ACCOUNT_SUMMARY.balanceKurus > 0;
+export default function CariEkstrePage() {
+  const [data, setData] = useState<EkstreData | null>(null);
+  const [me, setMe] = useState<{ name: string; cariKodu: string } | null>(null);
+  const [error, setError] = useState(false);
+  const [yil, setYil] = useState("");
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "tarih", dir: "desc" });
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [yil, q, sort]);
 
-  let yuruyen = 0;
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) { setError(true); return; }
+    const h = { Authorization: `Bearer ${token}`, "X-Site": "b2b" };
+    fetch(API_ENDPOINTS.b2b.cariEkstre(), { headers: h }).then((r) => r.json())
+      .then((d) => { if (d?.success && d.data) setData(d.data); else setError(true); }).catch(() => setError(true));
+    fetch(API_ENDPOINTS.b2b.me(), { headers: h }).then((r) => r.json())
+      .then((d) => { if (d?.success && d.data) setMe(d.data); }).catch(() => {});
+  }, []);
+
+  const years = useMemo(() => {
+    const s = new Set<string>();
+    (data?.movements || []).forEach((m) => { const y = m.tarih.slice(0, 4); if (y) s.add(y); });
+    return [...s].sort((a, b) => Number(b) - Number(a));
+  }, [data]);
+
+  // Varsayılan: en yeni yıl (2026); "Tüm Yıllar" seçeneği yok
+  useEffect(() => { if (!yil && years.length) setYil(years[0]); }, [years]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rows = useMemo(() => {
+    let list = data?.movements || [];
+    if (yil) list = list.filter((m) => m.tarih.slice(0, 4) === yil);
+    const qq = q.trim().toLocaleLowerCase("tr");
+    if (qq) list = list.filter((m) =>
+      (m.fisno || "").toLocaleLowerCase("tr").includes(qq) ||
+      (m.belgeNo || "").toLocaleLowerCase("tr").includes(qq) ||
+      (m.aciklama || "").toLocaleLowerCase("tr").includes(qq) ||
+      (m.tur || "").toLocaleLowerCase("tr").includes(qq));
+    const { key, dir } = sort;
+    // Bakiye yürüyen olduğu için varsayılan tarih-desc dışında da satır bakiyesi doğru kalır
+    return [...list].reverse().sort((a, b) => {
+      const av = a[key] as string | number; const bv = b[key] as string | number;
+      if (av < bv) return dir === "asc" ? -1 : 1;
+      if (av > bv) return dir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [data, yil, q, sort]);
+
+  const sortBy = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: (key === "tarih" || key === "vade") ? "desc" : "asc" }));
+  const ok = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ↑" : " ↓") : " ↕");
+
+  if (error) {
+    return (<><div className="page-head"><div><h1>Cari Hesap Ekstresi</h1></div></div><p className="note">Ekstre şu an yüklenemedi.</p></>);
+  }
+  if (!data) {
+    return (<><div className="page-head"><div><h1>Cari Hesap Ekstresi</h1></div></div>
+      <p className="note loading-row" style={{ padding: "1rem 0" }}><SpinnerIcon size={18} className="loading-brand" /> Ekstre yükleniyor…</p></>);
+  }
+
+  const totalPages = Math.ceil(rows.length / PER_PAGE);
+  const pageRows = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>Cari Hareketler</h1>
-          <p className="sub">Hesap hareketlerinizi ve bakiyenizi görüntüleyin.</p>
+          <h1>Cari Hesap Ekstresi</h1>
+          {me ? <p className="sub">{me.name} {me.cariKodu ? `(${me.cariKodu})` : ""}</p> : null}
         </div>
-        <CsvDownload
-          dosyaAdi={`cari-hareketler-${yil || "tumu"}.csv`}
-          basliklar={[
-            "Belge Tarihi",
-            "Vade Tarihi",
-            "Belge No",
-            "İşlem Tipi",
-            "Borç",
-            "Alacak",
-            "İptal",
-          ]}
-          lines={ledgerRows.map((h) => [
-            formatDay(h.tarih),
-            formatDay(h.vadeTarihi),
-            h.belgeNo,
-            h.txnType,
-            (h.borcKurus / 100).toFixed(2),
-            (h.alacakKurus / 100).toFixed(2),
-            h.iptal ? "evet" : "hayır",
-          ])}
-        />
-      </div>
-
-      <DataSource
-        source="Örnek veri"
-        ayrinti="lib/ornek-veri.ts → CARI_HAREKETLER (satırlar) · CARI_OZET (özet kartlar)"
-        dateField="belge tarihi"
-        cancelRule="iptaller listelenir, rozetle işaretlenir, TOPLAMLARA katılmaz"
-        tazelik={`örnek veri · ${formatDate(DEALER.sonSenkronAt)} anlık görüntüsü`}
-        kapsamUyarisi={
-          "Bu ekran bir tasarım şablonudur; satırlar gerçek muhasebe kaydı " +
-          "değildir. Gerçek veriye bağlanırken kasadan geçmeyen ödemeler " +
-          "(havale, çek/senet, mahsup) ve açılış devri gibi eksik kalabilecek " +
-          "kalemler kullanıcıya burada açıkça yazılmalıdır."
-        }
-      />
-
-      <h2 className="section">Resmi Cari Toplamları</h2>
-      <div className="report-cards">
-        <div className="report-card kirmizi">
-          <div className="label">↙ Toplam Borç</div>
-          <div className="value">{formatKurus(ACCOUNT_SUMMARY.borcToplamKurus)}</div>
-          <div className="note">cari kart rakamı</div>
-        </div>
-        <div className="report-card yesil">
-          <div className="label">↗ Toplam Alacak</div>
-          <div className="value">{formatKurus(ACCOUNT_SUMMARY.alacakToplamKurus)}</div>
-          <div className="note">cari kart rakamı</div>
-        </div>
-        <div className={`report-card${borclu ? " kirmizi" : " yesil"}`}>
-          <div className="label">💳 Net Bakiye (geçerli)</div>
-          <div className="value">
-            {formatKurus(Math.abs(ACCOUNT_SUMMARY.balanceKurus))}
-            <span style={{ fontSize: "0.8rem", fontWeight: 600, marginLeft: 6 }}>
-              {borclu ? "Borçlu" : "Alacaklı"}
-            </span>
-          </div>
-          <div className="note">cari kart rakamı</div>
-        </div>
-      </div>
-
-      <h2 className="section">
-        Bu Ekranda Listelenen Hareketlerin Kontrol Toplamı
-      </h2>
-      <div className="report-cards">
-        <div className="report-card">
-          <div className="label">Listelenen borç</div>
-          <div className="value">{formatKurus(kontrolBorc)}</div>
-          {borcFark > 1 ? (
-            <div className="note" style={{ color: "var(--danger)" }}>
-              resmi rakamdan {formatKurus(borcFark)} farklı
-            </div>
-          ) : (
-            <div className="note">resmi rakamla örtüşüyor</div>
-          )}
-        </div>
-        <div className="report-card">
-          <div className="label">Listelenen alacak</div>
-          <div className="value">{formatKurus(kontrolAlacak)}</div>
-          {alacakFark > 1 ? (
-            <div className="note" style={{ color: "var(--danger)" }}>
-              resmi rakamdan {formatKurus(alacakFark)} farklı
-            </div>
-          ) : (
-            <div className="note">resmi rakamla örtüşüyor</div>
-          )}
-        </div>
-        <div className="report-card">
-          <div className="label">Mutabakat</div>
-          <div className="value">
-            {balanceVisible ? "✓ Tutuyor" : "✕ Tutmuyor"}
-          </div>
-          <div className="note">
-            {balanceVisible
-              ? "yürüyen bakiye yayınlandı"
-              : "yürüyen bakiye gizlendi"}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="filterbar"
-        style={{ alignItems: "flex-end", gap: "0.8rem", flexWrap: "wrap" }}
-      >
-        <div>
-          <label htmlFor="yil" style={{ display: "block", fontSize: "0.8rem", fontWeight: 650 }}>
-            Yıl
-          </label>
-          <select
-            id="yil"
-            className="mini"
-            value={yil}
-            onChange={(e) => setYil(e.target.value)}
-          >
-            {YILLAR.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
+        <div className="ekstre-actions">
+          <select className="mini" value={yil} onChange={(e) => setYil(e.target.value)}>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-        </div>
-        <div>
-          <label htmlFor="baslangic" style={{ display: "block", fontSize: "0.8rem", fontWeight: 650 }}>
-            Başlangıç Tarihi
-          </label>
-          <input
-            id="baslangic"
-            type="date"
-            value={baslangic}
-            onChange={(e) => setBaslangic(e.target.value)}
+          <CsvDownload
+            dosyaAdi={`cari-ekstre-${yil || "tumu"}.csv`}
+            basliklar={["Tarih", "Vade", "Fiş No", "Fatura/İrsaliye No", "İşlem", "Borç", "Alacak", "Bakiye"]}
+            lines={rows.map((m) => [gun(m.tarih), gun(m.vade), m.fisno, m.belgeNo || "", m.tur, m.borc.toFixed(2), m.alacak.toFixed(2), m.bakiye.toFixed(2)])}
           />
         </div>
-        <div>
-          <label htmlFor="bitis" style={{ display: "block", fontSize: "0.8rem", fontWeight: 650 }}>
-            Bitiş Tarihi
-          </label>
-          <input
-            id="bitis"
-            type="date"
-            value={bitis}
-            onChange={(e) => setBitis(e.target.value)}
-          />
-        </div>
-        <button
-          type="button"
-          className="clear"
-          onClick={() => {
-            setYil(String(BU_YIL));
-            setBaslangic("");
-            setBitis("");
-          }}
-        >
-          ✕
-        </button>
-        <span className="chip">
-          {ledgerRows.length.toLocaleString("tr-TR")} kayıt gösteriliyor
-        </span>
       </div>
 
-      {!balanceVisible ? (
-        <div className="alert warn">
-          <strong>Yürüyen bakiye gösterilemiyor.</strong> Listelenen satırların
-          toplamı resmi cari rakamıyla örtüşmüyor; tahmini bir bakiye
-          üretilmedi.
-        </div>
-      ) : null}
+      <div className="ekstre-search">
+        <SearchIcon size={16} />
+        <input type="text" placeholder="Fiş no, açıklama veya ürün adı/kodu ile ara…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
 
       <div className="tablewrap">
-        <table className="data">
+        <table className="data order-table ekstre-table">
           <thead>
             <tr>
-              <th>Belge Tarihi</th>
-              <th>Vade Tarihi</th>
-              <th>Belge No</th>
-              <th>İşlem Tipi</th>
-              <th className="num">Borç</th>
-              <th className="num">Alacak</th>
-              {balanceVisible ? <th className="num">Bakiye</th> : null}
+              <th className="sortable" onClick={() => sortBy("tarih")}>TARİH<span className="sarrow">{ok("tarih")}</span></th>
+              <th className="sortable" onClick={() => sortBy("vade")}>VADE TARİHİ<span className="sarrow">{ok("vade")}</span></th>
+              <th className="sortable" onClick={() => sortBy("fisno")}>FİŞ NO<span className="sarrow">{ok("fisno")}</span></th>
+              <th className="sortable" onClick={() => sortBy("belgeNo")}>FATURA/İRSALİYE NO<span className="sarrow">{ok("belgeNo")}</span></th>
+              <th>İŞLEM</th>
+              <th className="sortable num" onClick={() => sortBy("borc")}>BORÇ (₺)<span className="sarrow">{ok("borc")}</span></th>
+              <th className="sortable num" onClick={() => sortBy("alacak")}>ALACAK (₺)<span className="sarrow">{ok("alacak")}</span></th>
+              <th className="sortable num" onClick={() => sortBy("bakiye")}>BAKİYE (₺)<span className="sarrow">{ok("bakiye")}</span></th>
             </tr>
           </thead>
           <tbody>
-            {ledgerRows.map((h, i) => {
-              if (!h.iptal) yuruyen += h.borcKurus - h.alacakKurus;
-              return (
-                <tr
-                  key={`${h.belgeNo}-${i}`}
-                  style={h.iptal ? { opacity: 0.5 } : undefined}
-                >
-                  <td>{formatDay(h.tarih)}</td>
-                  <td>{formatDay(h.vadeTarihi)}</td>
-                  <td className="sku">
-                    {h.belgeNo}
-                    {h.iptal ? (
-                      <span className="badge danger" style={{ marginLeft: 6 }}>
-                        iptal
-                      </span>
-                    ) : null}
-                  </td>
-                  <td>
-                    {h.txnType}
-                    <div className="note">
-                      {h.source === "fatura" ? "fatura" : "kasa işlemi"}
-                    </div>
-                    {h.aciklama ? <div className="note">{h.aciklama}</div> : null}
-                  </td>
-                  <td className="num">
-                    {h.borcKurus > 0 ? (
-                      <strong style={{ color: "var(--danger)" }}>
-                        {formatKurus(h.borcKurus)}
-                      </strong>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="num">
-                    {h.alacakKurus > 0 ? (
-                      <strong style={{ color: "var(--success-text)" }}>
-                        {formatKurus(h.alacakKurus)}
-                      </strong>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  {balanceVisible ? (
-                    <td className="num">{h.iptal ? "—" : formatKurus(yuruyen)}</td>
-                  ) : null}
-                </tr>
-              );
-            })}
-            {ledgerRows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="note" style={{ padding: "2rem" }}>
-                  Seçilen aralıkta hareket yok.
-                </td>
+            {pageRows.map((m, i) => (
+              <tr key={`${m.fisno}-${i}`}>
+                <td>{gun(m.tarih)}</td>
+                <td>{gun(m.vade)}</td>
+                <td><span className="ekstre-no">{m.fisno || "—"}</span></td>
+                <td><span className="ekstre-no">{m.belgeNo || "—"}</span></td>
+                <td><span className={`islem-badge ${m.alacak > 0 ? "credit" : "debit"}`}>{m.tur || "—"}</span></td>
+                <td className="num">{m.borc > 0 ? <span className="tut-borc">{num(m.borc)}</span> : "—"}</td>
+                <td className="num">{m.alacak > 0 ? <span className="tut-alacak">{num(m.alacak)}</span> : "—"}</td>
+                <td className="num"><strong>{num(m.bakiye)}</strong></td>
               </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr><td colSpan={8} className="note" style={{ padding: "2rem", textAlign: "center" }}>Kayıt bulunamadı.</td></tr>
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} totalCount={rows.length} perPage={PER_PAGE} />
+
+      <div className="ekstre-footer">
+        {data.generatedAt ? (
+          <div className="ekstre-notice">
+            <span className="ekstre-notice-ico">ⓘ</span>
+            <span>
+              Bu ekstre <strong>{formatDateTime(data.generatedAt)}</strong> tarihinde oluşturulmuştur.
+              Son hareketler ve bakiyeler bu tarihten sonra değişmiş olabilir.
+            </span>
+          </div>
+        ) : <div />}
+        <div className="ekstre-summary">
+          <div className="es-row"><span>Dönem İçi Borç:</span><strong className="tut-borc">{kurusTL(data.summary.debitKurus)}</strong></div>
+          <div className="es-row"><span>Dönem İçi Alacak:</span><strong className="tut-alacak">{kurusTL(data.summary.creditKurus)}</strong></div>
+          <div className="es-row es-total"><span>Genel Bakiye:</span><strong>{kurusTL(data.summary.balanceKurus)}</strong></div>
+        </div>
       </div>
     </>
   );

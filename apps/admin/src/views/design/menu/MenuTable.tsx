@@ -43,7 +43,8 @@ import {
 const TITLE_LINK_TYPES: { value: MenuType['menuType']; label: string }[] = [
     { value: 'heading', label: 'Bağlantı yok (sadece başlık)' },
     { value: 'link', label: 'Bağlantı (URL)' },
-    { value: 'category', label: 'Kategori' },
+    { value: 'category', label: 'Ürün Kategori' },
+    { value: 'blogCategory', label: 'Blog Kategori' },
     { value: 'tag', label: 'Etiket' },
     { value: 'brand', label: 'Marka' }
 ]
@@ -53,7 +54,8 @@ const AREA_LABELS: Record<MenuType['displayArea'], string> = {
     footer: 'Alt Menü (Footer)',
     mobile: 'Mobil Menü',
     general: 'Genel (Serbest)',
-    blog: 'Blog Menü'
+    blog: 'Blog Menü',
+    ustlink: 'Üst Linkler'
 }
 
 const MenuTable = () => {
@@ -370,7 +372,10 @@ const MenuTable = () => {
     const linkTargetOf = (menu: MenuType) => {
         if (menu.menuType === 'link') return { label: 'Bağlantı', text: menu.linkData?.url || '-' }
         if (menu.menuType === 'category') {
-            return { label: 'Kategori', text: (menu.linkData as any)?.categoryName || `Kategori ID: ${menu.linkData?.categoryId || '-'}` }
+            return { label: 'Ürün Kategori', text: (menu.linkData as any)?.categoryName || `Kategori ID: ${menu.linkData?.categoryId || '-'}` }
+        }
+        if (menu.menuType === 'blogCategory') {
+            return { label: 'Blog Kategori', text: (menu.linkData as any)?.blogCategoryName || `Blog Kategori ID: ${(menu.linkData as any)?.blogCategoryId || '-'}` }
         }
         if (menu.menuType === 'page') {
             return { label: 'Sayfa', text: (menu.linkData as any)?.pageTitle || `Sayfa ID: ${menu.linkData?.pageId || '-'}` }

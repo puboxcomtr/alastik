@@ -21,8 +21,15 @@ export const API_ENDPOINTS = {
     b2b: {
         application: () => `${getBaseUrl()}/b2b/application`,
         brands: () => `${getBaseUrl()}/brands`,
+        themeSettings: () => `${getBaseUrl()}/admin/design/settings/theme`,
         login: () => `${getBaseUrl()}/b2b/auth/login`,
         me: () => `${getBaseUrl()}/b2b/auth/me`,
+        // Plasiyer (satış personeli) girişi + bayi adına oturum
+        plasiyerLogin: () => `${getBaseUrl()}/b2b/plasiyer/login`,
+        plasiyerMe: () => `${getBaseUrl()}/b2b/plasiyer/me`,
+        plasiyerCariler: (search: string) => `${getBaseUrl()}/b2b/plasiyer/cariler?search=${encodeURIComponent(search)}`,
+        plasiyerBayiGiris: () => `${getBaseUrl()}/b2b/plasiyer/bayi-giris`,
+        plasiyerSifreDegistir: () => `${getBaseUrl()}/b2b/plasiyer/sifre-degistir`,
         cariOzet: () => `${getBaseUrl()}/b2b/auth/cari-ozet`,
         depoStok: (codes: string) => `${getBaseUrl()}/b2b/auth/depo-stok?codes=${encodeURIComponent(codes)}`,
         adresler: () => `${getBaseUrl()}/b2b/auth/adresler`,
@@ -30,6 +37,26 @@ export const API_ENDPOINTS = {
         odemeYontemleri: () => `${getBaseUrl()}/b2b/auth/odeme-yontemleri`,
         fiyatOrani: () => `${getBaseUrl()}/b2b/auth/fiyat-orani`,
         siparis: () => `${getBaseUrl()}/b2b/auth/siparis`,
+        siparisDetay: (no: string) => `${getBaseUrl()}/b2b/auth/siparis/${encodeURIComponent(no)}`,
+        siparislerim: () => `${getBaseUrl()}/b2b/auth/siparislerim`,
+        sifreDegistir: () => `${getBaseUrl()}/b2b/auth/sifre-degistir`,
+        makbuzPdf: (no: string) => `${getBaseUrl()}/b2b/auth/makbuz/${encodeURIComponent(no)}`,
+        purchaseStats: () => `${getBaseUrl()}/b2b/auth/alim-adet`,
+        dueDates: () => `${getBaseUrl()}/b2b/auth/vade-takvimi`,
+        agingStatus: () => `${getBaseUrl()}/b2b/auth/vade-durumu`,
+        cariEkstre: () => `${getBaseUrl()}/b2b/auth/cari-ekstre`,
+        odemeler: () => `${getBaseUrl()}/b2b/auth/odemeler`,
+        paynetConfig: () => `${getBaseUrl()}/b2b/payment/paynet/config`,
+        paynetReturn: () => `${getBaseUrl()}/b2b/payment/paynet/return`,
+        // Cari borç tek çekim (Peşin) — Paynet
+        tekCekimBaslat: () => `${getBaseUrl()}/b2b/payment/tekcekim/baslat`,
+        tekCekimReturn: () => `${getBaseUrl()}/b2b/payment/tekcekim/return`,
+        // Taksit oranları — NetTahsilat PirPos (BIN + tutar → seçenekler).
+        taksitRatios: () => `${getBaseUrl()}/b2b/payment/netahsilat/ratios`,
+        // Taksitli 3D ödeme başlatma (kart + seçilen taksit/vPos → 3D URL).
+        taksitInit: () => `${getBaseUrl()}/b2b/payment/netahsilat/3d-init`,
+        // Cari borç taksitli (NetTahsilat) — kart + taksit → 3D URL.
+        borcTaksitInit: () => `${getBaseUrl()}/b2b/payment/netahsilat/borc-init`,
     },
     brands: {
         homepage: () => `${getBaseUrl()}/brands/homepage`,
@@ -96,6 +123,7 @@ export const API_ENDPOINTS = {
         homepage: () => `${getBaseUrl()}/blogs/homepage`,
         list: () => `${getBaseUrl()}/blogs`,
         detail: (slug: string) => `${getBaseUrl()}/blogs/${encodeURIComponent(slug)}`,
+        byCategory: (slug: string) => `${getBaseUrl()}/blogs/by-category/${encodeURIComponent(slug)}`,
         byPattern: (pattern: string) => `${getBaseUrl()}/blogs/by-pattern/${encodeURIComponent(pattern)}`,
     },
     pages: {
@@ -103,6 +131,8 @@ export const API_ENDPOINTS = {
     },
     payment: {
         bankAccounts: () => `${getBaseUrl()}/payment-methods/bank-transfer`,
+        // Site bazlı kredi kartı seçenekleri: { tekCekim, taksit }
+        creditCardOptions: () => `${getBaseUrl()}/payment-methods/credit-card-options`,
         // Netahsilat
         threeDInit: () => `${getBaseUrl()}/web/payments/netahsilat/3d-init`,
         threeDCommit: () => `${getBaseUrl()}/web/payments/netahsilat/3d-commit`,

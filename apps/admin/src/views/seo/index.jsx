@@ -56,7 +56,8 @@ const SEO = ({ tabContentList }) => {
         category: data.category || { titleTemplate: '', descriptionTemplate: '', keywordsTemplate: '' },
         brand: data.brand || { titleTemplate: '', descriptionTemplate: '', keywordsTemplate: '' },
         product: data.product || { titleTemplate: '', descriptionTemplate: '', keywordsTemplate: '' },
-        other: data.other || {}
+        other: data.other || {},
+        analysis: data.analysis || {}
       })
     } catch (error) {
       toast.error('SEO ayarları yüklenirken hata oluştu')
@@ -99,6 +100,7 @@ const SEO = ({ tabContentList }) => {
             <Tab label='Marka Sayfası' value='tab3' />
             <Tab label='Ürün Sayfası' value='tab4' />
             <Tab label='Diğer SEO Ayarları' value='tab5' />
+            <Tab label='Analiz Kriterleri' value='tab6' />
           </CustomTabList>
         </Grid>
         <Grid size={{ xs: 12 }}>

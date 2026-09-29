@@ -28,7 +28,7 @@ function seasonRawToKey(raw: string): string | null {
     return null;
 }
 
-const BOS: ServerFilters = { q: '', marka: '', mevsim: '', dot: '', depo: '' };
+const BOS: ServerFilters = { q: '', marka: '', mevsim: '', dot: '', oem: '', depo: '', rft: false, cTipi: false, xl: false, ev: false };
 
 type SortState = { field: string; dir: 'asc' | 'desc' } | null;
 
@@ -39,7 +39,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
     const [loading, setLoading] = useState(false);
     const [filters, setFilters] = useState<ServerFilters>(BOS);
     const [sort, setSort] = useState<SortState>(null);
-    const [facet, setFacet] = useState<ServerOptions>({ brands: [], seasons: [], dots: [], warehouses: [] });
+    const [facet, setFacet] = useState<ServerOptions>({ brands: [], brandLogos: {}, seasons: [], dots: [], oems: [], warehouses: [] });
     const markaLogo = useRef<Record<string, string>>({});
     const cariOran = useRef<CariOran>({ tanimlifiyat: 1, fiyatyuzde: 50 });
     const firstLoad = useRef(true);
@@ -58,7 +58,12 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                 marka: q.get('marka') || '',
                 mevsim: q.get('mevsim') || '',
                 dot: q.get('dot') || '',
+                oem: q.get('oem') || '',
                 depo: q.get('depo') || '',
+                rft: q.get('rft') === '1',
+                cTipi: q.get('cserisi') === '1',
+                xl: q.get('xl') === '1',
+                ev: q.get('ev') === '1',
             },
             sort: sortField ? { field: sortField, dir: sortDir } : null,
         };
@@ -72,7 +77,12 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         if (f.marka) q.set('marka', f.marka);
         if (f.mevsim) q.set('mevsim', f.mevsim);
         if (f.dot) q.set('dot', f.dot);
+        if (f.oem) q.set('oem', f.oem);
         if (f.depo) q.set('depo', f.depo);
+        if (f.rft) q.set('rft', '1');
+        if (f.cTipi) q.set('cserisi', '1');
+        if (f.xl) q.set('xl', '1');
+        if (f.ev) q.set('ev', '1');
         if (srt) { q.set('sort', srt.field); q.set('dir', srt.dir); }
         if (s > 1) q.set('page', String(s));
         const qs = q.toString();
@@ -114,9 +124,14 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         if (kategori) params.set('category', kategori);
         if (f.q) params.set('q', f.q);
         if (f.marka) params.set('marka', f.marka);
-        if (f.mevsim) params.set('mevsim', SEASON_API[f.mevsim] || f.mevsim);
+        if (f.mevsim) params.set('mevsim', f.mevsim.split(',').map(k => SEASON_API[k] || k).join(','));
         if (f.dot) params.set('uretim', f.dot);
+        if (f.oem) params.set('oem', f.oem);
         if (f.depo) params.set('depo', f.depo);
+        if (f.rft) params.set('rft', '1');
+        if (f.cTipi) params.set('cserisi', '1');
+        if (f.xl) params.set('xl', '1');
+        if (f.ev) params.set('ev', '1');
         if (srt) { params.set('sortBy', srt.field); params.set('sortOrder', srt.dir); }
         fetch(`${API_ENDPOINTS.products.filter()}?${params.toString()}`, { headers: { 'X-Site': 'b2b' } })
             .then(r => r.json())
@@ -148,10 +163,19 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                 const seasons = SEASON_SIRA
                     .filter(k => keySet.has(k))
                     .map(k => ({ value: k, label: SEASON_ETIKET[k] }));
+                const brands = (f.brands || []) as string[];
+                // Marka adı → logo URL (başlangıçta çekilen markaLogo haritasından)
+                const brandLogos: Record<string, string> = {};
+                for (const name of brands) {
+                    const lg = markaLogo.current[normalizeBrand(name)];
+                    if (lg && !lg.includes('gorsel-bulunamadi')) brandLogos[name] = lg;
+                }
                 setFacet({
-                    brands: (f.brands || []) as string[],
+                    brands,
+                    brandLogos,
                     seasons,
                     dots: (f.dots || []).map(String) as string[],
+                    oems: (f.oems || []) as string[],
                     warehouses: (f.depots || []) as string[],
                 });
             })

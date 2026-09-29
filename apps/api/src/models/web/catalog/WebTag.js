@@ -44,6 +44,12 @@ const webTagSchema = new mongoose.Schema({
         trim: true
     },
 
+    // SEO analizi: odak anahtar kelime
+    focusKeyword: {
+        type: String,
+        trim: true
+    },
+
     seoUrl: {
         type: String,
         required: false,

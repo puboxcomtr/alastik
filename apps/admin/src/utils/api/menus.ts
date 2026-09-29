@@ -16,6 +16,9 @@ export type MenuLinkDataType = {
     url?: string
     categoryId?: string
     categoryLevel?: 1 | 2
+    blogCategoryId?: string
+    blogCategoryName?: string
+    blogCategoryUrl?: string
     pageId?: string
     blogId?: string
     productId?: string
@@ -30,10 +33,11 @@ export type MenuLinkDataType = {
 export type MenuType = {
     _id: string
     name: string
-    menuType: 'link' | 'category' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading'
+    menuType: 'link' | 'category' | 'blogCategory' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading'
     linkData: MenuLinkDataType
     openNewTab: boolean
-    displayArea: 'header' | 'footer' | 'mobile' | 'general' | 'blog'
+    displayArea: 'header' | 'footer' | 'mobile' | 'general' | 'blog' | 'ustlink'
+    icon?: string
     rowLevel: 1 | 2 | 3
     parentId?: string | null
     order: number

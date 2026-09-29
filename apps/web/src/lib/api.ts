@@ -235,6 +235,10 @@ class ApiClient {
     menu = {
         getHeader: async () => {
             return this.get<any>('/menus/header');
+        },
+        // Header üstündeki ikonlu hızlı linkler (düz liste)
+        getUstLinks: async () => {
+            return this.get<any>('/menus/ustlink');
         }
     };
 

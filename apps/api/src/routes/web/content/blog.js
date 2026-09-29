@@ -84,6 +84,38 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Blog kategorisine göre bloglar — kategori bilgisi + yayınlanmış bloglar (grid için)
+router.get('/by-category/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const BlogCategory = require('../../../models/admin/content/BlogCategory');
+        const category = await BlogCategory.findOne({ slug, site: req.site, status: 'active' }).lean();
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Kategori bulunamadı' });
+        }
+        const blogs = await WebBlog.find({ site: req.site, status: 'published', categories: category._id })
+            .select('title slug excerpt publishedAt featuredImage')
+            .sort({ publishedAt: -1 })
+            .lean();
+        res.json({
+            success: true,
+            data: {
+                category: {
+                    name: category.name,
+                    slug: category.slug,
+                    description: category.description,
+                    seo: category.seo || {},
+                    cardImageRatio: category.cardImageRatio || 'square'
+                },
+                blogs
+            }
+        });
+    } catch (error) {
+        console.error('Blog by-category error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // Slug'a göre blog detay
 router.get('/:slug', async (req, res) => {
     try {

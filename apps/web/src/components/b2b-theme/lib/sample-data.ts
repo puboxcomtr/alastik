@@ -39,6 +39,8 @@ export type Price = {
   birimNetKurus: number;
   kdvDahilBirimKurus: number;
   priceSource: "liste" | "ozel_fiyat";
+  /** İndirim oranı 0 (2.El vb.): fiyat KDV HARİÇ (net) + "KDV" gösterilir. */
+  kdvHaric?: boolean;
 };
 
 export type Tire = {
@@ -58,6 +60,8 @@ export type Tire = {
   ev: boolean;
   xl: boolean;
   imageUrl: string | null;
+  /** Tüm ürün görselleri (2.El galeri için 2./3. görsel gösterimi). */
+  images?: string[];
   stocks: StockRow[];
   fiyat: Price | null;
   /** XML (tedarikçi) kaynaklı ürün — ödeme yöntemi iskontosu uygulanmaz. */

@@ -13,6 +13,7 @@
  */
 
 const { DiaOrderService } = require('./DiaOrderService');
+const { getCreditCardOptions } = require('../payment/creditCardOptions');
 
 // Ödeme yöntemleri (sepette gösterim sırası). id = sepet/işlem anahtarı.
 const PAYMENT_METHODS = [
@@ -152,26 +153,36 @@ function representativeDiscounts(brandMap) {
 async function getB2bPaymentPricing(site, segment) {
     const key = `${site}:${normBrand(segment)}`;
     const cached = CACHE.get(key);
-    if (cached && Date.now() - cached.at < TTL_MS) return cached.data;
+    let data;
+    if (cached && Date.now() - cached.at < TTL_MS) {
+        data = cached.data;
+    } else {
+        const campaigns = await fetchSegmentCampaigns(site, segment);
+        const brandMap = buildBrandMap(campaigns);
+        const rep = representativeDiscounts(brandMap);
+        const methods = PAYMENT_METHODS.map(m => ({ ...m, discountPct: rep[m.id] || 0 }));
+        // Tüm ürünler SABİT fiyatlama tipinde ve sabit kampanya marka ayrımı yapmadan
+        // hepsini kapsıyor. Markası haritada olmayan ürünler de SABİT oranını (havale
+        // %7, KK tek %5, taksit %3) alsın diye varsayılan iskonto = SABİT oranları.
+        // (marka=* "Diğer Markalar" kampanyası varsa taban, SABİT onun üstüne biner.)
+        data = {
+            segment: normBrand(segment),
+            methods,
+            brandMap,
+            defaultDiscounts: { ...(brandMap['*'] || {}), ...(brandMap['SABIT'] || {}) },
+            // "Gel Al" teslimatının ek iskontosu (DIA sabit Gel-Al kampanyalarından)
+            gelAlBonus: extractGelAlBonus(campaigns)
+        };
+        CACHE.set(key, { at: Date.now(), data });
+    }
 
-    const campaigns = await fetchSegmentCampaigns(site, segment);
-    const brandMap = buildBrandMap(campaigns);
-    const rep = representativeDiscounts(brandMap);
-    const methods = PAYMENT_METHODS.map(m => ({ ...m, discountPct: rep[m.id] || 0 }));
-    // Tüm ürünler SABİT fiyatlama tipinde ve sabit kampanya marka ayrımı yapmadan
-    // hepsini kapsıyor. Markası haritada olmayan ürünler de SABİT oranını (havale
-    // %7, KK tek %5, taksit %3) alsın diye varsayılan iskonto = SABİT oranları.
-    // (marka=* "Diğer Markalar" kampanyası varsa taban, SABİT onun üstüne biner.)
-    const data = {
-        segment: normBrand(segment),
-        methods,
-        brandMap,
-        defaultDiscounts: { ...(brandMap['*'] || {}), ...(brandMap['SABIT'] || {}) },
-        // "Gel Al" teslimatının ek iskontosu (DIA sabit Gel-Al kampanyalarından)
-        gelAlBonus: extractGelAlBonus(campaigns)
-    };
-    CACHE.set(key, { at: Date.now(), data });
-    return data;
+    // Kredi kartı seçenekleri (panelden aç/kapa): kapalı olan kkTek/kkTaksit süzülür.
+    const cardOpts = await getCreditCardOptions(site);
+    const methodsFiltered = data.methods.filter(m =>
+        (m.id !== 'kkTek' || cardOpts.tekCekim) &&
+        (m.id !== 'kkTaksit' || cardOpts.taksit)
+    );
+    return { ...data, methods: methodsFiltered };
 }
 
 /** Bir ürünün, seçilen ödeme yöntemine göre iskonto yüzdesi (marka bazlı). */

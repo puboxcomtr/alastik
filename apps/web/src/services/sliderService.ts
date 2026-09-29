@@ -9,8 +9,9 @@ export async function getSliderById(id: string): Promise<Slider | null> {
     try {
         if (!id) return null;
 
+        // Aktif/pasif değişikliği anında yansımalı → önbellekleme yok.
         const response = await fetch(API_ENDPOINTS.slider.detail(id), {
-            next: { revalidate: 3600 }
+            cache: 'no-store'
         });
 
         if (!response.ok) return null;
@@ -29,8 +30,9 @@ export async function getSliderById(id: string): Promise<Slider | null> {
 export async function getSliderByKey(key: string, site?: string): Promise<Slider | null> {
     try {
         if (!key) return null;
+        // Banner slaytlarının aktif/pasif durumu da anında yansımalı.
         const response = await fetch(API_ENDPOINTS.slider.byKey(key), {
-            next: { revalidate: 3600 },
+            cache: 'no-store',
             headers: site ? { 'X-Site': site } : undefined
         });
 

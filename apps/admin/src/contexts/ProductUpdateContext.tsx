@@ -11,6 +11,7 @@ interface ProductUpdateData {
     seoUrl?: string
     delivery?: string
     seoKeywords?: string[]
+    focusKeyword?: string
     webVisible?: boolean
     hideBrand?: boolean
     hideProductionDate?: boolean

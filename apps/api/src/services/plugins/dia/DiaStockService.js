@@ -453,6 +453,35 @@ class DiaStockService {
   }
 
   /**
+   * Sipariş anında CANLI stok kontrolü için: verilen stok kodlarının
+   * webStokDepolari (MASLAK+MERKEZ) toplam gercek_stok'unu DIA'dan çeker.
+   * { stokkartkodu: gercekToplam } döner (0 stoklu geçerli üründe de satır gelir).
+   *
+   * DIA erişilemez / oturum çakışır / bir depo BOŞ dönerse **null** döner —
+   * çağıran DB stoğuna düşsün (satış baltalanmasın). Boş yanıt "0 stok" değil,
+   * geçici hatadır; geçerli stok kartı 0 stokta bile satır döndürür.
+   * Kendi oturumunu açar (Ws_alastik_B2C).
+   */
+  async fetchLiveStockSum(codes) {
+    const list = [...new Set((Array.isArray(codes) ? codes : []).map(c => String(c).trim()).filter(Boolean))];
+    if (!list.length) return {};
+    await this.loadConfig();
+    const depots = this.getWebStockDepots();
+    if (!depots.length) return null;
+    const sid = await this.loginAsync();
+    if (!sid) return null;
+    const sum = {};
+    for (const c of list) sum[c] = 0;
+    for (const depoKey of depots) {
+      const map = await this.fetchDepotStockMap(sid, list, depoKey);
+      // Boş map = DIA geçici hata / oturum çakışması → güvenilmez, DB'ye düş
+      if (!map || Object.keys(map).length === 0) return null;
+      for (const c of list) { const v = map[c]; if (v) sum[c] += v.gercek; }
+    }
+    return sum;
+  }
+
+  /**
    * Batch'teki (kendi stok) ürünlerin gercek_stok/fiili_stok'unu, ayardaki
    * depoların (webStokDepolari, ör. MASLAK+MERKEZ) toplamına indirir.
    * Ayar boşsa veya batch boşsa dokunmaz. XML/XMLA ürünleri hariç tutulur —
@@ -2650,9 +2679,16 @@ class DiaStockService {
         }
 
         const keys = batchData.map(item => item._key).filter(k => k);
-        const existingDocs = await DiaStock.find({ _key: { $in: keys } }, { _key: 1, dataHash: 1 }).lean();
-        const hashMap = {};
-        existingDocs.forEach(d => { hashMap[d._key] = d.dataHash; });
+        // Hash + SİTES ALANLARI birlikte kontrol edilir: hash aynı olsa bile
+        // ozelkod11kodu/durum/b2c_gonder/b2b_gonder DIA'dan farklıysa kart ATLANMAZ.
+        // (Aksi halde alan/hash tutarsızlığı kartı sonsuza dek takıyor; alastik/LJA/b2b
+        // üyeliği yanlış kalıyordu — kalıcı öz-onarım.)
+        const existingDocs = await DiaStock.find(
+          { _key: { $in: keys } },
+          { _key: 1, dataHash: 1, ozelkod11kodu: 1, durum: 1, b2c_gonder: 1, b2b_gonder: 1 }
+        ).lean();
+        const metaMap = {};
+        existingDocs.forEach(d => { metaMap[d._key] = d; });
 
         const operations = [];
         let skipped = 0;
@@ -2667,7 +2703,13 @@ class DiaStockService {
           }
 
           const newHash = this.generateProductHash(item);
-          if (syncRules.hashKontrol && hashMap[item._key] && hashMap[item._key] === newHash) {
+          const eski = metaMap[item._key];
+          const siteAlanlariAyni = eski &&
+            (eski.ozelkod11kodu || '') === (item.ozelkod11kodu || '') &&
+            (eski.durum || '') === (item.durum || '') &&
+            (eski.b2c_gonder || '') === (item.b2c_gonder || '') &&
+            (eski.b2b_gonder || '') === (item.b2b_gonder || '');
+          if (syncRules.hashKontrol && eski && eski.dataHash === newHash && siteAlanlariAyni) {
             skipped++;
             continue;
           }

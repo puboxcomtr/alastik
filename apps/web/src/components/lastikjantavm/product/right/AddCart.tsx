@@ -46,6 +46,11 @@ export default function Cart({ product }: CartProps) {
     const isSecondHand = (product.diaData?.m_kategoriler || []).some(
         (k: any) => String(k?.kategori_aciklama_1 || '').startsWith('İkinci El')
     );
+    // Hizmetlerimiz (montaj, rot, sibop vb.) ürünlerinde taksit promosyonu ve
+    // tahmini teslim tarihi gösterilmez (hizmet kargolanmaz, tek çekim uygulanır).
+    const isHizmet = (product.diaData?.m_kategoriler || []).some(
+        (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
+    );
     const pickupCashValue = Math.round(gosterim.value * (1 - PICKUP_CASH_DISCOUNT_RATE) * 100) / 100;
     const handleAddToCart = async () => {
         if (adding) return;
@@ -205,7 +210,7 @@ export default function Cart({ product }: CartProps) {
                                     <hr className="m-0 p-2" />
                                     </div>
                                     {/* Kargo Teslim Tarihi — hizmet gibi kargolanmayan ürünlerde gizlenir */}
-                                    {product?.customData?.hideDelivery !== true && (
+                                    {product?.customData?.hideDelivery !== true && !isHizmet && (
                                         <>
                                             <div>
                                                 <div className="d-flex align-items-center gap-1">
@@ -229,7 +234,9 @@ export default function Cart({ product }: CartProps) {
                                             <hr className="m-0 p-2" />
                                         </>
                                     )}
-                                    {/* Kampanyalar */}
+                                    {/* Kampanyalar — hizmet ürünlerinde taksit promosyonu gösterilmez */}
+                                    {!isHizmet && (
+                                    <>
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>
@@ -244,6 +251,8 @@ export default function Cart({ product }: CartProps) {
                                         </div>
                                     </div>
                                     <hr className="m-0 p-2" />
+                                    </>
+                                    )}
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>

@@ -1,17 +1,9 @@
-// MUI Imports
-import Grid from '@mui/material/Grid2'
+// Next Imports
+import { redirect } from 'next/navigation'
 
-/* @Import Page */
-import SeoView from '@/views/analytics/seo/SeoView'
-
-const AnalyticsSeoPage = () => {
-    return (
-        <Grid container spacing={6}>
-            <Grid size={{ xs: 12 }}>
-                <SeoView />
-            </Grid>
-        </Grid>
-    )
+// SEO Analizi kendi sekmesine taşındı (SEO > Genel Rapor); eski adres yönlendirilir
+const AnalyticsSeoPage = ({ params }: { params: { lang: string } }) => {
+    redirect(`/${params.lang}/apps/seo/report`)
 }
 
 export default AnalyticsSeoPage

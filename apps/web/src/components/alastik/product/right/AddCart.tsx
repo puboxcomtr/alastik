@@ -13,7 +13,7 @@ import { useCart } from '@/src/context/CartContext';
 import { useFavourites } from '@/src/context/FavouritesContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
-import { getProductPrice, getDisplayPrice, getDeliveryDateRange, getProductType } from '@/src/hooks/Products/productHelpers';
+import { getProductPrice, getDisplayPrice, getDeliveryDateRange, getProductType, isPriceHidden, PRICE_HIDDEN_LABEL } from '@/src/hooks/Products/productHelpers';
 import { ROUTES } from '@/src/config/routes';
 import { checkPurchaseLimit, productToLimitCheckItem, clampQuantityToStock } from '@/src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
@@ -29,6 +29,8 @@ export default function Cart({ product }: CartProps) {
     const deliveryInfo = getDeliveryDateRange(product);
     const { getBrand } = useBrands();
     const price = getProductPrice(product);
+    // Fiyat gizli (__dinamik__16 seçili + dinamik yok): fiyat gösterilmez, sepete eklenemez
+    const priceHidden = isPriceHidden(product);
     // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
     const [quantity, setQuantity] = useState(1);
@@ -42,8 +44,13 @@ export default function Cart({ product }: CartProps) {
         return `https://wa.me/${formatted}`;
     };
     const hasStock = product.diaData?.gercek_stok > 0;
+    // Hizmetlerimiz (montaj, rot, sibop vb.) ürünlerinde taksit promosyonu ve
+    // tahmini teslim tarihi gösterilmez (hizmet kargolanmaz, tek çekim uygulanır).
+    const isHizmet = (product.diaData?.m_kategoriler || []).some(
+        (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
+    );
     const handleAddToCart = async () => {
-        if (adding) return;
+        if (adding || priceHidden) return;
         setAdding(true);
 
         try {
@@ -157,10 +164,12 @@ export default function Cart({ product }: CartProps) {
                                         </div>
                                         <div>
                                             <span className='fw-bold text-black'>
-                                                {gosterim.value.toLocaleString('tr-TR', {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2
-                                                })} TL{gosterim.suffix}
+                                                {priceHidden ? PRICE_HIDDEN_LABEL : (
+                                                    <>{gosterim.value.toLocaleString('tr-TR', {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2
+                                                    })} TL{gosterim.suffix}</>
+                                                )}
                                             </span>
                                         </div>
                                     </div>
@@ -172,7 +181,7 @@ export default function Cart({ product }: CartProps) {
                                     <hr className="m-0 p-2" />
                                     </div>
                                     {/* Kargo Teslim Tarihi — hizmet gibi kargolanmayan ürünlerde gizlenir */}
-                                    {product?.customData?.hideDelivery !== true && (
+                                    {product?.customData?.hideDelivery !== true && !isHizmet && (
                                         <>
                                             <div>
                                                 <div className="d-flex align-items-center gap-1">
@@ -196,7 +205,9 @@ export default function Cart({ product }: CartProps) {
                                             <hr className="m-0 p-2" />
                                         </>
                                     )}
-                                    {/* Kampanyalar */}
+                                    {/* Kampanyalar — hizmet ürünlerinde taksit promosyonu gösterilmez */}
+                                    {!isHizmet && (
+                                    <>
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>
@@ -211,6 +222,8 @@ export default function Cart({ product }: CartProps) {
                                         </div>
                                     </div>
                                     <hr className="m-0 p-2" />
+                                    </>
+                                    )}
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>
@@ -231,9 +244,9 @@ export default function Cart({ product }: CartProps) {
                                                 type="button"
                                                 className="btn btn-primary btn-md w-75"
                                                 onClick={handleAddToCart}
-                                                disabled={adding}
+                                                disabled={adding || priceHidden}
                                             >
-                                                {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
+                                                {priceHidden ? PRICE_HIDDEN_LABEL : (adding ? 'Ekleniyor...' : 'Sepete Ekle')}
                                             </button>
                                         </Tooltip>
                                         <Tooltip title={isFavourite(product._key) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}>

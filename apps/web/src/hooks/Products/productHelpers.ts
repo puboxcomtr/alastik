@@ -60,10 +60,22 @@ export const getProductOriginalPrice = (product: Product): number | undefined =>
  * Ürünün indirimde olup olmadığını kontrol et
  */
 export const hasProductDiscount = (product: Product): boolean => {
+    if (isPriceHidden(product)) return false;
     const price = getProductPrice(product);
     const originalPrice = getProductOriginalPrice(product);
     return !!originalPrice && originalPrice > price;
 };
+
+/**
+ * Fiyat gizli mi? (Tema "Gösterilecek Fiyat" = __dinamik__16 seçili ve üründe dinamik fiyat yok)
+ * Bu durumda fiyat gösterilmez ve ürün sepete eklenemez; başka fiyat alanı ASLA gösterilmez.
+ */
+export const isPriceHidden = (product: Product): boolean => {
+    return (product.customData as { priceHidden?: boolean })?.priceHidden === true;
+};
+
+// Fiyat gizliyken gösterilecek metin
+export const PRICE_HIDDEN_LABEL = 'Fiyat için arayınız';
 
 /**
  * URL'i normalize et (çift prefix önle)

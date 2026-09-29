@@ -129,6 +129,11 @@ router.get('/filter', async (req, res) => {
             depo,
             fiyatMin,
             fiyatMax,
+            // Özellik çipleri (ürün adından türetilir): RFT / C Serisi / XL / EV
+            rft,
+            cserisi,
+            xl,
+            ev,
             limit,
             // Sıralama parametreleri
             sortBy,
@@ -138,6 +143,11 @@ router.get('/filter', async (req, res) => {
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
         const filter = getProductListFilters(req.site);
+        // Belirli ürünleri (ör. montaj hizmetleri) bu sitenin vitrin listelemesinden
+        // gizle. Montaj noktaları/sepet _key ile çektiği için etkilenmez. Bu bayrak
+        // customData.siteData altında olduğundan DIA güncellemesinde de korunur.
+        // (Not: kategori koşulları $and'i ezdiği için doğrudan alan olarak eklenir.)
+        filter[`customData.siteData.${req.site}.hideFromListing`] = { $ne: true };
 
         console.log('=== SORTING DEBUG ===');
         console.log('sortBy:', sortBy);
@@ -450,28 +460,67 @@ router.get('/filter', async (req, res) => {
             }
         }
 
-        // Serbest metin arama (q): marka/model/açıklama/stok kodu + ebat. Ebat rakam
-        // bazlı eşleşir — "2055516", "205 55 16", "205/55R16" hepsi aynı kabul edilir
-        // (rakamlar arasına ayraç/harf serbest). Kategorinin TÜM ürünlerinde arar.
+        // Özellik çipleri (RFT / C Serisi / XL / EV): ürün adından (diaData.aciklama)
+        // türetilir. Regexler ön yüzdeki matches() ile birebir aynıdır; kategorinin
+        // TÜM ürünlerinde arar (yalnız görünen sayfada değil). C Serisi büyük "C"
+        // olduğundan yalnız o koşul büyük/küçük harf duyarlıdır.
+        const isActive = (v) => v === '1' || v === 'true';
+        if (isActive(rft)) {
+            andConditions.push({ 'diaData.aciklama': { $regex: '\\bRFT\\b', $options: 'i' } });
+        }
+        if (isActive(cserisi)) {
+            andConditions.push({ 'diaData.aciklama': { $regex: '\\bC\\b' } });
+        }
+        if (isActive(xl)) {
+            andConditions.push({ 'diaData.aciklama': { $regex: '\\bXL\\b', $options: 'i' } });
+        }
+        if (isActive(ev)) {
+            andConditions.push({ 'diaData.aciklama': { $regex: '\\bEV\\b', $options: 'i' } });
+        }
+
+        // Akıllı serbest metin arama (q): sorgu kelimelere ayrılır.
+        //  - Tüm rakamlar (ebat/ürün kodu) tek esnek eşleşmeye toplanır:
+        //    "2055516", "205 55 16", "205/55R16" hepsi aynı kabul edilir.
+        //  - Saf harf kelimeleri (marka/model, ör. "Pirelli") ayrı ayrı aranır.
+        //  - TÜM parçalar BİRLİKTE (AND) sağlanmalıdır → "205 55 16 Pirelli"
+        //    hem 205/55R16 ebadını hem Pirelli markasını arar, başka marka çıkmaz.
+        // Kategorinin TÜM ürünlerinde arar (yalnız görünen sayfada değil).
         if (req.query.q && String(req.query.q).trim()) {
             const q = String(req.query.q).trim();
-            const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const rx = new RegExp(esc, 'i');
-            const or = [
-                { 'diaData.aciklama': rx },
-                { 'diaData.marka': rx },
-                { 'diaData.stokkartkodu': rx },
-                { 'diaData.ozelkod3kodu': rx },
-                { 'diaData.ozelkod5kodu': rx }
-            ];
+            const tokens = q.split(/\s+/).filter(Boolean);
+            // Saf harf kelimeler (rakam içermeyen, en az 2 harf) → marka/model
+            const kelimeler = tokens.filter(t => t.length >= 2 && /[a-zşğüöçıİ]/i.test(t) && !/\d/.test(t));
             const rakam = q.replace(/[^0-9]/g, '');
+
             if (rakam.length >= 3) {
                 const esnek = new RegExp(rakam.split('').join('\\D*'), 'i');
-                or.push({ 'diaData.ozelkod3kodu': esnek });
-                or.push({ 'diaData.stokkartkodu': esnek });
-                or.push({ 'diaData.aciklama': esnek });
+                andConditions.push({ $or: [
+                    { 'diaData.ozelkod3kodu': esnek },
+                    { 'diaData.stokkartkodu': esnek },
+                    { 'diaData.aciklama': esnek }
+                ] });
             }
-            andConditions.push({ $or: or });
+            for (const kelime of kelimeler) {
+                const esc = kelime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const rx = new RegExp(esc, 'i');
+                andConditions.push({ $or: [
+                    { 'diaData.aciklama': rx },
+                    { 'diaData.marka': rx },
+                    { 'diaData.ozelkod5kodu': rx }
+                ] });
+            }
+            // Ne yeterli rakam ne de harf kelimesi çıktıysa (ör. tek karakter),
+            // ham sorguyu geniş ara — kullanıcı hiç sonuçsuz kalmasın.
+            if (rakam.length < 3 && kelimeler.length === 0) {
+                const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const rx = new RegExp(esc, 'i');
+                andConditions.push({ $or: [
+                    { 'diaData.aciklama': rx },
+                    { 'diaData.marka': rx },
+                    { 'diaData.stokkartkodu': rx },
+                    { 'diaData.ozelkod3kodu': rx }
+                ] });
+            }
         }
         if (ozelkod5) {
             andConditions.push({
@@ -626,7 +675,24 @@ router.get('/filter', async (req, res) => {
                         _id: null,
                         brands: { $addToSet: '$diaData.marka' },
                         seasons: { $addToSet: '$diaData.ozelkod1kodu' },
-                        dots: { $addToSet: '$diaData.ekalan5' }
+                        dots: { $addToSet: '$diaData.ekalan5' },
+                        // OEM özelliğinin ham değeri (ör. "Mercedes (MO)", "Audi(AO),Volkswagen(+)")
+                        oemRaw: {
+                            $addToSet: {
+                                $let: {
+                                    vars: {
+                                        oemArr: {
+                                            $filter: {
+                                                input: { $ifNull: ['$diaData.m_urunOzellikleri', []] },
+                                                as: 'o',
+                                                cond: { $eq: ['$$o.ozellikadi', 'OEM'] }
+                                            }
+                                        }
+                                    },
+                                    in: { $arrayElemAt: ['$$oemArr.detayaciklama', 0] }
+                                }
+                            }
+                        }
                     }
                 }
             ]);
@@ -636,10 +702,24 @@ router.get('/filter', async (req, res) => {
             try {
                 depots = (await getDepotList(req.site)).map(d => d.ad).filter(Boolean);
             } catch { /* depo ayarı yoksa boş */ }
+            // OEM ham değerlerinden marka bazlı liste çıkar: "Mercedes (MO)" → "Mercedes",
+            // "Audi(AO),Volkswagen(+)" → "Audi","Volkswagen". "Yok"/boş dışlanır.
+            const oemBrandSet = new Set();
+            for (const raw of (g.oemRaw || [])) {
+                if (!raw) continue;
+                for (const part of String(raw).split(',')) {
+                    const brand = part.split('(')[0].trim();
+                    if (!brand || /^yok$/i.test(brand)) continue;
+                    oemBrandSet.add(brand);
+                }
+            }
+            const oems = [...oemBrandSet].sort((a, b) => String(a).localeCompare(String(b), 'tr'));
+
             facets = {
                 brands: (g.brands || []).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'tr')),
                 seasons: (g.seasons || []).filter(Boolean),
                 dots: (g.dots || []).filter(d => /^(19|20)\d{2}$/.test(String(d))).sort((a, b) => Number(b) - Number(a)),
+                oems,
                 depots
             };
         }

@@ -85,6 +85,8 @@ const paymentSchema = new mongoose.Schema({
     paymentGuid: String,
     errorMessage: String,
     errorCode: String,
+    // Taksitli 3D dönüşünde (NetTahsilat callback) doğru domaine yönlendirmek için
+    returnOrigin: String,
     // Kredi kartı bilgileri
     cardInfo: {
         lastFourDigits: String,

@@ -6,6 +6,10 @@ const mongoose = require('mongoose');
 // GET /api/design/slider/:id
 router.get('/:id', async (req, res) => {
     try {
+        // Slider aktif/pasif değişikliği anında yansısın: tarayıcı/ara katman
+        // bu yanıtı önbelleğe almasın (aksi halde pasiflenen slayt görünmeye devam eder).
+        res.set('Cache-Control', 'no-store');
+
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {

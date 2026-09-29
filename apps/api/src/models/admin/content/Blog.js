@@ -19,6 +19,11 @@ const blogSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
+    // Blog kategorileri (çoklu) — BlogCategory referansları, site başına
+    categories: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BlogCategory' }],
+        default: []
+    },
     content: {
         type: String,
         required: true,
@@ -43,6 +48,11 @@ const blogSchema = new mongoose.Schema({
             default: []
         },
         ogImage: {
+            type: String,
+            default: ''
+        },
+        // SEO analizi: odak anahtar kelime
+        focusKeyword: {
             type: String,
             default: ''
         }

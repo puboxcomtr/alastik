@@ -1,143 +1,141 @@
 "use client";
 
-import { useState } from "react";
-import { DataSource } from "@components/b2b-theme/data-source";
-import { formatKurus, formatDay } from "@components/b2b-theme/lib/format";
-import { PAYMENTS } from "@components/b2b-theme/lib/sample-data";
+// Ödemeler — carinin hesabına geçen tahsilat/ödeme (saf alacak) hareketleri.
+// Kaynak: cari ekstredeki alacak kalemleri (scf_carikart_hareket_listele, canlı).
+import { useEffect, useMemo, useState } from "react";
+import { API_ENDPOINTS } from "@src/config/api";
+import { CsvDownload } from "@components/b2b-theme/csv-download";
+import { SpinnerIcon } from "@components/b2b-theme/icons";
 
-type Sekme = "tumu" | "gecerli" | "iptal";
+interface Payment {
+  tarih: string;
+  tur: string;
+  aciklama: string;
+  fisno: string;
+  alacak: number;
+}
+interface OdemeData {
+  payments: Payment[];
+  totalKurus: number;
+  count: number;
+}
 
-/**
- * Kasa Tahsilatları — bilinçli olarak "Tüm Ödemelerim" DEĞİL.
- *
- * Kasadan geçmeyen ödemeler (havale/EFT, çek, senet, mahsup) bu listede
- * görünmez; eksik türler SIFIR SAYILMAZ, ekranda kapsam uyarısı yazılır.
- */
+const tl = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatTL = (v: number) => `${tl.format(v)}₺`;
+
 export default function OdemelerPage() {
-  const [sekme, setSekme] = useState<Sekme>("tumu");
-  const [q, setQ] = useState("");
+  const [data, setData] = useState<OdemeData | null>(null);
+  const [error, setError] = useState(false);
+  const [yil, setYil] = useState("");
 
-  // Örnek veride iptal kaydı yok; sekme yine de tasarımda yer alıyor.
-  const gecerli = PAYMENTS;
-  const iptaller: typeof PAYMENTS = [];
-  const gecerliToplam = gecerli.reduce((t, o) => t + o.tutarKurus, 0);
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) { setError(true); return; }
+    fetch(API_ENDPOINTS.b2b.odemeler(), { headers: { Authorization: `Bearer ${token}`, "X-Site": "b2b" } })
+      .then((r) => r.json())
+      .then((d) => { if (d?.success && d.data) setData(d.data); else setError(true); })
+      .catch(() => setError(true));
+  }, []);
 
-  const secilen =
-    sekme === "iptal" ? iptaller : sekme === "gecerli" ? gecerli : PAYMENTS;
-  const query = q.trim().toLocaleLowerCase("tr");
-  const listelenen = query
-    ? secilen.filter(
-        (o) =>
-          o.belgeNo.toLocaleLowerCase("tr").includes(query) ||
-          o.kasaAdi.toLocaleLowerCase("tr").includes(query) ||
-          (o.aciklama ?? "").toLocaleLowerCase("tr").includes(query),
-      )
-    : secilen;
+  const years = useMemo(() => {
+    const s = new Set<string>();
+    (data?.payments || []).forEach((p) => { const y = p.tarih.slice(0, 4); if (y) s.add(y); });
+    return [...s].sort((a, b) => Number(b) - Number(a));
+  }, [data]);
+
+  // En yeni üstte + yıl filtresi
+  const rows = useMemo(() => {
+    const list = (data?.payments || []).filter((p) => !yil || p.tarih.slice(0, 4) === yil);
+    return [...list].reverse();
+  }, [data, yil]);
+
+  const shownTotal = useMemo(() => rows.reduce((s, p) => s + p.alacak, 0), [rows]);
+
+  if (error) {
+    return (
+      <>
+        <div className="page-head"><div><h1>Ödemeler</h1></div></div>
+        <p className="note">Ödemeler şu an yüklenemedi. Lütfen daha sonra tekrar deneyiniz.</p>
+      </>
+    );
+  }
+  if (!data) {
+    return (
+      <>
+        <div className="page-head"><div><h1>Ödemeler</h1></div></div>
+        <p className="note loading-row" style={{ padding: "1rem 0" }}>
+          <SpinnerIcon size={18} className="loading-brand" /> Ödemeler yükleniyor…
+        </p>
+      </>
+    );
+  }
 
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>Kasa Tahsilatları</h1>
-          <p className="sub">
-            Kasadan geçen tahsilat kayıtlarınız —{" "}
-            {PAYMENTS.length.toLocaleString("tr-TR")} işlem. Bu liste tüm
-            ödemelerinizi kapsamaz (aşağıdaki kapsam notuna bakın).
-          </p>
+          <h1>Ödemeler</h1>
+          <p className="sub">Hesabınıza işlenen tahsilat ve alacak hareketleri.</p>
         </div>
+        <CsvDownload
+          dosyaAdi={`odemeler-${yil || "tumu"}.csv`}
+          basliklar={["Tarih", "İşlem Tipi", "Belge No", "Açıklama", "Tutar"]}
+          lines={rows.map((p) => [p.tarih, p.tur, p.fisno, p.aciklama, p.alacak.toFixed(2)])}
+        />
       </div>
 
-      <DataSource
-        source="Örnek veri"
-        ayrinti="lib/ornek-veri.ts → ODEMELER (yalnızca kasa işlemleri)"
-        dateField="işlem tarihi"
-        cancelRule="iptaller ayrı sekmede, toplama katılmaz"
-        tazelik="örnek veri"
-        kapsamUyarisi={
-          "Bu ekran YALNIZCA kasadan geçen tahsilatları gösterir. Banka " +
-          "havalesi/EFT, çek, senet, mahsup ve cari hesap fişi ile yapılan " +
-          "ödemeler burada GÖRÜNMEZ — bu türler sıfır kabul edilmemiştir. " +
-          "Ödemelerinizin tam dökümü için cari hesap ekstrenizi isteyin."
-        }
-      />
-
-      <h2 className="section">Kasa Tahsilatları Özeti</h2>
       <div className="report-cards">
         <div className="report-card yesil">
-          <div className="label">✓ Geçerli kayıtlar</div>
-          <div className="value">{formatKurus(gecerliToplam)}</div>
-          <div className="note">
-            {gecerli.length} işlem · yalnızca kasa tahsilatları toplamı
-          </div>
+          <div className="label">Toplam Ödeme (tümü)</div>
+          <div className="value">{formatTL(data.totalKurus / 100)}</div>
+          <div className="note">{data.count.toLocaleString("tr-TR")} kayıt</div>
         </div>
-        <div className="report-card kirmizi">
-          <div className="label">✕ İptal edilmiş</div>
-          <div className="value">{iptaller.length}</div>
-          <div className="note">iptal işaretli kayıt</div>
-        </div>
-        <div className="report-card">
-          <div className="label">Σ Kayıt sayısı</div>
-          <div className="value">{PAYMENTS.length}</div>
-          <div className="note">iptaller dahil</div>
+        <div className="report-card vurgulu">
+          <div className="label">Gösterilen Toplam</div>
+          <div className="value">{formatTL(shownTotal)}</div>
+          <div className="note">{yil ? `${yil} yılı` : "tüm dönemler"}</div>
         </div>
       </div>
 
-      <div className="actions-row" style={{ marginBottom: "0.8rem", flexWrap: "wrap" }}>
-        {(
-          [
-            ["tumu", `Tümü (${PAYMENTS.length})`],
-            ["gecerli", `Geçerli (${gecerli.length})`],
-            ["iptal", `İptal (${iptaller.length})`],
-          ] as const
-        ).map(([anahtar, label]) => (
-          <button
-            key={anahtar}
-            type="button"
-            className={`feature-chip${sekme === anahtar ? " selected" : ""}`}
-            onClick={() => setSekme(anahtar)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="filterbar" style={{ alignItems: "flex-end", gap: "0.8rem", flexWrap: "wrap" }}>
+        <div>
+          <label htmlFor="yil" style={{ display: "block", fontSize: "0.8rem", fontWeight: 650 }}>Yıl</label>
+          <select id="yil" className="mini" value={yil} onChange={(e) => setYil(e.target.value)}>
+            <option value="">Tümü</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <span className="chip">{rows.length.toLocaleString("tr-TR")} kayıt gösteriliyor</span>
       </div>
 
-      <form className="searchbar" onSubmit={(e) => e.preventDefault()}>
-        <input
-          type="search"
-          placeholder="Fiş no, kasa adı veya açıklama ara..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <button type="submit">Ara</button>
-      </form>
-
-      <div style={{ marginTop: "0.9rem" }}>
-        {listelenen.map((o) => (
-          <div className="payment-card" key={o.belgeNo}>
-            <div className="ust">
-              <div>
-                <span className="fisno">#{o.belgeNo}</span>{" "}
-                <span className="badge info">{o.kasaAdi}</span>
-              </div>
-              <span className="badge ok">Geçerli kayıt</span>
-            </div>
-            <div className="ust" style={{ marginTop: "0.35rem" }}>
-              <div className="alt" style={{ marginTop: 0 }}>
-                {o.aciklama ? <span>{o.aciklama}</span> : null}
-              </div>
-              <div className="tutar">{formatKurus(o.tutarKurus)}</div>
-            </div>
-            <div className="alt">
-              <span>📅 {formatDay(o.tarih)}</span>
-            </div>
-          </div>
-        ))}
-        {listelenen.length === 0 ? (
-          <p className="note" style={{ padding: "1.5rem 0" }}>
-            Kasadan geçen tahsilat kaydı bulunamadı. Havale/EFT ile ödeme
-            yaptıysanız bu listede görünmez (yukarıdaki kapsam notu).
-          </p>
-        ) : null}
+      <div className="tablewrap">
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>İşlem Tipi</th>
+              <th>Belge No</th>
+              <th>Açıklama</th>
+              <th className="num">Tutar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p, i) => (
+              <tr key={`${p.fisno}-${i}`}>
+                <td>{p.tarih}</td>
+                <td>{p.tur}</td>
+                <td className="sku">{p.fisno || "—"}</td>
+                <td>{p.aciklama || "—"}</td>
+                <td className="num">
+                  <strong style={{ color: "var(--success-text)" }}>{formatTL(p.alacak)}</strong>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr><td colSpan={5} className="note" style={{ padding: "2rem" }}>Seçilen aralıkta ödeme yok.</td></tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
     </>
   );

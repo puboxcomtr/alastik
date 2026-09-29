@@ -30,6 +30,8 @@ import {
     hasProductDiscount,
     getProductImage,
     getProductStockCode,
+    isPriceHidden,
+    PRICE_HIDDEN_LABEL,
 } from '@src/hooks/Products/productHelpers';
 import { checkPurchaseLimit, productToLimitCheckItem, clampQuantityToStock, canAddToCartStock } from '@src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
@@ -48,7 +50,7 @@ export default function OneColumn({ product }: ProductCardProps) {
     const reviewRating = product.customData?.reviewStats?.averageRating || 0;
 
     const handleAddToCart = async () => {
-        if (adding) return;
+        if (adding || priceHidden) return;
 
         const currentInCart = items.find(i => i.productKey === product._key)?.quantity ?? 0;
         const stockCheck = canAddToCartStock(product, currentInCart, quantity);
@@ -97,6 +99,7 @@ export default function OneColumn({ product }: ProductCardProps) {
     const [quantity, setQuantity] = useState(1);
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
+    const priceHidden = isPriceHidden(product);
     // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
@@ -204,7 +207,7 @@ export default function OneColumn({ product }: ProductCardProps) {
                                 </div>
                             </div>
                             <div className="text-end">
-                                {isSetLastik(product) ? (
+                                {!priceHidden && (isSetLastik(product) ? (
                                     <span className="text-body-secondary fw-semibold fs-xs d-block">Adet Fiyatı</span>
                                 ) : (
                                     hasDiscount && (
@@ -212,9 +215,11 @@ export default function OneColumn({ product }: ProductCardProps) {
                                             {originalPrice?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
                                         </del>
                                     )
-                                )}
+                                ))}
                                 <span className="fw-bold fs-lg">
-                                    {gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL{gosterim.suffix}
+                                    {priceHidden
+                                        ? PRICE_HIDDEN_LABEL
+                                        : `${gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL${gosterim.suffix}`}
                                 </span>
                             </div>
                         </div>
@@ -250,8 +255,8 @@ export default function OneColumn({ product }: ProductCardProps) {
                             )}
                             {product.diaData?.gercek_stok > 0 ? (
                                 <Tooltip title="Sepete Ekle">
-                                    <button type="button" className="btn btn-primary btn-md flex-fill" onClick={handleAddToCart} disabled={adding}>
-                                        {adding ? 'Ekleniyor...' : t('addToCart')}
+                                    <button type="button" className="btn btn-primary btn-md flex-fill" onClick={handleAddToCart} disabled={adding || priceHidden}>
+                                        {priceHidden ? PRICE_HIDDEN_LABEL : (adding ? 'Ekleniyor...' : t('addToCart'))}
                                     </button>
                                 </Tooltip>
                             ) : (

@@ -93,6 +93,8 @@ const webBrandSchema = new mongoose.Schema({
     // SEO Bilgileri
     seoTitle: String,
     seoDescription: String,
+    // SEO analizi: odak anahtar kelime
+    focusKeyword: String,
     seoUrl: {
         type: String,
         sparse: true,

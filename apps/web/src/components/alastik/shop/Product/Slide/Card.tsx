@@ -23,7 +23,9 @@ import {
   hasProductDiscount,
   getProductImage,
   getProductStockCode,
-  getProductSeason
+  getProductSeason,
+  isPriceHidden,
+  PRICE_HIDDEN_LABEL
 } from '@src/hooks/Products/productHelpers'
 import { checkPurchaseLimit, productToLimitCheckItem } from '@src/hooks/Products/purchaseLimitHelpers'
 import { toast } from 'react-toastify'
@@ -69,7 +71,7 @@ export default function ProductSlideCard({ product }: Props) {
 
   const toggleFavorite = () => setIsFavorite((prev) => !prev)
   const handleAddToCart = async () => {
-    if (adding) return
+    if (adding || priceHidden) return
     setAdding(true)
 
     try {
@@ -98,6 +100,7 @@ export default function ProductSlideCard({ product }: Props) {
   }
   const productUrl = getProductUrl(product)
   const price = getProductPrice(product)
+  const priceHidden = isPriceHidden(product)
   // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
   const gosterim = getDisplayPrice(product, price);
   const originalPrice = getProductOriginalPrice(product)
@@ -225,14 +228,16 @@ export default function ProductSlideCard({ product }: Props) {
         {/* Fiyat */}
         <div className="d-flex justify-content-end border-top pt-3 gap-2">
           <span>
-            {hasDiscount && originalPrice && (
+            {!priceHidden && hasDiscount && originalPrice && (
               <del className="text-body-tertiary fw-normal">
                 {originalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
               </del>
             )}
           </span>
           <span className="fw-bold">
-            {gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL{gosterim.suffix}
+            {priceHidden
+              ? PRICE_HIDDEN_LABEL
+              : `${gosterim.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL${gosterim.suffix}`}
           </span>
         </div>
 
@@ -244,9 +249,9 @@ export default function ProductSlideCard({ product }: Props) {
                 type="button"
                 className="btn btn-primary w-100 mt-3"
                 onClick={handleAddToCart}
-                disabled={adding}
+                disabled={adding || priceHidden}
               >
-                {adding ? 'Ekleniyor...' : t('addToCart')}
+                {priceHidden ? PRICE_HIDDEN_LABEL : (adding ? 'Ekleniyor...' : t('addToCart'))}
               </button>
             </Tooltip>
           ) : (

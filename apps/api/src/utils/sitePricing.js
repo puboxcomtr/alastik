@@ -20,8 +20,14 @@
  * girmez; fiyat4 zaten XML fiyat kurallarıyla site bazlı hesaplanır (1 Eyl 2026).
  */
 
-const PRICE_FIELDS = ['fiyat1', 'fiyat2', 'fiyat3', 'fiyat4'];
+// '__dinamik__16' = ALastik B2C dinamik fiyatı. Senkron bu değeri m_birimler[0].fiyat4'e yazar,
+// ham toptan fiyatı fiyat4Ham'da tutar. Bu alan seçilirse YALNIZ dinamik fiyat gösterilir;
+// dinamik yoksa fiyat gizlenir (fallback/başka alan gösterilmez).
+const PRICE_FIELDS = ['fiyat1', 'fiyat2', 'fiyat3', 'fiyat4', '__dinamik__16'];
 const DISCOUNT_MODES = ['none', 'b2c_oran'];
+// Fiyat gizli işareti: '__dinamik__16' seçili + üründe dinamik fiyat yok → fiyat gösterilmez,
+// sepete eklenemez. Sentinel (Symbol) sayı/null ile asla karışmaz.
+const PRICE_HIDDEN = Symbol('priceHidden');
 // Hizmet kategorisi site fiyat kuralından muaftır: DIA'daki KDV dahil satış fiyatı (fiyat4) aynen gösterilir
 const { SERVICE_VAT_RULE } = require('../config/diaFilters');
 const { DEFAULT_SITE } = require('../config/sites');
@@ -112,7 +118,23 @@ function resolveSitePrice(doc, site) {
 
     const dia = doc?.diaData || doc || {};
     if (isServiceProduct(dia)) return null;
-    const birim = (dia.m_birimler || [])[0];
+    const birim = (dia.m_birimler || [])[0] || {};
+
+    // '__dinamik__16' seçili: yalnız dinamik B2C fiyatı. fiyat4 senkronda dinamikle ezilir,
+    // ham toptan fiyat4Ham'da durur → dinamik = fiyat4 (fiyat4Ham'dan farklıysa). Dinamik
+    // yoksa PRICE_HIDDEN döner (fiyat gösterilmez, başka alana düşülmez).
+    if (cfg.priceField === '__dinamik__16') {
+        const dinamik = parseFloat(birim.fiyat4) || 0;
+        const ham = parseFloat(birim.fiyat4Ham) || 0;
+        const hasDynamic = dinamik > 0 && !(ham > 0 && Math.abs(dinamik - ham) < 0.01);
+        if (!hasDynamic) return PRICE_HIDDEN;
+        if (cfg.discountMode === 'b2c_oran') {
+            const oran = parseDiscountRate(dia);
+            if (oran > 0 && oran < 100) return round2(dinamik * (1 - oran / 100));
+        }
+        return round2(dinamik);
+    }
+
     const base = parseFloat(birim?.[cfg.priceField]) || 0;
     if (base <= 0) return null;
 
@@ -147,6 +169,16 @@ function resolveXmlShipping(doc, site) {
 function applySitePricing(doc, site) {
     if (!doc) return doc;
     const price = resolveSitePrice(doc, site);
+    // Fiyat gizli: satış fiyatını 0 yap, priceHidden işaretle, kargo payı ekleme, başka alana düşme
+    if (price === PRICE_HIDDEN) {
+        const dia = doc.diaData || doc;
+        if (dia.m_birimler && dia.m_birimler[0]) dia.m_birimler[0].fiyat4 = 0;
+        if (!doc.diaData && typeof doc.fiyat4 !== 'undefined') doc.fiyat4 = 0;
+        doc.customData = doc.customData || {};
+        doc.customData.priceHidden = true;
+        doc.customData.webPrice = 0;
+        return doc;
+    }
     if (price !== null) {
         const dia = doc.diaData || doc;
         if (dia.m_birimler && dia.m_birimler[0]) {
@@ -197,7 +229,9 @@ function salePriceExpr(site) {
     const cfg = getPricingConfig(site);
     if (isDefaultPricing(cfg)) return withXmlOverride(fiyat4);
 
-    const base = { $ifNull: [{ $arrayElemAt: [`$diaData.m_birimler.${cfg.priceField}`, 0] }, 0] };
+    // '__dinamik__16' seçili: dinamik değer fiyat4'te tutulur (senkron ezer) → filtre/sıralama fiyat4'ü kullanır
+    const exprField = cfg.priceField === '__dinamik__16' ? 'fiyat4' : cfg.priceField;
+    const base = { $ifNull: [{ $arrayElemAt: [`$diaData.m_birimler.${exprField}`, 0] }, 0] };
 
     let priced = '$$base';
     if (cfg.discountMode === 'b2c_oran') {
@@ -317,6 +351,7 @@ function priceRangeCondition(site, fiyatMin, fiyatMax) {
 module.exports = {
     PRICE_FIELDS,
     DISCOUNT_MODES,
+    PRICE_HIDDEN,
     DEFAULT_PRICING,
     loadPricingConfig,
     invalidatePricingConfig,

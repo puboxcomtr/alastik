@@ -47,6 +47,20 @@ export const API_ENDPOINTS = {
         cards: (range: string) => `${getBaseUrl()}/admin/analytics/cards?range=${encodeURIComponent(range)}`,
         seo: (query?: string) => `${getBaseUrl()}/admin/analytics/seo${query ? `?${query}` : ''}`,
     },
+    // SEO modülü: Genel Rapor, Anahtar Kelimeler, İçerik Analizi
+    seo: {
+        report: (query?: string) => `${getBaseUrl()}/admin/seo/report${query ? `?${query}` : ''}`,
+        reportSync: () => `${getBaseUrl()}/admin/seo/report/sync`,
+        keywords: (query?: string) => `${getBaseUrl()}/admin/seo/keywords${query ? `?${query}` : ''}`,
+        keywordSuggestions: () => `${getBaseUrl()}/admin/seo/keywords/suggestions`,
+        keywordDelete: (id: string) => `${getBaseUrl()}/admin/seo/keywords/${id}`,
+        content: (query?: string) => `${getBaseUrl()}/admin/seo/content${query ? `?${query}` : ''}`,
+        contentScan: () => `${getBaseUrl()}/admin/seo/content/scan`,
+        contentDetail: (type: string, id: string) => `${getBaseUrl()}/admin/seo/content/${type}/${encodeURIComponent(id)}`,
+        contentFocusKeyword: (type: string, id: string) => `${getBaseUrl()}/admin/seo/content/${type}/${encodeURIComponent(id)}/focus-keyword`,
+        analyze: () => `${getBaseUrl()}/admin/seo/analyze`,
+        settings: () => `${getBaseUrl()}/admin/seo/settings`,
+    },
     montage: {
         list: () => `${getBaseUrl()}/admin/montage`,
         detail: (id: string) => `${getBaseUrl()}/admin/montage/${id}`,
@@ -184,6 +198,10 @@ export const API_ENDPOINTS = {
         detail: (id: string) => `${getBaseUrl()}/admin/blogs/${id}`,
         image: (id: string) => `${getBaseUrl()}/admin/blogs/${id}/image`,
     },
+    blogCategories: {
+        list: () => `${getBaseUrl()}/admin/blog-kategoriler`,
+        detail: (id: string) => `${getBaseUrl()}/admin/blog-kategoriler/${id}`,
+    },
     roles: {
         list: () => `${getBaseUrl()}/admin/user/roles`,
         create: () => `${getBaseUrl()}/admin/user/roles`,
@@ -295,6 +313,19 @@ export const API_ENDPOINTS = {
         },
         detail: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
         syncDia: () => `${getBaseUrl()}/admin/members/sync-dia`,
+    },
+    salespersons: {
+        list: (params: { search?: string; page?: number; limit?: number }) => {
+            const query = new URLSearchParams({
+                search: params.search || '',
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 100).toString()
+            })
+            return `${getBaseUrl()}/admin/salespersons?${query}`
+        },
+        syncDia: () => `${getBaseUrl()}/admin/salespersons/sync-dia`,
+        update: (id: string) => `${getBaseUrl()}/admin/salespersons/${id}`,
+        password: (id: string) => `${getBaseUrl()}/admin/salespersons/${id}/password`,
     },
     b2bApplications: {
         list: (params: { page?: number; limit?: number; status?: string; search?: string }) => {

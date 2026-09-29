@@ -7,16 +7,33 @@ const soap = require('soap');
 const { redact } = require('../../../utils/logRedact');
 
 const WSDL_URL = 'https://otopirpossv2.netahsilatservice.com/VendorPayment/VendorPaymentService.svc?wsdl';
-// Üye işyeri kimlik bilgileri YALNIZ ortam değişkeninden okunur — kaynak koda yedek değer yazılmaz.
-// Tanımlı değilse ödeme başlatılmaz (sessizce yanlış kimlikle denemek yerine açık hata verilir).
-const AUTH = {
+// Üye işyeri kimlik bilgileri ÖNCE panelden (PaymentMethod, site bazlı) okunur;
+// panelde tanımlı değilse env'e düşer (geçiş güvenliği). Tüm siteler aynı
+// hesabı kullanabilir; her siteye ayrı hesap girilirse o kullanılır.
+const ENV_AUTH = {
     UserName: process.env.NETAHSILAT_USERNAME,
     Password: process.env.NETAHSILAT_PASSWORD
 };
 
-const assertAuthConfigured = () => {
-    if (!AUTH.UserName || !AUTH.Password) {
-        throw new Error('Netahsilat kimlik bilgileri tanımlı değil (NETAHSILAT_USERNAME / NETAHSILAT_PASSWORD)');
+async function getAuth(site) {
+    // Panel (DB) — site bazlı netahsilat kaydı
+    try {
+        if (site) {
+            const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
+            const doc = await PaymentMethod.findOne({
+                site, provider: 'netahsilat', type: 'credit_card', isActive: true, isDeleted: { $ne: true }
+            }).lean();
+            const u = doc?.apiCredentials?.username;
+            const p = doc?.apiCredentials?.password;
+            if (u && p) return { UserName: String(u), Password: String(p) };
+        }
+    } catch (_) { /* DB hatası → env fallback */ }
+    return { UserName: ENV_AUTH.UserName, Password: ENV_AUTH.Password };
+}
+
+const assertAuth = (auth) => {
+    if (!auth?.UserName || !auth?.Password) {
+        throw new Error('Netahsilat kimlik bilgileri tanımlı değil (panel/env).');
     }
 };
 
@@ -36,11 +53,13 @@ class NetahsilatService {
         }
     }
 
-    async getPosByBin(binNumber) {
+    async getPosByBin(binNumber, site) {
         try {
             const client = await this.getClient();
+            const authInfo = await getAuth(site);
+            assertAuth(authInfo);
             const [result] = await client.GetVirtualPosListWithBinInfoAsync({
-                authInfo: AUTH,
+                authInfo,
                 binNumber: binNumber
             });
 
@@ -144,10 +163,11 @@ class NetahsilatService {
                 ? cleanTurkish(`${orderNumber} ${customerName} ${siteLabel}`.replace(/\s+/g, ' ').trim())
                 : `Siparis: ${orderNumber}`;
 
-            assertAuthConfigured();
+            const authInfo = await getAuth(site);
+            assertAuth(authInfo);
 
             const request = {
-                authInfo: AUTH,
+                authInfo,
                 parameters: {
                     Amount: parseFloat(amount),
                     BonusId: 1,
@@ -211,14 +231,15 @@ class NetahsilatService {
     }
 
     // CommitPayment - 3D sonrası ödemeyi tamamla
-    async commitPayment(paymentGuid) {
+    async commitPayment(paymentGuid, site) {
         try {
             const client = await this.getClient();
 
-            assertAuthConfigured();
+            const authInfo = await getAuth(site);
+            assertAuth(authInfo);
 
             const [result] = await client.CommitPaymentAsync({
-                authInfo: AUTH,
+                authInfo,
                 parameters: {
                     PaymentGuid: paymentGuid
                 }
@@ -249,12 +270,13 @@ class NetahsilatService {
     }
 
     // İşlem sorgula
-    async getTransaction(orderReference) {
+    async getTransaction(orderReference, site) {
         try {
             const client = await this.getClient();
 
+            const authInfo = await getAuth(site);
             const [result] = await client.GetTransactionByClientOrderReferenceAsync({
-                authInfo: AUTH,
+                authInfo,
                 clientReferenceCode: orderReference
             });
 

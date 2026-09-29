@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
 });
 router.put('/', async (req, res) => {
     try {
-        const { homepage, category, brand, product, other } = req.body;
+        const { homepage, category, brand, product, other, analysis } = req.body;
 
         let settings = await SeoSettings.findOne({ site: req.site });
         if (!settings) {
@@ -59,6 +59,7 @@ router.put('/', async (req, res) => {
             if (brand) settings.brand = brand;
             if (product) settings.product = product;
             if (other) settings.other = other;
+            if (analysis) settings.analysis = { ...(settings.analysis?.toObject?.() || settings.analysis || {}), ...analysis };
             await settings.save();
         }
         res.json({

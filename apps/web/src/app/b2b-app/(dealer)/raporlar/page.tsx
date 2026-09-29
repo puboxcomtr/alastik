@@ -23,8 +23,8 @@ const RAPORLAR = [
   },
   {
     href: "/raporlar/odemeler",
-    title: "Kasa Tahsilatları",
-    aciklama: "Kasadan geçen tahsilat kayıtları (kapsam notuyla birlikte).",
+    title: "Ödemeler",
+    aciklama: "Hesabınıza işlenen tahsilat ve alacak hareketleri.",
   },
   {
     href: "/raporlar/taksit-secenekleri",

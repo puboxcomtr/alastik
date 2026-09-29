@@ -318,3 +318,13 @@ export function WalletIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+export function FileIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M6 2.5h7.5L19 8v13.5H6z" />
+      <path d="M13.5 2.5V8H19" />
+      <path d="M9 12.5h7M9 16h7" />
+    </svg>
+  );
+}

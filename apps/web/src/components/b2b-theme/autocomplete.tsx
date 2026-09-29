@@ -3,9 +3,9 @@
 // Aranabilir açılır liste (autocomplete). Yerel <select> yerine kullanılır:
 // yazarak filtreleme, klavye ile gezinme ve temizleme (×) sağlar. Görünüm
 // tema select'leriyle aynı (yükseklik/kenar/renk CSS'ten gelir).
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type AutoOption = { value: string; label: string };
+export type AutoOption = { value: string; label: string; icon?: ReactNode };
 
 export function AutoComplete({
   value,
@@ -14,6 +14,7 @@ export function AutoComplete({
   placeholder,
   ariaLabel,
   className,
+  multiple = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -21,17 +22,28 @@ export function AutoComplete({
   placeholder: string;
   ariaLabel?: string;
   className?: string;
+  /** Çoklu seçim: value virgülle ayrılmış değerler; seçim listeyi kapatmaz. */
+  multiple?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Seçili değerin etiketi (girişte gösterilir)
-  const selectedLabel = useMemo(
-    () => options.find((o) => o.value === value)?.label ?? "",
-    [options, value],
+  // Seçili değer(ler): tekli modda tek eleman, çoklu modda virgülle ayrılmış.
+  const selectedValues = useMemo(
+    () => (multiple ? value.split(",").map((s) => s.trim()).filter(Boolean) : value ? [value] : []),
+    [multiple, value],
   );
+
+  // Girişte gösterilecek metin (çoklu modda etiketler / "N seçili")
+  const selectedLabel = useMemo(() => {
+    const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? v;
+    if (!multiple) return options.find((o) => o.value === value)?.label ?? "";
+    if (selectedValues.length === 0) return "";
+    if (selectedValues.length <= 2) return selectedValues.map(labelOf).join(", ");
+    return `${selectedValues.length} seçili`;
+  }, [multiple, options, value, selectedValues]);
 
   // Açıkken yazılana göre süz; kapalıyken tüm liste
   const filteredOptions = useMemo(() => {
@@ -65,6 +77,22 @@ export function AutoComplete({
     setQuery("");
   }
 
+  // Çoklu modda bir değeri ekler/çıkarır; liste açık kalır.
+  function degistir(v: string) {
+    const set = new Set(selectedValues);
+    if (set.has(v)) set.delete(v);
+    else set.add(v);
+    onChange([...set].join(","));
+    setQuery("");
+    setActiveIndex(-1);
+  }
+
+  // Bir seçeneğe tıklandığında: çoklu modda toggle (açık kal), tekli modda seç + kapat.
+  function secOrToggle(v: string) {
+    if (multiple) degistir(v);
+    else sec(v);
+  }
+
   function klavye(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -75,7 +103,7 @@ export function AutoComplete({
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (open && activeIndex >= 0 && filteredOptions[activeIndex]) sec(filteredOptions[activeIndex].value);
+      if (open && activeIndex >= 0 && filteredOptions[activeIndex]) secOrToggle(filteredOptions[activeIndex].value);
     } else if (e.key === "Escape") {
       setOpen(false);
       setQuery("");
@@ -99,6 +127,7 @@ export function AutoComplete({
           setActiveIndex(-1);
         }}
         onFocus={ac}
+        onClick={() => { if (!open) ac(); }}
         onKeyDown={klavye}
       />
       {value && !open ? (
@@ -118,25 +147,30 @@ export function AutoComplete({
       )}
 
       {open ? (
-        <ul className="ac-list" role="listbox">
+        <ul className="ac-list" role="listbox" aria-multiselectable={multiple || undefined}>
           {filteredOptions.length === 0 ? (
             <li className="ac-empty">Sonuç yok</li>
           ) : (
-            filteredOptions.map((o, i) => (
-              <li
-                key={o.value}
-                role="option"
-                aria-selected={o.value === value}
-                className={`ac-option${i === activeIndex ? " vurgu" : ""}${o.value === value ? " selected" : ""}`}
-                onMouseEnter={() => setActiveIndex(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  sec(o.value);
-                }}
-              >
-                {o.label}
-              </li>
-            ))
+            filteredOptions.map((o, i) => {
+              const secili = selectedValues.includes(o.value);
+              return (
+                <li
+                  key={o.value}
+                  role="option"
+                  aria-selected={secili}
+                  className={`ac-option${i === activeIndex ? " vurgu" : ""}${secili ? " selected" : ""}`}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    secOrToggle(o.value);
+                  }}
+                >
+                  {o.icon ? <span className="ac-opt-icon" aria-hidden="true">{o.icon}</span> : null}
+                  <span className="ac-opt-label">{o.label}</span>
+                  {multiple && secili ? <span className="ac-check" aria-hidden="true">✓</span> : null}
+                </li>
+              );
+            })
           )}
         </ul>
       ) : null}

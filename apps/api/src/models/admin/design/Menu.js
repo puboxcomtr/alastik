@@ -5,6 +5,7 @@ const linkDataSchema = new mongoose.Schema({
     url: String,
     categoryId: String,
     categoryLevel: { type: Number, enum: [1, 2] },
+    blogCategoryId: String,
     pageId: String,
     blogId: String,
     productId: String,
@@ -21,7 +22,7 @@ const menuSchema = new mongoose.Schema({
     menuType: {
         type: String,
         required: true,
-        enum: ['link', 'category', 'page', 'blog', 'product', 'tag', 'brand', 'heading']
+        enum: ['link', 'category', 'blogCategory', 'page', 'blog', 'product', 'tag', 'brand', 'heading']
     },
     linkData: {
         type: linkDataSchema,
@@ -35,7 +36,13 @@ const menuSchema = new mongoose.Schema({
         type: String,
         required: true,
         // general: serbest alan (bir yere bağlı değil), blog: blog detay sayfası sağ sidebar
-        enum: ['header', 'footer', 'mobile', 'general', 'blog']
+        // ustlink: header üst hızlı link satırı (ikonlu; Sipariş Takibi, Kampanyalar vb.)
+        enum: ['header', 'footer', 'mobile', 'general', 'blog', 'ustlink']
+    },
+    // Remixicon ikon adı (ör. 'ri-truck-line') — özellikle üst link satırında gösterilir
+    icon: {
+        type: String,
+        default: ''
     },
     rowLevel: {
         type: Number,

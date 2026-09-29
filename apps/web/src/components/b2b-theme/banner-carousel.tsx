@@ -18,7 +18,9 @@ const SURUKLEME_ESIGI_PX = 50;
  * kendiliğinden döner, altta noktalarla gezinilir ve fare/parmakla sağa-sola
  * sürüklenerek kaydırılabilir. Bannerlar admin panelinden yönetilir.
  */
-export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
+export function BannerCarousel({ banners, aspectRatio, displayDuration }: { banners: BannerImage[]; aspectRatio?: number; displayDuration?: number }) {
+  // Slayt bekleme süresi Slider Yönetimi'nden (displayDuration); yoksa varsayılan
+  const donmeSuresi = displayDuration && displayDuration > 0 ? displayDuration : DONME_SURESI_MS;
   const [sira, setSira] = useState(0);
   const adet = banners.length;
 
@@ -34,10 +36,10 @@ export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
     if (adet < 2 || surukleniyor) return;
     const zamanlayici = setInterval(
       () => setSira((s) => (s + 1) % adet),
-      DONME_SURESI_MS,
+      donmeSuresi,
     );
     return () => clearInterval(zamanlayici);
-  }, [adet, surukleniyor]);
+  }, [adet, surukleniyor, donmeSuresi]);
 
   if (adet === 0) return null;
   const aktif = banners[Math.min(sira, adet - 1)];
@@ -67,25 +69,30 @@ export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
     setSira((s) => (fark < 0 ? (s + 1) % adet : (s - 1 + adet) % adet));
   };
 
-  const gorsel = (
-    // Dış adresten gelen banner görseli; optimize edilmeden gösterilir.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={aktif.imageUrl}
-      alt={aktif.title}
-      className="banner-image"
-      draggable={false}
-    />
-  );
+  // Çerçeve oranı: Slider Yönetimi'ndeki genişlik/yükseklik; yoksa geniş varsayılan (şeridin yüksekliği için)
+  const oran = aspectRatio && aspectRatio > 0 ? aspectRatio : 1200 / 300;
+
+  // Tek slaytın görseli (link'li/link'siz)
+  const slaytGorsel = (b: BannerImage) => {
+    const img = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={b.imageUrl} alt={b.title} className="banner-image" draggable={false} />
+    );
+    if (!b.link) return img;
+    return b.link.startsWith("/") ? (
+      <Link href={b.link} draggable={false}>{img}</Link>
+    ) : (
+      <a href={b.link} target="_blank" rel="noopener noreferrer" draggable={false}>{img}</a>
+    );
+  };
 
   return (
     <section className="banner-area" aria-label="Duyurular">
       <div
         className="banner-frame"
         style={{
+          aspectRatio: String(oran),
           cursor: adet > 1 ? (surukleniyor ? "grabbing" : "grab") : undefined,
-          transform: kaymaPx ? `translateX(${kaymaPx * 0.25}px)` : undefined,
-          transition: kaymaPx ? "none" : "transform 0.25s ease",
           touchAction: "pan-y",
           userSelect: "none",
         }}
@@ -101,17 +108,20 @@ export function BannerCarousel({ banners }: { banners: BannerImage[] }) {
           }
         }}
       >
-        {aktif.link ? (
-          aktif.link.startsWith("/") ? (
-            <Link href={aktif.link} draggable={false}>{gorsel}</Link>
-          ) : (
-            <a href={aktif.link} target="_blank" rel="noopener noreferrer" draggable={false}>
-              {gorsel}
-            </a>
-          )
-        ) : (
-          gorsel
-        )}
+        {/* Yatay şerit: slaytlar yan yana; sira değişince translateX ile kayar (biri çıkarken diğeri gelir) */}
+        <div
+          className="banner-track"
+          style={{
+            transform: `translateX(calc(${-sira * 100}% + ${kaymaPx}px))`,
+            transition: surukleniyor ? "none" : "transform 0.5s ease",
+          }}
+        >
+          {banners.map((b) => (
+            <div className="banner-slide" key={b.id}>
+              {slaytGorsel(b)}
+            </div>
+          ))}
+        </div>
       </div>
 
       {adet > 1 ? (

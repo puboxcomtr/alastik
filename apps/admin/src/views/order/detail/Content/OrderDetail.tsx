@@ -13,6 +13,10 @@ interface OrderItem {
     quantity: number
     unitPrice: number
     totalPrice: number
+    // Kargo ürün fiyatına GÖMÜLÜ (kargo dahil). Panelde ürün kargo-dahil fiyatla
+    // gösterilir; kargo payı ayrı bir bilgi satırında belirtilir (toplama eklenmez).
+    shippingPerUnit?: number
+    shippingTotal?: number
     image?: string
     brand?: string
     sku?: string
@@ -79,9 +83,9 @@ const OrderDetailContent = ({ items, pricing }: OrderDetailContentProps) => {
                                         </div>
                                     </div>
                                 </td>
-                                <td><Typography>{formatPrice(item.unitPrice)}</Typography></td>
+                                <td><Typography>{formatPrice(item.unitPrice + (item.shippingPerUnit || 0))}</Typography></td>
                                 <td><Typography>{item.quantity}</Typography></td>
-                                <td className='text-right'><Typography>{formatPrice(item.totalPrice)}</Typography></td>
+                                <td className='text-right'><Typography>{formatPrice(item.totalPrice + (item.shippingTotal || 0))}</Typography></td>
                             </tr>
                         ))}
                     </tbody>
@@ -94,17 +98,19 @@ const OrderDetailContent = ({ items, pricing }: OrderDetailContentProps) => {
                             Ara Toplam:
                         </Typography>
                         <Typography color='text.primary' className='font-medium'>
-                            {formatPrice(pricing.subtotal)}
+                            {formatPrice(pricing.subtotal + (pricing.shippingCost || 0))}
                         </Typography>
                     </div>
-                    <div className='flex items-center gap-12'>
-                        <Typography color='text.primary' className='min-is-[100px]'>
-                            Kargo:
-                        </Typography>
-                        <Typography color='text.primary' className='font-medium'>
-                            {formatPrice(pricing.shippingCost || 0)}
-                        </Typography>
-                    </div>
+                    {(pricing.shippingCost || 0) > 0 && (
+                        <div className='flex items-center gap-12'>
+                            <Typography variant='body2' color='text.secondary' className='min-is-[100px]'>
+                                Kargo (fiyata dahil):
+                            </Typography>
+                            <Typography variant='body2' color='text.secondary'>
+                                {formatPrice(pricing.shippingCost)}
+                            </Typography>
+                        </div>
+                    )}
                     <div className='flex items-center gap-12'>
                         <Typography color='text.primary' className='min-is-[100px]'>
                             İndirim:

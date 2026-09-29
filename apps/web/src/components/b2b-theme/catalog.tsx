@@ -43,6 +43,7 @@ type Filter = {
   mevsim: string;
   size: string;
   dot: string;
+  oem: string;
   depo: string;
   ikinciEl: boolean;
   rft: boolean;
@@ -57,6 +58,7 @@ const BOS_FILTRE: Filter = {
   mevsim: "",
   size: "",
   dot: "",
+  oem: "",
   depo: "",
   ikinciEl: false,
   rft: false,
@@ -69,6 +71,7 @@ const CIPLER = [
   { anahtar: "rft", label: "RFT" },
   { anahtar: "cTipi", label: "C Serisi" },
   { anahtar: "xl", label: "XL" },
+  { anahtar: "ev", label: "EV" },
 ] as const;
 
 /** Arama ayraca takılmasın: "2055" → "205/55 R16" bulunmalı (marka/model metni için). */
@@ -84,16 +87,26 @@ function digitsOnly(text: string): string {
 
 function matches(urun: Tire, f: Filter, ignoreStatus = false): boolean {
   if (f.q) {
-    const query = normalizeText(f.q);
+    // Akıllı arama: rakamlar (ebat/kod) ve harf kelimeleri (marka/model) ayrı ayrı,
+    // hepsi BİRLİKTE (AND) eşleşmeli. "205 55 16 Pirelli" → 205/55R16 + Pirelli.
     const havuz = normalizeText(
       `${urun.size} ${urun.pattern} ${urun.marka} ${urun.stockCode}`,
     );
-    // Ebat/stok kodu rakam eşleşmesi (R harfi ve ayraçlardan bağımsız)
-    const rakamQuery = digitsOnly(f.q);
     const rakamHavuz = digitsOnly(`${urun.size} ${urun.stockCode}`);
-    const metinEsler = havuz.includes(query);
-    const rakamEsler = rakamQuery.length >= 3 && rakamHavuz.includes(rakamQuery);
-    if (!metinEsler && !rakamEsler) return false;
+    const tokens = f.q.trim().split(/\s+/).filter(Boolean);
+    // Saf harf kelimeler (rakam içermeyen, en az 2 harf) → marka/model
+    const kelimeler = tokens.filter((t) => t.length >= 2 && /[a-zşğüöçıİ]/i.test(t) && !/\d/.test(t));
+    const rakamQuery = digitsOnly(f.q);
+    // Ebat/kod rakam eşleşmesi (R harfi ve ayraçlardan bağımsız)
+    if (rakamQuery.length >= 3 && !rakamHavuz.includes(rakamQuery)) return false;
+    // Her harf kelimesi ürün metninde (ebat/model/marka/kod) geçmeli
+    for (const kelime of kelimeler) {
+      if (!havuz.includes(normalizeText(kelime))) return false;
+    }
+    // Ne yeterli rakam ne harf kelimesi yoksa ham sorgu metni aransın
+    if (rakamQuery.length < 3 && kelimeler.length === 0) {
+      if (!havuz.includes(normalizeText(f.q))) return false;
+    }
   }
   if (f.marka && urun.marka !== f.marka) return false;
   if (f.mevsim && urun.mevsim !== (f.mevsim as Season)) return false;
@@ -127,12 +140,19 @@ function matches(urun: Tire, f: Filter, ignoreStatus = false): boolean {
  *  değerleri; o anki sayfanın ürünlerine bağlı değildir. */
 export type ServerOptions = {
   brands: string[];
+  /** Marka adı → logo URL (dropdown'da marka görseli için) */
+  brandLogos?: Record<string, string>;
   seasons: { value: string; label: string }[];
   dots: string[];
+  oems: string[];
   warehouses: string[];
 };
-/** Sunucu tarafı filter değerleri (URL ile senkron, kategori sayfası). */
-export type ServerFilters = { q: string; marka: string; mevsim: string; dot: string; depo: string };
+/** Sunucu tarafı filter değerleri (URL ile senkron, kategori sayfası).
+ *  Özellik çipleri (rft/cTipi/xl/ev) de sunucuda tüm ürünlere uygulanır. */
+export type ServerFilters = {
+  q: string; marka: string; mevsim: string; dot: string; oem: string; depo: string;
+  rft?: boolean; cTipi?: boolean; xl?: boolean; ev?: boolean;
+};
 
 export function Catalog(
   { products, sabitDurum, title, tabsGizle, serverPage, serverTotalPages, onServerPageChange, serverLoading,
@@ -171,11 +191,14 @@ export function Catalog(
   const [page, setPage] = useState(1);
   const [sortState, setSortState] = useState<{ alan: SiralamaAlani; yon: Yon } | null>(null);
   // Ürün görseline tıklayınca büyük hâli lightbox'ta açılır (tüm lastik satırları)
-  const [buyukGorsel, setBuyukGorsel] = useState<string | null>(null);
+  // Büyük görsel galerisi: ürünün tüm görselleri + aktif index (sağa/sola gezinir).
+  const [buyukGorsel, setBuyukGorsel] = useState<{ images: string[]; index: number } | null>(null);
   useEffect(() => {
     if (!buyukGorsel) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setBuyukGorsel(null);
+      else if (e.key === "ArrowLeft") setBuyukGorsel((g) => (g ? { ...g, index: (g.index - 1 + g.images.length) % g.images.length } : g));
+      else if (e.key === "ArrowRight") setBuyukGorsel((g) => (g ? { ...g, index: (g.index + 1) % g.images.length } : g));
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -245,17 +268,47 @@ export function Catalog(
   const vBrand = serverFiltreli ? serverFilters!.marka : filter.marka;
   const vSeason = serverFiltreli ? serverFilters!.mevsim : filter.mevsim;
   const vDot = serverFiltreli ? serverFilters!.dot : filter.dot;
+  const vOem = serverFiltreli ? serverFilters!.oem : filter.oem;
   const vDepot = serverFiltreli ? serverFilters!.depo : filter.depo;
   const setBrand = (x: string) => (serverFiltreli ? onServerFilterChange!({ marka: x }) : update({ marka: x }));
   const setSeason = (x: string) => (serverFiltreli ? onServerFilterChange!({ mevsim: x }) : update({ mevsim: x }));
   const setDot = (x: string) => (serverFiltreli ? onServerFilterChange!({ dot: x }) : update({ dot: x }));
+  const setOem = (x: string) => (serverFiltreli ? onServerFilterChange!({ oem: x }) : update({ oem: x }));
   const setDepot = (x: string) => (serverFiltreli ? onServerFilterChange!({ depo: x }) : update({ depo: x }));
-  const brandOpts = (serverFiltreli ? serverOptions!.brands : options.brands).map((m) => ({ value: m, label: m }));
-  const seasonOpts = (serverFiltreli ? serverOptions!.seasons : options.seasons).map((m) => ({ value: m.value, label: m.label }));
+  const brandLogos = serverFiltreli ? serverOptions!.brandLogos || {} : {};
+  const brandOpts = (serverFiltreli ? serverOptions!.brands : options.brands).map((m) => {
+    const logo = brandLogos[m];
+    return {
+      value: m,
+      label: m,
+      // eslint-disable-next-line @next/next/no-img-element
+      icon: logo ? <img className="ac-brand-logo" src={logo} alt="" loading="lazy" /> : undefined,
+    };
+  });
+  const seasonOpts = (serverFiltreli ? serverOptions!.seasons : options.seasons).map((m) => ({
+    value: m.value,
+    label: m.label,
+    icon: <SeasonIcon mevsim={m.value === "4mevsim" ? "dortMevsim" : m.value} size={16} />,
+  }));
   const dotOpts = (serverFiltreli ? serverOptions!.dots.map(String) : options.dotlar.map(String)).map((d) => ({ value: d, label: d }));
+  // OEM seçenekleri sunucu facet'inden gelir (marka bazlı: "Mercedes" → slug "mercedes").
+  const oemOpts = (serverFiltreli ? serverOptions!.oems : []).map((brand) => ({
+    value: brand.toLocaleLowerCase("tr").replace(/\s+/g, "-"),
+    label: brand,
+  }));
   const depotOpts = serverFiltreli
     ? serverOptions!.warehouses.map((w) => ({ value: w, label: w }))
     : options.warehouses.map((d) => ({ value: d.id, label: d.ad }));
+
+  // Özellik çipleri (RFT / C Serisi / XL / EV): server modunda ebeveyne bildirilir
+  // (tüm ürünlerde süzülür), aksi halde istemcide görünen ürünlerde süzülür.
+  type CipKey = (typeof CIPLER)[number]["anahtar"];
+  const cipDeger = (anahtar: CipKey): boolean =>
+    serverFiltreli ? Boolean(serverFilters![anahtar]) : Boolean(filter[anahtar]);
+  const cipDegistir = (anahtar: CipKey): void => {
+    if (serverFiltreli) onServerFilterChange!({ [anahtar]: !serverFilters![anahtar] });
+    else update({ [anahtar]: !filter[anahtar] });
+  };
 
   const toplam = matched.length;
   // Sunucu sayfalama modunda (kategori sayfası) tüm page ürünleri gösterilir;
@@ -271,7 +324,7 @@ export function Catalog(
       filter.size ||
       vDot ||
       vDepot ||
-      CIPLER.some((c) => filter[c.anahtar]),
+      CIPLER.some((c) => cipDeger(c.anahtar)),
   );
 
   /** Filtre değişince ilk sayfaya dönülür. */
@@ -284,7 +337,7 @@ export function Catalog(
   function temizle(): void {
     setFilter(emptyFilter);
     setPage(1);
-    if (serverFiltreli) onServerFilterChange!({ q: "", marka: "", mevsim: "", dot: "", depo: "" });
+    if (serverFiltreli) onServerFilterChange!({ q: "", marka: "", mevsim: "", dot: "", oem: "", depo: "", rft: false, cTipi: false, xl: false, ev: false });
   }
 
   /** Sütun başlığına tıklama: sunucu modunda ebeveyne bildirilir (tüm ürünler
@@ -344,6 +397,7 @@ export function Catalog(
           value={vSeason}
           options={seasonOpts}
           onChange={setSeason}
+          multiple
         />
         <AutoComplete
           ariaLabel="Marka"
@@ -351,6 +405,7 @@ export function Catalog(
           value={vBrand}
           options={brandOpts}
           onChange={setBrand}
+          multiple
         />
         <AutoComplete
           ariaLabel="DOT"
@@ -358,10 +413,19 @@ export function Catalog(
           value={vDot}
           options={dotOpts}
           onChange={setDot}
+          multiple
         />
       </div>
 
       <div className="filter-row2">
+        <AutoComplete
+          ariaLabel="OEM"
+          className="fs2-select-ac"
+          placeholder="OEM Seçiniz"
+          value={vOem}
+          options={oemOpts}
+          onChange={setOem}
+        />
         <AutoComplete
           ariaLabel="Depo"
           className="fs2-select-ac"
@@ -376,8 +440,8 @@ export function Catalog(
             <label key={c.anahtar} className="feature-box">
               <input
                 type="checkbox"
-                checked={Boolean(filter[c.anahtar])}
-                onChange={() => update({ [c.anahtar]: !filter[c.anahtar] })}
+                checked={cipDeger(c.anahtar)}
+                onChange={() => cipDegistir(c.anahtar)}
               />
               {c.label}
             </label>
@@ -406,7 +470,7 @@ export function Catalog(
               <th className="gorsel-col">Görsel</th>
               <th className="sortable" onClick={() => onSortClick("stokKodu")}>Stok Kodu{sortArrow("stokKodu")}</th>
               <th className="sortable" onClick={() => onSortClick("ebat")}>Ebat / Model{sortArrow("ebat")}</th>
-              <th className="sortable" onClick={() => onSortClick("marka")}>Marka{sortArrow("marka")}</th>
+              <th className="sortable text-center" onClick={() => onSortClick("marka")}>Marka{sortArrow("marka")}</th>
               <th className="sortable" onClick={() => onSortClick("mevsim")}>Mevsim{sortArrow("mevsim")}</th>
               <th className="sortable" onClick={() => onSortClick("dot")}>DOT{sortArrow("dot")}</th>
               <th className="sortable" onClick={() => onSortClick("stok")}>Stok{sortArrow("stok")}</th>
@@ -432,7 +496,7 @@ export function Catalog(
                         src={urun.imageUrl}
                         alt={urun.pattern}
                         loading="lazy"
-                        onClick={() => setBuyukGorsel(urun.imageUrl)}
+                        onClick={() => setBuyukGorsel({ images: urun.productStatus === "ikinciEl" && urun.images && urun.images.length ? urun.images : [urun.imageUrl!], index: 0 })}
                       />
                     ) : (
                       <span className="product-image bos" aria-hidden="true" />
@@ -489,7 +553,7 @@ export function Catalog(
                           {urun.stocks.map((s) => (
                             <span key={s.warehouseId} className="stock-tooltip-row">
                               <span>{s.warehouseName}</span>
-                              <strong>{s.available}</strong>
+                              <strong>{s.available >= 20 ? "20+" : s.available}</strong>
                             </span>
                           ))}
                         </span>
@@ -514,7 +578,8 @@ export function Catalog(
                         <div
                           className={`price-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
                         >
-                          {formatKurus(fiyat.kdvDahilBirimKurus)}
+                          {fiyat.kdvHaric ? formatKurus(fiyat.birimNetKurus) : formatKurus(fiyat.kdvDahilBirimKurus)}
+                          {fiyat.kdvHaric ? <span className="kdv-not"> + KDV</span> : null}
                         </div>
                       </div>
                     ) : (
@@ -626,8 +691,31 @@ export function Catalog(
           >
             ×
           </button>
+          {buyukGorsel.images.length > 1 ? (
+            <button
+              type="button"
+              className="lightbox-ok sol"
+              aria-label="Önceki"
+              onClick={(e) => { e.stopPropagation(); setBuyukGorsel((g) => (g ? { ...g, index: (g.index - 1 + g.images.length) % g.images.length } : g)); }}
+            >
+              ‹
+            </button>
+          ) : null}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={buyukGorsel} alt="Ürün görseli" onClick={(e) => e.stopPropagation()} />
+          <img src={buyukGorsel.images[buyukGorsel.index]} alt="Ürün görseli" onClick={(e) => e.stopPropagation()} />
+          {buyukGorsel.images.length > 1 ? (
+            <>
+              <button
+                type="button"
+                className="lightbox-ok sag"
+                aria-label="Sonraki"
+                onClick={(e) => { e.stopPropagation(); setBuyukGorsel((g) => (g ? { ...g, index: (g.index + 1) % g.images.length } : g)); }}
+              >
+                ›
+              </button>
+              <span className="lightbox-sayac">{buyukGorsel.index + 1} / {buyukGorsel.images.length}</span>
+            </>
+          ) : null}
         </div>
       ) : null}
     </>

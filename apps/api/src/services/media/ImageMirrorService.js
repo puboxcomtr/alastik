@@ -253,6 +253,14 @@ async function mirrorOne(url, fileNameBase = null, reserved = new Set(), opts = 
             if (bayat) {
                 const fresh = await checkSourceFreshness(url, rec);
                 if (fresh.changed && fresh.buffer) {
+                    // DEKUPE KORUMASI: yedeği (_orijinal/urun) olan = arka planı temizlenmiş
+                    // dosya, DIA kaynağı değişse bile ÜZERİNE YAZILMAZ (yoksa dekupe kaybolur;
+                    // 29 Ağu 2026 2.EL kaybı bu yüzdendi). Kayıt zamanı/etag güncellenir, dosya korunur.
+                    const yedekYolu = path.join(path.dirname(MIRROR_ROOT), '_orijinal', MIRROR_DIR_NAME, path.basename(mevcutDosya));
+                    if (fs.existsSync(yedekYolu)) {
+                        await upsertMirrorRecord(hash, { file: mevcutDosya, checkedAt: new Date(), etag: fresh.etag, lastModified: fresh.lastModified });
+                        return targetFor(mevcutDosya).webPath;
+                    }
                     const ext = CONTENT_TYPE_EXTENSIONS[fresh.contentType] || extensionFromUrl(url) || path.extname(mevcutDosya);
                     const yeni = await bufferToMirror(fresh.buffer, url, ext, fileNameBase, reserved);
                     if (yeni) {

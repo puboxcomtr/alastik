@@ -24,6 +24,17 @@ async function enrichMenus(menus) {
             }
         }
 
+        if (menu.menuType === 'blogCategory' && menu.linkData?.blogCategoryId) {
+            const BlogCategory = require('../../../models/admin/content/BlogCategory');
+            const bc = await BlogCategory.findOne({ _id: menu.linkData.blogCategoryId, site: menu.site })
+                .select('name slug')
+                .lean()
+                .catch(() => null);
+            if (bc) {
+                enriched.linkData = { ...enriched.linkData, blogCategoryName: bc.name, blogCategoryUrl: bc.slug };
+            }
+        }
+
         if (menu.menuType === 'page' && menu.linkData?.pageId) {
             const page = await Page.findById(menu.linkData.pageId)
                 .select('title slug')
@@ -173,6 +184,21 @@ router.get('/area/:area', async (req, res) => {
     } catch (error) {
         console.error('Alan menüsü hatası:', error);
         res.status(500).json({ success: false, message: 'Menü yüklenemedi' });
+    }
+});
+
+// Üst link satırı (header üstündeki ikonlu hızlı linkler) — DÜZ liste (grup mantığı yok).
+// Her öğe: name, icon (remixicon), çözümlenmiş linkData/url, openNewTab.
+router.get('/ustlink', async (req, res) => {
+    try {
+        const menus = await Menu.find({ site: req.site, displayArea: 'ustlink', isActive: true })
+            .sort({ order: 1, createdAt: 1 })
+            .lean();
+        const enriched = await enrichMenus(menus);
+        res.json({ success: true, data: enriched });
+    } catch (error) {
+        console.error('Üst link menüsü hatası:', error);
+        res.status(500).json({ success: false, message: 'Üst linkler yüklenemedi' });
     }
 });
 

@@ -43,6 +43,7 @@ import {
     type BrandOptionType,
     type ParentMenuOptionType
 } from '@/utils/api/menus'
+import { fetchBlogCategories, type BlogCategoryType } from '@/utils/api/blogCategories'
 
 type EditMenuFormProps = {
     menuId: string
@@ -62,13 +63,16 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
     const [linkUrl, setLinkUrl] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [categoryLevel, setCategoryLevel] = useState<1 | 2>(1)
+    const [blogCategoryId, setBlogCategoryId] = useState('')
+    const [blogCategories, setBlogCategories] = useState<BlogCategoryType[]>([])
     const [pageId, setPageId] = useState('')
     const [blogId, setBlogId] = useState('')
     const [productId, setProductId] = useState('')
     const [productQuery, setProductQuery] = useState('')
     const [headingText, setHeadingText] = useState('')
     const [openNewTab, setOpenNewTab] = useState(false)
-    const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile' | 'general' | 'blog'>('header')
+    const [icon, setIcon] = useState('')
+    const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile' | 'general' | 'blog' | 'ustlink'>('header')
     const [rowLevel, setRowLevel] = useState<1 | 2>(1)
     const [parentId, setParentId] = useState('')
     const [order, setOrder] = useState(0)
@@ -90,6 +94,13 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
     const [loadingProducts, setLoadingProducts] = useState(false)
     const [parentMenus, setParentMenus] = useState<ParentMenuOptionType[]>([])
     const [loadingOptions, setLoadingOptions] = useState(false)
+
+    // Blog kategorilerini yükle (menü hedefi seçimi için)
+    useEffect(() => {
+        fetchBlogCategories()
+            .then((r: any) => { if (r?.success) setBlogCategories(r.data || []) })
+            .catch(() => {})
+    }, [])
 
     // Kategorileri yükle
     const loadCategories = async (level?: 1 | 2) => {
@@ -223,6 +234,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                 setName(menu.name)
                 setMenuType(menu.menuType)
                 setOpenNewTab(menu.openNewTab)
+                setIcon(menu.icon || '')
                 setDisplayArea(menu.displayArea)
                 setRowLevel(menu.rowLevel)
                 setOrder(menu.order)
@@ -234,6 +246,8 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                     setCategoryLevel(menu.linkData?.categoryLevel || 1)
                     setCategoryId(menu.linkData?.categoryId || '')
                     await loadCategories(menu.linkData?.categoryLevel || 1)
+                } else if (menu.menuType === 'blogCategory') {
+                    setBlogCategoryId((menu.linkData as any)?.blogCategoryId || '')
                 } else if (menu.menuType === 'page') {
                     setPageId(menu.linkData?.pageId || '')
                     await loadPages()
@@ -360,6 +374,10 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
             return false
         }
 
+        if (menuType === 'blogCategory' && !blogCategoryId) {
+            toast.error('Blog kategori seçimi zorunludur')
+            return
+        }
         if (menuType === 'category' && !categoryId) {
             toast.error('Kategori seçimi zorunludur')
             return false
@@ -403,6 +421,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                 linkData: {
                     ...(menuType === 'link' && { url: linkUrl }),
                     ...(menuType === 'category' && { categoryId, categoryLevel }),
+                    ...(menuType === 'blogCategory' && { blogCategoryId }),
                     ...(menuType === 'page' && { pageId }),
                     ...(menuType === 'blog' && { blogId }),
                     ...(menuType === 'product' && { productId }),
@@ -411,6 +430,7 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                 },
                 openNewTab: menuType === 'heading' ? false : openNewTab,
                 displayArea,
+                icon: icon.trim(),
                 rowLevel,
                 ...(rowLevel === 2 && { parentId }),
                 order,
@@ -494,7 +514,8 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                         onChange={(e) => setMenuType(e.target.value as any)}
                                                     >
                                                         <MenuItem key="link" value='link'>Bağlantı</MenuItem>
-                                                        <MenuItem key="category" value='category'>Kategori</MenuItem>
+                                                        <MenuItem key="category" value='category'>Ürün Kategori</MenuItem>
+                                                        <MenuItem key="blogCategory" value='blogCategory'>Blog Kategori</MenuItem>
                                                         <MenuItem key="page" value='page'>Sayfa</MenuItem>
                                                         <MenuItem key="blog" value='blog'>Blog</MenuItem>
                                                         <MenuItem key="product" value='product'>Ürün</MenuItem>
@@ -561,6 +582,30 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                         </FormControl>
                                                     </Grid>
                                                 </>
+                                            )}
+
+                                            {/* Blog Kategori Seçimi */}
+                                            {menuType === 'blogCategory' && (
+                                                <Grid size={{ xs: 12 }}>
+                                                    <FormControl fullWidth>
+                                                        <Autocomplete
+                                                            value={blogCategories.find(bc => bc._id === blogCategoryId) || null}
+                                                            onChange={(event, newValue) => {
+                                                                setBlogCategoryId(newValue?._id || '')
+                                                            }}
+                                                            options={blogCategories}
+                                                            getOptionLabel={(option) => option.name}
+                                                            noOptionsText="Blog kategorisi bulunamadı"
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    label="Blog Kategori Seç"
+                                                                    required
+                                                                />
+                                                            )}
+                                                        />
+                                                    </FormControl>
+                                                </Grid>
                                             )}
 
                                             {/* Sayfa Seçimi */}
@@ -756,8 +801,19 @@ const EditMenuForm = ({ menuId }: EditMenuFormProps) => {
                                                         <MenuItem key="mobile" value='mobile'>Mobil</MenuItem>
                                                         <MenuItem key="general" value='general'>Genel (Serbest)</MenuItem>
                                                         <MenuItem key="blog" value='blog'>Blog Menü</MenuItem>
+                                                        <MenuItem key="ustlink" value='ustlink'>Üst Linkler</MenuItem>
                                                     </Select>
                                                 </FormControl>
+                                                {displayArea === 'ustlink' && (
+                                                    <TextField
+                                                        fullWidth
+                                                        className='mt-4'
+                                                        label='İkon (Remixicon)'
+                                                        placeholder='ör. ri-truck-line'
+                                                        value={icon}
+                                                        onChange={(e) => setIcon(e.target.value)}
+                                                    />
+                                                )}
                                             </CardContent>
                                         </Card>
                                     </Grid>

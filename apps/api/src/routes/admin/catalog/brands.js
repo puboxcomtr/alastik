@@ -267,9 +267,9 @@ router.get('/', maybeAuth, async (req, res) => {
                 // İçerik (seçili site öncelikli)
                 description: sc.description || brand.description || '',
 
-                // Görseller
+                // Görseller — seçili site logosu öncelikli (siteContent.<site>.logoUrl), yoksa ortak logo
                 logo: (() => {
-                    const logoUrl = brand.logo?.url || brand.bannerImage?.url || brand.customImage?.url;
+                    const logoUrl = sc.logoUrl || brand.logo?.url || brand.bannerImage?.url || brand.customImage?.url;
                     if (!logoUrl) {
                         return '/images/urun/gorsel-bulunamadi.jpg';
                     }
@@ -281,7 +281,7 @@ router.get('/', maybeAuth, async (req, res) => {
                     }
                     return `/marka/${logoUrl}`;
                 })(),
-                logoAlt: brand.logo?.alt || `${brand.name} Logo`,
+                logoAlt: sc.logoAlt || brand.logo?.alt || `${brand.name} Logo`,
                 bannerImage: brand.bannerImage?.url || null,
                 customImage: brand.customImage?.url || '/images/urun/gorsel-bulunamadi.jpg',
                 brandInfo: {
@@ -324,7 +324,7 @@ router.get('/', maybeAuth, async (req, res) => {
 
                 // Kalite skorları
                 completenessScore: calculateBrandCompleteness(brand),
-                hasLogo: !!(brand.logo?.url),
+                hasLogo: !!(sc.logoUrl || brand.logo?.url),
                 hasDescription: !!(brand.description),
                 hasBrandInfo: !!(brand.brandInfo?.about),
                 hasWebsite: !!(brand.brandInfo?.website)
@@ -520,8 +520,9 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
                 message: 'Marka bulunamadi'
             });
         }
-        // Eski logo URL'ini sakla
-        const oldLogoUrl = brand.logo?.url;
+        // Logo SEÇİLİ SİTEYE yazılır (siteContent.<site>.logoUrl); ortak logo alanına DOKUNULMAZ.
+        // Eski site logosu (varsa) silinir; ortak logo fallback olarak korunur.
+        const oldSiteLogoUrl = brand.siteContent?.[req.site]?.logoUrl;
 
         // Yeni logo URL
         const logoUrl = MediaService.getFileUrl('brand', req.file.filename);
@@ -531,20 +532,19 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
             id,
             {
                 $set: {
-                    logo: {
-                        url: logoUrl,
-                        alt: `${brand.name} Logo`,
-                        uploadedAt: new Date()
-                    },
+                    [`siteContent.${req.site}.logoUrl`]: logoUrl,
+                    [`siteContent.${req.site}.logoAlt`]: `${brand.name} Logo`,
                     updatedAt: new Date()
                 }
             },
             { new: true }
         );
 
-        // Yukleme basarili, simdi eski logoyu sil
-        if (oldLogoUrl) {
-            MediaService.deleteFile(oldLogoUrl);
+        // Yukleme basarili, simdi eski site logosunu sil (ortak logo/başka sitenin logosu değilse)
+        if (oldSiteLogoUrl && oldSiteLogoUrl !== logoUrl && oldSiteLogoUrl !== brand.logo?.url) {
+            const digerSiteKullaniyor = Object.entries(brand.siteContent || {})
+                .some(([slug, sc]) => slug !== req.site && sc?.logoUrl === oldSiteLogoUrl);
+            if (!digerSiteKullaniyor) MediaService.deleteFile(oldSiteLogoUrl);
         }
         res.json({
             success: true,
@@ -585,15 +585,20 @@ router.delete('/:id/logo', maybeAuth, async (req, res) => {
             });
         }
 
-        // Logo sil
-        if (brand.logo?.url) {
-            MediaService.deleteFile(brand.logo.url);
+        // SEÇİLİ SİTENİN logosu silinir; ortak logo (fallback) korunur.
+        const siteLogoUrl = brand.siteContent?.[req.site]?.logoUrl;
+
+        // Dosyayı sil — ortak logo veya başka sitenin logosu değilse
+        if (siteLogoUrl && siteLogoUrl !== brand.logo?.url) {
+            const digerSiteKullaniyor = Object.entries(brand.siteContent || {})
+                .some(([slug, sc]) => slug !== req.site && sc?.logoUrl === siteLogoUrl);
+            if (!digerSiteKullaniyor) MediaService.deleteFile(siteLogoUrl);
         }
 
-        // DB güncelle
+        // DB güncelle — yalnız seçili sitenin logo alanları temizlenir
         const updatedBrand = await WebBrand.findByIdAndUpdate(
             id,
-            { $set: { logo: null, updatedAt: new Date() } },
+            { $unset: { [`siteContent.${req.site}.logoUrl`]: '', [`siteContent.${req.site}.logoAlt`]: '' }, $set: { updatedAt: new Date() } },
             { new: true }
         );
 

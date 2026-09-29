@@ -5,14 +5,14 @@
 // değiştirmek için dosyaları güncelleyin / listeye ekleyin.
 import { useEffect, useState } from 'react';
 import { SITES } from '@src/config/siteConfig';
-import { API_ENDPOINTS } from '@src/config/api';
+import { API_ENDPOINTS, getImageUrl } from '@src/config/api';
 import { toast } from 'react-toastify';
 
 // Arka plan slider görselleri — public/b2b/ altındaki dosyalar
 const LOGIN_BG_IMAGES = [
-    '/b2b/login-bg-1.jpg',
-    '/b2b/login-bg-2.jpg',
-    '/b2b/login-bg-3.jpg',
+    '/b2b/login-bg-1.png',
+    '/b2b/login-bg-2.png',
+    '/b2b/login-bg-3.png',
 ];
 const SLIDE_INTERVAL_MS = 6000;
 
@@ -133,6 +133,58 @@ const B2BLogin = () => {
     // Giriş: cari kodu VEYA e-posta + şifre
     const [loginId, setLoginId] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
+
+    // Giriş modu: bayi (varsayılan) veya plasiyer (kullanıcı adı + şifre)
+    const [loginMode, setLoginMode] = useState<'bayi' | 'plasiyer'>('bayi');
+    const [spKod, setSpKod] = useState('');
+    const [spPassword, setSpPassword] = useState('');
+    const [spLoggingIn, setSpLoggingIn] = useState(false);
+
+    // Logo: panelden yüklenen b2b logosu (ayarlar); yoksa statik config logosu
+    const [logo, setLogo] = useState<string>(site.theme.logo);
+    useEffect(() => {
+        fetch(API_ENDPOINTS.b2b.themeSettings())
+            .then(r => r.json())
+            .then(d => { if (d?.success && d.data?.logo) setLogo(getImageUrl(d.data.logo)); })
+            .catch(() => { });
+    }, []);
+
+    // Sayfa ?giris=plasiyer ile açılırsa doğrudan plasiyer modunda gelsin
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (new URLSearchParams(window.location.search).get('giris') === 'plasiyer') {
+            setLoginMode('plasiyer');
+        }
+    }, []);
+
+    // Mod değişince sayfa TAM yenilensin (URL değişir, form in-place değişmez → kafa karışmaz)
+    const goToLoginMode = (mode: 'bayi' | 'plasiyer') => {
+        window.location.href = mode === 'plasiyer' ? '/giris?giris=plasiyer' : '/giris';
+    };
+
+    const handlePlasiyerLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSpLoggingIn(true);
+        try {
+            const res = await fetch(API_ENDPOINTS.b2b.plasiyerLogin(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kullaniciKodu: spKod, password: spPassword }),
+            });
+            const data = await res.json();
+            if (data?.success && data.data?.token) {
+                localStorage.setItem('plasiyerToken', data.data.token);
+                toast.success('Giriş başarılı, bayi seçimine yönlendiriliyorsunuz...');
+                setTimeout(() => { window.location.href = '/'; }, 600);
+            } else {
+                toast.error(data?.message || 'Giriş yapılamadı.');
+            }
+        } catch {
+            toast.error('Giriş yapılamadı, lütfen tekrar deneyin.');
+        } finally {
+            setSpLoggingIn(false);
+        }
+    };
     const [loggingIn, setLoggingIn] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -247,18 +299,16 @@ const B2BLogin = () => {
                     position: 'relative',
                     zIndex: 1,
                     width: '100%',
-                    maxWidth: 640,
+                    maxWidth: tab === 'apply' ? 640 : 460,
                     background: '#1a1a1a',
                     borderRadius: 10,
                     boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
                     overflow: 'hidden',
+                    transition: 'max-width 0.25s ease',
                 }}
             >
-                <div style={{ textAlign: 'center', padding: '28px 24px 16px' }}>
-                    <img src={site.theme.logo} alt={site.name} style={{ maxWidth: 210, width: '100%' }} />
-                    <div style={{ color: site.theme.primary, fontWeight: 700, fontSize: 13, marginTop: 8 }}>
-                        Bayi Toptan Satış Platformu
-                    </div>
+                <div style={{ textAlign: 'center', padding: '22px 20px 12px' }}>
+                    <img src={logo} alt={site.name} style={{ maxWidth: 170, width: '100%' }} />
                 </div>
 
                 <div style={{ display: 'flex', borderBottom: '1px solid #3d3d3d' }}>
@@ -270,16 +320,17 @@ const B2BLogin = () => {
                     </button>
                 </div>
 
-                <div style={{ padding: '24px' }}>
+                <div style={{ padding: '20px' }}>
                     {tab === 'login' ? (
+                        loginMode === 'bayi' ? (
                         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div>
                                 <label style={labelStyle} htmlFor='b2b-code'>Bayi Kodu veya E-posta</label>
-                                <input id='b2b-code' type='text' required style={inputStyle} value={loginId} onChange={e => setLoginId(e.target.value)} />
+                                <input id='b2b-code' type='text' required placeholder='Lütfen Bayi Kodu veya E-Postanızı Giriniz' style={inputStyle} value={loginId} onChange={e => setLoginId(e.target.value)} />
                             </div>
                             <div>
                                 <label style={labelStyle} htmlFor='b2b-password'>Şifre</label>
-                                <input id='b2b-password' type='password' required style={inputStyle} value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                                <input id='b2b-password' type='password' required placeholder='Lütfen Şifrenizi Yazınız' style={inputStyle} value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
                             </div>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#c9c9c9', cursor: 'pointer' }}>
                                 <input type='checkbox' style={{ accentColor: site.theme.primary }} />
@@ -305,11 +356,33 @@ const B2BLogin = () => {
                                 <a href='#' onClick={(e) => { e.preventDefault(); toast.info('Şifre sıfırlama hazırlık aşamasındadır.'); }} style={{ color: '#c9c9c9' }}>
                                     Şifremi Unuttum
                                 </a>
-                                <a href='#' onClick={(e) => { e.preventDefault(); toast.info('Plasiyer girişi hazırlık aşamasındadır.'); }} style={{ color: site.theme.primary, fontWeight: 600 }}>
+                                <a href='/giris?giris=plasiyer' onClick={(e) => { e.preventDefault(); goToLoginMode('plasiyer'); }} style={{ color: site.theme.primary, fontWeight: 600 }}>
                                     Plasiyer Girişi
                                 </a>
                             </div>
                         </form>
+                        ) : (
+                        <form onSubmit={handlePlasiyerLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div>
+                                <label style={labelStyle} htmlFor='sp-kod'>Kullanıcı Adı</label>
+                                <input id='sp-kod' type='text' required placeholder='Lütfen Kullanıcı Adınızı Giriniz' style={inputStyle} value={spKod} onChange={e => setSpKod(e.target.value)} />
+                            </div>
+                            <div>
+                                <label style={labelStyle} htmlFor='sp-password'>Şifre</label>
+                                <input id='sp-password' type='password' required placeholder='Lütfen Şifrenizi Yazınız' style={inputStyle} value={spPassword} onChange={e => setSpPassword(e.target.value)} />
+                            </div>
+                            <button
+                                type='submit'
+                                style={{ background: site.theme.primary, color: '#1a1a1a', border: 'none', borderRadius: 6, padding: '12px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+                                disabled={spLoggingIn}
+                            >
+                                {spLoggingIn ? 'Giriş Yapılıyor...' : 'Plasiyer Girişi'}
+                            </button>
+                            <a href='/giris' onClick={(e) => { e.preventDefault(); goToLoginMode('bayi'); }} style={{ color: '#c9c9c9', fontSize: 13, textAlign: 'center' }}>
+                                ← Bayi Girişine Dön
+                            </a>
+                        </form>
+                        )
                     ) : (
                         <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             <div style={{ display: 'flex', gap: 12 }}>

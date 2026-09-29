@@ -47,6 +47,8 @@ router.post('/login', async (req, res) => {
             { expiresIn: '30d' }
         );
 
+        // Varsayılan şifre (12345) ile giriş → zorunlu şifre değiştirme bayrağı
+        member.mustChangePassword = String(password) === '12345';
         member.lastLoginAt = new Date();
         member.loginAttempts = 0;
         await member.save();
@@ -56,6 +58,7 @@ router.post('/login', async (req, res) => {
             message: 'Giriş başarılı.',
             data: {
                 token,
+                mustChangePassword: member.mustChangePassword,
                 member: {
                     id: member._id,
                     name: `${member.firstName || ''} ${member.lastName || ''}`.replace(/ \.$/, '').trim(),
@@ -86,11 +89,41 @@ router.get('/me', authMiddleware, async (req, res) => {
                 name: `${member.firstName || ''} ${member.lastName || ''}`.replace(/ \.$/, '').trim(),
                 email: member.email,
                 cariKodu: member.diaCustomerCode || '',
-                phone: member.phone || ''
+                phone: member.phone || '',
+                mustChangePassword: member.mustChangePassword === true
             }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Bilgiler alınamadı.' });
+    }
+});
+
+/**
+ * POST /sifre-degistir — bayinin parolasını değiştirir (mevcut parola doğrulanır).
+ */
+router.post('/sifre-degistir', authMiddleware, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body || {};
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: 'Mevcut ve yeni parola zorunludur.' });
+        }
+        if (String(newPassword).length < 4) {
+            return res.status(400).json({ success: false, message: 'Yeni parola en az 4 karakter olmalıdır.' });
+        }
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site });
+        if (!member) return res.status(404).json({ success: false, message: 'Bayi bulunamadı.' });
+        const ok = await member.comparePassword(currentPassword);
+        if (!ok) return res.status(400).json({ success: false, message: 'Mevcut parolanız hatalı.' });
+        if (String(newPassword) === '12345') {
+            return res.status(400).json({ success: false, message: 'Yeni parola varsayılan parola olamaz.' });
+        }
+        member.password = String(newPassword); // pre-save hook bcrypt ile hashler
+        member.mustChangePassword = false; // zorunlu değiştirme tamamlandı
+        await member.save();
+        return res.json({ success: true, message: 'Parolanız güncellendi.' });
+    } catch (error) {
+        console.error('[b2b-auth] Parola değiştirme hatası:', error.message);
+        return res.status(500).json({ success: false, message: 'Parola değiştirilemedi.' });
     }
 });
 
@@ -120,17 +153,50 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
         ]);
         const bekleyenSiparisKurus = Math.round((bekleyenler[0]?.toplam || 0) * 100);
 
+        // Borç/Alacak — ekstre özetinden türet (DIA carikart borc/alacak çoğu zaman 0).
+        // borç = debit + max(açılış,0), alacak = credit + max(−açılış,0) → borç−alacak = bakiye
+        let borcKurus = 0, alacakKurus = 0;
+        try {
+            const B2bCariEkstre = require('../../../models/web/user/B2bCariEkstre');
+            const ek = await B2bCariEkstre.findOne({ memberId: req.user._id, site: req.site }).select('summary').lean();
+            if (ek?.summary) {
+                const op = ek.summary.openingKurus || 0;
+                borcKurus = (ek.summary.debitKurus || 0) + Math.max(op, 0);
+                alacakKurus = (ek.summary.creditKurus || 0) + Math.max(-op, 0);
+            }
+        } catch (_) { /* borç/alacak olmadan da özet gösterilir */ }
+
+        // Vadesi geçen borç: gerçek bakiye FIFO ile fatura vadelerine dağıtılıp
+        // bugünden önceki kısmı toplanır. DIA hatasında null döner (kart "—" gösterir).
+        const computeOverdueKurus = async (balanceKurus) => {
+            if (!(balanceKurus > 0)) return balanceKurus === 0 ? 0 : null;
+            try {
+                const { invoiceDueDates } = require('../../../services/plugins/dia/b2bInvoiceReport');
+                const due = await invoiceDueDates(req.site, member.diaCustomerKey, balanceKurus / 100);
+                return Math.round((due.overdue || 0) * 100);
+            } catch (e) {
+                return null;
+            }
+        };
+
         // Senkronlanmış cari bilgisi Mongo'da varsa canlı DIA'ya GİTME (hızlı + güvenilir)
         if (member.diaCari?.syncedAt) {
             const c = member.diaCari;
-            const toplamLimitKurus = c.riskLimitiKurus || 0;
+            const totalLimitKurus = c.riskLimitiKurus || 0;
+            const balanceKurus = c.bakiyeKurus || 0;
+            // Vadesi geçen: önce günlük finans senkronundan; yoksa canlı FIFO hesap
+            const overdueKurus = typeof c.overdueKurus === 'number'
+                ? c.overdueKurus
+                : await computeOverdueKurus(balanceKurus);
             return res.json({ success: true, data: {
                 cariKodu: member.diaCustomerCode,
-                bakiyeKurus: c.bakiyeKurus || 0,
-                toplamLimitKurus,
-                bekleyenSiparisKurus,
-                kalanLimitKurus: toplamLimitKurus - (c.bakiyeKurus || 0) - bekleyenSiparisKurus,
-                vadesiGecenKurus: null
+                balanceKurus,
+                borcKurus,
+                alacakKurus,
+                totalLimitKurus,
+                pendingOrderKurus: bekleyenSiparisKurus,
+                remainingLimitKurus: totalLimitKurus - balanceKurus - bekleyenSiparisKurus,
+                overdueKurus
             }, synced: true });
         }
 
@@ -165,16 +231,18 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
         }
 
         const kurus = (v) => Math.round((parseFloat(v) || 0) * 100);
-        const bakiyeKurus = kurus(kart.bakiye) || (kurus(kart.borc) - kurus(kart.alacak));
-        const toplamLimitKurus = kurus(kart.risklimiti);
+        const balanceKurus = kurus(kart.bakiye) || (kurus(kart.borc) - kurus(kart.alacak));
+        const totalLimitKurus = kurus(kart.risklimiti);
 
         const data = {
             cariKodu: member.diaCustomerCode,
-            bakiyeKurus,
-            toplamLimitKurus,
-            bekleyenSiparisKurus,
-            kalanLimitKurus: toplamLimitKurus - bakiyeKurus - bekleyenSiparisKurus,
-            vadesiGecenKurus: null // DIA ekstre/yaşlandırma servisine bağlanınca dolacak
+            balanceKurus,
+            borcKurus,
+            alacakKurus,
+            totalLimitKurus,
+            pendingOrderKurus: bekleyenSiparisKurus,
+            remainingLimitKurus: totalLimitKurus - balanceKurus - bekleyenSiparisKurus,
+            overdueKurus: await computeOverdueKurus(balanceKurus)
         };
         cariOzetCache.set(cacheKey, { at: Date.now(), data });
         res.json({ success: true, data });
@@ -551,26 +619,32 @@ router.post('/siparis', authMiddleware, async (req, res) => {
             const qty = Math.max(1, parseInt(it?.quantity) || 1);
             if (!kod) continue;
             const stock = await DiaStock.findOne({ stokkartkodu: kod })
-                .select('_key stokkartkodu aciklama marka m_birimler').lean();
+                .select('_key stokkartkodu aciklama marka m_birimler birimindirimorani b2c_indirimorani').lean();
             if (!stock) {
                 return res.status(400).json({ success: false, message: `Ürün bulunamadı: ${kod}` });
             }
             const isXml = kod.includes('-XML');
             const fiyat1 = Number(stock.m_birimler?.[0]?.fiyat1) || 0;
+            const fiyat4 = Number(stock.m_birimler?.[0]?.fiyat4) || 0;
             if (fiyat1 <= 0) {
                 return res.status(400).json({ success: false, message: `Fiyatı tanımsız ürün: ${kod}` });
             }
+            // B2C İndirim Oranı 0 (2.El vb.) → cari iskonto UYGULANMAZ, baz = fiyat4 (bayi).
+            const b2cOran = parseFloat(String(stock.birimindirimorani || '').replace(/[^0-9.]/g, ''))
+                || Number(stock.b2c_indirimorani) || 0;
+            const oranSifir = !isXml && b2cOran === 0 && fiyat4 > 0;
+            const baseFiyat = oranSifir ? fiyat4 : fiyat1;
             // İskonto oranları AYRI ve ZİNCİRLİ: Cari (fiyat1→cari) + ödeme yöntemi + Gel Al.
-            // XML üründe iskonto yok (liste = satış).
-            const cariPct = Math.round((1 - oran) * 100 * 1e6) / 1e6; // ör. %50
+            // XML ve oran=0 üründe cari iskonto yok.
+            const cariPct = (isXml || oranSifir) ? 0 : Math.round((1 - oran) * 100 * 1e6) / 1e6; // ör. %50
             const paymentPct = isXml ? 0 : discountFor(pricing, stock.marka, methodId);
             const gelAlPct = (!isXml && deliveryMethod === 'gelAl') ? gelAlBonus : 0;
             // POZİSYONEL: [indirim1=Cari, indirim2=ödeme, indirim3=Gel Al]. Zincirli.
             const discountRates = isXml ? [] : [cariPct, paymentPct, gelAlPct];
             let factor = 1;
             for (const r of discountRates) if (r > 0.000001) factor *= (1 - r / 100);
-            const listUnitPrice = isXml ? (fiyat1) : fiyat1;                              // KDV dahil LİSTE (fiyat1)
-            const unitPrice = isXml ? fiyat1 : Math.round(fiyat1 * factor * 100) / 100;    // KDV dahil final satış
+            const listUnitPrice = isXml ? fiyat1 : baseFiyat;                              // KDV dahil LİSTE (oran=0: fiyat4)
+            const unitPrice = isXml ? fiyat1 : Math.round(baseFiyat * factor * 100) / 100; // KDV dahil final satış
             // Breakdown (KDV hariç): Ara Toplam = net mal bedeli, İskonto = liste−satış farkı
             const lineNetHaric = Math.round((unitPrice * qty / 1.2) * 100) / 100;
             const lineGrossHaric = Math.round((listUnitPrice * qty / 1.2) * 100) / 100;
@@ -623,6 +697,11 @@ router.post('/siparis', authMiddleware, async (req, res) => {
             diaAddressKey: parseInt(adr.id || adr.diaAddressKey) || 0
         };
 
+        // Kredi kartı siparişinde dönüş POST'unu (JWT'siz) doğrulamak için tek
+        // kullanımlık nonce — payment.paymentGuid'de saklanır, istemciye döner.
+        const kartOdemesi = methodId === 'kkTek' || methodId === 'kkTaksit';
+        const paymentToken = kartOdemesi ? require('crypto').randomBytes(24).toString('hex') : undefined;
+
         const orderNumber = await WebOrder.generateOrderNumber(req.site);
         const order = await WebOrder.create({
             site: req.site,
@@ -638,14 +717,29 @@ router.post('/siparis', authMiddleware, async (req, res) => {
                 total: Math.round(total * 100) / 100,
                 currency: 'TRY'
             },
-            payment: { method: pay.method, status: 'pending', installment: pay.installment },
+            payment: { method: pay.method, status: 'pending', installment: pay.installment, paymentGuid: paymentToken },
             shipping: { method: deliveryMethod || 'standard' },
             shippingSnapshot,
             customerNote: `Ödeme: ${methodId} · Teslimat: ${deliveryMethod || '-'}`,
             status: 'pending'
         });
 
-        // DIA'ya aktar (b2b: sadece müşteri siparişi, stok hareketi yok)
+        // Kredi kartında (kkTek/kkTaksit) DIA aktarımı ÖDEME ONAYINDAN SONRA yapılır
+        // (bkz. /api/b2b/payment/paynet/return). Burada yalnız pending sipariş döner.
+        if (kartOdemesi) {
+            return res.json({
+                success: true,
+                data: {
+                    orderId: String(order._id),
+                    orderNumber,
+                    total: order.pricing.total,
+                    paymentToken,
+                    requiresPayment: true
+                }
+            });
+        }
+
+        // Cari / Havale: sipariş oluşur oluşmaz DIA'ya aktarılır (stok hareketi yok)
         let diaResult = null;
         try {
             const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
@@ -665,6 +759,300 @@ router.post('/siparis', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('[b2b-auth] Sipariş oluşturma hatası:', error.message);
         res.status(500).json({ success: false, message: 'Sipariş oluşturulamadı: ' + error.message });
+    }
+});
+
+/**
+ * GET /siparis/:orderNumber — bayiye ait siparişi getir (ödeme makbuzu/detay için).
+ * Satıcı firma bilgisi (companyInfo) de eklenir; makbuz başlığında kullanılır.
+ */
+router.get('/siparis/:orderNumber', authMiddleware, async (req, res) => {
+    try {
+        const WebOrder = require('../../../models/web/order/WebOrder');
+        let order = await WebOrder.findOne({
+            orderNumber: String(req.params.orderNumber || '').trim(),
+            site: req.site,
+            memberId: req.user._id
+        }).lean();
+        // Panel dışı (DIA) sipariş — WebOrder'da yoksa: önce lazy DB cache, sonra DIA
+        if (!order) {
+            const orderNo = String(req.params.orderNumber || '').trim();
+            const member = await WebMember.findOne({ _id: req.user._id, site: req.site }).select('diaCustomerKey').lean();
+            const key = member?.diaCustomerKey ? String(member.diaCustomerKey) : null;
+            const B2bOrderDetail = require('../../../models/web/user/B2bOrderDetail');
+            // Cache — yalnız sahibi cari okuyabilir
+            const cachedDoc = await B2bOrderDetail.findOne({ site: req.site, orderNumber: orderNo }).lean();
+            if (cachedDoc?.order && key && String(cachedDoc.diaCustomerKey) === key) {
+                order = cachedDoc.order;
+            } else if (key) {
+                try {
+                    const { fetchOrderDetail } = require('../../../services/plugins/dia/b2bOrderList');
+                    order = await fetchOrderDetail(req.site, orderNo, key);
+                    if (order) {
+                        B2bOrderDetail.updateOne(
+                            { site: req.site, orderNumber: orderNo },
+                            { $set: { order, diaCustomerKey: key, syncedAt: new Date() } },
+                            { upsert: true }
+                        ).catch(() => {});
+                    }
+                } catch (_) { /* DIA hatası → aşağıda 404 */ }
+            }
+        }
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Sipariş bulunamadı.' });
+        }
+        let company = {};
+        try {
+            const WebSettings = require('../../../models/web/settings/WebSettings');
+            const settings = await WebSettings.getSettings(req.site);
+            company = settings?.companyInfo || {};
+        } catch (_) { /* firma bilgisi olmasa da makbuz oluşur */ }
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data: { order, company } });
+    } catch (error) {
+        console.error('[b2b-auth] Sipariş getirme hatası:', error.message);
+        res.status(500).json({ success: false, message: 'Sipariş alınamadı.' });
+    }
+});
+
+/**
+ * GET /siparislerim — giriş yapan bayinin siparişleri (liste, en yeni önce).
+ */
+// Sipariş listesi — carinin DIA siparişleri (panel dışı dahil), 15 dk cache
+const siparisListesiCache = new Map();
+
+router.get('/siparislerim', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
+            .select('diaCustomerKey').lean();
+        if (!member?.diaCustomerKey) {
+            return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        }
+        const key = String(member.diaCustomerKey);
+        const cached = siparisListesiCache.get(key);
+        if (cached && Date.now() - cached.at < 15 * 60 * 1000) {
+            return res.json({ success: true, data: { orders: cached.orders, total: cached.orders.length }, cached: true });
+        }
+        const { fetchOrders } = require('../../../services/plugins/dia/b2bOrderList');
+        const orders = await fetchOrders(req.site, member.diaCustomerKey);
+        siparisListesiCache.set(key, { at: Date.now(), orders });
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data: { orders, total: orders.length } });
+    } catch (error) {
+        console.error('[b2b-auth] Sipariş listesi hatası:', error.message);
+        res.status(502).json({ success: false, message: 'Siparişler alınamadı.' });
+    }
+});
+
+// Bayi fatura istatistiği (yıl/ay ciro + alım adet) — kısa süreli cache
+const purchaseStatsCache = new Map();
+
+/**
+ * GET /alim-adet — giriş yapan bayinin DIA satış FATURALARINDAN yıl/ay bazlı
+ * ciro (net, KDV dahil) + alım adedi (toplammiktar). İptal/iade hariç.
+ */
+router.get('/alim-adet', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
+            .select('diaCustomerKey diaCari.purchaseStats').lean();
+        if (!member?.diaCustomerKey) {
+            return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        }
+        // Önce DB (günlük finans senkronu) — anında, DIA-bağımsız
+        if (member.diaCari?.purchaseStats?.years) {
+            return res.json({ success: true, data: member.diaCari.purchaseStats, synced: true });
+        }
+        // Fallback: canlı DIA (senkron henüz oluşmamışsa), 1 saat cache
+        const key = String(member.diaCustomerKey);
+        const cached = purchaseStatsCache.get(key);
+        if (cached && Date.now() - cached.at < 60 * 60 * 1000) {
+            return res.json({ success: true, data: cached.data, cached: true });
+        }
+        const { invoiceStats } = require('../../../services/plugins/dia/b2bInvoiceReport');
+        const data = await invoiceStats(req.site, member.diaCustomerKey);
+        purchaseStatsCache.set(key, { at: Date.now(), data });
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data });
+    } catch (error) {
+        console.error('[b2b-auth] Fatura istatistik hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Fatura istatistiği şu an alınamadı.' });
+    }
+});
+
+// Bayi vade takvimi (açık satış faturalarının vadeleri) — kısa süreli cache
+const dueDatesCache = new Map();
+
+/**
+ * GET /vade-takvimi — giriş yapan bayinin açık (ödenmemiş) satış faturalarının
+ * vade tarihi + kalan tutarı (takvim görünümü için).
+ */
+router.get('/vade-takvimi', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
+            .select('diaCustomerKey diaCari').lean();
+        if (!member?.diaCustomerKey) {
+            return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        }
+        // Bugün (okuma anında) — vade kalemleri sabit, "bugün" dinamik olmalı.
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        // Önce DB (günlük finans senkronu) — anında, DIA-bağımsız
+        if (member.diaCari?.dueItems) {
+            return res.json({ success: true, data: { items: member.diaCari.dueItems, today }, synced: true });
+        }
+        // Fallback: canlı DIA (senkron henüz oluşmamışsa), 1 saat cache
+        const key = String(member.diaCustomerKey);
+        const cached = dueDatesCache.get(key);
+        if (cached && Date.now() - cached.at < 60 * 60 * 1000) {
+            return res.json({ success: true, data: cached.data, cached: true });
+        }
+        // Gerçek açık borç = cari bakiyesi (senkron); FIFO dağıtımı için servise geçilir.
+        const openBalanceTL = typeof member.diaCari?.bakiyeKurus === 'number'
+            ? member.diaCari.bakiyeKurus / 100
+            : undefined;
+        const { invoiceDueDates } = require('../../../services/plugins/dia/b2bInvoiceReport');
+        const data = await invoiceDueDates(req.site, member.diaCustomerKey, openBalanceTL);
+        dueDatesCache.set(key, { at: Date.now(), data });
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data });
+    } catch (error) {
+        console.error('[b2b-auth] Vade takvimi hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Vade takvimi şu an alınamadı.' });
+    }
+});
+
+// Bayi vade durumu (fatura bazlı yaşlandırma) — kısa süreli cache
+const agingCache = new Map();
+
+/**
+ * GET /vade-durumu — giriş yapan bayinin açık (kalanı olan) satış faturaları:
+ * fatura/vade tarihi, fatura no, gün sayısı (istemci hesaplar), toplam/ödenen/kalan tutar.
+ */
+router.get('/vade-durumu', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
+            .select('diaCustomerKey diaCari').lean();
+        if (!member?.diaCustomerKey) {
+            return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        }
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        // Önce DB (finans senkronu) — anında, DIA-bağımsız
+        if (member.diaCari?.agingItems) {
+            return res.json({ success: true, data: { items: member.diaCari.agingItems, today }, synced: true });
+        }
+        // Fallback: canlı DIA (senkron henüz oluşmamışsa), 1 saat cache
+        const key = String(member.diaCustomerKey);
+        const cached = agingCache.get(key);
+        if (cached && Date.now() - cached.at < 60 * 60 * 1000) {
+            return res.json({ success: true, data: { items: cached.items, today } });
+        }
+        const openBalanceTL = typeof member.diaCari?.bakiyeKurus === 'number'
+            ? member.diaCari.bakiyeKurus / 100
+            : undefined;
+        const { invoiceAging } = require('../../../services/plugins/dia/b2bInvoiceReport');
+        const aging = await invoiceAging(req.site, member.diaCustomerKey, openBalanceTL);
+        agingCache.set(key, { at: Date.now(), items: aging.items });
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data: { items: aging.items, today } });
+    } catch (error) {
+        console.error('[b2b-auth] Vade durumu hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Vade durumu şu an alınamadı.' });
+    }
+});
+
+// Cari ekstre (hesap hareketleri) — cari başına canlı DIA, 15 dk cache
+const ekstreCache = new Map();
+
+/** Giriş yapan bayinin ekstresini (movements + özet) döner. Önce gecelik senkron
+ *  (B2bCariEkstre), yoksa canlı DIA (15 dk cache). */
+async function getEkstre(req) {
+    const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
+        .select('diaCustomerKey diaCari.bakiyeKurus').lean();
+    if (!member?.diaCustomerKey) return { notFound: true };
+
+    // Önce DB (gecelik senkron) — anında, DIA-bağımsız
+    const B2bCariEkstre = require('../../../models/web/user/B2bCariEkstre');
+    const stored = await B2bCariEkstre.findOne({ memberId: req.user._id, site: req.site })
+        .select('movements summary syncedAt').lean();
+    if (stored?.movements) {
+        return { data: { movements: stored.movements, summary: stored.summary, generatedAt: stored.syncedAt || null }, synced: true };
+    }
+
+    // Fallback: canlı DIA (senkron henüz oluşmamışsa), 15 dk cache
+    const key = String(member.diaCustomerKey);
+    const cached = ekstreCache.get(key);
+    if (cached && Date.now() - cached.at < 15 * 60 * 1000) return { data: cached.data };
+    const balanceTL = typeof member.diaCari?.bakiyeKurus === 'number' ? member.diaCari.bakiyeKurus / 100 : undefined;
+    const { cariEkstre } = require('../../../services/plugins/dia/b2bCariEkstre');
+    const data = await cariEkstre(req.site, member.diaCustomerKey, balanceTL);
+    data.generatedAt = new Date();
+    ekstreCache.set(key, { at: Date.now(), data });
+    return { data };
+}
+
+/**
+ * GET /cari-ekstre — cari hesap hareketleri (borç/alacak + yürüyen bakiye).
+ */
+router.get('/cari-ekstre', authMiddleware, async (req, res) => {
+    try {
+        const r = await getEkstre(req);
+        if (r.notFound) return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data: r.data, synced: r.synced || false });
+    } catch (error) {
+        console.error('[b2b-auth] Cari ekstre hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Cari ekstre şu an alınamadı.' });
+    }
+});
+
+/**
+ * GET /odemeler — ekstredeki tahsilat/ödeme (saf alacak) hareketleri.
+ */
+router.get('/odemeler', authMiddleware, async (req, res) => {
+    try {
+        const r = await getEkstre(req);
+        if (r.notFound) return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        const payments = (r.data.movements || []).filter((m) => m.alacak > 0);
+        const totalKurus = Math.round(payments.reduce((s, m) => s + m.alacak, 0) * 100);
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data: { payments, totalKurus, count: payments.length }, synced: r.synced || false });
+    } catch (error) {
+        console.error('[b2b-auth] Ödemeler hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Ödemeler şu an alınamadı.' });
+    }
+});
+
+/**
+ * GET /makbuz/:orderNumber — ödeme makbuzunu PDF olarak indirir (bayiye ait).
+ */
+router.get('/makbuz/:orderNumber', authMiddleware, async (req, res) => {
+    try {
+        const WebOrder = require('../../../models/web/order/WebOrder');
+        const order = await WebOrder.findOne({
+            orderNumber: String(req.params.orderNumber || '').trim(),
+            site: req.site,
+            memberId: req.user._id
+        }).lean();
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Sipariş bulunamadı.' });
+        }
+        let company = {};
+        try {
+            const WebSettings = require('../../../models/web/settings/WebSettings');
+            const settings = await WebSettings.getSettings(req.site);
+            company = settings?.companyInfo || {};
+        } catch (_) { /* firma bilgisi olmasa da makbuz oluşur */ }
+
+        const { makbuzPdf } = require('../../../services/web/b2b/makbuzPdf');
+        const pdf = await makbuzPdf(order, company);
+        res.set('Content-Type', 'application/pdf');
+        res.set('Content-Disposition', `attachment; filename="Makbuz-${order.orderNumber}.pdf"`);
+        res.set('Cache-Control', 'no-store');
+        return res.send(pdf);
+    } catch (error) {
+        console.error('[b2b-auth] Makbuz PDF hatası:', error.message);
+        res.status(500).json({ success: false, message: 'Makbuz oluşturulamadı.' });
     }
 });
 

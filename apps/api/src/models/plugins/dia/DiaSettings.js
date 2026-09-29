@@ -178,11 +178,11 @@ const webDiaSchema = new mongoose.Schema({
         default: []
     },
 
-    // Kritik stok kontrolü: DIA senkronu gecikmeli olduğundan (30 dk), düşük
-    // stoklu ürünlerde aşırı satışı (oversell) önlemek için sipariş anında
-    // gerçek stok − o ürünün açık (bekleyen) siparişleri hesabı yapılır.
-    // Yalnız esik ve altındaki stoklu ürünlerde devreye girer (bol stokta
-    // ekstra sorgu yapılmaz). Yetersizse kalem siparişten çıkarılır.
+    // Stok kontrolü: aşırı satışı (oversell) önlemek için sipariş anında
+    // CANLI DIA stoğu (webStokDepolari = MASLAK+MERKEZ) çekilir; kullanılabilir =
+    // stok − ürünün açık (bekleyen) siparişleri. Yetersizse kalem çıkarılır.
+    // Canlı DIA erişilemezse DB stoğuna düşülür ve yalnız esik ve altı stokta
+    // blok uygulanır (dolu stoklu ürün haksız bloklanmaz). XML ürünler hariç.
     kritikStok: {
         kontrolAktif: { type: Boolean, default: false },
         esik: { type: Number, default: 5 }

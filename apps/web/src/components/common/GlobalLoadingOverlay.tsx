@@ -2,10 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { SITES, resolveSiteFromHost } from '@/src/config/siteConfig';
 
 export default function GlobalLoadingOverlay() {
     const pathname = usePathname();
     const [show, setShow] = useState(true);
+    // Spinner rengi aktif sitenin marka renginden (alastik kırmızı #f2223b, LJA sarı).
+    // b2b'de --brand-primary tanımlı olduğu için o değer önceliklidir.
+    const [brandColor, setBrandColor] = useState('#f2223b');
+
+    useEffect(() => {
+        try {
+            const slug = resolveSiteFromHost(window.location.host);
+            const c = SITES[slug]?.theme?.primary;
+            if (c) setBrandColor(c);
+        } catch { /* host çözülemezse varsayılan kalır */ }
+    }, []);
 
     useEffect(() => {
         // Sayfa değiştiğinde tekrar göster
@@ -56,7 +68,7 @@ export default function GlobalLoadingOverlay() {
             <div
                 className="spinner-border"
                 role="status"
-                style={{ width: '3rem', height: '3rem', color: 'var(--brand-primary, #0d6efd)' }}
+                style={{ width: '3rem', height: '3rem', color: `var(--brand-primary, ${brandColor})` }}
             >
                 <span className="visually-hidden">Yükleniyor...</span>
             </div>

@@ -187,11 +187,13 @@ class DiaOrderService {
 
     /**
      * Önekli modda sıradaki cari hesap kodunu üretir:
-     * '<önek><sipariş ayı>.<6 haneli sıra no>' (örn. AL-120.01.08.000003).
-     * Sıra numarası site başına webdia ayar kaydındaki cariKodSayac alanından
-     * atomik $inc ile alınır — her yeni cari bir öncekinin 1 fazlasını alır,
-     * eşzamanlı siparişlerde de çakışmaz. DIA'da dolu çıkarsa (elle açılmış
-     * kayıt vb.) resolveCustomer tekrar çağırıp bir sonraki numarayı dener.
+     * '<önek><6 haneli sıra no>' (örn. AL-120.01.000098).
+     * Muhasebe kararı (24 Eyl 2026): ay segmenti KALDIRILDI — önek sabit, yalnız
+     * son 6 haneli numara sırayla artar (01, 02, 03… düzenli). Sıra numarası site
+     * başına webdia ayar kaydındaki cariKodSayac alanından atomik $inc ile alınır;
+     * her yeni cari bir öncekinin 1 fazlasını alır, eşzamanlı siparişlerde de
+     * çakışmaz. DIA'da dolu çıkarsa (elle açılmış kayıt vb.) resolveCustomer
+     * tekrar çağırıp bir sonraki numarayı dener.
      */
     async nextCustomerCode(order) {
         const siparis = this.settings.siparis || {};
@@ -207,9 +209,7 @@ class DiaOrderService {
             throw new Error('Cari kod sayacı okunamadı. DIA sipariş ayarlarını kontrol edin.');
         }
 
-        const orderDate = new Date(order.createdAt || Date.now());
-        const month = String(orderDate.getMonth() + 1).padStart(2, '0');
-        return `${siparis.cariKodOnek}${month}.${String(sequence).padStart(6, '0')}`;
+        return `${siparis.cariKodOnek}${String(sequence).padStart(6, '0')}`;
     }
 
     /**

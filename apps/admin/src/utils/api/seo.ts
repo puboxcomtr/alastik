@@ -19,6 +19,8 @@ export type SeoSettingsType = {
     category: SeoTemplateType
     brand: SeoTemplateType
     product: SeoTemplateType
+    other?: Record<string, any>
+    analysis?: Record<string, any>
     createdAt?: Date
     updatedAt?: Date
 }

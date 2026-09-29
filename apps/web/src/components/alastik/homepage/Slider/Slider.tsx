@@ -39,10 +39,16 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
     const height = parseInt(settings.height) || 500;
     const showNavButtons = settings.showNavButtons === true;
     const showDots = settings.showDots === true;
-    const changeSpeed = parseInt(settings.changeSpeed) || 5000;
+    // changeSpeed = "Resimlerin Değişme Süresi" (geçiş animasyonu) → Swiper speed
+    // displayDuration = "Resmin Görüntülenme Süresi" (bekleme) → autoplay delay
+    // Not: Eski kayıtlarda changeSpeed'e bekleme süresi (5000) girilmiş olabilir; mantıksız
+    // büyük değer fade'i saniyelerce sürdürür → makul aralık dışını 500 ms'ye sabitle.
+    const rawSpeed = parseInt(settings.changeSpeed) || 500;
+    const changeSpeed = rawSpeed >= 100 && rawSpeed <= 2000 ? rawSpeed : 500;
+    const displayDuration = parseInt(settings.displayDuration) || 5000;
     const autoStart = settings.autoStart === true;
     const autoplayConfig = autoStart ? {
-        delay: changeSpeed,
+        delay: displayDuration,
         disableOnInteraction: false,
     } : undefined;
     const modules = [EffectFade];
@@ -58,6 +64,7 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
                         modules={modules}
                         effect="fade"
                         loop
+                        speed={changeSpeed}
                         autoplay={autoplayConfig}
                         pagination={showDots ? { clickable: true } : false}
                         navigation={showNavButtons ? {

@@ -13,6 +13,8 @@ import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
@@ -53,6 +55,12 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
         apiCredentials: {},
         mode: 'test'
     })
+    // Sağlayıcı şablonu (requiredFields) — kayıtta eksik alanlar da düzenlenebilsin diye
+    const [providers, setProviders] = useState<Record<string, Record<string, { requiredFields?: { key: string; label: string; type?: string; help?: string }[] }>> | null>(null)
+    // Kredi kartı: bu yöntem Tek Çekim / Taksitli için mi (site başına maks 1)
+    const [tekCekim, setTekCekim] = useState(false)
+    const [taksit, setTaksit] = useState(false)
+
     useEffect(() => {
         if (method) {
             setFormData({
@@ -62,8 +70,24 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                 apiCredentials: method.apiCredentials || {},
                 mode: method.creditCardSettings?.mode || 'test'
             })
+            setTekCekim(method.creditCardSettings?.tekCekimAktif === true)
+            setTaksit(method.creditCardSettings?.taksitAktif === true)
         }
     }, [method])
+
+    useEffect(() => {
+        if (open && !providers) {
+            (async () => {
+                try {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
+                    const result = await fetchAPI(`${baseUrl}${API_ENDPOINTS.PROVIDERS}`)
+                    if (result.success) setProviders(result.data)
+                } catch (error) {
+                    console.error('Ödeme sağlayıcı şablonu yüklenemedi:', error)
+                }
+            })()
+        }
+    }, [open, providers])
 
     const handleCredentialChange = (key: string, value: string) => {
         setFormData(prev => ({
@@ -100,7 +124,9 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
             if (method.type === 'credit_card') {
                 payload.creditCardSettings = {
                     ...method.creditCardSettings,
-                    mode: formData.mode
+                    mode: formData.mode,
+                    tekCekimAktif: tekCekim,
+                    taksitAktif: taksit
                 }
             }
             if (method.type === 'bank_transfer') {
@@ -131,7 +157,14 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
             }
         } catch (error) {
             console.error('API hatası:', error)
-            toast.error(TOAST_MESSAGES.CONNECTION_ERROR)
+            // fetchAPI 400'de backend mesajıyla throw eder (ör. "Tek Çekim zaten … aktif").
+            const msg = error instanceof Error && error.message ? error.message : TOAST_MESSAGES.CONNECTION_ERROR
+            toast.error(msg)
+            // Kaydedilmeyen rol switch'lerini DB değerine geri al.
+            if (method) {
+                setTekCekim(method.creditCardSettings?.tekCekimAktif === true)
+                setTaksit(method.creditCardSettings?.taksitAktif === true)
+            }
         } finally {
             setIsLoading(false)
         }
@@ -149,12 +182,31 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
         bank_transfer: 'Banka Havalesi'
     }
     const getProviderFields = () => {
-        return Object.keys(formData.apiCredentials).map(key => ({
-            key,
-            label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
-            type: key.toLowerCase().includes('password') ? 'password' : 'text',
-            required: false
+        // Anahtar → görünen ad (şablon yoksa kullanılır)
+        const humanize = (key: string) => key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
+
+        // Sağlayıcı şablonundaki tüm alanlar (kayıtta değeri olmasa da gösterilir)
+        const template = providers?.[method!.type]?.[method!.provider]?.requiredFields || []
+        const fields = template.map(f => ({
+            key: f.key,
+            label: f.label || humanize(f.key),
+            type: f.type || (f.key.toLowerCase().includes('password') ? 'password' : 'text'),
+            help: f.help
         }))
+
+        // Kayıtta olup şablonda olmayan eski anahtarlar da gizlenmesin
+        const known = new Set(fields.map(f => f.key))
+        Object.keys(formData.apiCredentials).forEach(key => {
+            if (!known.has(key)) {
+                fields.push({
+                    key,
+                    label: humanize(key),
+                    type: key.toLowerCase().includes('password') ? 'password' : 'text',
+                    help: undefined
+                })
+            }
+        })
+        return fields
     }
 
     return (
@@ -245,6 +297,19 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                         </FormControl>
                     )}
 
+                    {method.type === 'credit_card' && (
+                        <FormControl fullWidth>
+                            <FormControlLabel
+                                control={<Switch checked={tekCekim} onChange={e => setTekCekim(e.target.checked)} disabled={isLoading} />}
+                                label='Tek Çekim için Aktifleştir'
+                            />
+                            <FormControlLabel
+                                control={<Switch checked={taksit} onChange={e => setTaksit(e.target.checked)} disabled={isLoading} />}
+                                label='Taksitli için Aktifleştir'
+                            />
+                        </FormControl>
+                    )}
+
                     <Divider>
                         <Chip label='API / Hesap Bilgileri' size='small' />
                     </Divider>
@@ -259,6 +324,7 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                             value={formData.apiCredentials[field.key] || ''}
                             onChange={e => handleCredentialChange(field.key, e.target.value)}
                             disabled={isLoading}
+                            helperText={field.help || undefined}
                         />
                     ))}
 

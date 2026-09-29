@@ -232,6 +232,10 @@ const customDataSchema = new mongoose.Schema({
             seoDescription: { type: String },
             shortDescription: { type: String },
             webVisible: { type: Boolean },
+            // Bu sitenin vitrin listelemesinden (kategori/arama) gizle. Montaj
+            // hizmetleri gibi yalnız montaj noktaları/sepet üzerinden kullanılan
+            // ürünler için. Montaj noktaları _key ile çektiğinden etkilenmez.
+            hideFromListing: { type: Boolean },
             webOrder: { type: Number },
             // XML kaynaklı üründe bu sitenin satış fiyatı (sahip site fiyat4'ü kullanır)
             xmlPrice: { type: Number },

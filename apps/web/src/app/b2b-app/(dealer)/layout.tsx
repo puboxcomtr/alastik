@@ -5,6 +5,7 @@ import { NavLinks } from "@components/b2b-theme/nav-links";
 import { CartPanel } from "@components/b2b-theme/cart-panel";
 import { CartProvider } from "@components/b2b-theme/cart-status";
 import { SessionGate } from "@components/b2b-theme/session-gate";
+import { ImpersonationBanner } from "@components/b2b-theme/impersonation-banner";
 import { API_ENDPOINTS } from "@src/config/api";
 
 type MenuKaydi = {
@@ -72,6 +73,7 @@ export default async function DealerLayout({
   return (
     <SessionGate>
     <CartProvider>
+      <ImpersonationBanner />
       <header className="topnav">
         <div className="topnav-inner">
           <Link className="brand" href="/">

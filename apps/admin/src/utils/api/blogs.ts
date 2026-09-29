@@ -14,6 +14,8 @@ export type BlogType = {
         ogImage?: string
     }
     status: 'draft' | 'published' | 'archived'
+    featuredImage?: string
+    categories?: string[]
     author?: string
     publishedAt?: Date
     viewCount: number

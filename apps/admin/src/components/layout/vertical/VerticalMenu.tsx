@@ -111,7 +111,12 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
         <SubMenu label={dictionary['navigation'].analytics} icon={<i className='ri-bar-chart-2-line' />}>
           <MenuItem href={`/${locale}/apps/analytics/reports`}>{dictionary['navigation'].reports}</MenuItem>
           <MenuItem href={`/${locale}/apps/analytics/live`}>{dictionary['navigation'].live_monitoring}</MenuItem>
-          <MenuItem href={`/${locale}/apps/analytics/seo`}>{dictionary['navigation'].seo_analysis}</MenuItem>
+        </SubMenu>
+        <SubMenu label={dictionary['navigation'].seo} icon={<i className='ri-search-eye-line' />}>
+          <MenuItem href={`/${locale}/apps/seo/report`}>{dictionary['navigation'].seo_report}</MenuItem>
+          <MenuItem href={`/${locale}/apps/seo/content`}>{dictionary['navigation'].seo_content}</MenuItem>
+          <MenuItem href={`/${locale}/apps/seo/keywords`}>{dictionary['navigation'].seo_keywords}</MenuItem>
+          <MenuItem href={`/${locale}/apps/settings/seo`}>{dictionary['navigation'].seo_settings}</MenuItem>
         </SubMenu>
 
         <MenuSection label={dictionary['navigation'].seperator}>
@@ -143,6 +148,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           </SubMenu>
           <SubMenu label={memberMenu?.group || dictionary['navigation'].user_management} icon={<i className='ri-user-2-line' />}>
             <MenuItem href={`/${locale}/apps/user/list`}>{memberMenu?.item || dictionary['navigation'].user}</MenuItem>
+            {memberMenu && (
+              <MenuItem href={`/${locale}/apps/salespersons/list`}>Plesiyerler</MenuItem>
+            )}
             {memberMenu && (
               <MenuItem href={`/${locale}/apps/b2b/applications`}>Bayi Başvuruları</MenuItem>
             )}

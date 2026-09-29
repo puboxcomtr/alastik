@@ -7,6 +7,7 @@ const DiaStockService = require('../services/plugins/dia/DiaStockService');
 const { withDiaLock, B2B_LOCK_KEY } = require('../services/plugins/dia/diaLock');
 const { syncB2bCari } = require('../services/plugins/dia/b2bCariSync');
 const { syncB2bAddresses } = require('../services/plugins/dia/b2bAddress');
+const { syncB2bFinance } = require('../services/plugins/dia/b2bFinanceSync');
 
 class DiaWorker {
     constructor() {
@@ -144,6 +145,14 @@ class DiaWorker {
         });
         this.queues.b2bCariSync.process('manual-b2b-address-sync', (job) => {
             return withDiaLock(() => this.processB2bAddressSync(job), { label: 'b2bAddressSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });
+        });
+        // b2b finans sync (günlük) — satış faturalarından ciro/adet + FIFO vade + vadesi
+        // geçen borç → WebMember.diaCari; uçlar canlı DIA yerine bunu okur.
+        this.queues.b2bCariSync.process('scheduled-b2b-finance-sync', (job) => {
+            return withDiaLock(() => this.processB2bFinanceSync(job), { label: 'b2bFinanceSync', key: B2B_LOCK_KEY, waitMs: 300000 });
+        });
+        this.queues.b2bCariSync.process('manual-b2b-finance-sync', (job) => {
+            return withDiaLock(() => this.processB2bFinanceSync(job), { label: 'b2bFinanceSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });
         });
         console.log('Processor kayıtları TAMAMLANDI!');
     }
@@ -347,6 +356,20 @@ class DiaWorker {
             return { success: true, ...r };
         } catch (error) {
             this.logger.error('B2B cari sync hatası', { jobId: job.id, error: error.message });
+            throw error;
+        }
+    }
+
+    /** b2b finans sync (günlük) — faturadan ciro/adet + FIFO vade → WebMember.diaCari */
+    async processB2bFinanceSync(job) {
+        const t0 = Date.now();
+        this.logger.info('=== B2B FİNANS SYNC BAŞLANGICI ===', { jobId: job.id, timestamp: new Date().toISOString() });
+        try {
+            const r = await syncB2bFinance(this.logger);
+            this.logger.info('=== B2B FİNANS SYNC TAMAMLANDI ===', { ...r, duration: `${Date.now() - t0}ms` });
+            return { success: true, ...r };
+        } catch (error) {
+            this.logger.error('B2B finans sync hatası', { jobId: job.id, error: error.message });
             throw error;
         }
     }
@@ -652,6 +675,18 @@ class DiaWorker {
                 { type: 'scheduled' },
                 {
                     repeat: { cron: b2bAddressCron, tz: 'Europe/Istanbul' },
+                    timeout: 3600000
+                }
+            );
+
+            // b2b Finans Sync — günlük 04:30 (adres sync'ten sonra). Faturadan ciro/adet
+            // + FIFO vade + vadesi geçen borç → WebMember.diaCari.
+            const b2bFinanceCron = process.env.B2B_FINANS_SYNC_CRON || '30 4 * * *';
+            await this.queues.b2bCariSync.add(
+                'scheduled-b2b-finance-sync',
+                { type: 'scheduled' },
+                {
+                    repeat: { cron: b2bFinanceCron, tz: 'Europe/Istanbul' },
                     timeout: 3600000
                 }
             );

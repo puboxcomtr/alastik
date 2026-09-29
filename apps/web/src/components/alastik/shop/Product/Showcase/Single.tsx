@@ -124,7 +124,10 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'alastik'
                                         <div className="col-sm-9 col-md-8 col-xl-7 d-flex flex-column">
                                             <div className="text-center">
                                                 <h1 style={{ color: '#FFF' }}>
-                                                    {slideConfig[getProductStockCode(product)]?.title || showcase.title || ''}
+                                                    {slideConfig[getProductStockCode(product)]?.title
+                                                        || product.diaData?.aciklama?.replace(/^LJA/i, 'AKD')
+                                                        || showcase.title
+                                                        || ''}
                                                 </h1>
                                             </div>
                                             {slideConfig[getProductStockCode(product)]?.description && (

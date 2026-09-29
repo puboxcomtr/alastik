@@ -85,6 +85,8 @@ const webCategorySchema = new mongoose.Schema({
   },
   seoTitle: String,
   seoDescription: String,
+  // SEO analizi: odak anahtar kelime
+  focusKeyword: String,
   // Site başına içerik/SEO alanları — description/sliderId/seoKeywords tanımsızsa ortak alanlar geçerlidir
   siteContent: Object.keys(SITES).reduce((acc, slug) => {
     acc[slug] = {

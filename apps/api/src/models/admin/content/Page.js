@@ -45,6 +45,11 @@ const pageSchema = new mongoose.Schema({
         ogImage: {
             type: String,
             default: ''
+        },
+        // SEO analizi: odak anahtar kelime
+        focusKeyword: {
+            type: String,
+            default: ''
         }
     },
     status: {

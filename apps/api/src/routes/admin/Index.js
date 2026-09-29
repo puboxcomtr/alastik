@@ -81,6 +81,10 @@ router.use('/dashboard', dashboardRoutes);
 const analyticsRoutes = require('./dashboard/analytics');
 router.use('/analytics', analyticsRoutes);
 
+// SEO modülü (rapor, anahtar kelimeler, içerik analizi)
+const seoModuleRoutes = require('./seo');
+router.use('/seo', seoModuleRoutes);
+
 // ============================================
 // ORDERS ROUTES
 // ============================================
@@ -101,12 +105,19 @@ router.use('/redirects', redirectRoutes);
 const memberRoutes = require('./user/members');
 router.use('/members', memberRoutes);
 
+// Plasiyerler (satış personeli — DIA sis_kullanici kaynaklı)
+const salespersonRoutes = require('./user/salespersons');
+router.use('/salespersons', salespersonRoutes);
+
 // B2B bayi başvuruları (login sayfasındaki başvuru formu kayıtları)
 const b2bApplicationRoutes = require('./user/b2bApplications');
 router.use('/b2b-applications', b2bApplicationRoutes);
 
 const blogRoutes = require('./content/blogs');
 router.use('/blogs', blogRoutes);
+
+const blogCategoryRoutes = require('./content/blogCategories');
+router.use('/blog-kategoriler', blogCategoryRoutes);
 
 // ============================================
 // CAMPAIGN ROUTES

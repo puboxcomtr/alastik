@@ -4,7 +4,7 @@ import { api } from '@/src/lib/api';
 interface MenuItem {
     _id: string;
     name: string;
-    menuType: 'link' | 'category' | 'page' | 'blog' | 'product';
+    menuType: 'link' | 'category' | 'blogCategory' | 'page' | 'blog' | 'product';
     linkData: {
         url?: string;
         categoryId?: string;
@@ -50,6 +50,8 @@ export const useMenu = () => {
                 return menu.linkData.url || '#';
             case 'category':
                 return `/kategori/${menu.linkData.categoryUrl || menu.linkData.categoryId}`;
+            case 'blogCategory':
+                return `/blog-kategori/${(menu.linkData as any).blogCategoryUrl || (menu.linkData as any).blogCategoryId}`;
             case 'page':
                 return `/sayfa/${menu.linkData.pageUrl || menu.linkData.pageId}`;
             case 'blog':

@@ -609,6 +609,7 @@ router.get('/:id', maybeAuth, async (req, res) => {
       seoDescription: customData.seoDescription || diaData.aciklama || '',
       seoUrl: customData.seoUrl || null,
       seoKeywords: customData.seoKeywords || [],
+      focusKeyword: customData.focusKeyword || '',
 
       // Görseller
       image: featuredImage,
@@ -686,6 +687,7 @@ router.patch('/:id', maybeAuth, [
   body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
   body('seoUrl').optional().matches(/^[a-z0-9-]*$/).withMessage('SEO URL sadece küçük harf, sayı ve tire içermelidir'),
   body('seoKeywords').optional().isArray().withMessage('SEO anahtar kelimeleri array olmalıdır'),
+  body('focusKeyword').optional().isLength({ max: 120 }).withMessage('Odak anahtar kelime en fazla 120 karakter olabilir'),
   body('delivery').optional().isIn(['same_day', 'next_day', 'next_week']).withMessage('Geçersiz teslimat seçeneği'),
   body('webVisible').optional().isBoolean().withMessage('Web görünürlük boolean olmalıdır'),
   body('hideBrand').optional().isBoolean().withMessage('Marka gizleme alanı boolean olmalıdır'),
@@ -718,6 +720,7 @@ router.patch('/:id', maybeAuth, [
       seoDescription,
       seoUrl,
       seoKeywords,
+      focusKeyword,
 
       // Web görünüm
       webVisible,
@@ -792,6 +795,7 @@ router.patch('/:id', maybeAuth, [
     if (seoDescription !== undefined) updateData[`${siteDataPath}.seoDescription`] = seoDescription.trim();
     if (seoUrl !== undefined) updateData['customData.seoUrl'] = seoUrl.trim().toLowerCase();
     if (seoKeywords !== undefined) updateData['customData.seoKeywords'] = seoKeywords;
+    if (focusKeyword !== undefined) updateData['customData.focusKeyword'] = String(focusKeyword || '').trim();
 
     // Web Görünüm (görünürlük ve sıra siteye özel)
     if (webVisible !== undefined) updateData[`${siteDataPath}.webVisible`] = Boolean(webVisible);

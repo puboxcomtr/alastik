@@ -69,7 +69,7 @@ export function AccountSummaryCards() {
             </div>
             <div className="card">
                 <div className="label">Vadesi Geçen Borç</div>
-                <div className={`value${(overdue ?? 0) < 0 ? ' danger' : ''}`}>
+                <div className={`value${(overdue ?? 0) > 0 ? ' danger' : ''}`}>
                     {loading ? '…' : overdue === null ? '—' : formatKurus(overdue)}
                 </div>
                 <div className="note">

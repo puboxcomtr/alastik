@@ -31,7 +31,12 @@ const BOS_FORM = {
   postaKodu: "",
 };
 
-export function DeliveryAddress() {
+export function DeliveryAddress({
+  onSelectedChange,
+}: {
+  // Seçili teslimat adresi değişince üst bileşene bildirir (Gel Al il kontrolü için).
+  onSelectedChange?: (address: Address | null) => void;
+} = {}) {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
   const [formAcik, setFormAcik] = useState(false);
@@ -68,6 +73,14 @@ export function DeliveryAddress() {
       .catch(() => setAddresses([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Seçili adresi (şehri dahil) üst bileşene bildir — "Şubeden Gel Al" yalnız
+  // teslimat adresi İstanbul olduğunda açılır.
+  useEffect(() => {
+    const sec = addresses?.find((a) => a.id === selectedId) || null;
+    onSelectedChange?.(sec);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, addresses]);
 
   // İl listesi form ilk açıldığında bir kez çekilir
   useEffect(() => {

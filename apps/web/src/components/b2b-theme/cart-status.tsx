@@ -79,6 +79,7 @@ export type CartLine = CartRecord & {
 };
 
 type CartState = {
+  hydrated: boolean;
   records: CartRecord[];
   lines: CartLine[];
   totalQty: number;
@@ -120,11 +121,15 @@ function readRecords(): CartRecord[] {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [records, setRecords] = useState<CartRecord[]>([]);
+  // localStorage'dan ilk okuma yapıldı mı? (boş-sepet yönlendirmesi bunu bekler;
+  // yoksa dolu sepette bile ilk çizimde yanlışlıkla yönlendirme olur.)
+  const [hydrated, setHydrated] = useState(false);
 
   // Sunucuda ve ilk çizimde boş başlanır; kayıtlar bağlanmadan sonra okunur ki
   // sunucu çıktısı ile istemci çıktısı ayrışmasın (hydration uyuşmazlığı).
   useEffect(() => {
     setRecords(readRecords());
+    setHydrated(true);
   }, []);
 
   const writeRecords = useCallback((nextRecords: CartRecord[]) => {
@@ -202,6 +207,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const kdvToplam = lines.reduce((t, s) => t + s.kdvKurus, 0);
 
     return {
+      hydrated,
       records,
       lines,
       // Badge/sayaç: yalnız GÖRÜNEN satırlardan (çözülemeyen eski kayıtlar sayılmaz)
@@ -248,7 +254,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       clear: () => writeRecords([]),
       find: (productId) => records.find((k) => k.productId === productId) ?? null,
     };
-  }, [records, writeRecords]);
+  }, [hydrated, records, writeRecords]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

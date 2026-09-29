@@ -304,6 +304,12 @@ mongoose.connect(process.env.MONGODB_URI, {
     // XML Kontrolü
     const xmlSyncScheduler = require('./services/plugins/xml/XmlSyncScheduler');
     xmlSyncScheduler.start();
+    // SEO: gece içerik taraması + Search Console anlık görüntüsü
+    try {
+      require('./services/seo/SeoScheduler').start();
+    } catch (error) {
+      logger.error('SEO scheduler başlatılamadı:', error);
+    }
     try {
       await AdminUser.createDefaultAdmin();
     } catch (error) {
@@ -373,6 +379,14 @@ app.use('/api/b2b/application', webB2BApplicationRoutes);
 const webB2BAuthRoutes = require('./routes/web/b2b/auth');
 app.use('/api/b2b/auth', webB2BAuthRoutes);
 
+/* B2B plasiyer girişi (kullanıcı kodu + şifre) ve bayi adına oturum */
+const webB2BPlasiyerRoutes = require('./routes/web/b2b/plasiyer');
+app.use('/api/b2b/plasiyer', webB2BPlasiyerRoutes);
+
+/* B2B ödeme (Paynet Özelleştirilmiş Form — kart tarayıcıda token'lanır) */
+const webB2BPaymentRoutes = require('./routes/web/b2b/payment');
+app.use('/api/b2b/payment', webB2BPaymentRoutes);
+
 /* * Menu * */
 const webMenuRoutes = require('./routes/web/design/menus');
 app.use('/api/menus', webMenuRoutes);
@@ -408,6 +422,10 @@ app.use('/api/design/slider', webSliderRoutes);
 /* Ürün Listeleme */
 const webProductsRoutes = require('./routes/web/catalog/products');
 app.use('/api/products', webProductsRoutes);
+
+/* Pazar yeri ürün feed'i (Lastiğini Sat) — salt okunur JSON, X-Feed-Key ile */
+const marketplaceFeedRoutes = require('./routes/plugins/marketplace/feed');
+app.use('/api/feed', marketplaceFeedRoutes);
 
 /* Etiket */
 const webTagsRoutes = require('./routes/web/catalog/tags');

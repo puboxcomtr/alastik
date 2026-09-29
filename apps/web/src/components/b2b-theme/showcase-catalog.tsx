@@ -20,7 +20,7 @@ export interface RawProduct {
         ozelkod5kodu?: string; // desen/model
         ekalan5?: string; // üretim yılı (DOT) — sıfır ve 2.El lastikte dolu, ör. "2026"
         m_kategoriler?: { kategori_aciklama_1?: string }[];
-        m_resimler?: { aws_url?: string }[];
+        m_resimler?: { aws_url?: string; order_id?: string | number }[];
         m_birimler?: { fiyat1?: string | number; fiyat4?: string | number; fiyat4Ham?: string | number }[];
         m_urunOzellikleri?: { ozellikadi?: string; detayaciklama?: string }[];
     };
@@ -80,6 +80,12 @@ export function normalizeBrand(s: string): string {
 
 export type CariOran = { tanimlifiyat?: number; fiyatyuzde?: number };
 
+/** DIA görsellerini order_id'ye göre sıralar (ana/yandan görünüş order 1'de olmalı;
+ *  ham dizi bazen sırasız geliyor → thumbnail yanlış görseli gösteriyordu). */
+function sortByOrder(images?: { aws_url?: string; order_id?: string | number }[]): { aws_url?: string; order_id?: string | number }[] {
+  return [...(images || [])].sort((a, b) => (Number(a.order_id) || 99) - (Number(b.order_id) || 99));
+}
+
 export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cariOran?: CariOran): Tire {
     // Fiyat kurgusu (b2b):
     //  - Kendi (Sabit) ürün: LİSTE fiyatı = m_birimler[0].fiyat1; satış (Cari)
@@ -90,16 +96,24 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
     //    liste de yok (liste = satış). Değerler KDV dahil; net = /1.2.
     const xmlKaynak = u.syncInfo?.syncSource === 'xml_integration'
         || /-XML$/i.test(u.diaData?.stokkartkodu || '');
+    // B2C İndirim Oranı (DIA birimindirimorani "AD: 46.00"). 0 ise indirim yok.
+    const b2cOran = parseFloat(String(u.diaData?.birimindirimorani || '').replace(/[^0-9.]/g, ''))
+        || Number(u.diaData?.b2c_indirimorani) || 0;
+    const fiyat4 = Number(u.diaData?.m_birimler?.[0]?.fiyat4) || 0;
+    // Kendi stok + indirim oranı 0 (2.El vb.) → cari iskonto UYGULANMAZ, bayi fiyatı
+    // (fiyat4) doğrudan kullanılır. Oran>0 → mevcut cari hesap (normalde ≈fiyat4 çıkar).
+    const oranSifir = !xmlKaynak && b2cOran === 0 && fiyat4 > 0;
     const oran = (Number(cariOran?.fiyatyuzde) > 0 ? Number(cariOran?.fiyatyuzde) : 50) / 100;
     const listeFiyat = xmlKaynak
         ? (Number(u.customData?.webPrice) || 0)
         : (Number(u.diaData?.m_birimler?.[0]?.fiyat1) || 0);
     const satisFiyat = xmlKaynak
         ? listeFiyat
-        : Math.round(listeFiyat * oran * 100) / 100;
+        : (oranSifir ? fiyat4 : Math.round(listeFiyat * oran * 100) / 100);
     const netKurus = satisFiyat > 0 ? Math.round((satisFiyat / 1.2) * 100) : 0;
     const kdvDahilKurus = satisFiyat > 0 ? Math.round(satisFiyat * 100) : 0;
-    const listeKurus = listeFiyat > 0 ? Math.round(listeFiyat * 100) : kdvDahilKurus;
+    // Oran 0'da üstü çizili liste gösterilmez (liste = satış).
+    const listeKurus = oranSifir ? kdvDahilKurus : (listeFiyat > 0 ? Math.round(listeFiyat * 100) : kdvDahilKurus);
     const stok = Number(u.diaData?.gercek_stok || 0);
     // XML (tedarikçi) ürünlerinin fiziksel deposu yok; stok "Fabrika" olarak
     // etiketlenir (kendi stokta "Merkez"; canlı depo verisi gelince değişir).
@@ -143,7 +157,10 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         cTipi: /\bC\b/.test(ad),
         ev: /\bEV\b/i.test(ad),
         xl: /\bXL\b/i.test(ad),
-        imageUrl: u.customData?.featuredImage || u.diaData?.m_resimler?.[0]?.aws_url || null,
+        // Görseller DIA order_id'sine göre sıralanır: ana/yandan görünüş order 1'de olmalı.
+        // Ham dizi bazen sırasız gelir (ör. [0]=order3) → thumbnail yanlış görseli gösteriyordu.
+        imageUrl: u.customData?.featuredImage || sortByOrder(u.diaData?.m_resimler)[0]?.aws_url || null,
+        images: sortByOrder(u.diaData?.m_resimler).map(r => r.aws_url).filter((x): x is string => Boolean(x)),
         xml: xmlKaynak,
         sevkiyat: resolveShipping(u),
         slug: u.customData?.seoUrl || (u.diaData?.stokkartkodu || u._key),
@@ -153,7 +170,7 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
             available: stok,
         }],
         fiyat: netKurus > 0
-            ? { listeBirimKurus: listeKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste' }
+            ? { listeBirimKurus: listeKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste', kdvHaric: oranSifir }
             : null,
     };
 }

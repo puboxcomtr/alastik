@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { resolveSitePrice, resolveXmlShipping } = require('../../../utils/sitePricing');
+const { resolveSitePrice, resolveXmlShipping, PRICE_HIDDEN } = require('../../../utils/sitePricing');
 const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRuleService');
 const router = express.Router();
 const WebCart = require('../../../models/web/cart/WebCart');
@@ -62,6 +62,8 @@ const getCartUnitPrice = (product, site) => {
     }
     // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılan ayarda null döner
     const sitePrice = resolveSitePrice(product, site);
+    // Fiyat gizli (__dinamik__16 seçili + dinamik yok): 0 döner → /add guard'ı sepete eklemeyi reddeder
+    if (sitePrice === PRICE_HIDDEN) return 0;
     const basePrice = sitePrice !== null ? sitePrice : (product.diaData?.m_birimler?.[0]?.fiyat4 || 0);
     // Kural tabanlı kargo payı (Kargo Tanımları) müşteri fiyatına dahildir
     const shipping = resolveUnitShipping(product, site, basePrice);
