@@ -1,6 +1,7 @@
 // apps/web/src/components/category/Pagination/MainPagination.tsx
 'use client';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 interface PaginationProps {
     currentPage: number;
@@ -10,7 +11,6 @@ interface PaginationProps {
 export default function Pagination({ currentPage: propCurrentPage, totalPages, totalProducts }: PaginationProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const router = useRouter();
 
     const [currentPage, setCurrentPage] = useState(propCurrentPage);
 
@@ -18,16 +18,19 @@ export default function Pagination({ currentPage: propCurrentPage, totalPages, t
         setCurrentPage(propCurrentPage);
     }, [propCurrentPage]);
 
+    // Sayfa linkleri gerçek <a href> olarak basılır ki arama motorları 2. sayfa ve sonrasını da tarayabilsin.
+    // 1. sayfa ?page=1 olmadan üretilir; aynı içerik için iki ayrı adres oluşmaz.
     const createPageUrl = (page: number) => {
         const params = new URLSearchParams(searchParams);
-        params.set('page', page.toString());
-        return `${pathname}?${params.toString()}`;
+        if (page <= 1) {
+            params.delete('page');
+        } else {
+            params.set('page', page.toString());
+        }
+        const query = params.toString();
+        return query ? `${pathname}?${query}` : pathname;
     };
 
-    const handlePageClick = (page: number) => {
-        setCurrentPage(page);
-        router.push(createPageUrl(page));
-    };
     const getPageNumbers = () => {
         const pages: (number | string)[] = [];
         const showPages = 5;
@@ -64,13 +67,21 @@ export default function Pagination({ currentPage: propCurrentPage, totalPages, t
         <nav aria-label="Sayfalama">
             <ul className="pagination justify-content-center mt-4">
                 <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                    <button
-                        onClick={() => currentPage > 1 && handlePageClick(currentPage - 1)}
-                        className="page-link"
-                        disabled={currentPage === 1}
-                    >
-                        <i className="ri-arrow-left-s-line"></i>
-                    </button>
+                    {currentPage > 1 ? (
+                        <Link
+                            href={createPageUrl(currentPage - 1)}
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            className="page-link"
+                            rel="prev"
+                            aria-label="Önceki sayfa"
+                        >
+                            <i className="ri-arrow-left-s-line"></i>
+                        </Link>
+                    ) : (
+                        <span className="page-link" aria-hidden="true">
+                            <i className="ri-arrow-left-s-line"></i>
+                        </span>
+                    )}
                 </li>
                 {getPageNumbers().map((page, index) => {
                     if (page === '...') {
@@ -85,23 +96,33 @@ export default function Pagination({ currentPage: propCurrentPage, totalPages, t
                             key={page}
                             className={`page-item ${currentPage === page ? 'active' : ''}`}
                         >
-                            <button
-                                onClick={() => handlePageClick(page as number)}
+                            <Link
+                                href={createPageUrl(page as number)}
+                                onClick={() => setCurrentPage(page as number)}
                                 className="page-link"
+                                aria-current={currentPage === page ? 'page' : undefined}
                             >
                                 {page}
-                            </button>
+                            </Link>
                         </li>
                     );
                 })}
                 <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                    <button
-                        onClick={() => currentPage < totalPages && handlePageClick(currentPage + 1)}
-                        className="page-link"
-                        disabled={currentPage === totalPages}
-                    >
-                        <i className="ri-arrow-right-s-line"></i>
-                    </button>
+                    {currentPage < totalPages ? (
+                        <Link
+                            href={createPageUrl(currentPage + 1)}
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            className="page-link"
+                            rel="next"
+                            aria-label="Sonraki sayfa"
+                        >
+                            <i className="ri-arrow-right-s-line"></i>
+                        </Link>
+                    ) : (
+                        <span className="page-link" aria-hidden="true">
+                            <i className="ri-arrow-right-s-line"></i>
+                        </span>
+                    )}
                 </li>
             </ul>
         </nav>

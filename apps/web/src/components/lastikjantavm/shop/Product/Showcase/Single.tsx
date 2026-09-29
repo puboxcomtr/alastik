@@ -124,9 +124,10 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'lastikja
                                         <div className="col-sm-9 col-md-8 col-xl-7 d-flex flex-column">
                                             <div className="text-center">
                                                 {/* Başlık: özel tanım > ürün adı > vitrin başlığı */}
-                                                <h1 style={{ color: '#FFF' }}>
+                                                {/* h2 + .h1 sınıfı: aynı görünüm, ama ana sayfada her vitrin kartı H1 olmasın */}
+                                                <h2 className="h1" style={{ color: '#FFF' }}>
                                                     {slideConfig[getProductStockCode(product)]?.title || product.diaData?.aciklama || showcase.title || ''}
-                                                </h1>
+                                                </h2>
                                             </div>
                                             {slideConfig[getProductStockCode(product)]?.description && (
                                                 <h5 className="showcase__season text-center mx-auto fw-normal">

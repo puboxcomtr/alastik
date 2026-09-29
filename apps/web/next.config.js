@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Build çıktısı klasörü. Canlıda build'i çalışan siteye dokunmadan ayrı klasöre almak için
+  // NEXT_DIST_DIR=.next-yeni ile build alınır, sonra klasör .next ile yer değiştirir.
+  // Değişken verilmezse varsayılan .next (mevcut davranış).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   async rewrites() {
     // Medya yolları API'de duruyor; next/image iyileştiricisi dosyayı KENDİ sunucusundan
     // istediği için bu yollar iletilmezse görseller kırık görünür.

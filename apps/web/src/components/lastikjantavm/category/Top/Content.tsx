@@ -85,7 +85,8 @@ export default function CategoryTop({
                 <Grid container className="border-bottom pb-4 mb-4">
                     
                     <Grid size={6} className="d-flex align-items-center">
-                        <Typography component="h3" variant="h6" className="fw-bold mb-0">
+                        {/* Sayfanın tek H1'i: kategori / etiket / marka adı (görünüm h6 olarak kalır) */}
+                        <Typography component="h1" variant="h6" className="fw-bold mb-0">
                             {categoryName}
                         </Typography>
                     </Grid>
