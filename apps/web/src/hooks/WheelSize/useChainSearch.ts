@@ -94,7 +94,8 @@ export function useChainSearch() {
             params.set('yanak', selectedYukseklik);
             params.set('jant', selectedCap);
 
-            const url = `/kategori/kar-paleti-ve-zinciri?${params.toString()}`;
+            // kar-zinciri üst kategoridir (kar paleti + kar çorabı alt kategorileri); eski adres 404 veriyordu
+            const url = `/kategori/kar-zinciri?${params.toString()}`;
             window.location.href = url;
         },
         [selectedGenislik, selectedYukseklik, selectedCap]

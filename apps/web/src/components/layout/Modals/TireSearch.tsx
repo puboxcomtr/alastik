@@ -267,7 +267,8 @@ export default function TireSearchModal({
             params.set('yanak', aspectRatio.toString());
             params.set('jant', diameter.toString());
 
-            const chainUrl = `/kategori/kar-paleti-ve-zinciri?${params.toString()}`;
+            // kar-zinciri üst kategoridir (kar paleti + kar çorabı alt kategorileri); eski adres 404 veriyordu
+            const chainUrl = `/kategori/kar-zinciri?${params.toString()}`;
 
             const vehicleData = {
                 make: searchState.make,

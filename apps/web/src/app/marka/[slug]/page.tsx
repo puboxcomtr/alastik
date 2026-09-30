@@ -11,7 +11,8 @@ import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
-import { canonicalMeta } from '@/src/lib/canonical';
+import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
+import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
 
 
 /* Components - ALastik */
@@ -142,8 +143,11 @@ export default async function BrandPage({ params, searchParams }: Props) {
     });
     const displayProductCount = productsData?.pagination?.totalProducts ?? brand.productCount;
 
+    const breadcrumbLd = breadcrumbJsonLd(await getSiteOrigin(), [{ name: brand.name }]);
+
     return (
         <>
+            <JsonLd data={breadcrumbLd} />
             <section id="breadcumb">
                 <Container>
                     <div className="row-fluid">

@@ -9,7 +9,8 @@ import { headers } from 'next/headers';
 /* Services */
 import tagService from '@/src/services/tagService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
-import { canonicalMeta } from '@/src/lib/canonical';
+import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
+import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
 import { siteTitle } from '@/src/lib/siteMeta';
 
 /* Components */
@@ -128,8 +129,11 @@ export default async function TagPage({ params, searchParams }: Props) {
         .map(part => slugTokenLabels[part] || part.toLocaleUpperCase('tr-TR'))
         .join(' ');
 
+    const breadcrumbLd = breadcrumbJsonLd(await getSiteOrigin(), [{ name: tag.title }]);
+
     return (
         <>
+            <JsonLd data={breadcrumbLd} />
             <section id="breadcumb">
                 <Container>
                     <div className="row-fluid">

@@ -12,7 +12,8 @@ import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings, getServicePoints } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
-import { canonicalMeta } from '@/src/lib/canonical';
+import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
+import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
 
 /* Components - ALastik */
 import AlastikSidebar from "@components/alastik/category/Sidebar/Content";
@@ -197,8 +198,16 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         notFound();
     }
 
+    // Görünen breadcrumb ile aynı adımlar
+    const breadcrumbLd = breadcrumbJsonLd(await getSiteOrigin(), [
+        ...(parentCategory ? [{ name: parentCategory.name, path: `/kategori/${parentCategory.slug}` }] : []),
+        { name: displayName, path: `/kategori/${slug}` },
+        ...(sizeInfo ? [{ name: sizeInfo.formatted }] : [])
+    ]);
+
     return (
         <>
+            <JsonLd data={breadcrumbLd} />
             <section id="breadcumb">
                 <Container>
                     <div className="row-fluid">

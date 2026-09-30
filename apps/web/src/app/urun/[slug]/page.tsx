@@ -31,6 +31,7 @@ import { getSeo } from '@src/services/seoService';
 import { applyTemplate } from '@src/utils/seoTemplate';
 import { getProductReviews } from '@src/services/reviewService';
 import { canonicalMeta } from '@/src/lib/canonical';
+import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
 
 export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
@@ -57,6 +58,8 @@ export async function generateMetadata(
     const title = product.customData?.seoTitle
         ? product.customData.seoTitle
         : (applyTemplate(tpl?.titleTemplate, vars) || urunAdi);
+    // Paylaşım önizlemesi (WhatsApp/Facebook): ürün görseli
+    const ogImage = product.diaData?.m_resimler?.[0]?.aws_url || product.customData?.featuredImage || '';
 
     // Custom seoDescription varsa şablonu atla
     const description = product.customData?.seoDescription
@@ -69,6 +72,14 @@ export async function generateMetadata(
         keywords: product.customData?.seoKeywords?.join(', ')
             || applyTemplate(tpl?.keywordsTemplate, vars)
             || '',
+        openGraph: {
+            type: 'website',
+            locale: 'tr_TR',
+            title,
+            description,
+            url: `/urun/${slug}`,
+            ...(ogImage ? { images: [{ url: ogImage, alt: urunAdi }] } : {})
+        },
         // Parametreler (utm vb.) ne olursa olsun canonical temiz ürün adresidir
         ...(await canonicalMeta(`/urun/${slug}`))
     };
@@ -174,6 +185,10 @@ export default async function ProductDetailPage(
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
                 />
             )}
+            <JsonLd data={breadcrumbJsonLd(siteDomain, [
+                ...(mainCategory && categorySlug ? [{ name: mainCategory, path: `/kategori/${categorySlug}` }] : []),
+                { name: product.diaData?.aciklama || '' }
+            ])} />
             <Grid className="row-fluid" container>
                 <Grid size={12}>
                     <ProductBreadcrumb

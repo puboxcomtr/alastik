@@ -6,7 +6,8 @@ import type { Metadata } from 'next';
 import { getSeo } from '@src/services/seoService';
 import AlastikHomePage from '@src/views/alastik/HomePage';
 import LastikJantAvmHomePage from '@src/views/lastikjantavm/HomePage';
-import { canonicalMeta } from '@/src/lib/canonical';
+import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
+import { JsonLd, siteJsonLd } from '@/src/lib/structuredData';
 
 export async function generateMetadata(): Promise<Metadata> {
   // B2B (demo alan adı) arama motorlarına kapalıdır
@@ -27,10 +28,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function Home() {
+export default async function Home() {
   const site = headers().get('x-site') || 'alastik';
-  if (site === 'lastikjantavm') {
-    return <LastikJantAvmHomePage />;
-  }
-  return <AlastikHomePage />;
+  const siteLd = siteJsonLd(site, await getSiteOrigin());
+  return (
+    <>
+      {siteLd.length > 0 && <JsonLd data={siteLd} />}
+      {site === 'lastikjantavm' ? <LastikJantAvmHomePage /> : <AlastikHomePage />}
+    </>
+  );
 }
