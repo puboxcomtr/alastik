@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { API_ENDPOINTS, fetchAPI } from '@/src/config/api';
 import PageDetail from '@/src/components/page/PageDetail';
+import { canonicalMeta } from '@/src/lib/canonical';
 
 async function getPageBySlug(slug: string) {
     const result = await fetchAPI(API_ENDPOINTS.pages.detail(slug));
@@ -23,6 +24,7 @@ export async function generateMetadata(
         title: page.seo?.metaTitle || page.title,
         description: page.seo?.metaDescription || page.excerpt || '',
         keywords: page.seo?.metaKeywords?.join(', ') || '',
+        ...(await canonicalMeta(`/sayfa/${slug}`)),
     };
 }
 

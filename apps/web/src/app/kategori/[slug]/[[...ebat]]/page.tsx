@@ -12,6 +12,7 @@ import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings, getServicePoints } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
+import { canonicalMeta } from '@/src/lib/canonical';
 
 /* Components - ALastik */
 import AlastikSidebar from "@components/alastik/category/Sidebar/Content";
@@ -52,11 +53,18 @@ interface Props {
     searchParams: Promise<{ [key: string]: string | undefined }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+// Ebat slug'ı "205-55-r16" biçiminde olmalı; bozuk adres parseTireSize'ı çökertiyordu (500)
+function isValidSizeSlug(ebat?: string[]): boolean {
+    if (!ebat || ebat.length === 0) return true;
+    if (ebat.length > 1) return false; // /kategori/x/205-55-r16/fazla/parca → sonsuz kopya adres
+    return /^[0-9.]+-[0-9.]+-r?[0-9.]+[a-z]?$/i.test(ebat[0]);
+}
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { slug, ebat } = await params;
     const category = await getCategory(slug);
 
-    if (!category) {
+    if (!category || !isValidSizeSlug(ebat)) {
         return {
             title: 'Kategori Bulunamadı',
             description: 'Aradığınız kategori bulunamadı.'
@@ -65,11 +73,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const seo = await getSeo();
     const tpl = seo?.category;
+    const seoMeta = await canonicalMeta(
+        `/kategori/${slug}${ebat && ebat.length ? `/${ebat[0]}` : ''}`,
+        await searchParams
+    );
 
     if (!ebat || ebat.length === 0) {
         const vars = {
             'kategori-adi': category.name,
-            'kategori-aciklamasi': category.description || `${category.name} kategorisinde en uygun lastik modellerini keşfedin.`
+            // Çok kısa açıklamalar ("Aksesuar" gibi) meta açıklama olamaz; anlamlı bir cümleye düşülür
+            'kategori-aciklamasi': (category.description && category.description.length >= 50)
+                ? category.description
+                : `${category.name} modelleri ve güncel fiyatları. ${category.name} kategorisindeki ürünleri inceleyin, size uygun olanı seçin.`
         };
         const title = category.seoTitle
             ? category.seoTitle
@@ -77,13 +92,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         // Meta açıklama önce SEO alanından, yoksa sayfadaki tanıtım metninden alınır
         const description = category.seoDescription
             ? category.seoDescription
-            : (category.description
-                ? category.description
-                : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['kategori-aciklamasi']));
+            : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['kategori-aciklamasi']);
         return {
             title,
             description,
-            keywords: applyTemplate(tpl?.keywordsTemplate, vars) || category.seoKeywords?.join(', ')
+            keywords: applyTemplate(tpl?.keywordsTemplate, vars) || category.seoKeywords?.join(', '),
+            ...seoMeta
         };
     }
 
@@ -97,7 +111,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title: applyTemplate(tpl?.titleTemplate, varsEbat) || `${category.name} ${formatted}`,
         description: applyTemplate(tpl?.descriptionTemplate, varsEbat) || varsEbat['kategori-aciklamasi'],
-        keywords: applyTemplate(tpl?.keywordsTemplate, varsEbat) || [...(category.seoKeywords || []), formatted, 'lastik'].join(', ')
+        keywords: applyTemplate(tpl?.keywordsTemplate, varsEbat) || [...(category.seoKeywords || []), formatted, 'lastik'].join(', '),
+        ...seoMeta
     };
 }
 
@@ -115,6 +130,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
     const { slug, ebat } = await params;
     const filters = await searchParams;
+
+    if (!isValidSizeSlug(ebat)) {
+        notFound();
+    }
 
     const hasSize = ebat && ebat.length > 0;
     const category = hasSize
@@ -170,6 +189,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     });
 
     const displayProductCount = productsData?.pagination?.totalProducts ?? category.activeProductCount;
+
+    // Ürünü olmayan ebat adresi (ör. /kategori/lastik/999-99-r99) boş sayfa yerine 404 döner.
+    // Yalnızca ebat dışında filtre yokken; filtreli boş sonuçlar kullanıcıya boş liste olarak gösterilir.
+    const hasExtraFilters = Object.keys(filters).some(k => k !== 'page' && filters[k]);
+    if (hasSize && !hasExtraFilters && productsData?.pagination?.totalProducts === 0) {
+        notFound();
+    }
 
     return (
         <>

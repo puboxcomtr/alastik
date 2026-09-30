@@ -65,6 +65,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: site.metaTitle,
     description: site.metaDescription,
     icons: { icon: site.favicon },
+    // Göreli canonical / og:image adresleri sitenin ana domain'iyle tamamlanır
+    metadataBase: new URL(`https://${site.domains[0]}`),
   };
 }
 

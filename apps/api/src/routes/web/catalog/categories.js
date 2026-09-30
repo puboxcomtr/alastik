@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const WebCategory = require('../../../models/web/catalog/WebCategory');
+const { DEFAULT_SITE } = require('../../../config/sites');
 
 // İsme göre kategori arama (Breadcrumb)
 router.get('/search/by-name', async (req, res) => {
@@ -58,7 +59,9 @@ router.get('/slug/:slug/size/:size', async (req, res) => {
         }
         const sc = category.siteContent?.[req.site] || {};
         category.seoTitle = sc.seoTitle || category.seoTitle;
-        category.seoDescription = sc.seoDescription || category.seoDescription;
+        // Ortak (kök) SEO açıklaması varsayılan site (alastik) için yazılmıştır ve "alastik.com'da" gibi ifadeler içerir;
+        // diğer sitelerde kendi açıklaması yoksa boş bırakılır, web tarafı sitenin SEO şablonuna düşer
+        category.seoDescription = sc.seoDescription || (req.site === DEFAULT_SITE ? category.seoDescription : '');
         category.siteContentHtml = sc.content || '';
         category.description = sc.description ?? category.description;
         category.sliderId = sc.sliderId !== undefined ? sc.sliderId : category.sliderId;
@@ -99,7 +102,9 @@ router.get('/slug/:slug', async (req, res) => {
         }
         const sc = category.siteContent?.[req.site] || {};
         category.seoTitle = sc.seoTitle || category.seoTitle;
-        category.seoDescription = sc.seoDescription || category.seoDescription;
+        // Ortak (kök) SEO açıklaması varsayılan site (alastik) için yazılmıştır ve "alastik.com'da" gibi ifadeler içerir;
+        // diğer sitelerde kendi açıklaması yoksa boş bırakılır, web tarafı sitenin SEO şablonuna düşer
+        category.seoDescription = sc.seoDescription || (req.site === DEFAULT_SITE ? category.seoDescription : '');
         category.siteContentHtml = sc.content || '';
         category.description = sc.description ?? category.description;
         category.sliderId = sc.sliderId !== undefined ? sc.sliderId : category.sliderId;

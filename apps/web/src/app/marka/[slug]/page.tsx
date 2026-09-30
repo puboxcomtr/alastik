@@ -11,6 +11,7 @@ import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
 import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
+import { canonicalMeta } from '@/src/lib/canonical';
 
 
 /* Components - ALastik */
@@ -37,14 +38,20 @@ import { ViewModeProvider } from '@/src/context/ViewModeContext';
 /* Product Mode */
 import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
 import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
+// Next 15 dinamik parametreyi URL-kodlu verir ("ar%C4%B1zal%C4%B1-lastik"); servis tekrar kodladığı için
+// Türkçe karakterli marka adresleri 404 veriyordu. API'ye çözülmüş slug gönderilir.
+function decodeSlug(slug: string): string {
+    try { return decodeURIComponent(slug); } catch { return slug; }
+}
+
 interface Props {
     params: Promise<{ slug: string }>;
     searchParams: Promise<{ [key: string]: string | undefined }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { slug } = await params;
-    const result = await getBrandDetail(slug);
+    const result = await getBrandDetail(decodeSlug(slug));
     if (!result.success || !result.data) {
         return {
             title: 'Marka Bulunamadı',
@@ -73,7 +80,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title,
         description,
-        keywords: applyTemplate(tpl?.keywordsTemplate, vars) || brand.seoKeywords?.join(', ')
+        keywords: applyTemplate(tpl?.keywordsTemplate, vars) || brand.seoKeywords?.join(', '),
+        // ?durum=2-el dahil filtre/sıralama adresleri noindex,follow
+        ...(await canonicalMeta(`/marka/${slug}`, await searchParams))
     };
 }
 
@@ -89,7 +98,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
     const { slug } = await params;
     const filters = await searchParams;
 
-    const result = await getBrandDetail(slug);
+    const result = await getBrandDetail(decodeSlug(slug));
 
     if (!result.success || !result.data) {
         notFound();

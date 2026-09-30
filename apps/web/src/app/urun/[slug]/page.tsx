@@ -30,6 +30,7 @@ import { getDefinition } from '@src/services/definitionService';
 import { getSeo } from '@src/services/seoService';
 import { applyTemplate } from '@src/utils/seoTemplate';
 import { getProductReviews } from '@src/services/reviewService';
+import { canonicalMeta } from '@/src/lib/canonical';
 
 export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
@@ -67,7 +68,9 @@ export async function generateMetadata(
         description,
         keywords: product.customData?.seoKeywords?.join(', ')
             || applyTemplate(tpl?.keywordsTemplate, vars)
-            || ''
+            || '',
+        // Parametreler (utm vb.) ne olursa olsun canonical temiz ürün adresidir
+        ...(await canonicalMeta(`/urun/${slug}`))
     };
 }
 export default async function ProductDetailPage(

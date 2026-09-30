@@ -2,7 +2,6 @@
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
-import { CONDITION_QUERY_PARAM, SECOND_HAND_CONDITION } from '@/src/config/productCondition';
 import SecondHandBanner from '@/src/components/category/SecondHandBanner';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -10,7 +9,7 @@ import { headers } from 'next/headers';
 /* Services */
 import tagService from '@/src/services/tagService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
-import { getOtherSeo } from '@/src/services/seoService';
+import { canonicalMeta } from '@/src/lib/canonical';
 import { siteTitle } from '@/src/lib/siteMeta';
 
 /* Components */
@@ -48,28 +47,17 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     const filters = await searchParams;
     const tag = await tagService.getTagBySlug(slug);
 
-    // ?durum=ikinci-el görünümü sıfır lastik sayfasının kopyasıdır; arama motorları indekslemesin
-    const robots: Metadata['robots'] | undefined = filters[CONDITION_QUERY_PARAM] === SECOND_HAND_CONDITION
-        ? { index: false, follow: true }
-        : undefined;
-
+    // Etiket yoksa sayfa 404 döner (notFound). Eski kod burada null tag'in alanlarını okuyup 500 veriyordu.
     if (!tag) {
-        const base = await getOtherSeo('seoTag');
-        const siteName = base.title?.split('|').pop()?.trim() || '';
-
-        return {
-            title: tag.seoTitle
-                ? tag.seoTitle
-                : (siteName ? `${tag.title} | ${siteName}` : tag.title),
-            description: tag.seoDescription || `${tag.title} - En uygun lastik fiyatları ve modelleri.`,
-            robots,
-        };
+        return { title: 'Etiket Bulunamadı' };
     }
 
+    // canonicalMeta: ?durum=ikinci-el dahil her filtre/sıralama parametresi noindex,follow olur
+    // (ikinci el görünümü sıfır lastik sayfasının kopyasıdır)
     return {
         title: tag.seoTitle || siteTitle(tag.title),
         description: tag.seoDescription || `${tag.title} - En uygun lastik fiyatları ve modelleri.`,
-        robots,
+        ...(await canonicalMeta(`/etiket/${slug}`, filters)),
     };
 }
 

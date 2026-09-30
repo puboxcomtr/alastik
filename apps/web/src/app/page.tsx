@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import { getSeo } from '@src/services/seoService';
 import AlastikHomePage from '@src/views/alastik/HomePage';
 import LastikJantAvmHomePage from '@src/views/lastikjantavm/HomePage';
+import { canonicalMeta } from '@/src/lib/canonical';
 
 export async function generateMetadata(): Promise<Metadata> {
   // B2B (demo alan adı) arama motorlarına kapalıdır
@@ -14,13 +15,15 @@ export async function generateMetadata(): Promise<Metadata> {
   }
   const seo = await getSeo();
   const homepage = seo?.homepage;
+  const seoMeta = await canonicalMeta('/');
   if (!homepage?.title) {
-    return {};
+    return seoMeta;
   }
   return {
     title: homepage.title,
     description: homepage.description || undefined,
     keywords: homepage.keywords || undefined,
+    ...seoMeta,
   };
 }
 

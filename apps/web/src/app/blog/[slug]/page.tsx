@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { API_ENDPOINTS, fetchAPI } from '@/src/config/api';
 import BlogDetail from '@/src/components/blog/BlogDetail';
+import { canonicalMeta } from '@/src/lib/canonical';
 
 async function getBlogBySlug(slug: string) {
     const result = await fetchAPI(API_ENDPOINTS.blogs.detail(slug));
@@ -23,6 +24,7 @@ export async function generateMetadata(
         title: blog.seo?.metaTitle || blog.title,
         description: blog.seo?.metaDescription || blog.excerpt || '',
         keywords: blog.seo?.metaKeywords?.join(', ') || '',
+        ...(await canonicalMeta(`/blog/${slug}`)),
     };
 }
 
