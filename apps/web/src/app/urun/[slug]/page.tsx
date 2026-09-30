@@ -32,6 +32,9 @@ import { applyTemplate } from '@src/utils/seoTemplate';
 import { getProductReviews } from '@src/services/reviewService';
 import { canonicalMeta } from '@/src/lib/canonical';
 import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
+import Link from 'next/link';
+import { BRANCHES } from '@/src/data/lja/subeler';
+import { CATEGORY_NAME_TO_GROUP, getServiceGroup } from '@/src/data/lja/hizmetGruplari';
 
 export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
@@ -146,6 +149,10 @@ export default async function ProductDetailPage(
     ]);
 
     const mainCategory = product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1;
+    // LJA hizmet ürünleri: hizmetin verildiği şube sayfalarına bağlantı (ör. mantar yama → Şişli/Maslak lastik tamiri)
+    const serviceGroup = site === 'lastikjantavm'
+        ? getServiceGroup(CATEGORY_NAME_TO_GROUP[product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || ''] || '')
+        : undefined;
     const categorySlug = await getCategorySlugByName(mainCategory);
 
     // Google Merchant/Shopping: ürün sayfasına yapısal fiyat verisi (JSON-LD).
@@ -228,6 +235,21 @@ export default async function ProductDetailPage(
                         ? { genislik: String(genislik), yanak: String(yanak), cap: String(cap) }
                         : null}
                 />
+            )}
+
+            {serviceGroup && (
+                <div className="bg-white rounded-3 p-3 p-md-4 my-3">
+                    <h2 className="fs-6 fw-bold mb-2">Bu hizmeti şubelerimizde alabilirsiniz</h2>
+                    <ul className="mb-0">
+                        {BRANCHES.map(b => (
+                            <li key={b.slug}>
+                                <Link href={`/subeler/${b.slug}/${serviceGroup.slug}`} className="text-black fw-semibold">
+                                    {b.shortName} {serviceGroup.name}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             )}
 
             <Grid className="row-fluid" container>
