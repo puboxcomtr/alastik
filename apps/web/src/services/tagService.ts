@@ -1,5 +1,6 @@
 // apps/web/src/services/tagService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
+import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 
 export interface WebTag {
     _id: string;
@@ -55,20 +56,22 @@ async function getTagBySlug(slug: string): Promise<WebTag | null> {
             next: {
                 revalidate: 300,
                 tags: [`tag-${slug}`]
-            }
+            },
+            signal: AbortSignal.timeout(PAGE_FETCH_TIMEOUT)
         });
 
         if (response.status === 404) {
             return null;
         }
 
+        throwIfUnavailable(response, 'getTagBySlug');
         if (!response.ok) return null;
 
         const result = await response.json();
         return result.success ? result.data : null;
     } catch (error) {
         console.error('[tagService] getTagBySlug error:', error);
-        return null;
+        rethrowUnavailable(error, 'getTagBySlug');
     }
 }
 async function getTagProducts(

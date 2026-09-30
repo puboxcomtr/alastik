@@ -1,5 +1,6 @@
 // apps/web/src/services/brandService.ts
 import { API_ENDPOINTS, getImageUrl, getServerSiteHeaders } from '@/src/config/api';
+import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 import type {
     Brand,
     BrandResponse,
@@ -69,9 +70,11 @@ export async function getBrandDetail(seoUrl: string): Promise<BrandDetailRespons
     try {
         const response = await fetch(API_ENDPOINTS.brands.detail(seoUrl), {
             next: { revalidate: 3600 },
-            headers: { ...(await getServerSiteHeaders()) }
+            headers: { ...(await getServerSiteHeaders()) },
+            signal: AbortSignal.timeout(PAGE_FETCH_TIMEOUT)
         });
 
+        throwIfUnavailable(response, 'getBrandDetail');
         if (!response.ok) {
             return { success: false, data: null };
         }
@@ -79,7 +82,7 @@ export async function getBrandDetail(seoUrl: string): Promise<BrandDetailRespons
         return await response.json();
     } catch (error) {
         console.error('[brandService] getBrandDetail error:', error);
-        return { success: false, data: null };
+        rethrowUnavailable(error, 'getBrandDetail');
     }
 }
 

@@ -14,9 +14,7 @@ export default function BrandBreadcrumb({ brandName, brandSlug }: BreadcrumbProp
                 <li className="breadcrumb-item">
                     <Link href="/">Anasayfa</Link>
                 </li>
-                <li className="breadcrumb-item">
-                    <Link href="/markalar">Markalar</Link>
-                </li>
+                {/* "Markalar" adımı kaldırıldı: /markalar sayfası yok (LJA'da ana sayfaya 301, alastik'te 404) */}
                 <li className="breadcrumb-item active" aria-current="page">
                     {brandName}
                 </li>

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { Category, ParentCategory } from '@src/types/category';
+import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 
 /**
  * Slug ile kategori getir
@@ -26,16 +27,18 @@ export async function getCategory(slug: string): Promise<Category | null> {
         const site = headers().get('x-site') || 'alastik';
         const response = await fetch(API_ENDPOINTS.categories.bySlug(slug), {
             cache: 'no-store',
-            headers: { 'X-Site': site }
+            headers: { 'X-Site': site },
+            signal: AbortSignal.timeout(PAGE_FETCH_TIMEOUT)
         });
 
+        throwIfUnavailable(response, 'getCategory');
         if (!response.ok) return null;
 
         const data = await response.json();
         return data.success ? data.data : null;
     } catch (error) {
         console.error('[categoryService] getCategory error:', error);
-        return null;
+        rethrowUnavailable(error, 'getCategory');
     }
 }
 
@@ -49,16 +52,18 @@ export async function getCategoryWithSize(slug: string, ebatSlug: string): Promi
 
     try {
         const response = await fetch(API_ENDPOINTS.categories.bySlugWithSize(slug, ebatSlug), {
-            cache: 'no-store'
+            cache: 'no-store',
+            signal: AbortSignal.timeout(PAGE_FETCH_TIMEOUT)
         });
 
+        throwIfUnavailable(response, 'getCategoryWithSize');
         if (!response.ok) return null;
 
         const data = await response.json();
         return data.success ? data.data : null;
     } catch (error) {
         console.error('[categoryService] getCategoryWithSize error:', error);
-        return null;
+        rethrowUnavailable(error, 'getCategoryWithSize');
     }
 }
 

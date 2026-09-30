@@ -1,6 +1,7 @@
 // apps/web/src/services/productService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import type { ProductFilterParams, ProductFilterResponse } from '@src/types/products';
+import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 
 export async function filterProducts(params: ProductFilterParams): Promise<ProductFilterResponse | null> {
     try {
@@ -70,16 +71,19 @@ export async function getProductBySlug(slug: string) {
         const res = await fetch(API_ENDPOINTS.products.detail(slug), {
             cache: 'no-store',
             // SSR'da aktif site API'ye iletilir; aksi halde yalnızca LJAVM'de yayınlı ürünler 404 olur
-            headers: await getServerSiteHeaders()
+            headers: await getServerSiteHeaders(),
+            signal: AbortSignal.timeout(PAGE_FETCH_TIMEOUT)
         });
 
+        // API hatası 404 değil hata sayfası (500) olur — Google ürünü "yok" sanmasın
+        throwIfUnavailable(res, 'getProductBySlug');
         if (!res.ok) return null;
 
         const result = await res.json();
         return result.success ? result.data : null;
     } catch (error) {
         console.error('[productService] getProductBySlug error:', error);
-        return null;
+        rethrowUnavailable(error, 'getProductBySlug');
     }
 }
 
