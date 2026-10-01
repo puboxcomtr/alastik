@@ -130,6 +130,17 @@ export default function ActionButtons({ onMenuOpen, onSearchToggle }: ActionButt
                 </Menu>
             )}
 
+            {/* Kendi lastiğiyle montaj satın alma */}
+            <Tooltip title="Montaj Satın Al">
+                <Link
+                    href={ROUTES.MONTAGE_BUY}
+                    className="btn btn-icon btn-lg fs-lg btn-outline-secondary border-0 rounded-circle animate-shake d-none d-md-inline-flex flex-column gap-1"
+                >
+                    <i className="ri-tools-line animate-target"></i>
+                    <span className="text-muted fs-xs fw-normal text-nowrap">Montaj Satın Al</span>
+                </Link>
+            </Tooltip>
+
             <Tooltip title={isLoggedIn ? t('my_garage') : t('login_to_garage')}>
                 <Link
                     href={isLoggedIn ? ROUTES.ACCOUNT_VEHICLES : ROUTES.LOGIN}

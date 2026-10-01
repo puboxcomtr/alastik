@@ -24,10 +24,15 @@ export async function GET() {
             ...BRANCHES.flatMap(b => SERVICE_GROUPS.map(g => ({ path: `/subeler/${b.slug}/${g.slug}`, priority: '0.7', changefreq: 'weekly' })))
         ]
         : [];
+    // alastik: kendi lastiğiyle montaj satın alma sayfası
+    const alastikRoutes = getSiteSlug() === 'alastik'
+        ? [{ path: '/montaj-satin-al', priority: '0.7', changefreq: 'weekly' }]
+        : [];
 
     const urls = [
         ...STATIC_ROUTES.map(r => ({ loc: `${base}${r.path}`, priority: r.priority, changefreq: r.changefreq })),
         ...branchRoutes.map(r => ({ loc: `${base}${r.path}`, priority: r.priority, changefreq: r.changefreq })),
+        ...alastikRoutes.map(r => ({ loc: `${base}${r.path}`, priority: r.priority, changefreq: r.changefreq })),
         ...pages.map(p => ({
             loc: `${base}/sayfa/${p.slug}`,
             lastmod: p.updatedAt,

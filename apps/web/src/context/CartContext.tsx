@@ -40,7 +40,7 @@ interface CartContextType {
     items: CartItem[];
     totals: CartTotals;
     loading: boolean;
-    addToCart: (productKey: string, quantity?: number, successMessage?: string, montagePointId?: string) => Promise<boolean>;
+    addToCart: (productKey: string, quantity?: number, successMessage?: string, montagePointId?: string, ownTire?: boolean) => Promise<boolean>;
     updateQuantity: (productKey: string, quantity: number) => Promise<void>;
     removeItem: (productKey: string, successMessage?: string) => Promise<void>;
     clearCart: (silent?: boolean) => Promise<void>;
@@ -77,9 +77,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         refreshCart();
     }, [refreshCart]);
 
-    const addToCart = async (productKey: string, quantity: number = 1, successMessage: string = 'Ürün sepetinize başarıyla eklendi.', montagePointId?: string): Promise<boolean> => {
+    const addToCart = async (productKey: string, quantity: number = 1, successMessage: string = 'Ürün sepetinize başarıyla eklendi.', montagePointId?: string, ownTire?: boolean): Promise<boolean> => {
         try {
-            const result = await cartService.addToCart(productKey, quantity, montagePointId);
+            const result = await cartService.addToCart(productKey, quantity, montagePointId, ownTire);
             if (result.success) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);

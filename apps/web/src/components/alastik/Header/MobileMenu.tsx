@@ -41,6 +41,11 @@ export default function MobileMenu({ show, onClose }: Props) {
                 <MainMenu handleClose={onClose} />
             </Offcanvas.Body>
             <div className="border-top px-0 py-3 mt-3 d-md-none">
+                {/* Kendi lastiğiyle montaj satın alma */}
+                <Link href={ROUTES.MONTAGE_BUY} className="nav-link justify-content-center fw-semibold mb-2" onClick={onClose}>
+                    <i className="ri-tools-line opacity-60 me-2" />
+                    Montaj Satın Al
+                </Link>
                 <div className="nav nav-justified w-100">
                     {isLoggedIn ? (
                         <div className="nav-link border-end d-flex flex-column align-items-center" role="button">

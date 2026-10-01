@@ -113,13 +113,16 @@ export const SELECT_CHEVRON: React.CSSProperties = {
 
 /** Hizmet satırı: ad | adet | fiyat | Seç / Kaldır.
  * Sepet kuralları: montaj adedi uygun çaptaki lastik adedini aşamaz (inç üründen otomatik okunur, daha azı alınabilir);
- * diğer hizmetler ancak sepette montaj varken seçilebilir. */
-export function ServiceRow({ service, montagePointId, onBeforeSelect }: { service: MontageService; montagePointId: string; onBeforeSelect?: () => Promise<void> }) {
+ * diğer hizmetler ancak sepette montaj varken seçilebilir.
+ * ownTire: "Montaj Satın Al" sayfası — müşterinin kendi lastiği; montajda lastik şartı ve lastik adedi tavanı yoktur. */
+export function ServiceRow({ service, montagePointId, onBeforeSelect, ownTire = false, defaultQuantity = 1 }: {
+    service: MontageService; montagePointId: string; onBeforeSelect?: () => Promise<void>; ownTire?: boolean; defaultQuantity?: number;
+}) {
     const { items, addToCart, updateQuantity, removeItem } = useCart();
     // Seçim noktaya özeldir: aynı hizmet başka noktadan seçildiyse burada "Seçildi" sayılmaz
     const cartItem = items.find(i => String(i.productKey) === String(service.productKey) && String(i.montagePointId || '') === String(montagePointId));
     const selected = Boolean(cartItem);
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(ownTire && service.isMontage ? defaultQuantity : 1);
     const [busy, setBusy] = useState(false);
 
     // Sepet kuralları: montaj adedi uygun çaptaki lastik adedini aşamaz; diğer hizmetler montaj gerektirir
@@ -130,11 +133,15 @@ export function ServiceRow({ service, montagePointId, onBeforeSelect }: { servic
             .reduce((sum, t) => sum + t.quantity, 0)
         : 0;
     // Tavan: lastikli sepette montaj adedi en fazla uygun çaptaki lastik adedi olabilir
-    const montageCap = Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0 ? matchingTireCount : null;
+    const montageCap = !ownTire && Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0 ? matchingTireCount : null;
     // Müşteri adet seçmediyse varsayılan lastik adedidir
     const [quantityTouched, setQuantityTouched] = useState(false);
     let ruleHint = '';
-    if (service.isMontage && tires.length === 0) {
+    if (ownTire && service.isMontage) {
+        // Kendi lastiğiyle montajda lastik şartı yok
+    } else if (ownTire && !montageInCart) {
+        ruleHint = 'Önce lastik montajı hizmeti seçin';
+    } else if (service.isMontage && tires.length === 0) {
         // Montaj yalnızca sıfır lastikle: jant, ikinci el vb. ürünlere montaj eklenemez
         ruleHint = 'Montaj yalnızca sıfır lastik ürünleriyle satın alınabilir';
     } else if (service.isMontage && matchingTireCount === 0) {
@@ -158,7 +165,7 @@ export function ServiceRow({ service, montagePointId, onBeforeSelect }: { servic
             } else {
                 // Başka noktadan seçilmiş hizmetler varsa önce onlar kaldırılır (hizmetler tek noktadan)
                 if (onBeforeSelect) await onBeforeSelect();
-                await addToCart(service.productKey, shownQuantity, service.isMontage ? 'Montaj hizmeti sepetinize eklendi' : 'Hizmet sepetinize eklendi', montagePointId);
+                await addToCart(service.productKey, shownQuantity, service.isMontage ? 'Montaj hizmeti sepetinize eklendi' : 'Hizmet sepetinize eklendi', montagePointId, ownTire && service.isMontage ? true : undefined);
             }
         } catch {
             toast.error(selected ? 'Hizmet sepetten çıkarılamadı' : 'Hizmet sepete eklenemedi');

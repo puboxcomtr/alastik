@@ -20,6 +20,8 @@ const cartItemSchema = new mongoose.Schema({
     itemType: { type: String, enum: ['tire', 'montage', 'service', 'product'], default: 'product' },
     rimSize: { type: Number, default: null },                       // lastik jant çapı (inç)
     rimRange: { type: { min: Number, max: Number }, default: null }, // montaj hizmetinin kapsadığı çap aralığı
+    // "Montaj Satın Al" sayfasından (müşterinin kendi lastiği) eklenen montaj: lastik şartı ve adet tavanı uygulanmaz
+    ownTire: { type: Boolean, default: false },
     addedAt: { type: Date, default: Date.now }
 }, { _id: false });
 

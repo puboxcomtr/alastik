@@ -26,6 +26,8 @@ export const ROUTES = {
     MONTAGE: '/montaj-noktalari',
     // Montaj noktası seçim sayfası (ALastik)
     MONTAGE_SELECT: '/montaj-noktasi-sec',
+    /** Kendi lastiğiyle montaj / balans / rot satın alma (yalnız alastik) */
+    MONTAGE_BUY: '/montaj-satin-al',
     /** @deprecated MONTAGE_SELECT kullanılmalı — eski ad geriye dönük uyumluluk için duruyor */
     ADDED_TO_CART: '/montaj-noktasi-sec',
     CHECKOUT: '/teslimat',

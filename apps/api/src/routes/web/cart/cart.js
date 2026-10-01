@@ -188,7 +188,7 @@ router.get('/:sessionId', async (req, res) => {
 // Sepete ürün ekle
 router.post('/add', async (req, res) => {
     try {
-        const { sessionId, productKey, quantity = 1, montagePointId = '' } = req.body;
+        const { sessionId, productKey, quantity = 1, montagePointId = '', ownTire = false } = req.body;
 
         if (!sessionId || !productKey) {
             return res.status(400).json({ success: false, message: 'sessionId ve productKey gerekli' });
@@ -239,16 +239,18 @@ router.post('/add', async (req, res) => {
 
         // Sepet kuralları (montaj: lastiğe uygun çap + lastik adedi; diğer hizmet: önce montaj)
         const described = CartRules.describeProduct(product);
+        // "Montaj Satın Al" sayfası (kendi lastiği): yalnızca bir montaj noktasından eklenen montaj kaleminde geçerlidir
+        const ownTireMontage = Boolean(ownTire) && Boolean(montagePointId) && described.itemType === 'montage';
         const plainItems = cart.items.map(i => i.toObject());
         const rulesOn = cartRulesActive(req);
         const rule = rulesOn
-            ? CartRules.validateAdd(plainItems.filter((_, idx) => idx !== existingIndex), { ...described, montagePointId, quantity })
+            ? CartRules.validateAdd(plainItems.filter((_, idx) => idx !== existingIndex), { ...described, montagePointId, quantity, ownTire: ownTireMontage })
             : { quantity };
         if (rule.error) {
             return res.status(400).json({ success: false, message: rule.error });
         }
         // Montaj + lastikli sepette adet tavanı: mevcut + eklenen adet lastik adedini aşamaz
-        const montageCap = rulesOn && described.itemType === 'montage' && CartRules.hasTires(plainItems)
+        const montageCap = rulesOn && described.itemType === 'montage' && !ownTireMontage && CartRules.hasTires(plainItems)
             ? CartRules.tireCountForRange(plainItems, described.rimRange)
             : null;
 
@@ -266,6 +268,7 @@ router.post('/add', async (req, res) => {
         if (existingIndex > -1) {
             cart.items[existingIndex].quantity = targetQty;
             Object.assign(cart.items[existingIndex], described);
+            if (described.itemType === 'montage') cart.items[existingIndex].ownTire = ownTireMontage;
             if (montagePointId) {
                 cart.items[existingIndex].montagePointId = montagePointId;
                 cart.items[existingIndex].montagePointLabel = montagePointLabel;
@@ -286,7 +289,8 @@ router.post('/add', async (req, res) => {
                 unitPrice,
                 originalPrice,
                 ...(await getPriceDisplay(product, req.site)),
-                ...described
+                ...described,
+                ownTire: ownTireMontage
             });
         }
 
@@ -379,7 +383,7 @@ router.delete('/remove', async (req, res) => {
         if (cartRulesActive(req) && removedTire && removedTire.rimSize !== null && removedTire.rimSize !== undefined) {
             const remaining = cart.items.map(i => i.toObject());
             const dropKeys = remaining
-                .filter(m => m.itemType === 'montage' && m.rimRange
+                .filter(m => m.itemType === 'montage' && !m.ownTire && m.rimRange
                     && removedTire.rimSize >= m.rimRange.min && removedTire.rimSize <= m.rimRange.max
                     && CartRules.tireCountForRange(remaining, m.rimRange) === 0)
                 .map(m => m.productKey);

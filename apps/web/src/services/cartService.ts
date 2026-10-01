@@ -39,13 +39,14 @@ export async function getCart() {
 }
 
 // Sepete ekle
-export async function addToCart(productKey: string, quantity: number = 1, montagePointId?: string) {
+// ownTire: "Montaj Satın Al" sayfası — müşterinin kendi lastiği için montaj (sepette lastik şartı aranmaz)
+export async function addToCart(productKey: string, quantity: number = 1, montagePointId?: string, ownTire?: boolean) {
     const sessionId = getCartSessionId();
 
     try {
         const res = await fetch(API_ENDPOINTS.cart.add(), {
             method: 'POST',
-            body: JSON.stringify({ sessionId, productKey, quantity, montagePointId }),
+            body: JSON.stringify({ sessionId, productKey, quantity, montagePointId, ...(ownTire ? { ownTire: true } : {}) }),
             headers: {
                 ...(await getServerSiteHeaders()),
                 ...getAuthHeader(),

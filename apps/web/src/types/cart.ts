@@ -23,6 +23,8 @@ export interface CartItem {
     itemType?: 'tire' | 'montage' | 'service' | 'product';
     rimSize?: number | null;
     rimRange?: { min: number; max: number } | null;
+    // "Montaj Satın Al" sayfasından (müşterinin kendi lastiği) eklenen montaj
+    ownTire?: boolean;
     productName: string;
     productImage: string | null;
     productSlug: string;

@@ -16,6 +16,8 @@ const TIRE_TYPE_CODE = 'LASTİK';
 // İkinci el kategorisindeki ürünler montaj kuralında lastik sayılmaz (montaj yalnızca sıfır lastikle)
 const SECOND_HAND_CATEGORY = 'İkinci El';
 const RIM_MAX_OPEN = 99;
+// Kendi lastiğiyle montaj ("Montaj Satın Al" sayfası): lastik şartı yok, adet en fazla bu kadar
+const OWN_TIRE_MAX_QUANTITY = 8;
 
 /** "13\" ile 16\" Arası …" → {min:13,max:16}; "19\" ve Üzeri …" → {min:19,max:99}; yoksa null */
 const parseRimRange = (name) => {
@@ -75,6 +77,8 @@ const validateAdd = (items, entry) => {
     if (otherPoint) return { error: 'Hizmetler tek bir montaj noktasından seçilebilir. Önce sepetteki hizmetleri kaldırın.' };
 
     if (entry.itemType === 'montage') {
+        // Kendi lastiğiyle montaj: sepette lastik aranmaz, adet müşterinin seçimidir
+        if (entry.ownTire) return { quantity: Math.max(1, Math.min(entry.quantity, OWN_TIRE_MAX_QUANTITY)) };
         // Montaj yalnızca sıfır lastikle: jant, ikinci el veya lastiksiz sepete montaj eklenemez
         if (!hasTires(items)) return { error: 'Montaj hizmeti yalnızca sıfır lastik ürünleriyle birlikte satın alınabilir.' };
         const count = tireCountForRange(items, entry.rimRange);
@@ -92,6 +96,9 @@ const validateAdd = (items, entry) => {
 
 /** Adet güncellemesini doğrular: lastikli sepette montaj adedi lastik adedini aşamaz */
 const validateQuantity = (items, item, newQuantity) => {
+    if (item.itemType === 'montage' && item.ownTire) {
+        return newQuantity > OWN_TIRE_MAX_QUANTITY ? { error: `Montaj adedi en fazla ${OWN_TIRE_MAX_QUANTITY} olabilir.` } : {};
+    }
     if (item.itemType === 'montage') {
         const cap = tireCountForRange(items, item.rimRange);
         if (cap > 0 && newQuantity > cap) {
@@ -111,15 +118,16 @@ const reconcile = (items) => {
     let changed = false;
     let result = items.map(i => ({ ...i }));
 
-    // Sıfır lastik yoksa montaj sepette kalamaz (jant / ikinci el / diğer ürünler montaj almaz)
-    if (hasMontage(result) && !hasTires(result)) {
-        result = result.filter(i => i.itemType !== 'montage');
+    // Sıfır lastik yoksa montaj sepette kalamaz (jant / ikinci el / diğer ürünler montaj almaz).
+    // Kendi lastiğiyle alınan montaj (ownTire) bu kuraldan muaftır.
+    if (!hasTires(result) && result.some(i => i.itemType === 'montage' && !i.ownTire)) {
+        result = result.filter(i => i.itemType !== 'montage' || i.ownTire);
         changed = true;
         notes.push('Sıfır lastik olmadığı için montaj hizmeti sepetten çıkarıldı');
     }
 
     for (const item of result) {
-        if (item.itemType !== 'montage') continue;
+        if (item.itemType !== 'montage' || item.ownTire) continue;
         const count = tireCountForRange(result, item.rimRange);
         // Lastik adedi azaldıysa montaj adedi tavana kırpılır; artış otomatik yapılmaz
         if (count > 0 && item.quantity > count) {
