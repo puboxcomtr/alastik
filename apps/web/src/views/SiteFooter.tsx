@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import AlastikFooter from '@src/views/alastik/Footer';
 import LastikJantAvmFooter from '@src/views/lastikjantavm/Footer';
+import SeoLinks from '@src/components/lastikjantavm/seo/SeoLinks';
 export default function SiteFooter() {
   const site = headers().get('x-site') || 'alastik';
 
@@ -12,7 +13,13 @@ export default function SiteFooter() {
   }
 
   if (site === 'lastikjantavm') {
-    return <LastikJantAvmFooter />;
+    // Footer üstü: kapalı (<details>) şube/hizmet ve araç bağlantıları — görünümü kalabalıklaştırmaz
+    return (
+      <>
+        <SeoLinks />
+        <LastikJantAvmFooter />
+      </>
+    );
   }
 
   return <AlastikFooter />;

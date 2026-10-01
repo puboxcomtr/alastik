@@ -144,6 +144,36 @@ router.get('/index', async (req, res) => {
     }
 });
 
+// GET /api/vehicles/by-size/:size — bu ebadı fabrika çıkışı kullanan modeller (ör. 205-55-r16)
+// Etiket (ebat) ve lastik ürün sayfalarındaki "Bu ebadı kullanan araçlar" bloğu için
+router.get('/by-size/:size', async (req, res) => {
+    try {
+        const m = /^(\d{3})-(\d{2})-r(\d{2}(?:\.\d)?)$/i.exec(String(req.params.size || ''));
+        if (!m) return res.status(400).json({ success: false, message: 'Ebat biçimi: 205-55-r16' });
+        const [, w, a, d] = m;
+        const data = await cached(`by-size:${req.site}:${w}-${a}-${d}`, async () => {
+            const variants = [`${w}/${a}R${d}`, `${w}/${a}ZR${d}`, `${w}/${a}R${d}C`];
+            const docs = await WebVehicleFitment.find(
+                { 'summary.oeTireSizes': { $in: variants } },
+                { makeSlug: 1, makeName: 1, modelSlug: 1, modelName: 1, 'summary.yearFrom': 1, 'summary.yearTo': 1 }
+            ).lean();
+            const indexable = new Set((await modelIndex(req.site)).filter(x => x.indexable).map(x => `${x.makeSlug}/${x.modelSlug}`));
+            return docs
+                .filter(x => !HIDDEN_MAKES.has(x.makeSlug))
+                .map(x => ({
+                    makeSlug: x.makeSlug, makeName: x.makeName, modelSlug: x.modelSlug, modelName: x.modelName,
+                    yearFrom: x.summary?.yearFrom, yearTo: x.summary?.yearTo,
+                    indexable: indexable.has(`${x.makeSlug}/${x.modelSlug}`)
+                }))
+                .sort((p, q) => p.makeName.localeCompare(q.makeName, 'tr') || p.modelName.localeCompare(q.modelName, 'tr'));
+        });
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('[vehicles] by-size hatası:', error);
+        res.status(500).json({ success: false, message: 'Araçlar alınamadı' });
+    }
+});
+
 // GET /api/vehicles/:make — markanın modelleri
 router.get('/:make', async (req, res) => {
     try {
@@ -178,10 +208,17 @@ router.get('/:make/:model', async (req, res) => {
                 chainCount: chains.get(p.key) || 0
             };
         };
+        // Aynı ebadın yazım varyantları (205/55R16 ↔ 205/55ZR16) tek satır; fabrika ebadı alternatiften önce gelir
+        const seen = new Set();
         const tireSizes = [
             ...(doc.summary?.oeTireSizes || []).map(s => sizeInfo(s, true)),
             ...(doc.summary?.optionalTireSizes || []).map(s => sizeInfo(s, false))
-        ];
+        ].filter(s => {
+            const k = s.key || s.size;
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+        });
         const rimInfo = (doc.summary?.boltPatterns || []).map(bp => ({
             boltPattern: bp,
             tag: rims.get(pcdKey(bp)) || null

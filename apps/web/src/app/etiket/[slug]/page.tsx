@@ -11,6 +11,7 @@ import tagService from '@/src/services/tagService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
 import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
 import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
+import VehiclesForSize from '@/src/components/lastikjantavm/seo/VehiclesForSize';
 import { siteTitle } from '@/src/lib/siteMeta';
 
 /* Components */
@@ -213,6 +214,13 @@ export default async function TagPage({ params, searchParams }: Props) {
                                     )}
                                 </Col>
                                 <Col lg={12} className="order-3">
+                                    {/* LJA lastik ebadı etiketleri: bu ebadı kullanan araçlar */}
+                                    {site === 'lastikjantavm' && tag.type === 'tire_size' && (
+                                        <VehiclesForSize
+                                            sizeKey={currentSize}
+                                            sizeLabel={currentSize.replace(/^(\d+)-(\d+)-r(.+)$/i, (_m, w, a, d) => `${w}/${a} R${String(d).toUpperCase()}`)}
+                                        />
+                                    )}
                                     {/* Etiket SEO içeriği */}
                                     {tag.description && (
                                         <Row>

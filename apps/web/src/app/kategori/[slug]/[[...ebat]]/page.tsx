@@ -14,6 +14,9 @@ import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
 import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
 import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
+import Link from 'next/link';
+import { BRANCHES } from '@/src/data/lja/subeler';
+import { SERVICE_GROUPS } from '@/src/data/lja/hizmetGruplari';
 
 /* Components - ALastik */
 import AlastikSidebar from "@components/alastik/category/Sidebar/Content";
@@ -205,9 +208,32 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         ...(sizeInfo ? [{ name: sizeInfo.formatted }] : [])
     ]);
 
+    // LJA hizmet kategorileri: hizmetin verildiği şube sayfalarına bağlantı
+    const serviceGroup = site === 'lastikjantavm' ? SERVICE_GROUPS.find(g => g.categorySlug === slug) : undefined;
+    const isServiceRoot = site === 'lastikjantavm' && slug === 'hizmetlerimiz';
+
     return (
         <>
             <JsonLd data={breadcrumbLd} />
+            {(serviceGroup || isServiceRoot) && (
+                <Container>
+                    {/* Tek satırlık sade bağlantı (görünümü kalabalıklaştırmaz) */}
+                    <p className="small text-muted my-2">
+                        {'Şubelerimizde: '}
+                        {BRANCHES.map((b, i) => (
+                            <React.Fragment key={b.slug}>
+                                {i > 0 && ' · '}
+                                <Link
+                                    href={serviceGroup ? `/subeler/${b.slug}/${serviceGroup.slug}` : `/subeler/${b.slug}`}
+                                    className="text-reset"
+                                >
+                                    {serviceGroup ? `${b.shortName} ${serviceGroup.name}` : b.title}
+                                </Link>
+                            </React.Fragment>
+                        ))}
+                    </p>
+                </Container>
+            )}
             <section id="breadcumb">
                 <Container>
                     <div className="row-fluid">

@@ -35,6 +35,7 @@ import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
 import Link from 'next/link';
 import { BRANCHES } from '@/src/data/lja/subeler';
 import { CATEGORY_NAME_TO_GROUP, getServiceGroup } from '@/src/data/lja/hizmetGruplari';
+import VehiclesForSize from '@/src/components/lastikjantavm/seo/VehiclesForSize';
 
 export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
@@ -264,6 +265,11 @@ export default async function ProductDetailPage(
                     />
                 </Grid>
             </Grid>
+
+            {/* LJA lastik ürünleri: bu ebadı fabrika çıkışı kullanan araçlar */}
+            {site === 'lastikjantavm' && isLastikProduct && genislik && yanak && cap > 0 && (
+                <VehiclesForSize sizeKey={`${genislik}-${yanak}-r${cap}`} sizeLabel={`${genislik}/${yanak} R${cap}`} />
+            )}
 
             {site !== 'lastikjantavm' && (
                 <MobileBuyBar

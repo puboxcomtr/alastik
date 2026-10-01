@@ -132,3 +132,28 @@ export const getVehicleMake = (make: string) =>
     getJson<{ makeSlug: string; makeName: string; models: VehicleModelSummary[] }>(`/${encodeURIComponent(make)}`, 'getVehicleMake');
 export const getVehicleModel = (make: string, model: string) =>
     getJson<VehicleModelDetail>(`/${encodeURIComponent(make)}/${encodeURIComponent(model)}`, 'getVehicleModel');
+
+export interface VehicleForSize {
+    makeSlug: string;
+    makeName: string;
+    modelSlug: string;
+    modelName: string;
+    yearFrom?: number;
+    yearTo?: number;
+    indexable: boolean;
+}
+
+// Yardımcı bloklar için (ebat/ürün sayfası, footer): hata sayfayı bozmaz, boş liste döner
+export async function getVehiclesBySize(sizeKey: string): Promise<VehicleForSize[]> {
+    try {
+        return (await getJson<VehicleForSize[]>(`/by-size/${encodeURIComponent(sizeKey)}`, 'getVehiclesBySize')) || [];
+    } catch {
+        return [];
+    }
+}
+export async function getVehicleMakesSafe(): Promise<VehicleMake[]> {
+    try { return (await getVehicleMakes()) || []; } catch { return []; }
+}
+export async function getVehicleIndexSafe(): Promise<VehicleModelSummary[]> {
+    try { return (await getVehicleIndex()) || []; } catch { return []; }
+}
