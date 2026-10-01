@@ -65,8 +65,8 @@ const CSS = `
 .ie-logo { display: block; height: 34px; width: auto; max-width: 100%; margin-bottom: 22px; }
 .ie-badge { display: inline-block; background: rgba(255,255,255,.14); color: #fff; font-weight: 800; font-size: .78rem;
   letter-spacing: .6px; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
-.ie-hero h1 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); font-weight: 800; line-height: 1.2; max-width: 620px; margin-bottom: 14px; }
-.ie-hero p { max-width: 580px; opacity: .88; font-size: 1.05rem; margin-bottom: 26px; }
+.ie-hero h1 { color: #fff; font-size: clamp(1.6rem, 3.4vw, 2.4rem); font-weight: 800; line-height: 1.2; max-width: 620px; margin-bottom: 14px; }
+.ie-hero p { color: #fff; max-width: 580px; opacity: .88; font-size: 1.05rem; margin-bottom: 26px; }
 .ie-btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 13px 24px; border-radius: 12px;
   text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
 .ie-btn-primary { background: var(--ie-accent); color: #fff; }
@@ -117,7 +117,8 @@ const CSS = `
 .ie-cta { border-radius: 20px; padding: 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
   gap: 18px; background: var(--ie-dark); color: #fff; }
 .ie-cta img { display: block; height: 26px; width: auto; max-width: 100%; margin-bottom: 8px; }
-.ie-cta b { font-size: 1.1rem; display: block; }
+.ie-cta b { color: #fff; font-size: 1.1rem; display: block; }
+.ie-cta small { color: #fff; }
 .ie-cta small { opacity: .75; }
 @media (max-width: 991px) {
   .ie-steps { grid-template-columns: repeat(2, 1fr); row-gap: 26px; }
