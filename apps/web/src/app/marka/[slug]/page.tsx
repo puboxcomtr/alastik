@@ -13,6 +13,9 @@ import { getSeo } from '@/src/services/seoService';
 import { applyTemplate } from '@/src/utils/seoTemplate';
 import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
 import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
+import { getBrandSeo } from '@/src/services/brandSeoService';
+import { buildBrandContent, type BrandContent } from '@/src/lib/brandText';
+import BrandSeoContent from '@/src/components/lastikjantavm/brand/BrandSeoContent';
 
 
 /* Components - ALastik */
@@ -45,6 +48,14 @@ function decodeSlug(slug: string): string {
     try { return decodeURIComponent(slug); } catch { return slug; }
 }
 
+// LJA: marka profili + canlı stok özetinden üretilen başlık, açıklama ve sayfa metni.
+// Diğer sitelerde ve 2.El görünümünde null (mevcut davranış).
+async function ljaBrandContent(slug: string, durum?: string): Promise<BrandContent | null> {
+    if ((headers().get('x-site') || 'alastik') !== 'lastikjantavm' || durum === '2-el') return null;
+    const decoded = decodeSlug(slug);
+    return buildBrandContent(decoded, await getBrandSeo(decoded));
+}
+
 interface Props {
     params: Promise<{ slug: string }>;
     searchParams: Promise<{ [key: string]: string | undefined }>;
@@ -60,6 +71,16 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         };
     }
     const brand = result.data;
+
+    const filtersForMeta = await searchParams;
+    const lja = await ljaBrandContent(slug, filtersForMeta.durum);
+    if (lja) {
+        return {
+            title: lja.title,
+            description: lja.description,
+            ...(await canonicalMeta(`/marka/${slug}`, filtersForMeta))
+        };
+    }
 
     const seo = await getSeo();
     const tpl = seo?.brand;
@@ -142,6 +163,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
         sortOrder: filters.sortOrder
     });
     const displayProductCount = productsData?.pagination?.totalProducts ?? brand.productCount;
+    const ljaContent = await ljaBrandContent(slug, filters.durum);
 
     const breadcrumbLd = breadcrumbJsonLd(await getSiteOrigin(), [{ name: brand.name }]);
 
@@ -189,7 +211,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                         <Col md={12}>
                                             <CategoryTop
                                                 productCount={displayProductCount}
-                                                categoryName={isSecondHand ? `${brand.name} 2.EL` : brand.name}
+                                                categoryName={isSecondHand ? `${brand.name} 2.EL` : (ljaContent?.h1 || brand.name)}
                                             />
                                         </Col>
                                     </Row>
@@ -233,6 +255,10 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                                 />
                                             </Col>
                                         </Row>
+                                    )}
+                                    {/* LJA marka metni, desen / ebat bağlantıları ve SSS */}
+                                    {ljaContent && (
+                                        <BrandSeoContent content={ljaContent} display={ljaContent.display} />
                                     )}
                                 </Col>
                             </Row>

@@ -428,6 +428,10 @@ app.use('/api/vehicles', webVehicleRoutes);
 const webLocationStatsRoutes = require('./routes/web/other/locationStats');
 app.use('/api/location-stats', webLocationStatsRoutes);
 
+/* Marka sayfaları: markanın sıfır ürünlerinden desen / ebat / mevsim özeti */
+const webBrandSeoRoutes = require('./routes/web/catalog/brandSeo');
+app.use('/api/brand-seo', webBrandSeoRoutes);
+
 /* Slider */
 const webSliderRoutes = require('./routes/web/design/slider');
 app.use('/api/design/slider', webSliderRoutes);
