@@ -13,6 +13,6 @@ export async function GET() {
         `${base}/sitemap-etiketler.xml`,
         `${base}/sitemap-blog.xml`,
         // Araç sayfaları yalnızca lastikjantavm.com'da
-        ...(getSiteSlug() === 'lastikjantavm' ? [`${base}/sitemap-araclar.xml`] : [])
+        ...(getSiteSlug() === 'lastikjantavm' ? [`${base}/sitemap-araclar.xml`, `${base}/sitemap-konumlar.xml`] : [])
     ]));
 }

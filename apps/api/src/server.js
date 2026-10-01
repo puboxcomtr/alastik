@@ -424,6 +424,10 @@ app.use('/api/categories', webCategoryRoutes);
 const webVehicleRoutes = require('./routes/web/catalog/vehicles');
 app.use('/api/vehicles', webVehicleRoutes);
 
+/* Konum sayfaları: bölge bazında toplu (anonim) sipariş istatistiği */
+const webLocationStatsRoutes = require('./routes/web/other/locationStats');
+app.use('/api/location-stats', webLocationStatsRoutes);
+
 /* Slider */
 const webSliderRoutes = require('./routes/web/design/slider');
 app.use('/api/design/slider', webSliderRoutes);

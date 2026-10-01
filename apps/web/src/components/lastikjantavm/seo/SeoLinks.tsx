@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { BRANCHES } from '@/src/data/lja/subeler';
 import { SERVICE_GROUPS } from '@/src/data/lja/hizmetGruplari';
 import { getVehicleMakesSafe, getVehicleIndexSafe } from '@/src/services/vehicleService';
+import { ILLER, ISTANBUL_ID, ilcelerOf } from '@/src/lib/geo';
 
 const linkCls = 'text-reset text-decoration-none';
 const summaryCls = 'small text-muted';
@@ -40,6 +41,27 @@ export default async function SeoLinks() {
                             ))}
                         </div>
                     ))}
+                </div>
+            </details>
+            <details className="mb-1">
+                <summary className={summaryCls}>Lastikçi (İl / İlçe)</summary>
+                <div className="pt-2">
+                    <Link href="/lastikci" className={`${linkCls} fw-semibold`}>Tüm iller</Link>
+                    {[...ILLER].sort((a, b) => a.name.localeCompare(b.name, 'tr')).map(c => (
+                        <React.Fragment key={c.id}>
+                            {' · '}
+                            <Link href={`/lastikci/${c.slug}`} className={linkCls}>{c.name}</Link>
+                        </React.Fragment>
+                    ))}
+                    <div className="mt-1">
+                        <span className="fw-semibold">İstanbul: </span>
+                        {ilcelerOf(ISTANBUL_ID).map((d, i) => (
+                            <React.Fragment key={d.id}>
+                                {i > 0 && ' · '}
+                                <Link href={`/lastikci/istanbul/${d.slug}`} className={linkCls}>{`${d.name} lastikçi`}</Link>
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
             </details>
             {(popularModels.length > 0 || popularMakes.length > 0) && (
