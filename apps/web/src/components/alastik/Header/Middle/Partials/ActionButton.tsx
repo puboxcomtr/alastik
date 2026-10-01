@@ -15,6 +15,7 @@ import Divider from '@mui/material/Divider';
 // Icons
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 
 // Hooks
@@ -136,7 +137,7 @@ export default function ActionButtons({ onMenuOpen, onSearchToggle }: ActionButt
                     href={ROUTES.MONTAGE_BUY}
                     className="btn btn-icon btn-lg fs-lg btn-outline-secondary border-0 rounded-circle animate-shake d-none d-md-inline-flex flex-column gap-1"
                 >
-                    <i className="ri-tools-line animate-target"></i>
+                    <BuildOutlinedIcon className="animate-target" />
                     <span className="text-muted fs-xs fw-normal text-nowrap">Montaj Satın Al</span>
                 </Link>
             </Tooltip>

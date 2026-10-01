@@ -5,6 +5,7 @@ import Offcanvas from 'react-bootstrap/Offcanvas';
 import { ROUTES } from '@/src/config/routes';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import MainMenu from '@components/alastik/Header/Navbar/Partials/MainMenu';
@@ -43,7 +44,7 @@ export default function MobileMenu({ show, onClose }: Props) {
             <div className="border-top px-0 py-3 mt-3 d-md-none">
                 {/* Kendi lastiğiyle montaj satın alma */}
                 <Link href={ROUTES.MONTAGE_BUY} className="nav-link justify-content-center fw-semibold mb-2" onClick={onClose}>
-                    <i className="ri-tools-line opacity-60 me-2" />
+                    <BuildOutlinedIcon className="opacity-60 me-2" sx={{ fontSize: 20 }} />
                     Montaj Satın Al
                 </Link>
                 <div className="nav nav-justified w-100">

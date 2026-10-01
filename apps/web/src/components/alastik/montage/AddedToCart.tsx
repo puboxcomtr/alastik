@@ -16,6 +16,23 @@ import {
 import { api } from '@src/lib/api';
 
 
+// "Montaj Satın Al" (kendi lastiği) modu: ownTireRim verilince bu ekran /montaj-satin-al içinde kullanılır —
+// noktalar ve hizmetler seçilen jant çapına göre süzülür, montaj lastiksiz eklenir (ownTire), sepet boş olabilir.
+// ownTireRim verilmezse davranış /montaj-noktasi-sec ile birebir aynıdır.
+const OWN_TIRE_DEFAULT_QUANTITY = 4;
+// Sitenin genelindeki ifade: "Türkiye'nin 81 ilinde montaj hizmeti"
+const SERVICE_CITY_COUNT = 81;
+
+// Hizmet adındaki jant çapı aralığı: "13inç - 16inç", "Jant Pres 13 - 14 - 15 - 16", "19inç ve Üzeri", "19inç Rot Ayarı".
+// Aralık yoksa hizmet her çapa uygundur.
+function rimFits(name: string, rim: number): boolean {
+    const nums = (name.match(/\b(1[2-9]|2[0-4])\b/g) || []).map(Number);
+    if (!nums.length) return true;
+    const min = Math.min(...nums);
+    const max = /ve\s*(üzeri|üstü)/i.test(name) || nums.length === 1 ? 99 : Math.max(...nums);
+    return rim >= min && rim <= max;
+}
+
 // lg altı = mobil: detay paneli alttan açılan sayfada gösterilir
 function useMobile() {
     const [m, setM] = useState(false);
@@ -30,8 +47,31 @@ function useMobile() {
 }
 
 // Tanıtım + SSS (sağ panel, nokta seçilmeden önce)
-function Promo({ pointCount, cityCount, plain = false }: { pointCount: number; cityCount: number; plain?: boolean }) {
-    const faq = [
+function Promo({ pointCount, cityCount, plain = false, ownTire = false }: { pointCount: number; cityCount: number; plain?: boolean; ownTire?: boolean }) {
+    const ownTireFaq = [
+        {
+            q: 'Montaj Hizmeti Almanın Avantajları Nedir?',
+            a: [
+                'Türkiye genelindeki anlaşmalı montaj noktalarından dilediğini seçebilirsin.',
+                'Hizmetleri ve fiyatları aracının jant çapına göre karşılaştırabilirsin.',
+                'Montaj ve diğer hizmetlerin ücretini online ödersin — noktada ek ücret yok.',
+                `Montaj noktasındaki hizmetin ${SITE_DOMAIN} güvencesi altındadır.`,
+            ],
+        },
+        {
+            q: 'Lastiklerimi başka yerden aldım, yine de hizmet alabilir miyim?',
+            a: ['Evet. Bu sayfadan kendi lastiğin için montaj, balans, rot ve depolama hizmeti alabilirsin; sepetinde lastik olması gerekmez.'],
+        },
+        {
+            q: 'Nasıl Çalışır?',
+            a: [
+                '1) Soldan ilini seç, listeden bir anlaşmalı noktanın "Hizmetleri Gör" butonuna bas.',
+                '2) İstediğin hizmetleri adet seçerek sepetine ekle ve siparişini tamamla.',
+                '3) Montaj noktasının tam adresi ve iletişim bilgisi sipariş onayında sana iletilir; lastiklerinle noktaya gidersin.',
+            ],
+        },
+    ];
+    const defaultFaq = [
         {
             q: 'Montaj Hizmeti Almanın Avantajları Nedir?',
             a: [
@@ -58,6 +98,7 @@ function Promo({ pointCount, cityCount, plain = false }: { pointCount: number; c
             ],
         },
     ];
+    const faq = ownTire ? ownTireFaq : defaultFaq;
     const [open, setOpen] = useState(0);
     return (
         <div className={plain ? '' : 'sk-card sk-card-red'}>
@@ -72,7 +113,9 @@ function Promo({ pointCount, cityCount, plain = false }: { pointCount: number; c
                     <div className="sk-hero-sub">{cityCount} ilde</div>
                     <div className="sk-hero-big">{pointCount}+</div>
                     <div className="sk-hero-title">anlaşmalı montaj noktası</div>
-                    <div className="sk-hero-text">Lastiğini al, montaj noktanı seç — lastiklerin oraya gelsin, montajın orada yapılsın.</div>
+                    <div className="sk-hero-text">{ownTire
+                        ? 'Montaj noktanı seç, hizmetlerini online al — lastiklerinle gel, montajın orada yapılsın.'
+                        : 'Lastiğini al, montaj noktanı seç — lastiklerin oraya gelsin, montajın orada yapılsın.'}</div>
                 </div>
             </div>
             <div className="sk-faq">
@@ -135,7 +178,10 @@ function DetailPanel({ mobile, open, onClose, onContinue, continueLabel, title =
     );
 }
 
-export default function AddedToCart({ points }: { points: MontagePoint[] }) {
+export default function AddedToCart({ points, ownTireRim, onPointOpen }: { points: MontagePoint[]; ownTireRim?: number; onPointOpen?: (open: boolean) => void }) {
+    const ownTire = Boolean(ownTireRim);
+    const rim = ownTireRim || 0;
+    const montageForRim = (p: MontagePoint) => p.services.find(s => s.isMontage && s.rimRange && rim >= s.rimRange.min && rim <= s.rimRange.max);
     const router = useRouter();
     const { items, removeItem, refreshCart, loading } = useCart();
     const mobile = useMobile();
@@ -174,7 +220,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
         ? points.filter(p => p.city === city && (!district || p.district === district))
         : points.slice(0, INITIAL_POINT_COUNT);
     const openPoint = listed.find(p => p._id === openId) || null;
-    const cityCount = cities.length;
+    const cityCount = SERVICE_CITY_COUNT;
 
     const serviceItems = items.filter(i => i.itemType === 'montage' || i.itemType === 'service' || Boolean(i.montagePointId));
     // Hizmetler tek noktadan: sepette hizmet varsa o nokta "aktif"tir, diğer noktalarda seçim kilitlenir
@@ -199,7 +245,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
     };
 
     // Sepet henüz yüklenirken "boş" denmez; yalnızca yükleme bitince boş ekranı gösterilir.
-    if (loading) {
+    if (loading && !ownTire) {
         return (
             <Container className="py-5 text-center">
                 <div className="spinner-border" role="status" style={{ color: BRAND_RED }}>
@@ -209,7 +255,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
         );
     }
 
-    if (items.length === 0) {
+    if (items.length === 0 && !ownTire) {
         return (
             <Container className="py-5 text-center">
                 <p className="fw-semibold mb-2" style={{ color: TEXT_DARK, fontSize: 17 }}>
@@ -271,13 +317,13 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                         <div className="sk-services-list">
                             {/* Montaj hizmetleri başta; kalın ayraçtan sonra diğer hizmetler */}
                             {(() => {
-                                const montages = p.services.filter(s => s.isMontage);
-                                const others = p.services.filter(s => !s.isMontage);
+                                const montages = p.services.filter(s => s.isMontage && (!ownTire || (s.rimRange && rim >= s.rimRange.min && rim <= s.rimRange.max)));
+                                const others = p.services.filter(s => !s.isMontage && (!ownTire || rimFits(s.name, rim)));
                                 return (
                                     <>
-                                        {montages.map((s, i) => <ServiceRow key={`m-${s.productKey}-${i}`} service={s} montagePointId={p._id} onBeforeSelect={beforeSelect} />)}
+                                        {montages.map((s, i) => <ServiceRow key={`m-${s.productKey}-${i}`} service={s} montagePointId={p._id} onBeforeSelect={beforeSelect} ownTire={ownTire} defaultQuantity={ownTire ? OWN_TIRE_DEFAULT_QUANTITY : undefined} />)}
                                         {montages.length > 0 && others.length > 0 && <div className="sk-service-divider" />}
-                                        {others.map((s, i) => <ServiceRow key={`o-${s.productKey}-${i}`} service={s} montagePointId={p._id} onBeforeSelect={beforeSelect} />)}
+                                        {others.map((s, i) => <ServiceRow key={`o-${s.productKey}-${i}`} service={s} montagePointId={p._id} onBeforeSelect={beforeSelect} ownTire={ownTire} />)}
                                     </>
                                 );
                             })()}
@@ -285,7 +331,9 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                     ) : (
                         <p className="sk-muted-sm mt-2 mb-0">Bu nokta için hizmet fiyatı henüz girilmedi.</p>
                     )}
-                    <div className="sk-muted-xs mt-2">Seçtiğin hizmetler siparişinle birlikte online ödenir; lastiklerin bu noktaya gönderilir, montaj için buraya gelirsin.</div>
+                    <div className="sk-muted-xs mt-2">{ownTire
+                        ? 'Seçtiğin hizmetler siparişinle birlikte online ödenir; montaj için lastiklerinle bu noktaya gelirsin.'
+                        : 'Seçtiğin hizmetler siparişinle birlikte online ödenir; lastiklerin bu noktaya gönderilir, montaj için buraya gelirsin.'}</div>
                 </div>
 
                 {p.reviews.length > 0 && (
@@ -324,8 +372,12 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
     return (
         <section id="sepete-eklendi" className="sk-page">
             <Container>
-                <h1 className="sk-h1">Montaj Noktanızı Seçin</h1>
-                <p className="sk-lead">Montaj noktanı şimdi seç, montaj ve diğer hizmetleri sepetine ekle.</p>
+                {!ownTire && (
+                    <>
+                        <h1 className="sk-h1">Montaj Noktanızı Seçin</h1>
+                        <p className="sk-lead">Montaj noktanı şimdi seç, montaj ve diğer hizmetleri sepetine ekle.</p>
+                    </>
+                )}
 
                 <div className="sk-filters">
                     <select className="sk-select" style={SELECT_CHEVRON} value={city} onChange={e => changeCity(e.target.value)}>
@@ -346,7 +398,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                 )}
                 {mobile && (
                     <DetailPanel mobile open={infoOpen} onClose={() => setInfoOpen(false)} title="Montaj Hizmeti">
-                        <Promo plain pointCount={points.length} cityCount={cityCount} />
+                        <Promo plain pointCount={points.length} cityCount={cityCount} ownTire={ownTire} />
                     </DetailPanel>
                 )}
 
@@ -359,7 +411,9 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                         {/* Kurumsal uyarı: hizmet seçiminde lastikler seçilen noktaya gönderilir */}
                         <div className="sk-notice">
                             <i className="ri-error-warning-line" />
-                            <span>Bir montaj noktasından hizmet seçtiğinizde lastikleriniz seçtiğiniz noktaya gönderilir; montaj işleminiz o noktada gerçekleştirilir.</span>
+                            <span>{ownTire
+                                ? `Kendi lastiğinle hizmet alabileceğin, ${rim} inç montaj yapan noktalar listelenir; montaj işleminiz seçtiğiniz noktada gerçekleştirilir.`
+                                : 'Bir montaj noktasından hizmet seçtiğinizde lastikleriniz seçtiğiniz noktaya gönderilir; montaj işleminiz o noktada gerçekleştirilir.'}</span>
                         </div>
                         {listed.length === 0 ? (
                             <div className="sk-muted-sm py-5 text-center">Bu ilde anlaşmalı nokta bulunamadı.</div>
@@ -367,7 +421,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                             <div className="d-flex flex-column gap-3 mt-4">
                                 {listed.map(p => {
                                     const isOpen = openPoint?._id === p._id;
-                                    const from = p.montageStartingPrice;
+                                    const from = ownTire ? (montageForRim(p)?.price ?? null) : p.montageStartingPrice;
                                     return (
                                         <div key={p._id} className={`sk-point${isOpen ? ' is-open' : ''}`}>
                                             <div className="sk-point-row">
@@ -406,7 +460,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                                                     )}
                                                     <button
                                                         type="button"
-                                                        onClick={() => { setOpenId(p._id); setSheetOpen(true); }}
+                                                        onClick={() => { setOpenId(p._id); setSheetOpen(true); onPointOpen?.(true); }}
                                                         className={`sk-btn sk-btn-wide mt-2 ${isOpen && !mobile ? 'sk-btn-muted' : 'sk-btn-black'}`}
                                                     >
                                                         Hizmetleri Gör
@@ -421,7 +475,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                     </div>
 
                     {/* SAĞ: seçim yoksa tanıtım + SSS; seçim varsa nokta detayı */}
-                    {!openPoint && !mobile && <Promo pointCount={points.length} cityCount={cityCount} />}
+                    {!openPoint && !mobile && <Promo pointCount={points.length} cityCount={cityCount} ownTire={ownTire} />}
                     {openPoint && (
                         <DetailPanel mobile={mobile} open={sheetOpen} onClose={() => setSheetOpen(false)} onContinue={goCart} continueLabel="Sepete Ekle Ve Git">
                             {renderDetail(openPoint)}
@@ -443,7 +497,7 @@ export default function AddedToCart({ points }: { points: MontagePoint[] }) {
                         ))}
                     </div>
                     <div className="sk-bar-btns">
-                        <button type="button" onClick={goCartWithoutMontage} className="sk-btn sk-btn-outline">Montaj Almadan, Sepete Git</button>
+                        {!ownTire && <button type="button" onClick={goCartWithoutMontage} className="sk-btn sk-btn-outline">Montaj Almadan, Sepete Git</button>}
                         <button type="button" onClick={goCart} className="sk-btn sk-btn-green sk-btn-x">Sepete Git</button>
                     </div>
                 </Container>
