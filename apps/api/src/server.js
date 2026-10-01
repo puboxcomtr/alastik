@@ -397,6 +397,10 @@ const webMenuRoutes = require('./routes/web/design/menus');
 app.use('/api/menus', webMenuRoutes);
 
 /* * Header Arama * */
+/* Vitrin ürün yanıtlarından diğer sitelere ait alanlar çıkarılır (siteler arama motoru için bağımsız görünür) */
+const { scrubResponseMiddleware } = require('./utils/siteScrub');
+app.use(['/api/search', '/api/products', '/api/tags'], scrubResponseMiddleware);
+
 const webSearchRoutes = require('./routes/user/catalog/search');
 app.use('/api/search', webSearchRoutes);
 
