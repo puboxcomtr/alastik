@@ -19,7 +19,7 @@ const STATS = [
     { value: '1972', label: 'yılından beri lastikte' },
     { value: '1 yıl', label: 'garantiye kadar' },
     { value: '81 il', label: 'montaj noktası' },
-    { value: '14 gün', label: 'cayma hakkı' }
+    { value: 'DOT + mm', label: 'her lastikte yazılı' }
 ];
 
 const SHOP_LINKS = [
@@ -47,7 +47,6 @@ const FAQS = [
     { q: 'Neden ikinci el ürünler ayrı bir sitede?', a: 'İkinci el lastiklerin her biri tektir: üretim yılı, diş derinliği ve kondisyonu farklıdır. Bu bilgileri ve gerçek fotoğrafları düzgün gösterebilmek için ikinci el ürünleri kendi sitesinde listeliyoruz.' },
     { q: 'İkinci el lastikler garantili mi?', a: 'Evet. Diş derinliği 7 mm ve üzeri olan lastiklerde 1 yıl, altındakilerde 6 ay garanti verilir. Darbe, yol hasarı ve normal aşınma garanti dışıdır. Garanti yalnızca ikinciellastik.com’dan alınan ürünlerde geçerlidir.' },
     { q: 'İkinci el lastikler kaplama veya diş açma mı?', a: 'Hayır. Satılan lastikler kontrol edilmiş ikinci el lastiklerdir; kontrolden geçemeyen lastikler satışa sunulmaz.' },
-    { q: 'Beğenmezsem iade edebilir miyim?', a: 'Araca takılmamış ve kullanılmamış ürünlerde teslimden itibaren 14 gün içinde cayma hakkınız vardır. Ürün sayfadaki beyana aykırıysa iade masrafları satıcıya aittir.' },
     { q: 'Sıfır mı, ikinci el mi almalıyım?', a: 'Aracınızı uzun süre kullanacaksanız ya da yüksek kilometre yapıyorsanız sıfır lastik daha uzun ömürlüdür. Kısa süreli kullanım, aracı satmaya hazırlık ya da bütçe öncelikliyse yüksek diş derinlikli, yeni tarihli ikinci el lastik mantıklı bir seçenektir.' }
 ];
 
