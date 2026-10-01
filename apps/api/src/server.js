@@ -420,6 +420,10 @@ app.use('/api/brands', webBrandsRoutes);
 const webCategoryRoutes = require('./routes/web/catalog/categories');
 app.use('/api/categories', webCategoryRoutes);
 
+/* Araç uyumluluğu (Wheel-Size verisi + site stoğu) — /arac sayfaları */
+const webVehicleRoutes = require('./routes/web/catalog/vehicles');
+app.use('/api/vehicles', webVehicleRoutes);
+
 /* Slider */
 const webSliderRoutes = require('./routes/web/design/slider');
 app.use('/api/design/slider', webSliderRoutes);
