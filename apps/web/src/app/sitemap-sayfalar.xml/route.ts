@@ -19,6 +19,7 @@ export async function GET() {
     const branchRoutes = getSiteSlug() === 'lastikjantavm'
         ? [
             { path: '/subeler', priority: '0.7', changefreq: 'weekly' },
+            { path: '/ikinci-el', priority: '0.5', changefreq: 'monthly' },
             ...BRANCHES.map(b => ({ path: `/subeler/${b.slug}`, priority: '0.8', changefreq: 'weekly' })),
             ...BRANCHES.flatMap(b => SERVICE_GROUPS.map(g => ({ path: `/subeler/${b.slug}/${g.slug}`, priority: '0.7', changefreq: 'weekly' })))
         ]

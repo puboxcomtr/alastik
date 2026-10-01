@@ -9,8 +9,17 @@ interface MainMenuProps {
     handleClose?: () => void;
 }
 
+// İkinci el kategorileri LJA'da ikinciellastik.com'a 301 ile gider; menüden tıklayan ziyaretçi
+// önce ikinciellastik.com'u tanıtan bilgi sayfasına gelir
+const SECOND_HAND_MENU_URLS: Record<string, string> = {
+    'ikinci-el-arac-lastikleri': '/ikinci-el',
+    'ikinci-el-jant': '/ikinci-el'
+};
+
 export default function MainMenu({ handleClose }: MainMenuProps) {
-    const { menus, getMenuUrl } = useMenu();
+    const { menus, getMenuUrl: baseMenuUrl } = useMenu();
+    const getMenuUrl = (menu: any) =>
+        (menu.menuType === 'category' && SECOND_HAND_MENU_URLS[menu.linkData?.categoryUrl]) || baseMenuUrl(menu);
     const closeMenu = () => handleClose?.();
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
