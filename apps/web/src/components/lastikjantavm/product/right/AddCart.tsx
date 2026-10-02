@@ -234,9 +234,23 @@ export default function Cart({ product }: CartProps) {
                                             <hr className="m-0 p-2" />
                                         </>
                                     )}
-                                    {/* Kampanyalar — hizmet ürünlerinde taksit promosyonu gösterilmez */}
+                                    {/* Kampanyalar — hizmet ürünlerinde ödeme promosyonları gösterilmez */}
                                     {!isHizmet && (
                                     <>
+                                    <div>
+                                        <div className="d-flex align-items-center gap-1">
+                                            <i className="ri-cash-fill text-black"></i>
+                                            <p className='m-0 fw-bold text-black'>
+                                                Peşin Fiyatına %5 İndirim
+                                            </p>
+                                        </div>
+                                        <div className="d-flex align-items-center gap-1 mt-1">
+                                            <p>
+                                                Havale/EFT veya şubemizde nakit ödemede %5 indirim uygulanır.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <hr className="m-0 p-2" />
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>
