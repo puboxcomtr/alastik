@@ -180,26 +180,20 @@ export default function Cart({ product }: CartProps) {
                                     </div>
                                     <hr className="m-0 p-2" />
                                     </div>
-                                    {/* Kargo Teslim Tarihi — hizmet gibi kargolanmayan ürünlerde gizlenir */}
+                                    {/* Kargo — hizmet gibi kargolanmayan ürünlerde gizlenir */}
                                     {product?.customData?.hideDelivery !== true && !isHizmet && (
                                         <>
                                             <div>
                                                 <div className="d-flex align-items-center gap-1">
                                                     <i className="ri-box-3-fill text-black"></i>
                                                     <p className='m-0 fw-bold text-black'>
-                                                        Kargoya Teslim Tarihi
+                                                        Kargo
                                                     </p>
                                                 </div>
                                                 <div className="d-flex align-items-center gap-1 mt-1">
-                                                    {deliveryInfo ? (
-                                                        <p className='badge text-success bg-success-subtle'>
-                                                            Tahmini Teslim Tarihi {deliveryInfo.startDate} - {deliveryInfo.endDate}
-                                                        </p>
-                                                    ) : (
-                                                        <p className='badge text-muted bg-light'>
-                                                            Teslimat bilgisi mevcut değil
-                                                        </p>
-                                                    )}
+                                                    <p className='badge text-success bg-success-subtle'>
+                                                        Ücretsiz Kargo
+                                                    </p>
                                                 </div>
                                             </div>
                                             <hr className="m-0 p-2" />

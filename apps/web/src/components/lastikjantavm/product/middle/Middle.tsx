@@ -57,6 +57,11 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
         checkAlternatives();
     }, [product]);
     const [blogCount, setBlogCount] = useState(0);
+    // Hizmetlerimiz (montaj, rot, sibop vb.) kargolanmaz; "Ücretsiz Kargo" etiketi gösterilmez
+    const isHizmet = (product?.diaData?.m_kategoriler || []).some(
+        (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
+    );
+    const showFreeShipping = product?.customData?.hideDelivery !== true && !isHizmet;
     useEffect(() => {
         if (!isLastik(product)) return;
         const ozelkod5 = product.diaData?.ozelkod5 || '';
@@ -132,14 +137,21 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                     <div className='d-flex gap-1'>
                                         <Link
                                             href="#tire_test"
-                                            className='fw-semibold text-decoration-none fs-sm d-flex gap-1'
-                                            color='primary'>
+                                            className='fw-semibold text-decoration-none fs-sm d-flex gap-1 text-black'
+                                            color='inherit'>
                                             <span>{blogCount} Lastik Test Sonucu</span>
                                         </Link>
                                     </div>
                                 )}
                             </div>
                         </Grid>
+                        {showFreeShipping && (
+                            <Grid size={12}>
+                                <span className="badge text-success bg-success-subtle">
+                                    <i className="ri-truck-line me-1"></i>Ücretsiz Kargo
+                                </span>
+                            </Grid>
+                        )}
                         <Grid size={12}>
                             <div className="d-flex align-items-end gap-4">
                                 {isLastik(product) ? (
