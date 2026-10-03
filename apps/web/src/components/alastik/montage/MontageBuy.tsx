@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Container } from 'react-bootstrap';
 import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import AddedToCart from './AddedToCart';
-import { BRAND_RED, BRAND_RED_DARK, SELECT_CHEVRON, TEXT_DARK, type MontagePoint } from './shared';
+import { BRAND_ACCENT, BRAND_RED, BRAND_RED_DARK, BRAND_TINT, SELECT_CHEVRON, TEXT_DARK, useMontageSite, type MontagePoint } from './shared';
 
 const VEHICLE_TYPES = [
     { value: 'otomobil', label: 'Otomobil' },
@@ -18,7 +18,8 @@ const VEHICLE_TYPES = [
 const RIM_SIZES = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 // Sitenin genelindeki ifade: "Türkiye'nin 81 ilinde montaj hizmeti"
 const SERVICE_CITY_COUNT = 81;
-const HERO_IMAGE = '/alastik/assets/img/montaj/montaj-satin-al.webp';
+// Görsel sitenin kendi varlık klasöründen okunur (public/<site>/assets/img/montaj/…)
+const HERO_IMAGE = '/img/montaj/montaj-satin-al.webp';
 
 const hasMontageFor = (p: MontagePoint, rim: number) =>
     p.services.some(s => s.isMontage && s.rimRange && rim >= s.rimRange.min && rim <= s.rimRange.max);
@@ -45,6 +46,7 @@ function Stepper({ step }: { step: number }) {
 }
 
 export default function MontageBuy({ points }: { points: MontagePoint[] }) {
+    const { assetsBase } = useMontageSite();
     const router = useRouter();
     const params = useSearchParams();
 
@@ -86,7 +88,7 @@ export default function MontageBuy({ points }: { points: MontagePoint[] }) {
                         <div className="ms-intro">
                             <div className="ms-intro-visual">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={HERO_IMAGE} alt="Lastik montajı yapan usta" className="ms-intro-img" width={900} height={1000} />
+                                <img src={`${assetsBase}${HERO_IMAGE}`} alt="Lastik montajı yapan usta" className="ms-intro-img" width={900} height={1000} />
                                 <div className="ms-intro-shade" aria-hidden="true" />
                                 <div className="ms-intro-visual-text">
                                     <BuildOutlinedIcon className="ms-intro-visual-icon" />
@@ -148,12 +150,12 @@ export default function MontageBuy({ points }: { points: MontagePoint[] }) {
                 .ms-red { color: ${BRAND_RED}; }
                 .ms-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 960px; margin: 24px auto 28px; }
                 .ms-step-bar { height: 5px; border-radius: 999px; background: #e2e8f0; }
-                .ms-step.done .ms-step-bar, .ms-step.active .ms-step-bar { background: ${BRAND_RED}; }
+                .ms-step.done .ms-step-bar, .ms-step.active .ms-step-bar { background: ${BRAND_ACCENT}; }
                 .ms-step-label { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; font-weight: 700; color: #64748b; font-size: 15px; }
                 .ms-step.active .ms-step-label { color: ${TEXT_DARK}; }
                 .ms-step.done .ms-step-label { color: ${BRAND_RED}; }
                 .ms-step-num { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid #cbd5e1; display: inline-grid; place-items: center; font-size: 13px; flex-shrink: 0; }
-                .ms-step.active .ms-step-num, .ms-step.done .ms-step-num { border-color: ${BRAND_RED}; color: ${BRAND_RED}; background: #fff1f2; }
+                .ms-step.active .ms-step-num, .ms-step.done .ms-step-num { border-color: ${BRAND_RED}; color: ${BRAND_RED}; background: ${BRAND_TINT}; }
                 @media (max-width: 575px) { .ms-step-label { font-size: 12px; gap: 6px; flex-direction: column; } .ms-step-num { width: 26px; height: 26px; } }
                 .ms-intro { display: grid; grid-template-columns: 1fr; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; background: #fff; }
                 @media (min-width: 992px) { .ms-intro { grid-template-columns: 0.9fr 1fr 0.95fr; } }

@@ -1,13 +1,11 @@
 'use client';
 
-// Alastik montaj noktası seçimi — ortak tipler ve yardımcılar (referans: ikinciellastik /sepete-eklendi)
-import React, { useState } from 'react';
+// Montaj noktası seçimi — ortak tipler ve yardımcılar (referans: ikinciellastik /sepete-eklendi).
+// Ekranlar her iki sitede de kullanılır; renkler ve site bilgisi sayfanın sardığı <MontageTheme site=…> ile gelir.
+import React, { createContext, useContext, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useCart } from '@/src/context/CartContext';
-import { SITES } from '@/src/config/siteConfig';
-
-// Marka rengi site temasından okunur (config/siteConfig.ts) — koda gömülmez
-const SITE = SITES.alastik;
+import { SITES, type SiteSlug } from '@/src/config/siteConfig';
 
 /** Hex rengi verilen oranda koyulaştırır (hover tonu için) */
 const darken = (hex: string, ratio: number): string => {
@@ -19,12 +17,42 @@ const darken = (hex: string, ratio: number): string => {
     return `#${channel(0)}${channel(2)}${channel(4)}`;
 };
 
-export const BRAND_RED = SITE.theme.primary;
-export const BRAND_RED_DARK = darken(BRAND_RED, 0.16);
-/** Metinlerde geçen site adı (ör. "... güvencesi altındadır") */
-export const SITE_DOMAIN = SITE.domains[0];
+// Marka renkleri CSS değişkenidir; değerleri siteConfig theme.montage'dan MontageTheme verir (koda gömülmez)
+export const BRAND_RED = 'var(--mt-brand)';
+export const BRAND_RED_DARK = 'var(--mt-brand-dark)';
+export const BRAND_ACCENT = 'var(--mt-accent)';
+export const BRAND_TINT = 'var(--mt-tint)';
+export const HERO_GRADIENT = 'linear-gradient(135deg, var(--mt-hero-from) 0%, var(--mt-brand) 55%, var(--mt-hero-to) 100%)';
 export const TRUST_GREEN = '#16a34a';
 export const TEXT_DARK = '#1a1a1a';
+
+/** Metinlerde geçen site bilgisi (ör. "... alastik.com güvencesi altındadır") ve görsel kök yolu */
+export type MontageSite = { slug: SiteSlug; name: string; domain: string; assetsBase: string };
+const siteInfo = (slug: SiteSlug): MontageSite => {
+    const site = SITES[slug];
+    return { slug, name: site.name, domain: site.domains[0], assetsBase: site.theme.assetsBase };
+};
+const MontageSiteContext = createContext<MontageSite>(siteInfo('alastik'));
+export const useMontageSite = () => useContext(MontageSiteContext);
+
+/** Montaj ekranlarını site paletiyle sarar; sayfa (server) hangi sitede olduğunu bilir ve buraya verir */
+export function MontageTheme({ site, children }: { site: SiteSlug; children: React.ReactNode }) {
+    const theme = SITES[site].theme;
+    const palette = theme.montage || { brand: theme.primary, accent: theme.primary, tint: '#ffffff', heroFrom: darken(theme.primary, 0.4), heroTo: theme.primary };
+    const vars = {
+        '--mt-brand': palette.brand,
+        '--mt-brand-dark': darken(palette.brand, 0.16),
+        '--mt-accent': palette.accent,
+        '--mt-tint': palette.tint,
+        '--mt-hero-from': palette.heroFrom,
+        '--mt-hero-to': palette.heroTo,
+    } as React.CSSProperties;
+    return (
+        <MontageSiteContext.Provider value={siteInfo(site)}>
+            <div style={vars}>{children}</div>
+        </MontageSiteContext.Provider>
+    );
+}
 
 export type MontageReview = {
     memberName: string;

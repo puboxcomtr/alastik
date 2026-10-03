@@ -16,15 +16,14 @@ import { useBrands } from '@/src/context/BrandsContext';
 import { CartItem, CartContentProps } from '@/src/types/cart';
 
 export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: CartContentProps) {
-    // Montaj bloğu: LJA'da Montaj Noktaları sayfasına, diğer sitede iletişime yönlenir
+    // Montaj bloğu iki sitede de aynı: montaj noktası seçimine (/montaj-noktasi-sec) gider
     const [siteSlug, setSiteSlug] = useState<SiteSlug>(DEFAULT_SITE);
-    // Site çözülene kadar alastik'e özel blok çizilmez (LJA'da anlık görünmesin)
+    // Site çözülene kadar vurgu rengi bilinmediğinden blok çizilmez (yanlış renkle anlık görünmesin)
     const [siteResolved, setSiteResolved] = useState(false);
     useEffect(() => {
         setSiteSlug(resolveSiteFromHost(window.location.host));
         setSiteResolved(true);
     }, []);
-    const isLja = siteSlug === 'lastikjantavm';
 
     // Butonun üzerine gelince kullanılacak vurgu rengi site temasından okunur
     const accentColor = getSiteBySlug(siteSlug)?.theme.primary || '';
@@ -39,9 +38,9 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
     };
     const accentTextColor = readableTextOn(accentColor);
 
-    // Alastik: montaj/hizmet kalemlerinde ürün görseli ve marka logosu gösterilmez
+    // Montaj/hizmet kalemlerinde ürün görseli ve marka logosu gösterilmez (iki sitede de aynı)
     const isServiceItem = (item: CartItem) =>
-        !isLja && (item.itemType === 'montage' || item.itemType === 'service' || Boolean(item.montagePointLabel));
+        item.itemType === 'montage' || item.itemType === 'service' || Boolean(item.montagePointLabel);
 
     // Montaj hizmeti: sepette uygun çapta lastik varsa adet tavanı lastik adedidir (daha azı alınabilir)
     const montageCap = (item: CartItem): number | null => {
@@ -239,8 +238,8 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                     </div>
                 </div>
             )}
-            {/* Alastik: siyah montaj bloğu — tamamı tıklanabilir, montaj noktası seçimine gider */}
-            {siteResolved && !isLja && (
+            {/* Siyah montaj bloğu — tamamı tıklanabilir, montaj noktası seçimine gider (iki sitede de aynı) */}
+            {siteResolved && (
                 <Link
                     href={ROUTES.MONTAGE_SELECT}
                     className="card mr-2 my-3 border-0 text-decoration-none d-block"
@@ -268,56 +267,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                         </div>
                     </div>
                 </Link>
-            )}
-            {/* Siyah montaj bloğu yalnız LJA'da; alastik'in bloğu yukarıda */}
-            {isLja && (
-                <div className="card mr-2 my-3 border-0" style={{ backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
-                    <div className="card-body p-4">
-                        <div className="row align-items-center g-3">
-                            <div className="col">
-                                <h6 className="text-white fw-bold mb-1">
-                                    Türkiye'nin 81 İlinde Montaj Hizmeti
-                                </h6>
-                                {isLja ? (
-                                    <>
-                                        <p className="text-white-50 mb-0 small d-md-none">
-                                            Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
-                                        </p>
-                                        <p className="text-white-50 mb-0 small d-none d-md-block">
-                                            Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-white-50 mb-0 small d-md-none">
-                                            Anlaşmalı montaj noktalarımızı inceleyebilir, montaj hizmetini online satın alabilirsiniz.
-                                        </p>
-                                        <p className="text-white-50 mb-0 small d-none d-md-block">
-                                            Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarımızı inceleyebilir, size en yakın noktadan montaj hizmetini online satın alabilirsiniz.
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                            <div className="col-12 col-md-auto">
-                                {isLja ? (
-                                    <Link
-                                        href="/montaj-noktalari"
-                                        className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none cart-cta-btn">
-                                        <i className="ri-map-pin-2-fill"></i>
-                                        Montaj Noktaları
-                                    </Link>
-                                ) : (
-                                    <Link
-                                        href={ROUTES.MONTAGE_SELECT}
-                                        className="btn fw-semibold px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none cart-cta-btn">
-                                        <i className="ri-map-pin-2-fill"></i>
-                                        Montaj Noktası Seç
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
             )}
             <style jsx>{`
                 :global(.cart-cta-btn) {

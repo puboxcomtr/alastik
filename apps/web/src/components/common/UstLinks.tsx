@@ -2,9 +2,12 @@
 // Header üstündeki ikonlu hızlı linkler (Sipariş Takibi, Kampanyalar vb.).
 // Panelden Menü Yönetimi > "Üst Linkler (İkonlu)" alanından yönetilir; her öğe
 // remixicon ikonu taşır. Arama + hesap satırının hemen üstünde, sağa hizalı.
+// lastikjantavm'de en başta (Kampanyalarımız'ın solunda) sabit "Montaj Satın Al" bağlantısı durur.
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/src/lib/api';
+import { ROUTES } from '@/src/config/routes';
+import { resolveSiteFromHost } from '@/src/config/siteConfig';
 
 type UstLink = {
     _id: string;
@@ -32,8 +35,11 @@ function resolveUrl(m: UstLink): string {
 
 export default function UstLinks() {
     const [links, setLinks] = useState<UstLink[]>([]);
+    // Kendi lastiğiyle montaj satın alma bağlantısı yalnız lastikjantavm'de (alastik'te header düğmesi var)
+    const [showMontageBuy, setShowMontageBuy] = useState(false);
 
     useEffect(() => {
+        setShowMontageBuy(resolveSiteFromHost(window.location.host) === 'lastikjantavm');
         api.menu.getUstLinks()
             .then((r: any) => {
                 if (r?.success) {
@@ -44,10 +50,19 @@ export default function UstLinks() {
             .catch(() => {});
     }, []);
 
-    if (!links.length) return null;
+    if (!links.length && !showMontageBuy) return null;
 
     return (
         <div className="ust-links d-none d-lg-flex justify-content-end align-items-center gap-4 pt-2">
+            {showMontageBuy && (
+                <Link
+                    href={ROUTES.MONTAGE_BUY}
+                    className="ust-links__item d-inline-flex align-items-center gap-1 text-body fw-medium text-decoration-none"
+                >
+                    <i className="ri-tools-line fs-lg" />
+                    <span className="fs-sm">Montaj Satın Al</span>
+                </Link>
+            )}
             {links.map((m) => (
                 <Link
                     key={m._id}

@@ -11,7 +11,7 @@ import { useCart } from '@/src/context/CartContext';
 import { ROUTES } from '@/src/config/routes';
 import {
     AMENITY_LABELS, BRAND_RED, BRAND_RED_DARK, SELECT_CHEVRON, ServiceRow, Stars, TEXT_DARK, TRUST_GREEN,
-    formatPrice, hoursSummary, SITE_DOMAIN, type MontagePoint
+    formatPrice, hoursSummary, HERO_GRADIENT, useMontageSite, type MontagePoint
 } from './shared';
 import { api } from '@src/lib/api';
 
@@ -48,6 +48,7 @@ function useMobile() {
 
 // Tanıtım + SSS (sağ panel, nokta seçilmeden önce)
 function Promo({ pointCount, cityCount, plain = false, ownTire = false }: { pointCount: number; cityCount: number; plain?: boolean; ownTire?: boolean }) {
+    const { domain: SITE_DOMAIN } = useMontageSite();
     const ownTireFaq = [
         {
             q: 'Montaj Hizmeti Almanın Avantajları Nedir?',
@@ -200,6 +201,8 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
     const [sheetOpen, setSheetOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
+    // Site adı ve alan adı sayfanın verdiği site bağlamından (MontageTheme) okunur
+    const { domain: SITE_DOMAIN, name: siteName } = useMontageSite();
     // Site logosu ("güvencesiyle" rozeti) panel tema ayarından okunur — header ile aynı kaynak
     const [siteLogo, setSiteLogo] = useState('');
     useEffect(() => {
@@ -348,7 +351,7 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                                         <div className="d-flex align-items-center gap-2 mt-1">
                                             <Stars value={avg} /><span className="sk-review-h" style={{ fontSize: 14 }}>{avg}/5</span>
                                         </div>
-                                        <div className="mt-2" style={{ fontSize: 14 }}><span className="sk-red fw-semibold">Üye :</span> <span className="sk-review-h">{r.memberName === 'sistem' ? 'ALastik Müşterisi' : r.memberName}</span></div>
+                                        <div className="mt-2" style={{ fontSize: 14 }}><span className="sk-red fw-semibold">Üye :</span> <span className="sk-review-h">{r.memberName === 'sistem' ? `${siteName} Müşterisi` : r.memberName}</span></div>
                                         {r.comment && (
                                             <>
                                                 <div className="sk-review-h mt-2">Yorum</div>
@@ -558,7 +561,7 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                 .sk-btn-lg { padding: 14px; font-size: 16px; border-radius: 12px; }
                 .sk-btn-wide { width: 100%; }
                 @media (min-width: 768px) { .sk-btn-wide { width: auto; } }
-                .sk-hero { position: relative; overflow: hidden; border-radius: 16px; color: #fff; padding: 32px; background: linear-gradient(135deg, #8f0a1d 0%, ${BRAND_RED} 55%, #ff7a8a 100%); }
+                .sk-hero { position: relative; overflow: hidden; border-radius: 16px; color: #fff; padding: 32px; background: ${HERO_GRADIENT}; }
                 .sk-hero-pin { position: absolute; right: -32px; bottom: -40px; opacity: .15; }
                 .sk-hero-sub { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.8); }
                 .sk-hero-big { font-size: 48px; font-weight: 800; line-height: 1; margin-top: 4px; }

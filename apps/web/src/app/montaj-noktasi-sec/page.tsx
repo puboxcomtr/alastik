@@ -4,7 +4,9 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { API_ENDPOINTS, fetchAPI } from '@/src/config/api';
 import { siteTitle } from '@/src/lib/siteMeta';
+import { getSiteBySlug, type SiteSlug } from '@/src/config/siteConfig';
 import AddedToCart from '@/src/components/alastik/montage/AddedToCart';
+import { MontageTheme } from '@/src/components/alastik/montage/shared';
 
 export const revalidate = 300;
 
@@ -16,13 +18,22 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-// Montaj noktası listesi ve seçimi — yalnız alastik'te yayında.
+// Montaj noktası listesi ve seçimi — siteConfig'de montaj paleti tanımlı sitelerde yayında
+// (alastik ve lastikjantavm); renkler sitenin paletinden gelir, ekran aynıdır.
 // Sepette ürün varken seçim akışı, sepet boşken gezilebilir liste olarak çalışır.
+const currentSite = (): SiteSlug => (headers().get('x-site') || 'alastik') as SiteSlug;
+const montageEnabled = (site: SiteSlug) => Boolean(getSiteBySlug(site)?.theme.montage);
+
 export default async function MontageSelectPage() {
-    if ((headers().get('x-site') || 'alastik') !== 'alastik') notFound();
+    const site = currentSite();
+    if (!montageEnabled(site)) notFound();
 
     const result = await fetchAPI(API_ENDPOINTS.montage.list());
     const points = result?.success ? (result.data || []) : [];
 
-    return <AddedToCart points={points} />;
+    return (
+        <MontageTheme site={site}>
+            <AddedToCart points={points} />
+        </MontageTheme>
+    );
 }

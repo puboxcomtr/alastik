@@ -7,12 +7,23 @@
 
 export type SiteSlug = 'alastik' | 'lastikjantavm' | 'b2b';
 
+// Montaj ekranlarının (montaj noktası seçimi, montaj satın al) paleti. Tanımlı olmayan
+// sitede bu ekranlar yayında değildir (404).
+export interface MontageTheme {
+    brand: string;     // düğme, vurgulu metin, seçili durum
+    accent: string;    // adım çubuğu dolgusu
+    tint: string;      // aktif adım numarasının açık zemini
+    heroFrom: string;  // kahraman alanı gradyanı (koyu uç)
+    heroTo: string;    // kahraman alanı gradyanı (açık uç)
+}
+
 export interface SiteTheme {
     primary: string;
     secondary: string;
     logo: string;
     assetsBase: string;
     themeCss: string;
+    montage?: MontageTheme;
 }
 
 export interface SiteConfig {
@@ -50,6 +61,7 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
             logo: '/logo-alastik.png',
             assetsBase: '/alastik/assets',
             themeCss: '/alastik/assets/css/theme.min.css',
+            montage: { brand: '#f2223b', accent: '#f2223b', tint: '#fff1f2', heroFrom: '#8f0a1d', heroTo: '#ff7a8a' },
         },
         active: true,
     },
@@ -71,6 +83,8 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
             logo: '/logo-lastikjantavm.png',
             assetsBase: '/lastikjantavm/assets',
             themeCss: '/lastikjantavm/assets/css/theme.min.css',
+            // Site düğmeleri koyu, vurgular sarı: beyaz yazı sarı zeminde okunmadığından düğme rengi secondary
+            montage: { brand: '#313131', accent: '#e4cc15', tint: '#fdf6c7', heroFrom: '#0f0f0f', heroTo: '#5c5c5c' },
         },
         active: true,
     },

@@ -6,6 +6,7 @@ import { ROUTES } from '@/src/config/routes';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import MainMenu from '@components/lastikjantavm/Header/Navbar/Partials/MainMenu';
 
@@ -41,6 +42,11 @@ export default function MobileMenu({ show, onClose }: Props) {
                 <MainMenu handleClose={onClose} />
             </Offcanvas.Body>
             <div className="border-top px-0 py-3 mt-3 d-md-none">
+                {/* Kendi lastiğiyle montaj satın alma (alastik ile aynı akış) */}
+                <Link href={ROUTES.MONTAGE_BUY} className="nav-link justify-content-center fw-semibold mb-2" onClick={onClose}>
+                    <BuildOutlinedIcon className="opacity-60 me-2" sx={{ fontSize: 20 }} />
+                    Montaj Satın Al
+                </Link>
                 <div className="nav nav-justified w-100">
                     {isLoggedIn ? (
                         <div className="nav-link border-end d-flex flex-column align-items-center" role="button">

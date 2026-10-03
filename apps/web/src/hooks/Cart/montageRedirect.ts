@@ -22,10 +22,12 @@ export const markMontageOfferAnswered = (): void => {
     } catch { /* saklanamazsa sessizce geç */ }
 };
 
-/** LJA: lastik sepete eklendiyse ve daha önce sorulmadıysa montaj teklifi popup'ını açar */
+/**
+ * LJA: lastik sepete eklendiyse montaj noktası seçimi ekranına geçilir (alastik ile aynı akış).
+ * Olayı dinleyen MontageOffer bileşeni /montaj-noktasi-sec sayfasına yönlendirir; artık popup sorulmaz.
+ */
 export const offerMontageAfterAdd = (product: Product): void => {
     if (getProductType(product) !== 'LASTIK') return;
     if (typeof window === 'undefined') return;
-    if (hasAnsweredMontageOffer()) return;
     window.dispatchEvent(new CustomEvent(MONTAGE_OFFER_EVENT));
 };
