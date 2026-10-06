@@ -1,7 +1,4 @@
-// Araç markası sayfası — /arac/<marka> (yalnızca lastikjantavm.com): markanın modelleri ve lastik ebatları.
-// Model kartlarının altında markaya özel uzun içerik: elle yazılmış profil (data/lja/aracMarkaProfilleri.ts) +
-// canlı veriden hesaplanan ebat / jant / bijon bölümleri ve SSS (lib/vehicleBrandText.ts); lastik marka
-// sayfalarıyla aynı bileşenle (BrandSeoContent) çizilir.
+// Araç markası sayfası — /arac/<marka> (yalnızca lastikjantavm.com): markanın modelleri ve lastik ebatları
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -9,11 +6,8 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { Container } from 'react-bootstrap';
 import { getVehicleMake } from '@/src/services/vehicleService';
-import tagService from '@/src/services/tagService';
 import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
 import { JsonLd, breadcrumbJsonLd } from '@/src/lib/structuredData';
-import { buildVehicleBrandContent } from '@/src/lib/vehicleBrandText';
-import BrandSeoContent from '@/src/components/lastikjantavm/brand/BrandSeoContent';
 
 interface Props {
     params: Promise<{ marka: string }>;
@@ -28,28 +22,14 @@ async function load(params: Props['params']) {
     return getVehicleMake(marka);
 }
 
-// Ebat bağlantıları yalnızca etiket sayfası gerçekten varsa (ürünlü) verilir; yoksa düz metin kalır
-async function resolveSizeLinks<T extends { href?: string; label: string }>(items: T[]): Promise<T[]> {
-    const checked = await Promise.all(items.map(async item => {
-        if (!item.href || !item.href.startsWith('/etiket/')) return item;
-        try {
-            const tag = await tagService.getTagBySlug(item.href.replace('/etiket/', ''));
-            return tag && (tag.productCount ?? 1) > 0 ? item : { ...item, href: undefined };
-        } catch {
-            return { ...item, href: undefined };
-        }
-    }));
-    return checked;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const d = await load(params);
     if (!d) return {};
-    const content = buildVehicleBrandContent(d);
     const indexable = d.models.some(m => m.indexable);
+    const examples = d.models.filter(m => m.indexable).slice(0, 4).map(m => m.modelName).join(', ');
     return {
-        title: content.title,
-        description: content.description,
+        title: `${d.makeName} Lastik Ebatları ve Uyumlu Jant – Modele Göre | LastikJantAVM`,
+        description: `${d.makeName} modellerinin orijinal lastik ebatları, bijon ölçüleri ve uyumlu lastik, jant, kar zinciri seçenekleri${examples ? `: ${examples} ve diğerleri` : ''}.`,
         ...(await canonicalMeta(`/arac/${d.makeSlug}`)),
         ...(indexable ? {} : { robots: { index: false, follow: true } })
     };
@@ -61,12 +41,6 @@ export default async function VehicleMakePage({ params }: Props) {
     const origin = await getSiteOrigin();
     const withStock = d.models.filter(m => m.indexable);
     const others = d.models.filter(m => !m.indexable);
-
-    const content = buildVehicleBrandContent(d);
-    // Ebat listesi ve ebat bağlantı kutusu: etiket yoksa bağlantı düşer, metin kalır
-    const sizeSection = content.sections.find(s => s.id === 'ebatlar');
-    if (sizeSection?.list) sizeSection.list = await resolveSizeLinks(sizeSection.list);
-    content.sizeLinks = (await resolveSizeLinks(content.sizeLinks)).filter(l => l.href) as typeof content.sizeLinks;
 
     const ModelCard = ({ m }: { m: typeof d.models[number] }) => (
         <div className="col">
@@ -96,8 +70,12 @@ export default async function VehicleMakePage({ params }: Props) {
                         <li className="breadcrumb-item active" aria-current="page">{d.makeName}</li>
                     </ol>
                 </nav>
-                <h1 className="fs-3 fw-bold mb-2">{content.h1}</h1>
-                {content.intro.map((t, i) => <p key={i} className={i === content.intro.length - 1 ? 'mb-4' : 'mb-2'}>{t}</p>)}
+                <h1 className="fs-3 fw-bold mb-2">{`${d.makeName} Lastik Ebatları, Uyumlu Jant ve Kar Zinciri`}</h1>
+                <p className="mb-4">
+                    {d.makeName} için {d.models.length} modelin orijinal lastik ebatlarını, jant bijon ölçülerini ve
+                    uyumlu kar ekipmanını listeledik. Modelinizi seçerek nesil ve motor bazında ölçüleri ve stoğumuzdaki
+                    uygun ürünleri görebilirsiniz.
+                </p>
                 {withStock.length > 0 && (
                     <>
                         <h2 className="fs-5 fw-bold mb-3">{d.makeName} Modelleri</h2>
@@ -114,13 +92,6 @@ export default async function VehicleMakePage({ params }: Props) {
                         </div>
                     </>
                 )}
-                {/* Giriş yukarıda yazıldığı için bileşene boş giriş verilir; bölümler, model/ebat kutuları ve SSS burada */}
-                <BrandSeoContent
-                    content={{ ...content, intro: [] }}
-                    display={content.display}
-                    seriesTitle={`${content.display} Modelleri`}
-                    sizesTitle={`${content.display} Lastik Ebatları`}
-                />
             </Container>
         </section>
     );
