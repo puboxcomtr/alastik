@@ -70,7 +70,10 @@ function LinkBox({ title, links }: { title: string; links: { href: string; label
     );
 }
 
-export default function BrandSeoContent({ content, display, seasonTitle }: { content: BrandContent; display: string; seasonTitle?: string }) {
+// seriesTitle / sizesTitle: bağlantı kutusu başlıkları (araç markası sayfasında "Modelleri" / "Lastik Ebatları")
+export default function BrandSeoContent({ content, display, seasonTitle, seriesTitle, sizesTitle }: {
+    content: BrandContent; display: string; seasonTitle?: string; seriesTitle?: string; sizesTitle?: string
+}) {
     const [first, ...rest] = content.sections;
     return (
         <div className="bsc">
@@ -103,8 +106,8 @@ export default function BrandSeoContent({ content, display, seasonTitle }: { con
             )}
 
             <div className="mt-3">
-                <LinkBox title={`${display} Desenleri`} links={content.seriesLinks} />
-                <LinkBox title={`${display} Lastik Ebatları`} links={content.sizeLinks} />
+                <LinkBox title={seriesTitle || `${display} Desenleri`} links={content.seriesLinks} />
+                <LinkBox title={sizesTitle || `${display} Lastik Ebatları`} links={content.sizeLinks} />
             </div>
 
             {content.faqs.length > 0 && (
