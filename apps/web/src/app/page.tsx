@@ -8,6 +8,7 @@ import AlastikHomePage from '@src/views/alastik/HomePage';
 import LastikJantAvmHomePage from '@src/views/lastikjantavm/HomePage';
 import { canonicalMeta, getSiteOrigin } from '@/src/lib/canonical';
 import { JsonLd, siteJsonLd } from '@/src/lib/structuredData';
+import HomeIntro from '@src/components/lastikjantavm/home/HomeIntro';
 
 export async function generateMetadata(): Promise<Metadata> {
   // B2B (demo alan adı) arama motorlarına kapalıdır
@@ -34,7 +35,13 @@ export default async function Home() {
   return (
     <>
       {siteLd.length > 0 && <JsonLd data={siteLd} />}
-      {site === 'lastikjantavm' ? <LastikJantAvmHomePage /> : <AlastikHomePage />}
+      {site === 'lastikjantavm' ? (
+        <>
+          <LastikJantAvmHomePage />
+          {/* Sunucu HTML'inde H1 + kısa tanıtım (ana sayfa istemci tarafında çizildiği için); alastik'te yok */}
+          <HomeIntro />
+        </>
+      ) : <AlastikHomePage />}
     </>
   );
 }
