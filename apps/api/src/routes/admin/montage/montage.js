@@ -661,6 +661,10 @@ router.post('/import', excelUpload.single('file'), async (req, res) => {
     }
 });
 
+// Bayi bilgi ve fiyat formu kayıtları (herkese açık formdan gelen cevaplar) — /admin/montage/dealer-forms
+// '/:id' rotasından ÖNCE bağlanmalıdır.
+router.use('/dealer-forms', require('./bayiFormlari'));
+
 // Detay - GET /admin/montage/:id
 router.get('/:id', async (req, res) => {
     try {
