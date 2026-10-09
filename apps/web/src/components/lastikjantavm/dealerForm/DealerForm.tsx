@@ -41,6 +41,8 @@ nav[aria-label="Şubeler, hizmetler ve araçlar"] { display: none !important; }
 .bf-kart { background: #fff; border: 1px solid #e3e3e3; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
 .bf label { display: block; font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
 .bf small.ip { display: block; color: #6c757d; font-size: .8rem; margin: -2px 0 6px; font-weight: 400; }
+.bf-kdv { background: #fff8d6; border-left: 5px solid ${VURGU}; border-radius: 8px; padding: 12px 14px; font-size: 1rem; font-weight: 600; color: #111; }
+.bf-kdv strong { color: #d62828; }
 .bf small.birim { display: block; color: #d62828; font-size: .85rem; font-weight: 700; margin: -2px 0 7px; }
 .bf input:focus, .bf select:focus, .bf textarea:focus, .bf button:focus, .bf button:focus-visible { outline: none !important; box-shadow: none !important; }
 .bf input[type=text]:focus, .bf input[type=tel]:focus, .bf select:focus, .bf textarea:focus { border-color: ${KOYU}; }
@@ -265,7 +267,7 @@ export default function DealerForm() {
             })}</div>}
 
             {adim === 2 && <>
-                <p style={{ fontSize: '.9rem', color: '#555', marginBottom: 0 }}>Tüm fiyatlar <strong>KDV dahildir</strong>.</p>
+                <div className="bf-kdv">Fiyatları <strong>KDV DAHİL</strong> giriniz.</div>
                 {tanim.fiyatGruplari.map(g => <div key={g.ad}><h3>{g.ad}</h3><div className="bf-izgara">
                     {g.satirlar.map(r => A({ alan: `fiyatlar.${r.anahtar}`, etiket: r.ad, birim: r.birim, children: (
                         <select value={c.fiyatlar[r.anahtar] ?? ''} onChange={e => yazAlt('fiyatlar', r.anahtar, e.target.value)}>
