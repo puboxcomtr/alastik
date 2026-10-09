@@ -23,7 +23,7 @@ const SAAT_ALANLARI = [
 const FIYAT_GRUPLARI = [
     { ad: 'Sibop Fiyatları ve Hizmetler', satirlar: [
         { kod: 'SBP-1', ad: 'Normal Sibop (montaj hariç fiyat)', birim: 'Adet', secenekler: aralik(50, 250, 25) },
-        { kod: 'SBP-3', ad: 'Çelik Sibop (montaj hariç fiyat)', birim: 'Adet', secenekler: aralik(100, 325, 25) }
+        { kod: 'SBP-3', ad: 'Çelik Sibop (montaj hariç fiyat)', birim: 'Adet', secenekler: aralik(100, 500, 25) }
     ] },
     { ad: 'Rot ve Balans Hizmetleri', satirlar: [
         { kod: '600.94', ad: '13 ve 16 İnç Arası Rot Ayarı', birim: 'Araç başı', secenekler: aralik(500, 2500, 50) },
@@ -36,9 +36,9 @@ const FIYAT_GRUPLARI = [
         { kod: '600105', ad: '19 İnç ve Üzeri Sezonluk Lastik Depolama (maksimum 6 ay)', birim: 'Adet', secenekler: aralik(100, 500, 50) }
     ] },
     { ad: 'Yazlık Kışlık Lastik Değişim Hizmetleri', satirlar: [
-        { kod: '600109', ad: '13 ve 16 İnç Arası Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 500, 50) },
-        { kod: '600110', ad: '17 ve 18 İnç Arası Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 500, 50) },
-        { kod: '600111', ad: '19 İnç ve Üzeri Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 500, 50) }
+        { kod: '600109', ad: '13 ve 16 İnç Arası Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 1000, 50) },
+        { kod: '600110', ad: '17 ve 18 İnç Arası Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 1000, 50) },
+        { kod: '600111', ad: '19 İnç ve Üzeri Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 1000, 50) }
     ] },
     { ad: 'Mobil Yerinde Değişim', satirlar: [
         { kod: '600112', ad: 'Mobil 13 ve 16 İnç Arası Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(1000, 10000, 500) },

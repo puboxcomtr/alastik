@@ -4,6 +4,7 @@
 // buradaki kontroller yalnızca kullanıcıya hemen geri bildirim verir. Cevaplar tarayıcıda taslak olarak
 // saklanır (sayfa yenilense de kaybolmaz), gönderim başarılı olunca taslak silinir.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 import { API_ENDPOINTS } from '@/src/config/api';
 
 const API = API_ENDPOINTS.location.cities().replace(/\/location\/cities$/, '');
@@ -27,7 +28,10 @@ const BOS: Cevap = { bayiAdi: '', cityId: '', districtId: '', adres: '', telefon
 const ADIMLAR = ['Bayi Bilgileri', 'Çalışma Saatleri', 'Hizmet Fiyatları', 'Tesis Bilgileri', 'Özet ve Gönder'];
 
 const CSS = `
-.bf { width: 100%; max-width: 720px; margin: 0 auto; padding: 16px 14px 110px; color: #222; box-sizing: border-box; }
+/* İçerik, site menüsüyle aynı hizada durur (bootstrap .container içinde) */
+.bf { width: 100%; padding: 16px 0 110px; color: #222; }
+/* Bu sayfada alt bilgi üstündeki site içi bağlantı kutuları (Şubelerimiz, Lastikçi, Araca Göre Lastik) gösterilmez */
+nav[aria-label="Şubeler, hizmetler ve araçlar"] { display: none !important; }
 .bf h1 { font-size: 1.25rem; font-weight: 700; margin: 4px 0 6px; }
 .bf h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 12px; }
 .bf h3 { font-size: .95rem; font-weight: 700; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 2px solid ${VURGU}; }
@@ -37,6 +41,9 @@ const CSS = `
 .bf-kart { background: #fff; border: 1px solid #e3e3e3; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
 .bf label { display: block; font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
 .bf small.ip { display: block; color: #6c757d; font-size: .8rem; margin: -2px 0 6px; font-weight: 400; }
+.bf small.birim { display: block; color: #d62828; font-size: .85rem; font-weight: 700; margin: -2px 0 7px; }
+.bf input:focus, .bf select:focus, .bf textarea:focus, .bf button:focus, .bf button:focus-visible { outline: none !important; box-shadow: none !important; }
+.bf input[type=text]:focus, .bf input[type=tel]:focus, .bf select:focus, .bf textarea:focus { border-color: ${KOYU}; }
 .bf input[type=text], .bf input[type=tel], .bf textarea, .bf select { width: 100%; font-size: 16px; padding: 11px 12px; border: 1px solid #c9c9c9; border-radius: 10px; background: #fff; color: #111; }
 .bf .hatali input, .bf .hatali textarea, .bf .hatali select, .bf .hatali .bf-ikili, .bf .hatali .bf-marka { border-color: #d62828; }
 .bf .hatali input.bf-ara { border-color: #c9c9c9; }
@@ -59,7 +66,7 @@ const CSS = `
 .bf-tuzak { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 /* Masaüstü: geniş alan, yan yana alanlar, sabit alt çubuk yerine sayfa içi düğmeler (telefon görünümü değişmez) */
 @media (min-width: 768px) {
-  .bf { max-width: 980px; padding: 28px 24px 48px; }
+  .bf { padding: 28px 0 48px; }
   .bf h1 { font-size: 1.7rem; margin-bottom: 8px; }
   .bf h2 { font-size: 1.15rem; } .bf h3 { font-size: 1.05rem; margin-top: 26px; }
   .bf-adim { margin: 14px 0 22px; } .bf-adim span { height: 8px; }
@@ -67,6 +74,7 @@ const CSS = `
   .bf-izgara.uc { grid-template-columns: 1fr 1fr 1fr; }
   .bf-izgara > .bf-kart { margin-bottom: 0; height: 100%; }
   .bf-izgara > .tam { grid-column: 1 / -1; }
+  .bf-izgara.iki { grid-template-columns: 1fr 1fr; }
   .bf-kart { padding: 18px; }
   .bf-marka { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 18px; max-height: 340px; }
   .bf-marka label { border-bottom: 0; padding: 7px 0; }
@@ -74,6 +82,10 @@ const CSS = `
   .bf-alt > div { max-width: none; justify-content: flex-end; }
   .bf-alt button { flex: 0 0 220px; }
   .bf-ozet { font-size: .95rem; } .bf-ozet td:first-child { width: 62%; }
+}
+@media (min-width: 1200px) {
+  .bf-izgara { grid-template-columns: 1fr 1fr 1fr; }
+  .bf-marka { grid-template-columns: repeat(6, 1fr); }
 }
 `;
 
@@ -161,31 +173,41 @@ export default function DealerForm() {
     };
     const adimOf = (alan: string) => alan.startsWith('saatler.') ? 1 : alan.startsWith('fiyatlar.') ? 2 : alan.startsWith('tesis.') ? 3 : 0;
     const git = (n: number) => { setAdim(n); setTimeout(() => ust.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); };
-    const ilkHatayaGit = () => setTimeout(() => document.querySelector('.bf .hatali')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+    // İlk eksik alan ekranda görünmüyorsa oraya kaydır (görünüyorsa sayfa yerinden oynamaz)
+    const ilkHatayaGit = () => setTimeout(() => {
+        const el = document.querySelector('.bf .hatali'); if (!el) return;
+        const r = el.getBoundingClientRect();
+        if (r.top < 80 || r.bottom > window.innerHeight - 90) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+    const uyar = (mesaj: string) => toast.error(mesaj, { toastId: 'bayi-formu-uyari', autoClose: 4000 });
+    const eksikMesaji = (h: Record<string, string>, n?: number) => {
+        const adet = Object.keys(h).length;
+        return `${n !== undefined ? ADIMLAR[n] + ': ' : ''}${adet === 1 ? Object.values(h)[0] : `${adet} alan eksik. Kırmızı ile işaretli alanları doldurun.`}`;
+    };
 
-    const ileri = () => { const h = kontrol(adim); setHata(h); if (Object.keys(h).length) { ilkHatayaGit(); return; } git(adim + 1); };
+    const ileri = () => { const h = kontrol(adim); setHata(h); if (Object.keys(h).length) { uyar(eksikMesaji(h)); ilkHatayaGit(); return; } git(adim + 1); };
     const gonder = async () => {
         let h: Record<string, string> = {}; for (let n = 0; n < 4; n++) h = { ...h, ...kontrol(n) };
-        if (Object.keys(h).length) { setHata(h); git(Math.min(...Object.keys(h).map(adimOf))); ilkHatayaGit(); return; }
+        if (Object.keys(h).length) { const n = Math.min(...Object.keys(h).map(adimOf)); setHata(h); setAdim(n); uyar(eksikMesaji(h, n)); ilkHatayaGit(); return; }
         setGonderiliyor(true);
         try {
             const r = await fetch(`${API}/bayi-formu`, { method: 'POST', headers: BASLIK, body: JSON.stringify(c) });
             const j = await r.json().catch(() => ({}));
             if (r.ok && j?.success) { try { localStorage.removeItem(TASLAK); } catch { /* yok say */ } setBitti({ guncellendi: !!j.guncellendi }); window.scrollTo({ top: 0 }); return; }
-            if (j?.hatalar && Object.keys(j.hatalar).length) { setHata(j.hatalar); git(Math.min(...Object.keys(j.hatalar).map(adimOf))); ilkHatayaGit(); }
-            else setHata({ genel: j?.message || 'Form gönderilemedi, lütfen tekrar deneyin' });
-        } catch { setHata({ genel: 'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin; cevaplarınız saklandı.' }); }
+            if (j?.hatalar && Object.keys(j.hatalar).length) { const n = Math.min(...Object.keys(j.hatalar).map(adimOf)); setHata(j.hatalar); setAdim(n); uyar(eksikMesaji(j.hatalar, n)); ilkHatayaGit(); }
+            else uyar(j?.message || 'Form gönderilemedi, lütfen tekrar deneyin');
+        } catch { uyar('Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin; cevaplarınız saklandı.'); }
         finally { setGonderiliyor(false); }
     };
 
-    const A = ({ alan, etiket, ipucu, tam, children }: { alan: string; etiket: string; ipucu?: string; tam?: boolean; children: React.ReactNode }) => {
+    const A = ({ alan, etiket, birim, tam, children }: { alan: string; etiket: string; birim?: string; tam?: boolean; children: React.ReactNode }) => {
         // Tek bir giriş alanıysa etiketi ona bağla (ekran okuyucu ve etikete dokununca odaklanma için)
         const id = `bf-${alan.replace(/[^a-zA-Z0-9]/g, '-')}`;
         const tekAlan = React.isValidElement(children) && typeof children.type === 'string' && ['input', 'select', 'textarea'].includes(children.type);
         return (
         <div className={`bf-kart${hata[alan] ? ' hatali' : ''}${tam ? ' tam' : ''}`} key={alan}>
             <label htmlFor={tekAlan ? id : undefined}>{etiket}</label>
-            {ipucu && <small className="ip">{ipucu}</small>}
+            {birim && <small className="birim">{birim}</small>}
             {tekAlan ? React.cloneElement(children as React.ReactElement<any>, { id }) : children}
             {hata[alan] && <div className="hata">{hata[alan]}</div>}
         </div>
@@ -194,37 +216,35 @@ export default function DealerForm() {
     const para = (n: number) => `${n.toLocaleString('tr-TR')} TL`;
     const fiyatYazi = (v: any) => !tanim ? '' : v === tanim.vermiyorum ? tanim.vermiyorumEtiket : v ? para(Number(v)) : '';
 
-    if (yukHata) return <div className="bf"><style>{CSS}</style><div className="bf-uyari">{yukHata}</div></div>;
-    if (!tanim) return <div className="bf"><style>{CSS}</style><p>Form yükleniyor…</p></div>;
+    if (yukHata) return <div className="container"><div className="bf"><style>{CSS}</style><div className="bf-uyari">{yukHata}</div></div></div>;
+    if (!tanim) return <div className="container"><div className="bf"><style>{CSS}</style><p>Form yükleniyor…</p></div></div>;
     if (bitti) return (
-        <div className="bf"><style>{CSS}</style>
+        <div className="container"><div className="bf"><style>{CSS}</style>
             <div className="bf-kart" style={{ textAlign: 'center', padding: '36px 18px' }}>
                 <div style={{ fontSize: 44, lineHeight: 1 }}>✓</div>
                 <h1 style={{ marginTop: 12 }}>Teşekkür ederiz</h1>
                 <p style={{ margin: 0 }}>{bitti.guncellendi ? 'Bilgileriniz güncellendi.' : 'Formunuz bize ulaştı.'} Bilgilerinizde değişiklik olursa aynı linkten formu yeniden doldurabilirsiniz.</p>
             </div>
-        </div>
+        </div></div>
     );
 
     const il = iller.find(i => i.cityId === c.cityId)?.cityName || ''; const ilce = ilceler.find(i => i.districtId === c.districtId)?.districtName || '';
     const filtreliMarka = tanim.markalar.filter(m => m.toLocaleLowerCase('tr').includes(markaAra.trim().toLocaleLowerCase('tr')));
 
     return (
-        <div className="bf" ref={ust}>
+        <div className="container"><div className="bf" ref={ust}>
             <style>{CSS}</style>
             <h1>Montaj Noktası Bilgi ve Fiyat Formu</h1>
             <div style={{ color: '#555', fontSize: '.9rem' }}>Adım {adim + 1} / {ADIMLAR.length}: <strong>{ADIMLAR[adim]}</strong></div>
             <div className="bf-adim" aria-hidden="true">{ADIMLAR.map((_, i) => <span key={i} className={i < adim ? 't' : i === adim ? 'a' : ''} />)}</div>
-            {hata.genel && <div className="bf-uyari">{hata.genel}</div>}
-            {adim < 4 && Object.keys(hata).filter(k => k !== 'genel' && adimOf(k) === adim).length > 0 && <div className="bf-uyari">Tüm alanlar zorunludur. Lütfen kırmızı ile işaretli alanları doldurun.</div>}
             <div className="bf-tuzak" aria-hidden="true"><label>Web siteniz<input type="text" tabIndex={-1} autoComplete="off" value={c.website} onChange={e => setC(o => ({ ...o, website: e.target.value }))} /></label></div>
 
-            {adim === 0 && <div className="bf-izgara">
+            {adim === 0 && <div className="bf-izgara iki">
                 {A({ alan: 'bayiAdi', etiket: 'Bayi Adı', tam: true, children: <input type="text" value={c.bayiAdi} maxLength={150} onChange={e => yaz('bayiAdi', e.target.value)} autoComplete="organization" /> })}
                 {A({ alan: 'cityId', etiket: 'İl', children: <select value={c.cityId} onChange={e => { setC(o => ({ ...o, cityId: e.target.value, districtId: '' })); setHata(h => { const { cityId: _a, districtId: _b, ...k } = h; return k; }); }}><option value="">Seçiniz</option>{iller.map(i => <option key={i.cityId} value={i.cityId}>{i.cityName}</option>)}</select> })}
                 {A({ alan: 'districtId', etiket: 'İlçe', children: <select value={c.districtId} disabled={!c.cityId} onChange={e => yaz('districtId', e.target.value)}><option value="">{c.cityId ? 'Seçiniz' : 'Önce il seçin'}</option>{ilceler.map(i => <option key={i.districtId} value={i.districtId}>{i.districtName}</option>)}</select> })}
-                {A({ alan: 'adres', etiket: 'Açık Adres', ipucu: 'Mahalle, cadde/sokak, kapı numarası', tam: true, children: <textarea rows={3} value={c.adres} maxLength={500} onChange={e => yaz('adres', e.target.value)} /> })}
-                {A({ alan: 'telefon1', etiket: 'Telefon', ipucu: 'Cep ya da sabit hat. Örnek: 0511 111 11 11', children: <input type="tel" inputMode="numeric" placeholder="0511 111 11 11" value={c.telefon1} onChange={e => yaz('telefon1', telefonYaz(e.target.value))} /> })}
+                {A({ alan: 'adres', etiket: 'Açık Adres', tam: true, children: <textarea rows={3} value={c.adres} maxLength={500} onChange={e => yaz('adres', e.target.value)} /> })}
+                {A({ alan: 'telefon1', etiket: 'Telefon', children: <input type="tel" inputMode="numeric" placeholder="0511 111 11 11" value={c.telefon1} onChange={e => yaz('telefon1', telefonYaz(e.target.value))} /> })}
                 {A({ alan: 'telefon2', etiket: 'İkinci Telefon (isteğe bağlı)', children: <input type="tel" inputMode="numeric" placeholder="0212 111 11 11" value={c.telefon2} onChange={e => yaz('telefon2', telefonYaz(e.target.value))} /> })}
             </div>}
 
@@ -245,9 +265,9 @@ export default function DealerForm() {
             })}</div>}
 
             {adim === 2 && <>
-                <p style={{ fontSize: '.9rem', color: '#555' }}>Fiyatlar <strong>KDV dahil</strong> TL’dir. Vermediğiniz hizmet için “{tanim.vermiyorumEtiket}” seçin.</p>
+                <p style={{ fontSize: '.9rem', color: '#555', marginBottom: 0 }}>Tüm fiyatlar <strong>KDV dahildir</strong>.</p>
                 {tanim.fiyatGruplari.map(g => <div key={g.ad}><h3>{g.ad}</h3><div className="bf-izgara">
-                    {g.satirlar.map(r => A({ alan: `fiyatlar.${r.anahtar}`, etiket: r.ad, ipucu: r.birim, children: (
+                    {g.satirlar.map(r => A({ alan: `fiyatlar.${r.anahtar}`, etiket: r.ad, birim: r.birim, children: (
                         <select value={c.fiyatlar[r.anahtar] ?? ''} onChange={e => yazAlt('fiyatlar', r.anahtar, e.target.value)}>
                             <option value="">Fiyat seçiniz</option>
                             <option value={tanim.vermiyorum}>{tanim.vermiyorumEtiket}</option>
@@ -264,7 +284,7 @@ export default function DealerForm() {
                 {A({ alan: 'tesis.metrekare', etiket: 'İş yeri kaç metrekare?', children: <select value={c.tesis.metrekare ?? ''} onChange={e => yazAlt('tesis', 'metrekare', e.target.value)}><option value="">Seçiniz</option>{tanim.metrekare.map(n => <option key={n} value={String(n)}>{n} m²</option>)}</select> })}
                 {A({ alan: 'tesis.lastikOteliKapasite', etiket: 'Lastik oteli kapasitesi kaç adet?', children: <select value={c.tesis.lastikOteliKapasite ?? ''} onChange={e => yazAlt('tesis', 'lastikOteliKapasite', e.target.value)}><option value="">Seçiniz</option><option value={tanim.lastikOteliYok}>{tanim.lastikOteliYokEtiket}</option>{tanim.lastikOteliKapasite.map(n => <option key={n} value={String(n)}>{n} adet</option>)}</select> })}
                 </div>
-                {A({ alan: 'tesis.markalar', etiket: 'Hangi marka bayisisiniz?', ipucu: 'Birden fazla seçebilirsiniz', tam: true, children: <>
+                {A({ alan: 'tesis.markalar', etiket: 'Hangi marka bayisisiniz?', tam: true, children: <>
                     <input type="text" className="bf-ara" aria-label="Marka ara" placeholder="Marka ara…" value={markaAra} onChange={e => setMarkaAra(e.target.value)} style={{ marginBottom: 8 }} />
                     <div className="bf-marka">
                         {!markaAra.trim() && [tanim.markaYok, tanim.markaHepsi].map(m => <label key={m}><input type="checkbox" checked={(c.tesis.markalar || []).includes(m)} onChange={() => markaSec(m)} /><strong>{m}</strong></label>)}
@@ -276,8 +296,7 @@ export default function DealerForm() {
             </>}
 
             {adim === 4 && <>
-                <p style={{ fontSize: '.9rem', color: '#555' }}>Cevaplarınızı kontrol edin. Doğruysa en alttaki <strong>Formu Gönder</strong> düğmesine basın.</p>
-                <div className="bf-izgara">
+                                <div className="bf-izgara iki">
                 <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(0)}>Düzenle</button><h2>Bayi Bilgileri</h2>
                     <table className="bf-ozet"><tbody>
                         <tr><td>Bayi Adı</td><td>{c.bayiAdi}</td></tr><tr><td>İl / İlçe</td><td>{il} / {ilce}</td></tr><tr><td>Açık Adres</td><td>{c.adres}</td></tr>
@@ -302,6 +321,6 @@ export default function DealerForm() {
                 {adim < 4 ? <button type="button" className="ana" onClick={ileri}>İleri</button>
                     : <button type="button" className="ana" onClick={gonder} disabled={gonderiliyor}>{gonderiliyor ? 'Gönderiliyor…' : 'Formu Gönder'}</button>}
             </div></div>
-        </div>
+        </div></div>
     );
 }
