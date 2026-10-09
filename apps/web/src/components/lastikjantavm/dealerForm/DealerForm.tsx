@@ -68,7 +68,8 @@ nav[aria-label="Şubeler, hizmetler ve araçlar"] { display: none !important; }
 .bf-tuzak { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 /* Masaüstü: geniş alan, yan yana alanlar, sabit alt çubuk yerine sayfa içi düğmeler (telefon görünümü değişmez) */
 @media (min-width: 768px) {
-  .bf { padding: 28px 0 48px; }
+  /* Site menüsüyle aynı hiza: menü 1260px genişliğinde ortalanmış alanı ve 12px iç boşluğu kullanır */
+  .bf { max-width: 1260px; margin: 0 auto; padding: 28px 12px 48px; }
   .bf h1 { font-size: 1.7rem; margin-bottom: 8px; }
   .bf h2 { font-size: 1.15rem; } .bf h3 { font-size: 1.05rem; margin-top: 26px; }
   .bf-adim { margin: 14px 0 22px; } .bf-adim span { height: 8px; }
