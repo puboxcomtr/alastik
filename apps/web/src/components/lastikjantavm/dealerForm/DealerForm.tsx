@@ -27,7 +27,7 @@ const BOS: Cevap = { bayiAdi: '', cityId: '', districtId: '', adres: '', telefon
 const ADIMLAR = ['Bayi Bilgileri', 'Çalışma Saatleri', 'Hizmet Fiyatları', 'Tesis Bilgileri', 'Özet ve Gönder'];
 
 const CSS = `
-.bf { max-width: 720px; margin: 0 auto; padding: 16px 14px 110px; color: #222; }
+.bf { width: 100%; max-width: 720px; margin: 0 auto; padding: 16px 14px 110px; color: #222; box-sizing: border-box; }
 .bf h1 { font-size: 1.25rem; font-weight: 700; margin: 4px 0 6px; }
 .bf h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 12px; }
 .bf h3 { font-size: .95rem; font-weight: 700; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 2px solid ${VURGU}; }
@@ -57,6 +57,24 @@ const CSS = `
 .bf-duzenle { background: none; border: 0; color: #111; text-decoration: underline; font-size: .85rem; font-weight: 600; padding: 0; float: right; }
 .bf-uyari { background: #fff4f4; border: 1px solid #f1b5b5; color: #a11; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
 .bf-tuzak { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+/* Masaüstü: geniş alan, yan yana alanlar, sabit alt çubuk yerine sayfa içi düğmeler (telefon görünümü değişmez) */
+@media (min-width: 768px) {
+  .bf { max-width: 980px; padding: 28px 24px 48px; }
+  .bf h1 { font-size: 1.7rem; margin-bottom: 8px; }
+  .bf h2 { font-size: 1.15rem; } .bf h3 { font-size: 1.05rem; margin-top: 26px; }
+  .bf-adim { margin: 14px 0 22px; } .bf-adim span { height: 8px; }
+  .bf-izgara { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-bottom: 14px; }
+  .bf-izgara.uc { grid-template-columns: 1fr 1fr 1fr; }
+  .bf-izgara > .bf-kart { margin-bottom: 0; height: 100%; }
+  .bf-izgara > .tam { grid-column: 1 / -1; }
+  .bf-kart { padding: 18px; }
+  .bf-marka { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 18px; max-height: 340px; }
+  .bf-marka label { border-bottom: 0; padding: 7px 0; }
+  .bf-alt { position: static; border-top: 0; background: transparent; padding: 22px 0 0; }
+  .bf-alt > div { max-width: none; justify-content: flex-end; }
+  .bf-alt button { flex: 0 0 220px; }
+  .bf-ozet { font-size: .95rem; } .bf-ozet td:first-child { width: 62%; }
+}
 `;
 
 const telefonYaz = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 11); return [d.slice(0, 4), d.slice(4, 7), d.slice(7, 9), d.slice(9, 11)].filter(Boolean).join(' '); };
@@ -160,12 +178,12 @@ export default function DealerForm() {
         finally { setGonderiliyor(false); }
     };
 
-    const A = ({ alan, etiket, ipucu, children }: { alan: string; etiket: string; ipucu?: string; children: React.ReactNode }) => {
+    const A = ({ alan, etiket, ipucu, tam, children }: { alan: string; etiket: string; ipucu?: string; tam?: boolean; children: React.ReactNode }) => {
         // Tek bir giriş alanıysa etiketi ona bağla (ekran okuyucu ve etikete dokununca odaklanma için)
         const id = `bf-${alan.replace(/[^a-zA-Z0-9]/g, '-')}`;
         const tekAlan = React.isValidElement(children) && typeof children.type === 'string' && ['input', 'select', 'textarea'].includes(children.type);
         return (
-        <div className={`bf-kart${hata[alan] ? ' hatali' : ''}`} key={alan}>
+        <div className={`bf-kart${hata[alan] ? ' hatali' : ''}${tam ? ' tam' : ''}`} key={alan}>
             <label htmlFor={tekAlan ? id : undefined}>{etiket}</label>
             {ipucu && <small className="ip">{ipucu}</small>}
             {tekAlan ? React.cloneElement(children as React.ReactElement<any>, { id }) : children}
@@ -201,16 +219,16 @@ export default function DealerForm() {
             {adim < 4 && Object.keys(hata).filter(k => k !== 'genel' && adimOf(k) === adim).length > 0 && <div className="bf-uyari">Tüm alanlar zorunludur. Lütfen kırmızı ile işaretli alanları doldurun.</div>}
             <div className="bf-tuzak" aria-hidden="true"><label>Web siteniz<input type="text" tabIndex={-1} autoComplete="off" value={c.website} onChange={e => setC(o => ({ ...o, website: e.target.value }))} /></label></div>
 
-            {adim === 0 && <>
-                {A({ alan: 'bayiAdi', etiket: 'Bayi Adı', children: <input type="text" value={c.bayiAdi} maxLength={150} onChange={e => yaz('bayiAdi', e.target.value)} autoComplete="organization" /> })}
+            {adim === 0 && <div className="bf-izgara">
+                {A({ alan: 'bayiAdi', etiket: 'Bayi Adı', tam: true, children: <input type="text" value={c.bayiAdi} maxLength={150} onChange={e => yaz('bayiAdi', e.target.value)} autoComplete="organization" /> })}
                 {A({ alan: 'cityId', etiket: 'İl', children: <select value={c.cityId} onChange={e => { setC(o => ({ ...o, cityId: e.target.value, districtId: '' })); setHata(h => { const { cityId: _a, districtId: _b, ...k } = h; return k; }); }}><option value="">Seçiniz</option>{iller.map(i => <option key={i.cityId} value={i.cityId}>{i.cityName}</option>)}</select> })}
                 {A({ alan: 'districtId', etiket: 'İlçe', children: <select value={c.districtId} disabled={!c.cityId} onChange={e => yaz('districtId', e.target.value)}><option value="">{c.cityId ? 'Seçiniz' : 'Önce il seçin'}</option>{ilceler.map(i => <option key={i.districtId} value={i.districtId}>{i.districtName}</option>)}</select> })}
-                {A({ alan: 'adres', etiket: 'Açık Adres', ipucu: 'Mahalle, cadde/sokak, kapı numarası', children: <textarea rows={3} value={c.adres} maxLength={500} onChange={e => yaz('adres', e.target.value)} /> })}
+                {A({ alan: 'adres', etiket: 'Açık Adres', ipucu: 'Mahalle, cadde/sokak, kapı numarası', tam: true, children: <textarea rows={3} value={c.adres} maxLength={500} onChange={e => yaz('adres', e.target.value)} /> })}
                 {A({ alan: 'telefon1', etiket: 'Telefon', ipucu: 'Cep ya da sabit hat. Örnek: 0511 111 11 11', children: <input type="tel" inputMode="numeric" placeholder="0511 111 11 11" value={c.telefon1} onChange={e => yaz('telefon1', telefonYaz(e.target.value))} /> })}
                 {A({ alan: 'telefon2', etiket: 'İkinci Telefon (isteğe bağlı)', children: <input type="tel" inputMode="numeric" placeholder="0212 111 11 11" value={c.telefon2} onChange={e => yaz('telefon2', telefonYaz(e.target.value))} /> })}
-            </>}
+            </div>}
 
-            {adim === 1 && [['Hafta İçi', 0], ['Cumartesi', 2], ['Pazar', 4]].map(([ad, i]) => {
+            {adim === 1 && <div className="bf-izgara uc">{[['Hafta İçi', 0], ['Cumartesi', 2], ['Pazar', 4]].map(([ad, i]) => {
                 const ac = tanim.saatAlanlari[i as number], kp = tanim.saatAlanlari[(i as number) + 1]; const kapali = c.saatler[ac.key] === tanim.kapali;
                 const sec = (a: typeof ac, etiket: string, kilit = false) => (
                     <div className={hata[`saatler.${a.key}`] ? 'hatali' : ''}>
@@ -224,25 +242,29 @@ export default function DealerForm() {
                     </div>
                 );
                 return <div className="bf-kart" key={ad as string}><h2>{ad}</h2><div className="bf-iki">{sec(ac, 'Açılış')}{sec(kp, 'Kapanış', kapali)}</div></div>;
-            })}
+            })}</div>}
 
             {adim === 2 && <>
                 <p style={{ fontSize: '.9rem', color: '#555' }}>Fiyatlar <strong>KDV dahil</strong> TL’dir. Vermediğiniz hizmet için “{tanim.vermiyorumEtiket}” seçin.</p>
-                {tanim.fiyatGruplari.map(g => <div key={g.ad}><h3>{g.ad}</h3>
+                {tanim.fiyatGruplari.map(g => <div key={g.ad}><h3>{g.ad}</h3><div className="bf-izgara">
                     {g.satirlar.map(r => A({ alan: `fiyatlar.${r.anahtar}`, etiket: r.ad, ipucu: r.birim, children: (
                         <select value={c.fiyatlar[r.anahtar] ?? ''} onChange={e => yazAlt('fiyatlar', r.anahtar, e.target.value)}>
                             <option value="">Fiyat seçiniz</option>
                             <option value={tanim.vermiyorum}>{tanim.vermiyorumEtiket}</option>
                             {r.secenekler.map(s => <option key={s} value={String(s)}>{para(s)}</option>)}
                         </select>) }))}
-                </div>)}
+                </div></div>)}
             </>}
 
             {adim === 3 && <>
-                {tanim.tesisEvetHayir.map(a => A({ alan: `tesis.${a.key}`, etiket: a.soru, children: (
-                    <div className="bf-ikili" key={a.key}>{tanim.evetHayir.map(v => <button type="button" key={v} className={c.tesis[a.key] === v ? 'sec' : ''} onClick={() => yazAlt('tesis', a.key, v)}>{v}</button>)}</div>) }))}
+                <div className="bf-izgara uc">{tanim.tesisEvetHayir.map(a => A({ alan: `tesis.${a.key}`, etiket: a.soru, children: (
+                    <div className="bf-ikili" key={a.key}>{tanim.evetHayir.map(v => <button type="button" key={v} className={c.tesis[a.key] === v ? 'sec' : ''} onClick={() => yazAlt('tesis', a.key, v)}>{v}</button>)}</div>) }))}</div>
+                <div className="bf-izgara uc">
                 {A({ alan: 'tesis.calisanSayisi', etiket: 'Çalışan kişi sayısı', children: <select value={c.tesis.calisanSayisi ?? ''} onChange={e => yazAlt('tesis', 'calisanSayisi', e.target.value)}><option value="">Seçiniz</option>{tanim.calisanSayisi.map(n => <option key={n} value={String(n)}>{n}</option>)}</select> })}
-                {A({ alan: 'tesis.markalar', etiket: 'Hangi marka bayisisiniz?', ipucu: 'Birden fazla seçebilirsiniz', children: <>
+                {A({ alan: 'tesis.metrekare', etiket: 'İş yeri kaç metrekare?', children: <select value={c.tesis.metrekare ?? ''} onChange={e => yazAlt('tesis', 'metrekare', e.target.value)}><option value="">Seçiniz</option>{tanim.metrekare.map(n => <option key={n} value={String(n)}>{n} m²</option>)}</select> })}
+                {A({ alan: 'tesis.lastikOteliKapasite', etiket: 'Lastik oteli kapasitesi kaç adet?', children: <select value={c.tesis.lastikOteliKapasite ?? ''} onChange={e => yazAlt('tesis', 'lastikOteliKapasite', e.target.value)}><option value="">Seçiniz</option><option value={tanim.lastikOteliYok}>{tanim.lastikOteliYokEtiket}</option>{tanim.lastikOteliKapasite.map(n => <option key={n} value={String(n)}>{n} adet</option>)}</select> })}
+                </div>
+                {A({ alan: 'tesis.markalar', etiket: 'Hangi marka bayisisiniz?', ipucu: 'Birden fazla seçebilirsiniz', tam: true, children: <>
                     <input type="text" className="bf-ara" aria-label="Marka ara" placeholder="Marka ara…" value={markaAra} onChange={e => setMarkaAra(e.target.value)} style={{ marginBottom: 8 }} />
                     <div className="bf-marka">
                         {!markaAra.trim() && [tanim.markaYok, tanim.markaHepsi].map(m => <label key={m}><input type="checkbox" checked={(c.tesis.markalar || []).includes(m)} onChange={() => markaSec(m)} /><strong>{m}</strong></label>)}
@@ -251,12 +273,11 @@ export default function DealerForm() {
                     </div>
                     {(c.tesis.markalar || []).length > 0 && <small className="ip" style={{ marginTop: 8 }}>Seçilen: {(c.tesis.markalar || []).join(', ')}</small>}
                 </> })}
-                {A({ alan: 'tesis.metrekare', etiket: 'İş yeri kaç metrekare?', children: <select value={c.tesis.metrekare ?? ''} onChange={e => yazAlt('tesis', 'metrekare', e.target.value)}><option value="">Seçiniz</option>{tanim.metrekare.map(n => <option key={n} value={String(n)}>{n} m²</option>)}</select> })}
-                {A({ alan: 'tesis.lastikOteliKapasite', etiket: 'Lastik oteli kapasitesi kaç adet?', children: <select value={c.tesis.lastikOteliKapasite ?? ''} onChange={e => yazAlt('tesis', 'lastikOteliKapasite', e.target.value)}><option value="">Seçiniz</option><option value={tanim.lastikOteliYok}>{tanim.lastikOteliYokEtiket}</option>{tanim.lastikOteliKapasite.map(n => <option key={n} value={String(n)}>{n} adet</option>)}</select> })}
             </>}
 
             {adim === 4 && <>
                 <p style={{ fontSize: '.9rem', color: '#555' }}>Cevaplarınızı kontrol edin. Doğruysa en alttaki <strong>Formu Gönder</strong> düğmesine basın.</p>
+                <div className="bf-izgara">
                 <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(0)}>Düzenle</button><h2>Bayi Bilgileri</h2>
                     <table className="bf-ozet"><tbody>
                         <tr><td>Bayi Adı</td><td>{c.bayiAdi}</td></tr><tr><td>İl / İlçe</td><td>{il} / {ilce}</td></tr><tr><td>Açık Adres</td><td>{c.adres}</td></tr>
@@ -264,6 +285,7 @@ export default function DealerForm() {
                     </tbody></table></div>
                 <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(1)}>Düzenle</button><h2>Çalışma Saatleri</h2>
                     <table className="bf-ozet"><tbody>{[['Hafta İçi', 0], ['Cumartesi', 2], ['Pazar', 4]].map(([ad, i]) => { const a = c.saatler[tanim.saatAlanlari[i as number].key], k = c.saatler[tanim.saatAlanlari[(i as number) + 1].key]; return <tr key={ad as string}><td>{ad}</td><td>{a === tanim.kapali ? tanim.kapali : `${a || '—'} – ${k || '—'}`}</td></tr>; })}</tbody></table></div>
+                </div>
                 <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(2)}>Düzenle</button><h2>Hizmet Fiyatları (KDV dahil)</h2>
                     <table className="bf-ozet"><tbody>{satirlar.map(r => <tr key={r.kod}><td>{r.ad}</td><td>{fiyatYazi(c.fiyatlar[r.anahtar]) || '—'}</td></tr>)}</tbody></table></div>
                 <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(3)}>Düzenle</button><h2>Tesis Bilgileri</h2>
