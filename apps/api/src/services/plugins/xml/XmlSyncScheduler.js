@@ -281,8 +281,9 @@ class XmlSyncScheduler {
                 throw new Error('Ürün listesi bulunamadı veya boş');
             }
 
-            // Silme koruması (yalnız saatte tek istek grubu): sayı aniden düştüyse hiçbir şeye dokunma
-            if (tekIstek) {
+            // Silme koruması (yalnız saatte tek istek grubu, yalnız tedarikçiden gelen yanıt için): sayı aniden
+            // düştüyse hiçbir şeye dokunma. Çekici kaydın verisini kopyalayan kayıtta uygulanmaz — o veri zaten doğrulanmıştır.
+            if (tekIstek && !aynaKaynak) {
                 const oncekiSayi = await XmlProduct.countDocuments({ source: integration.code });
                 const suphe = await saatlikTekIstek.supheliYanit(tekIstek, integration.code, products.length, oncekiSayi);
                 if (suphe) throw new Error(suphe);
