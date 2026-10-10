@@ -12,6 +12,7 @@ const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
 const XmlWebProductSyncService = require('./XmlWebProductSyncService');
 const { DEFAULT_SITE } = require('../../../config/sites');
 const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
+const saatlikTekIstek = require('./xmlSaatlikTekIstek');
 
 class XmlSyncScheduler {
     constructor() {
@@ -118,6 +119,31 @@ class XmlSyncScheduler {
         try {
             let products = [];
 
+            // Saatte tek istek hakkı olan kaynaklar (Keskin): tek kayıt istek atar, diğeri onun verisini kullanır
+            const tekIstek = saatlikTekIstek.grupOf(integration.code);
+            let aynaKaynak = null;
+            if (tekIstek) {
+                const uyeler = await saatlikTekIstek.aktifUyeler(tekIstek, WebXml);
+                const cekici = uyeler[0];
+                if (cekici && cekici.code !== integration.code) {
+                    aynaKaynak = cekici.code;
+                    const satirlar = await XmlProduct.find({ source: cekici.code }, { rawData: 1 }).lean();
+                    products = satirlar.map(r => r.rawData).filter(Boolean);
+                    if (products.length === 0) {
+                        const mesaj = `${integration.name}: ${cekici.code} verisi henüz yok; tedarikçiye istek atılmadı, mevcut veri korunuyor`;
+                        console.log(`[XmlSyncScheduler] ${mesaj}`);
+                        return { atlandi: true, mesaj };
+                    }
+                } else {
+                    const hak = await saatlikTekIstek.istekHakkiAl(tekIstek);
+                    if (!hak.izin) {
+                        const mesaj = `${integration.name} saatte 1 kez çekilebilir; yaklaşık ${hak.kalanDk} dk sonra yeniden çekilecek. İstek atılmadı, son çekilen veri kullanılıyor.`;
+                        console.log(`[XmlSyncScheduler] ${mesaj}`);
+                        return { atlandi: true, mesaj };
+                    }
+                }
+            }
+
             const headers = {};
             if (integration.credentials?.apiKey) headers['API-KEY'] = integration.credentials.apiKey;
             if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
@@ -138,7 +164,9 @@ class XmlSyncScheduler {
                 delete headers['API-KEY'];
             }
 
-            if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code)) {
+            if (aynaKaynak) {
+                // Veri grubun çekici kaydından alındı; tedarikçiye istek atılmaz
+            } else if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code)) {
                 // Aslan Kardeşler — GET + query param + latin1
                 const { parseStringPromise: psp } = require('xml2js');
                 const markaKodu = ['aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ? 'JANT' : 'LAST\u00ddK';
@@ -215,7 +243,7 @@ class XmlSyncScheduler {
             };
 
             // Aslan Kardeşler ve Lastikistan için products zaten yukarıda dolduruldu, parse atla
-            const skipParse =
+            const skipParse = !!aynaKaynak ||
                 ['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ||
                 integration.credentials?.apiKey?.startsWith('lstk_');
 
@@ -251,6 +279,13 @@ class XmlSyncScheduler {
 
             if (!Array.isArray(products) || products.length === 0) {
                 throw new Error('Ürün listesi bulunamadı veya boş');
+            }
+
+            // Silme koruması (yalnız saatte tek istek grubu): sayı aniden düştüyse hiçbir şeye dokunma
+            if (tekIstek) {
+                const oncekiSayi = await XmlProduct.countDocuments({ source: integration.code });
+                const suphe = await saatlikTekIstek.supheliYanit(tekIstek, integration.code, products.length, oncekiSayi);
+                if (suphe) throw new Error(suphe);
             }
 
             // Unver: STOK.DEPO array'inde DEPOID=0 (Tüm Depolar) entry'sini başa al
@@ -405,13 +440,26 @@ class XmlSyncScheduler {
                     'syncInfo.lastSyncAt': new Date(),
                     'syncInfo.lastSyncStatus': 'success',
                     'syncInfo.lastSyncType': 'auto',
-                    'syncInfo.lastSyncMessage': `${products.length} ürün çekildi (${newCount} yeni, ${changedCount} değişmiş, ${unchangedCount} aynı, ${ghostDeleted} silinen${reconsolidateStats ? `, ${reconsolidateStats.updated} yeniden seçildi, ${reconsolidateStats.disabled} satıştan çekildi` : ''})`,
+                    'syncInfo.lastSyncMessage': `${products.length} ürün çekildi (${newCount} yeni, ${changedCount} değişmiş, ${unchangedCount} aynı, ${ghostDeleted} silinen${reconsolidateStats ? `, ${reconsolidateStats.updated} yeniden seçildi, ${reconsolidateStats.disabled} satıştan çekildi` : ''})${aynaKaynak ? ` — ${aynaKaynak} verisinden, tedarikçiye istek atılmadı` : ''}`,
                     'syncInfo.lastSyncDuration': duration,
                     'syncInfo.productCount': products.length
                 }
             });
 
             console.log(`[XmlSyncScheduler] ${integration.name} tamamlandı: ${products.length} ürün, ${duration}ms`);
+
+            // Çekici kayıt başarıyla çekildiyse grubun diğer kayıtları aynı veriyle hemen güncellenir (istek atılmadan)
+            if (tekIstek && !aynaKaynak) {
+                const digerleri = (await saatlikTekIstek.aktifUyeler(tekIstek, WebXml)).filter(u => u.code !== integration.code);
+                for (const uye of digerleri) {
+                    try {
+                        await this.syncIntegration(uye);
+                    } catch (uyeErr) {
+                        console.error(`[XmlSyncScheduler] ${uye.name} (aynı veriden güncelleme) hatası:`, uyeErr.message);
+                    }
+                }
+            }
+            return { atlandi: false, urunSayisi: products.length };
 
         } catch (error) {
             const duration = Date.now() - startTime;

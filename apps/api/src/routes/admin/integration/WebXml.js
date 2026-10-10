@@ -1086,7 +1086,12 @@ router.get('/:source/export.xml', async (req, res) => {
 
         let items = [];
 
-        if (source === 'aslankardesler' || source === 'aslan_kardesler_jant') {
+        // Saatte tek istek hakkı olan kaynaklarda (Keskin) dışa aktarım tedarikçiye istek atmaz; son çekilen veriyi kullanır
+        const tekIstekGrubu = require('../../../services/plugins/xml/xmlSaatlikTekIstek').grupOf(source);
+        if (tekIstekGrubu) {
+            items = await XmlProduct.find({ source }, { rawData: 1 }).lean();
+            if (items.length === 0) items = await XmlProduct.find({ source: tekIstekGrubu.desen }, { rawData: 1 }).lean();
+        } else if (source === 'aslankardesler' || source === 'aslan_kardesler_jant') {
             const markaKodu = source === 'aslan_kardesler_jant' ? 'JANT' : 'LAST\u00ddK';
             const { parseStringPromise } = require('xml2js');
             const qs = new URLSearchParams({
@@ -1345,7 +1350,15 @@ router.get('/:id/source-fields', async (req, res) => {
             url += (url.includes('?') ? '&' : '?') + `token=${integration.credentials.token}`;
         }
 
-        const existingSample = await XmlProduct.findOne({ source: integration.code }).lean();
+        let existingSample = await XmlProduct.findOne({ source: integration.code }).lean();
+        // Saatte tek istek hakkı olan kaynaklarda (Keskin) alan listesi için tedarikçiye istek atılmaz
+        const tekIstekGrubu = require('../../../services/plugins/xml/xmlSaatlikTekIstek').grupOf(integration.code);
+        if (!existingSample && tekIstekGrubu) {
+            existingSample = await XmlProduct.findOne({ source: tekIstekGrubu.desen }).lean();
+            if (!existingSample) {
+                return res.json({ success: false, message: 'Bu kaynak saatte 1 kez çekilebilir; alan listesi ilk otomatik çekimden sonra görünecek.' });
+            }
+        }
         let firstProduct = null;
 
         if (existingSample?.rawData) {
@@ -1675,6 +1688,23 @@ router.post('/:id/sync', async (req, res) => {
             }
             integration = xmlIntegration;
             req.params.id = xmlIntegration._id.toString();
+        }
+
+        // Saatte tek istek hakkı olan kaynaklar (Keskin): burada ayrı istek atılmaz; istek kilidi, tek istek + iki
+        // siteye yazma ve silme koruması zamanlayıcıdaki ortak akışta uygulanır.
+        const saatlikTekIstek = require('../../../services/plugins/xml/xmlSaatlikTekIstek');
+        if (saatlikTekIstek.grupOf(integration.code)) {
+            const xmlSyncScheduler = require('../../../services/plugins/xml/XmlSyncScheduler');
+            const sonuc = await xmlSyncScheduler.syncIntegration(integration);
+            if (sonuc?.atlandi) {
+                return res.json({ success: false, message: sonuc.mesaj });
+            }
+            const guncel = await WebXml.findById(integration._id).lean();
+            return res.json({
+                success: true,
+                message: guncel?.syncInfo?.lastSyncMessage || 'Senkronizasyon tamamlandı',
+                data: { productCount: guncel?.syncInfo?.productCount ?? sonuc?.urunSayisi ?? 0 }
+            });
         }
 
         const axios = require('axios');
