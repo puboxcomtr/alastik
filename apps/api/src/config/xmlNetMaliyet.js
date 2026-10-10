@@ -5,7 +5,7 @@
 // kuralları (xmlpricingrules) DEĞİŞMEZ — o kurallar tedarikçi iskontosunu zaten içerir; çarpan fiyata
 // uygulanırsa iskonto iki kez düşülmüş olur.
 //
-// Tanımlar (9 Ekim 2026):
+// Tanımlar (9 Ekim 2026; Keskin 10 Ekim 2026: gelen fiyattan %7 iskonto):
 //   1,20 → fiyat KDV hariç geliyor, %20 KDV eklenir
 //   1    → gelen fiyat doğrudan net maliyet
 //   0,9x → gelen fiyat iskontosuz; iskontomuz düşülür (0,93 = %7, 0,95 = %5, 0,96 = %4, 0,97 = %3)
@@ -14,6 +14,7 @@ const CARPANLAR = {
     aslan_kardesler_lastik_xml: 1.20,
     dincbay: 1,
     guler_lastik: 0.95,
+    keskin_lastik: 0.93,
     lastikistan_xml_format: 0.93,
     mollaoglu_xml: 0.93,
     simetri: 0.93,
