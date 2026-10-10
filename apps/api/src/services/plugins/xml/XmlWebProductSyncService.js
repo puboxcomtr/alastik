@@ -7,6 +7,7 @@ const WebXml = require('../../../models/plugins/xml/WebXml');
 const { getSyncRules } = require('../../../config/diaFilters');
 const { SITES, DEFAULT_SITE, SITE_SLUGS } = require('../../../config/sites');
 const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
+const { netMaliyetCarpani } = require('../../../config/xmlNetMaliyet');
 
 // XML ürünleri web listelerinde görünsün diye aktif ozelkod11 koduyla damgalanır
 function getAktifOzelkod() {
@@ -97,6 +98,8 @@ class XmlWebProductSyncService {
     }
     // Kaynaklar arasından geçerli olanlardan en ucuzunu seç
     // Geçerli kaynak: aktif entegrasyon + fiyat>0 + stok>0 + applyRules geçiyor
+    // Karşılaştırma NET MALİYET üzerinden yapılır (gelen fiyat × tedarikçi çarpanı: iskonto / KDV — bkz. config/xmlNetMaliyet.js).
+    // Yalnızca hangi kaynağın seçileceğini etkiler; seçilen kaynağın ham fiyatı ve fiyatlama kuralları aynen kullanılır.
     selectBestSource(candidates, integrationMap) {
         let secilen = null;
         let secilenFiyat = Infinity;
@@ -122,9 +125,10 @@ class XmlWebProductSyncService {
             if (fiyat <= 0 || stok <= 0) continue;
             if (!this.applyRules(xp, intg)) continue;
 
-            if (fiyat < secilenFiyat) {
+            const netMaliyet = fiyat * netMaliyetCarpani(xp.source);
+            if (netMaliyet < secilenFiyat) {
                 secilen = xp;
-                secilenFiyat = fiyat;
+                secilenFiyat = netMaliyet;
             }
         }
 
