@@ -2,7 +2,7 @@
 // Header üstündeki ikonlu hızlı linkler (Sipariş Takibi, Kampanyalar vb.).
 // Panelden Menü Yönetimi > "Üst Linkler (İkonlu)" alanından yönetilir; her öğe
 // remixicon ikonu taşır. Arama + hesap satırının hemen üstünde, sağa hizalı.
-// lastikjantavm'de en başta (Kampanyalarımız'ın solunda) sabit "Montaj Satın Al" bağlantısı durur.
+// lastikjantavm'de en başta (Kampanyalarımız'ın solunda) sabit "Montaj Noktamız Ol" (bayi formu) ve "Montaj Satın Al" bağlantıları durur.
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/src/lib/api';
@@ -54,6 +54,16 @@ export default function UstLinks() {
 
     return (
         <div className="ust-links d-none d-lg-flex justify-content-end align-items-center gap-4 pt-2">
+            {/* Montaj noktası (bayi) başvuru formu — form yalnız lastikjantavm'de açık olduğu için bağlantı da yalnız orada */}
+            {showMontageBuy && (
+                <Link
+                    href="/bayi-formu"
+                    className="ust-links__item d-inline-flex align-items-center gap-1 text-body fw-medium text-decoration-none"
+                >
+                    <i className="ri-store-2-line fs-lg" />
+                    <span className="fs-sm">Montaj Noktamız Ol</span>
+                </Link>
+            )}
             {showMontageBuy && (
                 <Link
                     href={ROUTES.MONTAGE_BUY}
