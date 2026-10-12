@@ -47,12 +47,14 @@ router.get('/export', async (req, res) => {
             ...form.SAAT_ALANLARI.map(a => a.etiket),
             ...form.FIYAT_SATIRLARI.map(r => `${r.kod} – ${r.ad} (${r.birim}, KDV dahil TL)`),
             ...form.TESIS_EVET_HAYIR.map(a => a.kisa), 'Çalışan Sayısı', 'Marka Bayiliği', 'İş Yeri m²', 'Lastik Oteli Kapasitesi (adet)',
+            'Ek Hizmetler', ...form.GORSEL_ALANLARI.map(a => `${a.kisa} (dosya adedi)`),
             'İlk Gönderim', 'Son Güncelleme', 'Gönderim Sayısı'];
         const satirlar = kayitlar.map(k => [k.bayiAdi, k.cityName, k.districtName, k.adres, k.telefon1, k.telefon2 || '',
             ...form.SAAT_ALANLARI.map(a => k.saatler?.[a.key] ?? ''),
             ...form.FIYAT_SATIRLARI.map(r => fiyatMetni(k.fiyatlar?.[r.anahtar])),
             ...form.TESIS_EVET_HAYIR.map(a => k.tesis?.[a.key] ?? ''), k.tesis?.calisanSayisi ?? '', (k.tesis?.markalar || []).join(', '), k.tesis?.metrekare ?? '',
             k.tesis?.lastikOteliKapasite === form.LASTIK_OTELI_YOK ? form.LASTIK_OTELI_YOK_ETIKET : (k.tesis?.lastikOteliKapasite ?? ''),
+            k.ekHizmetler || '', ...form.GORSEL_ALANLARI.map(a => (k.gorseller?.[a.key] || []).length || ''),
             tarih(k.ilkGonderim), tarih(k.sonGuncelleme), k.gonderimSayisi || 1]);
         const ws = XLSX.utils.aoa_to_sheet([basliklar, ...satirlar]);
         ws['!cols'] = basliklar.map((b, i) => ({ wch: i === 3 ? 45 : Math.min(40, Math.max(12, b.length + 2)) }));
@@ -63,6 +65,24 @@ router.get('/export', async (req, res) => {
     } catch (error) {
         console.error('Bayi formları Excel hatası:', error);
         res.status(500).json({ success: false, message: 'Excel oluşturulamadı' });
+    }
+});
+
+// Dosya — GET /admin/montage/dealer-forms/dosya/:ad (bayinin yüklediği görsel/PDF; yalnız oturum açmış admin görür)
+const fs = require('fs');
+const path = require('path');
+const DOSYA_TURU = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' };
+// Panel her isteği oturum anahtarıyla JSON olarak yaptığı için dosya da (Excel çıktısı gibi) base64 döner.
+router.get('/dosya/:ad', async (req, res) => {
+    try {
+        const ad = String(req.params.ad || '');
+        if (!form.DOSYA_KIMLIK.test(ad)) return res.status(400).json({ success: false, message: 'Geçersiz dosya' });
+        const yol = path.join(form.GORSEL_DIZIN, ad);
+        if (!fs.existsSync(yol)) return res.status(404).json({ success: false, message: 'Dosya bulunamadı' });
+        const buf = await fs.promises.readFile(yol);
+        res.json({ success: true, data: { dosya: ad, tur: DOSYA_TURU[ad.split('.').pop()], base64: buf.toString('base64') } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Dosya okunamadı' });
     }
 });
 
@@ -82,8 +102,12 @@ router.get('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ success: false, message: 'Geçersiz kayıt' });
-        const r = await WebDealerForm.deleteOne({ _id: req.params.id, site: form.SITE });
-        if (!r.deletedCount) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı' });
+        const kayit = await WebDealerForm.findOneAndDelete({ _id: req.params.id, site: form.SITE }).lean();
+        if (!kayit) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı' });
+        // Kayıtla birlikte bayinin yüklediği dosyalar da silinir
+        for (const d of Object.values(kayit.gorseller || {}).flat()) {
+            if (form.DOSYA_KIMLIK.test(String(d))) fs.promises.unlink(path.join(form.GORSEL_DIZIN, String(d))).catch(() => { });
+        }
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Kayıt silinemedi' });

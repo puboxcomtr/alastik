@@ -17,6 +17,8 @@ const webDealerFormSchema = new mongoose.Schema({
     saatler: { type: mongoose.Schema.Types.Mixed, default: {} },
     fiyatlar: { type: mongoose.Schema.Types.Mixed, default: {} },   // { anahtar (kod, nokta yerine _): sayı | 'vermiyorum' }
     tesis: { type: mongoose.Schema.Types.Mixed, default: {} },
+    ekHizmetler: { type: String, default: '' },                     // serbest yazı (isteğe bağlı)
+    gorseller: { type: mongoose.Schema.Types.Mixed, default: {} },  // { alan: [dosya adı, …] } — dosyalar özel dizinde, sitede yayınlanmaz
     gonderimSayisi: { type: Number, default: 1 },
     ilkGonderim: { type: Date, default: Date.now },
     sonGuncelleme: { type: Date, default: Date.now, index: true },

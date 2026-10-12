@@ -1,5 +1,5 @@
 'use client';
-// Montaj Noktası (Bayi) Bilgi ve Fiyat Formu — telefona göre tasarlanmış 5 adımlı form.
+// Montaj Noktası (Bayi) Bilgi ve Fiyat Formu — telefona göre tasarlanmış 6 adımlı form.
 // Alanlar ve seçenekler API'den gelir (/api/bayi-formu/tanim); doğrulamanın asıl yeri sunucudur,
 // buradaki kontroller yalnızca kullanıcıya hemen geri bildirim verir. Cevaplar tarayıcıda taslak olarak
 // saklanır (sayfa yenilense de kaybolmaz), gönderim başarılı olunca taslak silinir.
@@ -19,13 +19,16 @@ type Tanim = {
     evetHayir: string[]; tesisEvetHayir: { key: string; soru: string; kisa: string }[];
     calisanSayisi: number[]; metrekare: number[]; lastikOteliYok: string; lastikOteliYokEtiket: string; lastikOteliKapasite: number[];
     markalar: string[]; markaYok: string; markaHepsi: string; markaDiger: string;
+    gorselAlanlari: { key: string; etiket: string; kisa: string; pdf?: boolean }[]; gorselAdet: number; gorselBoyutMb: number; ekHizmetSoru: string; ekHizmetUzunluk: number;
 };
 type Cevap = {
     bayiAdi: string; cityId: string; districtId: string; adres: string; telefon1: string; telefon2: string;
     saatler: Record<string, string>; fiyatlar: Record<string, string>; tesis: Record<string, any>; website: string;
+    ekHizmetler: string; gorseller: Record<string, string[]>;   // isteğe bağlı alanlar
 };
-const BOS: Cevap = { bayiAdi: '', cityId: '', districtId: '', adres: '', telefon1: '', telefon2: '', saatler: {}, fiyatlar: {}, tesis: { markalar: [] }, website: '' };
-const ADIMLAR = ['Bayi Bilgileri', 'Çalışma Saatleri', 'Hizmet Fiyatları', 'Tesis Bilgileri', 'Özet ve Gönder'];
+const BOS: Cevap = { bayiAdi: '', cityId: '', districtId: '', adres: '', telefon1: '', telefon2: '', saatler: {}, fiyatlar: {}, tesis: { markalar: [] }, website: '', ekHizmetler: '', gorseller: {} };
+const ADIMLAR = ['Bayi Bilgileri', 'Çalışma Saatleri', 'Hizmet Fiyatları', 'Tesis Bilgileri', 'Görseller', 'Özet ve Gönder'];
+const SON = ADIMLAR.length - 1;
 
 const CSS = `
 /* İçerik, site menüsüyle aynı hizada durur (bootstrap .container içinde) */
@@ -66,6 +69,14 @@ nav[aria-label="Şubeler, hizmetler ve araçlar"] { display: none !important; }
 .bf-duzenle { background: none; border: 0; color: #111; text-decoration: underline; font-size: .85rem; font-weight: 600; padding: 0; float: right; }
 .bf-uyari { background: #fff4f4; border: 1px solid #f1b5b5; color: #a11; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
 .bf-tuzak { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.bf-foto { display: flex; flex-wrap: wrap; gap: 8px; }
+.bf-foto-kutu, .bf label.bf-foto-ekle { width: 84px; height: 84px; border-radius: 10px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; margin: 0; }
+.bf-foto-kutu { border: 1px solid #c9c9c9; background: #f4f4f4; font-size: .78rem; font-weight: 600; color: #555; }
+.bf-foto-kutu img { width: 100%; height: 100%; object-fit: cover; }
+.bf-foto-kutu button { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.72); color: #fff; font-size: 16px; line-height: 1; padding: 0; }
+.bf label.bf-foto-ekle { border: 2px dashed #b5b5b5; flex-direction: column; font-size: 26px; font-weight: 400; line-height: 1; color: #555; cursor: pointer; background: #fff; }
+.bf label.bf-foto-ekle small { font-size: .68rem; font-weight: 600; margin-top: 4px; }
+.bf-yukleniyor { font-size: .9rem; font-weight: 600; color: #555; margin-top: 10px; }
 /* Masaüstü: geniş alan, yan yana alanlar, sabit alt çubuk yerine sayfa içi düğmeler (telefon görünümü değişmez) */
 @media (min-width: 768px) {
   /* Site menüsüyle aynı hiza: menü 1260px genişliğinde ortalanmış alanı ve 12px iç boşluğu kullanır */
@@ -106,11 +117,13 @@ export default function DealerForm() {
     const [gonderiliyor, setGonderiliyor] = useState(false);
     const [bitti, setBitti] = useState<null | { guncellendi: boolean }>(null);
     const [markaAra, setMarkaAra] = useState('');
+    const [yuk, setYuk] = useState(0);                                   // süren dosya yüklemesi sayısı
+    const [onizleme, setOnizleme] = useState<Record<string, string>>({}); // bu oturumda yüklenen fotoğrafların küçük görüntüsü
     const taslakOkundu = useRef(false);
     const ust = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        try { const t = localStorage.getItem(TASLAK); if (t) { const j = JSON.parse(t); if (j && typeof j === 'object') setC({ ...BOS, ...j.c, tesis: { markalar: [], ...(j.c?.tesis || {}) }, website: '' }); if (Number.isInteger(j?.adim) && j.adim >= 0 && j.adim <= 4) setAdim(j.adim); } } catch { /* taslak okunamazsa boş başla */ }
+        try { const t = localStorage.getItem(TASLAK); if (t) { const j = JSON.parse(t); if (j && typeof j === 'object') setC({ ...BOS, ...j.c, tesis: { markalar: [], ...(j.c?.tesis || {}) }, gorseller: { ...(j.c?.gorseller || {}) }, ekHizmetler: String(j.c?.ekHizmetler || ''), website: '' }); if (Number.isInteger(j?.adim) && j.adim >= 0 && j.adim <= SON) setAdim(j.adim); } } catch { /* taslak okunamazsa boş başla */ }
         taslakOkundu.current = true;
         Promise.all([
             fetch(`${API}/bayi-formu/tanim`, { headers: BASLIK }).then(r => r.json()),
@@ -202,6 +215,43 @@ export default function DealerForm() {
         } catch { uyar('Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin; cevaplarınız saklandı.'); }
         finally { setGonderiliyor(false); }
     };
+
+    // Fotoğraf telefonda küçültülüp JPG'ye çevrilir (yükleme hızlı olsun, her telefonun biçimi sunucuda aynı olsun)
+    const kucult = (f: File): Promise<Blob> => new Promise((coz, red) => {
+        const url = URL.createObjectURL(f); const img = new Image();
+        img.onload = () => {
+            const oran = Math.min(1, 1800 / Math.max(img.width, img.height)); const cv = document.createElement('canvas');
+            cv.width = Math.max(1, Math.round(img.width * oran)); cv.height = Math.max(1, Math.round(img.height * oran));
+            const ctx = cv.getContext('2d'); URL.revokeObjectURL(url); if (!ctx) return red(new Error('canvas'));
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+            cv.toBlob(b => b ? coz(b) : red(new Error('blob')), 'image/jpeg', 0.85);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); red(new Error('okunamadı')); };
+        img.src = url;
+    });
+    const dosyaEkle = async (alan: string, pdfOlur: boolean, files: FileList | null) => {
+        if (!files || !tanim) return;
+        const secilen = Array.from(files); const bos = tanim.gorselAdet - (c.gorseller[alan] || []).length;
+        if (secilen.length > bos) uyar(`Bu başlığa en fazla ${tanim.gorselAdet} dosya eklenebilir`);
+        for (const f of secilen.slice(0, Math.max(0, bos))) {
+            setYuk(n => n + 1);
+            try {
+                const pdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+                if (pdf && !pdfOlur) { uyar('Bu başlığa yalnızca fotoğraf yükleyebilirsiniz'); continue; }
+                const govde: Blob = pdf ? f : await kucult(f);
+                if (govde.size > tanim.gorselBoyutMb * 1024 * 1024) { uyar(`Dosya en fazla ${tanim.gorselBoyutMb} MB olabilir`); continue; }
+                const fd = new FormData(); fd.append('alan', alan); fd.append('dosya', govde, pdf ? 'belge.pdf' : 'foto.jpg');
+                const r = await fetch(`${API}/bayi-formu/gorsel`, { method: 'POST', headers: { 'X-Site': 'lastikjantavm' }, body: fd });
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok || !j?.success) { uyar(j?.message || 'Dosya yüklenemedi, lütfen tekrar deneyin'); continue; }
+                const ad = String(j.data.dosya);
+                if (!pdf) setOnizleme(o => ({ ...o, [ad]: URL.createObjectURL(govde) }));
+                setC(o => ({ ...o, gorseller: { ...o.gorseller, [alan]: [...(o.gorseller[alan] || []), ad].slice(0, tanim.gorselAdet) } }));
+            } catch { uyar('Bu dosya okunamadı. Lütfen başka bir fotoğraf deneyin.'); }
+            finally { setYuk(n => n - 1); }
+        }
+    };
+    const dosyaSil = (alan: string, ad: string) => setC(o => ({ ...o, gorseller: { ...o.gorseller, [alan]: (o.gorseller[alan] || []).filter(x => x !== ad) } }));
 
     const A = ({ alan, etiket, birim, tam, children }: { alan: string; etiket: string; birim?: string; tam?: boolean; children: React.ReactNode }) => {
         // Tek bir giriş alanıysa etiketi ona bağla (ekran okuyucu ve etikete dokununca odaklanma için)
@@ -296,10 +346,40 @@ export default function DealerForm() {
                     </div>
                     {(c.tesis.markalar || []).length > 0 && <small className="ip" style={{ marginTop: 8 }}>Seçilen: {(c.tesis.markalar || []).join(', ')}</small>}
                 </> })}
+                {A({ alan: 'ekHizmetler', etiket: `${tanim.ekHizmetSoru} (isteğe bağlı)`, tam: true, children: <textarea rows={3} value={c.ekHizmetler} maxLength={tanim.ekHizmetUzunluk} onChange={e => yaz('ekHizmetler', e.target.value)} /> })}
             </>}
 
             {adim === 4 && <>
-                                <div className="bf-izgara iki">
+                <div className="bf-kdv">Görseller <strong>isteğe bağlıdır</strong>. Her başlığa en fazla {tanim.gorselAdet} dosya ekleyebilirsiniz.</div>
+                <div className="bf-izgara" style={{ marginTop: 12 }}>
+                    {tanim.gorselAlanlari.map(a => {
+                        const liste = c.gorseller[a.key] || []; const id = `bf-gorsel-${a.key}`;
+                        return (
+                            <div className="bf-kart" key={a.key}>
+                                <label htmlFor={id}>{a.etiket}</label>
+                                <div className="bf-foto">
+                                    {liste.map(ad => (
+                                        <div className="bf-foto-kutu" key={ad}>
+                                            {onizleme[ad] && (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={onizleme[ad]} alt="" />
+                                            )}
+                                            {!onizleme[ad] && <span>{ad.endsWith('.pdf') ? 'PDF' : 'Yüklendi'}</span>}
+                                            <button type="button" aria-label="Dosyayı kaldır" onClick={() => dosyaSil(a.key, ad)}>×</button>
+                                        </div>
+                                    ))}
+                                    {liste.length < tanim.gorselAdet && <label className="bf-foto-ekle" htmlFor={id}>+<small>{a.pdf ? 'Fotoğraf / PDF' : 'Fotoğraf'}</small></label>}
+                                </div>
+                                <input id={id} type="file" className="bf-tuzak" accept={a.pdf ? 'image/*,application/pdf' : 'image/*'} multiple onChange={e => { dosyaEkle(a.key, !!a.pdf, e.target.files); e.target.value = ''; }} />
+                            </div>
+                        );
+                    })}
+                </div>
+                {yuk > 0 && <div className="bf-yukleniyor">Dosya yükleniyor…</div>}
+            </>}
+
+            {adim === SON && <>
+                <div className="bf-izgara iki">
                 <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(0)}>Düzenle</button><h2>Bayi Bilgileri</h2>
                     <table className="bf-ozet"><tbody>
                         <tr><td>Bayi Adı</td><td>{c.bayiAdi}</td></tr><tr><td>İl / İlçe</td><td>{il} / {ilce}</td></tr><tr><td>Açık Adres</td><td>{c.adres}</td></tr>
@@ -316,13 +396,16 @@ export default function DealerForm() {
                         <tr><td>Çalışan sayısı</td><td>{c.tesis.calisanSayisi || '—'}</td></tr><tr><td>Marka bayiliği</td><td>{(c.tesis.markalar || []).join(', ') || '—'}</td></tr>
                         <tr><td>İş yeri</td><td>{c.tesis.metrekare ? `${c.tesis.metrekare} m²` : '—'}</td></tr>
                         <tr><td>Lastik oteli kapasitesi</td><td>{c.tesis.lastikOteliKapasite === tanim.lastikOteliYok ? tanim.lastikOteliYokEtiket : c.tesis.lastikOteliKapasite ? `${c.tesis.lastikOteliKapasite} adet` : '—'}</td></tr>
+                        <tr><td>Ek hizmetler</td><td style={{ whiteSpace: 'pre-line' }}>{c.ekHizmetler.trim() || '—'}</td></tr>
                     </tbody></table></div>
+                <div className="bf-kart"><button type="button" className="bf-duzenle" onClick={() => git(4)}>Düzenle</button><h2>Görseller</h2>
+                    <table className="bf-ozet"><tbody>{tanim.gorselAlanlari.map(a => { const n = (c.gorseller[a.key] || []).length; return <tr key={a.key}><td>{a.kisa}</td><td>{n ? `${n} dosya` : '—'}</td></tr>; })}</tbody></table></div>
             </>}
 
             <div className="bf-alt"><div>
                 {adim > 0 && <button type="button" onClick={() => git(adim - 1)} disabled={gonderiliyor}>Geri</button>}
-                {adim < 4 ? <button type="button" className="ana" onClick={ileri}>İleri</button>
-                    : <button type="button" className="ana" onClick={gonder} disabled={gonderiliyor}>{gonderiliyor ? 'Gönderiliyor…' : 'Formu Gönder'}</button>}
+                {adim < SON ? <button type="button" className="ana" onClick={ileri} disabled={yuk > 0}>{yuk > 0 ? 'Yükleniyor…' : 'İleri'}</button>
+                    : <button type="button" className="ana" onClick={gonder} disabled={gonderiliyor || yuk > 0}>{gonderiliyor ? 'Gönderiliyor…' : 'Formu Gönder'}</button>}
             </div></div>
         </div></div>
     );

@@ -25,6 +25,52 @@ router.get('/tanim', (req, res) => {
     res.json({ success: true, data: form.tanim() });
 });
 
+// ---- Görsel yükleme (isteğe bağlı alanlar) ----
+// Dosya seçildiği anda yüklenir; dönen dosya adı form gönderilirken "gorseller" içinde yollanır.
+// Dosyalar özel dizinde durur, sitede yayınlanmaz; yalnız admin panelinden açılır.
+const multer = require('multer');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const yuklemeLimiti = rateLimit({
+    windowMs: 15 * 60 * 1000, max: 80, standardHeaders: true, legacyHeaders: false,
+    message: { success: false, message: 'Çok fazla dosya yüklendi, lütfen biraz sonra tekrar deneyin' }
+});
+const yukle = multer({ storage: multer.memoryStorage(), limits: { fileSize: form.GORSEL_BOYUT_MB * 1024 * 1024, files: 1, fields: 4 } }).single('dosya');
+// Tür, dosya adına ya da tarayıcının bildirdiğine değil içeriğin ilk baytlarına bakılarak belirlenir
+function dosyaTuru(buf) {
+    if (!buf || buf.length < 12) return null;
+    if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return 'jpg';
+    if (buf[0] === 0x89 && buf.toString('latin1', 1, 4) === 'PNG') return 'png';
+    if (buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return 'webp';
+    if (buf.toString('latin1', 0, 5) === '%PDF-') return 'pdf';
+    return null;
+}
+const DOSYA_UST_SINIR = 20000; // dizindeki toplam dosya sayısı tavanı (kötüye kullanım freni)
+
+// POST /api/bayi-formu/gorsel — tek dosya (alan adı "dosya"), hangi başlık için olduğu "alan" ile
+router.post('/gorsel', yuklemeLimiti, (req, res) => {
+    yukle(req, res, async (err) => {
+        try {
+            if (err) return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? `Dosya en fazla ${form.GORSEL_BOYUT_MB} MB olabilir` : 'Dosya yüklenemedi' });
+            const alan = form.GORSEL_ALANLARI.find(a => a.key === String(req.body?.alan || ''));
+            if (!alan || !req.file) return res.status(400).json({ success: false, message: 'Dosya seçilmedi' });
+            const tur = dosyaTuru(req.file.buffer);
+            if (!tur || (tur === 'pdf' && !alan.pdf)) {
+                return res.status(400).json({ success: false, message: alan.pdf ? 'Yalnızca fotoğraf (JPG, PNG) ya da PDF yükleyebilirsiniz' : 'Yalnızca fotoğraf (JPG, PNG) yükleyebilirsiniz' });
+            }
+            await fs.promises.mkdir(form.GORSEL_DIZIN, { recursive: true, mode: 0o750 });
+            if ((await fs.promises.readdir(form.GORSEL_DIZIN)).length >= DOSYA_UST_SINIR) return res.status(503).json({ success: false, message: 'Şu an dosya yüklenemiyor, lütfen daha sonra deneyin' });
+            const ad = `${crypto.randomBytes(16).toString('hex')}.${tur}`;
+            await fs.promises.writeFile(path.join(form.GORSEL_DIZIN, ad), req.file.buffer, { mode: 0o640 });
+            res.json({ success: true, data: { dosya: ad, boyut: req.file.size, tur } });
+        } catch (error) {
+            console.error('Bayi formu görseli kaydedilemedi:', error);
+            res.status(500).json({ success: false, message: 'Dosya yüklenemedi, lütfen tekrar deneyin' });
+        }
+    });
+});
+
 // POST /api/bayi-formu — formu gönder (aynı birinci telefonla tekrar gönderilirse üzerine yazılır)
 router.post('/', gonderimLimiti, async (req, res) => {
     try {
@@ -39,13 +85,18 @@ router.post('/', gonderimLimiti, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Lütfen eksik ya da hatalı alanları düzeltin', hatalar });
         }
 
+        // Yalnızca sunucuda gerçekten duran dosyalar kayda girer
+        for (const a of form.GORSEL_ALANLARI) {
+            temiz.gorseller[a.key] = (temiz.gorseller[a.key] || []).filter(d => fs.existsSync(path.join(form.GORSEL_DIZIN, d)));
+        }
+
         const telefonAnahtar = temiz.telefon1.replace(/\D/g, '');
         const simdi = new Date();
         const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || '';
         const mevcut = await WebDealerForm.findOne({ site: req.site, telefonAnahtar });
         if (mevcut) {
             Object.assign(mevcut, temiz, { sonGuncelleme: simdi, ip, gonderimSayisi: (mevcut.gonderimSayisi || 1) + 1 });
-            mevcut.markModified('saatler'); mevcut.markModified('fiyatlar'); mevcut.markModified('tesis');
+            mevcut.markModified('saatler'); mevcut.markModified('fiyatlar'); mevcut.markModified('tesis'); mevcut.markModified('gorseller');
             await mevcut.save();
             return res.json({ success: true, guncellendi: true });
         }

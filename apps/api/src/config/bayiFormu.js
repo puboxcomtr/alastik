@@ -41,9 +41,9 @@ const FIYAT_GRUPLARI = [
         { kod: '600111', ad: '19 İnç ve Üzeri Lastik Sök Tak + Balans Ayarı', birim: 'Adet', secenekler: aralik(100, 1000, 50) }
     ] },
     { ad: 'Mobil Yerinde Değişim', satirlar: [
-        { kod: '600112', ad: 'Mobil 13 ve 16 İnç Arası Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(1000, 10000, 500) },
-        { kod: '600113', ad: 'Mobil 17 ve 18 İnç Arası Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(1000, 10000, 500) },
-        { kod: '600114', ad: 'Mobil 19 İnç ve Üzeri Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(1000, 10000, 500) }
+        { kod: '600112', ad: 'Mobil 13 ve 16 İnç Arası Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(500, 2500, 50) },
+        { kod: '600113', ad: 'Mobil 17 ve 18 İnç Arası Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(500, 2500, 50) },
+        { kod: '600114', ad: 'Mobil 19 İnç ve Üzeri Yazlık Kışlık Değişim + Balans Ayarı (maksimum 5 km’ye kadar)', birim: '1 adet lastik için', secenekler: aralik(500, 2500, 50) }
     ] },
     { ad: 'Jant Pres Hizmetleri', satirlar: [
         { kod: '600.26', ad: 'Demir Jant Pres 13–16 İnç', birim: 'Adet', secenekler: aralik(100, 750, 50) },
@@ -82,6 +82,24 @@ const MARKA_DIGER = 'Diğer';
 const MARKALAR = ['Accelera', 'Achilles', 'Anlas', 'Aplus', 'Apollo', 'Arivo', 'Atlas', 'Austone', 'Barum', 'BFGoodrich', 'Bridgestone', 'Continental', 'Cooper', 'Dayton', 'Debica', 'Delinte', 'Diplomat', 'Doublestar', 'Dunlop', 'Falken', 'Firestone', 'Fulda', 'General Tire', 'Gislaved', 'Giti', 'Goodride', 'Goodyear', 'GT Radial', 'Hankook', 'Hifly', 'Imperial', 'Kelly', 'Kenda', 'Kleber', 'Kormoran', 'Kumho', 'Landsail', 'Lassa', 'Laufenn', 'Leao', 'Linglong', 'Marshal', 'Matador', 'Maxxis', 'Michelin', 'Milestone', 'Minerva', 'Mirage', 'Nankang', 'Nexen', 'Nokian', 'Orium', 'Otani', 'Petlas', 'Pirelli', 'Powertrac', 'Riken', 'Roadstone', 'RoadX', 'Rotalla', 'Sailun', 'Sava', 'Semperit', 'Starmaxx', 'Strial', 'Sumitomo', 'Sunny', 'Taurus', 'Tigar', 'Toyo', 'Tracmax', 'Triangle', 'Uniroyal', 'Viking', 'Vredestein', 'Waterfall', 'Westlake', 'Windforce', 'Yokohama', 'Zeetex']
     .sort((a, b) => a.localeCompare(b, 'tr'));
 
+// Görseller ve ek hizmetler (12 Ekim 2026) — HEPSİ İSTEĞE BAĞLI. Başlık başına en çok GORSEL_ADET dosya.
+// Fotoğraf: JPG/PNG/WebP; yalnız vergi levhasında PDF de kabul edilir. Dosyalar sitede yayınlanmaz, yalnız admin panelinden açılır.
+const GORSEL_ADET = 4;
+const GORSEL_BOYUT_MB = 10;
+const GORSEL_ALANLARI = [
+    { key: 'disCephe', etiket: 'Dış Cephe Görseli', kisa: 'Dış cephe' },
+    { key: 'servisIci', etiket: 'Servis İçi Görseli', kisa: 'Servis içi' },
+    { key: 'satisBekleme', etiket: 'Lastik - Jant Satışının Yapıldığı Kısım veya Bekleme Salonunun Görseli', kisa: 'Satış alanı / bekleme salonu' },
+    { key: 'lastikOteli', etiket: 'Varsa Lastik Oteli Görseli', kisa: 'Lastik oteli' },
+    { key: 'rotLift', etiket: 'Varsa Rot Ayarı Yapılan Lift Görseli', kisa: 'Rot ayarı lifti' },
+    { key: 'vergiLevhasi', etiket: 'Vergi Levhası Görseli', kisa: 'Vergi levhası', pdf: true }
+];
+const DOSYA_KIMLIK = /^[a-f0-9]{32}\.(jpg|png|webp|pdf)$/;   // sunucunun yükleme sırasında verdiği dosya adı
+// Dosyalar web'den erişilen "public" klasörünün ve kod deposunun DIŞINDA tutulur (canlı ve dev aynı dizini kullanır)
+const GORSEL_DIZIN = process.env.BAYI_FORMU_DIZIN || '/var/www/alastik-ozel/bayi-formu';
+const EK_HIZMET_SORU = 'Varsa ek hizmetleriniz nelerdir?';
+const EK_HIZMET_UZUNLUK = 1000;
+
 // Telefon: 0 ile başlayan 11 hane (cep 05xx ya da sabit 0[2-4]xx). Dönüş: "0511 111 11 11" ya da null
 function telefonBicimle(deger) {
     const d = String(deger || '').replace(/\D/g, '');
@@ -97,7 +115,9 @@ function tanim() {
         evetHayir: EVET_HAYIR, tesisEvetHayir: TESIS_EVET_HAYIR,
         calisanSayisi: CALISAN_SAYISI, metrekare: METREKARE,
         lastikOteliYok: LASTIK_OTELI_YOK, lastikOteliYokEtiket: LASTIK_OTELI_YOK_ETIKET, lastikOteliKapasite: LASTIK_OTELI_KAPASITE,
-        markalar: MARKALAR, markaYok: MARKA_YOK, markaHepsi: MARKA_HEPSI, markaDiger: MARKA_DIGER
+        markalar: MARKALAR, markaYok: MARKA_YOK, markaHepsi: MARKA_HEPSI, markaDiger: MARKA_DIGER,
+        gorselAlanlari: GORSEL_ALANLARI, gorselAdet: GORSEL_ADET, gorselBoyutMb: GORSEL_BOYUT_MB,
+        ekHizmetSoru: EK_HIZMET_SORU, ekHizmetUzunluk: EK_HIZMET_UZUNLUK
     };
 }
 
@@ -153,7 +173,16 @@ function dogrula(b, ilSonucu) {
     if (m.includes(MARKA_YOK)) m = [MARKA_YOK]; else if (m.includes(MARKA_HEPSI)) m = [MARKA_HEPSI];
     if (m.length) temiz.tesis.markalar = m; else hatalar['tesis.markalar'] = 'En az bir seçenek işaretleyin';
 
+    // İsteğe bağlı alanlar: boş bırakılabilir, hata üretmez. Tanınmayan dosya adı sessizce atılır.
+    temiz.ekHizmetler = String(g.ekHizmetler ?? '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, EK_HIZMET_UZUNLUK);
+    temiz.gorseller = {};
+    const gr = g.gorseller || {};
+    for (const a of GORSEL_ALANLARI) {
+        const liste = Array.isArray(gr[a.key]) ? [...new Set(gr[a.key].map(String))] : [];
+        temiz.gorseller[a.key] = liste.filter(x => DOSYA_KIMLIK.test(x) && (a.pdf || !x.endsWith('.pdf'))).slice(0, GORSEL_ADET);
+    }
+
     return { hatalar, temiz };
 }
 
-module.exports = { SITE, KAPALI, VERMIYORUM, VERMIYORUM_ETIKET, SAAT_ALANLARI, FIYAT_GRUPLARI, FIYAT_SATIRLARI, TESIS_EVET_HAYIR, LASTIK_OTELI_YOK, LASTIK_OTELI_YOK_ETIKET, tanim, dogrula, telefonBicimle };
+module.exports = { SITE, KAPALI, VERMIYORUM, VERMIYORUM_ETIKET, SAAT_ALANLARI, FIYAT_GRUPLARI, FIYAT_SATIRLARI, TESIS_EVET_HAYIR, LASTIK_OTELI_YOK, LASTIK_OTELI_YOK_ETIKET, GORSEL_ALANLARI, GORSEL_ADET, GORSEL_BOYUT_MB, GORSEL_DIZIN, DOSYA_KIMLIK, EK_HIZMET_SORU, tanim, dogrula, telefonBicimle };
