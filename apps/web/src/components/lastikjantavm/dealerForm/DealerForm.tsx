@@ -69,16 +69,37 @@ nav[aria-label="Şubeler, hizmetler ve araçlar"] { display: none !important; }
 .bf-duzenle { background: none; border: 0; color: #111; text-decoration: underline; font-size: .85rem; font-weight: 600; padding: 0; float: right; }
 .bf-uyari { background: #fff4f4; border: 1px solid #f1b5b5; color: #a11; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
 .bf-tuzak { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-.bf-giris { padding: 24px 18px; }
-.bf-giris h1 { font-size: 1.3rem; line-height: 1.3; margin: 0 0 14px; }
-.bf-giris p { font-size: 1rem; line-height: 1.6; margin: 0 0 12px; }
-.bf-basla { display: block; width: 100%; margin-top: 18px; padding: 14px; font-size: 16px; font-weight: 700; border-radius: 10px; border: 1px solid ${KOYU}; background: ${KOYU}; color: #fff; }
-.bf small.bf-bilgi { display: block; color: #555; font-size: .88rem; line-height: 1.5; margin-top: 12px; }
+/* Karşılama ekranı. Telefonda: üstte görsel (başlık görselin içinde), altta yazı, ekranın altında sabit düğme.
+   Masaüstünde: solda görsel, sağda başlık + yazı + düğme, tek kart içinde. */
+.bf-giris-gorsel { border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 5; background: #1c1c1c; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.bf-giris-gorsel img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.bf-rozet { display: none; background: ${KOYU}; color: ${VURGU}; font-size: .74rem; font-weight: 700; letter-spacing: .06em; padding: 6px 12px; border-radius: 999px; margin-bottom: 14px; }
+/* Telefonda başlık görselin içinde okunuyor; metin başlığı ekran okuyucular için durur */
+.bf .bf-giris-yazi h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+.bf .bf-giris-yazi h1 em { font-style: normal; background: linear-gradient(transparent 60%, ${VURGU} 60%); padding: 0 3px; }
+.bf-giris-yazi p { font-size: 1rem; line-height: 1.65; margin: 0 0 12px; color: #333; }
+.bf ul.bf-hizmet { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bf ul.bf-hizmet li { flex: 0 0 auto; width: auto; display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid #dcdcdc; border-radius: 999px; padding: 8px 14px; font-size: .9rem; font-weight: 600; color: #222; }
+.bf-hizmet li::before { content: "✓"; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: ${VURGU}; color: #111; font-size: .72rem; font-weight: 800; }
+.bf-giris-yazi p.bf-cagri { font-size: 1.08rem; font-weight: 700; color: #111; margin: 20px 0 0; padding-left: 12px; border-left: 4px solid ${VURGU}; }
+.bf-giris-alt { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #ddd; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); z-index: 1040; }
+.bf-basla { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px 20px; font-size: 17px; font-weight: 800; border-radius: 12px; border: 0; background: ${VURGU}; color: #111; }
+.bf-basla span { font-size: 1.2em; line-height: 1; transition: transform .15s ease; }
+.bf-basla:hover span { transform: translateX(4px); }
+.bf small.bf-bilgi { display: block; color: #666; font-size: .86rem; line-height: 1.5; margin-top: 14px; }
 @media (min-width: 768px) {
-  .bf-giris { max-width: 780px; padding: 36px 40px; }
-  .bf-giris h1 { font-size: 1.7rem; }
-  .bf-giris p { font-size: 1.05rem; }
+  .bf-giris { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 36px; align-items: center; background: #fff; border: 1px solid #e3e3e3; border-radius: 20px; padding: 24px; box-shadow: 0 12px 34px rgba(0,0,0,.07); }
+  .bf-giris-gorsel { aspect-ratio: 9 / 16; margin-bottom: 0; }
+  .bf-rozet { display: inline-block; }
+  .bf-giris-yazi { padding: 8px 12px 8px 0; }
+  .bf .bf-giris-yazi h1 { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; font-size: 2rem; line-height: 1.25; font-weight: 800; margin: 0 0 18px; }
+  .bf-giris-yazi p { font-size: 1.05rem; }
+  .bf-giris-alt { position: static; border-top: 0; background: transparent; padding: 24px 0 0; }
   .bf-basla { width: auto; min-width: 280px; }
+}
+@media (min-width: 1200px) {
+  .bf-giris { grid-template-columns: 380px 1fr; gap: 52px; padding: 28px; }
+  .bf .bf-giris-yazi h1 { font-size: 2.3rem; }
 }
 .bf-foto { display: flex; flex-wrap: wrap; gap: 8px; }
 .bf-foto-kutu, .bf label.bf-foto-ekle { width: 84px; height: 84px; border-radius: 10px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; margin: 0; }
@@ -297,13 +318,26 @@ export default function DealerForm() {
     // Karşılama: forma ilk kez gelen kişi önce neye başvurduğunu okur
     if (!basladi) return (
         <div className="container"><div className="bf" ref={ust}><style>{CSS}</style>
-            <div className="bf-kart bf-giris">
-                <h1>Anlaşmalı montaj noktamız olmak ister misiniz?</h1>
-                <p>Lastik ve jant satın alan müşterilerimize sunduğumuz montaj hizmetlerine siz de dahil olun; yeni müşterilere ulaşın ve ek gelir elde edin.</p>
-                <p>Sitemiz üzerinden alışveriş yapan müşterilerimize lastik sökme-takma ve balans, rot ayarı veya lastik depolama hizmetlerinden en az birini sunuyorsanız, anlaşmalı montaj noktamız olarak bize katılabilirsiniz.</p>
-                <p><strong>Montaj noktamız olmak için formu hemen doldurun!</strong></p>
-                <button type="button" className="bf-basla" onClick={() => { setBasladi(true); window.scrollTo({ top: 0 }); }}>Formu Doldur</button>
-                <small className="bf-bilgi">Form yaklaşık 5 dakika sürer. Hizmet fiyatlarınızı hazır bulundurun; iş yeri fotoğrafları isteğe bağlıdır.</small>
+            <div className="bf-giris">
+                <div className="bf-giris-gorsel">
+                    <picture>
+                        <source srcSet="/lastikjantavm/assets/img/bayi-formu/montaj-noktamiz-ol.webp" type="image/webp" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/lastikjantavm/assets/img/bayi-formu/montaj-noktamiz-ol.jpg" width={900} height={1600} alt="Anlaşmalı montaj noktamız olmak ister misiniz? Ek gelir elde etmek isterseniz formu hemen doldurun." />
+                    </picture>
+                </div>
+                <div className="bf-giris-yazi">
+                    <span className="bf-rozet">MONTAJ NOKTASI BAŞVURUSU</span>
+                    <h1>Anlaşmalı <em>montaj noktamız</em> olmak ister misiniz?</h1>
+                    <p>Lastik ve jant satın alan müşterilerimize sunduğumuz montaj hizmetlerine siz de dahil olun; yeni müşterilere ulaşın ve ek gelir elde edin.</p>
+                    <p>Sitemiz üzerinden alışveriş yapan müşterilerimize lastik sökme-takma ve balans, rot ayarı veya lastik depolama hizmetlerinden en az birini sunuyorsanız, anlaşmalı montaj noktamız olarak bize katılabilirsiniz.</p>
+                    <ul className="bf-hizmet"><li>Sökme-takma ve balans</li><li>Rot ayarı</li><li>Lastik depolama</li></ul>
+                    <p className="bf-cagri">Montaj noktamız olmak için formu hemen doldurun!</p>
+                    <div className="bf-giris-alt">
+                        <button type="button" className="bf-basla" onClick={() => { setBasladi(true); window.scrollTo({ top: 0 }); }}>Formu Doldur <span aria-hidden="true">→</span></button>
+                    </div>
+                    <small className="bf-bilgi">Form yaklaşık 5 dakika sürer. Hizmet fiyatlarınızı hazır bulundurun; iş yeri fotoğrafları isteğe bağlıdır.</small>
+                </div>
             </div>
         </div></div>
     );
