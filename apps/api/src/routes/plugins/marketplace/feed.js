@@ -4,14 +4,14 @@
  *   ?tip=lastik|jant                     (varsayılan ikisi)
  *   ?site=lastikjantavm                  (yoksa Host/X-Site'tan çözülen site)
  *   ?refresh=1                           (5 dk önbelleği atla)
- * Yanlış anahtar → 401, feed kapalı (anahtar tanımsız) → 503. Sıklık: 15 dk'da 20 istek.
+ * Anahtar site başına ayrı (MarketplaceFeedService.feedKey). Yanlış anahtar → 401, sitenin anahtarı tanımsız → 503. Sıklık: 15 dk'da 20 istek.
  * Yalnız MARKETPLACE_FEED_SITES (varsayılan: lastikjantavm,alastik) listesindeki siteler feed verir; diğerleri 404.
  */
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const { generateFeed, isAuthorized } = require('../../../services/plugins/marketplace/MarketplaceFeedService');
+const { generateFeed, isAuthorized, feedKey } = require('../../../services/plugins/marketplace/MarketplaceFeedService');
 const { isValidSite } = require('../../../config/sites');
 
 const allowedSites = () => String(process.env.MARKETPLACE_FEED_SITES || 'lastikjantavm,alastik').split(',').map(s => s.trim()).filter(Boolean);
@@ -26,17 +26,16 @@ const feedLimiter = rateLimit({
 
 router.get('/urunler', feedLimiter, async (req, res) => {
     try {
-        if (!process.env.MARKETPLACE_FEED_KEY) {
-            return res.status(503).json({ success: false, message: 'Feed kapalı' });
-        }
-        if (!isAuthorized(req)) {
-            return res.status(401).json({ success: false, message: 'Geçersiz feed anahtarı' });
-        }
-
         const querySite = String(req.query.site || '').trim().toLowerCase();
         const site = isValidSite(querySite) ? querySite : req.site;
         if (!allowedSites().includes(site)) {
             return res.status(404).json({ success: false, message: 'Bu site için feed tanımlı değil' });
+        }
+        if (!feedKey(site)) {
+            return res.status(503).json({ success: false, message: 'Feed kapalı' });
+        }
+        if (!isAuthorized(req, site)) {
+            return res.status(401).json({ success: false, message: 'Geçersiz feed anahtarı' });
         }
         const tip = ['lastik', 'jant'].includes(String(req.query.tip || '')) ? String(req.query.tip) : null;
 

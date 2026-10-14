@@ -7,7 +7,9 @@
  * Yanıt site başına 5 dk önbelleklenir; ?refresh=1 ile zorla yenilenir.
  * aciklama: ürün sayfasında o site için görünen açıklama (siteDescriptions[site] || customDescription), düz metin, en çok 6.000 karakter; yoksa boş.
  *
- * Yetki: MARKETPLACE_FEED_KEY env değişkeni (X-Feed-Key başlığı). Boşsa feed kapalıdır (503).
+ * Yetki (X-Feed-Key başlığı) site başına ayrı anahtarla: MARKETPLACE_FEED_KEY_<SİTE> (ör. MARKETPLACE_FEED_KEY_ALASTIK).
+ * lastikjantavm için eski MARKETPLACE_FEED_KEY de geçerlidir. Sitenin anahtarı tanımlı değilse o sitenin feed'i kapalıdır (503);
+ * bir sitenin anahtarı başka sitenin feed'ini açmaz.
  */
 
 const mongoose = require('mongoose');
@@ -33,7 +35,7 @@ const lower = (s) => String(s || '').toLocaleLowerCase('tr').trim();
 const ACIKLAMA_MAX = 6000;
 const HTML_VARLIK = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'" };
 const TR_VARLIK = { '&ccedil;': 'ç', '&uuml;': 'ü', '&ouml;': 'ö', '&rsquo;': '’', '&lsquo;': '‘', '&rdquo;': '”', '&ldquo;': '“', '&ndash;': '–', '&mdash;': '—', '&hellip;': '…', '&deg;': '°', '&reg;': '®', '&trade;': '™', '&bull;': '•' };
-const feedKey = () => String(process.env.MARKETPLACE_FEED_KEY || '').trim();
+const feedKey = (site) => String(process.env[`MARKETPLACE_FEED_KEY_${String(site || '').toUpperCase()}`] || (site === 'lastikjantavm' ? process.env.MARKETPLACE_FEED_KEY : '') || '').trim();
 
 function getSiteUrl(site) {
     const domain = SITES[site]?.domains?.[0] || SITES[DEFAULT_SITE].domains[0];
@@ -219,7 +221,7 @@ function buildQuery(site, tip) {
 
 /** @returns {{ payload: object, cached: boolean }} */
 async function generateFeed({ site, tip = null, force = false }) {
-    if (!feedKey()) {
+    if (!feedKey(site)) {
         const err = new Error('Feed kapalı');
         err.status = 503;
         throw err;
@@ -267,11 +269,11 @@ async function generateFeed({ site, tip = null, force = false }) {
     return { payload, cached: false };
 }
 
-function isAuthorized(req) {
-    const key = feedKey();
+function isAuthorized(req, site) {
+    const key = feedKey(site);
     if (!key) return false;
     const given = String(req.headers['x-feed-key'] || req.query.key || '').trim();
     return given.length === key.length && require('crypto').timingSafeEqual(Buffer.from(given), Buffer.from(key));
 }
 
-module.exports = { generateFeed, isAuthorized, mapProduct, attrMap, isNew, buildQuery, aciklama };
+module.exports = { generateFeed, isAuthorized, feedKey, mapProduct, attrMap, isNew, buildQuery, aciklama };
