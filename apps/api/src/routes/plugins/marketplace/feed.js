@@ -5,7 +5,7 @@
  *   ?site=lastikjantavm                  (yoksa Host/X-Site'tan çözülen site)
  *   ?refresh=1                           (5 dk önbelleği atla)
  * Yanlış anahtar → 401, feed kapalı (anahtar tanımsız) → 503. Sıklık: 15 dk'da 20 istek.
- * Yalnız MARKETPLACE_FEED_SITES (varsayılan: lastikjantavm) listesindeki siteler feed verir; diğerleri 404.
+ * Yalnız MARKETPLACE_FEED_SITES (varsayılan: lastikjantavm,alastik) listesindeki siteler feed verir; diğerleri 404.
  */
 
 const express = require('express');
@@ -14,7 +14,7 @@ const router = express.Router();
 const { generateFeed, isAuthorized } = require('../../../services/plugins/marketplace/MarketplaceFeedService');
 const { isValidSite } = require('../../../config/sites');
 
-const allowedSites = () => String(process.env.MARKETPLACE_FEED_SITES || 'lastikjantavm').split(',').map(s => s.trim()).filter(Boolean);
+const allowedSites = () => String(process.env.MARKETPLACE_FEED_SITES || 'lastikjantavm,alastik').split(',').map(s => s.trim()).filter(Boolean);
 
 const feedLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,

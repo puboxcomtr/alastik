@@ -5,6 +5,7 @@
  * XML tedarikçi ürünleri dahildir. Fiyat, sitenin vitrinde gösterdiği kargo dahil satış fiyatıdır.
  * Salt okunur: hiçbir kaydı değiştirmez, mevcut vitrin/feed akışlarına dokunmaz.
  * Yanıt site başına 5 dk önbelleklenir; ?refresh=1 ile zorla yenilenir.
+ * aciklama: ürün sayfasında o site için görünen açıklama (siteDescriptions[site] || customDescription), düz metin, en çok 6.000 karakter; yoksa boş.
  *
  * Yetki: MARKETPLACE_FEED_KEY env değişkeni (X-Feed-Key başlığı). Boşsa feed kapalıdır (503).
  */
@@ -29,6 +30,9 @@ const RUNFLAT_RE = /\b(RFT|ROF|ZP|SSR|RUN\s*FLAT|RUNFLAT|DSST|HRS|MOE|EMT)\b/i;
 const RIM_SIZE_RE = /(\d{1,2}(?:[.,]\d)?)\s*[xX]\s*(\d{2})\b/;
 
 const lower = (s) => String(s || '').toLocaleLowerCase('tr').trim();
+const ACIKLAMA_MAX = 6000;
+const HTML_VARLIK = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'" };
+const TR_VARLIK = { '&ccedil;': 'ç', '&uuml;': 'ü', '&ouml;': 'ö', '&rsquo;': '’', '&lsquo;': '‘', '&rdquo;': '”', '&ldquo;': '“', '&ndash;': '–', '&mdash;': '—', '&hellip;': '…', '&deg;': '°', '&reg;': '®', '&trade;': '™', '&bull;': '•' };
 const feedKey = () => String(process.env.MARKETPLACE_FEED_KEY || '').trim();
 
 function getSiteUrl(site) {
@@ -58,6 +62,30 @@ const num = (value) => {
     return Number.isFinite(n) ? n : null;
 };
 const round2 = (n) => Math.round(n * 100) / 100;
+/** Ürün sayfasındaki açıklamanın (HTML) düz metni; satır yapısı korunur, 6.000 karakteri geçerse kelime sınırında kısaltılır */
+function aciklama(product, site) {
+    const html = product.customData?.siteDescriptions?.[site] || product.customData?.customDescription || '';
+    let t = String(html)
+        .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<li[^>]*>/gi, '\n- ')
+        .replace(/<\/(p|div|ul|ol|h[1-6]|tr|table|section)>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&(nbsp|amp|lt|gt|quot|apos|#39);/gi, m => HTML_VARLIK[m.toLowerCase()] ?? ' ')
+        .replace(/&#(x[0-9a-f]+|\d+);/gi, (m, n) => { const c = n[0].toLowerCase() === 'x' ? parseInt(n.slice(1), 16) : parseInt(n, 10); return c > 0 && c <= 0x10ffff ? String.fromCodePoint(c) : ' '; })
+        .replace(/&[a-z]+;/gi, m => HTML_VARLIK[m.toLowerCase()] ?? TR_VARLIK[m.toLowerCase()] ?? ' ')
+        .replace(/[ \t\u00a0]+/g, ' ')
+        .replace(/ *\n */g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    if (t.length > ACIKLAMA_MAX) {
+        const kes = t.slice(0, ACIKLAMA_MAX - 1);
+        const bosluk = Math.max(kes.lastIndexOf(' '), kes.lastIndexOf('\n'));
+        t = (bosluk > ACIKLAMA_MAX * 0.8 ? kes.slice(0, bosluk) : kes).trim() + '…';
+    }
+    return t;
+}
+
 const yesNo = (value) => /^(evet|var|yes|true)$/i.test(String(value || '').trim());
 
 /** Yalnız açıkça ikinci el olanlar dışarıda kalır; "Durumu" özelliği yoksa sıfır sayılır */
@@ -98,7 +126,7 @@ function oldPrice(product, current) {
     return list && current && list > current ? round2(list) : null;
 }
 
-function mapProduct(product, siteUrl) {
+function mapProduct(product, siteUrl, site = null) {
     const dia = product.diaData || {};
     const attrs = attrMap(product);
     const type = dia.ozelkod7kodu === RIM_TYPE ? 'jant' : 'lastik';
@@ -110,6 +138,7 @@ function mapProduct(product, siteUrl) {
         tur: type,
         durum: 'sifir',
         baslik: dia.aciklama || '',
+        aciklama: aciklama(product, site),
         marka: dia.marka || null,
         model: null,
         ebat: null,
@@ -211,6 +240,7 @@ async function generateFeed({ site, tip = null, force = false }) {
             'diaData.durum': 1, 'diaData.kdv': 1, 'diaData.agirlik': 1, 'diaData.desi': 1,
             'diaData.m_birimler': 1, 'diaData.m_urunOzellikleri': 1, 'diaData.m_resimler': 1, 'diaData.m_kategoriler': 1,
             'customData.seoUrl': 1, 'customData.customImages': 1, 'customData.siteData': 1,
+            'customData.siteDescriptions': 1, 'customData.customDescription': 1,
             'customData.shippingIncludedPrice': 1, 'customData.shippingPerUnit': 1, 'customData.webPrice': 1, 'customData.originalPrice': 1
         }
     }).toArray();
@@ -221,7 +251,7 @@ async function generateFeed({ site, tip = null, force = false }) {
     const items = [];
     for (const product of products) {
         if (!isNew(attrMap(product))) continue;
-        const mapped = mapProduct(product, siteUrl);
+        const mapped = mapProduct(product, siteUrl, site);
         if (!mapped || mapped.gorseller.length === 0) continue; // fiyatsız / görselsiz ilan gönderilmez
         items.push(mapped);
     }
@@ -244,4 +274,4 @@ function isAuthorized(req) {
     return given.length === key.length && require('crypto').timingSafeEqual(Buffer.from(given), Buffer.from(key));
 }
 
-module.exports = { generateFeed, isAuthorized, mapProduct, attrMap, isNew, buildQuery };
+module.exports = { generateFeed, isAuthorized, mapProduct, attrMap, isNew, buildQuery, aciklama };
