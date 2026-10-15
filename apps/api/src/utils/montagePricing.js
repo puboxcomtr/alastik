@@ -5,8 +5,8 @@
  *
  * Müşteri fiyatı:
  *   vitrin = girilen fiyat × (1 + komisyon %)   → tam TL'ye yuvarlanır
- *   ödenen = KDV EKLENEN sitelerde (lastikjantavm) vitrin × (1 + KDV %), vitrinde "X TL + KDV" yazar;
- *            diğer sitelerde (alastik) girilen fiyat KDV dahil sayılır, ödenen = vitrin.
+ *   ödenen = KDV EKLENEN sitelerde vitrin × (1 + KDV %), vitrinde "X TL + KDV" yazar;
+ *            diğer sitelerde (şu an hepsi) girilen fiyat KDV dahil sayılır, ödenen = vitrin.
  * Komisyon (Admin › Montaj Noktaları › Komisyon Oranları, site başına) kendi şubelerimize
  * (showPublicInfo) uygulanmaz; KDV (eklenen sitelerde) her noktada eklenir.
  */
@@ -14,8 +14,9 @@ const WebMontagePoint = require('../models/web/content/WebMontagePoint');
 const WebMontageCommission = require('../models/web/content/WebMontageCommission');
 
 const KDV_ORANI = 20;
-// Montaj hizmeti fiyatı "+ KDV" hesaplanan siteler
-const KDV_EKLENEN_SITELER = new Set(['lastikjantavm']);
+// Montaj hizmeti fiyatı "+ KDV" hesaplanan siteler — şu an YOK: iki sitede de girilen fiyat KDV dahildir
+// (15 Ekim 2026 kararı). Bir siteye "+ KDV" gerekirse adını buraya eklemek yeterli.
+const KDV_EKLENEN_SITELER = new Set([]);
 const kdvEklenirMi = (site) => KDV_EKLENEN_SITELER.has(String(site || ''));
 // Değişim ücretleri: lastik montajı (600.201-203), yazlık-kışlık / yerinde değişim (600.106-112), mobil değişim (YMH-*)
 const DEGISIM_SKU = /^(600\.(10[6-9]|11[0-2]|20[1-3])|YMH-\d+)$/i;
