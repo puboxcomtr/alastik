@@ -15,7 +15,8 @@ export interface BranchPoint {
     district: string;
     workingSchedule?: Record<string, { open: string; close: string }>;
     amenities: string[];
-    services: Array<{ productKey: string; sku: string; name: string; price: number | null; isMontage?: boolean }>;
+    // price: vitrin fiyatı (sitede "+ KDV" olabilir); kdvDahilFiyat: müşterinin ödediği tutar
+    services: Array<{ productKey: string; sku: string; name: string; price: number | null; kdvDahilFiyat?: number | null; isMontage?: boolean }>;
 }
 
 export interface ServiceRow {
@@ -70,7 +71,7 @@ export async function getGroupServices(group: ServiceGroup, point: BranchPoint):
     if (!group.categorySlug) {
         return point.services
             .filter(s => s.isMontage)
-            .map(s => ({ name: s.name, price: s.price, url: null }));
+            .map(s => ({ name: s.name, price: s.kdvDahilFiyat ?? s.price, url: null }));
     }
     const data = await filterProducts({ category: group.categorySlug, limit: 100 });
     const rows: ServiceRow[] = (data?.products || []).map((p: any) => ({

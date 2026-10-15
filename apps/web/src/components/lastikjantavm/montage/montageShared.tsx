@@ -23,6 +23,9 @@ export type MontageService = {
     // Sepet kuralları: montaj hizmeti mi, kapsadığı jant çapı aralığı
     isMontage?: boolean;
     rimRange?: { min: number; max: number } | null;
+    // 'haric': fiyat KDV hariçtir, "+ KDV" yazılır; sepete kdvDahilFiyat işlenir
+    priceDisplay?: 'dahil' | 'haric';
+    kdvDahilFiyat?: number | null;
 };
 
 export type MontagePoint = {
@@ -44,6 +47,7 @@ export type MontagePoint = {
     startingPrice: number | null;
     // En düşük jant aralığındaki (13"-16") montaj hizmetinin 1 adet fiyatı; 0 = ücretsiz montaj
     montageStartingPrice: number | null;
+    montageStartingPriceDisplay?: 'dahil' | 'haric';
     rating: { average: number | null; processAverage: number | null; locationAverage: number | null; count: number };
     reviews: MontageReview[];
 };
@@ -194,7 +198,7 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
                     ? 'Sorunuz'
                     : service.price === 0
                         ? 'Ücretsiz'
-                        : `${(service.price * shownQuantity).toLocaleString('tr-TR')} TL`}
+                        : <>{`${(service.price * shownQuantity).toLocaleString('tr-TR')} TL`}{service.priceDisplay === 'haric' && <small className="d-block fw-normal" style={{ fontSize: 11 }}>+ KDV</small>}</>}
             </div>
             <button
                 type="button"

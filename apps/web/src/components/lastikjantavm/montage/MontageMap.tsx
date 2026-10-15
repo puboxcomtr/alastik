@@ -159,7 +159,7 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
                                 {p.montageStartingPrice !== null && (
                                     p.montageStartingPrice === 0
                                         ? <span className="mn-item-price mn-item-free">Ücretsiz Montaj</span>
-                                        : <span className="mn-item-price">{p.montageStartingPrice.toLocaleString('tr-TR')} TL&apos;den başlayan montaj fiyatı</span>
+                                        : <span className="mn-item-price">{p.montageStartingPrice.toLocaleString('tr-TR')} TL{p.montageStartingPriceDisplay === 'haric' ? ' + KDV' : ''}&apos;den başlayan montaj fiyatı</span>
                                 )}
                                 <button
                                     type="button"

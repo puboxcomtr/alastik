@@ -5,9 +5,20 @@ const { resolveUnitShipping } = require('../../../services/web/cargo/ShippingRul
 const router = express.Router();
 const WebCart = require('../../../models/web/cart/WebCart');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
-const { loadMontagePrices, resolveMontageServicePrice } = require('../../../utils/montagePricing');
+const { loadMontagePrices, resolveMontageServicePrice, getKomisyonOranlari } = require('../../../utils/montagePricing');
 const CartRules = require('../../../services/web/cart/CartRulesService');
 const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
+const { getCartRetentionDays, isValidSite } = require('../../../config/sites');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Sepeti isteğin geldiği siteye bağlar (panel "Aktif Sepet" listesi site bazlıdır).
+ * Site bir kez yazılır; sonradan değişmez.
+ */
+const attachSiteToCart = (req, cart) => {
+    if (!cart.site && isValidSite(req.site)) cart.site = req.site;
+};
 
 /**
  * Ürünün kategori ayarına göre KDV gösterim biçimi (dahil / haric) ve oranı.
@@ -46,6 +57,9 @@ const getPriceDisplay = async (product, site) => {
     };
 };
 
+// Stok tavanı uygulanan kalem türleri (montaj/hizmet kalemlerinde stok aranmaz)
+const STOCK_LIMITED_ITEM_TYPES = ['tire', 'product'];
+
 /**
  * Sepette gösterilecek birim fiyat
  * XML ürünleri için kargo dahil fiyat (shippingIncludedPrice), 
@@ -65,9 +79,24 @@ const getCartUnitPrice = (product, site) => {
     // Fiyat gizli (__dinamik__16 seçili + dinamik yok): 0 döner → /add guard'ı sepete eklemeyi reddeder
     if (sitePrice === PRICE_HIDDEN) return 0;
     const basePrice = sitePrice !== null ? sitePrice : (product.diaData?.m_birimler?.[0]?.fiyat4 || 0);
-    // Kural tabanlı kargo payı (Kargo Tanımları) müşteri fiyatına dahildir
+    // Kural tabanlı kargo payı (Kargo Tanımları): gösterim "fiyata dahil" ise birim fiyata eklenir;
+    // "fiyattan hariç" ise fiyat kargosuz kalır, kargo sepette ayrı satırdır (getCartExcludedShipping)
     const shipping = resolveUnitShipping(product, site, basePrice);
-    return shipping && shipping.shippingPerUnit > 0 ? Math.round((basePrice + shipping.shippingPerUnit) * 100) / 100 : basePrice;
+    if (!shipping || !(shipping.shippingPerUnit > 0) || shipping.excluded) return basePrice;
+    return Math.round((basePrice + shipping.shippingPerUnit) * 100) / 100;
+};
+
+/**
+ * Ürün fiyatından HARİÇ tutulan birim kargo ücreti (Kargo Kuralları'nda stoktaki ürünler için
+ * "fiyattan hariç" seçiliyse). Fiyata dahilse ya da XML üründe 0 döner.
+ */
+const getCartExcludedShipping = (product, site) => {
+    if (product.syncInfo?.syncSource === 'xml_integration') return 0;
+    const sitePrice = resolveSitePrice(product, site);
+    if (sitePrice === PRICE_HIDDEN) return 0;
+    const basePrice = sitePrice !== null ? sitePrice : (product.diaData?.m_birimler?.[0]?.fiyat4 || 0);
+    const shipping = resolveUnitShipping(product, site, basePrice);
+    return shipping && shipping.excluded && shipping.shippingPerUnit > 0 ? shipping.shippingPerUnit : 0;
 };
 
 /**
@@ -106,6 +135,11 @@ router.get('/:sessionId', async (req, res) => {
                 data: { sessionId, items: [], totals: { subtotal: 0, kdv: 0, total: 0, itemCount: 0 } }
             });
         }
+        // Site alanı olmayan eski sepet: görüntülenirken siteye bağlanır (son hareket değişmez)
+        if (!cart.site && isValidSite(req.site)) {
+            cart.site = req.site;
+            await WebCart.updateOne({ _id: cart._id }, { $set: { site: req.site } });
+        }
         const productKeys = cart.items.map(item => item.productKey);
         const products = await WebProduct.find({ _key: { $in: productKeys } });
         const productMap = new Map(products.map(p => [p._key, p]));
@@ -115,6 +149,8 @@ router.get('/:sessionId', async (req, res) => {
 
         let hasChanges = false;
         const updatedItems = [];
+        // Stok düştüğü için adedi indirilen / çıkarılan kalemlerin müşteriye gösterilecek notları
+        const stockNotes = [];
 
         for (const item of cart.items) {
             const product = productMap.get(item.productKey);
@@ -125,6 +161,8 @@ router.get('/:sessionId', async (req, res) => {
 
             const montagePrice = montagePrices.get(`${item.montagePointId}:${item.productKey}`);
             const currentPrice = typeof montagePrice === 'number' ? montagePrice : getCartUnitPrice(product, req.site);
+            // Fiyattan hariç kargo (varsa) her okumada tazelenir; montaj noktası fiyatlı hizmette kargo olmaz
+            const currentShipping = typeof montagePrice === 'number' ? 0 : getCartExcludedShipping(product, req.site);
             const currentOriginalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
             const currentImage = getCartProductImage(product);
             const currentName = product.diaData?.aciklama || '';
@@ -136,6 +174,7 @@ router.get('/:sessionId', async (req, res) => {
             }
             if (
                 item.unitPrice !== currentPrice ||
+                (item.shippingPerUnit || 0) !== currentShipping ||
                 item.originalPrice !== currentOriginalPrice ||
                 item.productImage !== currentImage ||
                 item.productName !== currentName ||
@@ -150,6 +189,24 @@ router.get('/:sessionId', async (req, res) => {
             const described = CartRules.describeProduct(product);
             if (described.itemType !== item.itemType) hasChanges = true;
 
+            // Stok tavanı (kendi stoğumuzdaki ürün kalemleri): sepete eklendikten sonra stok düşmüş olabilir.
+            // Sipariş anındaki stok kontrolü bu kalemi reddedeceğinden müşteri ödeme adımına gelmeden bilgilendirilir:
+            // stok bittiyse kalem çıkarılır, azaldıysa adet stoğa indirilir.
+            let quantity = item.quantity;
+            if (STOCK_LIMITED_ITEM_TYPES.includes(described.itemType) && product.syncInfo?.syncSource !== 'xml_integration') {
+                const stock = Number(product.diaData?.gercek_stok) || 0;
+                if (stock <= 0) {
+                    hasChanges = true;
+                    stockNotes.push(`${currentName} stokta kalmadığı için sepetinizden çıkarıldı`);
+                    continue;
+                }
+                if (quantity > stock) {
+                    quantity = stock;
+                    hasChanges = true;
+                    stockNotes.push(`${currentName} ürününden stokta ${stock} adet kaldığı için sepetinizdeki adet güncellendi`);
+                }
+            }
+
             // KDV gösterim ayarı her okumada tazelenir: kategori ayarı panelden değişebilir
             // ve bu alan eklenmeden önce oluşmuş eski sepetlerde hiç yoktur
             const kdvGosterim = await getPriceDisplay(product, req.site);
@@ -161,7 +218,9 @@ router.get('/:sessionId', async (req, res) => {
                 ...item.toObject(),
                 ...described,
                 ...kdvGosterim,
+                quantity,
                 unitPrice: currentPrice,
+                shippingPerUnit: currentShipping,
                 originalPrice: currentOriginalPrice,
                 productImage: currentImage,
                 productName: currentName,
@@ -178,7 +237,7 @@ router.get('/:sessionId', async (req, res) => {
             await cart.save();
         }
 
-        res.json({ success: true, data: cart, notes: reconciled.notes });
+        res.json({ success: true, data: cart, notes: [...stockNotes, ...(reconciled.notes || [])] });
     } catch (error) {
         console.error('Cart get error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -206,7 +265,7 @@ router.post('/add', async (req, res) => {
         if (montagePointId) {
             const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
             const point = String(montagePointId).match(/^[a-f0-9]{24}$/i)
-                ? await WebMontagePoint.findOne({ _id: montagePointId, site: req.site, isActive: true }, { city: 1, district: 1, services: 1 }).lean()
+                ? await WebMontagePoint.findOne({ _id: montagePointId, site: req.site, isActive: true }, { city: 1, district: 1, services: 1, showPublicInfo: 1 }).lean()
                 : null;
             if (!point) {
                 return res.status(400).json({ success: false, message: 'Montaj noktası bulunamadı' });
@@ -214,7 +273,8 @@ router.post('/add', async (req, res) => {
             montagePointLabel = `${point.city}${point.district ? ` / ${point.district}` : ''}`;
             // Noktaya özel hizmet fiyatı (0 = ücretsiz); nokta bu hizmeti vermiyorsa katalog fiyatı
             const service = (point.services || []).find(s => String(s.productKey) === String(productKey));
-            montagePrice = resolveMontageServicePrice(service);
+            // KDV dahil, komisyonlu müşteri fiyatı (kendi şubelerimize komisyon eklenmez)
+            montagePrice = resolveMontageServicePrice(service, point, await getKomisyonOranlari(req.site));
         }
 
         // Fiyat: noktaya özel fiyat varsa o, yoksa site fiyat kuralı (fiyat4)
@@ -232,6 +292,7 @@ router.post('/add', async (req, res) => {
 
         // Üye giriş yaptıysa sepeti üyeye bağla (misafirse hiçbir şey değişmez)
         attachMemberToCart(req, cart);
+        attachSiteToCart(req, cart);
 
         // Ürün zaten sepette mi?
         const existingIndex = cart.items.findIndex(item => item.productKey === productKey);
@@ -287,6 +348,8 @@ router.post('/add', async (req, res) => {
                 brandName: product.diaData?.marka || '',
                 quantity: targetQty,
                 unitPrice,
+                // Fiyattan hariç tutulan kargo (varsa); montaj noktası fiyatlı hizmette kargo olmaz
+                shippingPerUnit: montagePrice !== null ? 0 : getCartExcludedShipping(product, req.site),
                 originalPrice,
                 ...(await getPriceDisplay(product, req.site)),
                 ...described,
@@ -299,7 +362,8 @@ router.post('/add', async (req, res) => {
         if (reconciled.changed) cart.items = reconciled.items;
 
         cart.lastActivity = new Date();
-        cart.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        // Saklama süresi site ayarından (config/sites.js → cartRetentionDays)
+        cart.expiresAt = new Date(Date.now() + getCartRetentionDays(cart.site) * DAY_MS);
 
         await cart.save();
 
@@ -326,6 +390,7 @@ router.put('/update', async (req, res) => {
 
         // Üye giriş yaptıysa sepeti üyeye bağla (misafirse hiçbir şey değişmez)
         attachMemberToCart(req, cart);
+        attachSiteToCart(req, cart);
 
         const itemIndex = cart.items.findIndex(item => item.productKey === productKey);
         if (itemIndex === -1) {
@@ -355,6 +420,8 @@ router.put('/update', async (req, res) => {
         const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
         cart.lastActivity = new Date();
+        attachSiteToCart(req, cart);
+        cart.expiresAt = new Date(Date.now() + getCartRetentionDays(cart.site) * DAY_MS);
 
         await cart.save();
 
@@ -397,6 +464,8 @@ router.delete('/remove', async (req, res) => {
         const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
         cart.lastActivity = new Date();
+        attachSiteToCart(req, cart);
+        cart.expiresAt = new Date(Date.now() + getCartRetentionDays(cart.site) * DAY_MS);
 
         await cart.save();
 

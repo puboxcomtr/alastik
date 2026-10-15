@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
-const { resolveMontageServicePrice } = require('../../../utils/montagePricing');
+const { resolveMontageServicePrice, musteriNetFiyati, getKomisyonOranlari, KDV_ORANI } = require('../../../utils/montagePricing');
 const { isMontageServiceName, parseRimRange } = require('../../../services/web/cart/CartRulesService');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
@@ -68,7 +68,7 @@ function ratingSummary(reviews = []) {
     };
 }
 
-function toPublic(point, vatSettings = new Map()) {
+function toPublic(point, vatSettings = new Map(), oranlar = null) {
     const { reviews, services, location, name, address, phone, image, showPublicInfo, ...rest } = point;
     const isPublicInfo = showPublicInfo === true;
     // Noktaya özel fiyat (0 = ücretsiz) > katalog fiyatı > null (Sorunuz)
@@ -78,10 +78,12 @@ function toPublic(point, vatSettings = new Map()) {
             productKey: s.productKey || '',
             sku: s.sku || '',
             name: s.name,
-            price: resolveMontageServicePrice(s),
-            // KDV gösterimi: kategori ayarı 'haric' ise vitrinde "X TL + KDV" yazılır (sepetle aynı)
-            priceDisplay: vat.priceDisplay,
-            vatRate: vat.vatRate,
+            // Vitrin fiyatı komisyonludur; KDV eklenen sitede (lastikjantavm) "X TL + KDV" yazılır ve sepete
+            // KDV dahil tutar (kdvDahilFiyat) işlenir — hesap utils/montagePricing.js
+            price: musteriNetFiyati(s, point, oranlar),
+            kdvDahilFiyat: resolveMontageServicePrice(s, point, oranlar),
+            priceDisplay: oranlar?.kdvEkle ? 'haric' : 'dahil',
+            vatRate: KDV_ORANI,
             // Sepet kuralları: montaj hizmeti mi, hangi jant çapı aralığını kapsıyor
             isMontage: isMontageServiceName(s.name),
             rimRange: isMontageServiceName(s.name) ? parseRimRange(s.name) : null
@@ -150,11 +152,26 @@ router.get('/', async (req, res) => {
             .map(([name, districts]) => ({ city: name, districts: [...districts].sort((a, b) => a.localeCompare(b, 'tr')) }))
             .sort((a, b) => a.city.localeCompare(b.city, 'tr'));
 
-        const vatSettings = await loadServiceVatSettings(points, req.site);
-        res.json({ success: true, data: points.map(p => toPublic(p, vatSettings)), meta: { total: points.length, cities } });
+        const [vatSettings, oranlar] = await Promise.all([loadServiceVatSettings(points, req.site), getKomisyonOranlari(req.site)]);
+        res.json({ success: true, data: points.map(p => toPublic(p, vatSettings, oranlar)), meta: { total: points.length, cities } });
     } catch (error) {
         console.error('Montaj noktaları listelenemedi:', error);
         res.status(500).json({ success: false, message: 'Montaj noktaları alınamadı' });
+    }
+});
+
+// GET /api/montage-points/branches — kendi şubelerimiz (kimlik bilgisi vitrinde açık noktalar).
+// Ürün sayfasındaki "şubemizde montaj" butonları için hafif liste: yalnız ad + konum.
+router.get('/branches', async (req, res) => {
+    try {
+        const points = await WebMontagePoint.find(
+            { site: req.site, isActive: true, showPublicInfo: true },
+            { name: 1, city: 1, district: 1 }
+        ).sort({ order: 1, name: 1 }).lean();
+        res.json({ success: true, data: points });
+    } catch (error) {
+        console.error('Montaj şubeleri listelenemedi:', error);
+        res.status(500).json({ success: false, message: 'Montaj şubeleri alınamadı' });
     }
 });
 
@@ -169,8 +186,8 @@ router.get('/:id', async (req, res) => {
             PUBLIC_FIELDS
         ).lean();
         if (!point) return res.status(404).json({ success: false, message: 'Montaj noktası bulunamadı' });
-        const vatSettings = await loadServiceVatSettings([point], req.site);
-        res.json({ success: true, data: toPublic(point, vatSettings) });
+        const [vatSettings, oranlar] = await Promise.all([loadServiceVatSettings([point], req.site), getKomisyonOranlari(req.site)]);
+        res.json({ success: true, data: toPublic(point, vatSettings, oranlar) });
     } catch (error) {
         console.error('Montaj noktası alınamadı:', error);
         res.status(500).json({ success: false, message: 'Montaj noktası alınamadı' });

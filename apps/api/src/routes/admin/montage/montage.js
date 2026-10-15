@@ -6,6 +6,8 @@ const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
 const MediaService = require('../../../services/web/MediaService');
 const AddressCity = require('../../../models/web/address/AddressCity');
 const AddressDistrict = require('../../../models/web/address/AddressDistrict');
+const WebMontageCommission = require('../../../models/web/content/WebMontageCommission');
+const { KDV_ORANI, kdvEklenirMi, komisyonOnbellekTemizle } = require('../../../utils/montagePricing');
 
 const excelUpload = multer({
     storage: multer.memoryStorage(),
@@ -658,6 +660,42 @@ router.post('/import', excelUpload.single('file'), async (req, res) => {
     } catch (error) {
         console.error('Montaj içe aktarma hatası:', error);
         res.status(400).json({ success: false, message: error.message || 'İçe aktarma başarısız' });
+    }
+});
+
+// Komisyon oranları (seçili site) — GET/PUT /admin/montage/commission
+// Anlaşmalı noktanın girdiği fiyatın üstüne eklenir; kendi şubelerimize (showPublicInfo) uygulanmaz.
+router.get('/commission', async (req, res) => {
+    try {
+        const doc = await WebMontageCommission.findOne({ site: req.site }).lean();
+        res.json({ success: true, data: { degisim: doc?.degisim || 0, diger: doc?.diger || 0, kdvOrani: KDV_ORANI, kdvEkle: kdvEklenirMi(req.site), updatedAt: doc?.updatedAt || null } });
+    } catch (error) {
+        console.error('Komisyon oranları alınamadı:', error);
+        res.status(500).json({ success: false, message: 'Komisyon oranları alınamadı' });
+    }
+});
+
+router.put('/commission', async (req, res) => {
+    try {
+        const oran = (v) => {
+            const n = Number(String(v ?? '').replace(',', '.'));
+            return Number.isFinite(n) && n >= 0 && n <= 200 ? Math.round(n * 100) / 100 : null;
+        };
+        const degisim = oran(req.body?.degisim);
+        const diger = oran(req.body?.diger);
+        if (degisim === null || diger === null) {
+            return res.status(400).json({ success: false, message: 'Oranlar 0 ile 200 arasında sayı olmalı' });
+        }
+        const doc = await WebMontageCommission.findOneAndUpdate(
+            { site: req.site },
+            { $set: { degisim, diger, updatedBy: String(req.user?.email || req.user?.username || req.user?.name || '') } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        ).lean();
+        komisyonOnbellekTemizle(req.site);
+        res.json({ success: true, message: 'Komisyon oranları kaydedildi', data: { degisim: doc.degisim, diger: doc.diger, kdvOrani: KDV_ORANI, kdvEkle: kdvEklenirMi(req.site), updatedAt: doc.updatedAt } });
+    } catch (error) {
+        console.error('Komisyon oranları kaydedilemedi:', error);
+        res.status(500).json({ success: false, message: 'Komisyon oranları kaydedilemedi' });
     }
 });
 
