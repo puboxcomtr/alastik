@@ -189,6 +189,7 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                         }}
                     >
                         <MenuItem value="pending">Onay Bekliyor</MenuItem>
+                        <MenuItem value="awaiting_payment">Ödeme Bekleniyor</MenuItem>
                         <MenuItem value="confirmed">Onaylandı</MenuItem>
                         <MenuItem value="processing">Hazırlanıyor</MenuItem>
                         <MenuItem value="shipped">Kargoya Verildi</MenuItem>

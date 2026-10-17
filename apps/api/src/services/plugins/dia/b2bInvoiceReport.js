@@ -37,9 +37,14 @@ function addDays(dateStr, days) {
 /** Is this a sales invoice (not a cancellation/refund)? */
 function isSalesInvoice(row) {
     if (String(row.iptal) === '1' || String(row.iptal).toLowerCase() === 'true') return false;
-    const label = String(row.turuack || '');
-    if (/iade/i.test(label)) return false;
-    return /sat[ıi]ş/i.test(label) || String(row.efaturatipkodu || '').toUpperCase() === 'SATIS';
+    // Türkçe küçültme: /i bayrağı "İade"deki İ'yi i ile eşleştirmez
+    const label = String(row.turuack || '').toLocaleLowerCase('tr-TR');
+    if (/iade/.test(label)) return false;
+    // Carinin bize kestiği faturalar (Mal Alım, Alınan Hizmet/Fiyat Farkı) bizim ALIMIMIZDIR.
+    // Bunların e-fatura tipi de SATIS gelir (tedarikçi açısından satış) — tipe bakılmaz.
+    if (/alım|alınan/.test(label)) return false;
+    if (/satış|verilen/.test(label)) return true;
+    return !label.trim() && String(row.efaturatipkodu || '').toUpperCase() === 'SATIS';
 }
 
 /**

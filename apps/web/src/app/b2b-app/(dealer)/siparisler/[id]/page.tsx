@@ -24,7 +24,7 @@ interface Order {
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Onay Bekliyor", confirmed: "Onaylandı", processing: "Hazırlanıyor", shipped: "Kargoda",
-  delivered: "Teslim Edildi", cancelled: "İptal", returned: "İade", payment_failed: "Ödeme Başarısız",
+  delivered: "Teslim Edildi", cancelled: "İptal", returned: "İade", awaiting_payment: "Ödeme Bekleniyor", payment_failed: "Ödeme Başarısız",
   KABUL: "Onaylandı", RET: "Reddedildi",
 };
 const badgeClass = (s: string) =>

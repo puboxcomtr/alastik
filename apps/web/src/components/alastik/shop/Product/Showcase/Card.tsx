@@ -38,8 +38,9 @@ import {
 
 import { checkPurchaseLimit, productToLimitCheckItem, canAddToCartStock } from '@src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
+import ProductButtons from '@components/alastik/shop/Product/ProductButtons';
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, showFavourite = false }: ProductCardProps) {
     const [adding, setAdding] = useState(false);
     const router = useRouter();
     const { addToCart, items } = useCart();
@@ -94,6 +95,8 @@ export default function ProductCard({ product }: ProductCardProps) {
     const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
+    // İndirim yüzdesi: üstü çizili (liste) fiyat ile satış fiyatı arasındaki fark, tam sayıya yuvarlanır
+    const discountPercent = hasDiscount && originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
     const stockCode = getProductStockCode(product);
 
@@ -109,23 +112,33 @@ export default function ProductCard({ product }: ProductCardProps) {
         <Container className="p-0">
             <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
                 <div className="position-relative">
-                    {/* Favorite button */}
-                    <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-1 mt-3 me-3">
-                        <div className="d-flex flex-column gap-2">
-                            <button
-                                type="button"
-                                onClick={() => toggleFavourite(product._key)}
-                                className="btn btn-icon btn-secondary animate-pulse d-none d-lg-inline-flex"
-                                aria-label="Favorilere Ekle"
-                            >
-                                {isFavourite(product._key) ? (
-                                    <i className="ri-heart-fill fs-base text-danger animate-target"></i>
-                                ) : (
-                                    <i className="ri-heart-line fs-base animate-target"></i>
-                                )}
-                            </button>
+                    {/* Sağ üst: üründe açık Ürün Butonları (panelden yönetilir). Favori butonu kartta
+                        gizlidir; yalnız Favorilerim sayfasında (showFavourite) gösterilir. */}
+                    <div className="position-absolute top-0 end-0 z-2 mt-2 me-2 mt-lg-3 me-lg-3">
+                        <div className="d-flex flex-column align-items-end gap-1">
+                            {showFavourite && (
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFavourite(product._key)}
+                                    className="btn btn-icon btn-secondary animate-pulse"
+                                    aria-label="Favorilerden Çıkar"
+                                >
+                                    {isFavourite(product._key) ? (
+                                        <i className="ri-heart-fill fs-base text-danger animate-target"></i>
+                                    ) : (
+                                        <i className="ri-heart-line fs-base animate-target"></i>
+                                    )}
+                                </button>
+                            )}
+                            {/* Masaüstü: etiketler sağ üstte */}
+                            <ProductButtons buttons={product.customData?.buttons} className="align-items-end d-none d-lg-flex" />
                         </div>
                     </div>
+                    {/* Mobil: kart dar olduğu için etiketler görselin sol altında (mevsim ikonuyla çakışmaz) */}
+                    <ProductButtons
+                        buttons={product.customData?.buttons}
+                        className="position-absolute bottom-0 start-0 z-2 mb-2 ms-1 mw-100 align-items-start d-lg-none"
+                    />
 
                     {/* Product Image */}
                     <Link className="d-block rounded-top overflow-hidden p-0 p-md-3" href={productUrl}>
@@ -189,7 +202,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <h3 className="pb-1 mb-2">
                         {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
                         {(product as any)?.hideStockCode !== true && (
-                            <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
+                            <span className="fs-xs fw-bold text-body-secondary lh-sm mb-1 d-block">
                                 {stockCode}
                             </span>
                         )}
@@ -228,6 +241,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                         {isSetLastik(product) && (
                             <div className="d-flex justify-content-end">
                                 <span className="text-body-secondary fs-semibold fs-xs">Adet Fiyatı</span>
+                            </div>
+                        )}
+                        {/* İndirim oranı: fiyat satırının ÜSTÜNDE, zeminsiz; geri planda kalsın diye ince ve soluk */}
+                        {!priceHidden && discountPercent > 0 && (
+                            <div className="d-flex justify-content-end mb-1">
+                                <span className="fw-normal fs-xs text-body-tertiary lh-1">%{discountPercent} İndirim Fırsatı</span>
                             </div>
                         )}
                         <div className="d-flex flex-column flex-md-row justify-content-end align-items-end gap-1 gap-md-2">

@@ -34,7 +34,7 @@ const BOS_FORM = {
 export function DeliveryAddress({
   onSelectedChange,
 }: {
-  // Seçili teslimat adresi değişince üst bileşene bildirir (Gel Al il kontrolü için).
+  // Seçili teslimat adresi değişince üst bileşene bildirir.
   onSelectedChange?: (address: Address | null) => void;
 } = {}) {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
@@ -74,8 +74,7 @@ export function DeliveryAddress({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Seçili adresi (şehri dahil) üst bileşene bildir — "Şubeden Gel Al" yalnız
-  // teslimat adresi İstanbul olduğunda açılır.
+  // Seçili adresi (şehri dahil) üst bileşene bildir.
   useEffect(() => {
     const sec = addresses?.find((a) => a.id === selectedId) || null;
     onSelectedChange?.(sec);

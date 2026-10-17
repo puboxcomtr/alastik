@@ -794,7 +794,12 @@ class DiaStockService {
       stokkartkodu: diaProduct.stokkartkodu,
       synced: diaProduct.synced || 'synced',
 
-      m_birimler: diaProduct.m_birimler || [],
+      // diastocks üst düzey fiyatDinamik yetkilidir (fiyat senkronları yalnız onu günceller)
+      m_birimler: (diaProduct.m_birimler || []).map((birim, index) => (
+        index === 0 && typeof diaProduct.fiyatDinamik === 'number'
+          ? { ...birim, fiyatDinamik: diaProduct.fiyatDinamik }
+          : birim
+      )),
       m_kategoriler: diaProduct.m_kategoriler || [],
       m_resimler: (this._mirroredImages && this._mirroredImages.get(diaProduct._key)) || this.mapMirroredImages(this.normalizeImageUrls(diaProduct.m_resimler)),
       m_urunOzellikleri: diaProduct.m_urunOzellikleri || []
@@ -1477,11 +1482,21 @@ class DiaStockService {
   /**
    * Ürünün kritik alanlarından hash oluştur
    */
+  /**
+   * DIA __dinamik__16 (B2C dinamik fiyat) değeri; kartta yoksa/geçersizse 0.
+   * fiyat4 bu değerle ezildiği için "dinamik var mı" bilgisi AYRI alanda (fiyatDinamik)
+   * saklanır — dinamik fiyat ham fiyat4 ile aynı tutarsa fiyatlardan çıkarılamaz.
+   */
+  parseDynamicPrice(product) {
+    const value = parseFloat(product && product.__dinamik__16);
+    return !isNaN(value) && value > 0 ? value : 0;
+  }
+
   generateProductHash(product) {
     const hashData = {
-      // Sürüm damgası: fiyat4Ham (b2b toptan) alanı eklendiğinde tüm ürünlerin
-      // bir kez yeniden işlenip bu alanın doldurulması için hash'i değiştirir.
-      _hashSurumu: 'b2b-fiyat4ham-v1',
+      // Sürüm damgası: yeni bir türetilmiş alan eklendiğinde tüm ürünlerin bir kez yeniden
+      // işlenip o alanın doldurulması için hash'i değiştirir. (v1: fiyat4Ham, v2: fiyatDinamik)
+      _hashSurumu: 'dinamik-fiyat-v2',
       stokkartkodu: product.stokkartkodu || '',
       aciklama: product.aciklama || '',
       anabarkod: product.anabarkod || '',
@@ -1905,6 +1920,13 @@ class DiaStockService {
 
     // Mevcut WebProduct'ları toplu çek (performans için)
     const keys = batch.map(item => item._key).filter(key => key);
+
+    // Bu turda DIA'dan GÖRÜLEN tüm kartlar (hash'i aynı olup atlanacaklar dahil) işaretlenir.
+    // archiveStaleProducts yalnız DIA'dan gerçekten kaybolan kartları pasifler.
+    if (keys.length) {
+      await DiaStock.updateMany({ _key: { $in: keys } }, { $set: { 'syncInfo.lastSeenAt': new Date() } });
+    }
+
     const existingWebProducts = await WebProduct.find({ _key: { $in: keys } });
     const webProductMap = {};
     existingWebProducts.forEach(wp => {
@@ -2198,11 +2220,14 @@ class DiaStockService {
       cleaned.kdvsatis
     );
 
+    const fiyatDinamik = this.parseDynamicPrice(item);
     cleaned.fiyat4 = finalFiyat4;       // B2C (ALastik/LJA) — __dinamik__16 override'lı
     cleaned.fiyat4Ham = hamFiyat4;      // b2b/toptan — DIA ham F4 fiyatı
+    cleaned.fiyatDinamik = fiyatDinamik; // dinamik fiyat var mı (0 = yok)
     if (cleaned.m_birimler && cleaned.m_birimler[0]) {
       cleaned.m_birimler[0].fiyat4 = finalFiyat4;
       cleaned.m_birimler[0].fiyat4Ham = hamFiyat4;
+      cleaned.m_birimler[0].fiyatDinamik = fiyatDinamik;
     }
 
     return cleaned;
@@ -2733,6 +2758,11 @@ class DiaStockService {
         if (operations.length > 0) {
           await DiaStock.bulkWrite(operations);
         }
+        // DIA yanıtında GÖRÜLEN tüm kartlar (atlananlar dahil) işaretlenir —
+        // archiveStaleProducts yalnız DIA'dan gerçekten kaybolan kartları pasifler.
+        if (keys.length > 0) {
+          await DiaStock.updateMany({ _key: { $in: keys } }, { $set: { 'syncInfo.lastSeenAt': new Date() } });
+        }
         totalProcessed += operations.length;
 
         this.logger.info(`DiaStock Batch ${batchCount}: ${operations.length} güncellendi, ${skipped} atlandı (değişmemiş)`);
@@ -2963,13 +2993,15 @@ class DiaStockService {
     try {
       this.logger.info('=== WEBPRODUCTS TEMİZLEME BAŞLANGICI ===');
 
-      // Son 7 günde güncellenmemiş ürünleri diastocks'ta pasif yap
+      // Son 7 gündür DIA yanıtında GÖRÜLMEYEN (DIA'dan kaybolan) kartları diastocks'ta pasif yap.
+      // lastSyncDate kullanılmaz: değişmeyen kartta güncellenmediği için DIA'da hâlâ E olan
+      // ürünleri haftada bir yanlışlıkla H'ye çeviriyordu. lastSeenAt'i hiç olmayan karta dokunulmaz.
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const staleOzelkod = getSyncRules().ozelkod11Kodu;
       const staleResult = staleOzelkod
         ? await DiaStock.updateMany(
           {
-            'syncInfo.lastSyncDate': { $lt: sevenDaysAgo },
+            'syncInfo.lastSeenAt': { $lt: sevenDaysAgo },
             ozelkod11kodu: staleOzelkod
           },
           {
@@ -3067,7 +3099,9 @@ class DiaStockService {
    */
   async invalidateCache() {
     try {
-      const keys = await this.cache.redis.keys('*stock*');
+      // Bull kuyruk anahtarları (bull:dia-stock-sync:*) aynı Redis'te ve adında "stock" geçer —
+      // silinirse saatlik stok taramasının zamanlaması ve çalışan işin kaydı kaybolur. Dokunma.
+      const keys = (await this.cache.redis.keys('*stock*')).filter(k => !k.startsWith('bull:'));
       if (keys.length > 0) {
         await this.cache.redis.del(...keys);
       }
@@ -3417,6 +3451,7 @@ class DiaStockService {
                   fiyat2: parseFloat(product.fiyat2) || 0,
                   fiyat3: parseFloat(product.fiyat3) || 0,
                   fiyat4: finalFiyat4,
+                  fiyatDinamik: this.parseDynamicPrice(product),
                   fiyat10: parseFloat(product.fiyat10) || 0,
                   sontuketicifiyati: parseFloat(product.sontuketicifiyati) || 0,
                   kdvalis: parseFloat(product.kdvalis) || 0,
@@ -3440,6 +3475,7 @@ class DiaStockService {
                   'diaData.m_birimler.0.fiyat2': parseFloat(product.fiyat2) || 0,
                   'diaData.m_birimler.0.fiyat3': parseFloat(product.fiyat3) || 0,
                   'diaData.m_birimler.0.fiyat4': finalFiyat4,
+                  'diaData.m_birimler.0.fiyatDinamik': this.parseDynamicPrice(product),
                   'diaData.m_birimler.0.fiyat10': parseFloat(product.fiyat10) || 0,
                   'diaData.b2c_indirimorani': parseFloat(product.b2c_indirimorani) || 0,
                   'diaData.birimindirimorani': product.birimindirimorani || '',
@@ -3899,6 +3935,7 @@ class DiaStockService {
               fiyat2: parseFloat(product.fiyat2) || 0,
               fiyat3: parseFloat(product.fiyat3) || 0,
               fiyat4: finalFiyat4,
+              fiyatDinamik: this.parseDynamicPrice(product),
               fiyat10: parseFloat(product.fiyat10) || 0,
               sontuketicifiyati: parseFloat(product.sontuketicifiyati) || 0,
               kdvalis: parseFloat(product.kdvalis) || 0,
@@ -3910,6 +3947,7 @@ class DiaStockService {
               'diaData.m_birimler.0.fiyat2': parseFloat(product.fiyat2) || 0,
               'diaData.m_birimler.0.fiyat3': parseFloat(product.fiyat3) || 0,
               'diaData.m_birimler.0.fiyat4': finalFiyat4,
+              'diaData.m_birimler.0.fiyatDinamik': this.parseDynamicPrice(product),
               'diaData.m_birimler.0.fiyat10': parseFloat(product.fiyat10) || 0,
               'diaData.b2c_indirimorani': parseFloat(product.b2c_indirimorani) || 0,
               'diaData.birimindirimorani': product.birimindirimorani || ''

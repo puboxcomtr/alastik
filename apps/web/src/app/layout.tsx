@@ -34,6 +34,8 @@ import { LoadingProvider } from '@/src/context/LoadingContext';
 
 // Global Loading Overlay
 import GlobalLoadingOverlay from '@components/common/GlobalLoadingOverlay';
+import AdsPhoneConversion from '@/src/components/layout/AdsPhoneConversion';
+import SnowEffect from '@/src/components/layout/SnowEffect';
 
 
 /* Modal */
@@ -102,15 +104,17 @@ export default async function RootLayout({
     <html lang="tr">
       <MetaHead />
       <body className={inter.variable}>
-        {/* Google Tag Manager (noscript) — site bazlı container */}
-        <noscript>
-          <iframe
-            src={`https://www.googletagmanager.com/ns.html?id=${getGtmId(site)}`}
-            height="0"
-            width="0"
-            style={{ display: 'none', visibility: 'hidden' }}
-          />
-        </noscript>
+        {/* Google Tag Manager (noscript) — site bazlı container; tanımsız sitede yüklenmez */}
+        {getGtmId(site) ? (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${getGtmId(site)}`}
+              height="0"
+              width="0"
+              style={{ display: 'none', visibility: 'hidden' }}
+            />
+          </noscript>
+        ) : null}
         <SettingsProvider initialTheme={themeSettings}>
           <ThemeRegistry>
             <LoadingProvider>
@@ -118,6 +122,8 @@ export default async function RootLayout({
                 <CartProvider>
                   <FavouritesProvider>
                     <GlobalLoadingOverlay />
+                    <AdsPhoneConversion />
+                    <SnowEffect />
                     <SiteHeader />
                     {children}
                     <SiteFooter />

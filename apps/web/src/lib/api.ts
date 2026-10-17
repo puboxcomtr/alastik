@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, getImageUrl as configGetImageUrl } from '@/src/config/api';
+import { API_ENDPOINTS, getBaseUrl, getImageUrl as configGetImageUrl } from '@/src/config/api';
 
 interface ApiResponse<T = any> {
     success: boolean;
@@ -11,11 +11,7 @@ class ApiClient {
     private baseUrl: string;
 
     constructor() {
-        if (typeof window === 'undefined') {
-            this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-        } else {
-            this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-        }
+        this.baseUrl = getBaseUrl();
     }
 
     /* Helper - Token Al */

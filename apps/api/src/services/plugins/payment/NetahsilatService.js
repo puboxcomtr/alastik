@@ -117,6 +117,32 @@ class NetahsilatService {
         }
     }
 
+    /**
+     * Tüm sanal POS'lar ve taksit / komisyon oranları (karttan bağımsız genel liste).
+     * @returns {Promise<{ success: boolean, poses?: Array<{ vPosId: number, name: string, rates: Array<{ installment: number, commRate: number }> }>, message?: string }>}
+     */
+    async getVirtualPosList(site) {
+        try {
+            const client = await this.getClient();
+            const authInfo = await getAuth(site);
+            assertAuth(authInfo);
+            const [result] = await client.GetVirtualPosListAsync({ authInfo });
+            const list = result?.GetVirtualPosListResult?.VirtualPos || [];
+            const poses = (Array.isArray(list) ? list : [list]).map(pos => {
+                const raw = pos.ComissionRates?.ComissionRate || [];
+                const rates = (Array.isArray(raw) ? raw : [raw])
+                    .filter(rate => Number(rate.Instalment) >= 1)
+                    .map(rate => ({ installment: Number(rate.Instalment), commRate: Number(rate.CommRate) || 0 }))
+                    .sort((a, b) => a.installment - b.installment);
+                return { vPosId: pos.VPosId, name: String(pos.VPosName || '').trim(), rates };
+            });
+            return { success: true, poses };
+        } catch (error) {
+            console.error('[Netahsilat] getVirtualPosList hatasi:', error.message);
+            return { success: false, message: error.message };
+        }
+    }
+
     // ProcessPayment - 3D Secure başlat
     async processPayment(params) {
         try {

@@ -31,7 +31,8 @@ export async function getCart() {
             headers: { ...(await getServerSiteHeaders()) }
         });
         const data = await res.json();
-        return data.success ? data.data : null;
+        // notes: sepet açılırken yapılan düzeltmeler (stok azaldığı için adet indirildi vb.)
+        return data.success ? { ...data.data, notes: data.notes } : null;
     } catch (error) {
         console.error('[cartService] getCart error:', error);
         return null;

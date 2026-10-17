@@ -9,12 +9,14 @@ import Col from 'react-bootstrap/Col';
 // Components
 import FooterTop from "@components/alastik/Footer/Top/Main";
 import FooterBottom from "@components/alastik/Footer/Bottom/Main";
+import HiddenFooterLink from "@components/shared/HiddenFooterLink";
 
 export default function Footer() {
     return (
         <>
             <FooterTop />
             <FooterBottom />
+            <HiddenFooterLink />
         </>
     );
 }

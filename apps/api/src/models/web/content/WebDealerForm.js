@@ -22,7 +22,10 @@ const webDealerFormSchema = new mongoose.Schema({
     gonderimSayisi: { type: Number, default: 1 },
     ilkGonderim: { type: Date, default: Date.now },
     sonGuncelleme: { type: Date, default: Date.now, index: true },
-    ip: { type: String, default: '' }
+    ip: { type: String, default: '' },
+    // Giriş gerektiren sitede (b2b) formu dolduran bayi
+    memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'WebMember', index: true },
+    cariKodu: { type: String, default: '' }
 }, { timestamps: true, collection: 'webdealerforms', minimize: false });
 
 webDealerFormSchema.index({ site: 1, telefonAnahtar: 1 }, { unique: true });

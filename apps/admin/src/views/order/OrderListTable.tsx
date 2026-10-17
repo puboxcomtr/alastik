@@ -72,6 +72,7 @@ type OrderType = {
     currency: string
     itemCount: number
     createdAt: string
+    diaTransferFailed?: boolean
 }
 
 type OrderWithActionsType = OrderType & {
@@ -112,6 +113,7 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     const colors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
         pending: 'warning',
+        awaiting_payment: 'warning',
         confirmed: 'info',
         processing: 'info',
         shipped: 'primary',
@@ -196,7 +198,8 @@ const OrderListTable = () => {
                 total: order.total || 0,
                 currency: order.currency || 'TRY',
                 itemCount: order.itemCount || 0,
-                createdAt: order.createdAt || ''
+                createdAt: order.createdAt || '',
+                diaTransferFailed: order.diaTransferFailed === true
             }))
 
             setData(orders)
@@ -237,6 +240,9 @@ const OrderListTable = () => {
                         <Typography variant='body2'>
                             {row.original.orderNumber}
                         </Typography>
+                        {row.original.diaTransferFailed && (
+                            <Chip label="DIA'ya aktarılamadı" color='error' size='small' variant='tonal' className='mt-1 self-start' />
+                        )}
                     </div>
                 )
             }),
@@ -274,6 +280,7 @@ const OrderListTable = () => {
                 cell: ({ row }) => {
                     const statusOptions = [
                         { value: 'pending', label: 'Onay Bekliyor' },
+                        { value: 'awaiting_payment', label: 'Ödeme Bekleniyor' },
                         { value: 'confirmed', label: 'Onaylandı' },
                         { value: 'processing', label: 'Hazırlanıyor' },
                         { value: 'shipped', label: 'Kargoya Verildi' },
@@ -460,7 +467,6 @@ const OrderListTable = () => {
                     setLimit(Number(e.target.value))
                     setPage(1)
                 }}
-                labelRowsPerPage='Sayfa başına:'
                 labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
             />
         </Card>

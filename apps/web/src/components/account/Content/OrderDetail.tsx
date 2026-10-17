@@ -13,6 +13,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
     delivered: { label: 'Teslim Edildi', color: 'bg-success' },
     cancelled: { label: 'İptal Edildi', color: 'bg-danger' },
     returned: { label: 'İade Edildi', color: 'bg-secondary' },
+    awaiting_payment: { label: 'Ödeme Bekleniyor', color: 'bg-warning' },
     payment_failed: { label: 'Ödeme Başarısız', color: 'bg-danger' },
 };
 

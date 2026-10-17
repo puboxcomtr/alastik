@@ -1,20 +1,22 @@
 'use client';
-// Bayi varsayılan şifre (12345) ile girdiğinde açılan ZORUNLU şifre değiştirme modalı.
-// Kapatılamaz (X yok, arka plana tıklama kapatmaz); şifre değişmeden panele geçilemez.
+// Şifre belirleme/değiştirme modalı. ZORUNLU DEĞİLDİR — "Daha Sonra Hatırlat" ile kapatılabilir
+// (onSkip verilirse). Bayi kendi şifresini belirlerse artık yalnız o şifre kabul edilir.
 import { useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
 const VARSAYILAN = '12345';
 
 /**
- * Zorunlu şifre değiştirme modalı. Bayi (authToken + b2b.sifreDegistir) ve
+ * Şifre belirleme modalı. Bayi (authToken + b2b.sifreDegistir) ve
  * plasiyer (plasiyerToken + b2b.plasiyerSifreDegistir) için tek bileşen.
+ * onSkip verilirse zorunsuz (kapatılabilir + "Daha Sonra Hatırlat").
  */
 export function MandatoryPasswordChange({
     onDone,
+    onSkip,
     endpoint = API_ENDPOINTS.b2b.sifreDegistir(),
     tokenKey = 'authToken',
-}: { onDone: () => void; endpoint?: string; tokenKey?: string }) {
+}: { onDone: () => void; onSkip?: () => void; endpoint?: string; tokenKey?: string }) {
     const [yeni, setYeni] = useState('');
     const [tekrar, setTekrar] = useState('');
     const [kaydediyor, setKaydediyor] = useState(false);
@@ -51,6 +53,7 @@ export function MandatoryPasswordChange({
         <div
             role="dialog"
             aria-modal="true"
+            onClick={onSkip ? (e) => { if (e.target === e.currentTarget) onSkip(); } : undefined}
             style={{
                 position: 'fixed', inset: 0, zIndex: 3000,
                 background: 'rgba(0,0,0,0.6)',
@@ -59,9 +62,9 @@ export function MandatoryPasswordChange({
         >
             <div style={{ width: '100%', maxWidth: 420, background: '#fff', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
                 <div style={{ padding: '18px 20px', borderBottom: '1px solid #eee' }}>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Zorunlu Şifre Değişikliği</h2>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Şifre Belirleyin</h2>
                     <p style={{ margin: '6px 0 0', fontSize: 13, color: '#666' }}>
-                        Güvenliğiniz için varsayılan şifrenizi değiştirmeniz gerekiyor. Devam etmek için yeni bir şifre belirleyin.
+                        Güvenliğiniz için bir şifre belirleyebilirsiniz. Şifre belirlerseniz, sonraki girişlerde yalnız bu şifre geçerli olur. Belirlemek zorunda değilsiniz.
                     </p>
                 </div>
                 <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -78,9 +81,15 @@ export function MandatoryPasswordChange({
                     </div>
                     {hata ? <div style={{ color: '#c62828', fontSize: 13 }}>{hata}</div> : null}
                     <button type="button" onClick={kaydet} disabled={kaydediyor}
-                        style={{ marginTop: 4, background: 'var(--brand-primary, #1e56b3)', color: '#fff', border: 'none', borderRadius: 5, padding: '11px', fontSize: 15, fontWeight: 700, cursor: kaydediyor ? 'default' : 'pointer' }}>
-                        {kaydediyor ? 'Kaydediliyor...' : 'Şifreyi Değiştir ve Devam Et'}
+                        style={{ marginTop: 4, background: 'var(--brand-primary, #1e56b3)', color: '#000', border: 'none', borderRadius: 5, padding: '11px', fontSize: 15, fontWeight: 700, cursor: kaydediyor ? 'default' : 'pointer' }}>
+                        {kaydediyor ? 'Kaydediliyor...' : 'Şifreyi Belirle ve Devam Et'}
                     </button>
+                    {onSkip ? (
+                        <button type="button" onClick={onSkip} disabled={kaydediyor}
+                            style={{ background: 'transparent', color: '#666', border: 'none', padding: '6px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                            Daha Sonra Hatırlat
+                        </button>
+                    ) : null}
                 </div>
             </div>
         </div>

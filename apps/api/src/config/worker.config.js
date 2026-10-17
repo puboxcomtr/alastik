@@ -23,9 +23,10 @@ module.exports = {
         },
 
         stockSync: {
-            // Her 30 dk (:10 ve :40) tam stok taraması + MASLAK+MERKEZ web stok
-            // tazelemesi (yeni giren stok yarım saat içinde otomatik yansır).
-            schedule: process.env.STOCK_SYNC_CRON || '10,40 * * * *'
+            // Saatlik (:10) tam stok taraması + MASLAK+MERKEZ web stok tazelemesi.
+            // Tarama ~60 dk sürüyor; 30 dk aralık turları üst üste bindirip
+            // light sync'i kilitte 90 dk bekletiyordu.
+            schedule: process.env.STOCK_SYNC_CRON || '10 * * * *'
         }
     },
 

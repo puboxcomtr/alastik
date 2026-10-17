@@ -1,17 +1,21 @@
 'use client'
 
 // Üyeler listesi — ürün listesiyle aynı tablo deseni (filtre kartı + TanStack tablo + sayfalama)
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent } from 'react'
 
 // Next Imports
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 // MUI Imports
+import Badge from '@mui/material/Badge'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Checkbox from '@mui/material/Checkbox'
 import Collapse from '@mui/material/Collapse'
+import Grid from '@mui/material/Grid2'
 import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
@@ -25,8 +29,9 @@ import CircularProgress from '@mui/material/CircularProgress'
 
 // Third-party Imports
 import classnames from 'classnames'
-import { createColumnHelper, flexRender, getCoreRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table'
-import type { ColumnDef } from '@tanstack/react-table'
+import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
+// eslint-disable-next-line import/no-duplicates
+import type { ColumnDef, SortingState, Updater } from '@tanstack/react-table'
 import { toast } from 'react-toastify'
 
 // Components Imports
@@ -46,13 +51,64 @@ import { fullName, formatTRY, formatDate } from './types'
 
 const columnHelper = createColumnHelper<MemberRow>()
 
+// Türkçe kurallarıyla her kelimenin yalnız baş harfi büyük (TELAT COŞKUN → Telat Coşkun)
+// Rakam içeren kelimeler (B2B) olduğu gibi büyük kalır
+const basHarfBuyuk = (s: string) =>
+    s.split(/\s+/).filter(Boolean)
+        .map(k => (/\d/.test(k) ? k.toLocaleUpperCase('tr-TR') : k.charAt(0).toLocaleUpperCase('tr-TR') + k.slice(1).toLocaleLowerCase('tr-TR')))
+        .join(' ')
+
 const MembersView = () => {
     const { lang: locale } = useParams()
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+
+    // Sayfa ve sütun sıralaması adreste tutulur (?page=2&sort=invoiceCount12m&order=desc);
+    // sıralama sunucuda TÜM kayıtlar üzerinden yapılır.
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+    const sort = searchParams.get('sort') || ''
+    const order: 'asc' | 'desc' = searchParams.get('order') === 'asc' ? 'asc' : 'desc'
+    const sorting = useMemo<SortingState>(() => (sort ? [{ id: sort, desc: order === 'desc' }] : []), [sort, order])
+
+    const updateQuery = useCallback(
+        (changes: Record<string, string | number | null>) => {
+            const query = new URLSearchParams(searchParams.toString())
+
+            Object.entries(changes).forEach(([key, value]) => {
+                if (value === null || value === '') query.delete(key)
+                else query.set(key, String(value))
+            })
+            router.push(`${pathname}?${query.toString()}`, { scroll: false })
+        },
+        [router, pathname, searchParams]
+    )
+
+    const setPage = useCallback((p: number) => {
+        if (p !== page) updateQuery({ page: p })
+    }, [updateQuery, page])
+
+    const handleSortingChange = (updater: Updater<SortingState>) => {
+        const next = typeof updater === 'function' ? updater(sorting) : updater
+        const first = next[0]
+
+        updateQuery({ sort: first ? first.id : null, order: first ? (first.desc ? 'desc' : 'asc') : null, page: 1 })
+    }
+
+    // Adreste sayfa yoksa ?page=1 yazılır (geçmişe kayıt eklemeden)
+    useEffect(() => {
+        if (!searchParams.get('page')) {
+            const query = new URLSearchParams(searchParams.toString())
+
+            query.set('page', '1')
+            router.replace(`${pathname}?${query.toString()}`, { scroll: false })
+        }
+    }, [searchParams, router, pathname])
 
     const [rowSelection, setRowSelection] = useState({})
     const [data, setData] = useState<MemberRow[]>([])
     const [loading, setLoading] = useState(true)
-    const [filters, setFilters] = useState<MemberFilters & { code?: string; email?: string; phone?: string }>({ search: '', status: '', hasOrders: '', from: '', to: '' })
+    const [filters, setFilters] = useState<MemberFilters & { email?: string; phone?: string; salesperson?: string; tier?: string }>({ search: '', status: '', hasOrders: '', from: '', to: '' })
 
     // Cari modu (b2b): filtre kartı gizlenir; Filtreler + arama çubuğu + DIA senkron butonu gösterilir.
     // Cari ekleme YOKTUR — cariler yalnız DIA'dan gelir (8 Eyl kararı).
@@ -61,40 +117,70 @@ const MembersView = () => {
     const [cariSearch, setCariSearch] = useState('')
 
     // Filtre paneli (toggle) — taslak değerler Ara'ya basınca listeye uygulanır
-    const EMPTY_CARI_FILTERS = { code: '', email: '', phone: '', status: '', hasOrders: '', from: '', to: '' }
+    const EMPTY_CARI_FILTERS = { email: '', phone: '', status: '', salesperson: '', tier: '', hasOrders: '', from: '', to: '' }
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [draft, setDraft] = useState({ ...EMPTY_CARI_FILTERS })
 
+    // Ürün listesindeki Filtreler paneliyle aynı davranış: Filtrele uygular ve paneli kapatır, Temizle her şeyi sıfırlar
     const applyCariFilters = () => {
         setFilters(f => ({ ...f, ...draft }))
         setPage(1)
+        setFiltersOpen(false)
     }
 
     const resetCariFilters = () => {
         setDraft({ ...EMPTY_CARI_FILTERS })
-        setFilters(f => ({ ...f, ...EMPTY_CARI_FILTERS }))
+        setCariSearch('')
+        setFilters(f => ({ ...f, ...EMPTY_CARI_FILTERS, search: '' }))
         setPage(1)
         setFiltersOpen(false)
     }
+
+    const updateDraft = (field: keyof typeof EMPTY_CARI_FILTERS) => (e: ChangeEvent<HTMLInputElement>) =>
+        setDraft(d => ({ ...d, [field]: e.target.value }))
+
+    // Rozet: listeye uygulanmış (arama kutusu hariç) filtre sayısı
+    const activeCariFilterCount = (Object.keys(EMPTY_CARI_FILTERS) as (keyof typeof EMPTY_CARI_FILTERS)[]).filter(key => String(filters[key] || '').trim() !== '').length
 
     useEffect(() => {
         setCariMode(!!getMemberMenuLabels(getActiveSite()))
     }, [])
 
+    // Plasiyer seçenekleri: sitedeki carilere atanmış DIA satış elemanları
+    const [salespersonOptions, setSalespersonOptions] = useState<{ name: string; count: number }[]>([])
+    const [unassignedSalesperson, setUnassignedSalesperson] = useState<{ value: string; count: number } | null>(null)
+
+    useEffect(() => {
+        if (!cariMode) return
+        fetchAPI(API_ENDPOINTS.members.salespersonOptions(), { cache: 'no-store' })
+            .then(res => {
+                setSalespersonOptions(res?.success ? res.data || [] : [])
+                setUnassignedSalesperson(res?.success && res.unassigned?.value ? res.unassigned : null)
+            })
+            .catch(error => console.error('Salesperson options fetch error:', error))
+    }, [cariMode])
+
     // Arama: yazarken 400ms bekleyip listeye uygular
     useEffect(() => {
         if (!cariMode) return
+
+        // Arama metni değişmediyse (ilk açılış) dokunma — adresteki sayfa korunur
+        if (cariSearch === (filters.search || '')) return
+
         const timer = setTimeout(() => {
             setFilters(f => ({ ...f, search: cariSearch }))
             setPage(1)
         }, 400)
-        return () => clearTimeout(timer)
-    }, [cariSearch, cariMode])
+
+        
+return () => clearTimeout(timer)
+    }, [cariSearch, cariMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSyncDia = async () => {
         try {
             setSyncing(true)
             const res = await fetchAPI(API_ENDPOINTS.members.syncDia(), { method: 'POST' })
+
             if (res?.success) {
                 toast.success(res.message || 'Cari senkronu tamamlandı')
                 setFilters(f => ({ ...f })) // listeyi tazele
@@ -108,7 +194,6 @@ const MembersView = () => {
         }
     }
 
-    const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)
 
@@ -123,7 +208,7 @@ const MembersView = () => {
 
             try {
                 const res = await fetchAPI(
-                    API_ENDPOINTS.members.list({ ...filters, page, limit, view: 'table' }),
+                    API_ENDPOINTS.members.list({ ...filters, page, limit, view: 'table', sort: sort || undefined, order: sort ? order : undefined }),
                     { cache: 'no-store' }
                 )
 
@@ -149,7 +234,7 @@ const MembersView = () => {
         return () => {
             cancelled = true
         }
-    }, [filters, page, limit])
+    }, [filters, page, limit, sort, order])
 
     const columns = useMemo<ColumnDef<MemberRow, any>[]>(
         () => [
@@ -172,13 +257,18 @@ const MembersView = () => {
                     const m = row.original
 
                     return (
-                        <div className='flex flex-col'>
-                            <Tooltip title='Üye Detayı'>
-                                <Link href={`/${locale}/apps/user/view/${m._id}`}>
-                                    <Typography variant='body2' fontWeight='bold' color='text.primary'>{fullName(m)}</Typography>
+                        <div className='flex flex-col' style={{ maxWidth: 260 }}>
+                            <Tooltip title={fullName(m)}>
+                                <Link href={`/${locale}/apps/user/view/${m.memberNo ?? m._id}`}>
+                                    <Typography variant='body2' fontWeight='bold' color='text.primary' noWrap>{fullName(m)}</Typography>
                                 </Link>
                             </Tooltip>
-                            <Typography variant='body2' color='text.secondary'>{m.email}</Typography>
+                            {m.premium ? (
+                                <div className='mbs-1'>
+                                    <Chip size='small' variant='tonal' color='warning' icon={<i className='ri-vip-crown-fill' />} label='Premium' />
+                                </div>
+                            ) : null}
+                            <Typography variant='body2' color='text.secondary' noWrap title={m.email}>{m.email}</Typography>
                             {m.adminTags?.length ? (
                                 <div className='flex flex-wrap gap-1 mbs-1'>
                                     {m.adminTags.map(tag => <Chip key={tag} size='small' variant='tonal' color='primary' label={tag} />)}
@@ -188,31 +278,65 @@ const MembersView = () => {
                     )
                 }
             }),
-            columnHelper.accessor('phone', {
+
+            // Telefon: b2b cari listesinde gösterilmez
+            ...(cariMode ? [] : [columnHelper.accessor('phone', {
                 header: 'Telefon',
                 cell: ({ row }) => <Typography variant='body2'>{row.original.phone || '—'}</Typography>
-            }),
-            columnHelper.accessor('createdAt', {
-                header: 'Kayıt Tarihi',
-                cell: ({ row }) => <Typography variant='body2'>{formatDate(row.original.createdAt)}</Typography>
-            }),
-            columnHelper.accessor('orderCount', {
-                header: 'Sipariş',
-                cell: ({ row }) => (
-                    <Typography variant='body2' fontWeight='bold' color={row.original.orderCount ? 'text.primary' : 'text.secondary'}>
-                        {row.original.orderCount.toLocaleString('tr-TR')}
-                    </Typography>
-                )
-            }),
-            columnHelper.accessor('totalSpend', {
-                header: 'Toplam Harcama',
-                cell: ({ row }) => (
-                    <Typography variant='body2' fontWeight='bold' color={row.original.totalSpend ? 'text.primary' : 'text.secondary'}>
-                        {row.original.totalSpend ? `${formatTRY(row.original.totalSpend)} TL` : '—'}
-                    </Typography>
-                )
-            }),
-            columnHelper.display({
+            })]),
+            ...(cariMode
+                ? [
+                      // b2b cari: DIA kartının açılış tarihi, son 12 ay fatura sayısı, plasiyer
+                      columnHelper.accessor('diaCreatedAt', {
+                          header: 'DIA Kayıt Tarihi',
+                          cell: ({ row }) => (
+                              <Typography variant='body2'>{row.original.diaCreatedAt ? formatDate(row.original.diaCreatedAt) : '—'}</Typography>
+                          )
+                      }),
+                      columnHelper.accessor('invoiceCount12m', {
+                          header: 'Sipariş (12 Ay)',
+                          cell: ({ row }) => {
+                              const n = row.original.invoiceCount12m || 0
+
+                              return (
+                                  <Typography variant='body2' fontWeight='bold' color={n ? 'text.primary' : 'text.secondary'}>
+                                      {n.toLocaleString('tr-TR')}
+                                  </Typography>
+                              )
+                          }
+                      }),
+                      columnHelper.accessor('salespersonName', {
+                          header: 'Plasiyer',
+                          cell: ({ row }) => (
+                              <Typography variant='body2' color={row.original.salespersonName ? 'text.primary' : 'text.disabled'}>
+                                  {row.original.salespersonName ? basHarfBuyuk(row.original.salespersonName) : '—'}
+                              </Typography>
+                          )
+                      })
+                  ]
+                : [
+                      columnHelper.accessor('createdAt', {
+                          header: 'Kayıt Tarihi',
+                          cell: ({ row }) => <Typography variant='body2'>{formatDate(row.original.createdAt)}</Typography>
+                      }),
+                      columnHelper.accessor('orderCount', {
+                          header: 'Sipariş',
+                          cell: ({ row }) => (
+                              <Typography variant='body2' fontWeight='bold' color={row.original.orderCount ? 'text.primary' : 'text.secondary'}>
+                                  {row.original.orderCount.toLocaleString('tr-TR')}
+                              </Typography>
+                          )
+                      }),
+                      columnHelper.accessor('totalSpend', {
+                          header: 'Toplam Harcama',
+                          cell: ({ row }) => (
+                              <Typography variant='body2' fontWeight='bold' color={row.original.totalSpend ? 'text.primary' : 'text.secondary'}>
+                                  {row.original.totalSpend ? `${formatTRY(row.original.totalSpend)} TL` : '—'}
+                              </Typography>
+                          )
+                      })
+                  ]),
+            ...(cariMode ? [] : [columnHelper.display({
                 id: 'cart',
                 header: 'Sepeti',
                 cell: ({ row }) => {
@@ -224,14 +348,14 @@ const MembersView = () => {
                         <Typography variant='body2' color='text.disabled'>—</Typography>
                     )
                 }
-            }),
+            })]),
             columnHelper.display({
                 id: 'actions',
                 header: 'İşlemler',
                 cell: ({ row }) => (
                     <div className='flex items-center'>
                         <Tooltip title='Üye Detayı'>
-                            <Link href={`/${locale}/apps/user/view/${row.original._id}`}>
+                            <Link href={`/${locale}/apps/user/view/${row.original.memberNo ?? row.original._id}`}>
                                 <IconButton size='small'><i className='ri-eye-line' /></IconButton>
                             </Link>
                         </Tooltip>
@@ -247,41 +371,45 @@ const MembersView = () => {
                 )
             })
         ],
-        [locale]
+        [locale, cariMode]
     )
 
     const table = useReactTable({
         data,
         columns,
-        state: { rowSelection },
+        state: { rowSelection, sorting },
         pageCount: Math.ceil(totalCount / limit),
         manualPagination: true,
+        manualSorting: true,
+        onSortingChange: handleSortingChange,
         enableRowSelection: true,
         onRowSelectionChange: setRowSelection,
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel()
+        getCoreRowModel: getCoreRowModel()
     })
 
     return (
         <>
             <Card>
                 {cariMode ? (
-                    <div className='flex items-center gap-3 p-4'>
-                        <Button
-                            variant='outlined'
-                            color='secondary'
-                            onClick={() => setFiltersOpen(open => !open)}
-                            startIcon={<i className='ri-equalizer-line' />}
-                            endIcon={<i className={filtersOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} />}
-                        >
-                            Filtreler
-                        </Button>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', p: 4 }}>
+                        <Badge badgeContent={activeCariFilterCount} color='primary'>
+                            <Button
+                                variant='outlined'
+                                color='secondary'
+                                startIcon={<i className='ri-filter-3-line' />}
+                                endIcon={<i className={filtersOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} />}
+                                onClick={() => setFiltersOpen(open => !open)}
+                                sx={{ minWidth: 140 }}
+                            >
+                                Filtreler
+                            </Button>
+                        </Badge>
                         <TextField
-                            fullWidth
                             size='small'
                             value={cariSearch}
                             onChange={e => setCariSearch(e.target.value)}
-                            placeholder='Cari adı, cari kodu veya e-postaya göre arama yapabilirsiniz.'
+                            placeholder='Cari adı, cari kodu veya e-postaya göre arama yapabilirsiniz...'
+                            sx={{ flex: 1, minWidth: 280 }}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position='start'>
@@ -299,62 +427,67 @@ const MembersView = () => {
                         >
                             {syncing ? 'Senkronize Ediliyor...' : 'Carileri Senkronize Et'}
                         </Button>
-                    </div>
+                    </Box>
                 ) : (
                     <MemberTableFilters onFilterChange={f => { setFilters(f); setPage(1) }} />
                 )}
                 {cariMode && (
                     <Collapse in={filtersOpen} timeout='auto' unmountOnExit>
-                        <div className='px-4 pb-4'>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                                    gap: '16px 24px'
-                                }}
-                            >
-                                <div>
-                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Cari Kodu</Typography>
-                                    <TextField fullWidth size='small' value={draft.code} onChange={e => setDraft(d => ({ ...d, code: e.target.value }))} />
-                                </div>
-                                <div>
-                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>E-posta</Typography>
-                                    <TextField fullWidth size='small' value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} />
-                                </div>
-                                <div>
-                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Telefon</Typography>
-                                    <TextField fullWidth size='small' value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} />
-                                </div>
-                                <div>
-                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Durum</Typography>
-                                    <TextField select fullWidth size='small' value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value }))}>
+                        <Divider />
+                        <Box sx={{ p: 6 }}>
+                            <Grid container spacing={4} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCariFilters() } }}>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                    <TextField fullWidth size='small' label='E-posta' value={draft.email} onChange={updateDraft('email')} />
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                    <TextField fullWidth size='small' label='Telefon' value={draft.phone} onChange={updateDraft('phone')} />
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                    <TextField select fullWidth size='small' label='Durum' value={draft.status} onChange={updateDraft('status')}>
                                         <MenuItem value=''>Tümü</MenuItem>
                                         <MenuItem value='active'>Aktif</MenuItem>
                                         <MenuItem value='suspended'>Pasif</MenuItem>
                                         <MenuItem value='pending'>Onay Bekliyor</MenuItem>
                                     </TextField>
-                                </div>
-                                <div>
-                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Sipariş Durumu</Typography>
-                                    <TextField select fullWidth size='small' value={draft.hasOrders} onChange={e => setDraft(d => ({ ...d, hasOrders: e.target.value }))}>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                    <TextField select fullWidth size='small' label='Plasiyer' value={draft.salesperson} onChange={updateDraft('salesperson')}>
+                                        <MenuItem value=''>Tümü</MenuItem>
+                                        {unassignedSalesperson && <MenuItem value={unassignedSalesperson.value}>Atanmamış</MenuItem>}
+                                        {salespersonOptions.map(option => (
+                                            <MenuItem key={option.name} value={option.name}>{basHarfBuyuk(option.name)}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                    <TextField select fullWidth size='small' label='Cari Tipi' value={draft.tier} onChange={updateDraft('tier')}>
+                                        <MenuItem value=''>Tümü</MenuItem>
+                                        <MenuItem value='premium'>Premium Cari</MenuItem>
+                                        <MenuItem value='normal'>Normal Cari</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                    <TextField select fullWidth size='small' label='Sipariş Durumu' value={draft.hasOrders} onChange={updateDraft('hasOrders')}>
                                         <MenuItem value=''>Tümü</MenuItem>
                                         <MenuItem value='yes'>Sipariş Vermiş</MenuItem>
                                         <MenuItem value='no'>Sipariş Vermemiş</MenuItem>
                                     </TextField>
-                                </div>
-                                <div>
-                                    <Typography variant='caption' color='text.secondary' className='block mb-1'>Kayıt Tarihi</Typography>
-                                    <div className='flex gap-2'>
-                                        <TextField fullWidth size='small' type='date' value={draft.from} onChange={e => setDraft(d => ({ ...d, from: e.target.value }))} />
-                                        <TextField fullWidth size='small' type='date' value={draft.to} onChange={e => setDraft(d => ({ ...d, to: e.target.value }))} />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className='flex gap-3 mt-4'>
-                                <Button variant='outlined' color='secondary' onClick={resetCariFilters}>Vazgeç</Button>
-                                <Button variant='contained' onClick={applyCariFilters}>Ara</Button>
-                            </div>
-                        </div>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }} sx={{ display: 'flex', gap: 2 }}>
+                                    <TextField fullWidth size='small' type='date' label='Kayıt Tarihi (Başlangıç)' value={draft.from} onChange={updateDraft('from')} slotProps={{ inputLabel: { shrink: true } }} />
+                                    <TextField fullWidth size='small' type='date' label='Kayıt Tarihi (Bitiş)' value={draft.to} onChange={updateDraft('to')} slotProps={{ inputLabel: { shrink: true } }} />
+                                </Grid>
+
+                                <Grid size={{ xs: 12 }} sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+                                    <Button variant='outlined' color='secondary' onClick={resetCariFilters}>
+                                        Temizle
+                                    </Button>
+                                    <Button variant='contained' onClick={applyCariFilters}>
+                                        Filtrele
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </Box>
                     </Collapse>
                 )}
                 <Divider />
@@ -427,7 +560,6 @@ const MembersView = () => {
                     page={page - 1}
                     onPageChange={(_, newPage) => setPage(newPage + 1)}
                     onRowsPerPageChange={e => { setLimit(Number(e.target.value)); setPage(1) }}
-                    labelRowsPerPage='Sayfa başına'
                 />
             </Card>
 

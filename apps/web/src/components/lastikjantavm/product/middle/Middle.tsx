@@ -18,6 +18,8 @@ import {
     fetchAlternativeSizes
 } from '@/src/hooks/Products/productHelpers';
 import { getRelatedBlogs } from '@/src/services/productService';
+import { API_ENDPOINTS } from '@/src/config/api';
+import { ROUTES } from '@/src/config/routes';
 
 /* ========================================
    Layout Components
@@ -57,11 +59,17 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
         checkAlternatives();
     }, [product]);
     const [blogCount, setBlogCount] = useState(0);
-    // Hizmetlerimiz (montaj, rot, sibop vb.) kargolanmaz; "Ücretsiz Kargo" etiketi gösterilmez
-    const isHizmet = (product?.diaData?.m_kategoriler || []).some(
-        (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
-    );
-    const showFreeShipping = product?.customData?.hideDelivery !== true && !isHizmet;
+    // Kendi şubelerimiz (panelde kimlik bilgisi vitrine açık montaj noktaları) — lastiklerde montaj butonları
+    const [montageBranches, setMontageBranches] = useState<{ _id: string; name: string }[]>([]);
+    useEffect(() => {
+        if (!isLastik(product)) return;
+        let cancelled = false;
+        fetch(API_ENDPOINTS.montage.branches())
+            .then(r => r.json())
+            .then(d => { if (!cancelled && d?.success && Array.isArray(d.data)) setMontageBranches(d.data); })
+            .catch(() => { /* butonlar isteğe bağlı; hata ürün sayfasını etkilemez */ });
+        return () => { cancelled = true; };
+    }, [product]);
     useEffect(() => {
         if (!isLastik(product)) return;
         const ozelkod5 = product.diaData?.ozelkod5 || '';
@@ -145,13 +153,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                 )}
                             </div>
                         </Grid>
-                        {showFreeShipping && (
-                            <Grid size={12}>
-                                <span className="badge text-success bg-success-subtle">
-                                    <i className="ri-truck-line me-1"></i>Ücretsiz Kargo
-                                </span>
-                            </Grid>
-                        )}
                         <Grid size={12}>
                             <div className="d-flex align-items-end gap-4">
                                 {isLastik(product) ? (
@@ -285,6 +286,22 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                     </li>
                                 ))}
                             </ul>
+
+                            {/* Şubelerimizde montaj — her şube için bir buton (şubenin montaj noktası sayfasına gider) */}
+                            {montageBranches.length > 0 && (
+                                <div className="d-flex flex-column align-items-start gap-2 mt-3">
+                                    {montageBranches.map(branch => (
+                                        <a
+                                            key={branch._id}
+                                            href={`${ROUTES.MONTAGE}/${branch._id}`}
+                                            className="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-2 text-start"
+                                        >
+                                            <i className="ri-tools-line fs-base"></i>
+                                            <span>{branch.name} Şubemizde Montaj Yaptırabilirsiniz</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* Ürünü Paylaş */}
                             <div className="mt-3">

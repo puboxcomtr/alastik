@@ -17,9 +17,15 @@ const { fetchMovements, computeEkstre } = require('./b2bCariEkstre');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function syncB2bFinance(logger = console) {
+/**
+ * @param {object} [options]
+ * @param {string} [options.memberId] verilirse yalnız o cari senkronlanır (admin "Cariyi Güncelle")
+ */
+async function syncB2bFinance(logger = console, { memberId } = {}) {
+    const query = { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null } };
+    if (memberId) query._id = memberId;
     const members = await WebMember.find(
-        { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null } },
+        query,
         { diaCustomerKey: 1, 'diaCari.bakiyeKurus': 1 }
     ).lean();
     if (!members.length) return { total: 0, updated: 0, chunks: 0, skipped: 0 };
@@ -36,7 +42,7 @@ async function syncB2bFinance(logger = console) {
     const CHUNK = 100;
     const LIMIT = 500;
     const cols = ['_key_scf_carikart', ...SELECTED_COLUMNS];
-    let updated = 0, ekstreUpdated = 0, chunks = 0, skipped = 0;
+    let updated = 0, ekstreUpdated = 0, chunks = 0, skipped = 0, ekstreSkipped = 0;
 
     for (let i = 0; i < members.length; i += CHUNK) {
         const batch = members.slice(i, i + CHUNK);
@@ -96,15 +102,26 @@ async function syncB2bFinance(logger = console) {
         // DIA hatası olduysa eski veriyi koru (üzerine sıfır yazma)
         if (!chunkOk) { skipped++; await sleep(500); continue; }
 
+        // Son 12 ay sınırı (YYYY-MM-DD) — fatura sayımı için
+        const birYilOnce = new Date();
+        birYilOnce.setFullYear(birYilOnce.getFullYear() - 1);
+        const sinir = birYilOnce.toISOString().slice(0, 10);
+
         const ops = [];
         for (const m of batch) {
             const rows = rowsByCari[String(m.diaCustomerKey)] || [];
             const stats = computeStats(rows);
+            // Son 12 aydaki satış faturası sayısı (tarih+fiş no ile tekilleştirilir)
+            const invoiceCount12m = new Set(
+                rows.filter((r) => String(r.tarih || '').slice(0, 10) >= sinir)
+                    .map((r) => `${String(r.tarih || '').slice(0, 10)}|${r.fisno || r.belgeno || ''}`)
+            ).size;
             const openBalanceTL = typeof m.diaCari?.bakiyeKurus === 'number' ? m.diaCari.bakiyeKurus / 100 : undefined;
             const aging = computeAging(rows, openBalanceTL);
             const due = computeDueDates(rows, openBalanceTL);
             ops.push({ updateOne: { filter: { _id: m._id }, update: { $set: {
                 'diaCari.purchaseStats': stats,
+                'diaCari.invoiceCount12m': invoiceCount12m,
                 'diaCari.dueItems': due.items,
                 'diaCari.agingItems': aging.items,
                 'diaCari.overdueKurus': Math.round((due.overdue || 0) * 100),
@@ -124,6 +141,7 @@ async function syncB2bFinance(logger = console) {
             try {
                 raw = await fetchMovements(svc, m.diaCustomerKey);
             } catch (e) {
+                ekstreSkipped++;
                 continue; // bu cari atla
             }
             const openBalanceTL = typeof m.diaCari?.bakiyeKurus === 'number' ? m.diaCari.bakiyeKurus / 100 : undefined;
@@ -148,7 +166,7 @@ async function syncB2bFinance(logger = console) {
         await sleep(250);
     }
 
-    return { total: members.length, updated, ekstreUpdated, chunks, skipped, donemler };
+    return { total: members.length, updated, ekstreUpdated, ekstreSkipped, chunks, skipped, donemler };
 }
 
 module.exports = { syncB2bFinance };

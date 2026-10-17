@@ -10,9 +10,14 @@ const express = require('express');
 const router = express.Router();
 const NkolayService = require('../../../services/plugins/payment/NKolayService');
 const WebOrder = require('../../../models/web/order/WebOrder');
+const { clearOrderCart } = require('../../../utils/orderCart');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alastik.com';
+// Bankadan dönüşte müşteri SİPARİŞİN sitesine gönderilir (LJA siparişi alastik.com'a düşmesin).
+// Sipariş bulunamazsa (site bilinmiyorsa) varsayılan vitrin adresi kullanılır.
+const { getSiteUrl } = require('../../../config/sites');
+const frontendUrlFor = (site) => getSiteUrl(site) || FRONTEND_URL;
 const API_URL = process.env.API_URL || 'https://api.alastik.com';
 
 // ========== 3D SECURE BAŞLAT ==========
@@ -113,6 +118,7 @@ router.post('/3d-init', async (req, res) => {
             order.payment.status = 'paid';
             order.status = 'confirmed';
             await order.save();
+            await clearOrderCart(order, 'nkolay-direct');
 
             // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
             const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
@@ -138,6 +144,7 @@ router.post('/3d-init', async (req, res) => {
 
 // ========== 3D CALLBACK - BAŞARILI ==========
 router.post('/3d-callback/success', async (req, res) => {
+    let siteUrl = FRONTEND_URL;
     try {
         console.log('[Nkolay Route] 3D Success Callback:', req.body);
 
@@ -159,6 +166,7 @@ router.post('/3d-callback/success', async (req, res) => {
             console.error('[Nkolay Route] Sipariş bulunamadı:', { referenceCode, clientRefCode });
             return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=${encodeURIComponent('Sipariş bulunamadı')}`);
         }
+        siteUrl = frontendUrlFor(order.site);
 
         // CompletePayment gerekli mi dene
         let finalSuccess = false;
@@ -191,6 +199,7 @@ router.post('/3d-callback/success', async (req, res) => {
             order.payment.bankMessage = bankMessage;
             order.payment.callbackData = req.body;
             await order.save();
+            await clearOrderCart(order, 'nkolay-success');
 
             console.log('[Nkolay Route] Ödeme başarılı, sipariş güncellendi:', order.orderNumber);
 
@@ -222,20 +231,21 @@ router.post('/3d-callback/success', async (req, res) => {
                 });
             }
 
-            return res.redirect(`${FRONTEND_URL}/siparis-basarili?order=${order.orderNumber}`);
+            return res.redirect(`${siteUrl}/siparis-basarili?order=${order.orderNumber}`);
         }
 
         // Buraya düşmemeli ama güvenlik için
-        return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=${encodeURIComponent('Ödeme doğrulanamadı')}`);
+        return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent('Ödeme doğrulanamadı')}`);
 
     } catch (error) {
         console.error('[Nkolay Route] Success callback hatası:', error);
-        return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=${encodeURIComponent('Sistem hatası')}`);
+        return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent('Sistem hatası')}`);
     }
 });
 
 // ========== 3D CALLBACK - BAŞARISIZ ==========
 router.post('/3d-callback/fail', async (req, res) => {
+    let siteUrl = FRONTEND_URL;
     try {
         console.log('[Nkolay Route] 3D Fail Callback:', req.body);
 
@@ -252,19 +262,21 @@ router.post('/3d-callback/fail', async (req, res) => {
         });
 
         if (order) {
+            siteUrl = frontendUrlFor(order.site);
             order.payment.status = 'failed';
             order.status = 'payment_failed';
             order.payment.errorMessage = errorMessage;
             order.payment.callbackData = req.body;
             await order.save();
+            await clearOrderCart(order, 'nkolay-failed');
             console.log('[Nkolay Route] Sipariş başarısız güncellendi:', order.orderNumber);
         }
 
-        return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=${encodeURIComponent(errorMessage)}`);
+        return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent(errorMessage)}`);
 
     } catch (error) {
         console.error('[Nkolay Route] Fail callback hatası:', error);
-        return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=${encodeURIComponent('Sistem hatası')}`);
+        return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent('Sistem hatası')}`);
     }
 });
 

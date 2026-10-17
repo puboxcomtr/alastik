@@ -4,9 +4,10 @@
 // Kaynak: /cari-ekstre (DB-öncelikli, gecelik senkron). Yıl filtresi + arama + Excel.
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
-import { CsvDownload } from "@components/b2b-theme/csv-download";
-import { SearchIcon, SpinnerIcon } from "@components/b2b-theme/icons";
+import { openInvoicePdf, isInvoiceMovement, invoiceMovementKey } from "@components/b2b-theme/lib/invoice-pdf";
+import { CloseIcon, FileIcon, SearchIcon, SpinnerIcon, ViewIcon } from "@components/b2b-theme/icons";
 import { Pagination } from "@components/b2b-theme/pagination";
+import { showToast } from "@components/b2b-theme/toast";
 
 const PER_PAGE = 30;
 
@@ -36,6 +37,10 @@ function gun(iso: string): string {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
+// Fatura hareketleri (DIA türü "... (Fatura)") — resmi e-Fatura/e-Arşiv PDF'i görüntülenebilir
+const isInvoice = (m: Movement) => isInvoiceMovement(m);
+const movementKey = (m: Movement) => invoiceMovementKey(m);
+
 type SortKey = "tarih" | "vade" | "fisno" | "belgeNo" | "borc" | "alacak" | "bakiye";
 
 export default function CariEkstrePage() {
@@ -46,6 +51,50 @@ export default function CariEkstrePage() {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "tarih", dir: "desc" });
   const [page, setPage] = useState(1);
+  // Detayı açılan hareket (Görüntüle)
+  const [secili, setSecili] = useState<Movement | null>(null);
+  // İndirilmekte olan faturanın anahtarı (buton spinner'ı)
+  const [indirilen, setIndirilen] = useState<string | null>(null);
+  // Excel (renkli .xlsx) hazırlanıyor mu
+  const [excelHazirlaniyor, setExcelHazirlaniyor] = useState(false);
+
+  async function excelIndir() {
+    const token = localStorage.getItem("authToken");
+    if (!token || excelHazirlaniyor) return;
+    setExcelHazirlaniyor(true);
+    try {
+      const r = await fetch(API_ENDPOINTS.b2b.cariEkstreExcel({ yil, q, sort: sort.key, dir: sort.dir }), {
+        headers: { Authorization: `Bearer ${token}`, "X-Site": "b2b" },
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => null);
+        showToast(d?.message || "Excel dosyası şu an oluşturulamadı.", "bilgi");
+        return;
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cari-ekstre-${yil || "tumu"}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Excel dosyası şu an oluşturulamadı.", "bilgi");
+    } finally {
+      setExcelHazirlaniyor(false);
+    }
+  }
+
+  // Fatura PDF'i yeni sekmede açılır (tarayıcının PDF görüntüleyicisinde; indirme oradan yapılabilir)
+  async function faturaGoruntule(m: Movement) {
+    if (indirilen) return;
+    setIndirilen(movementKey(m));
+    const hata = await openInvoicePdf(m);
+    if (hata) showToast(hata, "bilgi");
+    setIndirilen(null);
+  }
   useEffect(() => { setPage(1); }, [yil, q, sort]);
 
   useEffect(() => {
@@ -112,11 +161,9 @@ export default function CariEkstrePage() {
           <select className="mini" value={yil} onChange={(e) => setYil(e.target.value)}>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-          <CsvDownload
-            dosyaAdi={`cari-ekstre-${yil || "tumu"}.csv`}
-            basliklar={["Tarih", "Vade", "Fiş No", "Fatura/İrsaliye No", "İşlem", "Borç", "Alacak", "Bakiye"]}
-            lines={rows.map((m) => [gun(m.tarih), gun(m.vade), m.fisno, m.belgeNo || "", m.tur, m.borc.toFixed(2), m.alacak.toFixed(2), m.bakiye.toFixed(2)])}
-          />
+          <button className="btn-ghost excel-btn" type="button" onClick={excelIndir} disabled={excelHazirlaniyor}>
+            {excelHazirlaniyor ? <SpinnerIcon size={16} className="loading-brand" /> : "⬇"} Excel İndir
+          </button>
         </div>
       </div>
 
@@ -137,6 +184,7 @@ export default function CariEkstrePage() {
               <th className="sortable num" onClick={() => sortBy("borc")}>BORÇ (₺)<span className="sarrow">{ok("borc")}</span></th>
               <th className="sortable num" onClick={() => sortBy("alacak")}>ALACAK (₺)<span className="sarrow">{ok("alacak")}</span></th>
               <th className="sortable num" onClick={() => sortBy("bakiye")}>BAKİYE (₺)<span className="sarrow">{ok("bakiye")}</span></th>
+              <th>İŞLEMLER</th>
             </tr>
           </thead>
           <tbody>
@@ -150,16 +198,59 @@ export default function CariEkstrePage() {
                 <td className="num">{m.borc > 0 ? <span className="tut-borc">{num(m.borc)}</span> : "—"}</td>
                 <td className="num">{m.alacak > 0 ? <span className="tut-alacak">{num(m.alacak)}</span> : "—"}</td>
                 <td className="num"><strong>{num(m.bakiye)}</strong></td>
+                <td>
+                  <div className="ekstre-row-actions">
+                    {isInvoice(m) ? (
+                      <button type="button" className="order-action" disabled={!!indirilen} onClick={() => faturaGoruntule(m)}>
+                        {indirilen === movementKey(m) ? <SpinnerIcon size={16} className="loading-brand" /> : <FileIcon size={16} />} Fatura Görüntüle
+                      </button>
+                    ) : null}
+                    <button type="button" className="order-action" onClick={() => setSecili(m)}><ViewIcon size={16} /> Görüntüle</button>
+                  </div>
+                </td>
               </tr>
             ))}
             {rows.length === 0 ? (
-              <tr><td colSpan={8} className="note" style={{ padding: "2rem", textAlign: "center" }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan={9} className="note" style={{ padding: "2rem", textAlign: "center" }}>Kayıt bulunamadı.</td></tr>
             ) : null}
           </tbody>
         </table>
       </div>
 
       <Pagination page={page} totalPages={totalPages} onChange={setPage} totalCount={rows.length} perPage={PER_PAGE} />
+
+      {secili ? (
+        <div className="inv-overlay" onClick={() => setSecili(null)}>
+          <div className="inv-modal pay-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="inv-close" onClick={() => setSecili(null)} aria-label="Kapat"><CloseIcon size={18} /></button>
+            <div className="inv-modal-title">Hareket Detayı</div>
+            <div className="pay-block">
+              <div><span>İşlem Tipi</span><strong>{secili.tur || "—"}</strong></div>
+              <div><span>Fiş No</span><strong>{secili.fisno || "—"}</strong></div>
+              <div><span>Fatura / İrsaliye No</span><strong>{secili.belgeNo || "—"}</strong></div>
+              <div><span>Tarih</span><strong>{gun(secili.tarih)}</strong></div>
+              <div><span>Vade Tarihi</span><strong>{gun(secili.vade)}</strong></div>
+            </div>
+            <div className="pay-block">
+              <div><span>Borç</span><strong className="tut-borc">{secili.borc > 0 ? `${num(secili.borc)} TL` : "—"}</strong></div>
+              <div><span>Alacak</span><strong className="tut-alacak">{secili.alacak > 0 ? `${num(secili.alacak)} TL` : "—"}</strong></div>
+              <div><span>Bakiye</span><strong>{num(secili.bakiye)} TL</strong></div>
+            </div>
+            {secili.aciklama ? (
+              <div className="pay-block">
+                <div><span>Açıklama</span><strong>{secili.aciklama}</strong></div>
+              </div>
+            ) : null}
+            {isInvoice(secili) ? (
+              <div className="ekstre-modal-actions">
+                <button type="button" className="primary" disabled={!!indirilen} onClick={() => faturaGoruntule(secili)}>
+                  {indirilen === movementKey(secili) ? <SpinnerIcon size={16} /> : <FileIcon size={16} />} Fatura Görüntüle (PDF)
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="ekstre-footer">
         {data.generatedAt ? (

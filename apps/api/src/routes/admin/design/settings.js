@@ -99,7 +99,8 @@ router.post('/theme/upload', uploadThemeImage, async (req, res) => {
             'logo': 'logo',
             'footer-logo': 'footerLogo',
             'ssl': 'footerSslImage',
-            'default-catalog': 'defaultCatalogImage'
+            'default-catalog': 'defaultCatalogImage',
+            'login-popup': 'loginPopupImage'
         };
         const fieldName = fieldMap[type] || type;
 
@@ -164,7 +165,8 @@ router.delete('/theme/image/:type', async (req, res) => {
             'logo': 'logo',
             'footer-logo': 'footerLogo',
             'ssl': 'footerSslImage',
-            'default-catalog': 'defaultCatalogImage'
+            'default-catalog': 'defaultCatalogImage',
+            'login-popup': 'loginPopupImage'
         };
         const fieldName = fieldMap[type] || type;
 

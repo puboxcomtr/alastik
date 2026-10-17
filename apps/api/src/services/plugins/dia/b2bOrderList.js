@@ -53,7 +53,7 @@ async function fetchOrders(site, cariKey) {
                             donem_kodu: donem,
                             filters: [{ field: '_key_scf_carikart', operator: '=', value: parseInt(cariKey) }],
                             sorts: 'tarih:desc',
-                            params: { selectedcolumns: ['tarih', 'saat', 'fisno', 'belgeno', 'net', 'toplammiktar', 'onay', 'aciklama'] },
+                            params: { selectedcolumns: ['tarih', 'saat', 'fisno', 'belgeno', 'net', 'toplammiktar', 'onay'] },
                             limit: LIMIT,
                             offset
                         }
@@ -81,7 +81,6 @@ async function fetchOrders(site, cariKey) {
         totalKurus: Math.round(num(r.net) * 100),
         itemCount: Math.round(num(r.toplammiktar)),
         status: String(r.onay || '').toUpperCase() === 'KABUL' ? 'KABUL' : (String(r.onay || '').toUpperCase() === 'RET' ? 'RET' : ''),
-        aciklama: String(r.aciklama || '').trim(),
         productText: ''
     }));
     orders.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));

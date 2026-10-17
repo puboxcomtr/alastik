@@ -37,6 +37,51 @@ async function fetchCariAddresses(svc, F, cariKey) {
     return mapDiaAddresses(Array.isArray(r?.result) ? r.result : []);
 }
 
+/**
+ * DIA carisine yeni TESLİMAT adresi ekler (scf_carikart_adresleri_ekle). Cari kartı
+ * güncellenmez; adres `_key_scf_carikart` ile bağlanır ve DIA'da "Diğer Adresler"e düşer.
+ * Bayi (/b2b/adres) ve admin (cari görüntüle) aynı fonksiyonu kullanır. DIA yanıtını döner.
+ */
+async function addDiaDeliveryAddress(svc, cariKey, { baslik, adSoyad, adres, adresDetay, il, ilce, telefon, postaKodu } = {}) {
+    const adresKart = {
+        _key_scf_carikart: parseInt(cariKey),
+        _key_dag_bolge: 0,
+        _key_sis_ulkeler: 0,
+        _key_sis_vergidairesi: 0,
+        _key_sis_sehirler: il ? { sehiradi: String(il).toLocaleUpperCase('tr-TR') } : 0,
+        adres1: String(adres || '').trim(),
+        adres2: String(adresDetay || '').trim(),
+        adresadi: (baslik && String(baslik).trim()) || 'Teslimat Adresi',
+        adrestipi: 'T', // Teslimat → Fatura (F) dışı, "Diğer Adresler"e düşer
+        anaadres: '0',
+        bolge: '',
+        unvan: String(adSoyad || '').trim(),
+        ceptel: telefon ? svc.normalizePhone(telefon) : '',
+        telefon1: '',
+        telefon2: '',
+        fax: '',
+        ilce: String(ilce || '').toLocaleUpperCase('tr-TR'),
+        sehir: '',
+        postakodu: String(postaKodu || '').trim(),
+        ulke: 'TÜRKİYE',
+        ulkeno: '',
+        tckimlikno: '',
+        verginumarasi: '',
+        kayitturu: 'SHS',
+        yabanciuyruklu: 'H',
+        koordinat_latitude: '0',
+        koordinat_longitude: '0'
+    };
+    return svc.sendRequest('/api/v3/scf/json', {
+        scf_carikart_adresleri_ekle: {
+            session_id: svc.sessionId,
+            firma_kodu: svc.firmaKodu,
+            donem_kodu: svc.donemKodu,
+            kart: adresKart
+        }
+    });
+}
+
 /** Tek carinin adreslerini çekip Mongo'ya (WebMember.diaCari.addresses) yazar. */
 async function refreshMemberAddresses(site, memberId, cariKey) {
     const svc = new DiaOrderService(site);
@@ -56,8 +101,10 @@ async function refreshMemberAddresses(site, memberId, cariKey) {
  * adresler korunur). Yeni b2b DIA kullanıcısı (ws_ART_B2B) ile.
  */
 async function syncB2bAddresses(logger = console) {
+    // Adresler DIA'dan YALNIZ İLK KEZ alınır, sonra bizim DB'de tutulur: adresi olan
+    // cariye dokunulmaz. (Bayi panelden adres eklerse refreshMemberAddresses tazeler.)
     const members = await WebMember.find(
-        { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null } },
+        { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null }, 'diaCari.addresses.0': { $exists: false } },
         { diaCustomerKey: 1 }
     ).lean();
     if (!members.length) return { total: 0, updated: 0, bos: 0 };
@@ -99,4 +146,4 @@ async function syncB2bAddresses(logger = console) {
     return { total: members.length, updated, bos };
 }
 
-module.exports = { mapDiaAddresses, fetchCariAddresses, refreshMemberAddresses, syncB2bAddresses };
+module.exports = { mapDiaAddresses, fetchCariAddresses, addDiaDeliveryAddress, refreshMemberAddresses, syncB2bAddresses };

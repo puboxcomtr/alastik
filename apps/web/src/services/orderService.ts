@@ -13,6 +13,23 @@ export interface OrderItem {
     totalPrice: number;
 }
 
+/** Stok yetersizliği nedeniyle siparişe alınmayan kalem (sunucu yanıtındaki cikarilanlar) */
+export interface RemovedOrderItem {
+    productKey: string;
+    stockCode: string;
+    name: string;
+    /** müşterinin istediği adet */
+    istenen: number;
+    /** stokta kalan (sipariş verilebilecek) adet */
+    kalan: number;
+}
+
+/** Ödeme sayfasının gönderdiği sipariş isteği: kalemler yalnız ürün + adet taşır, fiyatı sunucu hesaplar */
+export interface CreateOrderRequest {
+    items: { productKey: string; quantity: number; montagePointId?: string }[];
+    [field: string]: unknown;
+}
+
 export interface CreateOrderData {
     memberId?: string;
     isGuest: boolean;
@@ -23,6 +40,8 @@ export interface CreateOrderData {
     shippingAddressId?: string;
     guestBillingAddress?: any;
     guestShippingAddress?: any;
+    // Siparişin verildiği sepetin oturum numarası (ödeme sonucu gelince sunucu o sepeti siler)
+    cartSessionId?: string;
     items: OrderItem[];
     pricing: {
         subtotal: number;
@@ -47,6 +66,29 @@ export const orderService = {
         } catch (error) {
             console.error('[orderService] createOrder error:', error);
             return null;
+        }
+    },
+
+    /**
+     * Sipariş oluşturur ve sunucunun yanıtını ayrıntısıyla döner: başarısızsa neden (message) ve
+     * stok yetersizliğinden çıkarılan kalemler (removed) müşteriye gösterilebilsin.
+     */
+    async createOrderDetailed(data: CreateOrderRequest): Promise<{ order: any | null; message: string; removed: RemovedOrderItem[] }> {
+        try {
+            const res = await fetch(API_ENDPOINTS.order.create(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            return {
+                order: result.success ? result.data : null,
+                message: result.message || '',
+                removed: Array.isArray(result.cikarilanlar) ? result.cikarilanlar : []
+            };
+        } catch (error) {
+            console.error('[orderService] createOrderDetailed error:', error);
+            return { order: null, message: '', removed: [] };
         }
     },
 

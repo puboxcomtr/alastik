@@ -1,6 +1,7 @@
 // B2B bayi paneli kökü — tema stilleri YALNIZ bu route ağacında yüklenir
 // (middleware, b2b alan adındaki istekleri /b2b-app altına rewrite eder).
 import './b2b-theme.css';
+import { DisableContextMenu } from '@components/b2b-theme/disable-context-menu';
 
 export const metadata = {
     title: 'LastikJantAVM B2B | Bayi Paneli',
@@ -8,5 +9,10 @@ export const metadata = {
 };
 
 export default function B2BAppLayout({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
+    return (
+        <>
+            <DisableContextMenu />
+            {children}
+        </>
+    );
 }

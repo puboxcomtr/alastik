@@ -22,6 +22,27 @@ const webDiaSchema = new mongoose.Schema({
     // (ör. F4). Ödeme yöntemi/iskonto bu segmentin DIA kampanyalarından gelir.
     b2bVarsayilanSegment: { type: String, default: '' },
 
+    // b2b: Premium cari ayrımı. DIA cari kartındaki hangi özel kod (customCodeNo) ve hangi değer
+    // (matchValue) Premium sayılır. Değer, özel kodun koduyla ya da açıklamasıyla eşleşebilir
+    // (büyük/küçük harf duyarsız). matchValue boşsa bu özel kodu dolu olan her cari Premium'dur.
+    b2bPremium: {
+        customCodeNo: { type: Number, default: 9 },
+        matchValue: { type: String, default: 'PREMIUM' }
+    },
+
+    // b2b Net Fiyat ürünü: DIA stok kartının bu ek alanlarından biri matchValue ise ürün yalnız Cari iskontosu alır
+    // (ödeme yöntemi ve marka / finansal iskontolar uygulanmaz)
+    b2bNetPrice: {
+        fields: { type: [String], default: ['ekalan7', 'ekalan9'] },
+        matchValue: { type: String, default: 'NetFiyat' }
+    },
+
+    // b2b vadesi geçen borç yaptırımı: vadesi geçen borcu bu tutarın (kuruş) ALTINDA olan cari etkilenmez;
+    // eşik ve üstünde sepete ekleme, sipariş ve iskontolar kapanır. 0 = her tutarda uygulanır.
+    b2bOverdue: {
+        blockThresholdKurus: { type: Number, default: 100000, min: 0 }
+    },
+
     // Sipariş Entegrasyonu
     siparis: {
         // Vitrinde oluşan siparişin DIA'ya gönderilmesi açık mı
@@ -67,6 +88,10 @@ const webDiaSchema = new mongoose.Schema({
 
         // Siparişe yazılacak kargo firması (DIA krg_firma _key, örn. ARAS KARGO)
         kargoFirmaKey: { type: Number, default: 0 },
+        // Sitede kargo ücretini siparişe ayrı satır olarak yazan hizmet kartı (_key, ör. "KARGO BEDELİ").
+        // Doluysa bu sitede kargo ücreti fiyat / sepet / siparişe yansır ve DIA'da ürün satırlarından ayrı bir hizmet satırı olur;
+        // boşsa (0) kargo ücreti uygulanmaz (b2b).
+        kargoHizmetKartKey: { type: Number, default: 0 },
 
         // Sipariş başlığına yazılacak Yetki/Seviye Kodu (DIA _key değeri).
         // Cari yetki kodundan farklı bir kayıttır (örn. sipariş 2026E-TİCARET)
@@ -185,7 +210,11 @@ const webDiaSchema = new mongoose.Schema({
     // blok uygulanır (dolu stoklu ürün haksız bloklanmaz). XML ürünler hariç.
     kritikStok: {
         kontrolAktif: { type: Boolean, default: false },
-        esik: { type: Number, default: 5 }
+        esik: { type: Number, default: 5 },
+        // Açık (onay bekleyen/onaylanan/hazırlanan) siparişin stok AYIRDIĞI süre (gün).
+        // Bu süreden eski, kapatılmamış bayat siparişler stoktan düşülmez — yoksa aylar
+        // önceki unutulmuş bir kayıt stoğu olan ürünün satışını kilitler.
+        rezervasyonGun: { type: Number, default: 30 }
     }
 }, {
     timestamps: true,

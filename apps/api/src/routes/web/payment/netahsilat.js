@@ -7,9 +7,14 @@ const express = require('express');
 const router = express.Router();
 const NetahsilatService = require('../../../services/plugins/payment/NetahsilatService');
 const WebOrder = require('../../../models/web/order/WebOrder');
+const { clearOrderCart } = require('../../../utils/orderCart');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alastik.com';
+// Bankadan dönüşte müşteri SİPARİŞİN sitesine gönderilir (LJA siparişi alastik.com'a düşmesin).
+// Sipariş bulunamazsa (site bilinmiyorsa) varsayılan vitrin adresi kullanılır.
+const { getSiteUrl } = require('../../../config/sites');
+const frontendUrlFor = (site) => getSiteUrl(site) || FRONTEND_URL;
 
 // BIN ile kart bilgisi ve taksit seçenekleri
 router.get('/bin/:bin', async (req, res) => {
@@ -112,6 +117,7 @@ router.post('/3d-init', async (req, res) => {
 
 // 3D Callback - Bankadan dönüş (POST)
 router.post('/3d-callback', async (req, res) => {
+    let siteUrl = FRONTEND_URL;
     try {
         console.log('3D Callback Body:', req.body);
 
@@ -122,6 +128,17 @@ router.post('/3d-callback', async (req, res) => {
         const errorMessage = req.body.errormessage || req.body.BankMessage || '';
         const errorCode = req.body.errorcode || req.body.BankErrorCode || '';
 
+        // Aynı 3D dönüşü tekrar gelirse (tarayıcıda geri / yenile ile form yeniden gönderilir) ödeme zaten alınmıştır:
+        // CommitPayment ikinci kez başarısız döner ve ödenmiş sipariş yanlışlıkla "başarısız" olurdu — durum değiştirilmez
+        if (orderReference) {
+            const alreadyPaid = await WebOrder.findOne({ 'payment.referenceCode': orderReference, 'payment.status': 'paid' })
+                .select('site orderNumber').lean();
+            if (alreadyPaid) {
+                console.log('[netahsilat:3d-callback] Tekrarlanan dönüş, sipariş zaten ödenmiş:', alreadyPaid.orderNumber);
+                return res.redirect(`${frontendUrlFor(alreadyPaid.site)}/siparis-basarili?order=${alreadyPaid.orderNumber}`);
+            }
+        }
+
         // İşlem başarılıysa CommitPayment yap
         if (status === 'SUCCESS' && paymentGuid) {
             const commitResult = await NetahsilatService.commitPayment(paymentGuid, req.site);
@@ -131,6 +148,7 @@ router.post('/3d-callback', async (req, res) => {
                 // Siparişi bul ve güncelle
                 const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
                 if (order) {
+                    siteUrl = frontendUrlFor(order.site);
                     order.payment.status = 'paid';
                     order.status = 'confirmed';
                     order.payment.method = 'netahsilat_installment';
@@ -138,6 +156,7 @@ router.post('/3d-callback', async (req, res) => {
                     order.payment.authCode = commitResult.authCode;
                     order.payment.paymentGuid = paymentGuid;
                     await order.save();
+                    await clearOrderCart(order, 'netahsilat-success');
 
                     // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
                     const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
@@ -170,7 +189,7 @@ router.post('/3d-callback', async (req, res) => {
                         });
                     }
 
-                    return res.redirect(`${FRONTEND_URL}/siparis-basarili?order=${order.orderNumber}`);
+                    return res.redirect(`${siteUrl}/siparis-basarili?order=${order.orderNumber}`);
                 }
 
                 return res.redirect(`${FRONTEND_URL}/siparis-basarili`);
@@ -180,17 +199,19 @@ router.post('/3d-callback', async (req, res) => {
         // Başarısız işlem
         const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
         if (order) {
+            siteUrl = frontendUrlFor(order.site);
             order.payment.status = 'failed';
             order.status = 'payment_failed';
             order.payment.errorMessage = errorMessage || 'Ödeme başarısız';
             order.payment.errorCode = errorCode;
             await order.save();
+            await clearOrderCart(order, 'netahsilat-failed');
         }
 
-        return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=${encodeURIComponent(errorMessage || 'Ödeme başarısız')}`);
+        return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent(errorMessage || 'Ödeme başarısız')}`);
     } catch (error) {
         console.error('3D callback hatası:', error);
-        return res.redirect(`${FRONTEND_URL}/odeme/basarisiz?error=Sistem hatası`);
+        return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent('Sistem hatası')}`);
     }
 });
 
@@ -223,6 +244,8 @@ router.post('/3d-commit', async (req, res) => {
                 order.payment.authCode = commitResult.authCode;
                 order.payment.paymentGuid = paymentGuid;
                 await order.save();
+                // Bu uçtaki sipariş araması geniştir; yalnız referans birebir eşleşiyorsa sepet silinir
+                if (orderReference && order.payment.referenceCode === orderReference) await clearOrderCart(order, 'netahsilat-commit-success');
 
                 // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
                 const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
@@ -275,6 +298,7 @@ router.post('/3d-commit', async (req, res) => {
             order.status = 'payment_failed';
             order.payment.errorMessage = commitResult.message;
             await order.save();
+            await clearOrderCart(order, 'netahsilat-commit-failed');
         }
 
         return res.json({

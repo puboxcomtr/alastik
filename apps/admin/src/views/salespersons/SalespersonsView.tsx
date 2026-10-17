@@ -15,6 +15,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
+import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -34,9 +35,14 @@ type Salesperson = {
     phone?: string
     diaTitle?: string
     hasPassword?: boolean
+    // Plasiyer grubu (admin atar): grubu atanmamış plasiyer giriş yapamaz
+    salesGroup?: string
     lastLoginAt?: string
     createdAt?: string
 }
+
+// Gruplar ve "atanmamış" filtre değeri API'den gelir (WebSalesperson.SALES_GROUPS)
+type SalesGroup = { id: string; label: string }
 
 // Türkçe uyumlu baş harf büyük (EMİR BAHÇECİOĞLU → Emir Bahçecioğlu)
 const titleCaseTr = (value?: string) => {
@@ -66,6 +72,12 @@ const SalespersonsView = () => {
     const [loading, setLoading] = useState(true)
     const [syncing, setSyncing] = useState(false)
     const [search, setSearch] = useState('')
+    const [groups, setGroups] = useState<SalesGroup[]>([])
+    const [unassignedGroup, setUnassignedGroup] = useState('')
+    const [groupFilter, setGroupFilter] = useState('')
+    const [editGroup, setEditGroup] = useState('')
+    // Pencere açılırken yüklenen mevcut şifre: değişmediyse kayıtta yeniden gönderilmez
+    const [loadedPassword, setLoadedPassword] = useState('')
 
     // Şifre belirleme dialog'u
     const [editing, setEditing] = useState<Salesperson | null>(null)
@@ -81,14 +93,16 @@ const SalespersonsView = () => {
     const load = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetchAPI(API_ENDPOINTS.salespersons.list({ search, limit: 500 }))
+            const res = await fetchAPI(API_ENDPOINTS.salespersons.list({ search, limit: 500, group: groupFilter }))
+            if (Array.isArray(res?.groups)) setGroups(res.groups)
+            if (res?.unassignedGroup) setUnassignedGroup(res.unassignedGroup)
             setData(res?.data || [])
         } catch (err: any) {
             toast.error(err?.message || 'Plasiyerler yüklenemedi')
         } finally {
             setLoading(false)
         }
-    }, [search])
+    }, [search, groupFilter])
 
     useEffect(() => {
         const t = setTimeout(load, 300)
@@ -111,6 +125,8 @@ const SalespersonsView = () => {
 
     const openEdit = async (sp: Salesperson) => {
         setEditing(sp)
+        setEditGroup(sp.salesGroup || '')
+        setLoadedPassword('')
         setPassword('')
         setConfirmPassword('')
         setShowPassword(false)
@@ -121,6 +137,7 @@ const SalespersonsView = () => {
                 if (res?.data?.password) {
                     setPassword(res.data.password)
                     setConfirmPassword(res.data.password)
+                    setLoadedPassword(res.data.password)
                 }
             } catch {
                 // şifre alınamazsa boş bırak
@@ -140,17 +157,19 @@ const SalespersonsView = () => {
 
     const saveEdit = async () => {
         if (!editing) return
-        if (!password.trim()) {
+        // Şifre yalnız değiştirildiyse (ya da hiç yoksa) doğrulanır ve gönderilir; grup her kayıtta gönderilir
+        const sendPassword = !editing.hasPassword || password !== loadedPassword
+        if (sendPassword && !password.trim()) {
             toast.error('Şifre giriniz')
 
             return
         }
-        if (password.trim().length < 6) {
+        if (sendPassword && password.trim().length < 6) {
             toast.error('Şifre en az 6 karakter olmalıdır')
 
             return
         }
-        if (password !== confirmPassword) {
+        if (sendPassword && password !== confirmPassword) {
             toast.error('Şifreler eşleşmiyor')
 
             return
@@ -159,9 +178,9 @@ const SalespersonsView = () => {
         try {
             const res = await fetchAPI(API_ENDPOINTS.salespersons.update(editing._id), {
                 method: 'PUT',
-                body: JSON.stringify({ password: password.trim() })
+                body: JSON.stringify({ salesGroup: editGroup, ...(sendPassword ? { password: password.trim() } : {}) })
             })
-            toast.success(res?.message || 'Plasiyer şifresi güncellendi')
+            toast.success(res?.message || 'Plasiyer güncellendi')
             setEditing(null)
             await load()
         } catch (err: any) {
@@ -170,6 +189,8 @@ const SalespersonsView = () => {
             setSaving(false)
         }
     }
+
+    const groupLabel = (id?: string) => groups.find(g => g.id === id)?.label || ''
 
     if (site && site !== 'b2b') {
         return (
@@ -188,7 +209,7 @@ const SalespersonsView = () => {
         <Card>
             <CardHeader
                 title='Plesiyerler'
-                subheader='DIA satış personeli — senkronla getir, şifre ata (şifresi olan giriş yapar)'
+                subheader='DIA satış personeli — senkronla getir, grup ve şifre ata (grubu ve şifresi atanan giriş yapar)'
                 action={
                     <Button
                         variant='contained'
@@ -216,6 +237,20 @@ const SalespersonsView = () => {
                         )
                     }}
                 />
+                <TextField
+                    select
+                    size='small'
+                    label='Grup'
+                    value={groupFilter}
+                    onChange={e => setGroupFilter(e.target.value)}
+                    className='min-is-[180px]'
+                    SelectProps={{ displayEmpty: true }}
+                    InputLabelProps={{ shrink: true }}
+                >
+                    <MenuItem value=''>Tümü</MenuItem>
+                    {groups.map(g => <MenuItem key={g.id} value={g.id}>{g.label}</MenuItem>)}
+                    {unassignedGroup ? <MenuItem value={unassignedGroup}>Atanmamış</MenuItem> : null}
+                </TextField>
                 <Typography variant='body2' color='text.secondary' className='mis-auto'>
                     {data.length} plasiyer
                 </Typography>
@@ -232,6 +267,7 @@ const SalespersonsView = () => {
                             <tr>
                                 <th>Kullanıcı Kodu</th>
                                 <th>Ad Soyad</th>
+                                <th>Grup</th>
                                 <th>Şifre</th>
                                 <th>Son Giriş</th>
                                 <th>Oluşturulma</th>
@@ -241,7 +277,7 @@ const SalespersonsView = () => {
                         <tbody className='border-be'>
                             {data.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className='text-center p-6'>
+                                    <td colSpan={7} className='text-center p-6'>
                                         <Typography color='text.secondary'>
                                             Plasiyer bulunamadı. "Plasiyerleri Senkronize Et" ile DIA'dan çekebilirsiniz.
                                         </Typography>
@@ -259,6 +295,11 @@ const SalespersonsView = () => {
                                             <Typography>{titleCaseTr(sp.name)}</Typography>
                                         </td>
                                         <td>
+                                            {groupLabel(sp.salesGroup)
+                                                ? <Typography color='text.primary'>{groupLabel(sp.salesGroup)}</Typography>
+                                                : <Typography color='text.disabled'>Atanmamış</Typography>}
+                                        </td>
+                                        <td>
                                             {sp.hasPassword ? (
                                                 <Chip size='small' label='Atandı' color='success' variant='tonal' />
                                             ) : (
@@ -272,9 +313,9 @@ const SalespersonsView = () => {
                                             <Typography variant='body2' color='text.secondary'>{formatDateTime(sp.createdAt)}</Typography>
                                         </td>
                                         <td className='text-right'>
-                                            <Tooltip title='Şifre Belirle / Değiştir'>
+                                            <Tooltip title='Düzenle'>
                                                 <IconButton size='small' onClick={() => openEdit(sp)}>
-                                                    <i className='ri-key-2-line' />
+                                                    <i className='ri-edit-line' />
                                                 </IconButton>
                                             </Tooltip>
                                         </td>
@@ -289,6 +330,10 @@ const SalespersonsView = () => {
             <Dialog open={!!editing} onClose={() => setEditing(null)} fullWidth maxWidth='xs'>
                 <DialogTitle>Plasiyer: {titleCaseTr(editing?.name) !== '-' ? titleCaseTr(editing?.name) : editing?.diaUsername}</DialogTitle>
                 <DialogContent className='flex flex-col gap-4 pbs-2'>
+                    <TextField select label='Grup' value={editGroup} onChange={e => setEditGroup(e.target.value)} fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}>
+                        <MenuItem value=''>Atanmamış</MenuItem>
+                        {groups.map(g => <MenuItem key={g.id} value={g.id}>{g.label}</MenuItem>)}
+                    </TextField>
                     <TextField
                         type={showPassword ? 'text' : 'password'}
                         label={editing?.hasPassword ? 'Şifre' : 'Şifre Belirle'}
@@ -296,7 +341,7 @@ const SalespersonsView = () => {
                         onChange={e => setPassword(e.target.value)}
                         fullWidth
                         autoComplete='new-password'
-                        helperText='En az 6 karakter. Şifresi atanan plasiyer giriş yapabilir.'
+                        helperText='En az 6 karakter'
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position='end'>

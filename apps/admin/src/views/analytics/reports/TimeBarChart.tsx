@@ -23,6 +23,8 @@ type TimeBarChartProps = {
     axisFormatter?: (value: number) => string
     barColors?: string[]
     height?: number
+    // Verilirse her çubuğun üstüne değer yazılır (boş dize dönen değer gizlenir)
+    dataLabelFormatter?: (value: number) => string
 }
 
 // Tek serili, ince çubuklu zaman grafiği (tek eksen, tooltip açık, legend yok)
@@ -33,13 +35,16 @@ const TimeBarChart = ({
     valueFormatter,
     axisFormatter = formatCompact,
     barColors,
-    height = 300
+    height = 300,
+    dataLabelFormatter
 }: TimeBarChartProps) => {
     const theme = useTheme()
 
     const distributed = Boolean(barColors && barColors.length > 0)
     const colors = distributed && barColors ? barColors : [theme.palette.primary.main]
-    const labelStyle = { colors: theme.palette.text.disabled, fontSize: String(theme.typography.body2.fontSize) }
+    // Renkler CSS değişkeni olarak verilir: tema değerleri "rgb(var(--…) / a)" biçiminde ve ApexCharts
+    // bunları ayrıştırırken çöküyor (eksenler çizilmiyordu). var(--mui-palette-…) doğrudan SVG'ye geçer.
+    const labelStyle = { colors: 'var(--mui-palette-text-disabled)', fontSize: String(theme.typography.body2.fontSize) }
 
     const options: ApexOptions = {
         chart: {
@@ -53,19 +58,29 @@ const TimeBarChart = ({
                 columnWidth: categories.length > 20 ? '55%' : '40%',
                 borderRadius: 4,
                 borderRadiusApplication: 'end',
-                distributed
+                distributed,
+                dataLabels: { position: 'top' }
             }
         },
         colors,
-        dataLabels: { enabled: false },
+        dataLabels: dataLabelFormatter
+            ? {
+                  enabled: true,
+                  formatter: (value: number) => dataLabelFormatter(Number(value) || 0),
+                  offsetY: -20,
+                  // Not: tema yazı renkleri CSS değişkeni (rgb(var(--…))) — ApexCharts çözümleyemeyip
+                  // çöküyor; etiket rengi çubuk rengiyle (düz renk) verilir
+                  style: { fontSize: '12px', fontWeight: 600, colors: [colors[0]] }
+              }
+            : { enabled: false },
         legend: { show: false },
         stroke: {
             show: true,
             width: 2,
-            colors: [theme.palette.background.paper]
+            colors: ['var(--mui-palette-background-paper)']
         },
         grid: {
-            borderColor: theme.palette.divider,
+            borderColor: 'var(--mui-palette-divider)',
             strokeDashArray: 0,
             xaxis: { lines: { show: false } },
             padding: { top: -10, left: 0, right: 0, bottom: -5 }

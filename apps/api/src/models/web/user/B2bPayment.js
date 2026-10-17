@@ -36,7 +36,9 @@ const b2bPaymentSchema = new mongoose.Schema({
     returnOrigin: { type: String },
 
     // DIA tahsilat fişi işlendi mi (muhasebe) — panel takibi
-    diaPosted: { type: Boolean, default: false }
+    diaPosted: { type: Boolean, default: false },
+    // Ödeme makbuzu maili gönderildi mi (tekrar gönderimi önler)
+    mailSent: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.models.B2bPayment || mongoose.model('B2bPayment', b2bPaymentSchema);

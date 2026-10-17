@@ -1,8 +1,8 @@
 // Component Imports
-import MemberViewPage from '@views/members/view/MemberViewPage'
+import MemberViewSwitch from '@views/members/view/MemberViewSwitch'
 
 const UserView = () => {
-    return <MemberViewPage />
+    return <MemberViewSwitch />
 }
 
 export default UserView

@@ -31,7 +31,7 @@ import menuItemStyles from '@core/styles/vertical/menuItemStyles'
 import menuSectionStyles from '@core/styles/vertical/menuSectionStyles'
 
 // Site Imports
-import { siteHasMontage, siteHasCampaigns, getMemberMenuLabels } from '@/utils/activeSite'
+import { siteHasMontage, siteHasCampaigns, siteHasAnalytics, siteHasSeo, siteHasFinancialDiscounts, getMemberMenuLabels } from '@/utils/activeSite'
 
 // Menu Data Imports
 // import menuData from '@/data/navigation/verticalMenuData'
@@ -65,11 +65,17 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
   // Aktif siteye göre menü görünürlüğü/etiketleri (localStorage yalnız client'ta okunur)
   const [showMontage, setShowMontage] = useState(true)
   const [showCampaigns, setShowCampaigns] = useState(true)
+  const [showFinancialDiscounts, setShowFinancialDiscounts] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(true)
+  const [showSeo, setShowSeo] = useState(true)
   const [memberMenu, setMemberMenu] = useState<{ group: string; item: string } | null>(null)
 
   useEffect(() => {
     setShowMontage(siteHasMontage())
     setShowCampaigns(siteHasCampaigns())
+    setShowFinancialDiscounts(siteHasFinancialDiscounts())
+    setShowAnalytics(siteHasAnalytics())
+    setShowSeo(siteHasSeo())
     setMemberMenu(getMemberMenuLabels())
   }, [])
 
@@ -108,16 +114,20 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
         >
           {dictionary['navigation'].dashboards}
         </MenuItem>
-        <SubMenu label={dictionary['navigation'].analytics} icon={<i className='ri-bar-chart-2-line' />}>
-          <MenuItem href={`/${locale}/apps/analytics/reports`}>{dictionary['navigation'].reports}</MenuItem>
-          <MenuItem href={`/${locale}/apps/analytics/live`}>{dictionary['navigation'].live_monitoring}</MenuItem>
-        </SubMenu>
-        <SubMenu label={dictionary['navigation'].seo} icon={<i className='ri-search-eye-line' />}>
-          <MenuItem href={`/${locale}/apps/seo/report`}>{dictionary['navigation'].seo_report}</MenuItem>
-          <MenuItem href={`/${locale}/apps/seo/content`}>{dictionary['navigation'].seo_content}</MenuItem>
-          <MenuItem href={`/${locale}/apps/seo/keywords`}>{dictionary['navigation'].seo_keywords}</MenuItem>
-          <MenuItem href={`/${locale}/apps/settings/seo`}>{dictionary['navigation'].seo_settings}</MenuItem>
-        </SubMenu>
+        {showAnalytics ? (
+          <SubMenu label={dictionary['navigation'].analytics} icon={<i className='ri-bar-chart-2-line' />}>
+            <MenuItem href={`/${locale}/apps/analytics/reports`}>{dictionary['navigation'].reports}</MenuItem>
+            <MenuItem href={`/${locale}/apps/analytics/live`}>{dictionary['navigation'].live_monitoring}</MenuItem>
+          </SubMenu>
+        ) : null}
+        {showSeo ? (
+          <SubMenu label={dictionary['navigation'].seo} icon={<i className='ri-search-eye-line' />}>
+            <MenuItem href={`/${locale}/apps/seo/report`}>{dictionary['navigation'].seo_report}</MenuItem>
+            <MenuItem href={`/${locale}/apps/seo/content`}>{dictionary['navigation'].seo_content}</MenuItem>
+            <MenuItem href={`/${locale}/apps/seo/keywords`}>{dictionary['navigation'].seo_keywords}</MenuItem>
+            <MenuItem href={`/${locale}/apps/settings/seo`}>{dictionary['navigation'].seo_settings}</MenuItem>
+          </SubMenu>
+        ) : null}
 
         <MenuSection label={dictionary['navigation'].seperator}>
           <SubMenu label={dictionary['navigation'].catalog} icon={<i className='ri-shopping-bag-3-line' />}>
@@ -127,7 +137,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/variant/list`}>{dictionary['navigation'].variant}</MenuItem>
             <MenuItem href={`/${locale}/apps/label/list`}>{dictionary['navigation'].label}</MenuItem>
             <MenuItem href={`/${locale}/apps/features/list`}>{dictionary['navigation'].features}</MenuItem>
-            <MenuItem href={`/${locale}/apps/filter/list`}>{dictionary['navigation'].filter}</MenuItem>
           </SubMenu>
           <SubMenu label={dictionary['navigation'].order_management} icon={<i className='ri-wallet-line' />}>
             <MenuItem href={`/${locale}/apps/order/list`}>{dictionary['navigation'].order}</MenuItem>
@@ -138,6 +147,8 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           {showMontage && (
             <MenuItem icon={<i className='ri-map-pin-2-line' />} href={`/${locale}/apps/montage/list`}>Montaj Noktaları</MenuItem>
           )}
+          {/* Bayi (montaj noktası) bilgi ve fiyat formu cevapları */}
+          <MenuItem icon={<i className='ri-file-list-3-line' />} href={`/${locale}/apps/montage/dealer-forms`}>Bayi Formları</MenuItem>
 
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           <SubMenu label={"Sayfa Yönetimi"} icon={<i className='ri-pages-line' />}>
@@ -157,6 +168,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
             <MenuItem href={`/${locale}/apps/support/list`}>{dictionary['navigation'].support}</MenuItem>
           </SubMenu>
           <MenuItem icon={<i className='ri-arrow-left-right-line' />} href={`/${locale}/apps/redirects`}>Yönlendirmeler</MenuItem>
+          {showFinancialDiscounts && (
+            <MenuItem icon={<i className='ri-percent-line' />} href={`/${locale}/apps/financial-discounts`}>Finansal İskontolar</MenuItem>
+          )}
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>
           {showCampaigns && (
             <SubMenu label={dictionary['navigation'].campaign_management} icon={<i className='ri-gift-fill' />}>

@@ -7,6 +7,12 @@ const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const resolveSite = (site) => (SITES[site] ? site : DEFAULT_SITE)
 
+// Bayi sitesinin teması (config/sites.js) ve vadeli ödeme yöntemi (WebOrder payment.method)
+const B2B_THEME = 'b2b'
+const B2B_CREDIT_METHOD = 'cari'
+// Bayi borç ödemesi makbuz maili şablonu
+const B2B_PAYMENT_RECEIPT_TEMPLATE = 'b2b_odeme_makbuzu'
+
 
 const buildCombinedAddress = (addr) => {
     if (!addr) return ''
@@ -264,7 +270,92 @@ const buildOrderTemplateData = async (options = {}) => {
         pointPerComment: 0
     }
 
+    // Bayi (b2b) siparişi farklı yapıdadır: tutarlar KDV hariç ara toplam + KDV, müşteri = cari, adres DIA'dan
+    if (isB2bSite(order.site)) {
+        await applyB2bOrderData(order, data)
+    }
+
     return { data }
+}
+
+// Bayi sitesi mi (config/sites.js tema tanımı)
+const isB2bSite = (site) => SITES[site]?.theme === B2B_THEME
+
+// b2b ödeme yöntemi adı (siparişteki payment.method + taksit; Cari Sipariş'te carinin vade günü)
+const b2bPaymentLabel = (payment = {}, member = null) => {
+    if (payment.method === B2B_CREDIT_METHOD) {
+        const days = Number(member?.diaCari?.paymentTermDays)
+        return days > 0 ? `Cari Sipariş (${days} Gün Vade)` : 'Cari Sipariş'
+    }
+    if (payment.method === 'bank_transfer') return 'Havale / EFT'
+    if (payment.method === 'credit_card') {
+        const n = Number(payment.installment) || 1
+        return n > 1 ? `Kredi Kartı — ${n} Taksit` : 'Kredi Kartı — Tek Çekim'
+    }
+    return payment.method || 'Belirtilmemiş'
+}
+
+// b2b siparişi için şablon verisini düzeltir (perakende eşlemesinin üstüne yazar)
+const applyB2bOrderData = async (order, data) => {
+    const WebMember = require('../../../models/web/user/WebMember')
+    const Cargo = require('../../../models/admin/settings/Cargo')
+    const member = order.memberId
+        ? await WebMember.findById(order.memberId).select('email phone diaCustomerCode diaCari.paymentTermDays diaCari.vergiDairesi diaCari.vergiNo diaCari.addresses').lean()
+        : null
+    const pricing = order.pricing || {}
+    const shipping = order.shippingSnapshot || {}
+    const billingAddr = (member?.diaCari?.addresses || []).find(a => a.ana) || (member?.diaCari?.addresses || [])[0] || {}
+    const companyTitle = order.customerName || ''
+    const phone = [shipping.phone, member?.phone].find(v => v && v !== '-') || ''
+
+    // Tutarlar: subtotal = KDV hariç, total = KDV dahil genel toplam (kargo dahil)
+    data.amount = formatTRY(pricing.subtotal)
+    data.taxAmount = formatTRY(pricing.vatAmount)
+    data.amountWithTax = formatTRY(pricing.total)
+    data.generalAmount = formatTRY(pricing.total)
+    data.finalAmount = formatTRY(pricing.total)
+    data.promotionDiscount = pricing.discountAmount > 0 ? formatTRY(pricing.discountAmount) : 0
+
+    // Ödeme: taksitte vade farkı banka ile kart sahibi arasındadır; taksitli fiyat satırı gösterilmez
+    data.paymentProviderName = b2bPaymentLabel(order.payment, member)
+    data.hasInstallment = false
+    data.installmentInfo = ''
+    data.installmentAmount = 0
+
+    // Teslimat yöntemi adı (Kargo Firmaları tanımından)
+    if (order.shipping?.method) {
+        const cargo = await Cargo.findOne({ site: order.site, code: order.shipping.method }).select('name').lean()
+        data.shippingCompanyName = cargo?.name || ''
+    }
+
+    // Müşteri = cari (ünvan); sistem notu (ödeme/teslimat kodları) gösterilmez
+    data.customer = {
+        ...data.customer,
+        firstname: companyTitle || 'Bayi',
+        surname: '',
+        email: member?.email || data.customer?.email || '',
+        note: ''
+    }
+    data.shippingAddress = {
+        firstname: shipping.fullName || companyTitle,
+        surname: '',
+        phoneNumber: phone,
+        mobilePhoneNumber: phone,
+        combinedAddress: buildCombinedAddress(shipping) || [billingAddr.adres, billingAddr.ilce, billingAddr.il].filter(Boolean).join(', ')
+    }
+    data.billingAddress = {
+        ...data.billingAddress,
+        firstname: companyTitle,
+        surname: member?.diaCustomerCode ? `(${member.diaCustomerCode})` : '',
+        phoneNumber: phone,
+        mobilePhoneNumber: phone,
+        combinedAddress: [billingAddr.adres, billingAddr.ilce, billingAddr.il].filter(Boolean).join(', '),
+        invoiceType: 'corporate',
+        taxOffice: member?.diaCari?.vergiDairesi || '',
+        taxNumber: member?.diaCari?.vergiNo || '',
+        identityRegistrationNumber: ''
+    }
+    // Havale siparişinde banka hesapları gösterilir (perakende kuralıyla aynı)
 }
 
 // Sadece havale ödeme tipinde banka hesaplarını getir
@@ -755,8 +846,56 @@ const buildBankTransferNotificationData = async (options = {}) => {
 
     return { data }
 }
+// Bayi cari borç ödemesi (Ödeme Yap) makbuz maili
+// options: { mode: 'preview' | 'real', paymentId, site }
+const buildB2bPaymentReceiptData = async (options = {}) => {
+    const B2bPayment = require('../../../models/web/user/B2bPayment')
+    const WebMember = require('../../../models/web/user/WebMember')
+    const { tahsilatOdemeAdi } = require('../../web/b2b/makbuzPdf')
+    const { mode = 'preview', paymentId = null } = options
+
+    let payment = null
+    if (mode === 'real' && paymentId) {
+        payment = await B2bPayment.findById(paymentId).lean()
+        if (!payment) throw new Error(`Ödeme bulunamadı: ${paymentId}`)
+    } else {
+        // Önizleme: seçili sitenin son başarılı ödemesi
+        const filter = { status: 'paid', ...(options.site ? { site: resolveSite(options.site) } : {}) }
+        payment = await B2bPayment.findOne(filter).sort({ paidAt: -1 }).lean()
+    }
+
+    const site = mode === 'real' ? (payment?.site || options.site) : (options.site || payment?.site)
+    const companyData = await buildCompanyData(site)
+    if (!payment) {
+        // Hiç ödeme yoksa örnek veriyle önizlenir
+        return { data: { ...companyData, reference: 'TC0000000', paidAt: new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }), payerName: 'Örnek Bayi Ltd. Şti.', cariKodu: '120.1.01.000000', amount: formatTRY(1000), paymentMethod: 'Kredi Kartı - Tek Çekim', cardLastFour: '1234', bankName: '', authCode: '' } }
+    }
+
+    const member = await WebMember.findById(payment.memberId).select('firstName lastName email diaCustomerCode').lean()
+    const payerName = `${member?.firstName || ''} ${member?.lastName || ''}`.replace(/ \.$/, '').trim()
+    return {
+        data: {
+            ...companyData,
+            reference: payment.reference || '',
+            paidAt: new Date(payment.paidAt || payment.createdAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }),
+            payerName: payerName || payment.cariKodu || 'Bayi',
+            payerEmail: member?.email || '',
+            cariKodu: payment.cariKodu || member?.diaCustomerCode || '',
+            amount: formatTRY((payment.amountKurus || 0) / 100),
+            paymentMethod: tahsilatOdemeAdi(payment),
+            cardLastFour: payment.cardInfo?.lastFourDigits || '',
+            bankName: payment.cardInfo?.bankName || '',
+            authCode: payment.authCode || ''
+        }
+    }
+}
+
 // templateKey'e göre uygun veri builder'ı çalıştır
 const buildData = async (templateKey, options = {}) => {
+    if (templateKey === B2B_PAYMENT_RECEIPT_TEMPLATE) {
+        return await buildB2bPaymentReceiptData(options)
+    }
+
     if (templateKey === 'siparis_sablonu') {
         return await buildOrderTemplateData(options)
     }

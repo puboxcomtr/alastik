@@ -3,13 +3,15 @@
 // Alanlar ve seçenekler API'den gelir (/api/bayi-formu/tanim); doğrulamanın asıl yeri sunucudur,
 // buradaki kontroller yalnızca kullanıcıya hemen geri bildirim verir. Cevaplar tarayıcıda taslak olarak
 // saklanır (sayfa yenilense de kaybolmaz), gönderim başarılı olunca taslak silinir.
+// LJA'da (varsayılan) karşılama ekranıyla açılır ve giriş istemez. b2b'de bayi panelinde, karşılama ekranı olmadan
+// açılır; istekler bayi oturumuyla gider, bayi adı ve telefon carinin bilgileriyle önceden doldurulur.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { API_ENDPOINTS } from '@/src/config/api';
 
 const API = API_ENDPOINTS.location.cities().replace(/\/location\/cities$/, '');
-const BASLIK = { 'Content-Type': 'application/json', 'X-Site': 'lastikjantavm' };
-const TASLAK = 'lja-bayi-formu-taslak-v1';
+// Siteye göre taslak anahtarı (iki sitenin taslağı birbirine karışmaz)
+const TASLAK_ANAHTARI: Record<string, string> = { lastikjantavm: 'lja-bayi-formu-taslak-v1', b2b: 'b2b-bayi-formu-taslak-v1' };
 const KOYU = '#313131', VURGU = '#e4cc15';
 
 type Satir = { kod: string; anahtar: string; ad: string; birim: string; secenekler: number[] };
@@ -138,7 +140,24 @@ nav[aria-label="Şubeler, hizmetler ve araçlar"] { display: none !important; }
 const telefonYaz = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 11); return [d.slice(0, 4), d.slice(4, 7), d.slice(7, 9), d.slice(9, 11)].filter(Boolean).join(' '); };
 const telefonGecerli = (v: string) => /^0[2-5]\d{9}$/.test(v.replace(/\D/g, ''));
 
-export default function DealerForm() {
+type DealerFormProps = {
+    site?: string;              // formun gönderildiği site (X-Site)
+    karsilama?: boolean;        // ilk kez gelene karşılama ekranı gösterilsin mi
+    girisGerekli?: boolean;     // istekler bayi oturumuyla gider; bayi adı ve telefon carinin bilgileriyle doldurulur
+    sarmalayici?: string;       // dış kapsayıcının sınıfı (LJA: bootstrap container)
+};
+
+const oturum = (): string => { try { return localStorage.getItem('authToken') || ''; } catch { return ''; } };
+
+export default function DealerForm({ site = 'lastikjantavm', karsilama = true, girisGerekli = false, sarmalayici = 'container' }: DealerFormProps) {
+    const TASLAK = TASLAK_ANAHTARI[site] || `${site}-bayi-formu-taslak-v1`;
+    const basliklar = (json = true): Record<string, string> => {
+        const h: Record<string, string> = { 'X-Site': site };
+        if (json) h['Content-Type'] = 'application/json';
+        const t = girisGerekli ? oturum() : '';
+        if (t) h.Authorization = `Bearer ${t}`;
+        return h;
+    };
     const [tanim, setTanim] = useState<Tanim | null>(null);
     const [iller, setIller] = useState<{ cityId: string; cityName: string }[]>([]);
     const [ilceler, setIlceler] = useState<{ districtId: string; districtName: string }[]>([]);
@@ -149,7 +168,7 @@ export default function DealerForm() {
     const [gonderiliyor, setGonderiliyor] = useState(false);
     const [bitti, setBitti] = useState<null | { guncellendi: boolean }>(null);
     const [markaAra, setMarkaAra] = useState('');
-    const [basladi, setBasladi] = useState(false);                       // karşılama ekranı geçildi mi
+    const [basladi, setBasladi] = useState(!karsilama);                  // karşılama ekranı geçildi mi
     const [yuk, setYuk] = useState(0);                                   // süren dosya yüklemesi sayısı
     const [onizleme, setOnizleme] = useState<Record<string, string>>({}); // bu oturumda yüklenen fotoğrafların küçük görüntüsü
     const taslakOkundu = useRef(false);
@@ -159,8 +178,17 @@ export default function DealerForm() {
         // Yarıda bırakıp dönen bayi karşılama ekranını görmez, kaldığı adımdan devam eder
         try { const t = localStorage.getItem(TASLAK); if (t) { const j = JSON.parse(t); const k = j?.c || {}; if (j?.adim > 0 || k.bayiAdi || k.cityId || k.adres || k.telefon1 || Object.keys(k.saatler || {}).length || Object.keys(k.fiyatlar || {}).length) setBasladi(true); if (j && typeof j === 'object') setC({ ...BOS, ...j.c, tesis: { markalar: [], ...(j.c?.tesis || {}) }, gorseller: { ...(j.c?.gorseller || {}) }, ekHizmetler: String(j.c?.ekHizmetler || ''), website: '' }); if (Number.isInteger(j?.adim) && j.adim >= 0 && j.adim <= SON) setAdim(j.adim); } } catch { /* taslak okunamazsa boş başla */ }
         taslakOkundu.current = true;
+        // Giriş gerektiren sitede taslağı olmayan bayinin adı ve telefonu cari bilgisinden gelir
+        let taslakVar = false; try { taslakVar = !!localStorage.getItem(TASLAK); } catch { /* yok say */ }
+        if (girisGerekli && !taslakVar) {
+            fetch(API_ENDPOINTS.b2b.me(), { headers: basliklar(false) }).then(r => r.json()).then(d => {
+                const b = d?.data || {};
+                const tel = telefonYaz(String(b.phone || '').replace(/\D/g, '').replace(/^90/, '').replace(/^(?!0)/, '0'));
+                setC(o => ({ ...o, bayiAdi: o.bayiAdi || String(b.name || '').trim(), telefon1: o.telefon1 || (telefonGecerli(tel) ? tel : '') }));
+            }).catch(() => { /* doldurulamazsa bayi kendisi yazar */ });
+        }
         Promise.all([
-            fetch(`${API}/bayi-formu/tanim`, { headers: BASLIK }).then(r => r.json()),
+            fetch(`${API}/bayi-formu/tanim`, { headers: basliklar(false) }).then(r => r.json()),
             fetch(API_ENDPOINTS.location.cities()).then(r => r.json())
         ]).then(([t, il]) => {
             if (!t?.success) throw new Error('tanım');
@@ -241,7 +269,7 @@ export default function DealerForm() {
         if (Object.keys(h).length) { const n = Math.min(...Object.keys(h).map(adimOf)); setHata(h); setAdim(n); uyar(eksikMesaji(h, n)); ilkHatayaGit(); return; }
         setGonderiliyor(true);
         try {
-            const r = await fetch(`${API}/bayi-formu`, { method: 'POST', headers: BASLIK, body: JSON.stringify(c) });
+            const r = await fetch(`${API}/bayi-formu`, { method: 'POST', headers: basliklar(), body: JSON.stringify(c) });
             const j = await r.json().catch(() => ({}));
             if (r.ok && j?.success) { try { localStorage.removeItem(TASLAK); } catch { /* yok say */ } setBitti({ guncellendi: !!j.guncellendi }); window.scrollTo({ top: 0 }); return; }
             if (j?.hatalar && Object.keys(j.hatalar).length) { const n = Math.min(...Object.keys(j.hatalar).map(adimOf)); setHata(j.hatalar); setAdim(n); uyar(eksikMesaji(j.hatalar, n)); ilkHatayaGit(); }
@@ -275,7 +303,7 @@ export default function DealerForm() {
                 const govde: Blob = pdf ? f : await kucult(f);
                 if (govde.size > tanim.gorselBoyutMb * 1024 * 1024) { uyar(`Dosya en fazla ${tanim.gorselBoyutMb} MB olabilir`); continue; }
                 const fd = new FormData(); fd.append('alan', alan); fd.append('dosya', govde, pdf ? 'belge.pdf' : 'foto.jpg');
-                const r = await fetch(`${API}/bayi-formu/gorsel`, { method: 'POST', headers: { 'X-Site': 'lastikjantavm' }, body: fd });
+                const r = await fetch(`${API}/bayi-formu/gorsel`, { method: 'POST', headers: basliklar(false), body: fd });
                 const j = await r.json().catch(() => ({}));
                 if (!r.ok || !j?.success) { uyar(j?.message || 'Dosya yüklenemedi, lütfen tekrar deneyin'); continue; }
                 const ad = String(j.data.dosya);
@@ -303,10 +331,10 @@ export default function DealerForm() {
     const para = (n: number) => `${n.toLocaleString('tr-TR')} TL`;
     const fiyatYazi = (v: any) => !tanim ? '' : v === tanim.vermiyorum ? tanim.vermiyorumEtiket : v ? para(Number(v)) : '';
 
-    if (yukHata) return <div className="container"><div className="bf"><style>{CSS}</style><div className="bf-uyari">{yukHata}</div></div></div>;
-    if (!tanim) return <div className="container"><div className="bf"><style>{CSS}</style><p>Form yükleniyor…</p></div></div>;
+    if (yukHata) return <div className={sarmalayici}><div className="bf"><style>{CSS}</style><div className="bf-uyari">{yukHata}</div></div></div>;
+    if (!tanim) return <div className={sarmalayici}><div className="bf"><style>{CSS}</style><p>Form yükleniyor…</p></div></div>;
     if (bitti) return (
-        <div className="container"><div className="bf"><style>{CSS}</style>
+        <div className={sarmalayici}><div className="bf"><style>{CSS}</style>
             <div className="bf-kart" style={{ textAlign: 'center', padding: '36px 18px' }}>
                 <div style={{ fontSize: 44, lineHeight: 1 }}>✓</div>
                 <h1 style={{ marginTop: 12 }}>Teşekkür ederiz</h1>
@@ -317,7 +345,7 @@ export default function DealerForm() {
 
     // Karşılama: forma ilk kez gelen kişi önce neye başvurduğunu okur
     if (!basladi) return (
-        <div className="container"><div className="bf" ref={ust}><style>{CSS}</style>
+        <div className={sarmalayici}><div className="bf" ref={ust}><style>{CSS}</style>
             <div className="bf-giris">
                 <div className="bf-giris-gorsel">
                     <picture>
@@ -346,7 +374,7 @@ export default function DealerForm() {
     const filtreliMarka = tanim.markalar.filter(m => m.toLocaleLowerCase('tr').includes(markaAra.trim().toLocaleLowerCase('tr')));
 
     return (
-        <div className="container"><div className="bf" ref={ust}>
+        <div className={sarmalayici}><div className="bf" ref={ust}>
             <style>{CSS}</style>
             <h1>Montaj Noktası Bilgi ve Fiyat Formu</h1>
             <div style={{ color: '#555', fontSize: '.9rem' }}>Adım {adim + 1} / {ADIMLAR.length}: <strong>{ADIMLAR[adim]}</strong></div>

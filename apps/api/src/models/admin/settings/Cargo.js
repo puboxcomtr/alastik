@@ -33,7 +33,16 @@ function scopedRuleSchema(idField, nameField, refModel, withDiaBrand = false) {
     return def;
 }
 
+// Kargo ücretinin gösterim biçimleri
+const SHIPPING_PRICE_MODES = ['included', 'excluded'];
+
+// Ücretlendirme tipi: 'rules' = desi / kural bazlı (kargo firması), 'free' = ücretsiz teslimat (ör. kendi aracımızla
+// "Standart Sevkiyat"). 'free' tanımda desi / kural alanları kullanılmaz; yalnız hizmet bölgesi (serviceAreas) geçerlidir.
+const CARGO_PRICING_TYPES = ['rules', 'free'];
+
 const cargoSchema = new mongoose.Schema({
+    // Site bazlı sıra numarası (admin kurallar sayfası adresi /apps/cargo/desi/<cargoNo>) — utils/cargoNo
+    cargoNo: { type: Number },
     // Her site için ayrı kargo tanımı (site + code benzersiz)
     site: {
         type: String,
@@ -116,6 +125,19 @@ const cargoSchema = new mongoose.Schema({
         enum: ['sender', 'receiver'],
         default: 'sender'
     },
+    pricingType: { type: String, enum: CARGO_PRICING_TYPES, default: 'rules' },
+    // Hizmet bölgesi: BOŞSA her adreste sunulur; doluysa yalnız bu il / ilçelerdeki teslimat adreslerinde.
+    // districtId boş = ilin tamamı. Adlar adres eşleştirmesinde kullanılır (DIA adreslerinde il / ilçe ad olarak gelir).
+    serviceAreas: {
+        type: [{
+            _id: false,
+            cityId: { type: String, required: true },
+            cityName: { type: String, required: true },
+            districtId: { type: String, default: '' },
+            districtName: { type: String, default: '' }
+        }],
+        default: []
+    },
     fixedPrice: {
         type: Number,
         default: 0,
@@ -131,7 +153,35 @@ const cargoSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+    // XML (tedarikçi) ürünlerinin genel desi tablosu
     desiPricing: {
+        ranges: {
+            type: [{
+                min: { type: Number, required: true, min: 0 },
+                max: { type: Number, required: true, min: 0 },
+                price: { type: Number, required: true, min: 0 }
+            }],
+            default: []
+        },
+        extraPerDesi: {
+            type: Number,
+            default: 0,
+            min: 0
+        }
+    },
+    // ── Stoktaki (DIA) ürünlerin genel ayarları — XML ayarlarından (fixedPrice, freeShipping*, desiPricing) BAĞIMSIZDIR ──
+    // Desi tablosu boşken uygulanacak sabit ücret (yalnız desisi olan ürüne)
+    stockFixedPrice: { type: Number, default: 0, min: 0 },
+    // Ürün fiyatı bu tutarı geçerse stoklu üründe kargo ücretsiz (0 = kapalı)
+    stockFreeShippingThreshold: { type: Number, default: 0, min: 0 },
+    // Ürün desisi bu değeri geçerse stoklu üründe kargo ücretsiz (0 = kapalı)
+    stockFreeShippingDesiLimit: { type: Number, default: 0, min: 0 },
+    // Stoklu üründe kargo ücretinin gösterimi: 'included' = ürün fiyatına dahil (tek fiyat),
+    // 'excluded' = ürün fiyatından hariç (sepette ve ödeme adımında ayrı "Kargo" satırı). Ödenen toplam aynıdır.
+    stockShippingPriceMode: { type: String, enum: SHIPPING_PRICE_MODES, default: 'included' },
+    // Kendi stoğumuzdaki (DIA) ürünlerin genel desi tablosu — XML tablosundan bağımsızdır.
+    // Boşsa stoklu ürüne genel desi ücreti uygulanmaz (ürün/marka/kategori/ebat kuralları ayrıca geçerlidir).
+    stockDesiPricing: {
         ranges: {
             type: [{
                 min: { type: Number, required: true, min: 0 },
@@ -153,5 +203,20 @@ const cargoSchema = new mongoose.Schema({
 
 cargoSchema.index({ site: 1, code: 1 }, { unique: true });
 cargoSchema.index({ isActive: 1, webOrder: -1 });
+cargoSchema.index({ site: 1, cargoNo: 1 }, { unique: true, partialFilterExpression: { cargoNo: { $type: 'number' } } });
+
+// Yeni tanıma sıradaki numarayı ver
+cargoSchema.pre('save', async function (next) {
+    if (!this.isNew || typeof this.cargoNo === 'number') return next();
+    try {
+        const { reserveCargoNos } = require('../../../utils/cargoNo');
+        this.cargoNo = await reserveCargoNos(this.site, 1);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
 
 module.exports = mongoose.model('Cargo', cargoSchema);
+module.exports.SHIPPING_PRICE_MODES = SHIPPING_PRICE_MODES;
+module.exports.CARGO_PRICING_TYPES = CARGO_PRICING_TYPES;

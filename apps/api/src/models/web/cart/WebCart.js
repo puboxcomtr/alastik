@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SITE_SLUGS } = require('../../../config/sites');
 
 const cartItemSchema = new mongoose.Schema({
     productKey: { type: String, required: true },
@@ -9,6 +10,8 @@ const cartItemSchema = new mongoose.Schema({
     quantity: { type: Number, required: true, min: 1, default: 1 },
     unitPrice: { type: Number, required: true },
     originalPrice: { type: Number, default: 0 },
+    // Ürün fiyatından HARİÇ tutulan birim kargo ücreti (Kargo Kuralları: "fiyattan hariç"); fiyata dahilse 0
+    shippingPerUnit: { type: Number, default: 0 },
     kdvRate: { type: Number, default: 20 },
     // Kategori ayarı: 'haric' ise vitrinde ve sepette fiyat "KDV hariç + KDV" olarak AYRIŞTIRILIR.
     // Ödenen tutar değişmez; KDV unitPrice'ın İÇİNDEN hesaplanır. Kaynak: utils/categoryPriceDisplay
@@ -25,8 +28,18 @@ const cartItemSchema = new mongoose.Schema({
     addedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+// Aktif Sepetler (admin) takip durumu: müşteriyle iletişime geçildi mi
+const CART_FOLLOW_UP_STATUSES = ['pending', 'contacted'];
+
 const webCartSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, index: true },
+    // Takip durumu (admin Aktif Sepetler): pending = Beklemede, contacted = İletişime Geçildi
+    followUpStatus: { type: String, enum: CART_FOLLOW_UP_STATUSES, default: 'pending' },
+    followUpAt: { type: Date },
+    followUpBy: { type: String, default: '' },
+    // Sepetin ait olduğu site (istek hangi vitrinden geldiyse). Eski kayıtlarda yoktur;
+    // ziyaretçi sepetine tekrar dokunduğunda doldurulur.
+    site: { type: String, enum: SITE_SLUGS, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     items: [cartItemSchema],
     lastActivity: { type: Date, default: Date.now },
@@ -55,6 +68,8 @@ webCartSchema.virtual('totals').get(function () {
     let totalKdv = 0;
     // Montaj/hizmet kalemleri sepet özetinde ayrı satırda gösterilir
     let montageSubtotal = 0;
+    // Ürün fiyatından hariç tutulan kargo: ayrı "Kargo" satırı (KDV dahil tutar)
+    let shippingTotal = 0;
 
     this.items.forEach(item => {
         const itemTotal = item.unitPrice * item.quantity;
@@ -70,6 +85,7 @@ webCartSchema.virtual('totals').get(function () {
 
         subtotal += netAmount;
         if (isMontage) montageSubtotal += netAmount;
+        shippingTotal += (item.shippingPerUnit || 0) * item.quantity;
     });
 
     const yuvarla = (v) => Math.round(v * 100) / 100;
@@ -81,7 +97,8 @@ webCartSchema.virtual('totals').get(function () {
         productsSubtotal: yuvarla(subtotal - montageSubtotal),
         montage: yuvarla(montageSubtotal),
         kdv: yuvarla(totalKdv),
-        total: yuvarla(subtotal + totalKdv),
+        shipping: yuvarla(shippingTotal),
+        total: yuvarla(subtotal + totalKdv + shippingTotal),
         itemCount: this.items.reduce((sum, item) => sum + item.quantity, 0)
     };
 });
@@ -90,3 +107,4 @@ webCartSchema.set('toJSON', { virtuals: true });
 webCartSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('WebCart', webCartSchema);
+module.exports.CART_FOLLOW_UP_STATUSES = CART_FOLLOW_UP_STATUSES;

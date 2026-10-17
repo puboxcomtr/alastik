@@ -280,7 +280,6 @@ const SeoContentView = () => {
                                 rowsPerPageOptions={[25, 50, 100]}
                                 onPageChange={(_, p) => setPage(p)}
                                 onRowsPerPageChange={e => { setLimit(parseInt(e.target.value, 10)); setPage(0) }}
-                                labelRowsPerPage='Sayfa başına'
                                 labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${formatNumber(count)}`}
                             />
                         </>

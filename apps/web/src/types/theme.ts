@@ -6,6 +6,9 @@ export interface ThemeSettings {
 
     // Marka ve Vitrin Ayarları
     brandDisplayType?: 'image' | 'text';
+    // Havale ve Peşin Ödeme indirim oranları (%) — panel: Tasarım > Tema > Genel. Boş/0 → kutu gösterilmez
+    pickupCashDiscountNewTire?: string | number;
+    pickupCashDiscountSecondHand?: string | number;
     showcaseDisplayCount?: string;
     blogDisplayCount?: string;
 
@@ -16,6 +19,8 @@ export interface ThemeSettings {
     isFacebook?: boolean;
     isGoogle?: boolean;
     isLazyLoad?: boolean;
+    // Hafif kar yağışı efekti (components/layout/SnowEffect) — panel: Tasarım > Tema > Genel
+    snowEffect?: boolean;
 
     // Footer Ayarları
     footerMobile?: 'list' | 'grid';

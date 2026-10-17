@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Dropdown } from "@components/b2b-theme/dropdown";
 import { AutoComplete } from "@components/b2b-theme/autocomplete";
 import { SearchForm } from "@components/b2b-theme/search-form";
@@ -8,6 +8,10 @@ import { AddToCart } from "@components/b2b-theme/add-to-cart";
 import { SeasonIcon, SpinnerIcon } from "@components/b2b-theme/icons";
 import { AbLabel } from "@components/b2b-theme/ab-label";
 import { formatKurus } from "@components/b2b-theme/lib/format";
+import { fetchFinancialDiscounts, financialDiscountPct, productShippingKurus, BASE_PAYMENT_METHOD, PREMIUM_TIER, type FinancialDiscounts } from "@components/b2b-theme/lib/financial-discounts";
+import { FinancialDiscountTag } from "@components/b2b-theme/financial-discount-tag";
+import { DEFAULT_CATALOG_FILTERS, isTireProductType, type CatalogFilterKey, type CatalogColumnKey } from "@components/b2b-theme/lib/catalog-filters";
+import { RETAIL_SALES_GROUP } from "@components/b2b-theme/lib/salesperson";
 import {
   totalStock,
   type Tire,
@@ -16,6 +20,8 @@ import {
 } from "@components/b2b-theme/lib/sample-data";
 
 const PAGE_SIZE = 10; // İlk gösterim ve "Daha Fazla Göster" adımı
+// Sıfır ürün durumu (perakende plasiyer fiyat notu yalnız sıfır üründe gösterilir)
+const NEW_PRODUCT_STATUS: ProductStatus = "sifir";
 
 const SEASON_LABEL: Record<string, string> = { yaz: "Yaz", kis: "Kış", dortMevsim: "4 Mevsim" };
 
@@ -66,6 +72,14 @@ const BOS_FILTRE: Filter = {
   ev: false,
   xl: false,
 };
+
+// Filtre çubuğunun ilk satırı: arama kutusu + bu alanlar (en çok FIRST_ROW_CAPACITY kutu)
+const FIRST_ROW_FILTERS: CatalogFilterKey[] = ["season", "brand", "dot", "rimDiameter", "boltPattern"];
+const FIRST_ROW_CAPACITY = 4;
+const SERVER_ONLY_FILTERS: CatalogFilterKey[] = ["rimDiameter", "boltPattern"];
+// Tablo: her zaman görünen sütun sayısı (Görsel, Stok Kodu, Ebat / Model, Stok, Sevkiyat, Fiyat, İşlemler) ve isteğe bağlı sütunlar
+const FIXED_COLUMN_COUNT = 7;
+const OPTIONAL_COLUMNS: CatalogColumnKey[] = ["brand", "season", "dot"];
 
 const CIPLER = [
   { anahtar: "rft", label: "RFT" },
@@ -146,17 +160,26 @@ export type ServerOptions = {
   dots: string[];
   oems: string[];
   warehouses: string[];
+  /** Jant filtreleri: kategorideki jant çapları ("17 İnç") ve bijon aralıkları ("114.3") */
+  rimDiameters?: string[];
+  boltPatterns?: string[];
+  /** Vitrin seçeneği (panel: Tema > Vitrin 1 Üst Başlık + Ürün Seçimi); count = bu kategorideki vitrin ürünü */
+  showcaseFilter?: { key: string; title: string; count: number } | null;
 };
 /** Sunucu tarafı filter değerleri (URL ile senkron, kategori sayfası).
  *  Özellik çipleri (rft/cTipi/xl/ev) de sunucuda tüm ürünlere uygulanır. */
 export type ServerFilters = {
   q: string; marka: string; mevsim: string; dot: string; oem: string; depo: string;
   rft?: boolean; cTipi?: boolean; xl?: boolean; ev?: boolean;
+  /** Jant filtreleri: jant çapı (inç, ör. "17") ve bijon aralığı (ör. "114.3") */
+  jantCap?: string; bijon?: string;
+  /** Yalnız vitrin (kampanya) ürünleri */
+  showcase?: boolean;
 };
 
 export function Catalog(
   { products, sabitDurum, title, tabsGizle, serverPage, serverTotalPages, onServerPageChange, serverLoading,
-    serverFilters, onServerFilterChange, serverOptions, serverSort, onServerSortChange }: {
+    serverFilters, onServerFilterChange, serverOptions, serverSort, onServerSortChange, plasiyer, plasiyerGroup, retailPriceNote, visibleFilters, hiddenColumns }: {
     products?: Tire[];
     sabitDurum?: ProductStatus;
     title?: string;
@@ -179,9 +202,43 @@ export function Catalog(
      *  URL'e yansır. Verilirse başlık tıklaması ebeveyne bildirilir. */
     serverSort?: { field: string; dir: "asc" | "desc" } | null;
     onServerSortChange?: (field: string) => void;
+    /** Plasiyer gözü (bayi seçilmemiş): fiyat plasiyerin grubuna göre gösterilir (Perakende → perakende / LJA fiyatı,
+     *  Toptan → toptan / b2b fiyatı); fiyat kutucuğu açılmaz.
+     *  Bayi gözünde (bayi oturumu ya da plasiyerin bayi adına girişi) ödeme yöntemine göre iskonto oranı ve satış fiyatı kutucukta gösterilir. */
+    plasiyer?: boolean;
+    /** Plasiyerin grubu (sunucudaki anahtar: retail / wholesale) */
+    plasiyerGroup?: string;
+    /** Perakende plasiyere sıfır üründe fiyatın altında gösterilen not (boşsa gösterilmez) */
+    retailPriceNote?: string;
+    /** Gösterilecek üst filtre alanları (verilmezse hepsi). Kategori sayfası ürün türüne göre belirler. */
+    visibleFilters?: CatalogFilterKey[];
+    /** Gizlenecek tablo sütunları (verilmezse hepsi görünür). Kategori sayfası ürün türüne göre belirler. */
+    hiddenColumns?: CatalogColumnKey[];
   } = {},
 ) {
   const source = products ?? [];
+  const shownFilters = visibleFilters ?? DEFAULT_CATALOG_FILTERS;
+  const showColumn = (key: CatalogColumnKey): boolean => !(hiddenColumns || []).includes(key);
+  // Boş liste satırının genişliği: sabit sütunlar + görünen isteğe bağlı sütunlar
+  const columnCount = FIXED_COLUMN_COUNT + OPTIONAL_COLUMNS.filter(showColumn).length;
+  // Jant alanları yalnız sunucu filtreli listede (kategori sayfası) çalışır
+  const showFilter = (key: CatalogFilterKey): boolean =>
+    shownFilters.includes(key) && (!SERVER_ONLY_FILTERS.includes(key) || Boolean(serverFilters && onServerFilterChange && serverOptions));
+  // İlk satırdaki seçim kutuları (arama kutusunun yanı); satırda yer kalırsa depo seçimi de bu satıra alınır
+  const firstRowFilters = FIRST_ROW_FILTERS.filter(showFilter).length;
+  const depotInFirstRow = showFilter("depot") && 1 + firstRowFilters < FIRST_ROW_CAPACITY;
+  // Finansal iskontolar (panel): listedeki ürünler için carinin tipine göre taban (Cari Sipariş) iskonto oranı
+  const [financial, setFinancial] = useState<FinancialDiscounts>({ tier: "", discounts: {} });
+  const sourceCodes = source.filter((u) => !u.xml).map((u) => u.stockCode).filter(Boolean).sort().join(",");
+  useEffect(() => {
+    let cancelled = false;
+    fetchFinancialDiscounts(sourceCodes ? sourceCodes.split(",") : []).then((result) => {
+      if (!cancelled) setFinancial(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceCodes]);
   // sabitDurum verilirse blok tek türe kilitlenir (sekme gizlenir), filter o
   // duruma göre başlatılır ve Temizle bu başlangıca döner.
   const emptyFilter: Filter = sabitDurum
@@ -296,6 +353,14 @@ export function Catalog(
     value: brand.toLocaleLowerCase("tr").replace(/\s+/g, "-"),
     label: brand,
   }));
+  // Jant çapı: seçenek "17 İnç", gönderilen değer inç sayısı ("17")
+  const rimDiameterOpts = (serverOptions?.rimDiameters || []).map((d) => ({ value: d.replace(/[^\d.]/g, ""), label: d }));
+  const boltPatternOpts = (serverOptions?.boltPatterns || []).map((b) => ({ value: b, label: b }));
+  // Vitrin seçeneği: yalnız sunucu filtreli listede ve kategoride vitrin ürünü varsa gösterilir
+  const showcaseOption = serverOptions?.showcaseFilter && serverOptions.showcaseFilter.count > 0 ? serverOptions.showcaseFilter : null;
+  const vShowcase = Boolean(serverFilters?.showcase);
+  const vRimDiameter = serverFilters?.jantCap || "";
+  const vBoltPattern = serverFilters?.bijon || "";
   const depotOpts = serverFiltreli
     ? serverOptions!.warehouses.map((w) => ({ value: w, label: w }))
     : options.warehouses.map((d) => ({ value: d.id, label: d.ad }));
@@ -324,6 +389,9 @@ export function Catalog(
       filter.size ||
       vDot ||
       vDepot ||
+      vRimDiameter ||
+      vBoltPattern ||
+      vShowcase ||
       CIPLER.some((c) => cipDeger(c.anahtar)),
   );
 
@@ -337,7 +405,7 @@ export function Catalog(
   function temizle(): void {
     setFilter(emptyFilter);
     setPage(1);
-    if (serverFiltreli) onServerFilterChange!({ q: "", marka: "", mevsim: "", dot: "", oem: "", depo: "", rft: false, cTipi: false, xl: false, ev: false });
+    if (serverFiltreli) onServerFilterChange!({ q: "", marka: "", mevsim: "", dot: "", oem: "", depo: "", rft: false, cTipi: false, xl: false, ev: false, jantCap: "", bijon: "", showcase: false });
   }
 
   /** Sütun başlığına tıklama: sunucu modunda ebeveyne bildirilir (tüm ürünler
@@ -389,64 +457,113 @@ export function Catalog(
         </div>
       )}
 
-      <div className="search-block">
+      <div className="search-block" style={{ "--search-cols": 1 + firstRowFilters + (depotInFirstRow ? 1 : 0) } as CSSProperties}>
         <SearchForm q={vQ} onSearch={setQ} formId="lastik-query" butonGizle />
-        <AutoComplete
-          ariaLabel="Mevsim"
-          placeholder="Mevsim Seçiniz"
-          value={vSeason}
-          options={seasonOpts}
-          onChange={setSeason}
-          multiple
-        />
-        <AutoComplete
-          ariaLabel="Marka"
-          placeholder="Marka Seçiniz"
-          value={vBrand}
-          options={brandOpts}
-          onChange={setBrand}
-          multiple
-        />
-        <AutoComplete
-          ariaLabel="DOT"
-          placeholder="DOT Seçiniz"
-          value={vDot}
-          options={dotOpts}
-          onChange={setDot}
-          multiple
-        />
+        {showFilter("season") ? (
+          <AutoComplete
+            ariaLabel="Mevsim"
+            placeholder="Mevsim Seçiniz"
+            value={vSeason}
+            options={seasonOpts}
+            onChange={setSeason}
+            multiple
+          />
+        ) : null}
+        {showFilter("brand") ? (
+          <AutoComplete
+            ariaLabel="Marka"
+            placeholder="Marka Seçiniz"
+            value={vBrand}
+            options={brandOpts}
+            onChange={setBrand}
+            multiple
+          />
+        ) : null}
+        {showFilter("dot") ? (
+          <AutoComplete
+            ariaLabel="DOT"
+            placeholder="DOT Seçiniz"
+            value={vDot}
+            options={dotOpts}
+            onChange={setDot}
+            multiple
+          />
+        ) : null}
+        {showFilter("rimDiameter") ? (
+          <AutoComplete
+            ariaLabel="Jant Çapı"
+            placeholder="Jant Çapı Seçiniz"
+            value={vRimDiameter}
+            options={rimDiameterOpts}
+            onChange={(x: string) => onServerFilterChange?.({ jantCap: x })}
+          />
+        ) : null}
+        {showFilter("boltPattern") ? (
+          <AutoComplete
+            ariaLabel="Bijon Aralığı"
+            placeholder="Bijon Aralığı Seçiniz"
+            value={vBoltPattern}
+            options={boltPatternOpts}
+            onChange={(x: string) => onServerFilterChange?.({ bijon: x })}
+          />
+        ) : null}
+        {depotInFirstRow ? (
+          <AutoComplete
+            ariaLabel="Depo"
+            placeholder="Depo Seçiniz"
+            value={vDepot}
+            options={depotOpts}
+            onChange={setDepot}
+          />
+        ) : null}
       </div>
 
       <div className="filter-row2">
-        <AutoComplete
-          ariaLabel="OEM"
-          className="fs2-select-ac"
-          placeholder="OEM Seçiniz"
-          value={vOem}
-          options={oemOpts}
-          onChange={setOem}
-        />
-        <AutoComplete
-          ariaLabel="Depo"
-          className="fs2-select-ac"
-          placeholder="Depo Seçiniz"
-          value={vDepot}
-          options={depotOpts}
-          onChange={setDepot}
-        />
+        {showFilter("oem") ? (
+          <AutoComplete
+            ariaLabel="OEM"
+            className="fs2-select-ac"
+            placeholder="OEM Seçiniz"
+            value={vOem}
+            options={oemOpts}
+            onChange={setOem}
+          />
+        ) : null}
+        {showFilter("depot") && !depotInFirstRow ? (
+          <AutoComplete
+            ariaLabel="Depo"
+            className="fs2-select-ac"
+            placeholder="Depo Seçiniz"
+            value={vDepot}
+            options={depotOpts}
+            onChange={setDepot}
+          />
+        ) : null}
 
-        <div className="feature-boxes">
-          {CIPLER.map((c) => (
-            <label key={c.anahtar} className="feature-box">
-              <input
-                type="checkbox"
-                checked={cipDeger(c.anahtar)}
-                onChange={() => cipDegistir(c.anahtar)}
-              />
-              {c.label}
-            </label>
-          ))}
-        </div>
+        {showFilter("features") ? (
+          <div className="feature-boxes">
+            {CIPLER.map((c) => (
+              <label key={c.anahtar} className="feature-box">
+                <input
+                  type="checkbox"
+                  checked={cipDeger(c.anahtar)}
+                  onChange={() => cipDegistir(c.anahtar)}
+                />
+                {c.label}
+              </label>
+            ))}
+            {showcaseOption ? (
+              <label className="feature-box">
+                <input
+                  type="checkbox"
+                  checked={vShowcase}
+                  onChange={() => onServerFilterChange?.({ showcase: !vShowcase })}
+                />
+                {showcaseOption.title}
+              </label>
+            ) : null}
+          </div>
+        ) : null}
 
         <button type="submit" form="lastik-query" className="search-button">
           Ara
@@ -470,9 +587,9 @@ export function Catalog(
               <th className="gorsel-col">Görsel</th>
               <th className="sortable" onClick={() => onSortClick("stokKodu")}>Stok Kodu{sortArrow("stokKodu")}</th>
               <th className="sortable" onClick={() => onSortClick("ebat")}>Ebat / Model{sortArrow("ebat")}</th>
-              <th className="sortable text-center" onClick={() => onSortClick("marka")}>Marka{sortArrow("marka")}</th>
-              <th className="sortable" onClick={() => onSortClick("mevsim")}>Mevsim{sortArrow("mevsim")}</th>
-              <th className="sortable" onClick={() => onSortClick("dot")}>DOT{sortArrow("dot")}</th>
+              {showColumn("brand") ? <th className="sortable text-center" onClick={() => onSortClick("marka")}>Marka{sortArrow("marka")}</th> : null}
+              {showColumn("season") ? <th className="sortable" onClick={() => onSortClick("mevsim")}>Mevsim{sortArrow("mevsim")}</th> : null}
+              {showColumn("dot") ? <th className="sortable" onClick={() => onSortClick("dot")}>DOT{sortArrow("dot")}</th> : null}
               <th className="sortable" onClick={() => onSortClick("stok")}>Stok{sortArrow("stok")}</th>
               <th className="sortable" onClick={() => onSortClick("sevkiyat")}>Sevkiyat{sortArrow("sevkiyat")}</th>
               <th className="num sortable" onClick={() => onSortClick("fiyat")}>Fiyat{sortArrow("fiyat")}</th>
@@ -486,23 +603,46 @@ export function Catalog(
               );
               const available = totalStock(urun.stocks);
               const fiyat = urun.fiyat;
+              // Panelde tanımlı finansal iskonto (taban ödeme yöntemi için); XML üründe yok
+              const panelPct = urun.xml ? null : financialDiscountPct(financial.discounts, urun.stockCode, BASE_PAYMENT_METHOD);
+              // Bayi gözü: ödeme yöntemi başına iskonto oranı (yalnız oranı tanımlı yöntemler, sunucudaki sırayla)
+              const methodPrices = urun.xml ? [] : (financial.methods || [])
+                .map((m) => ({ id: m.id, title: m.title, termDays: m.termDays, pct: financialDiscountPct(financial.discounts, urun.stockCode, m.id) }))
+                .filter((m): m is { id: string; title: string; termDays: number | undefined; pct: number } => typeof m.pct === "number" && m.pct > 0);
+              // Fiyata dahil kargo payı (iskontosuz; gösterim birimi fiyatla aynı: KDV hariç gösterilen üründe net pay)
+              const shipKargo = productShippingKurus(financial.shipping, urun.stockCode);
+              const shipIncludedKurus = shipKargo.excluded ? 0 : (urun.fiyat?.kdvHaric ? Math.round(shipKargo.kurus / 1.2) : shipKargo.kurus);
+              // Fiyat kutucuğu yalnız bayi gözünde ve iskonto oranı olan üründe açılır (plasiyer gözünde açılmaz)
+              const showPricePop = !plasiyer && methodPrices.length > 0;
+              // Perakende plasiyer: perakende (LJA, KDV dahil) fiyatı görür
+              const retailView = plasiyer === true && plasiyerGroup === RETAIL_SALES_GROUP;
+              const retailKurus = retailView ? (urun.perakendeKurus ?? null) : null;
               return (
                 <tr key={urun.id}>
                   <td className="gorsel-col">
-                    {urun.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        className="product-image tiklanir"
-                        src={urun.imageUrl}
-                        alt={urun.pattern}
-                        loading="lazy"
-                        onClick={() => setBuyukGorsel({ images: urun.productStatus === "ikinciEl" && urun.images && urun.images.length ? urun.images : [urun.imageUrl!], index: 0 })}
-                      />
-                    ) : (
-                      <span className="product-image bos" aria-hidden="true" />
-                    )}
+                    <div className="gorsel-kutu">
+                      {urun.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          className="product-image tiklanir"
+                          src={urun.imageUrl}
+                          alt={urun.pattern}
+                          loading="lazy"
+                          onClick={() => setBuyukGorsel({ images: urun.productStatus === "ikinciEl" && urun.images && urun.images.length ? urun.images : [urun.imageUrl!], index: 0 })}
+                        />
+                      ) : (
+                        <span className="product-image bos" aria-hidden="true" />
+                      )}
+                      {/* Ürün özellik rozetleri (RFT / C Tipi / EV) — logolar public/badges/ altında.
+                          Dosya yoksa onError ile gizlenir (kırık görsel çıkmaz). */}
+                      <div className="urun-rozetler">
+                        {urun.rft ? <img className="urun-rozet" src="/badges/rft.svg" alt="RFT" title="RFT" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                        {urun.cTipi ? <img className="urun-rozet" src="/badges/ctipi.svg" alt="C Tipi" title="C Tipi" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                        {urun.ev ? <img className="urun-rozet" src="/badges/ev.svg" alt="EV" title="EV" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                      </div>
+                    </div>
                   </td>
-                  <td className="sku">{urun.stockCode}</td>
+                  <td className="sku sku-strong">{urun.stockCode}</td>
                   <td>
                     <div className="ad-etiket-wrap">
                       <div className="product-name">
@@ -519,24 +659,28 @@ export function Catalog(
                       {urun.label ? <AbLabel label={urun.label} /> : null}
                     </div>
                   </td>
-                  <td>
-                    {urun.brandLogoUrl ? (
+                  {showColumn("brand") ? (
+                    <td>
+                      {urun.brandLogoUrl ? (
+                        <span className="hover-tip">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img className="brand-logo" src={urun.brandLogoUrl} alt={urun.marka} loading="lazy" />
+                          <span className="hover-tip-text">{urun.marka}</span>
+                        </span>
+                      ) : (
+                        <strong>{urun.marka}</strong>
+                      )}
+                    </td>
+                  ) : null}
+                  {showColumn("season") ? (
+                    <td>
                       <span className="hover-tip">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img className="brand-logo" src={urun.brandLogoUrl} alt={urun.marka} loading="lazy" />
-                        <span className="hover-tip-text">{urun.marka}</span>
+                        <SeasonIcon mevsim={urun.mevsim} />
+                        <span className="hover-tip-text">{SEASON_LABEL[urun.mevsim] || urun.mevsim}</span>
                       </span>
-                    ) : (
-                      <strong>{urun.marka}</strong>
-                    )}
-                  </td>
-                  <td>
-                    <span className="hover-tip">
-                      <SeasonIcon mevsim={urun.mevsim} />
-                      <span className="hover-tip-text">{SEASON_LABEL[urun.mevsim] || urun.mevsim}</span>
-                    </span>
-                  </td>
-                  <td>{urun.dotYear ?? "—"}</td>
+                    </td>
+                  ) : null}
+                  {showColumn("dot") ? <td className="sku sku-strong">{urun.dotYear ?? "—"}</td> : null}
                   <td>
                     <span className="stock-cell">
                       <span
@@ -566,10 +710,27 @@ export function Catalog(
                     >
                       {urun.sevkiyat || "1-2 Gün"}
                     </span>
+                    {/* XML ürününün tedarikçisi — yalnız plasiyer oturumunda dolu gelir */}
+                    {urun.xmlSource ? <span className="xml-source">{urun.xmlSource}</span> : null}
                   </td>
                   <td className="num">
-                    {fiyat ? (
-                      <div className="fiyat-hucre">
+                    {retailView ? (
+                      retailKurus ? (
+                        <div className="fiyat-hucre">
+                          {fiyat && fiyat.listeBirimKurus > retailKurus ? (
+                            <span className="price-liste">{formatKurus(fiyat.listeBirimKurus)}</span>
+                          ) : null}
+                          <div className="price-net">{formatKurus(retailKurus)}</div>
+                          {/* Fiyat notu: sıfır ürünlerde ve ikinci el lastiklerde (2. el jantta gösterilmez) */}
+                          {retailPriceNote && (urun.productStatus === NEW_PRODUCT_STATUS || isTireProductType(urun.productType)) ? (
+                            <span className="price-note">{retailPriceNote}</span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="note">Perakende fiyatı tanımsız</span>
+                      )
+                    ) : fiyat ? (
+                      <div className={`fiyat-hucre${showPricePop ? " has-pop" : ""}`}>
                         {fiyat.listeBirimKurus > fiyat.kdvDahilBirimKurus ? (
                           <span className="price-liste">
                             {formatKurus(fiyat.listeBirimKurus)}
@@ -578,9 +739,29 @@ export function Catalog(
                         <div
                           className={`price-net${fiyat.priceSource === "ozel_fiyat" ? " kampanya" : ""}`}
                         >
-                          {fiyat.kdvHaric ? formatKurus(fiyat.birimNetKurus) : formatKurus(fiyat.kdvDahilBirimKurus)}
+                          {formatKurus(Math.round((fiyat.kdvHaric ? fiyat.birimNetKurus : fiyat.kdvDahilBirimKurus) * (1 - (panelPct ?? 0) / 100)) + shipIncludedKurus)}
                           {fiyat.kdvHaric ? <span className="kdv-not"> + KDV</span> : null}
                         </div>
+                        {/* Fiyat altı etiketi yalnız Premium caride: listede gösterilen (Cari Sipariş) fiyatın iskonto oranı */}
+                        {panelPct && financial.tier === PREMIUM_TIER ? <FinancialDiscountTag pct={panelPct} premium personal /> : null}
+                        {showPricePop ? (
+                          // Bayi gözü: ödeme yöntemine göre iskonto oranı ve satış fiyatı
+                          <div className="fiyat-pop fiyat-pop-methods" role="tooltip">
+                            {methodPrices.map((m) => (
+                              <div className="fp-row" key={m.id}>
+                                <span>
+                                  {m.title}
+                                  {m.termDays ? <span className="fp-term"> · {m.termDays} Gün Vade</span> : null}
+                                </span>
+                                <span className="fp-pct">%{m.pct.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}</span>
+                                <b>
+                                  {formatKurus(Math.round((fiyat.kdvHaric ? fiyat.birimNetKurus : fiyat.kdvDahilBirimKurus) * (1 - m.pct / 100)) + shipIncludedKurus)}
+                                  {fiyat.kdvHaric ? " + KDV" : ""}
+                                </b>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <span className="note">Fiyat tanımsız</span>
@@ -599,6 +780,7 @@ export function Catalog(
                           size: urun.size,
                           pattern: urun.fullName ?? urun.pattern,
                           stockCode: urun.stockCode,
+                          diaStockCode: urun.diaStockCode,
                           imageUrl: urun.imageUrl,
                           dotYear: urun.dotYear,
                           mevsim: urun.mevsim,
@@ -616,7 +798,7 @@ export function Catalog(
             })}
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={10} className="note" style={{ padding: "2rem" }}>
+                <td colSpan={columnCount} className="note" style={{ padding: "2rem" }}>
                   Filtrelere uyan ürün bulunamadı.
                 </td>
               </tr>

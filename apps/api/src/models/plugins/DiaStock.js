@@ -120,6 +120,7 @@ const DiaStockSchema = new mongoose.Schema({
   fiyat3: Number,
   fiyat4: Number,
   fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
+  fiyatDinamik: Number, // DIA __dinamik__16 (B2C dinamik fiyat); 0 = kartta dinamik fiyat yok
   fiyat10: Number,
   sontuketicifiyati: Number,
 
@@ -240,6 +241,7 @@ const DiaStockSchema = new mongoose.Schema({
     fiyat3: Number,
     fiyat4: Number,
     fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
+    fiyatDinamik: Number, // DIA __dinamik__16 (B2C dinamik fiyat); 0 = kartta dinamik fiyat yok
     fiyat10: Number,
     kdvdurumu1: String,
     kdvdurumu2: String,
@@ -306,6 +308,9 @@ const DiaStockSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     },
+    // Kartın DIA yanıtında en son GÖRÜLDÜĞÜ an (değişmemiş olsa bile). lastSyncDate yalnız
+    // değişiklikte güncellenir; "DIA'dan kaybolan kart" kararı bu alana göre verilir.
+    lastSeenAt: { type: Date },
     syncStatus: {
       type: String,
       enum: ['pending', 'synced', 'error'],

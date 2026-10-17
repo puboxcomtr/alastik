@@ -1,6 +1,6 @@
 // Admin: Montaj Noktası (Bayi) Bilgi ve Fiyat Formu kayıtları — /api/admin/montage/dealer-forms
-// (kimlik doğrulama admin/Index.js'teki ortak kapıdan gelir). Form yalnızca bir sitede açıldığı için
-// panelde hangi site seçili olursa olsun aynı kayıtlar listelenir.
+// (kimlik doğrulama admin/Index.js'teki ortak kapıdan gelir). Kayıtlar paneldeki seçili siteye göre
+// ayrılır (lastikjantavm / alastik / b2b); formu açık olmayan sitede liste boş görünür.
 const express = require('express');
 const XLSX = require('xlsx');
 const router = express.Router();
@@ -11,8 +11,8 @@ const kacis = s => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const tarih = d => d ? new Date(d).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 const fiyatMetni = v => v === form.VERMIYORUM ? form.VERMIYORUM_ETIKET : (typeof v === 'number' ? v : '');
 
-function filtre(q) {
-    const f = { site: form.SITE };
+function filtre(site, q) {
+    const f = { site };
     if (q.cityId) f.cityId = String(q.cityId);
     const ara = String(q.search || '').trim();
     if (ara) {
@@ -26,11 +26,11 @@ function filtre(q) {
 router.get('/', async (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1); const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
-        const f = filtre(req.query);
+        const f = filtre(req.site, req.query);
         const [kayitlar, toplam, iller] = await Promise.all([
             WebDealerForm.find(f, { bayiAdi: 1, cityName: 1, districtName: 1, telefon1: 1, telefon2: 1, ilkGonderim: 1, sonGuncelleme: 1, gonderimSayisi: 1 }).sort({ sonGuncelleme: -1 }).skip((page - 1) * limit).limit(limit).lean(),
             WebDealerForm.countDocuments(f),
-            WebDealerForm.aggregate([{ $match: { site: form.SITE } }, { $group: { _id: { cityId: '$cityId', cityName: '$cityName' }, n: { $sum: 1 } } }, { $sort: { '_id.cityName': 1 } }])
+            WebDealerForm.aggregate([{ $match: { site: req.site } }, { $group: { _id: { cityId: '$cityId', cityName: '$cityName' }, n: { $sum: 1 } } }, { $sort: { '_id.cityName': 1 } }])
         ]);
         res.json({ success: true, data: kayitlar, toplam, page, limit, iller: iller.map(i => ({ cityId: i._id.cityId, cityName: i._id.cityName, adet: i.n })) });
     } catch (error) {
@@ -42,7 +42,7 @@ router.get('/', async (req, res) => {
 // Excel — GET /admin/montage/dealer-forms/export (her bayi bir satır, her alan bir sütun)
 router.get('/export', async (req, res) => {
     try {
-        const kayitlar = await WebDealerForm.find(filtre(req.query)).sort({ cityName: 1, districtName: 1, bayiAdi: 1 }).lean();
+        const kayitlar = await WebDealerForm.find(filtre(req.site, req.query)).sort({ cityName: 1, districtName: 1, bayiAdi: 1 }).lean();
         const basliklar = ['Bayi Adı', 'İl', 'İlçe', 'Açık Adres', 'Telefon 1', 'Telefon 2',
             ...form.SAAT_ALANLARI.map(a => a.etiket),
             ...form.FIYAT_SATIRLARI.map(r => `${r.kod} – ${r.ad} (${r.birim}, KDV dahil TL)`),
@@ -90,7 +90,7 @@ router.get('/dosya/:ad', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ success: false, message: 'Geçersiz kayıt' });
-        const kayit = await WebDealerForm.findOne({ _id: req.params.id, site: form.SITE }, { ip: 0, __v: 0 }).lean();
+        const kayit = await WebDealerForm.findOne({ _id: req.params.id, site: req.site }, { ip: 0, __v: 0 }).lean();
         if (!kayit) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı' });
         res.json({ success: true, data: kayit, tanim: form.tanim() });
     } catch (error) {
@@ -102,7 +102,7 @@ router.get('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ success: false, message: 'Geçersiz kayıt' });
-        const kayit = await WebDealerForm.findOneAndDelete({ _id: req.params.id, site: form.SITE }).lean();
+        const kayit = await WebDealerForm.findOneAndDelete({ _id: req.params.id, site: req.site }).lean();
         if (!kayit) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı' });
         // Kayıtla birlikte bayinin yüklediği dosyalar da silinir
         for (const d of Object.values(kayit.gorseller || {}).flat()) {

@@ -1,6 +1,7 @@
 'use client';
 
 import authService from './auth';
+import { getBaseUrl } from '@/src/config/api';
 
 interface CartItem {
   productId: string;
@@ -50,11 +51,7 @@ class CartService {
   private legacyKey: string = 'shopping_cart';
 
   constructor() {
-    if (typeof window === 'undefined') {
-      this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-    } else {
-      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-    }
+    this.baseUrl = getBaseUrl();
 
     // Client-side'da local cart'ı yükle
     if (typeof window !== 'undefined') {

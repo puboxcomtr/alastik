@@ -16,7 +16,7 @@ const tarih = (d) => {
     if (!d) return '-';
     try {
         return new Date(d).toLocaleString('tr-TR', {
-            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul'
         });
     } catch (_) { return '-'; }
 };
@@ -150,4 +150,93 @@ function makbuzPdf(order, company = {}) {
     });
 }
 
-module.exports = { makbuzPdf };
+/** Borç ödemesinin yöntem adı (tek çekim / taksit) */
+function tahsilatOdemeAdi(payment) {
+    const n = Number(payment?.installment) || 1;
+    return n > 1 ? `Kredi Kartı - ${n} Taksit` : 'Kredi Kartı - Tek Çekim';
+}
+
+/**
+ * Cari borç ödemesi (bayi "Ödeme Yap") makbuzu — sipariş makbuzuyla aynı görünüm.
+ * @param {object} payment B2bPayment (amountKurus, reference, paidAt, installment, cardInfo, authCode)
+ * @param {object} payer   { name, cariKodu }
+ * @returns {Promise<Buffer>}
+ */
+function tahsilatMakbuzPdf(payment, payer = {}, company = {}) {
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ size: 'A4', margin: 48, font: FONT_REGULAR });
+            doc.registerFont('regular', FONT_REGULAR);
+            doc.registerFont('bold', FONT_BOLD);
+
+            const chunks = [];
+            doc.on('data', (c) => chunks.push(c));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
+
+            const left = doc.page.margins.left;
+            const right = doc.page.width - doc.page.margins.right;
+            const width = right - left;
+            const DARK = '#1a1a1a';
+            const GRAY = '#6b7280';
+
+            // ── Başlık: satıcı + belge adı ──
+            doc.font('bold').fontSize(15).fillColor(DARK).text(company.name || 'LastikJantAVM', left, 48);
+            let y = doc.y + 2;
+            doc.font('regular').fontSize(8.5).fillColor(GRAY);
+            if (company.officialName) { doc.text(company.officialName, left, y, { width: width * 0.62 }); }
+            const satAdres = [company.district, company.city].filter(Boolean).join(' / ');
+            if (satAdres || company.address) doc.text([satAdres, company.address].filter(Boolean).join(' - '), { width: width * 0.62 });
+            if (company.phone) doc.text(`Tel: ${company.phone}${company.website ? '  ·  ' + company.website : ''}`, { width: width * 0.62 });
+
+            doc.font('bold').fontSize(15).fillColor(DARK).text('ÖDEME MAKBUZU', left, 50, { width, align: 'right' });
+            doc.font('regular').fontSize(9).fillColor(GRAY).text('Cari Hesap Ödemesi', left, doc.y, { width, align: 'right' });
+
+            y = 118;
+            doc.moveTo(left, y).lineTo(right, y).lineWidth(1.5).strokeColor(DARK).stroke();
+
+            // ── Meta ──
+            y += 14;
+            const row = (label, value, bold = true) => {
+                if (!value) return;
+                doc.font('regular').fontSize(9).fillColor(GRAY).text(label, left, y);
+                doc.font(bold ? 'bold' : 'regular').fontSize(9).fillColor(DARK).text(String(value), left + 120, y, { width: width - 120 });
+                y = doc.y + 4;
+            };
+            row('Makbuz No', payment.reference);
+            row('Tarih', tarih(payment.paidAt || payment.createdAt));
+            row('Cari', payer.name);
+            row('Cari Kodu', payer.cariKodu || payment.cariKodu);
+
+            // ── Tutar kutusu ──
+            y += 12;
+            doc.rect(left, y, width, 54).fillColor('#f4f6f8').fill();
+            doc.font('regular').fontSize(9.5).fillColor(GRAY).text('Ödenen Tutar', left + 14, y + 12);
+            doc.font('bold').fontSize(20).fillColor(DARK).text(TL((payment.amountKurus || 0) / 100), left, y + 14, { width: width - 14, align: 'right' });
+            doc.font('regular').fontSize(8.5).fillColor(GRAY).text('Cari hesap borcunuza karşılık tahsil edilmiştir.', left + 14, y + 32);
+            y += 70;
+
+            // ── Ödeme bilgileri ──
+            doc.rect(left, y, width, 2).fillColor('#e1e5e9').fill();
+            y += 12;
+            doc.font('bold').fontSize(10).fillColor(DARK).text('Ödeme Bilgileri', left, y);
+            y = doc.y + 6;
+            row('Ödeme Yöntemi', tahsilatOdemeAdi(payment));
+            row('Durum', payment.status === 'paid' ? 'Ödendi' : (payment.status || '-'));
+            if (payment.cardInfo?.lastFourDigits) row('Kart', `**** ${payment.cardInfo.lastFourDigits}${payment.cardInfo.bankName ? ' · ' + payment.cardInfo.bankName : ''}`);
+            row('Onay Kodu', payment.authCode);
+            row('İşlem No', payment.transactionId);
+
+            doc.font('regular').fontSize(7.5).fillColor(GRAY).text(
+                `Bu belge ${company.name || 'LastikJantAVM'} tarafından elektronik olarak oluşturulmuştur. Tahsilat cari hesabınıza ayrıca işlenir.`,
+                left, doc.page.height - 70, { width, align: 'center' }
+            );
+
+            doc.end();
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+module.exports = { makbuzPdf, tahsilatMakbuzPdf, tahsilatOdemeAdi };

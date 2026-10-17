@@ -563,6 +563,15 @@ export default function SettingsLastikJantAvm() {
                     </Grid>
                     <Grid size={{ xs: 6 }}>
                       <DiaKeySelect
+                        label="Kargo Bedeli Hizmet Kartı"
+                        value={settings.siparis.kargoHizmetKartKey}
+                        options={siparisOptions?.hizmetKartlari}
+                        loading={siparisOptionsLoading}
+                        onChange={key => updateSiparis('kargoHizmetKartKey', key)}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <DiaKeySelect
                         label="Sipariş Yetki Kodu"
                         value={settings.siparis.siparisSeviyeKodKey}
                         options={siparisOptions?.siparisYetkiKodlari}

@@ -278,7 +278,6 @@ export default function RedirectsPage() {
                 rowsPerPageOptions={[25, 50, 100, 200]}
                 onPageChange={(_, p) => setPage(p)}
                 onRowsPerPageChange={e => { setLimit(parseInt(e.target.value)); setPage(0) }}
-                labelRowsPerPage='Sayfa başına'
             />
 
             {/* Ekle / Düzenle */}

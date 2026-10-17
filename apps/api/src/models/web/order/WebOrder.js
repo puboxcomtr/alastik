@@ -23,7 +23,9 @@ const addressSnapshotSchema = new mongoose.Schema({
     buildingNo: String,
     floor: String,
     apartmentNo: String,
-    addressNote: String
+    addressNote: String,
+    // Adresin DIA cari kartındaki kaydı (scf_carikart_adresleri _key) — DIA siparişinde "Sevk Adresi" bunu okur
+    diaAddressKey: Number
 }, { _id: false });
 
 // Üye Snapshot Schema
@@ -44,7 +46,7 @@ const orderItemSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     unitPrice: { type: Number, required: true },          // Kargosuz birim fiyat (gerçek webPrice / final satış)
     listUnitPrice: { type: Number, default: 0 },           // Liste birim fiyat (fiyat1) — DIA'da iskonto tabanı
-    discountRates: { type: [Number], default: undefined }, // Zincirli iskonto oranları (Cari, ödeme, Gel Al) — DIA indirim1..N
+    discountRates: { type: [Number], default: undefined }, // Zincirli iskonto oranları (Cari, yıl + marka, ödeme yöntemi farkı) — DIA indirim1..N
     totalPrice: { type: Number, required: true },          // unitPrice × quantity (kargosuz)
     shippingPerUnit: { type: Number, default: 0 },         // 1 adetlik kargo (XML için, DIA'da 0)
     shippingTotal: { type: Number, default: 0 },           // Toplam kargo (shippingPerUnit × quantity)
@@ -79,6 +81,8 @@ const paymentSchema = new mongoose.Schema({
     // Gateway bilgileri
     gateway: String,
     installment: { type: Number, default: 1 },
+    // Cari Sipariş (b2b): carinin DIA ödeme planı _key'i — DIA siparişi / faturası bu planla yazılır (yoksa panel ayarı)
+    diaPaymentPlanKey: { type: Number, default: 0 },
     referenceCode: String,
     transactionId: String,
     authCode: String,
@@ -144,6 +148,14 @@ const diaIntegrationSchema = new mongoose.Schema({
     diaIncomingDispatchKey: String,
     diaPurchaseInvoiceKey: String,
     diaPurchaseDispatchKey: String,
+    // Şirketler arası zincir yarım kaldıysa otomatik tekrar deneme sayısı / zamanı (interCompanyRetry)
+    chainRetryCount: Number,
+    chainRetriedAt: Date,
+    // Başarısız/bekleyen DIA aktarımının otomatik tekrar denemesi (orderTransferRetry)
+    transferRetryCount: { type: Number, default: 0 },
+    transferRetriedAt: Date,
+    // Aktarım tekrar denemelerle de olmadıysa yöneticiye uyarı maili gönderildiği an (bir kez)
+    transferAlertSentAt: Date,
     // Eşzamanlı aktarım kilidi (yarış koruması)
     syncLockAt: Date,
     syncedAt: Date,
@@ -224,7 +236,7 @@ const webOrderSchema = new mongoose.Schema({
     // Sipariş Durumu
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned', 'payment_failed'],
+        enum: ['pending', 'awaiting_payment', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned', 'payment_failed'],
         default: 'pending'
     },
 
@@ -242,6 +254,10 @@ const webOrderSchema = new mongoose.Schema({
 
     // Notlar
     customerNote: String,
+    // Bayinin sepette yazdığı sipariş açıklaması (b2b) — DIA'da sitenin diaOrderNoteField satırına yazılır
+    orderNote: String,
+    // Siparişin verildiği sepetin oturum numarası: ödeme sonucu gelince o sepet silinir
+    cartSessionId: String,
     adminNote: String,
 
     // İptal/İade
@@ -269,6 +285,9 @@ webOrderSchema.index({ 'diaIntegration.status': 1 });
 webOrderSchema.index({ createdAt: -1 });
 
 // Sipariş numarası oluştur — önek site tanımından gelir (AL / LJA)
+// Sipariş numarası sayaçlarının koleksiyonu (gün öneki başına bir kayıt: { _id: 'B2B261015', seq })
+const ORDER_NUMBER_COUNTER_COLLECTION = 'webordercounters';
+
 webOrderSchema.statics.generateOrderNumber = async function (site) {
     const { SITES, DEFAULT_SITE } = require('../../../config/sites');
     const sitePrefix = SITES[site]?.orderPrefix || SITES[DEFAULT_SITE].orderPrefix;
@@ -282,12 +301,14 @@ webOrderSchema.statics.generateOrderNumber = async function (site) {
     const lastOrder = await this.findOne({
         orderNumber: { $regex: `^${prefix}` }
     }).sort({ orderNumber: -1 });
+    const lastSequence = lastOrder ? (parseInt(lastOrder.orderNumber.slice(-4)) || 0) : 0;
 
-    let sequence = 1;
-    if (lastOrder) {
-        const lastSequence = parseInt(lastOrder.orderNumber.slice(-4));
-        sequence = lastSequence + 1;
-    }
+    // Sıra numarası gün önekine bağlı atomik sayaçtan alınır: silinen siparişin numarası yeniden verilmez,
+    // aynı anda gelen iki sipariş aynı numarayı alamaz. Sayaç ilk kullanımda mevcut en büyük numaradan başlar.
+    const counters = mongoose.connection.collection(ORDER_NUMBER_COUNTER_COLLECTION);
+    await counters.updateOne({ _id: prefix }, { $max: { seq: lastSequence } }, { upsert: true });
+    const counter = await counters.findOneAndUpdate({ _id: prefix }, { $inc: { seq: 1 } }, { returnDocument: 'after' });
+    const sequence = (counter?.value || counter)?.seq || lastSequence + 1;
 
     return `${prefix}${String(sequence).padStart(4, '0')}`;
 };

@@ -2,28 +2,27 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeftIcon, SeasonIcon, TrashIcon } from "@components/b2b-theme/icons";
 import { useCart } from "@components/b2b-theme/cart-status";
 import { showToast } from "@components/b2b-theme/toast";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 import { AnimatedMoney } from "@components/b2b-theme/animated-money";
 import { DeliveryAddress } from "@components/b2b-theme/delivery-address";
-import { REMAINING_LIMIT_KURUS } from "@components/b2b-theme/lib/sample-data";
 import { API_ENDPOINTS } from "@src/config/api";
 import {
   B2bPricing,
+  CREDIT_CLOSED_LABELS,
   computeDiscountedTotals,
-  lineDiscountPct,
+  effectiveLineDiscountPct,
 } from "@components/b2b-theme/lib/payment-pricing";
+import { fetchCartFinancialDiscounts, productShippingKurus, PREMIUM_TIER, type FinancialDiscounts } from "@components/b2b-theme/lib/financial-discounts";
+import { AccountNotices } from "@components/b2b-theme/account-notices";
+import { launchPaynetForm, PAYNET_PROVIDER } from "@components/b2b-theme/lib/paynet-form";
 
-// Teslimat yöntemleri (sepette gösterim sırası). id = sipariş/işlem anahtarı.
-// "Şubeden Gel Al" (gelAl) DIA Gel-Al kampanyasının ek iskontosunu getirir.
-const DELIVERY_METHODS = [
-  { id: "standartSevkiyat", title: "Standart Sevkiyat" },
-  { id: "gelAl", title: "Şubeden Gel Al" },
-  { id: "kargo", title: "Kargo ile Sevkiyat" },
-];
+// Teslimat yöntemi: paneldeki Kargo Firmaları'ndan, seçili teslimat adresine göre sunucudan gelir
+// (ör. "Standart Sevkiyat" yalnız hizmet bölgesindeki adreslerde çıkar). id = kargo tanımının kodu.
+type DeliveryMethod = { id: string; title: string; free: boolean };
 
 // IBAN'ı 4'erli gruplara ayırarak okunur gösterir (TR31 0001 0011 ...).
 function formatIban(iban: string): string {
@@ -43,6 +42,9 @@ function formatExpiry(v: string) {
   return d.length >= 3 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
 }
 
+// Sipariş açıklaması en fazla bu kadar karakter (DIA sipariş açıklama satırının sınırı; API ile aynı)
+const ORDER_NOTE_MAX_LENGTH = 128;
+
 type BankAccount = {
   _id: string;
   name?: string;
@@ -55,10 +57,28 @@ export default function SepetPage() {
   const sepet = useCart();
   const router = useRouter();
   const [pricing, setPricing] = useState<B2bPricing | null>(null);
+  const [financial, setFinancial] = useState<FinancialDiscounts>({ tier: "", discounts: {} });
   const [paymentId, setPaymentId] = useState("");
-  const [deliveryId, setDeliveryId] = useState(DELIVERY_METHODS[0].id);
-  // Seçili teslimat adresinin ili — "Şubeden Gel Al" yalnız İstanbul'da açık.
-  const [teslimatIl, setTeslimatIl] = useState("");
+  const [deliveryMethods, setDeliveryMethods] = useState<DeliveryMethod[]>([]);
+  const [deliveryId, setDeliveryId] = useState("");
+  // Seçili teslimat adresi (teslimat yöntemleri bu adrese göre gelir)
+  const [deliveryAddressId, setDeliveryAddressId] = useState("");
+  // Bayinin siparişe eklediği açıklama
+  const [orderNote, setOrderNote] = useState("");
+  // Bayi teslimat yöntemini elle seçti mi (adres değişince otomatik seçim bunu ezmesin)
+  const deliveryPicked = useRef(false);
+  // Plasiyer oturumu açık ama bayi seçilmemiş (bayi adına oturum yok)
+  const [noDealer, setNoDealer] = useState(false);
+  useEffect(() => {
+    try {
+      setNoDealer(!localStorage.getItem("authToken") && !!localStorage.getItem("plasiyerToken"));
+    } catch { /* depolama kapalıysa bayi oturumu varsayılır */ }
+  }, []);
+  // Bayi seçim penceresini açar: "plasiyer olarak devam" işareti kaldırılınca oturum kapısı pencereyi gösterir
+  const selectDealer = () => {
+    try { sessionStorage.removeItem("plasiyerDevam"); } catch { /* yoksay */ }
+    window.location.reload();
+  };
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [submitting, setSubmitting] = useState(false);
   // Kredi kartı formu (Kredi Kartı — Tek Çekim seçilince görünür)
@@ -71,10 +91,12 @@ export default function SepetPage() {
   // Kredi Kartı — Taksit (NetTahsilat PirPos; 3D submit backend fazında bağlanır).
   // Taksit seçenekleri kart BIN'inden çekilir. "loading" = sorgulanıyor.
   const [taksitOps, setTaksitOps] = useState<
-    { instalment: number; desc: string; instalmentAmount: number; totalAmount: number; vPosId: number }[]
+    { instalment: number; desc: string; instalmentAmount: number; totalAmount: number; vPosId?: number }[]
     | null
     | "loading"
   >(null);
+  // Taksit sağlayıcısı (sunucu kartın bankasına göre bildirir): "netahsilat" | "paynet"
+  const [taksitProvider, setTaksitProvider] = useState("");
   const [secilenTaksit, setSecilenTaksit] = useState(0); // 0 = henüz seçilmedi
 
   // Ödeme sonucu (3D dönüşünde ?odeme=basarili|basarisiz ile gelinir)
@@ -94,9 +116,10 @@ export default function SepetPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kredi Kartı — Tek Çekim seçilince Paynet yapılandırmasını çek (secret dönmez)
+  // Kredi kartı (tek çekim ya da taksitli) seçilince Paynet yapılandırmasını çek (secret dönmez);
+  // taksitte kartın bankasına göre Paynet kullanılabilir
   useEffect(() => {
-    if (paymentId !== "kkTek") return;
+    if (paymentId !== "kkTek" && paymentId !== "kkTaksit") return;
     if (paynetCfg) return; // zaten yüklü
     const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
     if (!token) return;
@@ -116,76 +139,49 @@ export default function SepetPage() {
     order: { orderId: string; orderNumber: string; total: number; paymentToken: string },
     cfg: { publishableKey: string; jsUrl: string }
   ) {
-    document.getElementById("paynet-host")?.remove();
-    const host = document.createElement("div");
-    host.id = "paynet-host";
-    host.style.display = "none";
-    document.body.appendChild(host);
-
-    const form = document.createElement("form");
-    form.id = "paynet-form";
-    form.method = "post";
-    form.action = API_ENDPOINTS.b2b.paynetReturn();
-
-    const hidden = (name: string, value: string) => {
-      const i = document.createElement("input");
-      i.type = "hidden";
-      i.name = name;
-      i.value = value;
-      form.appendChild(i);
-    };
-    hidden("orderId", order.orderId);
-    hidden("pt", order.paymentToken);
-    hidden("returnOrigin", window.location.origin);
-
-    // Kart alanları — Paynet SDK data-paynet ile DOM'dan okur
     const [mm, yy] = card.expiry.split("/");
-    const paynetInput = (attr: string, value: string) => {
-      const i = document.createElement("input");
-      i.setAttribute("data-paynet", attr);
-      i.type = "hidden";
-      i.value = value;
-      form.appendChild(i);
-    };
-    paynetInput("holderName", card.name.trim());
-    paynetInput("number", card.number.replace(/\D/g, ""));
-    paynetInput("exp-month", String(parseInt(mm || "0", 10)));
-    paynetInput("exp-year", `20${(yy || "").padStart(2, "0")}`);
-    paynetInput("cvv", card.cvv.replace(/\D/g, ""));
+    // Tek çekim: ortak yardımcı (hata olayları ve zaman aşımı orada ele alınır, hata siparişe yazılır)
+    launchPaynetForm({
+      action: API_ENDPOINTS.b2b.paynetReturn(),
+      fields: { orderId: order.orderId, pt: order.paymentToken, returnOrigin: window.location.origin },
+      card: {
+        holder: card.name.trim(),
+        number: card.number.replace(/\D/g, ""),
+        expMonth: String(parseInt(mm || "0", 10)),
+        expYear: `20${(yy || "").padStart(2, "0")}`,
+        cvv: card.cvv.replace(/\D/g, ""),
+      },
+      config: cfg,
+      amountTL: Number(order.total),
+      reference: order.orderNumber,
+      errorTarget: { kind: "order", id: order.orderId, pt: order.paymentToken },
+      onError: (message) => { showToast(message, "hata"); setSubmitting(false); },
+    });
+  }
 
-    const submitBtn = document.createElement("button");
-    submitBtn.type = "submit";
-    submitBtn.setAttribute("data-paynet", "submit");
-    submitBtn.textContent = "Öde";
-    form.appendChild(submitBtn);
-    host.appendChild(form);
-
-    const s = document.createElement("script");
-    s.type = "text/javascript";
-    s.className = "paynet-button";
-    s.src = cfg.jsUrl;
-    s.setAttribute("data-form", "#paynet-form");
-    s.setAttribute("data-key", cfg.publishableKey);
-    // paynet-custom.js data-amount = TR formatlı TL (virgül ondalık): SDK
-    // parseFormattedFloat ile noktayı binlik ayracı sayıp SİLER, virgülü ondalık
-    // alır. Bu yüzden "237,50" göndeririz (nokta ile "237.50" → 23750'e bozulur).
-    s.setAttribute("data-amount", Number(order.total).toFixed(2).replace(".", ",")); // TL, ör. "237,50"
-    s.setAttribute("data-reference_no", order.orderNumber);
-    s.setAttribute("data-tds_required", "true");
-    // Tek Çekim: token da no_instalment=true ile oluşsun ki sunucudaki charge
-    // (no_instalment:true) ile birebir eşleşsin (yoksa "no_instalment uyuşmuyor").
-    s.setAttribute("data-no_instalment", "true");
-    // charge transaction_type:'1' (Satış) gönderiyor; token da aynı olsun.
-    s.setAttribute("data-transaction_type", "1");
-    s.onload = () => {
-      // SDK forma bağlandıktan sonra tokenizasyonu tetikle
-      window.setTimeout(() => submitBtn.click(), 400);
-    };
-    s.onerror = () => {
-      showToast("Ödeme altyapısı yüklenemedi, tekrar deneyin.", "hata");
-      setSubmitting(false);
-    };
-    host.appendChild(s);
+  // Taksitli ödeme (Paynet): kart tarayıcıda Paynet formuyla işlenir; seçilen taksit sayısı formla gönderilir.
+  function startPaynetInstallment(
+    order: { orderId: string; orderNumber: string; total: number; paymentToken: string },
+    cfg: { publishableKey: string; jsUrl: string }
+  ) {
+    const [mm, yy] = card.expiry.split("/");
+    launchPaynetForm({
+      action: API_ENDPOINTS.b2b.paynetReturn(),
+      fields: { orderId: order.orderId, pt: order.paymentToken, returnOrigin: window.location.origin },
+      card: {
+        holder: card.name.trim(),
+        number: card.number.replace(/\D/g, ""),
+        expMonth: String(parseInt(mm || "0", 10)),
+        expYear: `20${(yy || "").padStart(2, "0")}`,
+        cvv: card.cvv.replace(/\D/g, ""),
+      },
+      config: cfg,
+      amountTL: Number(order.total),
+      reference: order.orderNumber,
+      installment: secilenTaksit,
+      errorTarget: { kind: "order", id: order.orderId, pt: order.paymentToken },
+      onError: (message) => { showToast(message, "hata"); setSubmitting(false); },
+    });
   }
 
   // Siparişi oluştur → sunucuda WebOrder (kredi kartında DIA ödeme sonrası)
@@ -249,13 +245,14 @@ export default function SepetPage() {
         return;
       }
     }
-    if (kartOdeme && !paynetCfg) {
+    if ((kartOdeme || (taksitOdeme && taksitProvider === PAYNET_PROVIDER)) && !paynetCfg) {
       showToast("Kredi kartı ödemesi şu anda kullanılamıyor.", "hata");
       return;
     }
     setSubmitting(true);
     try {
-      const items = sepet.lines.map(s => ({ stockCode: s.urun.stockCode, quantity: s.adet }));
+      // Siparişe DIA'daki gerçek kod gider (XML üründe "-XML" ekli); eski sepet kayıtlarında xml işaretiyle sunucu çözer
+      const items = sepet.lines.map(s => ({ stockCode: s.urun.diaStockCode || s.urun.stockCode, xml: !!s.urun.xml, quantity: s.adet }));
       const res = await fetch(API_ENDPOINTS.b2b.siparis(), {
         method: "POST",
         headers: {
@@ -263,7 +260,7 @@ export default function SepetPage() {
           Authorization: `Bearer ${token}`,
           "X-Site": "b2b"
         },
-        body: JSON.stringify({ items, paymentMethod: paymentId, deliveryMethod: deliveryId })
+        body: JSON.stringify({ items, paymentMethod: paymentId, deliveryMethod: deliveryId, deliveryAddressId, orderNote: orderNote.trim() })
       }).then(r => r.json());
       if (!res?.success || !res.data) {
         showToast(res?.message || "Sipariş oluşturulamadı.", "hata");
@@ -279,7 +276,9 @@ export default function SepetPage() {
         } catch {
           /* sessionStorage kapalı olabilir — sonuç sayfası fail-open davranır */
         }
-        if (taksitOdeme) {
+        if (taksitOdeme && taksitProvider === PAYNET_PROVIDER) {
+          startPaynetInstallment(res.data, paynetCfg as { publishableKey: string; jsUrl: string }); // Paynet (taksitli)
+        } else if (taksitOdeme) {
           await taksitOde(res.data); // NetTahsilat PirPos (taksitli)
         } else {
           startPaynet(res.data, paynetCfg as { publishableKey: string; jsUrl: string }); // Paynet (tek çekim)
@@ -317,20 +316,67 @@ export default function SepetPage() {
       .then((res) => {
         if (res?.success && res.data) {
           setPricing(res.data);
-          setPaymentId((prev) => prev || res.data.methods?.[0]?.id || "");
+          // İlk seçim: kapalı olmayan ilk ödeme yöntemi (cari limiti aşıldıysa Cari Sipariş kapalıdır)
+          const firstOpen = (res.data.methods || []).find((m: { disabled?: boolean }) => !m.disabled);
+          setPaymentId((prev) => prev || firstOpen?.id || "");
         }
       })
       .catch(() => {});
   }, []);
 
-  const gelAlSecili = deliveryId === "gelAl";
-  // "Şubeden Gel Al" yalnız teslimat adresi İstanbul olduğunda kullanılabilir.
-  // İ/I/ı hepsi "i"ye indirgenip karşılaştırılır (İSTANBUL/İstanbul/istanbul tümü eşleşir).
-  const istanbulTeslimat =
-    teslimatIl.trim().replace(/[İIı]/g, "i").toLowerCase() === "istanbul";
-  const gelAlBonus = gelAlSecili ? pricing?.gelAlBonus ?? 0 : 0;
-  const totals = computeDiscountedTotals(sepet.lines, pricing, paymentId, gelAlSecili);
-  const limitExceeded = totals.totalKurus > REMAINING_LIMIT_KURUS;
+  // Teslimat yöntemleri: seçili teslimat adresine göre; seçim listede yoksa ilk yönteme düşer
+  useEffect(() => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!t) return;
+    let cancelled = false;
+    fetch(API_ENDPOINTS.b2b.teslimatYontemleri(deliveryAddressId), {
+      headers: { Authorization: `Bearer ${t}`, "X-Site": "b2b" },
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (cancelled || !res?.success || !Array.isArray(res.data)) return;
+        const methods: DeliveryMethod[] = res.data;
+        setDeliveryMethods(methods);
+        // Bayi kendi seçim yaptıysa ve seçimi bu adreste de geçerliyse korunur; aksi halde adresin ilk (öncelikli) yöntemi seçilir
+        setDeliveryId((prev) => (deliveryPicked.current && methods.some((m) => m.id === prev) ? prev : methods[0]?.id || ""));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryAddressId]);
+
+  // Finansal iskontolar (panel): sepetteki ürünler için cari tipine göre ödeme yöntemi → oran
+  const cartCodes = sepet.lines.map((l) => l.urun.stockCode).filter(Boolean).sort().join(",");
+  useEffect(() => {
+    let cancelled = false;
+    fetchCartFinancialDiscounts(cartCodes ? cartCodes.split(",") : []).then((result) => {
+      if (!cancelled) setFinancial(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cartCodes]);
+
+  const totals = computeDiscountedTotals(sepet.lines, pricing, paymentId, financial.discounts, financial.shipping);
+  // Ödeme yönteminin bu sepetteki iskonto oranı (%): yöntem seçilse oluşacak toplam indirim / iskontosuz toplam.
+  // Ürünlerin oranı farklıysa ağırlıklı ortalamadır (ör. %5 ve %10'luk iki ürün → arada bir değer).
+  const cartDiscountPct = (methodId: string): number => {
+    const t = computeDiscountedTotals(sepet.lines, pricing, methodId, financial.discounts, financial.shipping);
+    // Oran yalnız ürünler üzerinden: kargo payı iskontoya girmez
+    const original = t.totalKurus - t.kargoToplamKurus + t.indirimToplamKurus;
+    return original > 0 ? (t.indirimToplamKurus / original) * 100 : 0;
+  };
+
+  // Cari limiti: hangi ödeme yöntemi seçili olursa olsun sepet toplamı kalan limiti aşamaz
+  const creditLimit = pricing?.creditLimit;
+  const limitExceeded = Boolean(
+    creditLimit?.hasLimit && totals.totalKurus > creditLimit.remainingLimitKurus,
+  );
+  // Limit tanımsız, bitmiş ya da vadesi geçen borç: hiçbir ödeme yöntemiyle sipariş verilemez
+  const orderingClosed = creditLimit?.orderingClosed === true;
+  // Vadesi geçen borç: düğme açık kalır, basılınca ortada uyarı çıkar (sipariş gönderilmez)
+  const cartBlocked = sepet.blocked || creditLimit?.cartClosed === true;
 
   // Kredi Kartı — Tek Çekim seçiliyse kart formunun eksiksiz doldurulması gerekir
   const kartOdeme = paymentId === "kkTek";
@@ -354,13 +400,6 @@ export default function SepetPage() {
       router.replace("/");
     }
   }, [submitting, sepet.hydrated, sepet.lines.length, router]);
-
-  // Teslimat adresi İstanbul değilken Gel Al seçili kalmışsa standart sevkiyata düş.
-  useEffect(() => {
-    if (deliveryId === "gelAl" && !istanbulTeslimat) {
-      setDeliveryId(DELIVERY_METHODS[0].id);
-    }
-  }, [istanbulTeslimat, deliveryId]);
 
   // Taksit: kart BIN'i (ilk 6) girilince sepet tutarına göre taksit oranlarını çek.
   useEffect(() => {
@@ -387,6 +426,7 @@ export default function SepetPage() {
       .then((r) => r.json())
       .then((res) => {
         const ops = res?.success && Array.isArray(res.data?.options) ? res.data.options : [];
+        setTaksitProvider(String(res?.data?.provider || ""));
         setTaksitOps(ops);
         // İlk (en düşük) taksit seçeneği otomatik seçili gelsin.
         setSecilenTaksit(ops[0]?.instalment || 0);
@@ -411,15 +451,21 @@ export default function SepetPage() {
         </Link>
       </div>
 
+      <AccountNotices />
 
-      {sepet.lines.length === 0 ? null : (
+      {/* Plasiyer bayi seçmeden sepete geldiyse: adres, ödeme ve fiyatlar bayiye bağlı olduğundan önce bayi seçtirilir */}
+      {noDealer ? (
+        <div className="alert warn account-notice" role="alert">
+          <span>Sipariş verebilmek için önce bir bayi seçmelisiniz. Sepetinizdeki ürünler korunur.</span>
+          <button type="button" className="account-notice-link" onClick={selectDealer}>Bayi Seç</button>
+        </div>
+      ) : null}
+
+      {sepet.lines.length === 0 || noDealer ? null : (
         <div className="cart-layout">
           {/* SOL: teslimat adresi + ödeme yöntemi */}
           <div className="cart-left">
-            {/* Şubeden Gel Al'da teslimat adresi sorulmaz (üründen şubede teslim) */}
-            {!gelAlSecili ? (
-              <DeliveryAddress onSelectedChange={(a) => setTeslimatIl(a?.il || "")} />
-            ) : null}
+            <DeliveryAddress onSelectedChange={(a) => setDeliveryAddressId(a?.id || "")} />
 
             <div className="cart-card payment-method-card">
               <h2 className="cart-card-title">Ödeme Yöntemi</h2>
@@ -427,21 +473,30 @@ export default function SepetPage() {
                 <div className="payment-grid">
                   {pricing.methods.map((m) => {
                     const secili = m.id === paymentId;
+                    // Yöntemin bu sepetteki gerçek iskonto oranı (finansal iskontolar dahil, satırların toplamından)
+                    const methodPct = cartDiscountPct(m.id);
                     return (
                       <label
                         key={m.id}
-                        className={`payment-option${secili ? " secili" : ""}`}
+                        className={`payment-option${secili ? " secili" : ""}${m.disabled ? " kapali" : ""}`}
                       >
                         <input
                           type="radio"
                           name="paymentMethod"
                           checked={secili}
+                          disabled={m.disabled}
                           onChange={() => setPaymentId(m.id)}
                         />
                         <span className="po-radio" aria-hidden="true" />
-                        <span className="po-title">{m.title}</span>
-                        {m.discountPct > 0 ? (
-                          <span className="po-discount">%{m.discountPct} İskonto</span>
+                        <span className="po-title">
+                          {/* Premium caride vadeli yöntem "Premium Cari Sipariş" olarak adlandırılır */}
+                          {financial.tier === PREMIUM_TIER && m.id === creditLimit?.methodId ? `Premium ${m.title}` : m.title}
+                          {typeof m.termDays === "number" && m.termDays > 0 ? <span className="po-term">{m.termDays} Gün Vade</span> : null}
+                        </span>
+                        {m.disabled ? (
+                          <span className="po-closed">{CREDIT_CLOSED_LABELS[creditLimit?.reason || ""] || "Kapalı"}</span>
+                        ) : methodPct > 0 ? (
+                          <span className="po-discount">%{methodPct.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} İskonto</span>
                         ) : null}
                       </label>
                     );
@@ -452,6 +507,21 @@ export default function SepetPage() {
                   {pricing ? "Bu cari için tanımlı ödeme yöntemi bulunamadı." : "Ödeme yöntemleri yükleniyor…"}
                 </p>
               )}
+            </div>
+
+            {/* Sipariş açıklaması — bayinin siparişe eklediği not */}
+            <div className="cart-card order-note-card">
+              <h2 className="cart-card-title">Sipariş Açıklaması</h2>
+              <textarea
+                id="orderNote"
+                className="order-note-input"
+                rows={2}
+                maxLength={ORDER_NOTE_MAX_LENGTH}
+                placeholder="Siparişinizle ilgili iletmek istediğiniz bir not varsa buraya yazabilirsiniz."
+                value={orderNote}
+                onChange={(e) => setOrderNote(e.target.value)}
+              />
+              <div className="order-note-count">{orderNote.length}/{ORDER_NOTE_MAX_LENGTH}</div>
             </div>
 
             {paymentId === "havale" ? (
@@ -690,9 +760,10 @@ export default function SepetPage() {
             <div className="cart-card">
               <h2 className="cart-card-title">Sepetiniz</h2>
               {sepet.lines.map((s) => {
-                const payPct = s.urun.xml ? 0 : lineDiscountPct(pricing, s.urun.marka, paymentId);
-                const gaPct = s.urun.xml ? 0 : gelAlBonus;
-                const satirKurus = Math.round(s.kdvDahilBirimKurus * s.adet * (1 - payPct / 100) * (1 - gaPct / 100));
+                const payPct = effectiveLineDiscountPct(pricing, s.urun, paymentId, financial.discounts);
+                // Fiyata dahil kargo payı satır tutarına eklenir (iskontosuz); ayrı kargo özette gösterilir
+                const kargo = productShippingKurus(financial.shipping, s.urun.stockCode);
+                const satirKurus = Math.round(s.kdvDahilBirimKurus * s.adet * (1 - payPct / 100)) + (kargo.excluded ? 0 : kargo.kurus * s.adet);
                 return (
                   <div className="cart-line" key={`${s.productId}:${s.warehouseId}`}>
                     {s.urun.imageUrl ? (
@@ -752,8 +823,7 @@ export default function SepetPage() {
                           type="button"
                           aria-label="Artır"
                           onClick={() => {
-                            sepet.setQty(s.productId, s.warehouseId, s.adet + 1);
-                            showToast("Adet güncellendi", "ok");
+                            if (sepet.setQty(s.productId, s.warehouseId, s.adet + 1)) showToast("Adet güncellendi", "ok");
                           }}
                         >
                           +
@@ -773,24 +843,14 @@ export default function SepetPage() {
                     id="teslimatSelect"
                     className="teslimat-select"
                     value={deliveryId}
-                    onChange={(e) => setDeliveryId(e.target.value)}
+                    onChange={(e) => {
+                      deliveryPicked.current = true;
+                      setDeliveryId(e.target.value);
+                    }}
                   >
-                    {DELIVERY_METHODS.map((d) => {
-                      // Gel Al yalnız İstanbul teslimat adresinde açık.
-                      const gelAlKapali = d.id === "gelAl" && !istanbulTeslimat;
-                      return (
-                        <option key={d.id} value={d.id} disabled={gelAlKapali}>
-                          {d.title}
-                          {d.id === "gelAl"
-                            ? gelAlKapali
-                              ? " (yalnız İstanbul)"
-                              : (pricing?.gelAlBonus ?? 0) > 0
-                                ? ` (+%${pricing?.gelAlBonus} iskonto)`
-                                : ""
-                            : ""}
-                        </option>
-                      );
-                    })}
+                    {deliveryMethods.map((d) => (
+                      <option key={d.id} value={d.id}>{d.title}{d.free ? " (Ücretsiz)" : ""}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="summary-row">
@@ -807,27 +867,41 @@ export default function SepetPage() {
                     <span>− <AnimatedMoney kurus={totals.indirimToplamKurus} /></span>
                   </div>
                 ) : null}
+                {totals.ayriKargoKurus > 0 ? (
+                  <div className="summary-row">
+                    <span>Kargo Bedeli</span>
+                    <span><AnimatedMoney kurus={totals.ayriKargoKurus} /></span>
+                  </div>
+                ) : null}
                 <div className="summary-row grand">
                   <span>Toplam</span>
                   <span><AnimatedMoney kurus={totals.totalKurus} /></span>
                 </div>
 
-                {limitExceeded ? (
+                {orderingClosed ? (
+                  <div className="alert error summary-warning">{creditLimit?.orderingClosedMessage}</div>
+                ) : null}
+
+                {limitExceeded && !orderingClosed ? (
                   <div className="alert warn summary-warning">
-                    Sepet toplamı kalan kredi limitinizi (
-                    {formatKurus(Math.max(0, REMAINING_LIMIT_KURUS))}) aşıyor.
+                    Sepet toplamı kalan cari limitinizi (
+                    {formatKurus(Math.max(0, creditLimit?.remainingLimitKurus ?? 0))}) aşıyor. Sepet tutarını azaltın ya da ödeme yaparak limitinizi açın.
                   </div>
                 ) : null}
 
                 <button
                   className="primary summary-order"
-                  onClick={siparisVer}
+                  onClick={cartBlocked ? sepet.notifyBlocked : siparisVer}
                   disabled={
-                    submitting ||
-                    sepet.lines.length === 0 ||
-                    (kartOdeme && !kartGecerli) ||
-                    (kartOdeme && paynetCfg === false) ||
-                    (taksitOdeme && (!kartGecerli || !secilenTaksit))
+                    !cartBlocked && (
+                      submitting ||
+                      sepet.lines.length === 0 ||
+                      orderingClosed ||
+                      limitExceeded ||
+                      (kartOdeme && !kartGecerli) ||
+                      (kartOdeme && paynetCfg === false) ||
+                      (taksitOdeme && (!kartGecerli || !secilenTaksit))
+                    )
                   }
                 >
                   {submitting

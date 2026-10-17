@@ -284,7 +284,9 @@ SessionSchema.index({ type: 1 });
 SessionSchema.index({ expiresAt: 1 });
 SessionSchema.index({ 'activity.lastActivity': -1 });
 SessionSchema.index({ 'metadata.ipAddress': 1 });
-SessionSchema.index({ createdAt: -1 });
+// Oturum kayıtları 90 gün tutulur; daha eskiler MongoDB TTL ile kendiliğinden silinir
+const SESSION_RETENTION_SECONDS = 90 * 24 * 60 * 60;
+SessionSchema.index({ createdAt: -1 }, { expireAfterSeconds: SESSION_RETENTION_SECONDS });
 
 // Virtual fields
 SessionSchema.virtual('isExpired').get(function() {
@@ -347,17 +349,21 @@ SessionSchema.methods.generateSessionId = function() {
   return this.sessionId;
 };
 
+// Oturumda saklanan son eylem sayısı (belge sınırsız büyümesin)
+const MAX_ACTIVITY_ACTIONS = 50;
+
 SessionSchema.methods.updateActivity = function(actionType, details = {}) {
-  this.activity.actions.push({
-    type: actionType,
-    details: details,
-    timestamp: new Date()
+  const now = new Date();
+  const isPageView = actionType === 'page_view';
+  // Bellekteki belge de güncel kalsın (aynı istekte okunursa)
+  this.activity.lastActivity = now;
+  if (isPageView) this.activity.pageViews += 1;
+  // Atomik güncelleme: aynı oturuma eşzamanlı istekler sürüm çakışması (VersionError) yaratmaz
+  return this.constructor.updateOne({ _id: this._id }, {
+    $push: { 'activity.actions': { $each: [{ type: actionType, details, timestamp: now }], $slice: -MAX_ACTIVITY_ACTIONS } },
+    $set: { 'activity.lastActivity': now },
+    $inc: { 'activity.pageViews': isPageView ? 1 : 0 }
   });
-  
-  this.activity.lastActivity = new Date();
-  this.activity.pageViews += actionType === 'page_view' ? 1 : 0;
-  
-  return this.save();
 };
 
 SessionSchema.methods.addToWishlist = function(productId) {

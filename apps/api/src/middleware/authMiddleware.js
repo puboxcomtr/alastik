@@ -26,6 +26,8 @@ module.exports = async (req, res, next) => {
         }
 
         req.user = user;
+        // Plasiyerin bayi adına açtığı oturum (b2b): token'daki plasiyer kimliği; normal oturumda boş
+        req.impersonatedBy = decoded.impersonatedBy ? String(decoded.impersonatedBy) : '';
         next();
     } catch (error) {
         console.error('Auth middleware hatası:', error);

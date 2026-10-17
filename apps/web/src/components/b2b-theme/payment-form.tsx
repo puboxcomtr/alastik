@@ -6,6 +6,7 @@
 // Akış: /tekcekim/baslat → Paynet Özelleştirilmiş Form → 3D → /tekcekim/return → /odeme-sonuc.
 import { useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
+import { launchPaynetForm } from "@components/b2b-theme/lib/paynet-form";
 import { CardIcon, SpinnerIcon } from "./icons";
 
 const nf = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -47,14 +48,6 @@ interface StartData {
   config: { publishableKey: string; jsUrl: string };
 }
 
-// Paynet SDK onAuthentication sonucu (başarısızlıkta ok:false + mesaj alanları).
-interface PaynetAuthResult {
-  ok?: boolean;
-  message?: string;
-  error_message?: string;
-  md_error_message?: string;
-  errorMessage?: string;
-}
 
 export function PaymentForm({ amountKurus }: { amountKurus: number }) {
   const [num, setNum] = useState("");
@@ -71,77 +64,26 @@ export function PaymentForm({ amountKurus }: { amountKurus: number }) {
   };
   const setName = (v: string) => setHolder(v.replace(/[^a-zA-ZÀ-ſ\s]/g, ""));
 
-  // Paynet Özelleştirilmiş Form'u kur ve tokenizasyonu tetikle (kart → doğrudan Paynet).
+  // Paynet Özelleştirilmiş Form'u kur ve tokenizasyonu tetikle (kart → doğrudan Paynet; ortak yardımcı,
+  // hata olayları ve zaman aşımı orada ele alınır, hata ödeme kaydına yazılır).
   function startPaynet(d: StartData) {
-    document.getElementById("paynet-host")?.remove();
-    const host = document.createElement("div");
-    host.id = "paynet-host";
-    host.style.display = "none";
-    document.body.appendChild(host);
-
-    const form = document.createElement("form");
-    form.id = "paynet-form";
-    form.method = "post";
-    form.action = API_ENDPOINTS.b2b.tekCekimReturn();
-
-    const hidden = (name: string, value: string) => {
-      const i = document.createElement("input");
-      i.type = "hidden"; i.name = name; i.value = value; form.appendChild(i);
-    };
-    hidden("paymentId", d.paymentId);
-    hidden("pt", d.pt);
-    hidden("returnOrigin", window.location.origin);
-
     const [mm, yy] = exp.split("/");
-    const pinput = (attr: string, value: string) => {
-      const i = document.createElement("input");
-      i.setAttribute("data-paynet", attr); i.type = "hidden"; i.value = value; form.appendChild(i);
-    };
-    pinput("holderName", holder.trim());
-    pinput("number", onlyDigits(num));
-    pinput("exp-month", String(parseInt(mm || "0", 10)));
-    pinput("exp-year", `20${(yy || "").padStart(2, "0")}`);
-    pinput("cvv", cvv);
-
-    const submitBtn = document.createElement("button");
-    submitBtn.type = "submit";
-    submitBtn.setAttribute("data-paynet", "submit");
-    submitBtn.textContent = "Öde";
-    form.appendChild(submitBtn);
-    host.appendChild(form);
-
-    const s = document.createElement("script");
-    s.type = "text/javascript";
-    s.className = "paynet-button";
-    s.src = d.config.jsUrl;
-    s.setAttribute("data-form", "#paynet-form");
-    s.setAttribute("data-key", d.config.publishableKey);
-    // data-amount = TR formatlı TL (virgül ondalık); SDK ×100 ile kuruşa çevirir.
-    s.setAttribute("data-amount", (d.amountKurus / 100).toFixed(2).replace(".", ","));
-    s.setAttribute("data-reference_no", d.reference);
-    s.setAttribute("data-tds_required", "true");
-    s.setAttribute("data-no_instalment", "true");
-    s.setAttribute("data-transaction_type", "1");
-    // Paynet'in kendi 3D hata POPUP'ını kapat — hatayı biz form başında göstereceğiz.
-    s.setAttribute("data-show_tds_error", "false");
-    s.onload = () => {
-      // SDK global'i (window.Paynet) üzerinden 3D sonucunu yakala; başarısızlıkta
-      // hatayı formun başında göster (popup yerine).
-      try {
-        const P = (window as unknown as { Paynet?: { events?: { onAuthentication?: (fn: (res: PaynetAuthResult) => void) => void } } }).Paynet;
-        P?.events?.onAuthentication?.((res) => {
-          if (res && res.ok === false) {
-            const msg = res.message || res.error_message || res.md_error_message || res.errorMessage
-              || "Ödemeniz bankanız tarafından reddedildi. Lütfen kart bilgilerinizi kontrol edip tekrar deneyiniz.";
-            setErr(String(msg));
-            setBusy(false);
-          }
-        });
-      } catch { /* hook kurulamazsa sessiz geç */ }
-      window.setTimeout(() => submitBtn.click(), 400);
-    };
-    s.onerror = () => { setErr("Ödeme altyapısı yüklenemedi, tekrar deneyin."); setBusy(false); };
-    host.appendChild(s);
+    launchPaynetForm({
+      action: API_ENDPOINTS.b2b.tekCekimReturn(),
+      fields: { paymentId: d.paymentId, pt: d.pt, returnOrigin: window.location.origin },
+      card: {
+        holder: holder.trim(),
+        number: onlyDigits(num),
+        expMonth: String(parseInt(mm || "0", 10)),
+        expYear: `20${(yy || "").padStart(2, "0")}`,
+        cvv,
+      },
+      config: d.config,
+      amountTL: d.amountKurus / 100,
+      reference: d.reference,
+      errorTarget: { kind: "payment", id: d.paymentId, pt: d.pt },
+      onError: (message) => { setErr(message); setBusy(false); },
+    });
   }
 
   const submit = async () => {
@@ -205,7 +147,6 @@ export function PaymentForm({ amountKurus }: { amountKurus: number }) {
             ? (<><SpinnerIcon size={17} /> Yönlendiriliyor…</>)
             : (<><CardIcon size={17} /> {amountKurus > 0 ? `${moneyTL(amountKurus)} ` : ""}Öde</>)}
         </button>
-        <p className="pm-secure"><CardIcon size={13} /> 3D Secure ile güvenli ödeme. Kart bilgileriniz saklanmaz.</p>
       </div>
     </div>
   );

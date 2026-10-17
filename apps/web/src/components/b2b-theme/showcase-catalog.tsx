@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { Catalog } from '@components/b2b-theme/catalog';
 import { SpinnerIcon } from '@components/b2b-theme/icons';
+import { fetchDepotStocks } from '@components/b2b-theme/lib/depot-stock';
 import type { Tire, Season, ProductStatus } from '@components/b2b-theme/lib/sample-data';
 
 export interface RawProduct {
@@ -18,6 +19,7 @@ export interface RawProduct {
         ozelkod1kodu?: string; // mevsim
         ozelkod3kodu?: string; // ebat
         ozelkod5kodu?: string; // desen/model
+        ozelkod7kodu?: string; // ürün türü (LASTİK, 2.El Jant …)
         ekalan5?: string; // üretim yılı (DOT) — sıfır ve 2.El lastikte dolu, ör. "2026"
         m_kategoriler?: { kategori_aciklama_1?: string }[];
         m_resimler?: { aws_url?: string; order_id?: string | number }[];
@@ -26,6 +28,7 @@ export interface RawProduct {
     };
     customData?: { seoUrl?: string; webPrice?: number; shippingIncludedPrice?: number; featuredImage?: string; delivery?: string };
     syncInfo?: { syncSource?: string };
+    perakendeKurus?: number | null; // API ?perakende=1 → LJA perakende fiyatı (plasiyer karşılaştırması)
 }
 
 // Sevkiyat süresi: kendi stoğumuz (DIA, XML değil) her zaman "Aynı Gün". XML
@@ -86,6 +89,25 @@ function sortByOrder(images?: { aws_url?: string; order_id?: string | number }[]
   return [...(images || [])].sort((a, b) => (Number(a.order_id) || 99) - (Number(b.order_id) || 99));
 }
 
+/**
+ * DIA depo dağılımını ürünün stok satırlarına uygular. Dağılım toplam stoktan azsa (stok listelenmemiş
+ * bir depoda ya da XML ürününde hiç depo kaydı yoksa) kalan, ürünün KENDİ deposuna yazılır
+ * (kendi stok: Merkez, XML: Fabrika); aynı adlı depo satırı varsa ona eklenir.
+ */
+export function mergeDepotStocks(u: Tire, warehouses: { ad: string; adet: number }[]): Tire {
+    const own = u.stocks[0];
+    const prevTotal = u.stocks.reduce((s, st) => s + st.available, 0);
+    const depotSum = warehouses.reduce((s, d) => s + d.adet, 0);
+    const stocks = warehouses.map(d => ({ warehouseId: d.ad, warehouseName: d.ad, available: d.adet }));
+    if (own && prevTotal > depotSum) {
+        const rest = prevTotal - depotSum;
+        const same = stocks.find(st => st.warehouseName.toLocaleLowerCase('tr') === own.warehouseName.toLocaleLowerCase('tr'));
+        if (same) same.available += rest;
+        else stocks.push({ warehouseId: own.warehouseId, warehouseName: own.warehouseName, available: rest });
+    }
+    return { ...u, stocks };
+}
+
 export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cariOran?: CariOran): Tire {
     // Fiyat kurgusu (b2b):
     //  - Kendi (Sabit) ürün: LİSTE fiyatı = m_birimler[0].fiyat1; satış (Cari)
@@ -99,10 +121,13 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
     // B2C İndirim Oranı (DIA birimindirimorani "AD: 46.00"). 0 ise indirim yok.
     const b2cOran = parseFloat(String(u.diaData?.birimindirimorani || '').replace(/[^0-9.]/g, ''))
         || Number(u.diaData?.b2c_indirimorani) || 0;
-    const fiyat4 = Number(u.diaData?.m_birimler?.[0]?.fiyat4) || 0;
+    // Bayi fiyatı = DIA ham F4 (fiyat4Ham). Yanıttaki fiyat4, sitenin "Gösterilecek Fiyat" ayarıyla ezilebilir
+    // (ör. fiyat1 − B2C oranı); sipariş sunucuda ham F4'ten hesaplandığı için liste de onu kullanır.
+    const fiyat4 = Number(u.diaData?.m_birimler?.[0]?.fiyat4Ham) || Number(u.diaData?.m_birimler?.[0]?.fiyat4) || 0;
     // Kendi stok + indirim oranı 0 (2.El vb.) → cari iskonto UYGULANMAZ, bayi fiyatı
     // (fiyat4) doğrudan kullanılır. Oran>0 → mevcut cari hesap (normalde ≈fiyat4 çıkar).
-    const oranSifir = !xmlKaynak && b2cOran === 0 && fiyat4 > 0;
+    // İkinci el üründe hiçbir iskonto yoktur (cari iskontosu da): bayi fiyatı (fiyat4) doğrudan kullanılır
+    const oranSifir = !xmlKaynak && (b2cOran === 0 || isSecondHand(u)) && fiyat4 > 0;
     const oran = (Number(cariOran?.fiyatyuzde) > 0 ? Number(cariOran?.fiyatyuzde) : 50) / 100;
     const listeFiyat = xmlKaynak
         ? (Number(u.customData?.webPrice) || 0)
@@ -153,6 +178,8 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         mevsim: resolveSeason(u.diaData?.ozelkod1kodu),
         dotYear: resolveDotYear(u),
         productStatus: durum,
+        productType: u.diaData?.ozelkod7kodu || '',
+        diaStockCode: u.diaData?.stokkartkodu || '',
         rft: /\brft\b/i.test(ad),
         cTipi: /\bC\b/.test(ad),
         ev: /\bEV\b/i.test(ad),
@@ -172,6 +199,8 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         fiyat: netKurus > 0
             ? { listeBirimKurus: listeKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste', kdvHaric: oranSifir }
             : null,
+        // Plasiyer karşılaştırması: LJA perakende fiyatı (API ?perakende=1 → u.perakendeKurus)
+        perakendeKurus: (typeof u.perakendeKurus === 'number' && u.perakendeKurus > 0) ? u.perakendeKurus : null,
     };
 }
 
@@ -208,32 +237,16 @@ export function ShowcaseCatalog() {
             setUrunler(list);
 
             // Depo bazlı stok (Maslak/Şişli/Fabrika) — tooltip için ayrıca çekilir
-            const kodlar = raw.map(u => u.diaData?.stokkartkodu).filter(Boolean).join(',');
-            const token = localStorage.getItem('authToken');
-            if (kodlar && token) {
-                fetch(API_ENDPOINTS.b2b.depoStok(kodlar), { headers: { 'X-Site': 'b2b', Authorization: `Bearer ${token}` } })
-                    .then(r => r.json())
-                    .then(dRes => {
-                        if (!dRes?.success) return;
-                        const map = dRes.data as Record<string, { ad: string; adet: number }[]>;
-                        setUrunler(prev => (prev || list).map(u => {
-                            const rawProduct = raw.find(h => h._key === u.id);
-                            const kod = rawProduct?.diaData?.stokkartkodu || '';
-                            const warehouses = map[kod];
-                            if (!warehouses) return u;
-                            // Depo dağılımı gercek_stok'tan azsa (stok listelenmemiş bir depoda),
-                            // toplam kaybolmasın diye kalan "Merkez" olarak eklenir.
-                            const prevTotal = u.stocks.reduce((s, st) => s + st.available, 0);
-                            const depotSum = warehouses.reduce((s, d) => s + d.adet, 0);
-                            const stocks = warehouses.map(d => ({ warehouseId: d.ad, warehouseName: d.ad, available: d.adet }));
-                            if (prevTotal > depotSum) {
-                                stocks.push({ warehouseId: 'merkez', warehouseName: 'Merkez', available: prevTotal - depotSum });
-                            }
-                            return { ...u, stocks };
-                        }));
-                    })
-                    .catch(() => {});
-            }
+            const kodlar = raw.map(u => u.diaData?.stokkartkodu).filter(Boolean) as string[];
+            fetchDepotStocks(kodlar).then(map => {
+                if (!map) return;
+                setUrunler(prev => (prev || list).map(u => {
+                    const rawProduct = raw.find(h => h._key === u.id);
+                    const kod = rawProduct?.diaData?.stokkartkodu || '';
+                    const warehouses = map[kod];
+                    return warehouses ? mergeDepotStocks(u, warehouses) : u;
+                }));
+            });
         });
     }, []);
 

@@ -64,6 +64,19 @@ const parsePrice = (formatted: string): number | null => {
     return Number.isNaN(value) ? null : value
 }
 
+// Komisyon grupları (API utils/montagePricing.js ile aynı): değişim = lastik montajı, yazlık-kışlık / mobil değişim
+const DEGISIM_SKU = /^(600\.(10[6-9]|11[0-2]|20[1-3])|YMH-\d+)$/i
+type KomisyonOranlari = { degisim: number; diger: number; kdvOrani: number; kdvEkle: boolean }
+
+// Müşterinin vitrinde gördüğü fiyat: bayi fiyatı × (1 + komisyon), tam TL; kendi şubelerimize komisyon yok.
+// KDV eklenen sitede (lastikjantavm) "+ KDV" yazılır ve müşteri KDV'siyle öder; diğerinde fiyat KDV dahildir.
+const musteriNet = (bayi: number | null, sku: string, oranlar: KomisyonOranlari | null, sube: boolean) => {
+    if (bayi === null || bayi === 0) return bayi
+    const oran = oranlar && !sube ? (DEGISIM_SKU.test(String(sku || '').trim()) ? oranlar.degisim : oranlar.diger) : 0
+
+    return oran > 0 ? Math.round(bayi * (1 + oran / 100)) : bayi
+}
+
 const priceToText = (price: number | null) =>
     price === null || price === undefined
         ? ''
@@ -157,6 +170,14 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
     const [isActive, setIsActive] = useState(true)
     // Vitrinde ad/adres/telefon gösterilsin mi (kapalıysa anonim "Anlaşmalı Nokta")
     const [showPublicInfo, setShowPublicInfo] = useState(false)
+    const [oranlar, setOranlar] = useState<KomisyonOranlari | null>(null)
+
+    // Komisyon oranları (seçili site): hizmet satırında müşteri fiyatını göstermek için
+    useEffect(() => {
+        fetchAPI(`${API_ENDPOINTS.montage.list()}/commission`, { cache: 'no-store' })
+            .then(res => res?.success && setOranlar(res.data))
+            .catch(() => {})
+    }, [])
     const [services, setServices] = useState<ServiceItem[]>([])
     const [serviceProducts, setServiceProducts] = useState<ServiceProduct[]>([])
     const [amenities, setAmenities] = useState<string[]>([])
@@ -600,14 +621,14 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
                                         {service.name}
                                     </Typography>
                                     <Typography variant='body2' color='text.secondary'>
-                                        {service.sku} • Varsayılan fiyat:{' '}
-                                        {service.defaultPrice > 0 ? `${service.defaultPrice.toLocaleString('tr-TR')} TL` : '-'}
+                                        {service.sku}
                                     </Typography>
                                 </div>
                                 <TextField
                                     size='small'
-                                    label='Fiyat (TL)'
-                                    style={{ width: 140 }}
+                                    label='Bayi Fiyatı (TL)'
+                                    helperText={oranlar?.kdvEkle ? 'KDV hariç, komisyonsuz' : 'KDV dahil, komisyonsuz'}
+                                    style={{ width: 160 }}
                                     placeholder={priceToText(service.defaultPrice) || '0'}
                                     value={service.priceText}
                                     onChange={e => {
@@ -620,6 +641,27 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
                                         )
                                     }}
                                 />
+                                {(() => {
+                                    const bayi = service.price !== null ? service.price : service.defaultPrice > 0 ? service.defaultPrice : null
+                                    const net = musteriNet(bayi, service.sku, oranlar, showPublicInfo)
+                                    const kdv = oranlar?.kdvOrani || 20
+
+                                    return (
+                                        <div className='flex flex-col' style={{ width: 170 }}>
+                                            <Typography variant='caption' color='text.secondary'>
+                                                Müşteri fiyatı{showPublicInfo ? ' (şube, komisyonsuz)' : ''}
+                                            </Typography>
+                                            <Typography className='font-medium' color='text.primary'>
+                                                {net === null ? 'Sorunuz' : net === 0 ? 'Ücretsiz' : `${net.toLocaleString('tr-TR')} TL${oranlar?.kdvEkle ? ' + KDV' : ''}`}
+                                            </Typography>
+                                            {net !== null && net > 0 && oranlar?.kdvEkle && (
+                                                <Typography variant='caption' color='text.secondary'>
+                                                    Ödenen: {(Math.round(net * (1 + kdv / 100) * 100) / 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} TL
+                                                </Typography>
+                                            )}
+                                        </div>
+                                    )
+                                })()}
                                 <IconButton size='small' onClick={() => setServices(services.filter((_, idx) => idx !== i))}>
                                     <i className='ri-delete-bin-line' />
                                 </IconButton>

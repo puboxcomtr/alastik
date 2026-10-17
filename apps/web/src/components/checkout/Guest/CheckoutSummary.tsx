@@ -33,7 +33,7 @@ export default function CheckoutSummary({ onSubmit, loading, showButton = true }
                         </div>
                         <div className="d-flex justify-content-between mb-2">
                             <span className="fw-semibold text-black fs-sm">Kargo Bedeli</span>
-                            <span className="text-success">Ücretsiz</span>
+                            {(totals.shipping ?? 0) > 0 ? <span>{formatPrice(totals.shipping as number)} TL</span> : <span className="text-success">Ücretsiz</span>}
                         </div>
                         <hr />
                         <div className="d-flex justify-content-between mb-4">
@@ -93,7 +93,7 @@ export default function CheckoutSummary({ onSubmit, loading, showButton = true }
                     </div>
                     <div className="d-flex justify-content-between mb-2">
                         <span className="fs-sm text-black">Kargo Bedeli</span>
-                        <span className="text-success">Ücretsiz</span>
+                        {(totals.shipping ?? 0) > 0 ? <span>{formatPrice(totals.shipping as number)} TL</span> : <span className="text-success">Ücretsiz</span>}
                     </div>
                     <div className="d-flex gap-2 mb-2">
                         <input

@@ -9,11 +9,24 @@ export const SITE_DEFINITIONS: Record<string, {
     title: string;
     montage: boolean;
     campaigns: boolean;
+    // Analizler (rapor/canlı izleme) ve SEO modülleri — b2b'de yok (menü + ayarlarda gizlenir)
+    analytics: boolean;
+    seo: boolean;
+    // Kargo Tanımları listesinde "Kargo Firmasını Düzenle" penceresi — kapalıysa firma yalnız kurallar sayfasından yönetilir
+    cargoEdit: boolean;
+    // Finansal İskontolar sayfası (Premium / Normal cari iskonto oranları) — yalnız cari tabanlı sitede
+    financialDiscounts: boolean;
+    // Giriş ekranı duyuru popup'ı (Tema Ayarları) — yalnız bayi giriş ekranı olan sitede
+    loginPopup: boolean;
+    // Plasiyer girişi olan site (Tema Ayarları'nda perakende plasiyer fiyat notu)
+    salespersons: boolean;
+    // Aktif Sepetler'de takip durumu (Beklemede / İletişime Geçildi) — bayi sitesinde gerekmez
+    cartFollowUp: boolean;
     // Üye menüsü etiketleri — tanımlı değilse sözlükteki varsayılanlar kullanılır
     memberMenu?: { group: string; item: string };
 }> = {
-    alastik: { label: 'Alastik.com', title: 'ALastik.com', montage: true, campaigns: true },
-    lastikjantavm: { label: 'Lastikjantavm.com', title: 'LastikJantAVM', montage: true, campaigns: true },
+    alastik: { label: 'Alastik.com', title: 'ALastik.com', montage: true, campaigns: true, analytics: true, seo: true, cargoEdit: false, financialDiscounts: false, loginPopup: false, salespersons: false, cartFollowUp: true },
+    lastikjantavm: { label: 'Lastikjantavm.com', title: 'LastikJantAVM', montage: true, campaigns: true, analytics: true, seo: true, cargoEdit: true, financialDiscounts: false, loginPopup: false, salespersons: false, cartFollowUp: true },
     // B2B'de montaj noktası ve kampanya yönetimi yok (menüde gizlenir);
     // müşteriler üye değil CARİDİR (8 Eyl kararları)
     b2b: {
@@ -21,9 +34,21 @@ export const SITE_DEFINITIONS: Record<string, {
         title: 'LastikJantAVM B2B',
         montage: false,
         campaigns: false,
+        analytics: false,
+        seo: false,
+        cargoEdit: true,
+        financialDiscounts: true,
+        loginPopup: true,
+        salespersons: true,
+        cartFollowUp: false,
         memberMenu: { group: 'Cari Yönetimi', item: 'Cariler' },
     },
 };
+
+/** Aktif sitede Aktif Sepetler takip durumu (Beklemede / İletişime Geçildi) var mı? */
+export function siteHasCartFollowUp(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.cartFollowUp === true;
+}
 
 /** Aktif sitede montaj noktası modülü var mı? (menü görünürlüğü için) */
 export function siteHasMontage(slug: string = getActiveSite()): boolean {
@@ -33,6 +58,36 @@ export function siteHasMontage(slug: string = getActiveSite()): boolean {
 /** Aktif sitede kampanya yönetimi var mı? (menü görünürlüğü için) */
 export function siteHasCampaigns(slug: string = getActiveSite()): boolean {
     return SITE_DEFINITIONS[slug]?.campaigns === true;
+}
+
+/** Aktif sitede Analizler modülü var mı? (menü görünürlüğü için) */
+export function siteHasAnalytics(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.analytics === true;
+}
+
+/** Aktif sitede SEO modülü var mı? (menü + ayarlar görünürlüğü için) */
+export function siteHasSeo(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.seo === true;
+}
+
+/** Aktif sitede kargo firması düzenleme penceresi açık mı? (Kargo Tanımları listesi) */
+export function siteHasCargoEdit(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.cargoEdit === true;
+}
+
+/** Aktif sitede Finansal İskontolar sayfası var mı? (menü görünürlüğü için) */
+export function siteHasFinancialDiscounts(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.financialDiscounts === true;
+}
+
+/** Aktif sitede giriş ekranı duyuru popup'ı var mı? (Tema Ayarları görünürlüğü için) */
+export function siteHasLoginPopup(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.loginPopup === true;
+}
+
+/** Aktif sitede plasiyer girişi var mı? (Tema Ayarları'ndaki plasiyer alanlarının görünürlüğü için) */
+export function siteHasSalespersons(slug: string = getActiveSite()): boolean {
+    return SITE_DEFINITIONS[slug]?.salespersons === true;
 }
 
 /** Aktif sitenin üye menüsü etiketleri (b2b: Cari Yönetimi/Cariler); yoksa null */

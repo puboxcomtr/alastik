@@ -45,12 +45,14 @@ export function AccountSummaryCards() {
     // Vade tarihi: DIA ekstre servisine bağlanınca gerçek vadeden gelecek
     const vadeTarihi = '30.09.2026';
     const value = (kurus: number) => (loading ? '…' : formatKurus(kurus));
+    // Bakiye işaretlidir (alacaklı → negatif): muhasebe gösterimiyle (B) borçlu / (A) alacaklı
+    const balanceText = loading ? '…' : `${formatKurus(Math.abs(bakiye))}${bakiye > 0 ? ' (B)' : bakiye < 0 ? ' (A)' : ''}`;
 
     return (
         <div className="cards">
             <div className="card">
                 <div className="label">Bakiye</div>
-                <div className={`value${bakiye < 0 ? ' danger' : ''}`}>{value(bakiye)}</div>
+                <div className="value">{balanceText}</div>
                 <div className="note">Vade: {vadeTarihi}</div>
             </div>
             <div className="card">

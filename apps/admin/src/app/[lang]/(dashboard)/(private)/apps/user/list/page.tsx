@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+
 // MUI Imports
 import Grid from '@mui/material/Grid2'
 
@@ -8,7 +10,10 @@ const UsersListPage = () => {
     return (
         <Grid container spacing={6}>
             <Grid size={{ xs: 12 }}>
-                <MembersView />
+                {/* MembersView adres parametrelerini (useSearchParams) okur */}
+                <Suspense>
+                    <MembersView />
+                </Suspense>
             </Grid>
         </Grid>
     )

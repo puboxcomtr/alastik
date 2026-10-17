@@ -4,10 +4,17 @@ const bcrypt = require('bcrypt');
 
 /**
  * Plasiyer (satış personeli) — DIA sistem kullanıcılarından (sis_kullanici) çekilir.
- * DIA senkronu adayları getirir; admin panelinden şifre atanan plasiyer giriş yapabilir
- * (şifresi olmayan giriş yapamaz). Şifre yalnız admin tarafından belirlenir
+ * DIA senkronu adayları getirir; admin panelinden grubu (Perakende / Toptan) ve şifresi atanan
+ * plasiyer giriş yapabilir. Şifre yalnız admin tarafından belirlenir
  * (bayi/cari akışından farklı). Upsert anahtarı: { site, diaUserKey }.
  */
+// Plasiyer grupları (admin atar): grubu atanmamış plasiyer giriş yapamaz
+const SALES_GROUPS = [
+    { id: 'retail', label: 'Perakende' },
+    { id: 'wholesale', label: 'Toptan' }
+];
+const SALES_GROUP_IDS = SALES_GROUPS.map(g => g.id);
+
 const webSalespersonSchema = new mongoose.Schema({
     site: {
         type: String,
@@ -26,8 +33,11 @@ const webSalespersonSchema = new mongoose.Schema({
     diaTitle: { type: String, trim: true },                    // unvan
     diaStatus: { type: String, trim: true },                   // durum (A/P)
 
+    // Admin tarafından atanan grup (Perakende / Toptan); boş = atanmamış. DIA senkronu dokunmaz.
+    salesGroup: { type: String, enum: ['', ...SALES_GROUP_IDS], default: '' },
+
     // Admin tarafından belirlenen giriş şifresi (senkron dokunmaz).
-    // Giriş kuralı basittir: şifresi atanmış plasiyer giriş yapabilir, atanmamış yapamaz.
+    // Giriş kuralı: GRUBU ve şifresi atanmış plasiyer giriş yapabilir.
     password: { type: String },
     // Admin sonradan görebilsin diye şifrenin geri-okunur kopyası (yalnız admin-gated uçtan döner).
     plainPassword: { type: String },
@@ -56,4 +66,11 @@ webSalespersonSchema.methods.comparePassword = async function (candidatePassword
     return bcrypt.compare(candidatePassword, this.password);
 };
 
+/** Giriş yapabilir mi: grubu ve şifresi atanmış olmalı */
+webSalespersonSchema.methods.canLogin = function () {
+    return !!this.password && SALES_GROUP_IDS.includes(this.salesGroup);
+};
+
 module.exports = mongoose.model('WebSalesperson', webSalespersonSchema);
+module.exports.SALES_GROUPS = SALES_GROUPS;
+module.exports.SALES_GROUP_IDS = SALES_GROUP_IDS;

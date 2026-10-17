@@ -4,7 +4,8 @@ export const GTM_IDS: Record<string, string> = {
     lastikjantavm: 'GTM-MWVF56WW'
 };
 
-export const getGtmId = (site?: string | null): string => GTM_IDS[site || ''] || GTM_IDS.alastik;
+// Tanımlı olmayan sitede (ör. b2b bayi paneli) GTM yüklenmez — başka sitenin hesabına düşülmez
+export const getGtmId = (site?: string | null): string => GTM_IDS[site || ''] || '';
 
 // Site bazlı Google Ads (gtag) hesapları
 export const ADS_IDS: Record<string, string> = {
@@ -12,7 +13,8 @@ export const ADS_IDS: Record<string, string> = {
     lastikjantavm: 'AW-666191332'
 };
 
-export const getAdsId = (site?: string | null): string => ADS_IDS[site || ''] || ADS_IDS.alastik;
+// Tanımlı olmayan sitede Google Ads etiketi yüklenmez
+export const getAdsId = (site?: string | null): string => ADS_IDS[site || ''] || '';
 
 // Site bazlı Google etiketi (Merchant Center izleme vb. — gtag "GT-xxx" kimlikleri).
 // Tanımlı olmayan sitede etiket yüklenmez.
@@ -22,6 +24,20 @@ export const GOOGLE_TAG_IDS: Record<string, string> = {
 
 export const getGoogleTagId = (site?: string | null): string => GOOGLE_TAG_IDS[site || ''] || '';
 
+// Google Ads "web sitesinden telefon araması" dönüşümleri — site bazlı, numara başına bir kayıt.
+// Google, reklamdan gelen ziyaretçiye sitede `phoneNumber` metniyle birebir yazan numaranın
+// yerine kendi yönlendirme numarasını gösterir ve aramaları sayar. `phoneNumber` sitede
+// görünen biçimle AYNI olmalıdır (Ads'in verdiği kod parçasındaki değer).
+// Tanımlı olmayan sitede (ör. LastikJantAVM) hiçbir etiket çalışmaz.
+export const ADS_PHONE_CONVERSIONS: Record<string, { sendTo: string; phoneNumber: string }[]> = {
+    alastik: [
+        { sendTo: 'AW-18022245202/SzATCI-DipIdENLG1pFD', phoneNumber: '0212 216 01 02' },
+        { sendTo: 'AW-18022245202/JL-oCJKDipIdENLG1pFD', phoneNumber: '0546 767 95 92' }
+    ]
+};
+
+export const getAdsPhoneConversions = (site?: string | null) => ADS_PHONE_CONVERSIONS[site || ''] || [];
+
 export type AdsConversionEvent = 'purchase' | 'signUp' | 'addToCart' | 'beginCheckout';
 
 // Google Ads dönüşüm etiketleri (send_to) — site ve olay bazlı.
@@ -29,7 +45,7 @@ export type AdsConversionEvent = 'purchase' | 'signUp' | 'addToCart' | 'beginChe
 export const ADS_CONVERSION_LABELS: Record<string, Partial<Record<AdsConversionEvent, string>>> = {
     alastik: {
         purchase: 'AW-18022245202/qJixCKjJ8LscENLG1pFD',
-        signUp: 'AW-18022245202/Pp35COy98bscENLG1pFD'
+        signUp: 'AW-18022245202/fK_rCIrHiZIdENLG1pFD'
     },
     lastikjantavm: {
         addToCart: 'AW-666191332/-As1CNiy6OscEOSL1b0C',

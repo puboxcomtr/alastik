@@ -42,6 +42,8 @@ export interface CustomData {
     featuredImage?: string;
     webVisible?: boolean;
     hideBrand?: boolean;
+    // Üründe açık Ürün Butonları (panel: Ürünler > Ürün Butonları) — API yanıtına site bazlı eklenir
+    buttons?: ProductButton[];
     hideProductionDate?: boolean;
     hideStock?: boolean;
     hideDelivery?: boolean;
@@ -145,9 +147,21 @@ export interface Product {
     updatedAt?: string;
 }
 
+// Üründe açık bir Ürün Butonu: görünüş (geçişli zemin renkleri, yazı rengi, ikon) tanımından gelir
+export interface ProductButton {
+    key: string;
+    label: string;
+    colorFrom?: string;
+    colorTo?: string;
+    textColor?: string;
+    icon?: string;
+}
+
 // Component props
 export interface ProductCardProps {
     product: Product;
+    // Kartta favori (kalp) butonu gösterilsin mi. Varsayılan gizli; Favorilerim sayfası açar.
+    showFavourite?: boolean;
     brandInfo?: {
         name: string;
         logo: string | null;

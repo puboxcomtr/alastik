@@ -15,6 +15,7 @@ import Switch from '@mui/material/Switch'
 import { toast } from 'react-toastify'
 import type { ThemeSettings as ThemeSettingsType } from '@/types/apps/themeTypes'
 import { fetchAPI } from '@libs/api'
+import { siteHasLoginPopup, siteHasSalespersons } from '@/utils/activeSite'
 
 
 const menuItems = [
@@ -122,6 +123,14 @@ const ThemeSettings = () => {
     const [activeMenu, setActiveMenu] = useState('tab1')
     const [saving, setSaving] = useState(false)
     const [settings, setSettings] = useState<ThemeSettingsType>({})
+    // Aktif site tarayıcıda okunur (sunucu çıktısıyla uyuşmazlık olmasın diye yüklemeden sonra)
+    const [hasLoginPopup, setHasLoginPopup] = useState(false)
+    const [hasSalespersons, setHasSalespersons] = useState(false)
+
+    useEffect(() => {
+        setHasLoginPopup(siteHasLoginPopup())
+        setHasSalespersons(siteHasSalespersons())
+    }, [])
 
     const [sliderList, setSliderList] = useState<any[]>([])
     const [loadingSliders, setLoadingSliders] = useState(true)
@@ -363,6 +372,70 @@ const ThemeSettings = () => {
                                 </FormControl>
                             </div>
                         </FormControl>
+                        <Divider className='mb-4' />
+                        <FormControl fullWidth className='mb-4'>
+                            <div className='flex justify-between items-center gap-4'>
+                                <div className='flex flex-col'>
+                                    <Typography variant='body2' className='text-base font-semibold'>Kar Yağışı Efekti</Typography>
+                                    <Typography variant='body2' color='text.secondary' className='font-light'>
+                                        Sitenin tüm sayfalarında hafif bir kar yağışı animasyonu gösterir. Tıklamaları engellemez; cihazında “hareketi azalt” tercihi açık olan ziyaretçilere gösterilmez.
+                                    </Typography>
+                                </div>
+                                <FormControl className='w-1/2 flex-shrink-0'>
+                                    <FormControlLabel
+                                        control={<Switch checked={settings.snowEffect || false} onChange={(e) => handleChange('snowEffect', e.target.checked)} />}
+                                        label={settings.snowEffect ? 'Aktif' : 'Pasif'}
+                                    />
+                                </FormControl>
+                            </div>
+                        </FormControl>
+                        {hasLoginPopup && (
+                            <>
+                                <Divider className='mb-4' />
+                                <FormControl fullWidth className='mb-4'>
+                                    <div className='flex justify-between items-center gap-4'>
+                                        <div className='flex flex-col'>
+                                            <Typography variant='body2' className='text-base font-semibold'>Giriş Ekranı Popup</Typography>
+                                            <Typography variant='body2' color='text.secondary' className='font-light'>
+                                                Giriş ekranı açıldığında aşağıdaki görseli ortada gösterir. Her ziyaretçiye günde bir kez gösterilir; kapattıktan sonra aynı gün tekrar çıkmaz.
+                                            </Typography>
+                                        </div>
+                                        <FormControl className='w-1/2 flex-shrink-0'>
+                                            <FormControlLabel
+                                                control={<Switch checked={settings.loginPopupEnabled || false} onChange={(e) => handleChange('loginPopupEnabled', e.target.checked)} />}
+                                                label={settings.loginPopupEnabled ? 'Aktif' : 'Pasif'}
+                                            />
+                                        </FormControl>
+                                    </div>
+                                </FormControl>
+                                <Divider className='mb-4' />
+                                <ImageUpload
+                                    title="Giriş Ekranı Popup Görseli"
+                                    description="Popup içinde gösterilecek görsel (kare görsel önerilir)."
+                                    type="login-popup"
+                                    currentImage={settings.loginPopupImage}
+                                    onUpload={(url: string) => handleChange('loginPopupImage', url)}
+                                />
+                            </>
+                        )}
+                        {hasSalespersons && (
+                            <FormControl fullWidth className='mb-4'>
+                                <div className='flex justify-between items-center gap-4'>
+                                    <div className='flex flex-col'>
+                                        <Typography variant='body2' className='text-base font-semibold'>Perakende Plasiyer Fiyat Notu</Typography>
+                                        <Typography variant='body2' color='text.secondary' className='font-light'>
+                                            Perakende grubundaki plasiyere, sıfır ve ikinci el lastiklerde fiyatın altında gösterilen not. Boş bırakılırsa gösterilmez.
+                                        </Typography>
+                                    </div>
+                                    <TextField
+                                        className='w-1/2 flex-shrink-0'
+                                        size='small'
+                                        value={settings.retailSalespersonPriceNote || ''}
+                                        onChange={(e) => handleChange('retailSalespersonPriceNote', e.target.value)}
+                                    />
+                                </div>
+                            </FormControl>
+                        )}
                     </>
                 )
 
@@ -598,6 +671,35 @@ const ThemeSettings = () => {
                                         <MenuItem value='b2c_oran'>B2C İndirim Oranı (DIA)</MenuItem>
                                     </Select>
                                 </FormControl>
+                            </div>
+                        </FormControl>
+                        <Divider className='mb-4' />
+                        <FormControl fullWidth className='mb-4'>
+                            <div className='flex justify-between items-center gap-4'>
+                                <div className='flex flex-col'>
+                                    <Typography variant='body2' className='text-base font-semibold'>Havale ve Peşin Ödeme İndirimi (%)</Typography>
+                                    <Typography variant='body2' color='text.secondary' className='font-light'>
+                                        Ürün sayfasında adet seçiminin altında gösterilen “Havale ve Peşin Ödemelerde” kutusunun indirim oranı. Tutar seçilen adetle çarpılır. Boş veya 0 bırakılan ürün grubunda kutu gösterilmez.
+                                    </Typography>
+                                </div>
+                                <div className='flex gap-4 w-1/2 flex-shrink-0'>
+                                    <TextField
+                                        fullWidth
+                                        type='number'
+                                        label='Sıfır Lastik'
+                                        value={settings.pickupCashDiscountNewTire || ''}
+                                        onChange={(e) => handleChange('pickupCashDiscountNewTire', e.target.value)}
+                                        slotProps={{ htmlInput: { min: 0, max: 100, step: 0.5 } }}
+                                    />
+                                    <TextField
+                                        fullWidth
+                                        type='number'
+                                        label='İkinci El'
+                                        value={settings.pickupCashDiscountSecondHand || ''}
+                                        onChange={(e) => handleChange('pickupCashDiscountSecondHand', e.target.value)}
+                                        slotProps={{ htmlInput: { min: 0, max: 100, step: 0.5 } }}
+                                    />
+                                </div>
                             </div>
                         </FormControl>
                     </>

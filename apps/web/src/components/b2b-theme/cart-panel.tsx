@@ -1,19 +1,43 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "./cart-status";
 import { showToast } from "./toast";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 import { AnimatedMoney } from "@components/b2b-theme/animated-money";
 import { ArrowRightIcon, CartIcon, CloseIcon, TrashIcon } from "./icons";
+import { fetchCartFinancialDiscounts, financialDiscountPct, productShippingKurus, BASE_PAYMENT_METHOD, type FinancialDiscounts } from "./lib/financial-discounts";
 
 /** Üst bardan açılan sepet paneli. */
 export function CartPanel() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const sepet = useCart();
-  
+
+  // Finansal iskontolar (panel): sepet paneli taban ödeme yöntemine (Cari Sipariş) göre iskontolu fiyatı gösterir —
+  // ürün listesindeki fiyatla aynı. Ödeme yöntemi sepet sayfasında değiştirilince tutar orada yeniden hesaplanır.
+  const [financial, setFinancial] = useState<FinancialDiscounts>({ tier: "", discounts: {} });
+  const cartCodes = sepet.lines.map((l) => l.urun.stockCode).filter(Boolean).sort().join(",");
+  useEffect(() => {
+    let cancelled = false;
+    fetchCartFinancialDiscounts(cartCodes ? cartCodes.split(",") : []).then((result) => {
+      if (!cancelled) setFinancial(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cartCodes]);
+  const linePct = (line: (typeof sepet.lines)[number]) =>
+    line.urun.xml ? 0 : financialDiscountPct(financial.discounts, line.urun.stockCode, BASE_PAYMENT_METHOD) ?? 0;
+  // Birim fiyat: iskontolu ürün + kargo payı (iskontosuz; fiyata dahil değilse de toplamda yer alır)
+  const lineShip = (line: (typeof sepet.lines)[number]) => productShippingKurus(financial.shipping, line.urun.stockCode);
+  const lineUnitKurus = (line: (typeof sepet.lines)[number]) =>
+    Math.round(line.kdvDahilBirimKurus * (1 - linePct(line) / 100)) + (lineShip(line).excluded ? 0 : lineShip(line).kurus);
+  const lineTotalKurus = (line: (typeof sepet.lines)[number]) =>
+    Math.round(line.kdvDahilBirimKurus * line.adet * (1 - linePct(line) / 100)) + (lineShip(line).excluded ? 0 : lineShip(line).kurus * line.adet);
+  const discountedTotalKurus = sepet.lines.reduce((sum, line) => sum + lineTotalKurus(line) + (lineShip(line).excluded ? lineShip(line).kurus * line.adet : 0), 0);
+
   return (
     <>
       <button
@@ -126,8 +150,7 @@ export function CartPanel() {
                           type="button"
                           aria-label="Artır"
                           onClick={() => {
-                            sepet.setQty(s.productId, s.warehouseId, s.adet + 1);
-                            showToast("Adet güncellendi", "ok");
+                            if (sepet.setQty(s.productId, s.warehouseId, s.adet + 1)) showToast("Adet güncellendi", "ok");
                           }}
                         >
                           +
@@ -135,10 +158,10 @@ export function CartPanel() {
                       </span>
                       <div style={{ textAlign: "right" }}>
                         <div className="price-vat">
-                          Birim {formatKurus(s.kdvDahilBirimKurus)}
+                          Birim {formatKurus(lineUnitKurus(s))}
                         </div>
                         <div className="price-net">
-                          <AnimatedMoney kurus={s.satirToplamKurus} />
+                          <AnimatedMoney kurus={lineTotalKurus(s)} />
                         </div>
                       </div>
                     </div>
@@ -154,7 +177,7 @@ export function CartPanel() {
                     Toplam Tutar
                   </div>
                 </div>
-                <div className="tutar"><AnimatedMoney kurus={sepet.totalKurus} /></div>
+                <div className="tutar"><AnimatedMoney kurus={discountedTotalKurus} /></div>
               </div>
               <div className="aksiyon">
                 <button

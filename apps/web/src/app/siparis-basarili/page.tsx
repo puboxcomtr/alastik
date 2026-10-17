@@ -36,10 +36,8 @@ export default function OrderSuccessPage() {
         if (typeof window === 'undefined') return;
 
         conversionSentRef.current = true;
-        const orderValue = Number((order as { total?: number; totalAmount?: number; grandTotal?: number }).total
-            ?? (order as { totalAmount?: number }).totalAmount
-            ?? (order as { grandTotal?: number }).grandTotal
-            ?? 0);
+        // Sipariş tutarı API yanıtında pricing.total altındadır (KDV dahil ödenen toplam)
+        const orderValue = Number(order.pricing?.total ?? 0);
 
         // GTM dönüşüm tetikleyicileri için dataLayer olayı (her iki site)
         pushDataLayer({

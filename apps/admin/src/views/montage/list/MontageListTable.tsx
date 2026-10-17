@@ -107,6 +107,47 @@ const MontageListTable = () => {
     const [importLoading, setImportLoading] = useState(false)
     const [downloadingTemplate, setDownloadingTemplate] = useState(false)
 
+    // Komisyon oranları (seçili site) — noktanın fiyatının üstüne eklenir, kendi şubelerimize uygulanmaz
+    const [komisyon, setKomisyon] = useState({ degisim: '0', diger: '0' })
+    const [komisyonKaydediliyor, setKomisyonKaydediliyor] = useState(false)
+    const [kdvEkle, setKdvEkle] = useState(false)
+
+    useEffect(() => {
+        fetchAPI(`${API_ENDPOINTS.montage.list()}/commission`, { cache: 'no-store' })
+            .then(res => {
+                if (res?.success) {
+                    setKomisyon({ degisim: String(res.data.degisim ?? 0), diger: String(res.data.diger ?? 0) })
+                    setKdvEkle(res.data.kdvEkle === true)
+                }
+            })
+            .catch(() => {})
+    }, [])
+
+    const handleKomisyonKaydet = async () => {
+        setKomisyonKaydediliyor(true)
+
+        try {
+            const res = await fetchAPI(`${API_ENDPOINTS.montage.list()}/commission`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    degisim: komisyon.degisim.replace(',', '.'),
+                    diger: komisyon.diger.replace(',', '.')
+                })
+            })
+
+            if (res.success) {
+                setKomisyon({ degisim: String(res.data.degisim), diger: String(res.data.diger) })
+                toast.success(res.message || 'Komisyon oranları kaydedildi')
+            } else {
+                toast.error(res.message || 'Komisyon oranları kaydedilemedi')
+            }
+        } catch (error: any) {
+            toast.error(error?.message || 'Komisyon oranları kaydedilemedi')
+        } finally {
+            setKomisyonKaydediliyor(false)
+        }
+    }
+
     const fetchPoints = async () => {
         setLoading(true)
 
@@ -406,6 +447,69 @@ const MontageListTable = () => {
                         </div>
                     }
                 />
+                <div className='mli-6 mie-6 mbe-6'>
+                    <div
+                        className='flex flex-wrap items-end justify-between gap-4 p-4 rounded'
+                        style={{ background: '#fffbea', border: '1px solid #f3d36b' }}
+                    >
+                        <div style={{ flex: '1 1 420px' }}>
+                            <Typography className='font-medium' color='text.primary'>
+                                Komisyon Oranları — müşteri fiyatı nasıl çıkar?
+                            </Typography>
+                            {(() => {
+                                const d = Number(String(komisyon.degisim).replace(',', '.')) || 0
+                                const g = Number(String(komisyon.diger).replace(',', '.')) || 0
+                                const ornek = Math.round(300 * (1 + d / 100))
+                                const odenen = Math.round(ornek * 1.2 * 100) / 100
+
+                                return (
+                                    <ol style={{ margin: '6px 0 0', paddingInlineStart: 18, fontSize: 13, lineHeight: 1.6 }}>
+                                        <li>
+                                            Noktaya <b>bayinin kendi fiyatı</b> girilir (komisyonsuz,{' '}
+                                            {kdvEkle ? <b>KDV hariç</b> : <b>KDV dahil</b>}).
+                                        </li>
+                                        <li>
+                                            Üstüne komisyon eklenir: lastik montajı ve yazlık-kışlık / mobil değişim için{' '}
+                                            <b>%{d.toLocaleString('tr-TR')}</b>, diğer hizmetler (sibop, rot, pres, otel, far, nitrojen) için{' '}
+                                            <b>%{g.toLocaleString('tr-TR')}</b>. Sonuç tam TL&apos;ye yuvarlanır.
+                                        </li>
+                                        {kdvEkle ? (
+                                            <li>
+                                                Vitrinde bu tutar <b>&quot;+ KDV&quot;</b> yazar; müşteri sepette üstüne <b>%20 KDV</b> öder.
+                                            </li>
+                                        ) : (
+                                            <li>Vitrinde bu tutar yazar; KDV dahildir, müşteri bu tutarı öder.</li>
+                                        )}
+                                        <li>Kendi şubelerimize (Bilgileri Gözüksün açık noktalar) komisyon eklenmez.</li>
+                                        <li>
+                                            <b>Örnek:</b> bayi montaj fiyatı 300 TL → vitrinde {ornek.toLocaleString('tr-TR')} TL
+                                            {kdvEkle ? ` + KDV → müşteri ${odenen.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} TL öder.` : ' → müşteri bu tutarı öder.'}
+                                        </li>
+                                    </ol>
+                                )
+                            })()}
+                        </div>
+                        <TextField
+                            size='small'
+                            label='Değişim ücretleri (montaj / mobil değişim)'
+                            value={komisyon.degisim}
+                            onChange={e => setKomisyon(k => ({ ...k, degisim: e.target.value.replace(/[^\d,.]/g, '') }))}
+                            InputProps={{ endAdornment: <span>%</span> }}
+                            style={{ width: 280 }}
+                        />
+                        <TextField
+                            size='small'
+                            label='Diğer hizmetler (sibop, rot, pres, otel...)'
+                            value={komisyon.diger}
+                            onChange={e => setKomisyon(k => ({ ...k, diger: e.target.value.replace(/[^\d,.]/g, '') }))}
+                            InputProps={{ endAdornment: <span>%</span> }}
+                            style={{ width: 280 }}
+                        />
+                        <Button variant='contained' onClick={handleKomisyonKaydet} disabled={komisyonKaydediliyor}>
+                            {komisyonKaydediliyor ? 'Kaydediliyor...' : 'Oranları Kaydet'}
+                        </Button>
+                    </div>
+                </div>
                 <input
                     ref={importInputRef}
                     type='file'

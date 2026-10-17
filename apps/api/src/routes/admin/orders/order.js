@@ -5,11 +5,14 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebVehicle = require('../../../models/web/user/WebVehicle');
 const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
+const Cargo = require('../../../models/admin/settings/Cargo');
+const { CREDIT_PAYMENT_METHOD } = require('../../../services/web/b2b/creditLimit');
 
 
 // Sipariş durumları (model'deki enum'a göre)
 const ORDER_STATUSES = {
     pending: 'Onay Bekliyor',
+    awaiting_payment: 'Ödeme Bekleniyor',
     confirmed: 'Onaylandı',
     processing: 'Hazırlanıyor',
     shipped: 'Kargoya Verildi',
@@ -38,6 +41,7 @@ router.get('/', async (req, res) => {
             orderNumber = '',
             status = '',
             paymentStatus = '',
+            draft = '',
             paymentMethod = '',
             stockCode = '',
             phone = '',
@@ -91,7 +95,9 @@ router.get('/', async (req, res) => {
                 {
                     $or: [
                         { 'payment.status': 'paid' },
-                        { 'payment.method': 'bank_transfer' }
+                        { 'payment.method': 'bank_transfer' },
+                        // Vadeli Cari Sipariş ödeme beklemez: verildiği anda gerçek sipariştir
+                        { 'payment.method': CREDIT_PAYMENT_METHOD }
                     ]
                 }
             ];
@@ -100,6 +106,9 @@ router.get('/', async (req, res) => {
         // Ödeme yöntemi
         if (paymentMethod) {
             filter['payment.method'] = paymentMethod;
+        } else if (draft === '1') {
+            // Taslak Siparişler: vadeli Cari Sipariş taslak değildir (Siparişler listesinde yer alır)
+            filter['payment.method'] = { $ne: CREDIT_PAYMENT_METHOD };
         }
 
         // Ürün stok kodu (items içinde)
@@ -171,7 +180,8 @@ router.get('/', async (req, res) => {
                 status: order.status || 'pending',
                 statusText: ORDER_STATUSES[order.status] || order.status || 'Onay Bekliyor',
                 paymentMethod: order.payment?.method || '',
-                paymentMethodText: order.payment?.method === 'bank_transfer' ? 'Banka Havalesi' :
+                paymentMethodText: order.payment?.method === CREDIT_PAYMENT_METHOD ? 'Cari Sipariş' :
+                    order.payment?.method === 'bank_transfer' ? 'Banka Havalesi' :
                     order.payment?.method === 'credit_card' ? 'Kredi Kartı (Ödeme Çekilmedi)' :
                         order.payment?.method === 'credit_card_3d' ? 'Kredi Kartı 3D Secure' :
                             order.payment?.method === 'netahsilat_installment' ? 'Kredi Kartı Taksitli' :
@@ -184,7 +194,9 @@ router.get('/', async (req, res) => {
                 total: order.pricing?.total || 0,
                 currency: order.pricing?.currency || 'TRY',
                 itemCount: order.items?.length || 0,
-                createdAt: order.createdAt
+                createdAt: order.createdAt,
+                // Otomatik denemelere rağmen DIA'ya aktarılamadı (uyarı maili gitti, hâlâ aktarılmadı) — listede işaretlenir
+                diaTransferFailed: !!order.diaIntegration?.transferAlertSentAt && order.diaIntegration?.status !== 'synced'
             };
         });
 
@@ -330,6 +342,12 @@ router.get('/:id', async (req, res) => {
                 };
             }
         }
+        // Teslimat yönteminin adı (Kargo Tanımları: site + kod)
+        let shippingMethodName = '';
+        if (order.shipping?.method) {
+            const cargo = await Cargo.findOne({ site: order.site || req.site, code: order.shipping.method }).select('name').lean();
+            shippingMethodName = cargo?.name || '';
+        }
         const formattedOrder = {
             id: order._id.toString(),
             orderNumber: order.orderNumber,
@@ -354,7 +372,8 @@ router.get('/:id', async (req, res) => {
 
             payment: {
                 method: order.payment?.method || '',
-                methodText: order.payment?.method === 'bank_transfer' ? 'Banka Havalesi' :
+                methodText: order.payment?.method === CREDIT_PAYMENT_METHOD ? 'Cari Sipariş' :
+                    order.payment?.method === 'bank_transfer' ? 'Banka Havalesi' :
                     order.payment?.method === 'credit_card' ? 'Kredi Kartı (Ödeme Çekilmedi)' :
                         order.payment?.method === 'credit_card_3d' ? 'Kredi Kartı 3D Secure' :
                             order.payment?.method === 'netahsilat_installment' ? 'Kredi Kartı Taksitli' :
@@ -375,7 +394,8 @@ router.get('/:id', async (req, res) => {
             status: order.status || 'pending',
             statusText: ORDER_STATUSES[order.status] || order.status || 'Onay Bekliyor',
 
-            shipping: order.shipping || {},
+            // methodName: teslimat yönteminin Kargo Tanımları'ndaki adı (kod yerine gösterilir)
+            shipping: { ...(order.shipping || {}), methodName: shippingMethodName },
             diaIntegration: order.diaIntegration || {},
             customerNote: order.customerNote || '',
             adminNote: order.adminNote || '',

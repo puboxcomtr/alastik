@@ -30,6 +30,11 @@ const SITES = {
         active: true,
         // Sipariş numarası öneki (orderNumber üretiminde kullanılır)
         orderPrefix: 'AL',
+        // Sepetin son hareketten sonra saklandığı gün sayısı (panel "Aktif Sepet" listesi + silinme)
+        cartRetentionDays: 2,
+        // Ödeme sonucu (başarılı ya da başarısız) geldiği anda müşterinin sepeti sunucuda silinir;
+        // panel "Aktif Sepet" listesinden de düşer
+        clearCartOnPaymentResult: true,
         // XML fiyat kurallarında bu sitenin vitrin satış fiyatını süren platform
         xmlPricePlatform: 'alastik',
     },
@@ -44,6 +49,8 @@ const SITES = {
         theme: 'lastikjantavm',
         active: true,
         orderPrefix: 'LJA',
+        // Ödeme sonucu (başarılı ya da başarısız) geldiği anda müşterinin sepeti sunucuda silinir
+        clearCartOnPaymentResult: true,
         // LJA vitrin fiyatı B2C (panelde "LastikJantAVM" olarak görünür) kurallarından hesaplanır
         xmlPricePlatform: 'b2c',
     },
@@ -61,6 +68,18 @@ const SITES = {
         active: true,
         orderPrefix: 'B2B',
         xmlPricePlatform: 'b2b',
+        // Tarayıcı API'yi sitenin kendi adresinden (/api) çağırır; banka 3D dönüşleri de bu adrese bağlanır.
+        // Ayrı API alan adı bayi bilgisayarlarında firma ağlarınca engellenebiliyor (15 Eki 2026).
+        // Web tarafında aynı ayar: web/src/config/siteConfig.ts sameOriginApi
+        sameOriginApi: true,
+        // Bayinin sipariş açıklaması DIA siparişinde bu açıklama satırına yazılır (açıklama yoksa satırın
+        // olağan değeri kalır). Tanımsız sitede sipariş açıklaması DIA'ya gönderilmez.
+        diaOrderNoteField: 'aciklama1',
+        // Bayi paneli istekleri ziyaret (oturum) kaydı açmaz; panodaki ziyaret istatistikleri vitrin siteleri içindir
+        trackVisits: false,
+        // Ödeme beklemeden DIA'ya hemen aktarılan ödeme yöntemleri (Cari Sipariş, Havale). Diğerleri ödeme alınınca aktarılır;
+        // otomatik aktarım tekrarı (orderTransferRetry) da bu kurala göre hangi siparişlerin DIA'da olması gerektiğini bilir.
+        diaTransferUnpaidPaymentMethods: ['cari', 'bank_transfer'],
     },
 };
 
@@ -93,6 +112,39 @@ function getSiteBySlug(slug) {
     return isValidSite(slug) ? SITES[slug] : null;
 }
 
+// Sitede cartRetentionDays tanımlı değilse kullanılan sepet saklama süresi (gün)
+const DEFAULT_CART_RETENTION_DAYS = 7;
+
+/**
+ * Sitenin sepet saklama süresi (gün): son hareketten bu kadar gün sonra sepet silinmeye adaydır.
+ * @param {string} slug
+ * @returns {number}
+ */
+function getCartRetentionDays(slug) {
+    const days = getSiteBySlug(slug)?.cartRetentionDays;
+    return Number.isFinite(days) && days > 0 ? days : DEFAULT_CART_RETENTION_DAYS;
+}
+
+/**
+ * Ödeme sonucu geldiğinde sepet sunucuda silinsin mi? (site tanımındaki clearCartOnPaymentResult)
+ * @param {string} slug
+ * @returns {boolean}
+ */
+function shouldClearCartOnPaymentResult(slug) {
+    return getSiteBySlug(slug)?.clearCartOnPaymentResult === true;
+}
+
+/**
+ * Sitenin vitrin kök adresi (ana alan adı = domains[0]). Geçersiz slug'da null.
+ * Ödeme dönüşü gibi "müşteriyi kendi sitesine geri gönder" yönlendirmelerinde kullanılır.
+ * @param {string} slug
+ * @returns {string|null}
+ */
+function getSiteUrl(slug) {
+    const site = getSiteBySlug(slug);
+    return site && site.domains[0] ? `https://${site.domains[0]}` : null;
+}
+
 module.exports = {
     SITES,
     SITE_SLUGS,
@@ -100,4 +152,7 @@ module.exports = {
     DEFAULT_SITE,
     isValidSite,
     getSiteBySlug,
+    getSiteUrl,
+    getCartRetentionDays,
+    shouldClearCartOnPaymentResult,
 };

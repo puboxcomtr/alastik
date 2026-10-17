@@ -3,6 +3,7 @@
 // yalnız baş harfleri büyük yazılır; cari adı kalındır.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
+import { PremiumCrown } from './premium-badge';
 
 /** Türkçe kurallarıyla her kelimenin yalnız baş harfini büyütür */
 function basHarfleriBuyut(text: string): string {
@@ -33,14 +34,29 @@ function plasiyerAdi(token: string): string {
 
 export function WelcomeHeading() {
     const [ad, setAd] = useState('');
+    const [plasiyer, setPlasiyer] = useState(false);
+    const [premium, setPremium] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
-        if (!token) return;
-        // Plasiyer bayi adına girdiyse: bayi adı yerine PLASİYER adını göster
-        const sp = plasiyerAdi(token);
-        if (sp) { setAd(basHarfleriBuyut(sp)); return; }
-        fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${token}` } })
+        if (token) {
+            // Plasiyer bayi adına girdiyse: bayi adı yerine PLASİYER adını göster
+            const sp = plasiyerAdi(token);
+            if (sp) { setAd(basHarfleriBuyut(sp)); return; }
+            fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.json())
+                .then(d => {
+                    if (d?.success && d.data?.name) setAd(basHarfleriBuyut(d.data.name));
+                    setPremium(d?.success === true && d.data?.premium === true);
+                })
+                .catch(() => {});
+            return;
+        }
+        // Bayi seçilmeden plasiyer oturumu: plasiyer adını göster
+        const pt = localStorage.getItem('plasiyerToken');
+        if (!pt) return;
+        setPlasiyer(true);
+        fetch(API_ENDPOINTS.b2b.plasiyerMe(), { headers: { Authorization: `Bearer ${pt}` } })
             .then(r => r.json())
             .then(d => { if (d?.success && d.data?.name) setAd(basHarfleriBuyut(d.data.name)); })
             .catch(() => {});
@@ -50,9 +66,10 @@ export function WelcomeHeading() {
         <div>
             <h1 style={{ fontWeight: 400, lineHeight: 1.2, marginBottom: 0 }}>
                 Hoşgeldiniz{ad ? ', ' : ''}<strong title={ad}>{kisalt(ad)}</strong>
+                {premium ? <PremiumCrown /> : null}
             </h1>
             <p className="sub" style={{ marginTop: 4, lineHeight: 1.3 }}>
-                Cari bakiyeniz ve limitiniz özet olarak aşağıdadır.
+                {plasiyer ? 'Bayilerinizin özeti aşağıdadır.' : 'Cari bakiyeniz ve limitiniz özet olarak aşağıdadır.'}
             </p>
         </div>
     );

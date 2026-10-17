@@ -133,8 +133,10 @@ class DiaWorker {
         // b2b cari sync — b2b farklı DIA kullanıcısı (ws_ART_B2B) kullandığı için
         // AYRI kilitte (B2B_LOCK_KEY) çalışır; worker'ın Ws_alastik_B2C senkronlarını
         // beklemez, onları bloklamaz. Kendi içinde (b2b sipariş/adres) sıraya girer.
+        // Zamanlanmış turda kilit 5 dk içinde boşalmazsa (ör. ~30 dk süren finans sync) tur atlanır;
+        // kilitsiz çalışmak aynı DIA kullanıcısıyla oturum düşürme döngüsüne yol açıyordu.
         this.queues.b2bCariSync.process('scheduled-b2b-cari-sync', (job) => {
-            return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync', key: B2B_LOCK_KEY, waitMs: 300000 });
+            return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync', key: B2B_LOCK_KEY, waitMs: 300000, skipIfBusy: true });
         });
         this.queues.b2bCariSync.process('manual-b2b-cari-sync', (job) => {
             return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });

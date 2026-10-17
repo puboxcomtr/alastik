@@ -3,7 +3,12 @@
 // aynı tanımı kullanır. Bir aralığı değiştirmek için yalnızca bu dosya düzenlenir.
 const aralik = (bas, son, adim) => { const o = []; for (let v = bas; v <= son; v += adim) o.push(v); return o; };
 
-const SITE = 'lastikjantavm';                 // form yalnızca bu sitede açılır
+const SITE = 'lastikjantavm';                 // formun ana sitesi (admin Bayi Formları listesi paneldeki seçili siteye göre ayrılır)
+// Formun açıldığı siteler. girisGerekli: yalnız giriş yapmış bayi doldurabilir (kayıt bayiye bağlanır)
+const SITELER = {
+    lastikjantavm: { girisGerekli: false },
+    b2b: { girisGerekli: true }
+};
 const KAPALI = 'Kapalı';
 const VERMIYORUM = 'vermiyorum';              // fiyat satırında "Bu hizmeti vermiyorum"
 const VERMIYORUM_ETIKET = 'Bu hizmeti vermiyorum';
@@ -185,4 +190,4 @@ function dogrula(b, ilSonucu) {
     return { hatalar, temiz };
 }
 
-module.exports = { SITE, KAPALI, VERMIYORUM, VERMIYORUM_ETIKET, SAAT_ALANLARI, FIYAT_GRUPLARI, FIYAT_SATIRLARI, TESIS_EVET_HAYIR, LASTIK_OTELI_YOK, LASTIK_OTELI_YOK_ETIKET, GORSEL_ALANLARI, GORSEL_ADET, GORSEL_BOYUT_MB, GORSEL_DIZIN, DOSYA_KIMLIK, EK_HIZMET_SORU, tanim, dogrula, telefonBicimle };
+module.exports = { SITE, SITELER, KAPALI, VERMIYORUM, VERMIYORUM_ETIKET, SAAT_ALANLARI, FIYAT_GRUPLARI, FIYAT_SATIRLARI, TESIS_EVET_HAYIR, LASTIK_OTELI_YOK, LASTIK_OTELI_YOK_ETIKET, GORSEL_ALANLARI, GORSEL_ADET, GORSEL_BOYUT_MB, GORSEL_DIZIN, DOSYA_KIMLIK, EK_HIZMET_SORU, tanim, dogrula, telefonBicimle };

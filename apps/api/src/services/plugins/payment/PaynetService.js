@@ -160,7 +160,10 @@ class PaynetService {
             transaction_type: '1',           // 1 = Satış
             add_comission_amount: false,
             ratio_code: '',
-            installments: taksitli ? String(installments) : '',
+            // "installments" izin verilen taksit listesidir ve tarayıcıdaki oturumla (data-installments, boş) AYNI olmalıdır;
+            // seçilen taksit sayısı token'ın içindeki taksit anahtarından gelir. Sayı gönderilirse Paynet
+            // "Taksitler (installments) parametresi uyuşmuyor" hatası verir.
+            installments: '',
             no_instalment: !taksitli,
             tds_required: !!tdsRequired,
             reference_no: referenceNo ? String(referenceNo) : ''

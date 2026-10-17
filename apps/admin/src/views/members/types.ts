@@ -4,6 +4,7 @@ export type MemberStatus = 'pending' | 'active' | 'suspended' | 'deleted'
 
 export type MemberRow = {
     _id: string
+    memberNo?: number // site bazlı sıra no — detay adresi view/<memberNo>
     firstName: string
     lastName: string
     email: string
@@ -18,6 +19,12 @@ export type MemberRow = {
     adminTags?: string[]
     adminNote?: string
     cart?: { itemCount: number; total: number } | null
+    // b2b cari (DIA senkronundan)
+    diaCreatedAt?: string | null
+    salespersonName?: string
+    // b2b: Premium cari (DIA özel kodundan)
+    premium?: boolean
+    invoiceCount12m?: number
 }
 
 export type MemberOrder = {
@@ -113,6 +120,7 @@ export const ORDER_STATUS_META: Record<string, { label: string; color: 'success'
     delivered: { label: 'Tamamlandı', color: 'success' },
     cancelled: { label: 'İptal Edildi', color: 'error' },
     returned: { label: 'İade', color: 'error' },
+    awaiting_payment: { label: 'Ödeme Bekleniyor', color: 'warning' },
     payment_failed: { label: 'Ödeme Başarısız', color: 'error' }
 }
 

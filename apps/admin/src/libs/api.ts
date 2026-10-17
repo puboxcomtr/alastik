@@ -136,6 +136,49 @@ export const API_ENDPOINTS = {
         list: () => `${getBaseUrl()}/admin/features`,
         detail: (id: string) => `${getBaseUrl()}/admin/features/${id}`,
     },
+    productButtons: {
+        definitions: () => `${getBaseUrl()}/admin/product-buttons`,
+        products: (params: { page?: number; limit?: number; search?: string; filters?: Record<string, string> }) => {
+            const query = new URLSearchParams({
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 20).toString()
+            })
+            if (params.search) query.set('search', params.search)
+            // brand, season, main_category, sub_category, stock_source, stock_min, stock_max
+            Object.entries(params.filters || {}).forEach(([key, value]) => {
+                if (value) query.set(key, value)
+            })
+            return `${getBaseUrl()}/admin/product-buttons/products?${query}`
+        },
+        toggle: (productKey: string) => `${getBaseUrl()}/admin/product-buttons/products/${encodeURIComponent(productKey)}`,
+        bulkToggle: () => `${getBaseUrl()}/admin/product-buttons/products`,
+    },
+    carts: {
+        list: (params: { page?: number; limit?: number; search?: string; type?: string; status?: string }) => {
+            const query = new URLSearchParams({
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 25).toString()
+            })
+            if (params.search) query.set('search', params.search)
+            if (params.type) query.set('type', params.type)
+            if (params.status) query.set('status', params.status)
+            return `${getBaseUrl()}/admin/carts?${query}`
+        },
+        setStatus: (id: string) => `${getBaseUrl()}/admin/carts/${id}/status`,
+    },
+    // Ödemeler: bayi sitesindeki "Ödeme Yap" sayfasından başlatılan cari borç ödemeleri
+    b2bPayments: {
+        list: (params: { page?: number; limit?: number; search?: string; status?: string; type?: string }) => {
+            const query = new URLSearchParams({
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 20).toString()
+            })
+            if (params.search) query.set('search', params.search)
+            if (params.status) query.set('status', params.status)
+            if (params.type) query.set('type', params.type)
+            return `${getBaseUrl()}/admin/b2b-payments?${query}`
+        },
+    },
     orders: {
         list: () => `${getBaseUrl()}/admin/orders`,
         detail: (id: string) => `${getBaseUrl()}/admin/orders/${id}`,
@@ -185,6 +228,8 @@ export const API_ENDPOINTS = {
         sizes: (params: { categoryId?: string; brandId?: string }) => `${getBaseUrl()}/admin/cargo/sizes?${new URLSearchParams(params as Record<string, string>)}`,
         brands: () => `${getBaseUrl()}/admin/cargo/brands`,
         products: (search: string) => `${getBaseUrl()}/admin/cargo/products?search=${encodeURIComponent(search)}`,
+        cities: () => `${getBaseUrl()}/admin/cargo/locations/cities`,
+        districts: (cityId: string) => `${getBaseUrl()}/admin/cargo/locations/districts/${encodeURIComponent(cityId)}`,
         toggleStatus: (id: string) => `${getBaseUrl()}/admin/cargo/${id}/status`,
         delete: (id: string) => `${getBaseUrl()}/admin/cargo/${id}`,
     },
@@ -280,6 +325,30 @@ export const API_ENDPOINTS = {
         restoreOriginal: () => `${getBaseUrl()}/admin/media/restore-original`,
         restoreOriginalBulk: () => `${getBaseUrl()}/admin/media/restore-original-bulk`,
     },
+    financialDiscounts: {
+        list: (params: { search?: string; customerTier?: string; paymentMethod?: string; category?: string; brand?: string; productionYear?: string; stockSource?: string; status?: string; page?: number; limit?: number; sort?: string; order?: 'asc' | 'desc' }) => {
+            const query = new URLSearchParams({
+                page: (params.page || 1).toString(),
+                limit: (params.limit || 50).toString()
+            })
+            if (params.search) query.set('search', params.search)
+            if (params.customerTier) query.set('customerTier', params.customerTier)
+            if (params.paymentMethod) query.set('paymentMethod', params.paymentMethod)
+            if (params.category) query.set('category', params.category)
+            if (params.brand) query.set('brand', params.brand)
+            if (params.productionYear) query.set('productionYear', params.productionYear)
+            if (params.stockSource) query.set('stockSource', params.stockSource)
+            if (params.sort) query.set('sort', params.sort)
+            if (params.sort && params.order) query.set('order', params.order)
+            if (params.status) query.set('status', params.status)
+            return `${getBaseUrl()}/admin/financial-discounts?${query}`
+        },
+        options: () => `${getBaseUrl()}/admin/financial-discounts/options`,
+        create: () => `${getBaseUrl()}/admin/financial-discounts`,
+        update: (id: string) => `${getBaseUrl()}/admin/financial-discounts/${id}`,
+        toggleStatus: (id: string) => `${getBaseUrl()}/admin/financial-discounts/${id}/status`,
+        delete: (id: string) => `${getBaseUrl()}/admin/financial-discounts/${id}`,
+    },
     redirects: {
         list: (params: { search?: string; page?: number; limit?: number }) => {
             const query = new URLSearchParams({
@@ -295,7 +364,7 @@ export const API_ENDPOINTS = {
         import: () => `${getBaseUrl()}/admin/redirects/import`,
     },
     members: {
-        list: (params: { search?: string; status?: string; page?: number; limit?: number; view?: 'table'; hasOrders?: string; from?: string; to?: string; code?: string; email?: string; phone?: string }) => {
+        list: (params: { search?: string; status?: string; page?: number; limit?: number; view?: 'table'; hasOrders?: string; from?: string; to?: string; code?: string; email?: string; phone?: string; salesperson?: string; tier?: string; sort?: string; order?: 'asc' | 'desc' }) => {
             const query = new URLSearchParams({
                 search: params.search || '',
                 status: params.status || '',
@@ -309,18 +378,30 @@ export const API_ENDPOINTS = {
             if (params.code) query.set('code', params.code)
             if (params.email) query.set('email', params.email)
             if (params.phone) query.set('phone', params.phone)
+            if (params.salesperson) query.set('salesperson', params.salesperson)
+            if (params.tier) query.set('tier', params.tier)
+            if (params.sort) query.set('sort', params.sort)
+            if (params.order) query.set('order', params.order)
             return `${getBaseUrl()}/admin/members?${query}`
         },
         detail: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
+        salespersonOptions: () => `${getBaseUrl()}/admin/members/salespersons`,
         syncDia: () => `${getBaseUrl()}/admin/members/sync-dia`,
+        syncOne: (id: string) => `${getBaseUrl()}/admin/members/${id}/sync-dia`,
+        annotate: (id: string) => `${getBaseUrl()}/admin/members/${id}/annotations`,
+        setStatus: (id: string) => `${getBaseUrl()}/admin/members/${id}/status`,
+        remove: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
+        password: (id: string) => `${getBaseUrl()}/admin/members/${id}/password`,
+        addAddress: (id: string) => `${getBaseUrl()}/admin/members/${id}/addresses`,
     },
     salespersons: {
-        list: (params: { search?: string; page?: number; limit?: number }) => {
+        list: (params: { search?: string; page?: number; limit?: number; group?: string }) => {
             const query = new URLSearchParams({
                 search: params.search || '',
                 page: (params.page || 1).toString(),
                 limit: (params.limit || 100).toString()
             })
+            if (params.group) query.set('group', params.group)
             return `${getBaseUrl()}/admin/salespersons?${query}`
         },
         syncDia: () => `${getBaseUrl()}/admin/salespersons/sync-dia`,
@@ -338,9 +419,6 @@ export const API_ENDPOINTS = {
             return `${getBaseUrl()}/admin/b2b-applications?${query}`
         },
         setStatus: (id: string) => `${getBaseUrl()}/admin/b2b-applications/${id}/status`,
-        annotate: (id: string) => `${getBaseUrl()}/admin/members/${id}/annotations`,
-        setStatus: (id: string) => `${getBaseUrl()}/admin/members/${id}/status`,
-        remove: (id: string) => `${getBaseUrl()}/admin/members/${id}`,
     },
 }
 

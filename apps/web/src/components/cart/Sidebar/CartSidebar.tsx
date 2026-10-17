@@ -42,7 +42,7 @@ export default function CartSidebar({
                         </div>
                         <div className="d-flex justify-content-between mb-2">
                             <span className="fw-semibold text-black fs-sm">Kargo Bedeli</span>
-                            <span>0 TL</span>
+                            <span>{formatPrice(totals.shipping ?? 0)} TL</span>
                         </div>
                         <hr className="my-2" />
                         {(totals.montage ?? 0) > 0 && (
@@ -124,7 +124,7 @@ export default function CartSidebar({
                     </div>
                     <div className="d-flex justify-content-between mb-2">
                         <span className="fs-sm text-black">Kargo Bedeli</span>
-                        <span className='fw-semibold fs-sm'>0 TL</span>
+                        <span className='fw-semibold fs-sm'>{formatPrice(totals.shipping ?? 0)} TL</span>
                     </div>
                     <hr className="my-2" />
                     {(totals.montage ?? 0) > 0 && (

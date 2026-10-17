@@ -56,7 +56,7 @@ export function AddToCart({
         disabled={!depo}
         onClick={() => {
           if (!depo) return;
-          sepet.addItem({
+          const added = sepet.addItem({
             productId,
             warehouseId: depo.warehouseId,
             adet: Math.max(1, Math.min(initialQty, maks || 1)),
@@ -64,7 +64,7 @@ export function AddToCart({
               ? { ...product, warehouseName: depo.warehouseName }
               : undefined,
           });
-          showToast("Sepete eklendi", "ok");
+          if (added) showToast("Sepete eklendi", "ok");
         }}
       >
         <CartIcon size={17} />
@@ -101,8 +101,7 @@ export function AddToCart({
         <button
           type="button"
           onClick={() => {
-            update(cartItem.adet + 1);
-            showToast("Adet güncellendi", "ok");
+            if (update(cartItem.adet + 1)) showToast("Adet güncellendi", "ok");
           }}
           disabled={cartItem.adet >= maks}
           aria-label="Artır"

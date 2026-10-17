@@ -21,6 +21,8 @@ export interface DiaSiparisSettings {
     satisElemaniKey: number
     // Siparişe yazılacak kargo firması (krg_firma _key)
     kargoFirmaKey: number
+    // Kargo bedeli hizmet kartı (_key): doluysa kargo ücreti siparişe ayrı satır olarak yazılır
+    kargoHizmetKartKey: number
     // Sipariş başlığına yazılacak Yetki/Seviye Kodu (_key) — cari yetki kodundan ayrıdır
     siparisSeviyeKodKey: number
     // Ödeme şekline göre DIA Ödeme Planı anahtarları (_key)
@@ -157,6 +159,7 @@ export const defaultDiaSettings: DiaSettings = {
         cariSeviyeKodKey: 0,
         satisElemaniKey: 0,
         kargoFirmaKey: 0,
+        kargoHizmetKartKey: 0,
         siparisSeviyeKodKey: 0,
         odemePlaniTekCekimKey: 0,
         odemePlaniTaksitliKey: 0,

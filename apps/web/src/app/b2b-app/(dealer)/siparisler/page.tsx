@@ -16,6 +16,8 @@ interface OrderRow {
   totalKurus: number;
   itemCount: number;
   productText: string;
+  /** Bayinin sepette yazdığı Sipariş Açıklaması (panel dışı siparişte boş) */
+  orderNote?: string;
 }
 interface OrderItem { name: string; stockCode: string; quantity: number; unitPrice: number; listUnitPrice?: number; totalPrice: number; }
 interface OrderDetail {
@@ -143,6 +145,7 @@ export default function SiparislerPage() {
                 <th className="sortable" onClick={() => sortBy("createdAt")}>TARİH<span className="sarrow">{ok("createdAt")}</span></th>
                 <th className="sortable" onClick={() => sortBy("orderNumber")}>SİPARİŞ NO<span className="sarrow">{ok("orderNumber")}</span></th>
                 <th className="sortable" onClick={() => sortBy("status")}>DURUM<span className="sarrow">{ok("status")}</span></th>
+                <th>SİPARİŞ AÇIKLAMASI</th>
                 <th className="sortable num" onClick={() => sortBy("itemCount")}>ADET<span className="sarrow">{ok("itemCount")}</span></th>
                 <th className="sortable num" onClick={() => sortBy("totalKurus")}>TUTAR<span className="sarrow">{ok("totalKurus")}</span></th>
                 <th>İŞLEM</th>
@@ -154,15 +157,16 @@ export default function SiparislerPage() {
                   <td>{formatDate(o.createdAt)}</td>
                   <td><button type="button" className="order-no-link" onClick={() => setModalNo(o.orderNumber)}>{o.orderNumber}</button></td>
                   <td><span className={`durum-badge ${durumClass(o.status)}`}>{STATUS_LABEL[o.status] || o.status}</span></td>
+                  <td className="order-note-cell" title={o.orderNote || undefined}><div className="order-note-text">{o.orderNote || "—"}</div></td>
                   <td className="num">{o.itemCount}</td>
                   <td className="num">{money(o.totalKurus)}</td>
                   <td>
-                    <button type="button" className="order-action" onClick={() => setModalNo(o.orderNumber)} aria-label="Detay"><ViewIcon size={16} /></button>
+                    <button type="button" className="order-action" onClick={() => setModalNo(o.orderNumber)}><ViewIcon size={16} /> Görüntüle</button>
                   </td>
                 </tr>
               ))}
               {rows.length === 0 ? (
-                <tr><td colSpan={6} className="note" style={{ padding: "2rem", textAlign: "center" }}>
+                <tr><td colSpan={7} className="note" style={{ padding: "2rem", textAlign: "center" }}>
                   {orders.length === 0 ? "Henüz siparişiniz bulunmuyor." : "Aramanıza uygun sipariş bulunamadı."}
                 </td></tr>
               ) : null}

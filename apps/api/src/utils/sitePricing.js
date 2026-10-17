@@ -126,7 +126,13 @@ function resolveSitePrice(doc, site) {
     if (cfg.priceField === '__dinamik__16') {
         const dinamik = parseFloat(birim.fiyat4) || 0;
         const ham = parseFloat(birim.fiyat4Ham) || 0;
-        const hasDynamic = dinamik > 0 && !(ham > 0 && Math.abs(dinamik - ham) < 0.01);
+        // Dinamik fiyatın varlığı senkronun yazdığı AYRI alandan okunur (fiyatDinamik; 0 = yok).
+        // Alan henüz yazılmamış eski kayıtta fiyat farkından çıkarılır — bu çıkarım, dinamik
+        // fiyat ham fiyat4 ile AYNI tutardaysa yanılır (ürün haksız yere fiyatsız görünür).
+        const stored = birim.fiyatDinamik ?? dia.fiyatDinamik;
+        const hasDynamic = (stored !== undefined && stored !== null)
+            ? dinamik > 0 && parseFloat(stored) > 0
+            : dinamik > 0 && !(ham > 0 && Math.abs(dinamik - ham) < 0.01);
         if (!hasDynamic) return PRICE_HIDDEN;
         if (cfg.discountMode === 'b2c_oran') {
             const oran = parseDiscountRate(dia);

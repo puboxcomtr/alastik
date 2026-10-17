@@ -542,7 +542,6 @@ const XmlListTable = () => {
                         setLimit(Number(e.target.value))
                         setPage(1)
                     }}
-                    labelRowsPerPage='Sayfa başına:'
                     labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
                 />
 

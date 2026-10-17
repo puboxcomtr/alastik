@@ -33,7 +33,7 @@ export default function FavouritesContent({ items, loading }: Props) {
                 <Row className="row-cols-2 row-cols-md-3 row-cols-lg-3">
                     {items.map((item) => (
                         <Col key={item._key} className="px-2">
-                            <ProductCard product={item} />
+                            <ProductCard product={item} showFavourite />
                         </Col>
                     ))}
                 </Row>

@@ -55,6 +55,12 @@ export type Tire = {
   mevsim: Season;
   dotYear: number | null;
   productStatus: ProductStatus;
+  /** Ürün türü (DIA özel kod 7, ör. "LASTİK", "2.El Jant") */
+  productType?: string;
+  /** XML ürününün geldiği tedarikçi firma (yalnız plasiyer oturumunda doldurulur) */
+  xmlSource?: string;
+  /** DIA'daki gerçek stok kodu (XML üründe "-XML" ekli; ekranda stockCode kısa gösterilir, siparişe bu gider) */
+  diaStockCode?: string;
   rft: boolean;
   cTipi: boolean;
   ev: boolean;
@@ -64,6 +70,8 @@ export type Tire = {
   images?: string[];
   stocks: StockRow[];
   fiyat: Price | null;
+  /** Plasiyer karşılaştırması: LJA perakende satış fiyatı (kuruş). API ?perakende=1. */
+  perakendeKurus?: number | null;
   /** XML (tedarikçi) kaynaklı ürün — ödeme yöntemi iskontosu uygulanmaz. */
   xml?: boolean;
   /** Sevkiyat süresi etiketi: kendi stok "Aynı Gün", XML ürün "1-2 Gün" (veya alanı). */

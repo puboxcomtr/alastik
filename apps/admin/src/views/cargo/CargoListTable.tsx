@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 
 // API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
+import { siteHasCargoEdit } from '@/utils/activeSite'
 
 // MUI Imports
 import Card from '@mui/material/Card'
@@ -64,6 +65,8 @@ declare module '@tanstack/table-core' {
 
 type CargoType = {
     id: string
+    // Site bazlı sıra numarası — kurallar sayfasının adresinde kullanılır
+    cargoNo?: number
     name: string
     code: string
     logo?: string
@@ -154,6 +157,7 @@ const CargoListTable = () => {
 
                 const cargos = (response.data || []).map((cargo: any) => ({
                     id: cargo._id || cargo.id,
+                    cargoNo: cargo.cargoNo,
                     name: cargo.name || '',
                     code: cargo.code || '',
                     logo: cargo.logo || '',
@@ -313,22 +317,24 @@ const CargoListTable = () => {
                         <Tooltip title='Kargo Kuralları ve Desi Fiyatlandırma'>
                             <IconButton
                                 size='small'
-                                onClick={() => router.push(`/${locale}/apps/cargo/desi/${row.original.id}`)}
+                                onClick={() => router.push(`/${locale}/apps/cargo/desi/${row.original.cargoNo ?? row.original.id}`)}
                             >
                                 <i className="ri-price-tag-3-fill text-[22px] text-textSecondary"></i>
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title='Kargo Firmasını Düzenle'>
-                            <IconButton
-                                size='small'
-                                onClick={() => {
-                                    setSelectedCargo(row.original)
-                                    setEditCargoOpen(true)
-                                }}
-                            >
-                                <i className='ri-edit-box-line text-[22px] text-textSecondary' />
-                            </IconButton>
-                        </Tooltip>
+                        {siteHasCargoEdit() && (
+                            <Tooltip title='Kargo Firmasını Düzenle'>
+                                <IconButton
+                                    size='small'
+                                    onClick={() => {
+                                        setSelectedCargo(row.original)
+                                        setEditCargoOpen(true)
+                                    }}
+                                >
+                                    <i className='ri-edit-box-line text-[22px] text-textSecondary' />
+                                </IconButton>
+                            </Tooltip>
+                        )}
                         <Tooltip title='Sil'>
                             <IconButton
                                 size='small'
@@ -506,6 +512,7 @@ const CargoListTable = () => {
                             .then(response => {
                                 const cargos = (response.data || []).map((cargo: any) => ({
                                     id: cargo._id || cargo.id,
+                                    cargoNo: cargo.cargoNo,
                                     name: cargo.name || '',
                                     code: cargo.code || '',
                                     logo: cargo.logo || '',
@@ -542,6 +549,7 @@ const CargoListTable = () => {
                         .then(response => {
                             const cargos = (response.data || []).map((cargo: any) => ({
                                 id: cargo._id || cargo.id,
+                                cargoNo: cargo.cargoNo,
                                 name: cargo.name || '',
                                 code: cargo.code || '',
                                 logo: cargo.logo || '',

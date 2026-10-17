@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { CalendarIcon, CardIcon, FileIcon, OrdersIcon, UserIcon, WalletIcon } from "./icons";
+import { PremiumBadge } from "./premium-badge";
+import { clearStoredCart } from "./cart-status";
 
 /** Üst bardaki hesap menüsü: oturumdaki cari bilgisi + ayarlar, siparişler, ödeme, çıkış. */
 export function AccountMenu() {
   const [open, setOpen] = useState(false);
-  const [cari, setCari] = useState<{ unvan: string; email: string; cariKodu: string } | null>(null);
+  const [cari, setCari] = useState<{ unvan: string; email: string; cariKodu: string; premium: boolean } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   // Oturumdaki bayinin gerçek cari bilgisi (/me) çekilir.
@@ -19,7 +21,7 @@ export function AccountMenu() {
       .then((r) => r.json())
       .then((res) => {
         if (res?.success && res.data) {
-          setCari({ unvan: res.data.name || "", email: res.data.email || "", cariKodu: res.data.cariKodu || "" });
+          setCari({ unvan: res.data.name || "", email: res.data.email || "", cariKodu: res.data.cariKodu || "", premium: res.data.premium === true });
         }
       })
       .catch(() => {});
@@ -54,6 +56,7 @@ export function AccountMenu() {
             <strong title={unvan}>{unvan}</strong>
             {email ? <span>{email}</span> : null}
             {cari?.cariKodu ? <span className="kim-cari">{cari.cariKodu}</span> : null}
+            {cari?.premium ? <PremiumBadge /> : null}
           </div>
           <Link href="/cari" onClick={() => setOpen(false)}>
             <WalletIcon size={16} /> Cari Özet
@@ -80,6 +83,11 @@ export function AccountMenu() {
             href="/giris"
             onClick={() => {
               setOpen(false);
+              // Plasiyer oturumundaysa (bayi adına ya da bayisiz) plasiyer de çıkar ve sepeti temizlenir; bayinin sepeti korunur
+              if (localStorage.getItem("plasiyerToken")) {
+                localStorage.removeItem("plasiyerToken");
+                clearStoredCart();
+              }
               localStorage.removeItem("authToken");
               document.cookie = "authToken=; path=/; max-age=0";
             }}

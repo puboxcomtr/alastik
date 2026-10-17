@@ -1,6 +1,10 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const WebSalesperson = require('../../../models/web/user/WebSalesperson');
+const { SALES_GROUPS, SALES_GROUP_IDS } = WebSalesperson;
+
+// Liste filtresinde "grubu atanmamış" değeri
+const UNASSIGNED_GROUP = 'unassigned';
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 // Şifre alanları listede dönmez; düz şifre yalnız özel /:id/password ucundan alınır
@@ -27,6 +31,11 @@ router.get('/', async (req, res) => {
             ];
         }
 
+        // Grup filtresi: perakende / toptan / atanmamış
+        const group = String(req.query.group || '').trim();
+        if (SALES_GROUP_IDS.includes(group)) match.salesGroup = group;
+        else if (group === UNASSIGNED_GROUP) match.salesGroup = { $nin: SALES_GROUP_IDS };
+
         const total = await WebSalesperson.countDocuments(match);
         const docs = await WebSalesperson.find(match)
             .select(HIDDEN_FIELDS)
@@ -41,7 +50,7 @@ router.get('/', async (req, res) => {
 
         const data = docs.map(d => ({ ...d, hasPassword: passMap.get(String(d._id)) || false }));
 
-        res.json({ success: true, data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+        res.json({ success: true, data, groups: SALES_GROUPS, unassignedGroup: UNASSIGNED_GROUP, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
     } catch (error) {
         console.error('Plasiyer listesi hatası:', error);
         res.status(500).json({ success: false, message: 'Plasiyer listesi alınamadı' });
@@ -181,7 +190,8 @@ router.post('/sync-dia', async (req, res) => {
 });
 
 /**
- * PUT /:id — plasiyer şifresini belirler/değiştirir (admin). Şifresi olan giriş yapabilir.
+ * PUT /:id — plasiyerin grubunu (Perakende / Toptan) ve/veya şifresini belirler (admin).
+ * Grubu ve şifresi atanmış plasiyer giriş yapabilir. Gönderilmeyen alan değişmez; salesGroup '' = atamayı kaldır.
  */
 router.put('/:id', async (req, res) => {
     try {
@@ -193,22 +203,34 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Plasiyer bulunamadı' });
         }
 
-        const { password } = req.body || {};
+        const { password, salesGroup } = req.body || {};
+        if (password === undefined && salesGroup === undefined) {
+            return res.status(400).json({ success: false, message: 'Güncellenecek alan gönderilmedi' });
+        }
 
-        if (typeof password !== 'string' || !password.trim()) {
-            return res.status(400).json({ success: false, message: 'Şifre giriniz' });
+        if (salesGroup !== undefined) {
+            if (salesGroup !== '' && !SALES_GROUP_IDS.includes(salesGroup)) {
+                return res.status(400).json({ success: false, message: 'Geçerli bir grup seçiniz' });
+            }
+            sp.salesGroup = salesGroup;
         }
-        if (password.trim().length < 6) {
-            return res.status(400).json({ success: false, message: 'Şifre en az 6 karakter olmalıdır' });
+
+        if (password !== undefined) {
+            if (typeof password !== 'string' || !password.trim()) {
+                return res.status(400).json({ success: false, message: 'Şifre giriniz' });
+            }
+            if (password.trim().length < 6) {
+                return res.status(400).json({ success: false, message: 'Şifre en az 6 karakter olmalıdır' });
+            }
+            sp.password = password.trim();
+            sp.plainPassword = password.trim(); // admin sonradan görebilsin
         }
-        sp.password = password.trim();
-        sp.plainPassword = password.trim(); // admin sonradan görebilsin
 
         await sp.save();
         const out = sp.toObject();
         delete out.password;
         delete out.plainPassword;
-        res.json({ success: true, message: 'Plasiyer şifresi güncellendi', data: { ...out, hasPassword: !!sp.password } });
+        res.json({ success: true, message: 'Plasiyer güncellendi', data: { ...out, hasPassword: !!sp.password } });
     } catch (error) {
         console.error('Plasiyer güncelleme hatası:', error);
         res.status(500).json({ success: false, message: 'Plasiyer güncellenemedi' });

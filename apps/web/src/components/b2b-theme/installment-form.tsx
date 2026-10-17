@@ -1,12 +1,15 @@
 "use client";
 
-// Taksitli (NetTahsilat PirPos) kart formu — cari borç için. Kart numarasının ilk
-// 6 hanesinden (BIN) + tutardan taksit seçenekleri çekilir; seçim + kart bilgisiyle
-// 3D başlatılır. Kart sunucuya gelir → PirPos'a iletilir (saklanmaz).
-// Akış: /netahsilat/ratios → /netahsilat/borc-init → 3D → /netahsilat/borc-callback → /odeme-sonuc.
+// Taksitli kart formu — cari borç için. Kart numarasının ilk 6 hanesinden (BIN) + tutardan taksit seçenekleri
+// çekilir; sunucu kartın bankasına göre sağlayıcıyı da bildirir:
+//  • NetTahsilat (PirPos): kart sunucuya gelir → PirPos'a iletilir (saklanmaz).
+//    /netahsilat/ratios → /netahsilat/borc-init → 3D → /netahsilat/borc-callback → /odeme-sonuc.
+//  • Paynet: kart tarayıcıda Paynet formuyla token'lanır, sunucuya gelmez.
+//    /netahsilat/ratios → /tekcekim/baslat (taksit sayısıyla) → Paynet formu + 3D → /tekcekim/return → /odeme-sonuc.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { CardIcon, SpinnerIcon } from "./icons";
+import { launchPaynetForm, PAYNET_PROVIDER } from "@components/b2b-theme/lib/paynet-form";
 
 const nf = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const tl = (v: number) => `${nf.format(v || 0)} TL`;
@@ -44,7 +47,8 @@ interface TaksitOption {
   instalmentAmount: number;
   totalAmount: number;
   commission: number;
-  vPosId: number;
+  // Yalnız NetTahsilat seçeneklerinde
+  vPosId?: number;
 }
 
 export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
@@ -58,6 +62,7 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
   const [options, setOptions] = useState<TaksitOption[] | null>(null);
   const [loadingRatios, setLoadingRatios] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const [provider, setProvider] = useState("");
   const lastKey = useRef("");
 
   const digits = useMemo(() => onlyDigits(num), [num]);
@@ -89,6 +94,7 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
         .then((r) => r.json())
         .then((d) => {
           const opts: TaksitOption[] = d?.data?.options || [];
+          setProvider(String(d?.data?.provider || ""));
           setOptions(opts);
           if (opts.length) setSelected(opts[0].instalment);
         })
@@ -111,6 +117,35 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
     try {
       const [mm, yy] = exp.split("/");
       const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+      const expMonth = String(parseInt(mm || "0", 10));
+      const expYear = `20${(yy || "").padStart(2, "0")}`;
+
+      if (provider === PAYNET_PROVIDER) {
+        // Paynet taksit: ödeme kaydı açılır, kart tarayıcıda Paynet formuyla işlenir
+        const start = await fetch(API_ENDPOINTS.b2b.tekCekimBaslat(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Site": "b2b" },
+          body: JSON.stringify({ amount: amountKurus / 100, installment: opt.instalment }),
+        }).then((r) => r.json());
+        if (!start?.success || !start.data?.config?.publishableKey) {
+          setErr(start?.message || "Ödeme başlatılamadı, lütfen tekrar deneyin.");
+          setBusy(false);
+          return;
+        }
+        launchPaynetForm({
+          action: API_ENDPOINTS.b2b.tekCekimReturn(),
+          fields: { paymentId: start.data.paymentId, pt: start.data.pt, returnOrigin: window.location.origin },
+          card: { holder: holder.trim(), number: digits, expMonth, expYear, cvv },
+          config: start.data.config,
+          amountTL: start.data.amountKurus / 100,
+          reference: start.data.reference,
+          installment: opt.instalment,
+          errorTarget: { kind: "payment", id: start.data.paymentId, pt: start.data.pt },
+          onError: (message) => { setErr(message); setBusy(false); },
+        });
+        return;
+      }
+
       const res = await fetch(API_ENDPOINTS.b2b.borcTaksitInit(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Site": "b2b" },
@@ -118,8 +153,8 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
           amount: amountKurus / 100,
           cardNumber: digits,
           cardHolderName: holder.trim(),
-          expMonth: String(parseInt(mm || "0", 10)),
-          expYear: `20${(yy || "").padStart(2, "0")}`,
+          expMonth,
+          expYear,
           cvc: cvv,
           installment: opt.instalment,
           vPosId: opt.vPosId,
@@ -198,7 +233,6 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
             ? (<><SpinnerIcon size={17} /> Yönlendiriliyor…</>)
             : (<><CardIcon size={17} /> {amountKurus > 0 ? `${tl(amountKurus / 100)} ` : ""}Taksitli Öde</>)}
         </button>
-        <p className="pm-secure"><CardIcon size={13} /> 3D Secure ile güvenli ödeme. Kart bilgileriniz saklanmaz.</p>
       </div>
     </div>
   );

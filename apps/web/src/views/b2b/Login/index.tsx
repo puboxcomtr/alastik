@@ -7,14 +7,8 @@ import { useEffect, useState } from 'react';
 import { SITES } from '@src/config/siteConfig';
 import { API_ENDPOINTS, getImageUrl } from '@src/config/api';
 import { toast } from 'react-toastify';
-
-// Arka plan slider görselleri — public/b2b/ altındaki dosyalar
-const LOGIN_BG_IMAGES = [
-    '/b2b/login-bg-1.png',
-    '/b2b/login-bg-2.png',
-    '/b2b/login-bg-3.png',
-];
-const SLIDE_INTERVAL_MS = 6000;
+import { B2BLoginGlobe } from '@components/b2b-theme/b2b-login-globe';
+import { LoginPopup } from '@components/b2b-theme/login-popup';
 
 type TabKey = 'login' | 'apply';
 
@@ -22,11 +16,11 @@ const site = SITES.b2b;
 
 const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: '#242424',
-    border: '1px solid #3d3d3d',
-    borderRadius: 6,
-    padding: '11px 14px',
-    color: '#ffffff',
+    background: '#f4f5f7',
+    border: '1px solid #e1e5e9',
+    borderRadius: 8,
+    padding: '12px 14px',
+    color: '#1a1a1a',
     fontSize: 14,
     outline: 'none',
 };
@@ -36,13 +30,13 @@ const requiredMark = <span style={{ color: '#e05252' }}> *</span>;
 const labelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: 12,
-    color: '#c9c9c9',
+    color: '#555',
+    fontWeight: 600,
     marginBottom: 6,
 };
 
 const B2BLogin = () => {
     const [tab, setTab] = useState<TabKey>('login');
-    const [bgIndex, setBgIndex] = useState(0);
     const [submitting, setSubmitting] = useState(false);
 
     // Başvuru formu alanları — başvuru yalnız FORMDUR (hesap/şifre oluşturmaz;
@@ -122,13 +116,6 @@ const B2BLogin = () => {
         setApply(a => ({ ...a, cityId, city: secilen?.cityName || '', district: '' }));
     };
 
-    // Arka plan slider döngüsü
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setBgIndex((current) => (current + 1) % LOGIN_BG_IMAGES.length);
-        }, SLIDE_INTERVAL_MS);
-        return () => clearInterval(timer);
-    }, []);
 
     // Giriş: cari kodu VEYA e-posta + şifre
     const [loginId, setLoginId] = useState('');
@@ -142,10 +129,16 @@ const B2BLogin = () => {
 
     // Logo: panelden yüklenen b2b logosu (ayarlar); yoksa statik config logosu
     const [logo, setLogo] = useState<string>(site.theme.logo);
+    // Giriş ekranı duyuru popup'ı: panelde (Tema Ayarları) açıksa ve görsel yüklüyse
+    const [loginPopupImage, setLoginPopupImage] = useState('');
     useEffect(() => {
         fetch(API_ENDPOINTS.b2b.themeSettings())
             .then(r => r.json())
-            .then(d => { if (d?.success && d.data?.logo) setLogo(getImageUrl(d.data.logo)); })
+            .then(d => {
+                if (!d?.success) return;
+                if (d.data?.logo) setLogo(getImageUrl(d.data.logo));
+                if (d.data?.loginPopupEnabled === true && d.data?.loginPopupImage) setLoginPopupImage(getImageUrl(d.data.loginPopupImage));
+            })
             .catch(() => { });
     }, []);
 
@@ -252,87 +245,69 @@ const B2BLogin = () => {
         setTab(next);
     };
 
-    const tabButtonStyle = (active: boolean): React.CSSProperties => ({
-        flex: 1,
-        padding: '12px 8px',
-        background: 'transparent',
-        border: 'none',
-        borderBottom: active ? `3px solid ${site.theme.primary}` : '3px solid transparent',
-        color: active ? '#ffffff' : '#9a9a9a',
-        fontWeight: 700,
-        fontSize: 14,
-        cursor: 'pointer',
-    });
 
     return (
-        <div
-            style={{
-                position: 'relative',
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '40px 16px',
-                background: '#1a1a1a',
-                overflow: 'hidden',
-            }}
-        >
-            {/* Arka plan slider katmanları — aktif görsel yumuşak geçişle görünür */}
-            {LOGIN_BG_IMAGES.map((image, index) => (
-                <div
-                    key={image}
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        backgroundImage: `url(${image})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        opacity: index === bgIndex ? 1 : 0,
-                        transition: 'opacity 1.5s ease-in-out',
-                    }}
-                />
-            ))}
-            {/* Karartma katmanı — kartın okunabilirliği için */}
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.65)' }} />
-            <div
-                style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    width: '100%',
-                    maxWidth: tab === 'apply' ? 640 : 460,
-                    background: '#1a1a1a',
-                    borderRadius: 10,
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
-                    overflow: 'hidden',
-                    transition: 'max-width 0.25s ease',
-                }}
-            >
-                <div style={{ textAlign: 'center', padding: '22px 20px 12px' }}>
-                    <img src={logo} alt={site.name} style={{ maxWidth: 170, width: '100%' }} />
+        <div className="b2b-giris-root" style={{ minHeight: '100vh', display: 'flex', background: '#ffffff' }}>
+            {loginPopupImage ? <LoginPopup image={loginPopupImage} /> : null}
+            {/* SOL PANEL — tanıtım */}
+            <div className="b2b-giris-sol" style={{
+                flex: '0 0 56%', position: 'relative', overflow: 'hidden', color: '#fff',
+                background: 'radial-gradient(45% 40% at 48% 70%, rgba(224,205,0,0.10) 0%, transparent 70%), linear-gradient(90deg, #0d1014 0%, #161a20 50%, #1f232a 82%, #8d9198 93%, #ffffff 100%)',
+                padding: '72px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
+            }}>
+                {/* WebGL "dünya" + lastik (artlastik hero sahnesi) — dekoratif arka plan */}
+                <B2BLoginGlobe />
+                {/* Dünya çevresindeki yörünge etiketleri (artlastik hero) — giriş + yüzme animasyonu, hover vurgusu */}
+                <div className="b2b-orbit-katman">
+                    {[
+                        ['1972’den beri', '40%', '14%'],
+                        ['Gelişmiş B2B Platformu', '37%', '50%'],
+                        ['50+ Yıl Deneyim', '45%', '66%'],
+                        ['E-Ticaret', '63%', '76%'],
+                        ['Filo Çözümleri', '73%', '8%'],
+                        ['Dünya Lastik Markaları', '79%', '66%'],
+                        ['Güçlü Tedarik Ağı', '84%', '38%'],
+                    ].map(([text, top, left], i) => (
+                        <span key={text} className="b2b-orbit-label" style={{ top, left, animationDelay: `${(1.18 + i * 0.09).toFixed(2)}s, ${(i * 0.8).toFixed(1)}s` }}>
+                            <span className="b2b-orbit-dot" />{text}
+                        </span>
+                    ))}
+                </div>
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                <h1 style={{ margin: 0, fontSize: 40, fontWeight: 800, lineHeight: 1.1 }}>
+                    Art Lastik<br /><span style={{ color: site.theme.primary }}>B2B Satış Platformu</span>
+                </h1>
+                </div>
+                <div style={{ position: 'absolute', left: 48, bottom: 28, fontSize: 12, color: 'rgba(255,255,255,0.5)', zIndex: 1 }}>
+                    LastikJantAVM, Art Lastik markasıdır. Tüm hakları saklıdır.
+                </div>
+            </div>
+
+            {/* SAĞ PANEL — giriş/başvuru kartı */}
+            <div className="b2b-giris-sag" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', overflowY: 'auto' }}>
+                <div style={{ width: '100%', maxWidth: tab === 'apply' ? 620 : 420, textAlign: 'center', marginBottom: 20 }}>
+                    <img src={logo} alt={site.name} style={{ maxWidth: 190, width: '100%', marginBottom: 18 }} />
+                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1a1a1a' }}>
+                        {tab === 'login' ? 'Hesabınıza giriş yapın' : 'Bayimiz Olun'}
+                    </h2>
+                    <p style={{ margin: '6px 0 0', fontSize: 14, color: '#777' }}>
+                        {tab === 'login' ? 'Bayi panelinize erişmek için bilgilerinizi girin' : 'Başvuru formunu doldurun, sizinle iletişime geçelim'}
+                    </p>
                 </div>
 
-                <div style={{ display: 'flex', borderBottom: '1px solid #3d3d3d' }}>
-                    <button type='button' style={tabButtonStyle(tab === 'login')} onClick={() => switchTab('login')}>
-                        Giriş Yap
-                    </button>
-                    <button type='button' style={tabButtonStyle(tab === 'apply')} onClick={() => switchTab('apply')}>
-                        Yeni Başvuru Formu
-                    </button>
-                </div>
-
-                <div style={{ padding: '20px' }}>
+                <div style={{ width: '100%', maxWidth: tab === 'apply' ? 620 : 420 }}>
                     {tab === 'login' ? (
                         loginMode === 'bayi' ? (
                         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div>
-                                <label style={labelStyle} htmlFor='b2b-code'>Bayi Kodu veya E-posta</label>
-                                <input id='b2b-code' type='text' required placeholder='Lütfen Bayi Kodu veya E-Postanızı Giriniz' style={inputStyle} value={loginId} onChange={e => setLoginId(e.target.value)} />
+                                <label style={labelStyle} htmlFor='b2b-code'>Bayi Kodu, E-posta veya Cep Telefonu</label>
+                                <input id='b2b-code' type='text' required placeholder='Bayi Kodu, E-posta veya Cep Telefonu giriniz' style={inputStyle} value={loginId} onChange={e => setLoginId(e.target.value)} />
                             </div>
                             <div>
                                 <label style={labelStyle} htmlFor='b2b-password'>Şifre</label>
-                                <input id='b2b-password' type='password' required placeholder='Lütfen Şifrenizi Yazınız' style={inputStyle} value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                                <input id='b2b-password' type='password' placeholder='Şifre belirlemediyseniz boş bırakabilirsiniz' style={inputStyle} value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
                             </div>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#c9c9c9', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>
                                 <input type='checkbox' style={{ accentColor: site.theme.primary }} />
                                 Beni Hatırla
                             </label>
@@ -353,12 +328,19 @@ const B2BLogin = () => {
                                 {loggingIn ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
                             </button>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                                <a href='#' onClick={(e) => { e.preventDefault(); toast.info('Şifre sıfırlama hazırlık aşamasındadır.'); }} style={{ color: '#c9c9c9' }}>
+                                <a href='#' onClick={(e) => { e.preventDefault(); toast.info('Şifre sıfırlama hazırlık aşamasındadır.'); }} style={{ color: '#666' }}>
                                     Şifremi Unuttum
                                 </a>
-                                <a href='/giris?giris=plasiyer' onClick={(e) => { e.preventDefault(); goToLoginMode('plasiyer'); }} style={{ color: site.theme.primary, fontWeight: 600 }}>
+                                <a href='/giris?giris=plasiyer' onClick={(e) => { e.preventDefault(); goToLoginMode('plasiyer'); }} style={{ color: '#16305c', fontWeight: 600 }}>
                                     Plasiyer Girişi
                                 </a>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#bbb', fontSize: 12, margin: '2px 0' }}>
+                                <span style={{ flex: 1, height: 1, background: '#eee' }} /> veya <span style={{ flex: 1, height: 1, background: '#eee' }} />
+                            </div>
+                            <div style={{ textAlign: 'center', fontSize: 13, color: '#777' }}>
+                                Henüz hesabınız yok mu?{' '}
+                                <a href='#' onClick={(e) => { e.preventDefault(); switchTab('apply'); }} style={{ color: '#16305c', fontWeight: 700 }}>Bayimiz Olun →</a>
                             </div>
                         </form>
                         ) : (
@@ -378,7 +360,7 @@ const B2BLogin = () => {
                             >
                                 {spLoggingIn ? 'Giriş Yapılıyor...' : 'Plasiyer Girişi'}
                             </button>
-                            <a href='/giris' onClick={(e) => { e.preventDefault(); goToLoginMode('bayi'); }} style={{ color: '#c9c9c9', fontSize: 13, textAlign: 'center' }}>
+                            <a href='/giris' onClick={(e) => { e.preventDefault(); goToLoginMode('bayi'); }} style={{ color: '#666', fontSize: 13, textAlign: 'center' }}>
                                 ← Bayi Girişine Dön
                             </a>
                         </form>
@@ -441,7 +423,7 @@ const B2BLogin = () => {
                             </div>
 
                             {/* Bayilik bilgilerine gecis */}
-                            <div style={{ borderTop: '1px solid #3d3d3d', margin: '4px 0' }} />
+                            <div style={{ borderTop: '1px solid #eee', margin: '4px 0' }} />
 
                             <div style={{ color: site.theme.primary, fontWeight: 700, fontSize: 12, letterSpacing: 0.5, marginTop: 6 }}>BAYİLİK BİLGİLERİ</div>
                             <div style={{ display: 'flex', gap: 12 }}>
@@ -459,7 +441,7 @@ const B2BLogin = () => {
                                 {apply.brands.length > 0 && (
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
                                         {apply.brands.map(b => (
-                                            <span key={b} style={{ background: '#2b2b2b', border: '1px solid #3d3d3d', color: '#fff', borderRadius: 4, padding: '3px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                            <span key={b} style={{ background: '#eef1f4', border: '1px solid #e1e5e9', color: '#333', borderRadius: 4, padding: '3px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                                 {b}
                                                 <span onClick={() => removeBrand(b)} style={{ color: site.theme.primary, cursor: 'pointer', fontWeight: 700 }}>×</span>
                                             </span>
@@ -471,9 +453,9 @@ const B2BLogin = () => {
                                     onFocus={() => setBrandOpen(true)}
                                     onBlur={() => setTimeout(() => setBrandOpen(false), 150)} />
                                 {brandOpen && filteredBrands.length > 0 && (
-                                    <div style={{ position: 'absolute', left: 0, right: 0, zIndex: 5, background: '#242424', border: '1px solid #3d3d3d', borderRadius: 6, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
+                                    <div style={{ position: 'absolute', left: 0, right: 0, zIndex: 5, background: '#ffffff', border: '1px solid #e1e5e9', borderRadius: 6, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
                                         {filteredBrands.slice(0, 30).map(b => (
-                                            <div key={b} onMouseDown={() => addBrand(b)} style={{ padding: '8px 12px', fontSize: 13, color: '#fff', cursor: 'pointer' }}>
+                                            <div key={b} onMouseDown={() => addBrand(b)} style={{ padding: '8px 12px', fontSize: 13, color: '#333', cursor: 'pointer' }}>
                                                 {b}
                                             </div>
                                         ))}
@@ -483,10 +465,10 @@ const B2BLogin = () => {
                             <div>
                                 <span style={labelStyle}>LastikJantAVM Tabelalı Bayisi mi Olmak İstiyorsunuz?{requiredMark}</span>
                                 <div style={{ display: 'flex', gap: 20, marginTop: 4 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#fff', cursor: 'pointer' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#333', cursor: 'pointer' }}>
                                         <input type='radio' name='wantsBrandedSignage' required checked={apply.wantsBrandedSignage === 'evet'} onChange={() => setApplyField('wantsBrandedSignage', 'evet')} style={{ accentColor: site.theme.primary }} /> Evet
                                     </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#fff', cursor: 'pointer' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#333', cursor: 'pointer' }}>
                                         <input type='radio' name='wantsBrandedSignage' required checked={apply.wantsBrandedSignage === 'hayir'} onChange={() => setApplyField('wantsBrandedSignage', 'hayir')} style={{ accentColor: site.theme.primary }} /> Hayır
                                     </label>
                                 </div>
@@ -495,7 +477,7 @@ const B2BLogin = () => {
                                 <label style={labelStyle} htmlFor='b2b-note'>Mesajınız</label>
                                 <textarea id='b2b-note' rows={3} style={{ ...inputStyle, resize: 'vertical' }} value={apply.message} onChange={e => setApplyField('message', e.target.value)} />
                             </div>
-                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#c9c9c9', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>
                                 <input type='checkbox' required checked={apply.termsAccepted} onChange={e => setApplyField('termsAccepted', e.target.checked)} style={{ accentColor: site.theme.primary, marginTop: 2 }} />
                                 Sözleşme koşullarını okudum, kabul ediyorum.
                             </label>
@@ -515,6 +497,10 @@ const B2BLogin = () => {
                             >
                                 {submitting ? 'Gönderiliyor...' : 'Başvuru Gönder'}
                             </button>
+                            <div style={{ textAlign: 'center', fontSize: 13, color: '#777' }}>
+                                Zaten hesabınız var mı?{' '}
+                                <a href='#' onClick={(e) => { e.preventDefault(); switchTab('login'); }} style={{ color: '#16305c', fontWeight: 700 }}>Giriş Yap</a>
+                            </div>
                         </form>
                     )}
                 </div>

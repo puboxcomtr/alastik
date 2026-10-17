@@ -73,17 +73,21 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote, si
                                 sx={listItemSx}
                             />
                         </ListItem>
-                        <Divider />
-                        <ListItem>
-                            <ListItemIcon>
-                                <i className="ri-mail-line text-xl"></i>
-                            </ListItemIcon>
-                            <ListItemText
-                                primary='Email Adresi:'
-                                secondary={shippingAddress?.email || '-'}
-                                sx={listItemSx}
-                            />
-                        </ListItem>
+                        {shippingAddress?.email && (
+                            <>
+                                <Divider />
+                                <ListItem>
+                                    <ListItemIcon>
+                                        <i className="ri-mail-line text-xl"></i>
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary='Email Adresi:'
+                                        secondary={shippingAddress.email}
+                                        sx={listItemSx}
+                                    />
+                                </ListItem>
+                            </>
+                        )}
                         <Divider />
                         <ListItem>
                             <ListItemIcon>

@@ -1,10 +1,12 @@
 "use client";
 
 // Ödemelerim — bayinin hesabına işlenen tahsilat/ödeme hareketleri (ekstre alacak).
-// Kaynak: /odemeler (cari ekstredeki alacak kalemleri, DB-öncelikli).
+// Kaynak: /odemeler (cari ekstredeki alacak kalemleri, DB-öncelikli). Kalem fatura ise (ör. iade faturası) PDF'i görüntülenebilir.
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
-import { SpinnerIcon, CloseIcon } from "@components/b2b-theme/icons";
+import { SpinnerIcon, CloseIcon, ViewIcon, FileIcon } from "@components/b2b-theme/icons";
+import { showToast } from "@components/b2b-theme/toast";
+import { openInvoicePdf, isInvoiceMovement, invoiceMovementKey } from "@components/b2b-theme/lib/invoice-pdf";
 import { Pagination } from "@components/b2b-theme/pagination";
 
 const PER_PAGE = 30;
@@ -14,6 +16,7 @@ interface Payment {
   tur: string;
   aciklama: string;
   fisno: string;
+  belgeNo?: string;
   alacak: number;
 }
 
@@ -37,6 +40,16 @@ export default function OdemelerimPage() {
   const [applied, setApplied] = useState({ no: "", tarih: "" });
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "tarih", dir: "desc" });
   const [secili, setSecili] = useState<Payment | null>(null);
+  // PDF'i açılmakta olan faturanın anahtarı (düğme bekleme göstergesi)
+  const [acilan, setAcilan] = useState<string | null>(null);
+
+  async function faturaGoruntule(p: Payment) {
+    if (acilan) return;
+    setAcilan(invoiceMovementKey(p));
+    const hata = await openInvoicePdf(p);
+    if (hata) showToast(hata, "bilgi");
+    setAcilan(null);
+  }
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [applied, sort]);
 
@@ -107,6 +120,7 @@ export default function OdemelerimPage() {
                 <th className="sortable" onClick={() => sortBy("fisno")}>ÖDEME NO<span className="sarrow">{ok("fisno")}</span></th>
                 <th>DURUM</th>
                 <th className="sortable num" onClick={() => sortBy("alacak")}>TUTAR<span className="sarrow">{ok("alacak")}</span></th>
+                <th>İŞLEM</th>
               </tr>
             </thead>
             <tbody>
@@ -116,10 +130,20 @@ export default function OdemelerimPage() {
                   <td><button type="button" className="order-no-link" onClick={() => setSecili(p)}>{p.fisno || "—"}</button></td>
                   <td><span className="durum-badge ok">Tamamlandı</span></td>
                   <td className="num"><strong>{moneyTL(p.alacak)}</strong></td>
+                  <td>
+                    <div className="ekstre-row-actions">
+                      {isInvoiceMovement(p) ? (
+                        <button type="button" className="order-action" disabled={!!acilan} onClick={() => faturaGoruntule(p)}>
+                          {acilan === invoiceMovementKey(p) ? <SpinnerIcon size={16} className="loading-brand" /> : <FileIcon size={16} />} Fatura Görüntüle
+                        </button>
+                      ) : null}
+                      <button type="button" className="order-action" onClick={() => setSecili(p)}><ViewIcon size={16} /> Görüntüle</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {rows.length === 0 ? (
-                <tr><td colSpan={4} className="note" style={{ padding: "2rem", textAlign: "center" }}>
+                <tr><td colSpan={5} className="note" style={{ padding: "2rem", textAlign: "center" }}>
                   {payments.length === 0 ? "Henüz ödemeniz bulunmuyor." : "Aramanıza uygun ödeme bulunamadı."}
                 </td></tr>
               ) : null}
@@ -147,6 +171,13 @@ export default function OdemelerimPage() {
             {secili.aciklama ? (
               <div className="pay-block">
                 <div><span>Açıklama</span><strong>{secili.aciklama}</strong></div>
+              </div>
+            ) : null}
+            {isInvoiceMovement(secili) ? (
+              <div className="ekstre-modal-actions">
+                <button type="button" className="primary" disabled={!!acilan} onClick={() => faturaGoruntule(secili)}>
+                  {acilan === invoiceMovementKey(secili) ? <SpinnerIcon size={16} /> : <FileIcon size={16} />} Fatura Görüntüle (PDF)
+                </button>
               </div>
             ) : null}
           </div>

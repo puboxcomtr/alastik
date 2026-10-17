@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { AlertIcon, SpinnerIcon } from "@components/b2b-theme/icons";
+import { PremiumBadge } from "@components/b2b-theme/premium-badge";
 
 interface Ozet {
   cariKodu: string;
@@ -26,7 +27,7 @@ function daysBetween(a: string, b: string): number {
 
 export default function CariPage() {
   const [ozet, setOzet] = useState<Ozet | null>(null);
-  const [me, setMe] = useState<{ name: string; email: string; cariKodu: string } | null>(null);
+  const [me, setMe] = useState<{ name: string; email: string; cariKodu: string; premium?: boolean } | null>(null);
   const [items, setItems] = useState<DueItem[]>([]);
   const [today, setToday] = useState("");
   const [error, setError] = useState(false);
@@ -101,7 +102,10 @@ export default function CariPage() {
           <div className="cari-card-head">
             <span className="cari-card-title">Bakiye</span>
           </div>
-          <div className="cari-big">{ozet ? money(Math.abs(ozet.balanceKurus)) : "…"}</div>
+          {/* Bakiye işaretlidir (alacaklı → negatif): (B) borçlu / (A) alacaklı */}
+          <div className="cari-big">
+            {ozet ? `${money(Math.abs(ozet.balanceKurus))}${ozet.balanceKurus > 0 ? " (B)" : ozet.balanceKurus < 0 ? " (A)" : ""}` : "…"}
+          </div>
           {ozet ? (
             <div className="cari-pills">
               <span className="cari-pill"><i className="dot red" /> Borç <strong>{money(ozet.borcKurus)}</strong></span>
@@ -135,6 +139,7 @@ export default function CariPage() {
               <div><span className="k">Cari Kodu:</span><span className="v">{ozet?.cariKodu || me.cariKodu || "—"}</span></div>
               <div><span className="k">Firma:</span><span className="v">{me.name || "—"}</span></div>
               <div><span className="k">E-Mail:</span><span className="v">{me.email || "—"}</span></div>
+              {me.premium ? <div><span className="k">Cari Tipi:</span><span className="v"><PremiumBadge /></span></div> : null}
             </div>
           )}
         </section>

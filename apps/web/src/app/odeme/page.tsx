@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { ROUTES } from '@/src/config/routes';
 import { useCart } from '@/src/context/CartContext';
 import { orderService } from '@/src/services/orderService';
+import { getCartSessionId } from '@/src/services/cartService';
 import { CardFormData } from '@/src/components/payment/Content/CreditCardForm';
 
 // Components
@@ -94,16 +95,32 @@ export default function PaymentPage() {
                     montagePointId: item.montagePointId || ''
                 })),
                 paymentMethod: cardData ? 'credit_card' : 'bank_transfer',
-                customerNote: ''
+                customerNote: '',
+                cartSessionId: getCartSessionId()
             };
 
-            const order = await orderService.createOrder(orderData);
+            const { order, message, removed } = await orderService.createOrderDetailed(orderData);
+            // Stok yetersizliğinden siparişe alınamayan kalemler: müşteriye hangi üründen kaç adet kaldığı söylenir
+            const removedNotes = removed.map(item =>
+                item.kalan > 0
+                    ? `${item.name}: stokta ${item.kalan} adet kaldı (sepetinizde ${item.istenen} adet var)`
+                    : `${item.name}: stokta kalmadı`
+            );
 
             if (!order) {
-                toast.error('Sipariş oluşturulamadı');
+                if (removedNotes.length > 0) {
+                    removedNotes.forEach(note => toast.error(note));
+                    // Sepet stoğa göre güncellenir (adet indirilir / kalem çıkar) ve müşteri sepete döner
+                    await refreshCart();
+                    router.push(ROUTES.CART);
+                } else {
+                    toast.error(message || 'Sipariş oluşturulamadı');
+                }
                 setProcessing(false);
                 return;
             }
+            // Sipariş oluştu ama bazı kalemler stok yetersizliğinden dışarıda kaldı
+            removedNotes.forEach(note => toast.warning(`${note} — bu ürün siparişinize eklenemedi`));
 
             // Kredi kartı ile ödeme
             if (cardData && cardData.isValid) {

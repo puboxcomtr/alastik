@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const WebOrder = require('../../../models/web/order/WebOrder');
+const { clearOrderCart } = require('../../../utils/orderCart');
 const WebAddress = require('../../../models/web/address/WebAddress');
 const WebMember = require('../../../models/web/user/WebMember');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -64,6 +65,10 @@ const calculateOrderPricing = async (cartItems, site) => {
     const diaSet = await WebDia.getSettings(site).catch(() => null);
     const kritikAktif = !!diaSet?.kritikStok?.kontrolAktif;
     const kritikEsik = Number(diaSet?.kritikStok?.esik) || 5;
+    // Açık siparişin stok ayırdığı süre (gün) — ayar: kritikStok.rezervasyonGun (şema varsayılanı)
+    const rezervasyonGun = Number(diaSet?.kritikStok?.rezervasyonGun) > 0
+        ? Number(diaSet.kritikStok.rezervasyonGun)
+        : WebDia.schema.path('kritikStok.rezervasyonGun').defaultValue;
 
     // Stok kontrolüne dahil (kendi stok / non-XML, stokkartkodu olan) ürünler
     const stokKontrolUrunler = kritikAktif
@@ -86,14 +91,26 @@ const calculateOrderPricing = async (cartItems, site) => {
         }
     }
 
-    // İlgili ürünlerin açık (bekleyen, henüz teslim/iptal olmamış) sipariş adetleri.
+    // İlgili ürünlerin açık (henüz depodan ÇIKMAMIŞ) sipariş adetleri.
     // Kullanılabilir = stok − açık siparişler; web siparişleri DIA'da yalnız sipariş
     // (fiziksel stok hareketi değil) olduğu için gercek_stok'a yansımaz, düşülmeli.
+    // 'shipped' (Kargoya Verildi) DAHİL DEĞİLDİR: kargoya verilen ürünün irsaliyesi kesilmiş,
+    // stoktan zaten düşmüştür — sayılırsa aynı adet iki kez düşülür ve "Teslim Edildi"ye
+    // çekilmeyen eski siparişler stoğu olan ürünün satışını kilitler.
+    // Rezervasyon süresinden (kritikStok.rezervasyonGun) eski açık siparişler de sayılmaz.
     const acikSiparisMap = {};
     if (stokKontrolUrunler.length) {
         const kontrolKeys = stokKontrolUrunler.map(p => p._key);
         const acik = await WebOrder.aggregate([
-            { $match: { site, isActive: true, status: { $in: ['pending', 'confirmed', 'processing', 'shipped'] } } },
+            {
+                $match: {
+                    site,
+                    isActive: true,
+                    status: { $in: ['pending', 'confirmed', 'processing'] },
+                    // Yalnız rezervasyon süresi içindeki siparişler stok ayırır (bayat kayıtlar hariç)
+                    createdAt: { $gte: new Date(Date.now() - rezervasyonGun * 24 * 60 * 60 * 1000) }
+                }
+            },
             { $unwind: '$items' },
             { $match: { 'items.productKey': { $in: kontrolKeys } } },
             { $group: { _id: '$items.productKey', toplam: { $sum: '$items.quantity' } } }
@@ -229,7 +246,8 @@ router.post('/', async (req, res) => {
             guestShippingAddress,
             items: rawItems,
             paymentMethod,
-            customerNote
+            customerNote,
+            cartSessionId
         } = req.body;
 
         // Backend'de items ve pricing hesapla (frontend'den gelene güvenme)
@@ -426,14 +444,20 @@ router.post('/', async (req, res) => {
                     referenceCode: orderNumber
                 } : null
             },
-            status: paymentMethod === 'credit_card' ? 'payment_failed' : 'pending',
+            // Kartlı sipariş banka dönüşüne kadar "Ödeme Bekleniyor"; dönüş gelmezse zaman aşımında "Ödeme Başarısız" olur (awaitingPaymentTimeout)
+            status: paymentMethod === 'credit_card' ? 'awaiting_payment' : 'pending',
             customerNote,
+            cartSessionId: typeof cartSessionId === 'string' ? cartSessionId.trim().slice(0, 100) : undefined,
             diaIntegration: {
                 status: 'pending'
             }
         });
 
         await order.save();
+
+        // Kartsız ödemede (havale, kapıda ödeme) sipariş bu anda kesinleşir → sepet hemen silinir.
+        // Kartlı ödemede sepet banka sonucuyla (ödeme uçlarında) silinir.
+        if (paymentMethod !== 'credit_card') await clearOrderCart(order, 'order-created');
 
         // Mail gönderim koşulu:
         // - Havale (bank_transfer) ve kapıda ödeme: hemen mail gönder

@@ -18,6 +18,16 @@ function svgProps(size: number) {
   };
 }
 
+/** Taç — Premium cari rozeti */
+export function CrownIcon({ size = 14, className, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...svgProps(size)} className={className}>
+      <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5L3 8z" fill={filled ? "currentColor" : "none"} />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
 export function TireIcon({ size = 18, className }: IconProps) {
   return (
     <svg {...svgProps(size)} className={className}>

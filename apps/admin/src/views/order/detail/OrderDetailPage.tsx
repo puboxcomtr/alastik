@@ -113,7 +113,7 @@ const OrderDetailPage = () => {
               payment={order.payment}
               isGuest={order.isGuest}
               ipAddress={order.ipAddress}
-              shippingMethod={order.shipping?.method}
+              shippingMethod={order.shipping?.methodName || order.shipping?.method}
             />
           </Grid>
           <Grid item xs={12} md={4}>

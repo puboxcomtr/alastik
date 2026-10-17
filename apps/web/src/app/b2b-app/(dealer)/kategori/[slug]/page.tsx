@@ -1,4 +1,5 @@
 import { CategoryCatalog } from "@components/b2b-theme/category-catalog";
+import { CategoryTabs, type CategoryTab } from "@components/b2b-theme/category-tabs";
 import { API_ENDPOINTS } from "@src/config/api";
 
 /** Slug'ı okunabilir başlığa çevirir: "otomobil-lastikleri" → "Otomobil Lastikleri".
@@ -11,18 +12,42 @@ function makeTitle(slug: string): string {
     .join(" ");
 }
 
-/** Kategorinin gerçek adını (webcategories.name) slug ile getirir. */
-async function getCategoryName(slug: string): Promise<string | null> {
+type CategoryInfo = { name: string | null; menuIds: string[] };
+
+/** Kategorinin gerçek adını (webcategories.name) ve bağlı menülerini (Kategori Menüsü) slug ile getirir. */
+async function getCategoryInfo(slug: string): Promise<CategoryInfo> {
   try {
     const res = await fetch(API_ENDPOINTS.categories.bySlug(slug), {
       headers: { "X-Site": "b2b" },
       cache: "no-store",
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { name: null, menuIds: [] };
     const d = await res.json();
-    return d?.data?.name || d?.name || null;
+    const category = d?.data || d || {};
+    return { name: category.name || null, menuIds: (category.menuIds || []).map(String) };
   } catch {
-    return null;
+    return { name: null, menuIds: [] };
+  }
+}
+
+type MenuItem = { name: string; menuType: string; linkData?: { categoryUrl?: string } };
+
+/** Kategoriye bağlı menünün kategori türündeki öğelerini sekmeye çevirir (panel: Menü Yönetimi + kategori "Kategori Menüsü"). */
+async function getCategoryTabs(menuIds: string[]): Promise<CategoryTab[]> {
+  if (!menuIds.length) return [];
+  try {
+    const res = await fetch(API_ENDPOINTS.menus.group(menuIds[0]), {
+      headers: { "X-Site": "b2b" },
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return [];
+    const d = await res.json();
+    const items: MenuItem[] = d?.data?.items || [];
+    return items
+      .filter((m) => m.menuType === "category" && m.linkData?.categoryUrl)
+      .map((m) => ({ slug: m.linkData!.categoryUrl as string, label: m.name }));
+  } catch {
+    return [];
   }
 }
 
@@ -32,7 +57,9 @@ export default async function KategoriPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const title = (await getCategoryName(slug)) || makeTitle(slug);
+  const info = await getCategoryInfo(slug);
+  const title = info.name || makeTitle(slug);
+  const tabs = await getCategoryTabs(info.menuIds);
 
   return (
     <>
@@ -41,7 +68,8 @@ export default async function KategoriPage({
           <h1>{title}</h1>
         </div>
       </div>
-      <CategoryCatalog kategori={slug} />
+      {/* Tek öğeli menü sekme sayılmaz: kategori doğrudan listelenir */}
+      {tabs.length > 1 ? <CategoryTabs tabs={tabs} /> : <CategoryCatalog kategori={slug} />}
     </>
   );
 }

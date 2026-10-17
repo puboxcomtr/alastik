@@ -52,7 +52,9 @@ export default async function MetaHead() {
           </>
         ) : null}
       </head>
-      {/* Google Ads (gtag.js) — site bazlı hesap (config/tracking.ts) */}
+      {/* Google Ads (gtag.js) — site bazlı hesap (config/tracking.ts); tanımsız sitede yüklenmez */}
+      {adsId ? (
+      <>
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${adsId}`}
         strategy="afterInteractive"
@@ -67,8 +69,11 @@ export default async function MetaHead() {
           ${googleTagId ? `gtag('config', '${googleTagId}');` : ''}
         `}
       </Script>
+      </>
+      ) : null}
 
-      {/* Google Tag Manager — site bazlı container (config/tracking.ts) */}
+      {/* Google Tag Manager — site bazlı container (config/tracking.ts); tanımsız sitede yüklenmez */}
+      {gtmId ? (
       <Script id="gtm-init" strategy="afterInteractive">
         {`
           (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -78,6 +83,7 @@ export default async function MetaHead() {
           })(window,document,'script','dataLayer','${gtmId}');
         `}
       </Script>
+      ) : null}
     </>
   );
 }

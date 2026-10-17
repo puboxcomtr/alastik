@@ -51,6 +51,7 @@ const getTemplate = async (templateKey, site = DEFAULT_SITE) => {
 // site: gönderimde hangi sitenin SMTP ayarları ve gönderen adı kullanılacak
 // subjectOverride: şablon konusu yerine kullanılacak konu (örn. geri arama talebi)
 // adminCopyPrefix: yönetici mailine eklenen önek ("[Yönetici Kopyası] "); '' verilirse önek eklenmez
+// attachments: nodemailer ekleri ([{ filename, content, contentType }]) — müşteriye ve yöneticiye aynen gider
 const sendTemplateMail = async ({
     templateKey,
     context = {},
@@ -59,7 +60,8 @@ const sendTemplateMail = async ({
     adminPurpose = 'order',
     site = DEFAULT_SITE,
     subjectOverride = null,
-    adminCopyPrefix = '[Yönetici Kopyası] '
+    adminCopyPrefix = '[Yönetici Kopyası] ',
+    attachments = undefined
 }) => {
     const result = {
         success: false,
@@ -92,6 +94,7 @@ const sendTemplateMail = async ({
                         to: validRecipients.join(','),
                         subject: renderedSubject,
                         html,
+                        attachments,
                         site
                     })
                     result.customerSent = true
@@ -112,6 +115,7 @@ const sendTemplateMail = async ({
                         to: adminEmail,
                         subject: `${adminCopyPrefix}${renderedSubject}`,
                         html,
+                        attachments,
                         site
                     })
                     result.adminSent = true

@@ -89,6 +89,14 @@ const paymentMethodSchema = new mongoose.Schema({
             installment: Number,
             rate: Number
         }],
+        // Taksit tablosunda banka gösterimi: sağlayıcının sanal POS'u (vPosId) → görünen ad + logo adresi.
+        // Aynı görünen adı taşıyan POS'lar tabloda tek satırda birleşir. Boşsa POS adı aynen, logosuz gösterilir.
+        installmentBanks: [{
+            _id: false,
+            vPosId: Number,
+            displayName: String,
+            logo: String
+        }],
         minInstallmentAmount: {
             type: Number,
             default: 100

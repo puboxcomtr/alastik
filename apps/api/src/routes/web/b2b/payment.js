@@ -25,9 +25,31 @@ const B2bPayment = require('../../../models/web/user/B2bPayment');
 const PaynetService = require('../../../services/plugins/payment/PaynetService');
 const NetahsilatService = require('../../../services/plugins/payment/NetahsilatService');
 const { SITES } = require('../../../config/sites');
+const { queueOrderMail, queuePaymentReceiptMail } = require('../../../services/web/b2b/b2bMail');
 
+// Taksitli yöntemde gösterilen en düşük taksit sayısı ("Tek Çekim" ayrı bir yöntemdir — Paynet)
+const MIN_INSTALLMENT_COUNT = 2;
+// Banka taksit tablosu önbelleği (site -> { at, data })
+const INSTALLMENT_TABLE_TTL_MS = 10 * 60 * 1000;
+const installmentTableCache = new Map();
+
+// ── GEÇİCİ SABİT KURAL (13 Eki 2026 — sonra panelden yönetilecek) ────────────────────
+// Akbank ve Garanti kartlarının TAKSİTLİ işlemleri NetTahsilat'tan çekilir.
+// Diğer tüm bankaların taksitli işlemleri (tek çekimler gibi) Paynet'ten çekilir.
+// Kartın bankası, NetTahsilat'ın kart BIN'ine verdiği sanal POS'tan anlaşılır.
+const NETAHSILAT_INSTALLMENT_VPOS_IDS = [24, 5]; // 24 = Akbank, 5 = Garanti
+const isNetahsilatInstallmentPos = (vPosId) => NETAHSILAT_INSTALLMENT_VPOS_IDS.includes(Number(vPosId));
+const INSTALLMENT_PROVIDERS = { NETAHSILAT: 'netahsilat', PAYNET: 'paynet' };
+// Kural dışı karta NetTahsilat taksiti istenirse (ör. yenilenmemiş sayfa)
+const INSTALLMENT_PROVIDER_MISMATCH_MESSAGE = 'Bu kartla taksitli ödeme için lütfen sayfayı yenileyip tekrar deneyiniz.';
 // PirPos 3D dönüş (callback) adresinin bağlı olacağı public API kökü.
 const API_PUBLIC_BASE = process.env.PUBLIC_API_URL || 'https://api.alastik.com';
+
+// Banka 3D dönüşünün (callback) bağlanacağı kök: sameOriginApi açık sitede sitenin kendi adresi
+// (doğrulanmış returnBase; nginx /api yolunu API'ye iletir), diğerlerinde ortak public API adresi
+function resolveCallbackBase(site, returnBase) {
+    return SITES[site]?.sameOriginApi ? returnBase : API_PUBLIC_BASE;
+}
 
 // Verilen origin bu siteye ait mi? (açık yönlendirme koruması)
 function resolveReturnBase(site, returnOrigin) {
@@ -108,13 +130,30 @@ router.post('/netahsilat/ratios', authMiddleware, async (req, res) => {
         }
 
         const r = await NetahsilatService.getPosByBin(bin, req.site);
-        if (!r?.success || !r.hasInstallment || !(r.installments || []).length) {
-            res.set('Cache-Control', 'no-store');
-            return res.json({ success: true, data: { cardInfo: r?.cardInfo || null, options: [] } });
+        res.set('Cache-Control', 'no-store');
+
+        // Geçici sabit kural: kart Akbank / Garanti POS'una düşmüyorsa taksit Paynet'ten çekilir
+        const netahsilatCard = (r?.installments || []).some((it) => isNetahsilatInstallmentPos(it.vPosId));
+        if (!netahsilatCard) {
+            const paynet = await PaynetService.getRatios({ site: req.site, amount: Math.round(amountTL * 100), bin });
+            const paynetOptions = (paynet.banks?.[0]?.options || [])
+                .filter((o) => Number(o.instalment) >= MIN_INSTALLMENT_COUNT)
+                .map((o) => ({
+                    instalment: o.instalment,
+                    desc: `${o.instalment} Taksit`,
+                    instalmentAmount: o.instalmentAmount,
+                    totalAmount: o.totalAmount,
+                    commission: o.commission
+                }));
+            return res.json({ success: true, data: { provider: INSTALLMENT_PROVIDERS.PAYNET, cardInfo: r?.cardInfo || null, options: paynetOptions } });
+        }
+
+        if (!r.hasInstallment) {
+            return res.json({ success: true, data: { provider: INSTALLMENT_PROVIDERS.NETAHSILAT, cardInfo: r.cardInfo || null, options: [] } });
         }
         const options = (r.installments || [])
             // Taksitli yöntemde "Tek Çekim" (1) gösterilmez — o ayrı bir yöntem (Paynet).
-            .filter((it) => Number(it.installment) >= 2)
+            .filter((it) => Number(it.installment) >= MIN_INSTALLMENT_COUNT && isNetahsilatInstallmentPos(it.vPosId))
             .map((it) => {
                 const komisyon = Number(it.commRate) || 0;
                 const total = Math.round(amountTL * (1 + komisyon / 100) * 100) / 100;
@@ -130,11 +169,81 @@ router.post('/netahsilat/ratios', authMiddleware, async (req, res) => {
             })
             .sort((a, b) => a.instalment - b.instalment);
 
-        res.set('Cache-Control', 'no-store');
-        return res.json({ success: true, data: { cardInfo: r.cardInfo, options } });
+        return res.json({ success: true, data: { provider: INSTALLMENT_PROVIDERS.NETAHSILAT, cardInfo: r.cardInfo, options } });
     } catch (error) {
         console.error('[b2b-payment] NetTahsilat ratios hatası:', error.message);
         res.status(500).json({ success: false, message: 'Taksit seçenekleri alınamadı.' });
+    }
+});
+
+/**
+ * GET /netahsilat/installment-table — tüm bankaların taksit seçenekleri ve komisyon oranları (karttan bağımsız, bilgi amaçlı).
+ * Yanıt: { installments: [2, 3, ...], banks: [{ name, logo, rates: { "3": 0 } }] } — rates: taksit sayısı → komisyon oranı (%).
+ * Banka adı / logosu panel kaydından (creditCardSettings.installmentBanks) gelir; tanımsızsa POS adı, logosuz.
+ */
+// Paynet taksit oranları tablo için kullanılan örnek tutar (kuruş) — komisyon oranı tutardan bağımsız hesaplanır
+const PAYNET_TABLE_SAMPLE_AMOUNT_KURUS = 100000;
+
+/**
+ * Paynet hesabında tanımlı en yüksek taksit sayısı ve komisyon oranı (%) — { installment, commRate } ya da null.
+ * Tüm kart programlarında aynı taksitler tanımlı olduğundan bankalardan en yüksek taksit alınır.
+ */
+async function paynetMaxInstallmentRate(site) {
+    const result = await PaynetService.getRatios({ site, amount: PAYNET_TABLE_SAMPLE_AMOUNT_KURUS });
+    let best = null;
+    for (const bank of (result.banks || [])) {
+        for (const option of (bank.options || [])) {
+            if (option.instalment < MIN_INSTALLMENT_COUNT || (best && option.instalment <= best.installment)) continue;
+            const sample = PAYNET_TABLE_SAMPLE_AMOUNT_KURUS / 100;
+            const commRate = option.totalAmount > sample ? Math.round(((option.totalAmount - sample) / sample) * 10000) / 100 : 0;
+            best = { installment: option.instalment, commRate };
+        }
+    }
+    return best;
+}
+
+router.get('/netahsilat/installment-table', authMiddleware, async (req, res) => {
+    try {
+        const hit = installmentTableCache.get(req.site);
+        if (hit && Date.now() - hit.at < INSTALLMENT_TABLE_TTL_MS) return res.json({ success: true, data: hit.data });
+
+        const r = await NetahsilatService.getVirtualPosList(req.site);
+        if (!r?.success) return res.status(502).json({ success: false, message: 'Taksit oranları alınamadı.' });
+
+        // Panel kaydındaki banka gösterimi (görünen ad + logo), sanal POS kimliğine göre
+        const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
+        const method = await PaymentMethod.findOne({
+            site: req.site, provider: 'netahsilat', type: 'credit_card', isActive: true, isDeleted: { $ne: true }
+        }).select('creditCardSettings.installmentBanks').lean();
+        const bankMeta = new Map((method?.creditCardSettings?.installmentBanks || []).map(b => [Number(b.vPosId), b]));
+
+        // Geçici sabit kural: Akbank / Garanti dışındaki bankaların taksiti Paynet'ten çekilir — bu bankaların satırında
+        // Paynet hesabında tanımlı en yüksek taksit (ve komisyonu) gösterilir
+        const paynetRate = await paynetMaxInstallmentRate(req.site);
+
+        // Aynı görünen adı taşıyan POS'lar tek satırda birleşir (taksit seçenekleri eklenir)
+        const byName = new Map();
+        for (const pos of r.poses) {
+            const meta = bankMeta.get(Number(pos.vPosId));
+            const name = String(meta?.displayName || pos.name || '').trim();
+            const rates = isNetahsilatInstallmentPos(pos.vPosId)
+                ? pos.rates.filter(x => x.installment >= MIN_INSTALLMENT_COUNT)
+                : (paynetRate ? [paynetRate] : []);
+            if (!name || rates.length === 0) continue;
+            const bank = byName.get(name) || { name, logo: null, rates: {} };
+            if (!bank.logo && meta?.logo) bank.logo = meta.logo;
+            for (const x of rates) if (!(x.installment in bank.rates)) bank.rates[x.installment] = x.commRate;
+            byName.set(name, bank);
+        }
+        const banks = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+        const installments = [...new Set(banks.flatMap(bank => Object.keys(bank.rates).map(Number)))].sort((a, b) => a - b);
+
+        const data = { installments, banks };
+        installmentTableCache.set(req.site, { at: Date.now(), data });
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('[b2b-payment] Taksit tablosu hatası:', error.message);
+        res.status(500).json({ success: false, message: 'Taksit oranları alınamadı.' });
     }
 });
 
@@ -150,6 +259,9 @@ router.post('/netahsilat/3d-init', authMiddleware, async (req, res) => {
         const { orderId, pt, cardNumber, cardHolderName, expMonth, expYear, cvc, installment, vPosId } = b;
         if (!orderId || !pt || !cardNumber || !cardHolderName || !expMonth || !expYear || !cvc || !installment || !vPosId) {
             return res.status(400).json({ success: false, message: 'Eksik ödeme bilgisi.' });
+        }
+        if (!isNetahsilatInstallmentPos(vPosId)) {
+            return res.status(400).json({ success: false, message: INSTALLMENT_PROVIDER_MISMATCH_MESSAGE });
         }
 
         const order = await WebOrder.findOne({ _id: orderId, site: req.site });
@@ -174,7 +286,7 @@ router.post('/netahsilat/3d-init', authMiddleware, async (req, res) => {
             expYear: String(expYear).length === 2 ? `20${expYear}` : String(expYear),
             cvc,
             email: order.customerEmail || order.memberSnapshot?.email || 'bayi@lastikjantavm.com',
-            returnUrl: `${API_PUBLIC_BASE}/api/b2b/payment/netahsilat/3d-callback`
+            returnUrl: `${resolveCallbackBase(req.site, returnBase)}/api/b2b/payment/netahsilat/3d-callback`
         });
 
         if (result.success && result.threeDUrl) {
@@ -247,6 +359,8 @@ router.post('/netahsilat/3d-callback', async (req, res) => {
                 } catch (e) {
                     console.error('[b2b-payment] NetTahsilat DIA aktarım hatası:', e.message);
                 }
+                // Sipariş maili + ödeme makbuzu (PDF)
+                queueOrderMail(order._id, { withReceipt: true });
                 return redir({ durum: 'basarili', siparis: order.orderNumber, tutar: order.pricing?.total });
             }
             order.payment.status = 'failed';
@@ -272,6 +386,56 @@ router.post('/netahsilat/3d-callback', async (req, res) => {
  * Body: { session_id, token_id, orderId, pt, returnOrigin }
  * JWT yok → sipariş orderId + pt (payment.paymentGuid) ile doğrulanır.
  */
+// Tarayıcıdaki Paynet hata mesajının kayda yazılan azami uzunluğu
+const CLIENT_ERROR_MAX_LENGTH = 300;
+// Paynet kart formu hata kaynakları (paynet-form.ts ile aynı)
+const PAYNET_CLIENT_ERROR_KINDS = { PAYMENT: 'payment', ORDER: 'order' };
+
+/**
+ * POST /paynet/client-error — Paynet kart formu tarayıcıda hata verip 3D'ye geçmediğinde (kart bilgisi
+ * hatası, kart/tutar reddi, zaman aşımı) mesajı bekleyen kayda yazar ve kaydı "başarısız" yapar.
+ * Body: { kind: 'payment' | 'order', id, pt, message, code }. Yalnız kaydın sahibi bayi, tek kullanımlık
+ * doğrulama anahtarıyla (pt) ve kayıt hâlâ beklemedeyken yazabilir. Sonradan gerçek bir Paynet dönüşü
+ * gelirse dönüş işleyicileri kaydı yine işler (başarısız durumu tahsilatı engellemez).
+ */
+router.post('/paynet/client-error', authMiddleware, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const message = String(b.message || '').trim().slice(0, CLIENT_ERROR_MAX_LENGTH) || 'Ödeme ekranına geçilemedi';
+        const code = String(b.code || '').slice(0, 40);
+        if (!b.id || !b.pt) return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
+
+        if (b.kind === PAYNET_CLIENT_ERROR_KINDS.PAYMENT) {
+            const payment = await B2bPayment.findOne({ _id: b.id, site: req.site, memberId: req.user._id });
+            if (!payment || payment.paymentGuid !== b.pt) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı.' });
+            if (payment.status === 'pending') {
+                payment.status = 'failed';
+                payment.errorMessage = `Paynet: ${message}`;
+                payment.errorCode = code;
+                await payment.save();
+            }
+            return res.json({ success: true });
+        }
+        if (b.kind === PAYNET_CLIENT_ERROR_KINDS.ORDER) {
+            const order = await WebOrder.findOne({ _id: b.id, site: req.site, memberId: req.user._id });
+            if (!order || order.payment?.paymentGuid !== b.pt) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı.' });
+            if (order.payment?.status === 'pending') {
+                order.payment.status = 'failed';
+                order.payment.gateway = 'paynet';
+                order.payment.errorMessage = `Paynet: ${message}`;
+                order.payment.errorCode = code;
+                order.status = 'payment_failed';
+                await order.save();
+            }
+            return res.json({ success: true });
+        }
+        return res.status(400).json({ success: false, message: 'Geçersiz kayıt türü.' });
+    } catch (error) {
+        console.error('[b2b-payment] Paynet istemci hatası kaydedilemedi:', error.message);
+        res.status(500).json({ success: false, message: 'Kaydedilemedi.' });
+    }
+});
+
 router.post('/paynet/return', async (req, res) => {
     const b = req.body || {};
     const sessionId = b.session_id;
@@ -303,6 +467,12 @@ router.post('/paynet/return', async (req, res) => {
             order.status = 'payment_failed';
             await order.save();
             return fail('3D doğrulaması tamamlanmadı', { siparis: order.orderNumber, tutar: order.pricing?.total, kod: '3DS_INCOMPLETE' });
+        }
+
+        // Taksitli (kkTaksit) siparişte bayinin seçtiği taksit sayısı formla gelir; tek çekim siparişi taksite çevrilemez
+        const requestedInstallment = parseInt(b.installment) || 0;
+        if (requestedInstallment >= MIN_INSTALLMENT_COUNT && Number(order.payment?.installment) >= MIN_INSTALLMENT_COUNT) {
+            order.payment.installment = requestedInstallment;
         }
 
         // SDK token'ı data-amount×100 (kuruş) ile oluşturur; charge da KURUŞ olmalı.
@@ -361,6 +531,8 @@ router.post('/paynet/return', async (req, res) => {
             console.error('[b2b-payment] DIA aktarım hatası:', e.message);
             // Ödeme başarılı; DIA aktarımı panelden manuel tamamlanabilir.
         }
+        // Sipariş maili + ödeme makbuzu (PDF)
+        queueOrderMail(order._id, { withReceipt: true });
 
         return res.redirect(sonucUrl({ durum: 'basarili', siparis: order.orderNumber, tutar: order.pricing?.total }));
     } catch (error) {
@@ -375,7 +547,8 @@ router.post('/paynet/return', async (req, res) => {
 
 /**
  * POST /tekcekim/baslat — tutar ile ödeme kaydı açar + frontend Paynet config.
- * Body: { amount (TL) }. Yanıt: { paymentId, pt, reference, amountKurus, config }.
+ * Body: { amount (TL), installment? }. installment ≥ 2 ise Paynet taksitli ödeme kaydı açılır.
+ * Yanıt: { paymentId, pt, reference, amountKurus, installment, config }.
  */
 router.post('/tekcekim/baslat', authMiddleware, async (req, res) => {
     try {
@@ -392,6 +565,8 @@ router.post('/tekcekim/baslat', authMiddleware, async (req, res) => {
         if (!config) {
             return res.status(404).json({ success: false, message: 'Kredi kartı ödemesi şu anda kullanılamıyor.' });
         }
+        const requestedInstallment = parseInt(req.body?.installment) || 0;
+        const installment = requestedInstallment >= MIN_INSTALLMENT_COUNT ? requestedInstallment : 0;
         const reference = `TC${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
         const paymentGuid = crypto.randomBytes(24).toString('hex');
         const doc = await B2bPayment.create({
@@ -403,12 +578,13 @@ router.post('/tekcekim/baslat', authMiddleware, async (req, res) => {
             reference,
             paymentGuid,
             gateway: 'paynet',
-            type: 'tekcekim',
+            type: installment ? 'taksit' : 'tekcekim',
+            ...(installment ? { installment } : {}),
             status: 'pending'
         });
         return res.json({
             success: true,
-            data: { paymentId: String(doc._id), pt: paymentGuid, reference, amountKurus: doc.amountKurus, config }
+            data: { paymentId: String(doc._id), pt: paymentGuid, reference, amountKurus: doc.amountKurus, installment, config }
         });
     } catch (error) {
         console.error('[b2b-payment] tekcekim baslat hatası:', error.message);
@@ -459,6 +635,7 @@ router.post('/tekcekim/return', async (req, res) => {
             tokenId,
             amount: payment.amountKurus,
             referenceNo: payment.reference,
+            installments: payment.installment,
             tdsRequired: true
         });
 
@@ -483,6 +660,8 @@ router.post('/tekcekim/return', async (req, res) => {
             payment.cardInfo = { lastFourDigits: String(result.maskedCardNo).slice(-4), bankName: result.bankName || '' };
         }
         await payment.save();
+        // Ödeyen cariye makbuz maili (PDF ekli)
+        queuePaymentReceiptMail(payment._id);
 
         return res.redirect(sonucUrl({ durum: 'basarili', ref: payment.reference, tutar: tutarTL }));
     } catch (error) {
@@ -511,6 +690,9 @@ router.post('/netahsilat/borc-init', authMiddleware, async (req, res) => {
         }
         if (!cardNumber || !cardHolderName || !expMonth || !expYear || !cvc || !installment || !vPosId) {
             return res.status(400).json({ success: false, message: 'Eksik ödeme bilgisi.' });
+        }
+        if (!isNetahsilatInstallmentPos(vPosId)) {
+            return res.status(400).json({ success: false, message: INSTALLMENT_PROVIDER_MISMATCH_MESSAGE });
         }
         const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
             .select('diaCustomerKey diaCustomerCode firstName lastName email').lean();
@@ -550,7 +732,7 @@ router.post('/netahsilat/borc-init', authMiddleware, async (req, res) => {
             expYear: String(expYear).length === 2 ? `20${expYear}` : String(expYear),
             cvc,
             email: member.email || 'bayi@lastikjantavm.com',
-            returnUrl: `${API_PUBLIC_BASE}/api/b2b/payment/netahsilat/borc-callback`
+            returnUrl: `${resolveCallbackBase(req.site, returnBase)}/api/b2b/payment/netahsilat/borc-callback`
         });
 
         if (result.success && result.threeDUrl) {
@@ -609,6 +791,8 @@ router.post('/netahsilat/borc-callback', async (req, res) => {
                 payment.transactionId = commit.transactionId || payment.transactionId;
                 payment.paymentGuid = undefined; // nonce tek kullanımlık
                 await payment.save();
+                // Ödeyen cariye makbuz maili (PDF ekli)
+                queuePaymentReceiptMail(payment._id);
                 return redir({ durum: 'basarili', ref: payment.reference, tutar: tutarTL });
             }
             payment.status = 'failed';

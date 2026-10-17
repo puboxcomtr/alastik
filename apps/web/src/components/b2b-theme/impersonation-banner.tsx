@@ -3,6 +3,7 @@
 // Bilgi authToken JWT'sindeki impersonatedBy/impersonatedByName claim'lerinden okunur.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
+import { clearStoredCart } from './cart-status';
 
 function decodeJwt(token: string): Record<string, unknown> | null {
     try {
@@ -48,9 +49,11 @@ export function ImpersonationBanner() {
         try { sessionStorage.removeItem('plasiyerDevam'); } catch { }
         window.location.href = '/';
     };
+    // Plasiyer çıkışı: oturumlar kapanır ve plasiyerin sepeti temizlenir (bayi çıkışında sepet korunur)
     const cikis = () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('plasiyerToken');
+        clearStoredCart();
         document.cookie = 'authToken=; path=/; max-age=0';
         window.location.href = '/giris';
     };

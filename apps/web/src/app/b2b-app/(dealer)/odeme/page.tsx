@@ -1,12 +1,14 @@
 "use client";
 
 // Ödeme Yap — tutar (Peşin/Taksitli) girişi. Peşin varsayılan seçili ve tek çekim
-// kart formu doğrudan altında açık gelir. Altında havale/EFT banka hesapları.
+// kart formu doğrudan altında açık gelir. Banka hesapları yalnız kredi kartı ödemesi
+// kapalıyken (havale/EFT tek seçenekken) gösterilir.
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { SpinnerIcon } from "@components/b2b-theme/icons";
 import { PaymentForm } from "@components/b2b-theme/payment-form";
 import { InstallmentForm } from "@components/b2b-theme/installment-form";
+import { InstallmentRatesTable } from "@components/b2b-theme/installment-rates-table";
 
 interface BankAccount { _id: string; name?: string; accountName?: string; iban?: string; }
 
@@ -107,37 +109,43 @@ export default function OdemePage() {
         <InstallmentForm amountKurus={amountKurus} />
       )}
 
-      <hr className="pay-divider" />
+      {/* Bankalara göre taksit oranları — yalnız "Taksitli" seçiliyken, "Taksitli Öde" düğmesinin altında doğrudan görünür */}
+      {anyCard && effTip === "taksitli" ? <InstallmentRatesTable /> : null}
 
-      {/* Banka Hesapları */}
-      <h2 className="section">Banka Hesapları</h2>
-      {banks === null ? (
-        <p className="note loading-row" style={{ padding: "0.6rem 0" }}>
-          <SpinnerIcon size={16} className="loading-brand" /> Banka hesapları yükleniyor…
-        </p>
-      ) : banks.length === 0 ? (
-        <p className="note">Tanımlı banka hesabı bulunmuyor.</p>
-      ) : (
-        <div className="tablewrap">
-          <table className="data order-table bank-table">
-            <thead>
-              <tr>
-                <th>Banka</th>
-                <th>Hesap Sahibi</th>
-                <th>IBAN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {banks.map((b) => (
-                <tr key={b._id}>
-                  <td><strong className="bank-name">{b.name || "—"}</strong></td>
-                  <td>{b.accountName || "—"}</td>
-                  <td><code className="bank-iban">{b.iban ? formatIban(b.iban) : "—"}</code></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Banka Hesapları — yalnız kredi kartı kapalıyken (bayinin ödeyebileceği tek yol havale/EFT) */}
+      {anyCard ? null : (
+        <>
+          <hr className="pay-divider" />
+          <h2 className="section">Banka Hesapları</h2>
+          {banks === null ? (
+            <p className="note loading-row" style={{ padding: "0.6rem 0" }}>
+              <SpinnerIcon size={16} className="loading-brand" /> Banka hesapları yükleniyor…
+            </p>
+          ) : banks.length === 0 ? (
+            <p className="note">Tanımlı banka hesabı bulunmuyor.</p>
+          ) : (
+            <div className="tablewrap">
+              <table className="data order-table bank-table">
+                <thead>
+                  <tr>
+                    <th>Banka</th>
+                    <th>Hesap Sahibi</th>
+                    <th>IBAN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {banks.map((b) => (
+                    <tr key={b._id}>
+                      <td><strong className="bank-name">{b.name || "—"}</strong></td>
+                      <td>{b.accountName || "—"}</td>
+                      <td><code className="bank-iban">{b.iban ? formatIban(b.iban) : "—"}</code></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

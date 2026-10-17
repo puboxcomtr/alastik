@@ -42,12 +42,26 @@ const SITE_CUSTOMER_PREFIX = {
 
 // DIA sipariş açıklamasının 3. satırındaki teslim şekli etiketi
 const DIA_DELIVERY_LABEL = 'KARGO';
+// DIA fiş açıklama satırının (aciklama1-3) azami uzunluğu
+const DIA_DESCRIPTION_MAX_LENGTH = 128;
+
+// DIA oturumu başka süreç tarafından düşürüldüğünde dönen yanıtlar (istek işlenmemiştir):
+// INVALID_SESSION (401), lqWebSessionTimedOutError (500), "dönem yetkiniz bulunmamaktadır" (403)
+const SESSION_LOST_PATTERN = /INVALID_SESSION|SessionTimedOut|dönem yetkiniz/i;
+const SESSION_RETRY_LIMIT = 4;
+// Depo stoğu boş yanıt verirse (okunamadı) oturum yenilenerek kaç kez sorulur
+const DEPOT_STOCK_READ_ATTEMPTS = 2;
+const SESSION_RETRY_DELAY_MS = 250;
+const DIA_LOGIN_METHOD = 'login';
+const isSessionLost = (data) => SESSION_LOST_PATTERN.test(String(data?.msg || '')) || SESSION_LOST_PATTERN.test(String(data?.message || ''));
 
 class DiaOrderService {
     constructor(site) {
         this.site = site;
         this.settings = null;
         this.sessionId = null;
+        // Bu siparişin satış elemanı (bayi siparişinde carinin plasiyeri) — aktarım sırasında çözülür
+        this.orderSalespersonKey = null;
         // init() içinde ayarlardan hesaplanır
         this.firmaKodu = 0;
         this.donemKodu = 0;
@@ -85,14 +99,36 @@ class DiaOrderService {
         return { active: true };
     }
 
-    async sendRequest(endpoint, payload) {
+    /**
+     * DIA isteği. DIA aynı WS kullanıcısında tek oturuma izin verir: başka bir süreç (ör. worker'daki
+     * XML-DIA eşleştirme) aynı kullanıcıyla bağlanınca oturumumuz düşer ve istek İŞLENMEDEN
+     * INVALID_SESSION / lqWebSessionTimedOutError döner. Bu durumda oturum yenilenip aynı istek
+     * tekrar gönderilir (en fazla SESSION_RETRY_LIMIT kez) — sipariş aktarımı yarıda kalmaz.
+     */
+    async sendRequest(endpoint, payload, attempt = 0) {
         const url = `${this.settings.baseURL}${endpoint}`;
         const response = await axios.post(url, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 30000,
             validateStatus: () => true
         });
-        return response.data;
+        const data = response.data;
+
+        const method = payload && typeof payload === 'object' ? Object.keys(payload)[0] : null;
+        const body = method ? payload[method] : null;
+        if (attempt < SESSION_RETRY_LIMIT && body?.session_id && method !== DIA_LOGIN_METHOD && isSessionLost(data)) {
+            // Çağıran eski bir oturum kimliği taşıyorsa ve elimizde daha yenisi varsa önce onunla dene
+            if (!this.sessionId || String(body.session_id) === String(this.sessionId)) {
+                // Kısa bekleme: oturumu düşüren sürecin isteği bitsin, yeni oturumumuz hemen düşmesin
+                await new Promise(r => setTimeout(r, SESSION_RETRY_DELAY_MS * (attempt + 1)));
+                await this.login();
+            }
+            logger.warn('[DiaOrder] DIA oturumu düştü, oturum yenilenip istek tekrarlanıyor', {
+                site: this.site, method, attempt: attempt + 1
+            });
+            return this.sendRequest(endpoint, { [method]: { ...body, session_id: this.sessionId } }, attempt + 1);
+        }
+        return data;
     }
 
     async login() {
@@ -154,7 +190,7 @@ class DiaOrderService {
                 donem_kodu: this.donemKodu,
                 filters: [{ field: 'fisno', operator: '=', value: orderNumber }],
                 sorts: '',
-                params: { selectedcolumns: ['_key', 'fisno', 'turu', 'aciklama1', 'aciklama2'] },
+                params: { selectedcolumns: ['_key', 'fisno', 'turu', 'aciklama1', 'aciklama2', 'aciklama3'] },
                 limit: 5,
                 offset: 0
             }
@@ -166,11 +202,16 @@ class DiaOrderService {
             // Aynı fiş numarası B2B/elle açılan fişlerde de kullanılabiliyor.
             // Fişi sahiplenmeden önce bizim yazdığımız imzayı doğrula:
             // web siparişleri turu=2 ile yazılır ve açıklamada sipariş no/site bulunur.
+            // Sipariş açıklaması açıklama 1'e yazılan sitede (diaOrderNoteField) sipariş no orada olmayabilir:
+            // açıklama 3'ün başındaki site adı da imza sayılır.
+            const siteName = SITES[this.site]?.name || '';
             const own = response.result.find(row => {
                 if (String(row.turu) !== '2') return false;
                 const a1 = String(row.aciklama1 || '');
                 const a2 = String(row.aciklama2 || '');
-                return a2 === orderNumber || a2 === this.site || a1.includes(orderNumber);
+                const a3 = String(row.aciklama3 || '');
+                return a2 === orderNumber || a2 === this.site || a1.includes(orderNumber)
+                    || (siteName !== '' && a3.startsWith(`${siteName} - `));
             });
             if (own) {
                 return { exists: true, diaKey: String(own._key) };
@@ -688,6 +729,27 @@ class DiaOrderService {
         return 0;
     }
 
+    /** Hizmet kartının (ör. KARGO BEDELİ) ana birim satırı anahtarı — kart görüntüleme yetkisi olmasa da birimleri listelenebilir */
+    async findServiceUnitKey(serviceKey) {
+        const sessionId = await this.ensureSession();
+        const response = await this.sendRequest('/api/v3/scf/json', {
+            scf_hizmetkart_birimleri_listele: {
+                session_id: sessionId,
+                firma_kodu: this.firmaKodu,
+                donem_kodu: this.donemKodu,
+                filters: [{ field: '_key_scf_hizmetkart', operator: '=', value: String(serviceKey) }],
+                sorts: '',
+                params: {},
+                limit: 5,
+                offset: 0
+            }
+        });
+        if (String(response?.code) === '200' && Array.isArray(response.result) && response.result.length > 0) {
+            return parseInt(response.result[0]._key) || 0;
+        }
+        return 0;
+    }
+
     // ==================== SİPARİŞ ====================
 
     /**
@@ -697,19 +759,20 @@ class DiaOrderService {
      * Liste yoksa/eşitse iskonto 0 — eski (KDV dahil) yapı korunur (LJA/ALastik).
      * Değerler KDV hariç döner; net KDV hariç = brüt − iskonto.
      */
-    lineFinancials(item) {
+    lineFinancials(item, { separateShipping = false } = {}) {
         const qty = parseFloat(item.quantity) || 1;
         const vatRate = parseFloat(item.vatRate) || 20;
         const shippingPerUnit = parseFloat(item.shippingPerUnit)
             || ((parseFloat(item.shippingTotal) || 0) / qty) || 0;
-        const finalKdvDahil = (parseFloat(item.unitPrice) || 0) + shippingPerUnit; // ödenen birim (KDV dahil)
+        // Kargo ayrı hizmet satırı olarak yazılıyorsa ürün satırının birim fiyatına eklenmez
+        const finalKdvDahil = (parseFloat(item.unitPrice) || 0) + (separateShipping ? 0 : shippingPerUnit); // ödenen birim (KDV dahil)
         let listeKdvDahil = parseFloat(item.listUnitPrice) || finalKdvDahil;        // liste birim (fiyat1, KDV dahil)
         if (listeKdvDahil < finalKdvDahil) listeKdvDahil = finalKdvDahil;           // negatif iskonto olmasın
         // İskonto oranları AYRI ve ZİNCİRLİ satırlar (ör. [Cari %50, Gel Al %1]).
         // Verilmemişse liste-satış farkından tek oran hesaplanır (geriye dönük).
         const r6 = n => Math.round(n * 1e6) / 1e6;
-        // POZİSYONEL: indirim1=Cari, indirim2=ödeme yöntemi, indirim3=Gel Al.
-        // Aradaki 0'lar korunur (Cari+Gel Al → [50, 0, 1] → Gel Al indirim3'e düşer);
+        // POZİSYONEL: indirim1=Cari, indirim2=yıl + marka, indirim3=ödeme yöntemi farkı.
+        // Aradaki 0'lar korunur (yıl-marka oranı yok, ödeme farkı var → [50, 0, 7] → fark indirim3'e düşer);
         // yalnız SONDAKİ 0'lar atılır (gereksiz boş indirim satırı olmasın).
         let rates = Array.isArray(item.discountRates)
             ? item.discountRates.map(r => parseFloat(r) || 0)
@@ -736,12 +799,16 @@ class DiaOrderService {
         let lineNo = 1;
         const today = new Date().toISOString().slice(0, 10);
         let toplam = 0, toplamindirim = 0, toplamkdv = 0;
+        // Kargo bedeli hizmet satırı (sitede kargo hizmet kartı seçiliyse): ürün satırlarındaki kargo payları toplanır
+        let shippingKdvDahil = 0;
+        let shippingVatRate = 0;
 
         for (const item of order.items) {
             const stock = resolvedStocks.get(item);
             if (!stock) continue;
 
-            const f = this.lineFinancials(item);
+            const f = this.lineFinancials(item, { separateShipping: !!this.shippingServiceLine });
+            shippingKdvDahil += f.shippingPerUnit * f.qty;
             toplam += f.netHaric;
             toplamindirim += f.indirimHaric;
             toplamkdv += f.kdv;
@@ -759,7 +826,7 @@ class DiaOrderService {
                 kdv: this.formatDecimal(f.vatRate),
                 daraadet: '0.000000',
                 note: item.name || '',
-                note2: f.shippingPerUnit > 0 ? 'Kargo dahil' : '',
+                note2: f.shippingPerUnit > 0 && !this.shippingServiceLine ? 'Kargo dahil' : '',
                 onay: 'KABUL',
                 rezervasyon: 'H',
                 siptarih: today,
@@ -768,7 +835,7 @@ class DiaOrderService {
 
             if (f.hasDiscount) {
                 // İskontolu (b2b): birim = LİSTE (KDV hariç); iskonto oranları AYRI
-                // satırlarda — indirim1=Cari %50, indirim2=Gel Al %1 ... (zincirli)
+                // satırlarda — indirim1=Cari %50, indirim2=yıl + marka %4, indirim3=ödeme farkı ... (zincirli)
                 const kalem = {
                     ...ortak,
                     birimfiyati: this.formatDecimal(f.listeHaric),
@@ -792,10 +859,47 @@ class DiaOrderService {
                     kdvtutari: this.formatDecimal(f.kdv)
                 });
             }
+            if (!shippingVatRate) shippingVatRate = f.vatRate;
             lineNo++;
         }
 
         const r6 = n => Math.round(n * 1e6) / 1e6;
+
+        // Kargo bedeli: iskontosuz, tek hizmet satırı (KDV hariç birim fiyat + KDV) — ürün iskontoları kargoya uygulanmaz
+        if (this.shippingServiceLine && shippingKdvDahil > 0) {
+            const vatRate = shippingVatRate || 20;
+            const haric = r6(shippingKdvDahil / (1 + vatRate / 100));
+            const kdv = r6(shippingKdvDahil - haric);
+            const today = new Date().toISOString().slice(0, 10);
+            items.push({
+                _key_scf_carikart: parseInt(customer.key),
+                _key_kalemturu: this.shippingServiceLine.serviceKey,
+                _key_scf_kalem_birimleri: this.shippingServiceLine.unitKey,
+                _key_sis_depo_source: siparis.depoKey,
+                _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
+                kalemturu: 'HZMT',
+                anamiktar: this.formatDecimal(1),
+                miktar: this.formatDecimal(1),
+                dovizkuru: '1.000000',
+                kdv: this.formatDecimal(vatRate),
+                daraadet: '0.000000',
+                note: 'Kargo Bedeli',
+                note2: '',
+                onay: 'KABUL',
+                rezervasyon: 'H',
+                siptarih: today,
+                sirano: lineNo,
+                birimfiyati: this.formatDecimal(haric),
+                sonbirimfiyati: this.formatDecimal(haric),
+                yerelbirimfiyati: this.formatDecimal(haric),
+                tutari: this.formatDecimal(haric),
+                kdvdurumu: 'H',
+                kdvtutari: this.formatDecimal(kdv)
+            });
+            toplam += haric;
+            toplamkdv += kdv;
+        }
+
         const totals = {
             toplam: this.formatDecimal(r6(toplam)),
             toplamindirim: this.formatDecimal(r6(toplamindirim)),
@@ -870,6 +974,73 @@ class DiaOrderService {
 
         const row = Array.isArray(response?.result) ? response.result[0] : null;
         return row ? (parseFloat(row.gercek_stok) || 0) : 0;
+    }
+
+    /**
+     * Bayi (cari) siparişinde satış elemanı = carinin DIA kartındaki plasiyeri. Kart canlı okunur (DIA'da plasiyer
+     * değiştiyse güncel olan gelir); kart okunamazsa bizdeki kayıt kullanılır. Perakende üyede (cari bilgisi yok) ya da
+     * carinin plasiyeri yoksa null döner — siparişe ayardaki satış elemanı yazılır.
+     * @returns {Promise<number|null>}
+     */
+    async resolveDealerSalespersonKey(order, customer) {
+        if (!order?.memberId || !customer?.key) return null;
+        const member = await WebMember.findById(order.memberId).select('diaCari.salespersonKey').lean();
+        if (!member?.diaCari) return null;
+        try {
+            const sessionId = await this.ensureSession();
+            const response = await this.sendRequest('/api/v3/scf/json', {
+                scf_carikart_listele: {
+                    session_id: sessionId,
+                    firma_kodu: this.firmaKodu,
+                    donem_kodu: this.donemKodu,
+                    filters: [{ field: '_key', operator: '=', value: String(customer.key) }],
+                    sorts: '',
+                    params: { selectedcolumns: ['_key', '_key_scf_satiselemani'] },
+                    limit: 1,
+                    offset: 0
+                }
+            });
+            const row = Array.isArray(response?.result) ? response.result[0] : null;
+            if (row) {
+                const liveKey = parseInt(row._key_scf_satiselemani) || 0;
+                return liveKey > 0 ? liveKey : null;
+            }
+        } catch (error) {
+            logger.warn('[DiaOrder] Carinin plasiyeri DIA\'dan okunamadı, kayıtlı değer kullanılacak', { orderNumber: order.orderNumber, error: error.message });
+        }
+        const storedKey = parseInt(member.diaCari.salespersonKey) || 0;
+        return storedKey > 0 ? storedKey : null;
+    }
+
+    /**
+     * Depodaki gerçek stok; okunamazsa null. DIA geçerli kart için her depoda (stok 0 olsa da) satır döndürür —
+     * boş yanıt "stok yok" değil, okunamadı demektir (ör. aynı DIA kullanıcısında oturum çakışması).
+     * Boş yanıtta oturum yenilenip bir kez daha sorulur.
+     */
+    async getDepotStockOrNull(stockCode, depoKey) {
+        for (let attempt = 0; attempt < DEPOT_STOCK_READ_ATTEMPTS; attempt++) {
+            if (attempt > 0) {
+                this.sessionId = null;
+                await this.login();
+            }
+            const sessionId = await this.ensureSession();
+            const response = await this.sendRequest('/api/v3/scf/json', {
+                scf_stokkart_detay_listele: {
+                    session_id: sessionId,
+                    firma_kodu: this.firmaKodu,
+                    donem_kodu: this.donemKodu,
+                    filters: [{ field: 'stokkartkodu', operator: '=', value: String(stockCode) }],
+                    sorts: [{ field: 'stokkartkodu', sorttype: 'DESC' }],
+                    params: { _key_sis_depo: depoKey, _key_sis_depo_filtre: depoKey, tarih: '2099-12-31' },
+                    limit: 1,
+                    offset: 0
+                }
+            });
+            const row = String(response?.code) === '200' && Array.isArray(response.result) ? response.result[0] : null;
+            if (row) return parseFloat(row.gercek_stok) || 0;
+            logger.warn('[DiaOrder] Depo stoğu okunamadı (boş yanıt)', { site: this.site, stockCode, depoKey, attempt: attempt + 1 });
+        }
+        return null;
     }
 
     /**
@@ -1002,7 +1173,7 @@ class DiaOrderService {
                 _key_sis_depo_source: itemDepoKey,
                 _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
                 _key_scf_odeme_plani: paymentPlanKey || this.extractKey(kalem._key_scf_odeme_plani),
-                _key_scf_satiselemani: siparis.satisElemaniKey || 0,
+                _key_scf_satiselemani: this.extractKey(diaOrder._key_scf_satiselemani) || siparis.satisElemaniKey || 0,
                 kalemturu: kalem.kalemturu || 'MLZM',
                 miktar: kalem.miktar,
                 anamiktar: kalem.anamiktar || kalem.miktar,
@@ -1047,7 +1218,8 @@ class DiaOrderService {
             _key_sis_doviz: DIA_CURRENCY_KEY_TRY,
             _key_sis_doviz_raporlama: DIA_CURRENCY_KEY_TRY,
             _key_scf_odeme_plani: paymentPlanKey,
-            _key_scf_satiselemani: siparis.satisElemaniKey || 0,
+            // Faturada siparişteki satış elemanı (bayi siparişinde carinin plasiyeri)
+            _key_scf_satiselemani: this.extractKey(diaOrder._key_scf_satiselemani) || siparis.satisElemaniKey || 0,
             _key_sis_seviyekodu: siparis.faturaSeviyeKodKey || siparis.siparisSeviyeKodKey || 0,
             dovizkuru: '1.000000',
             raporlamadovizkuru: '1.000000',
@@ -1170,7 +1342,7 @@ class DiaOrderService {
      * Hiçbir depoda karşılanamayan kalan, son öncelikli depoya yazılır
      * (karar DIA/muhasebeye kalır). Öncelik listesi boşsa tek depo kullanılır.
      */
-    async allocateSourceDepots(stockCode, quantity, depotKeys, fallbackDepoKey) {
+    async allocateSourceDepots(stockCode, quantity, depotKeys, fallbackDepoKey, { strict = false } = {}) {
         if (!Array.isArray(depotKeys) || depotKeys.length === 0 || !stockCode) {
             return [{ depoKey: fallbackDepoKey, quantity }];
         }
@@ -1179,7 +1351,12 @@ class DiaOrderService {
         let remaining = quantity;
         for (const depoKey of depotKeys) {
             if (remaining <= 0) break;
-            const stock = await this.getDepotStock(stockCode, depoKey);
+            const read = await this.getDepotStockOrNull(stockCode, depoKey);
+            // strict (stok hareketi belgesi): okunamayan stok yanlış depoya yazılmaz, işlem durdurulur (sonra tekrar denenir)
+            if (read === null && strict) {
+                throw new Error(`Kaynak depo stoğu DIA'dan okunamadı (${stockCode}, depo ${depoKey}); çıkış irsaliyesi kesilmedi, otomatik tekrar denenecek`);
+            }
+            const stock = read ?? 0;
             const take = Math.min(remaining, Math.max(0, Math.floor(stock)));
             if (take > 0) {
                 allocations.push({ depoKey, quantity: take });
@@ -1652,6 +1829,8 @@ class DiaOrderService {
         // Cari (vadeli/açık hesap): DIA sipariş yine ödeme planı ister.
         // Normal: "30 GÜN VADE"; Gel Al: "Cari Sipariş + Gel Al".
         if (payment.method === 'cari') {
+            // Carinin kendi ödeme planı (sipariş anında DIA cari kartından alınıp siparişe yazılır); yoksa panel ayarı
+            if (Number(payment.diaPaymentPlanKey) > 0) return Number(payment.diaPaymentPlanKey);
             return pick(siparis.odemePlaniCariGelAlKey, siparis.odemePlaniCariKey)
                 || siparis.odemePlaniHavaleKey || siparis.odemePlaniTekCekimKey || 0;
         }
@@ -1710,6 +1889,12 @@ class DiaOrderService {
                 .filter(Boolean)
                 .join(' - ')
         };
+        // Bayinin sipariş açıklaması: sitenin ayarındaki açıklama satırına yazılır (bkz. sites.js diaOrderNoteField)
+        const noteField = SITES[this.site]?.diaOrderNoteField;
+        const orderNote = String(order.orderNote || '').replace(/\s+/g, ' ').trim();
+        if (noteField && orderNote && Object.prototype.hasOwnProperty.call(descriptions, noteField)) {
+            descriptions[noteField] = orderNote.slice(0, DIA_DESCRIPTION_MAX_LENGTH);
+        }
 
         // Başlık deposu: ilk kalemin (öncelik listesinden seçilen) deposu; yoksa ayar
         const headerDepoKey = orderItems[0]?._key_sis_depo_source || siparis.depoKey;
@@ -1761,9 +1946,10 @@ class DiaOrderService {
             _key_scf_carikart_adresleri: parseInt(shipping.diaAddressKey) || 0
         };
 
-        // Satış elemanı — firma ayarında zorunlu olabilir, ayarlardan gelir
-        if (siparis.satisElemaniKey) {
-            kart._key_scf_satiselemani = siparis.satisElemaniKey;
+        // Satış elemanı — bayi siparişinde carinin plasiyeri, değilse ayardaki eleman (firma ayarında zorunlu olabilir)
+        const salespersonKey = this.orderSalespersonKey || siparis.satisElemaniKey;
+        if (salespersonKey) {
+            kart._key_scf_satiselemani = salespersonKey;
         }
 
         // Sipariş yetki/seviye kodu — cari yetki kodundan ayrı bir DIA kaydıdır
@@ -1910,6 +2096,8 @@ async function _syncOrderToDia(order) {
 
         // 1) Cari
         const customer = await service.resolveCustomer(order);
+        // Bayi siparişinde satış elemanı carinin plasiyeridir (yoksa ayardaki eleman)
+        service.orderSalespersonKey = await service.resolveDealerSalespersonKey(order, customer);
         logger.info('[DiaOrder] Cari hazır', {
             orderNumber,
             site: order.site,
@@ -1972,6 +2160,17 @@ async function _syncOrderToDia(order) {
             } catch (e) {
                 logger.warn('[DiaOrder] Fatura adresi çekilemedi', { orderNumber, error: e.message });
             }
+        }
+
+        // 2d) Kargo bedeli hizmet satırı: sitede kargo hizmet kartı seçili ve siparişte kargo payı varsa birim anahtarı çözülür.
+        // Birim bulunamazsa aktarım durdurulur (kargo bedeli sessizce düşmesin).
+        service.shippingServiceLine = null;
+        const kargoKartKey = Number(siparisAyar.kargoHizmetKartKey) || 0;
+        const orderShipping = (order.items || []).reduce((sum, i) => sum + (parseFloat(i.shippingPerUnit) || 0) * (parseFloat(i.quantity) || 1), 0);
+        if (kargoKartKey && orderShipping > 0) {
+            const unitKey = await service.findServiceUnitKey(kargoKartKey);
+            if (!unitKey) throw new Error(`Kargo bedeli hizmet kartının birimi bulunamadı (kart ${kargoKartKey})`);
+            service.shippingServiceLine = { serviceKey: kargoKartKey, unitKey };
         }
 
         // 3) Sipariş girişi (plaka doluysa açıklamaya eklenir)
@@ -2176,7 +2375,7 @@ async function maybeRunInterCompanyChain(service, order) {
             // tek depodan kesmek E-TİCARET gibi stoksuz depolarda "Eksi Stok" engeline takılıyordu
             const cikisItems = [];
             for (const srcItem of srcItems) {
-                const dagitim = await src.allocateSourceDepots(srcItem.stockCode, srcItem.quantity, depotKeys, toDepo || depotKeys[0]);
+                const dagitim = await src.allocateSourceDepots(srcItem.stockCode, srcItem.quantity, depotKeys, toDepo || depotKeys[0], { strict: true });
                 for (const pay of dagitim) {
                     cikisItems.push({ ...srcItem, quantity: pay.quantity, depoKey: pay.depoKey });
                 }

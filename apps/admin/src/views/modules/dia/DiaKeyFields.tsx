@@ -15,6 +15,7 @@ export interface DiaSiparisOptions {
   subeler: DiaKeyOption[]
   depolar: DiaKeyOption[]
   kargoFirmalari: DiaKeyOption[]
+  hizmetKartlari: DiaKeyOption[]
   satisElemanlari: DiaKeyOption[]
   odemePlanlari: DiaKeyOption[]
   cariOzelKodlari: DiaKeyOption[]

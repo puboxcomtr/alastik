@@ -326,7 +326,7 @@ router.get('/overview', async (req, res) => {
             WebOrder.countDocuments(orderBase),
             WebOrder.countDocuments({ ...orderBase, status: 'cancelled' }),
             WebOrder.countDocuments({ ...orderBase, status: 'pending', 'payment.status': 'paid' }),
-            WebOrder.countDocuments({ ...orderBase, 'payment.status': 'pending', status: { $nin: ['cancelled', 'payment_failed'] } }),
+            WebOrder.countDocuments({ ...orderBase, 'payment.status': 'pending', status: { $nin: ['cancelled', 'payment_failed', 'awaiting_payment'] } }),
             WebOrder.aggregate([{ $match: { ...orderBase, 'payment.status': 'paid' } }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
             WebProduct.countDocuments(saleableFilter(site)),
             WebProduct.countDocuments({ ...saleableFilter(site), $or: [imagesMissing, descriptionMissing(site)] }),

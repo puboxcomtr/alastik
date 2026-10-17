@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -16,6 +17,8 @@ import {
   type Season,
   type Tire,
 } from "@components/b2b-theme/lib/sample-data";
+import { API_ENDPOINTS } from "@src/config/api";
+import { CartBlockedModal } from "./cart-blocked-modal";
 
 /**
  * SEPET — yalnızca tarayıcıda yaşar.
@@ -27,6 +30,8 @@ import {
  */
 
 const CART_STORAGE_KEY = "ornek-sepet-v1";
+// Sepet değişikliklerinin sunucuya yazılmadan önce toplandığı süre
+const CART_SYNC_DELAY_MS = 1500;
 
 // Ürün sepete eklenirken GERÇEK verisinin (DB'den gelen ad/fiyat/depo) anlık
 // kopyası — sepet widget'ı bu değerleri örnek veriden değil bundan gösterir.
@@ -37,6 +42,8 @@ export type CartSnapshot = {
   size: string;
   pattern: string;
   stockCode: string;
+  /** DIA'daki gerçek stok kodu (XML üründe "-XML" ekli) — siparişe bu gönderilir */
+  diaStockCode?: string;
   imageUrl?: string | null;
   dotYear?: number | null;
   mevsim?: Season;
@@ -58,6 +65,7 @@ export type CartRecord = {
 export type CartLineProduct = {
   id: string;
   stockCode: string;
+  diaStockCode?: string;
   marka: string;
   brandLogoUrl: string | null;
   size: string;
@@ -86,12 +94,21 @@ type CartState = {
   matrahToplamKurus: number;
   kdvToplamKurus: number;
   totalKurus: number;
-  addItem: (record: CartRecord) => void;
-  setQty: (productId: string, warehouseId: string, adet: number) => void;
+  /** Sepet kapalıysa (vadesi geçen borç) eklemez, uyarıyı açar ve false döner. */
+  addItem: (record: CartRecord) => boolean;
+  /** Adet artışı sepet kapalıyken yapılmaz (uyarı açılır, false döner); azaltma ve silme serbesttir. */
+  setQty: (productId: string, warehouseId: string, adet: number) => boolean;
   removeItem: (productId: string, warehouseId: string) => void;
   clear: () => void;
   find: (productId: string) => CartRecord | null;
+  /** Vadesi geçen borç nedeniyle sepete ekleme ve sipariş kapalı mı? */
+  blocked: boolean;
+  /** Kapalıyken ortadaki uyarıyı açar. */
+  notifyBlocked: () => void;
 };
+
+// Sepeti kapatan cari durumu (/me → cartClosed)
+type CartBlock = { message: string; overdueKurus: number };
 
 const CartContext = createContext<CartState | null>(null);
 
@@ -119,17 +136,160 @@ function readRecords(): CartRecord[] {
   }
 }
 
+/** Tarayıcıdaki sepeti siler (plasiyer çıkışında: plasiyerin bayiler adına doldurduğu sepet sonraki oturuma kalmasın). */
+export function clearStoredCart(): void {
+  try {
+    window.localStorage.removeItem(CART_STORAGE_KEY);
+  } catch {
+    /* depolama kapalıysa silinecek sepet de yoktur */
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [records, setRecords] = useState<CartRecord[]>([]);
   // localStorage'dan ilk okuma yapıldı mı? (boş-sepet yönlendirmesi bunu bekler;
   // yoksa dolu sepette bile ilk çizimde yanlışlıkla yönlendirme olur.)
   const [hydrated, setHydrated] = useState(false);
+  // Vadesi geçen borç: sepete ekleme ve sipariş kapalı (kuralı sunucu da uygular)
+  const [block, setBlock] = useState<CartBlock | null>(null);
+  const [blockNoticeOpen, setBlockNoticeOpen] = useState(false);
 
   // Sunucuda ve ilk çizimde boş başlanır; kayıtlar bağlanmadan sonra okunur ki
   // sunucu çıktısı ile istemci çıktısı ayrışmasın (hydration uyuşmazlığı).
   useEffect(() => {
     setRecords(readRecords());
     setHydrated(true);
+  }, []);
+
+  // Sepetteki fiyat, ürünün eklendiği andaki kopyadır. Sayfa açılışında bir kez katalogdaki güncel fiyatla yenilenir;
+  // fiyat değişince ya da düzeltilince bayi sepette eski fiyatı görmez. Nihai fiyat siparişte sunucuda hesaplanır.
+  // Cari oranı alınamazsa fiyat hesaplanmaz, sepet olduğu gibi kalır.
+  const repriced = useRef(false);
+  useEffect(() => {
+    if (!hydrated || repriced.current) return;
+    const priced = records.filter((r) => r.snapshot?.stockCode);
+    if (!priced.length) return;
+    let token: string | null = null;
+    try {
+      token = window.localStorage.getItem("authToken");
+    } catch {
+      token = null;
+    }
+    if (!token) return;
+    repriced.current = true;
+    (async () => {
+      try {
+        const { rawToTire } = await import("./showcase-catalog");
+        const rate = await fetch(API_ENDPOINTS.b2b.fiyatOrani(), { headers: { Authorization: `Bearer ${token}`, "X-Site": "b2b" } })
+          .then((r) => r.json());
+        if (!rate?.success || !rate.data) return;
+        const fresh = new Map<string, { birimNetKurus: number; kdvDahilBirimKurus: number }>();
+        await Promise.all(priced.map(async (r) => {
+          const code = r.snapshot!.diaStockCode || r.snapshot!.stockCode;
+          const params = new URLSearchParams({ q: code, limit: "5", page: "1" });
+          const res = await fetch(`${API_ENDPOINTS.products.filter()}?${params.toString()}`, { headers: { "X-Site": "b2b" } })
+            .then((x) => x.json())
+            .catch(() => null);
+          const raw = (res?.data?.products || res?.products || []).find((p: { _key?: unknown }) => String(p?._key) === r.productId);
+          const fiyat = raw ? rawToTire(raw, {}, rate.data).fiyat : null;
+          if (fiyat && fiyat.kdvDahilBirimKurus > 0) {
+            fresh.set(r.productId, { birimNetKurus: fiyat.birimNetKurus, kdvDahilBirimKurus: fiyat.kdvDahilBirimKurus });
+          }
+        }));
+        if (!fresh.size) return;
+        setRecords((current) => {
+          let changed = false;
+          const next = current.map((r) => {
+            const f = fresh.get(r.productId);
+            if (!f || !r.snapshot) return r;
+            if (f.kdvDahilBirimKurus === r.snapshot.kdvDahilBirimKurus && f.birimNetKurus === r.snapshot.birimNetKurus) return r;
+            changed = true;
+            return { ...r, snapshot: { ...r.snapshot, ...f } };
+          });
+          if (!changed) return current;
+          try {
+            window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
+          } catch {
+            // Depolama kapalıysa güncel fiyat yalnızca bu sekmede geçerli olur.
+          }
+          return next;
+        });
+      } catch {
+        // Fiyat yenilenemezse sepet eklendiği andaki fiyatla kalır; sipariş tutarı sunucuda hesaplanır.
+      }
+    })();
+    // Yalnız ilk okumadan sonra bir kez çalışır
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
+  // Sepet sunucuya da yazılır (admin Aktif Sepetler bayi sepetlerini görür). Değişiklikler kısa süre toplanıp
+  // tek istekle gider; aynı içerik tekrar gönderilmez. Bayi oturumu yoksa (plasiyer bayi seçmeden) gönderilmez.
+  const lastSyncedCart = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hydrated) return;
+    const lines = records.filter((r) => r.snapshot).map((r) => ({
+      productId: r.productId,
+      stockCode: r.snapshot!.stockCode,
+      diaStockCode: r.snapshot!.diaStockCode,
+      name: r.snapshot!.pattern,
+      brand: r.snapshot!.marka,
+      image: r.snapshot!.imageUrl ?? "",
+      quantity: r.adet,
+      unitPrice: r.snapshot!.kdvDahilBirimKurus / 100,
+      warehouseName: r.snapshot!.warehouseName ?? "",
+      xml: !!r.snapshot!.xml,
+    }));
+    const body = JSON.stringify({ lines });
+    if (body === lastSyncedCart.current) return;
+    const timer = window.setTimeout(() => {
+      let token: string | null = null;
+      try {
+        token = window.localStorage.getItem("authToken");
+      } catch {
+        token = null;
+      }
+      if (!token) return;
+      fetch(API_ENDPOINTS.b2b.sepet(), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Site": "b2b" },
+        body,
+        keepalive: true,
+      })
+        .then((r) => { if (r.ok) lastSyncedCart.current = body; })
+        .catch(() => { /* kayıt gitmezse bir sonraki değişiklikte yeniden denenir */ });
+    }, CART_SYNC_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [records, hydrated]);
+
+  // Cari durumu sayfa açılışında ve sekmeye dönüldüğünde okunur (borç ödenince kilit kalksın)
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      let token: string | null = null;
+      try {
+        token = window.localStorage.getItem("authToken");
+      } catch {
+        token = null;
+      }
+      if (!token) return;
+      fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${token}`, "X-Site": "b2b" } })
+        .then((r) => r.json())
+        .then((d) => {
+          if (cancelled || !d?.success || !d.data) return;
+          setBlock(
+            d.data.cartClosed === true
+              ? { message: String(d.data.cartClosedMessage || ""), overdueKurus: Number(d.data.overdueKurus) || 0 }
+              : null,
+          );
+        })
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener("focus", load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", load);
+    };
   }, []);
 
   const writeRecords = useCallback((nextRecords: CartRecord[]) => {
@@ -154,6 +314,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             urun: {
               id: k.productId,
               stockCode: s.stockCode,
+              diaStockCode: s.diaStockCode,
               marka: s.marka,
               brandLogoUrl: s.brandLogoUrl ?? null,
               size: s.size,
@@ -216,6 +377,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       kdvToplamKurus: kdvToplam,
       totalKurus: matrahToplam + kdvToplam,
       addItem: (record) => {
+        if (block) {
+          setBlockNoticeOpen(true);
+          return false;
+        }
         const existing = records.find(
           (k) => k.productId === record.productId && k.warehouseId === record.warehouseId,
         );
@@ -226,6 +391,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               )
             : [...records, record],
         );
+        return true;
       },
       setQty: (productId, warehouseId, adet) => {
         if (adet <= 0) {
@@ -234,7 +400,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               (k) => !(k.productId === productId && k.warehouseId === warehouseId),
             ),
           );
-          return;
+          return true;
+        }
+        const current = records.find(
+          (k) => k.productId === productId && k.warehouseId === warehouseId,
+        );
+        if (block && current && adet > current.adet) {
+          setBlockNoticeOpen(true);
+          return false;
         }
         writeRecords(
           records.map((k) =>
@@ -243,6 +416,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               : k,
           ),
         );
+        return true;
       },
       removeItem: (productId, warehouseId) => {
         writeRecords(
@@ -253,10 +427,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       },
       clear: () => writeRecords([]),
       find: (productId) => records.find((k) => k.productId === productId) ?? null,
+      blocked: block !== null,
+      notifyBlocked: () => {
+        if (block) setBlockNoticeOpen(true);
+      },
     };
-  }, [hydrated, records, writeRecords]);
+  }, [hydrated, records, writeRecords, block]);
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      {block && blockNoticeOpen ? (
+        <CartBlockedModal
+          message={block.message}
+          overdueKurus={block.overdueKurus}
+          onClose={() => setBlockNoticeOpen(false)}
+        />
+      ) : null}
+    </CartContext.Provider>
+  );
 }
 
 export function useCart(): CartState {

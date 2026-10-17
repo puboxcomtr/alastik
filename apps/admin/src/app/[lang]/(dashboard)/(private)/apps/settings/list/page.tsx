@@ -1,14 +1,21 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid2'
 
+import { siteHasSeo } from '@/utils/activeSite'
+
 const SettingsList = () => {
     const router = useRouter()
 
-    const settings = [
+    // Aktif sitede SEO modülü yoksa (b2b) "SEO Ayarları" kartı gösterilmez
+    const [showSeo, setShowSeo] = useState(true)
+    useEffect(() => { setShowSeo(siteHasSeo()) }, [])
+
+    const allSettings = [
         {
             icon: 'ri-settings-3-line',
             title: 'Ek Ayarlar',
@@ -52,6 +59,8 @@ const SettingsList = () => {
             color: '#2e263db3'
         }
     ]
+
+    const settings = allSettings.filter(s => showSeo || s.href !== '/tr/apps/settings/seo')
 
     return (
 

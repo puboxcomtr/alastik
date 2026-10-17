@@ -217,7 +217,6 @@ const ApplicationsList = () => {
                 onPageChange={(_, p) => setPage(p + 1)}
                 onRowsPerPageChange={e => { setLimit(parseInt(e.target.value)); setPage(1) }}
                 rowsPerPageOptions={[20, 50, 100]}
-                labelRowsPerPage='Sayfa başına'
             />
         </Card>
     )

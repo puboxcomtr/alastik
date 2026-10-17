@@ -23,6 +23,14 @@ export const CARGO_SCOPE_OPTIONS: { value: CargoScopeType; label: string }[] = [
     { value: 'size', label: 'Ebat Bazlı' }
 ]
 
+// Kargo ücretinin gösterimi: ürün fiyatına dahil (tek fiyat) ya da fiyattan hariç (sepette ayrı "Kargo Bedeli" satırı)
+export type CargoShippingPriceMode = 'included' | 'excluded'
+
+export const CARGO_SHIPPING_PRICE_MODE_OPTIONS: { value: CargoShippingPriceMode; label: string }[] = [
+    { value: 'included', label: 'Ürün fiyatına dahil edilsin' },
+    { value: 'excluded', label: 'Ürün fiyatından hariç tutulsun' }
+]
+
 // Fiyatlandırma biçimi (alt seçim): all = kapsamın tamamı için desi tablosu; size = ebat başına ücret
 export type CargoPricingMode = 'all' | 'size'
 

@@ -1,11 +1,15 @@
 // apps/web/src/config/api.ts
+import { DOMAIN_TO_SLUG, SITES } from './siteConfig';
 
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
     if (typeof window === 'undefined') {
         return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
     }
+    // sameOriginApi açık sitede API sitenin kendi adresinden çağrılır (bkz. SiteConfig.sameOriginApi)
+    const slug = DOMAIN_TO_SLUG[window.location.hostname.toLowerCase()];
+    if (slug && SITES[slug]?.sameOriginApi) return `${window.location.origin}/api`;
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
 };
 
@@ -32,10 +36,16 @@ export const API_ENDPOINTS = {
         plasiyerSifreDegistir: () => `${getBaseUrl()}/b2b/plasiyer/sifre-degistir`,
         cariOzet: () => `${getBaseUrl()}/b2b/auth/cari-ozet`,
         depoStok: (codes: string) => `${getBaseUrl()}/b2b/auth/depo-stok?codes=${encodeURIComponent(codes)}`,
+        sepet: () => `${getBaseUrl()}/b2b/auth/sepet`,
+        // Plasiyer gözü (bayi seçilmeden) aynı depo dağılımı
+        plasiyerDepoStok: (codes: string) => `${getBaseUrl()}/b2b/plasiyer/depo-stok?codes=${encodeURIComponent(codes)}`,
+        plasiyerXmlKaynak: (codes: string) => `${getBaseUrl()}/b2b/plasiyer/xml-kaynak?codes=${encodeURIComponent(codes)}`,
         adresler: () => `${getBaseUrl()}/b2b/auth/adresler`,
         adresEkle: () => `${getBaseUrl()}/b2b/auth/adres`,
         odemeYontemleri: () => `${getBaseUrl()}/b2b/auth/odeme-yontemleri`,
+        teslimatYontemleri: (adresId: string) => `${getBaseUrl()}/b2b/auth/teslimat-yontemleri?adresId=${encodeURIComponent(adresId)}`,
         fiyatOrani: () => `${getBaseUrl()}/b2b/auth/fiyat-orani`,
+        finansalIskonto: () => `${getBaseUrl()}/b2b/auth/finansal-iskonto`,
         siparis: () => `${getBaseUrl()}/b2b/auth/siparis`,
         siparisDetay: (no: string) => `${getBaseUrl()}/b2b/auth/siparis/${encodeURIComponent(no)}`,
         siparislerim: () => `${getBaseUrl()}/b2b/auth/siparislerim`,
@@ -45,14 +55,20 @@ export const API_ENDPOINTS = {
         dueDates: () => `${getBaseUrl()}/b2b/auth/vade-takvimi`,
         agingStatus: () => `${getBaseUrl()}/b2b/auth/vade-durumu`,
         cariEkstre: () => `${getBaseUrl()}/b2b/auth/cari-ekstre`,
+        cariEkstreExcel: (q: { yil?: string; q?: string; sort?: string; dir?: string }) =>
+          `${getBaseUrl()}/b2b/auth/cari-ekstre/excel?${new URLSearchParams({ yil: q.yil || "", q: q.q || "", sort: q.sort || "", dir: q.dir || "" })}`,
+        faturaPdf: (q: { fisno: string; belgeNo?: string; tarih?: string }) =>
+          `${getBaseUrl()}/b2b/auth/fatura-pdf?${new URLSearchParams({ fisno: q.fisno, belgeNo: q.belgeNo || "", tarih: q.tarih || "" })}`,
         odemeler: () => `${getBaseUrl()}/b2b/auth/odemeler`,
         paynetConfig: () => `${getBaseUrl()}/b2b/payment/paynet/config`,
         paynetReturn: () => `${getBaseUrl()}/b2b/payment/paynet/return`,
         // Cari borç tek çekim (Peşin) — Paynet
         tekCekimBaslat: () => `${getBaseUrl()}/b2b/payment/tekcekim/baslat`,
         tekCekimReturn: () => `${getBaseUrl()}/b2b/payment/tekcekim/return`,
+        paynetClientError: () => `${getBaseUrl()}/b2b/payment/paynet/client-error`,
         // Taksit oranları — NetTahsilat PirPos (BIN + tutar → seçenekler).
         taksitRatios: () => `${getBaseUrl()}/b2b/payment/netahsilat/ratios`,
+        installmentTable: () => `${getBaseUrl()}/b2b/payment/netahsilat/installment-table`,
         // Taksitli 3D ödeme başlatma (kart + seçilen taksit/vPos → 3D URL).
         taksitInit: () => `${getBaseUrl()}/b2b/payment/netahsilat/3d-init`,
         // Cari borç taksitli (NetTahsilat) — kart + taksit → 3D URL.
@@ -83,6 +99,7 @@ export const API_ENDPOINTS = {
     },
     montage: {
         list: () => `${getBaseUrl()}/montage-points`,
+        branches: () => `${getBaseUrl()}/montage-points/branches`,
         detail: (id: string) => `${getBaseUrl()}/montage-points/${id}`,
     },
     showcases: {

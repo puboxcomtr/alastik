@@ -53,7 +53,7 @@ export default function PaymentSidebar({ onSubmit, loading, disabled }: PaymentS
                         </div>
                         <div className="d-flex justify-content-between mb-2">
                             <span className="fw-semibold text-black fs-sm">Kargo</span>
-                            <span className="text-success">Ücretsiz</span>
+                            {(totals.shipping ?? 0) > 0 ? <span>{formatPrice(totals.shipping as number)} TL</span> : <span className="text-success">Ücretsiz</span>}
                         </div>
                         {totals.subtotal > 0 && (
                             <div className="d-flex justify-content-between mb-2 text-danger">

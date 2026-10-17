@@ -43,6 +43,9 @@ router.use((req, res, next) => {
 const productsRouter = require('./catalog/products');
 router.use('/products', productsRouter);
 
+// Ürün Butonları (ürün başına açılıp kapatılan etiketler)
+router.use('/product-buttons', require('./catalog/productButtons'));
+
 const categoriesRouter = require('./catalog/categories');
 router.use('/categories', categoriesRouter);
 
@@ -90,6 +93,10 @@ router.use('/seo', seoModuleRoutes);
 // ============================================
 const orderRoutes = require('./orders/order');
 router.use('/orders', orderRoutes);
+// Aktif Sepetler (sepetinde ürün olan üyeler / ziyaretçiler)
+router.use('/carts', require('./orders/carts'));
+// Ödemeler: bayi sitesindeki "Ödeme Yap" sayfasından başlatılan cari borç ödemeleri
+router.use('/b2b-payments', require('./orders/b2bPayments'));
 
 // ============================================
 // CONTENT ROUTES
@@ -149,6 +156,9 @@ router.use('/settings', settingRoutes);
 // ============================================
 const cargoRoutes = require('./settings/cargo');
 router.use('/cargo', cargoRoutes);
+
+// Finansal İskontolar (cari tipi × marka × ödeme yöntemi → iskonto oranı)
+router.use('/financial-discounts', require('./settings/financialDiscounts'));
 
 // ============================================
 // USER ROUTES

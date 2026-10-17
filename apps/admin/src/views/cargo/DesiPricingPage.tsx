@@ -3,7 +3,7 @@
 // Kargo firması kural sayfası: ürün tipi, kural kapsamı (genel / kategori / marka / ürün), genel kurallar,
 // kapsam başına "Tümü" (desi tablosu) ya da "Ebat Bazlı" (DB'den gelen ebatlara ücret) fiyatlandırma.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -19,6 +19,8 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
 import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import Autocomplete from '@mui/material/Autocomplete'
 
 import { toast } from 'react-toastify'
@@ -26,19 +28,25 @@ import { toast } from 'react-toastify'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 import { getActiveSite, getSiteLabel } from '@/utils/activeSite'
 import tableStyles from '@core/styles/table.module.css'
+
+import FreeDeliveryRules, { type ServiceArea } from './FreeDeliveryRules'
 import {
-    CARGO_PRODUCT_TYPE_OPTIONS,
     CARGO_SCOPE_OPTIONS,
+    CARGO_SHIPPING_PRICE_MODE_OPTIONS,
     CARGO_PRICING_MODE_OPTIONS,
     scopeFromApi,
     scopeToApi,
     type CargoProductType,
     type CargoScopeType,
+    type CargoShippingPriceMode,
     type CargoPricingMode
 } from './cargoOptions'
 
-// Desi aralıklarının üst sınırı (2.El lastik/jant desileri 20-35 bandında, XML ürünlerde daha yüksek olabilir)
-const MAX_DESI = 100
+// Desi aralıklarının üst sınırı. Son aralık "ve üstü" anlamında 999 ile kapatılabiliyor (ALastik XML tablosu 46–999);
+// sınır 100 iken o tabloyla sayfa hiç kaydedilemiyordu.
+const MAX_DESI = 999
+// Ücretsiz teslimat tanımı (api Cargo.CARGO_PRICING_TYPES)
+const FREE_PRICING_TYPE = 'free'
 
 type Num = number | ''
 type DesiRange = { min: Num; max: Num; price: Num }
@@ -79,14 +87,23 @@ type CargoDetail = {
     fixedPrice?: number
     freeShippingThreshold?: number
     freeShippingDesiLimit?: number
+    // Stoktaki (DIA) ürünlerin ayrı genel ayarları
+    stockFixedPrice?: number
+    stockFreeShippingThreshold?: number
+    stockFreeShippingDesiLimit?: number
+    stockShippingPriceMode?: CargoShippingPriceMode
     desiPricing?: RawPricing
+    // Stoktaki (DIA) ürünlerin ayrı desi tablosu
+    stockDesiPricing?: RawPricing
     categoryRules?: RawScopedRule[]
     brandRules?: RawScopedRule[]
     productRules?: { productKey: string; stockCode?: string; productName?: string; price: number }[]
     sizeRules?: { size: string; price: number }[]
+    // Ücretlendirme tipi: 'free' tanımda (ör. Standart Sevkiyat) desi / kural yok, yalnız hizmet bölgesi
+    pricingType?: string
+    serviceAreas?: ServiceArea[]
 }
 
-const PAYMENT_TYPE_LABELS: Record<string, string> = { sender: 'Gönderici Ödemeli', receiver: 'Alıcı Ödemeli' }
 
 const toNumber = (v: Num) => (v === '' ? 0 : Number(v))
 const toPricing = (p?: RawPricing): DesiPricing => ({
@@ -521,12 +538,29 @@ const ProductRulesSection = ({ rules, setRules }: { rules: ProductRule[]; setRul
 }
 
 /* ---------- Sayfa ---------- */
+// Sekmeler: XML (tedarikçi) ürünleri | stoktaki (DIA) ürünler
+const XML_TAB = 'xml'
+const STOCK_TAB = 'stok'
+
+type RuleTab = typeof XML_TAB | typeof STOCK_TAB
+
 const DesiPricingPage = () => {
     const params = useParams()
     const router = useRouter()
     const cargoId = params.id as string
     const locale = params.lang as string
     const listUrl = `/${locale}/apps/cargo/list`
+
+    // Kurallar iki sekmede tutulur: XML (tedarikçi) ürünleri ve kendi stoğumuzdaki ürünler. Sekme adreste saklanır (?tab=).
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+    const activeTab: RuleTab = searchParams.get('tab') === STOCK_TAB ? STOCK_TAB : XML_TAB
+    const changeTab = (next: RuleTab) => {
+        const query = new URLSearchParams(searchParams.toString())
+
+        query.set('tab', next)
+        router.replace(`${pathname}?${query.toString()}`, { scroll: false })
+    }
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -537,7 +571,15 @@ const DesiPricingPage = () => {
     const [fixedPrice, setFixedPrice] = useState<Num>(0)
     const [freeShippingThreshold, setFreeShippingThreshold] = useState<Num>(0)
     const [freeShippingDesiLimit, setFreeShippingDesiLimit] = useState<Num>(0)
+    // Stoktaki ürünlerin genel ayarları (XML ayarlarından bağımsız)
+    const [stockFixedPrice, setStockFixedPrice] = useState<Num>(0)
+    const [stockFreeShippingThreshold, setStockFreeShippingThreshold] = useState<Num>(0)
+    const [stockFreeShippingDesiLimit, setStockFreeShippingDesiLimit] = useState<Num>(0)
+    // Kargo ücreti ürün fiyatına dahil mi, hariç mi (stoktaki ürünler)
+    const [stockShippingPriceMode, setStockShippingPriceMode] = useState<CargoShippingPriceMode>('included')
+    // İki ayrı genel desi tablosu: XML (tedarikçi) ürünleri ve kendi stoğumuzdaki ürünler
     const [generalPricing, setGeneralPricing] = useState<DesiPricing>({ ranges: [], extraPerDesi: 0 })
+    const [stockPricing, setStockPricing] = useState<DesiPricing>({ ranges: [], extraPerDesi: 0 })
 
     const [categoryRules, setCategoryRules] = useState<ScopedRule[]>([])
     const [brandRules, setBrandRules] = useState<ScopedRule[]>([])
@@ -563,9 +605,15 @@ const DesiPricingPage = () => {
             setProductType(c.productType || 'dia_api')
             setScopeType(scopeFromApi(c.scopeType))
             setFixedPrice(c.fixedPrice ?? 0)
-            setFreeShippingThreshold(c.freeShippingThreshold ?? 0)
-            setFreeShippingDesiLimit(c.freeShippingDesiLimit ?? 0)
+            // Ücretsiz kargo eşikleri: 0 = ayar yok → alan boş gösterilir (boş kaydedilirse 0 yazılır, eşik uygulanmaz)
+            setFreeShippingThreshold(c.freeShippingThreshold || '')
+            setFreeShippingDesiLimit(c.freeShippingDesiLimit || '')
+            setStockFixedPrice(c.stockFixedPrice ?? 0)
+            setStockFreeShippingThreshold(c.stockFreeShippingThreshold || '')
+            setStockFreeShippingDesiLimit(c.stockFreeShippingDesiLimit || '')
+            setStockShippingPriceMode(c.stockShippingPriceMode === 'excluded' ? 'excluded' : 'included')
             setGeneralPricing(toPricing(c.desiPricing))
+            setStockPricing(toPricing(c.stockDesiPricing))
             const cats = (c.categoryRules || []).map(r => rawToScoped(r, 'categoryId', 'categoryName'))
             const brands = (c.brandRules || []).map(r => rawToScoped(r, 'brandId', 'brandName'))
             setCategoryRules(cats)
@@ -628,7 +676,14 @@ const DesiPricingPage = () => {
     const handleSave = async () => {
         const generalError = validateRanges(generalPricing.ranges)
         if (generalError) {
-            toast.error(`Genel desi tablosu: ${generalError}`)
+            toast.error(`XML ürünleri desi tablosu: ${generalError}`)
+            changeTab(XML_TAB)
+            return
+        }
+        const stockError = validateRanges(stockPricing.ranges)
+        if (stockError) {
+            toast.error(`Stoktaki ürünler desi tablosu: ${stockError}`)
+            changeTab(STOCK_TAB)
             return
         }
         for (const [rules, setActive] of [[categoryRules, setActiveCategoryId], [brandRules, setActiveBrandId]] as const) {
@@ -653,13 +708,19 @@ const DesiPricingPage = () => {
                 fixedPrice: toNumber(fixedPrice),
                 freeShippingThreshold: toNumber(freeShippingThreshold),
                 freeShippingDesiLimit: toNumber(freeShippingDesiLimit),
+                stockFixedPrice: toNumber(stockFixedPrice),
+                stockFreeShippingThreshold: toNumber(stockFreeShippingThreshold),
+                stockFreeShippingDesiLimit: toNumber(stockFreeShippingDesiLimit),
+                stockShippingPriceMode,
                 desiPricing: serializePricing(generalPricing),
+                stockDesiPricing: serializePricing(stockPricing),
                 categoryRules: categoryRules.map(r => ({ categoryId: r.refId, categoryName: r.refName, fixedPrice: toNumber(r.fixedPrice), pricingMode: r.pricingMode, sizeRules: serializeSizes(r.sizeRules), desiPricing: serializePricing(r.desiPricing) })),
                 brandRules: brandRules.map(r => ({ brandId: r.refId, brandName: r.refName, diaBrand: r.diaBrand || '', fixedPrice: toNumber(r.fixedPrice), pricingMode: r.pricingMode, sizeRules: serializeSizes(r.sizeRules), desiPricing: serializePricing(r.desiPricing) })),
                 productRules: productRules.map(r => ({ productKey: r.productKey, stockCode: r.stockCode, productName: r.productName, price: toNumber(r.price) })),
                 sizeRules: serializeSizes(globalSizeRules)
             }
-            const data = await fetchAPI(API_ENDPOINTS.cargo.update(cargoId), { method: 'PUT', body: JSON.stringify(payload) })
+            // Adresteki değer sıra numarası olabilir; güncelleme kayıt kimliğiyle yapılır
+            const data = await fetchAPI(API_ENDPOINTS.cargo.update(cargo?._id || cargoId), { method: 'PUT', body: JSON.stringify(payload) })
             if (!data?.success) throw new Error(data?.message || 'Kaydedilemedi')
             toast.success('Kargo kuralları kaydedildi')
             setCargo(prev => (prev ? { ...prev, productType, scopeType: scopeToApi(scopeType) as CargoDetail['scopeType'] } : prev))
@@ -680,19 +741,17 @@ const DesiPricingPage = () => {
         )
     }
 
+    // Ücretsiz teslimat tanımı: desi / ürün kuralları yerine yalnız hizmet bölgesi düzenlenir
+    if (cargo.pricingType === FREE_PRICING_TYPE) {
+        return <FreeDeliveryRules key={cargo._id} cargo={cargo} listUrl={listUrl} onSaved={load} />
+    }
+
     return (
         <Grid container spacing={6}>
             <Grid size={{ xs: 12 }}>
                 <Card>
                     <CardHeader
                         title={`Kargo Kuralları — ${cargo.name}`}
-                        subheader={
-                            <div className='flex gap-2 flex-wrap mbs-2'>
-                                <Chip size='small' label={getSiteLabel(getActiveSite())} color='primary' variant='tonal' />
-                                <Chip size='small' label={PAYMENT_TYPE_LABELS[cargo.paymentType] || cargo.paymentType} variant='outlined' />
-                                <Chip size='small' label={cargo.isActive ? 'Aktif' : 'Pasif'} color={cargo.isActive ? 'success' : 'default'} variant='tonal' />
-                            </div>
-                        }
                         action={
                             <div className='flex gap-2'>
                                 <Button variant='outlined' color='secondary' startIcon={<i className='ri-arrow-left-line' />} onClick={() => router.push(listUrl)}>
@@ -707,46 +766,72 @@ const DesiPricingPage = () => {
                 </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
-                <Card className='h-full'>
-                    <CardHeader title='Genel Kurallar' />
-                    <Divider />
-                    <CardContent className='flex flex-col gap-5'>
-                        <TextField select fullWidth label='Ürün Tipi' value={productType} onChange={e => setProductType(e.target.value as CargoProductType)}>
-                            {CARGO_PRODUCT_TYPE_OPTIONS.map(opt => (
-                                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                            ))}
-                        </TextField>
-                        <TextField select fullWidth label='Kural Kapsamı' value={scopeType} onChange={e => setScopeType(e.target.value as CargoScopeType)}>
-                            {CARGO_SCOPE_OPTIONS.map(opt => (
-                                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                            ))}
-                        </TextField>
-                        <div className='flex gap-2 flex-wrap'>
-                            <Chip size='small' variant={generalPricing.ranges.length ? 'tonal' : 'outlined'} color={generalPricing.ranges.length ? 'primary' : 'default'} label={`Tüm Ürünler: ${generalPricing.ranges.length} aralık`} onClick={() => setScopeType('all')} />
-                            <Chip size='small' variant={categoryRules.length ? 'tonal' : 'outlined'} color={categoryRules.length ? 'primary' : 'default'} label={`Kategori: ${categoryRules.length}`} onClick={() => setScopeType('category')} />
-                            <Chip size='small' variant={brandRules.length ? 'tonal' : 'outlined'} color={brandRules.length ? 'primary' : 'default'} label={`Marka: ${brandRules.length}`} onClick={() => setScopeType('brand')} />
-                            <Chip size='small' variant={productRules.length ? 'tonal' : 'outlined'} color={productRules.length ? 'primary' : 'default'} label={`Ürün: ${productRules.length}`} onClick={() => setScopeType('product')} />
-                            <Chip size='small' variant={globalSizeRules.length ? 'tonal' : 'outlined'} color={globalSizeRules.length ? 'primary' : 'default'} label={`Ebat: ${globalSizeRules.length}`} onClick={() => setScopeType('size')} />
-                        </div>
-                        <TextField fullWidth type='number' label='Sabit Kargo Ücreti' value={fixedPrice} onChange={e => setFixedPrice(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 0.01 }} InputProps={{ endAdornment: <InputAdornment position='end'>TL</InputAdornment> }} />
-                        <TextField fullWidth type='number' label='Ücretsiz Kargo Tutar Eşiği' value={freeShippingThreshold} onChange={e => setFreeShippingThreshold(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 0.01 }} InputProps={{ endAdornment: <InputAdornment position='end'>TL</InputAdornment> }} />
-                        <TextField fullWidth type='number' label='Ücretsiz Kargo Desi Eşiği' value={freeShippingDesiLimit} onChange={e => setFreeShippingDesiLimit(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 1 }} InputProps={{ endAdornment: <InputAdornment position='end'>desi</InputAdornment> }} />
-                    </CardContent>
+            <Grid size={{ xs: 12 }}>
+                <Card>
+                    <Tabs value={activeTab} onChange={(_, value) => changeTab(value as RuleTab)} variant='fullWidth'>
+                        <Tab value={XML_TAB} icon={<i className='ri-file-code-line' />} iconPosition='start' label='XML Ürünleri' />
+                        <Tab value={STOCK_TAB} icon={<i className='ri-archive-line' />} iconPosition='start' label='Stoktaki Ürünler' />
+                    </Tabs>
                 </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 8 }}>
-                {scopeType === 'all' && <DesiRangesEditor title='Desi Bazlı Fiyatlandırma' pricing={generalPricing} onChange={setGeneralPricing} />}
-                {scopeType === 'category' && (
-                    <ScopedRulesSection kind='category' title='Kategori Bazlı Kurallar' options={categoryOptions} optionsLoading={optionsLoading} rules={categoryRules} setRules={setCategoryRules} activeId={activeCategoryId} setActiveId={setActiveCategoryId} sizeOptions={sizeOptions} sizesLoading={sizesLoading} />
-                )}
-                {scopeType === 'brand' && (
-                    <ScopedRulesSection kind='brand' title='Marka Bazlı Kurallar' options={brandOptions} optionsLoading={optionsLoading} rules={brandRules} setRules={setBrandRules} activeId={activeBrandId} setActiveId={setActiveBrandId} sizeOptions={sizeOptions} sizesLoading={sizesLoading} />
-                )}
-                {scopeType === 'product' && <ProductRulesSection rules={productRules} setRules={setProductRules} />}
-                {scopeType === 'size' && <SizeRulesEditor title='Ebat Bazlı Fiyatlandırma — Tüm Ürünler' options={sizeOptions['__all__'] || []} loading={sizesLoading} rules={globalSizeRules} onChange={setGlobalSizeRules} />}
-            </Grid>
+            {/* ── XML ürünleri: genel ayarlar + desi tablosu ── */}
+            {activeTab === XML_TAB && (
+                <>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Card className='h-full'>
+                            <CardHeader title='Genel Kurallar' subheader='XML Ürünleri' />
+                            <Divider />
+                            <CardContent className='flex flex-col gap-5'>
+                                <TextField fullWidth type='number' label='Sabit Kargo Ücreti' value={fixedPrice} onChange={e => setFixedPrice(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 0.01 }} InputProps={{ endAdornment: <InputAdornment position='end'>TL</InputAdornment> }} />
+                                <TextField fullWidth type='number' label='Ücretsiz Kargo Tutar Eşiği' value={freeShippingThreshold} onChange={e => setFreeShippingThreshold(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 0.01 }} InputProps={{ endAdornment: <InputAdornment position='end'>TL</InputAdornment> }} />
+                                <TextField fullWidth type='number' label='Ücretsiz Kargo Desi Eşiği' value={freeShippingDesiLimit} onChange={e => setFreeShippingDesiLimit(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 1 }} InputProps={{ endAdornment: <InputAdornment position='end'>desi</InputAdornment> }} />
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 8 }}>
+                        <DesiRangesEditor title='Desi Bazlı Fiyatlandırma' pricing={generalPricing} onChange={setGeneralPricing} />
+                    </Grid>
+                </>
+            )}
+
+            {/* ── Stoktaki ürünler: genel ayarlar + kapsam (desi / kategori / marka / ürün / ebat) ── */}
+            {activeTab === STOCK_TAB && (
+                <>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Card className='h-full'>
+                            <CardHeader title='Genel Kurallar' subheader='Stoktaki Ürünler' />
+                            <Divider />
+                            <CardContent className='flex flex-col gap-5'>
+                                <TextField select fullWidth label='Kural Kapsamı' value={scopeType} onChange={e => setScopeType(e.target.value as CargoScopeType)}>
+                                    {CARGO_SCOPE_OPTIONS.map(opt => (
+                                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                                    ))}
+                                </TextField>
+                                <TextField fullWidth type='number' label='Sabit Kargo Ücreti' value={stockFixedPrice} onChange={e => setStockFixedPrice(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 0.01 }} InputProps={{ endAdornment: <InputAdornment position='end'>TL</InputAdornment> }} />
+                                <TextField fullWidth type='number' label='Ücretsiz Kargo Tutar Eşiği' value={stockFreeShippingThreshold} onChange={e => setStockFreeShippingThreshold(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 0.01 }} InputProps={{ endAdornment: <InputAdornment position='end'>TL</InputAdornment> }} />
+                                <TextField fullWidth type='number' label='Ücretsiz Kargo Desi Eşiği' value={stockFreeShippingDesiLimit} onChange={e => setStockFreeShippingDesiLimit(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, step: 1 }} InputProps={{ endAdornment: <InputAdornment position='end'>desi</InputAdornment> }} />
+                                <TextField select fullWidth label='Kargo Fiyatı' value={stockShippingPriceMode} onChange={e => setStockShippingPriceMode(e.target.value as CargoShippingPriceMode)}>
+                                    {CARGO_SHIPPING_PRICE_MODE_OPTIONS.map(opt => (
+                                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                                    ))}
+                                </TextField>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 8 }}>
+                        {scopeType === 'all' && <DesiRangesEditor title='Desi Bazlı Fiyatlandırma' pricing={stockPricing} onChange={setStockPricing} />}
+                        {scopeType === 'category' && (
+                            <ScopedRulesSection kind='category' title='Kategori Bazlı Kurallar' options={categoryOptions} optionsLoading={optionsLoading} rules={categoryRules} setRules={setCategoryRules} activeId={activeCategoryId} setActiveId={setActiveCategoryId} sizeOptions={sizeOptions} sizesLoading={sizesLoading} />
+                        )}
+                        {scopeType === 'brand' && (
+                            <ScopedRulesSection kind='brand' title='Marka Bazlı Kurallar' options={brandOptions} optionsLoading={optionsLoading} rules={brandRules} setRules={setBrandRules} activeId={activeBrandId} setActiveId={setActiveBrandId} sizeOptions={sizeOptions} sizesLoading={sizesLoading} />
+                        )}
+                        {scopeType === 'product' && <ProductRulesSection rules={productRules} setRules={setProductRules} />}
+                        {scopeType === 'size' && <SizeRulesEditor title='Ebat Bazlı Fiyatlandırma — Tüm Ürünler' options={sizeOptions['__all__'] || []} loading={sizesLoading} rules={globalSizeRules} onChange={setGlobalSizeRules} />}
+                    </Grid>
+                </>
+            )}
         </Grid>
     )
 }

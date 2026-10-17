@@ -69,10 +69,20 @@ async function release(token, key = LOCK_KEY) {
  * aşıldı) yine de çalıştırır — kilit koruyucudur, engelleyici değil.
  * `key` verilmezse varsayılan (worker) kilidi; b2b için 'dia:b2b:lock' geç.
  */
-async function withDiaLock(fn, { label = 'dia', ttlMs = 120000, waitMs = 5400000, key = LOCK_KEY } = {}) {
+async function withDiaLock(fn, { label = 'dia', ttlMs = 120000, waitMs = 5400000, key = LOCK_KEY, skipIfBusy = false } = {}) {
     const start = Date.now();
     const token = await acquire({ ttlMs, waitMs, key });
     const waited = Date.now() - start;
+    // skipIfBusy: kilit başka işte (bekleme aşıldı) ise bu tur atlanır — periyodik işler için;
+    // bir sonraki tur zaten gelir, kilitsiz çalışıp aynı DIA kullanıcısının oturumunu düşürmez.
+    // Redis'e erişilemiyorsa kilit yok sayılır ve iş yine çalışır.
+    if (!token && skipIfBusy) {
+        const busy = await getClient().exists(key).catch(() => 0);
+        if (busy) {
+            console.log(`[diaLock] ${label}: kilit dolu — tur atlandı (${(waited / 1000).toFixed(1)}s bekledi)`);
+            return { skipped: true, reason: 'lock-busy' };
+        }
+    }
     if (waited > 1000) {
         console.log(`[diaLock] ${label}: kilit ${token ? 'alındı' : 'ALINAMADI (kilitsiz devam)'} — ${(waited / 1000).toFixed(1)}s bekledi`);
     }

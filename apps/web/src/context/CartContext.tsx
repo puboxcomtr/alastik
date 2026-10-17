@@ -32,6 +32,8 @@ interface CartTotals {
     /** Montaj ve hizmet kalemleri, KDV hariç */
     montage?: number;
     kdv: number;
+    /** Ürün fiyatından hariç tutulan kargo (KDV dahil); fiyata dahilse 0 / tanımsız */
+    shipping?: number;
     total: number;
     itemCount: number;
 }
@@ -65,6 +67,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (cart) {
                 setItems(cart.items || []);
                 setTotals(cart.totals || { subtotal: 0, kdv: 0, total: 0, itemCount: 0 });
+                // Stok azaldığı için adedi düşen / çıkarılan kalemler müşteriye bildirilir
+                (cart.notes || []).forEach((note: string) => toast.warning(note));
             }
         } catch (error) {
             console.error('refreshCart error:', error);

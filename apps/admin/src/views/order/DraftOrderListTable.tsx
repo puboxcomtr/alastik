@@ -130,6 +130,8 @@ const DraftOrderListTable = () => {
             params.set('limit', String(currentLimit))
             // Taslak siparişler: ödemesi başarısız veya bekleyen
             params.set('paymentStatus', 'failed,pending')
+            // Vadeli Cari Sipariş taslak sayılmaz (API bu işaretle listeden çıkarır)
+            params.set('draft', '1')
 
             const url = `${API_ENDPOINTS.orders.list()}?${params.toString()}`
 
@@ -368,7 +370,6 @@ const DraftOrderListTable = () => {
                     setLimit(Number(e.target.value))
                     setPage(1)
                 }}
-                labelRowsPerPage='Sayfa başına:'
                 labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
             />
         </Card>

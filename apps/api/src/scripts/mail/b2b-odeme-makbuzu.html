@@ -1,0 +1,151 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Ödeme Makbuzu</title>
+    <style type="text/css">
+        @media only screen and (min-device-width: 601px) {
+            .content {
+                width: 600px !important;
+            }
+        }
+    </style>
+</head>
+
+<body
+    style="margin: 0; padding: 0; min-width: 100%!important;font-family: Arial, Helvetica, sans-serif;font-size:14px;line-height:20px;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td>
+                <table class="content" align="center" cellpadding="0" cellspacing="0" border="0"
+                    style="width: 100%; max-width: 600px;">
+                    <tr>
+                        <td style="padding:20px 0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left">
+                                        <a href="{{ data.siteUrl }}" style="text-decoration: none;color:#000000;">
+                                            {% if data.logo %}
+                                            <img src="{{ data.logo }}" style="max-width:140px;max-height:100px;" alt="">
+                                            {% else %}
+                                            <span>{{ data.companyName }}</span>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td align="right">
+                                        <a href="{{ data.siteUrl }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/website.png') }}"
+                                                alt="">
+                                        </a>
+                                        <a href="{{ data.siteUrl ~ '/iletisim' }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/contact.png') }}"
+                                                alt="">
+                                        </a>
+                                        <a href="{{ data.siteUrl ~ '/rss' }}" style="text-decoration: none;">
+                                            <img width="24" src="{{ sharedAsset('images/mail-icon/rss.png') }}" alt="">
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#fafafa;padding:30px 20px;border:1px solid #eeeeee;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="border-bottom: 1px solid #dddddd;padding-bottom: 10px;">
+                                        <h2 style="font-size:20px;font-weight:bold;padding:0;margin:0;">Ödeme Makbuzu</h2>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:20px 0;">
+                                        Merhaba <b>{{ data.payerName }}</b>,<br /><br />
+                                        Cari hesabınıza <b>{{ data.amount }} TL</b> tutarındaki ödemeniz başarıyla alınmıştır. Ödeme makbuzunuz ekte PDF olarak yer almaktadır.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <table width="100%" cellspacing="0" cellpadding="0" border="0"
+                                            style="background-color:#ffffff;border-collapse:collapse;border-left: 1px solid #eeeeee;border-right: 1px solid #eeeeee;">
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Makbuz No</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">{{ data.reference }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Tarih</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">{{ data.paidAt }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Cari</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">{{ data.payerName }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Cari Kodu</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">{{ data.cariKodu }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Ödenen Tutar</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;"><b>{{ data.amount }} TL</b></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Ödeme Yöntemi</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">{{ data.paymentMethod }}</td>
+                                            </tr>
+                                            {% if data.cardLastFour %}
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Kart</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">**** {{ data.cardLastFour }}{% if data.bankName %} · {{ data.bankName }}{% endif %}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if data.authCode %}
+                                            <tr>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="150"><b>Onay Kodu</b></td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;" width="5">:</td>
+                                                <td style="padding: 10px;border-top: 1px solid #eeeeee;border-bottom: 1px solid #eeeeee;">{{ data.authCode }}</td>
+                                            </tr>
+                                            {% endif %}
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-top:20px;color:#666666;font-size:12px;">
+                                        Tahsilat cari hesabınıza ayrıca işlenir. Sorularınız için bizimle iletişime geçebilirsiniz.
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding:20px 10px;">
+                            <div style="padding-bottom:10px;"><b>{{ data.companyName }}</b></div>
+                            <div style="padding-bottom:10px;">{{ data.companyAddress }}</div>
+                            <div style="padding-bottom:10px;">
+                                <a href="tel:+{{ data.companyPhone1 }}" style="color:#000000;">{{ data.companyPhone1
+                                    }}</a>
+                                {% if data.companyPhone2 %}
+                                <span>-</span>
+                                <a href="tel:+{{ data.companyPhone2 }}" style="color:#000000;">{{ data.companyPhone2 }}</a>
+                                {% endif %}
+                            </div>
+                            <div style="padding-bottom:10px;">
+                                <a href="{{ data.siteUrl }}" style="text-decoration: none;color:#000000;"
+                                    target="_blank">{{ data.companyWebsite }}</a>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

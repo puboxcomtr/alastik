@@ -194,10 +194,11 @@ router.get('/siparis-options', async (req, res) => {
         };
 
         // Doğrudan listelenebilenler (kargo firmaları krg modülündedir)
-        const [kargoRows, elemanRows, planRows] = [
+        const [kargoRows, elemanRows, planRows, hizmetRows] = [
             await list('krg_firma_listele', 100, '', '/api/v3/krg/json'),
             await list('scf_satiselemani_listele', 200),
-            await list('scf_odeme_plani_listele', 200)
+            await list('scf_odeme_plani_listele', 200),
+            await list('scf_hizmetkart_listele', 500)
         ];
 
         // Belgelerden türetilenler (son kayıtlar, _key azalan)
@@ -227,6 +228,8 @@ router.get('/siparis-options', async (req, res) => {
             kargoFirmalari: kargoRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: `${r.aciklama || ''} (${r.kodu || ''})`.trim() })),
             satisElemanlari: elemanRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: [r.kodu, r.aciklama].filter(Boolean).join(' — ') || String(r._key) })).sort((a, b) => a.label.localeCompare(b.label, 'tr')),
             odemePlanlari: planRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: [r.kodu, r.aciklama || r.adi].filter(Boolean).join(' — ') || String(r._key) })).sort((a, b) => a.label.localeCompare(b.label, 'tr')),
+            // Verilen (satış) hizmet kartları — kargo bedeli satırı için
+            hizmetKartlari: hizmetRows.filter(r => r.durum === 'A' && r.hizmetkartturu === 'V').map(r => ({ key: parseInt(r._key), label: [r.hizmetkartkodu, r.aciklama].filter(Boolean).join(' — ') || String(r._key) })),
             cariOzelKodlari: collectPairs(cariRows, '_key_sis_ozelkod1', 'ozelkod1kod'),
             cariYetkiKodlari: collectPairs(cariRows, '_key_sis_seviyekodu', 'yetkikodu'),
             siparisYetkiKodlari: collectPairs(siparisRows, '_key_sis_seviyekodu', 'yetkikodu'),

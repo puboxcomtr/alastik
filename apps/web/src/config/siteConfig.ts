@@ -37,6 +37,9 @@ export interface SiteConfig {
     domains: string[];
     theme: SiteTheme;
     active: boolean;
+    // Tarayıcı API'yi sitenin kendi adresinden (/api) çağırır; ayrı API alan adı kullanılmaz
+    // (nginx /api yolunu API'ye iletir). Ayrı alan adına erişemeyen ağlarda da site çalışır.
+    sameOriginApi?: boolean;
 }
 
 // Varsayılan site: Host eşleşmezse buraya düşer. Mevcut tüm veri 'alastik'.
@@ -112,6 +115,8 @@ export const SITES: Record<SiteSlug, SiteConfig> = {
             themeCss: '',
         },
         active: true,
+        // Bayi bilgisayarlarında ayrı API alan adı firma ağlarınca engellenebiliyor (15 Eki 2026)
+        sameOriginApi: true,
     },
 };
 

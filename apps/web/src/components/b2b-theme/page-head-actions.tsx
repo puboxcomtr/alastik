@@ -31,6 +31,18 @@ export function PageHeadActions() {
                     </svg>
                     Bayi Seç
                 </button>
+                <button type="button" className="btn-ghost" onClick={() => { }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" />
+                    </svg>
+                    Hedeflerim
+                </button>
+                <button type="button" className="btn-ghost" onClick={() => { }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+                    </svg>
+                    Raporlarım
+                </button>
             </div>
         );
     }

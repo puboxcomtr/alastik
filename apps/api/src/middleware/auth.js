@@ -5,6 +5,12 @@ const Admin = require('../models/admin/user/Admin');
 const Session = require('../models/Session');
 const { lookupLocation } = require('../utils/geoLookup');
 const { isInternalRequest } = require('../utils/requestOrigin');
+const { SITES } = require('../config/sites');
+
+// Panel API'sinin yolu (bu istekler ziyaret oturumu açmaz)
+const ADMIN_API_PREFIX = '/api/admin';
+// Oturum numarası göndermeyen istek, aynı IP + tarayıcıdan bu süre içinde açılmış oturumu kullanır
+const VISIT_REUSE_WINDOW_MS = 30 * 60 * 1000;
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -68,6 +74,8 @@ const sessionMiddleware = async (req, res, next) => {
   // Next.js sunucusunun kendi SSR çağrıları tarayıcı cookie'si taşımaz; oturum sayılırlarsa
   // her sayfa üretimi sunucu IP'li sahte oturumlar yaratır. Bu çağrılar kayıt dışı bırakılır.
   if (isInternalRequest(req)) return next();
+  // Panel API'si ve ziyaret izlenmeyen siteler (sites.js trackVisits: false — b2b bayi paneli) oturum açmaz
+  if ((req.originalUrl || '').startsWith(ADMIN_API_PREFIX) || SITES[req.site]?.trackVisits === false) return next();
 
   try {
     const cookies = (req && req.cookies) ? req.cookies : {};
@@ -76,10 +84,29 @@ const sessionMiddleware = async (req, res, next) => {
     let sessionId = /^[A-Za-z0-9-]{16,128}$/.test(incomingId) ? incomingId : null;
     let session = null;
 
-    // Session ID yoksa yeni session oluştur
+    // Session ID yoksa: aynı IP + tarayıcıdan yakın zamanda açılmış oturum varsa o kullanılır (oturum numarası
+    // göndermeyen her istek yeni ziyaretçi sayılmasın); yoksa yeni oturum açılır
     if (!sessionId) {
-      sessionId = generateSessionId();
+      const userAgent = req.headers['user-agent'] || '';
+      const ipAddress = getClientIP(req);
+      session = await Session.findOne({
+        site: req.site,
+        'metadata.ipAddress': ipAddress,
+        'metadata.userAgent': userAgent,
+        'activity.lastActivity': { $gte: new Date(Date.now() - VISIT_REUSE_WINDOW_MS) }
+      }).sort({ 'activity.lastActivity': -1 });
+      sessionId = session?.sessionId || generateSessionId();
+    }
 
+    if (session) {
+      // Yakın zamandaki oturum yeniden kullanılıyor; tarayıcıya kimliği yazılır
+      res.cookie('sessionId', sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+    } else if (!/^[A-Za-z0-9-]{16,128}$/.test(incomingId)) {
       const userAgent = req.headers['user-agent'] || '';
       const { browser, device } = parseUserAgent(userAgent);
       const ipAddress = getClientIP(req);

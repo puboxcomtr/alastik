@@ -24,7 +24,8 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
                 .then(r => r.json())
                 .then(d => {
                     if (d?.success) {
-                        if (d.data?.mustChangePassword) setSifreBayi(true);
+                        // Şifre belirleme hatırlatması (zorunsuz): bu oturumda "daha sonra" denmediyse göster
+                        if (d.data?.mustChangePassword && sessionStorage.getItem('sifreHatirlatma') !== '1') setSifreBayi(true);
                         setHazir(true);
                     } else {
                         localStorage.removeItem('authToken');
@@ -68,7 +69,12 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
     return (
         <>
             {children}
-            {sifreBayi ? <MandatoryPasswordChange onDone={() => setSifreBayi(false)} /> : null}
+            {sifreBayi ? (
+                <MandatoryPasswordChange
+                    onDone={() => setSifreBayi(false)}
+                    onSkip={() => { try { sessionStorage.setItem('sifreHatirlatma', '1'); } catch { } setSifreBayi(false); }}
+                />
+            ) : null}
             {sifrePlasiyer ? (
                 <MandatoryPasswordChange
                     endpoint={API_ENDPOINTS.b2b.plasiyerSifreDegistir()}

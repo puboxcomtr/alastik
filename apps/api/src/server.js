@@ -299,6 +299,7 @@ mongoose.connect(process.env.MONGODB_URI, {
     logger.info('Connected to MongoDB');
     // Site bazlı fiyat kuralları (panel: Gösterilecek Fiyat) — istekler gelmeden belleğe al
     await require('./utils/sitePricing').loadPricingConfig();
+    await require('./utils/productButtons').loadProductButtons();
     // Kargo kuralları (stoklu ürünlerde fiyata gömülü kargo payı)
     await require('./services/web/cargo/ShippingRuleService').loadShippingRules();
     // XML Kontrolü
@@ -308,6 +309,24 @@ mongoose.connect(process.env.MONGODB_URI, {
       xmlSyncScheduler.start();
     } else {
       logger.info('XmlSyncScheduler devre dışı (XML_SCHEDULER=false)');
+    }
+    // DIA'ya aktarılamayan (zaman aşımı / oturum hatası) siparişleri tekrar dene; olmazsa yöneticiye uyarı maili
+    try {
+      require('./services/plugins/dia/orderTransferRetry').start();
+    } catch (error) {
+      logger.error('DIA aktarım tekrar deneme zamanlayıcısı başlatılamadı:', error);
+    }
+    // Şirketler arası zinciri yarım kalan yeni siparişleri birkaç dakika sonra bir kez daha dene
+    try {
+      require('./services/plugins/dia/interCompanyRetry').start();
+    } catch (error) {
+      logger.error('Şirketler arası tekrar deneme zamanlayıcısı başlatılamadı:', error);
+    }
+    // Kartlı siparişte banka dönüşü gelmezse "Ödeme Bekleniyor" → "Ödeme Başarısız"
+    try {
+      require('./services/web/order/awaitingPaymentTimeout').start();
+    } catch (error) {
+      logger.error('Ödeme zaman aşımı zamanlayıcısı başlatılamadı:', error);
     }
     // SEO: gece içerik taraması + Search Console anlık görüntüsü
     try {
@@ -400,6 +419,9 @@ app.use('/api/menus', webMenuRoutes);
 /* Vitrin ürün yanıtlarından diğer sitelere ait alanlar çıkarılır (siteler arama motoru için bağımsız görünür) */
 const { scrubResponseMiddleware } = require('./utils/siteScrub');
 app.use(['/api/search', '/api/products', '/api/tags'], scrubResponseMiddleware);
+/* Vitrin ürün yanıtlarına üründe açık Ürün Butonları eklenir (customData.buttons) */
+const { productButtonsMiddleware } = require('./utils/productButtons');
+app.use(['/api/search', '/api/products', '/api/tags', '/api/showcases', '/api/favourites'], productButtonsMiddleware);
 
 const webSearchRoutes = require('./routes/user/catalog/search');
 app.use('/api/search', webSearchRoutes);
@@ -486,6 +508,10 @@ app.use('/api/filters', webFiltersRoutes);
 // Montaj noktaları (vitrin)
 const webMontageRoutes = require('./routes/web/content/montage');
 app.use('/api/montage-points', webMontageRoutes);
+
+// Bayi (montaj noktası) bilgi ve fiyat formu — herkese açık form uçları (yalnız lastikjantavm).
+// Rota dosyası yoksa API etkilenmez.
+try { app.use('/api/bayi-formu', require('./routes/web/content/bayiFormu')); } catch (e) { console.warn('bayi-formu rotası yüklenemedi:', e.message); }
 
 // Vitrin: dışarıya yalnızca vitrin okuma uçları açılır (/public/*);
 // CRUD uçları /api/admin/showcases altında admin kimlik doğrulamasıyla korunur
@@ -1999,8 +2025,9 @@ function detectSeasonFromDiaProduct(diaProduct) {
   }
 }
 
-// Cache temizleme API'si
-app.post('/api/cache/clear', async (req, res) => {
+// Cache temizleme API'si — YALNIZ ADMIN (desen verilmezse FLUSHDB: senkron kuyrukları dahil
+// tüm Redis'i siler). DISABLE_AUTH istisnası bilerek yok.
+app.post('/api/cache/clear', diaAuth, async (req, res) => {
   try {
     const { pattern } = req.body;
 

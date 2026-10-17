@@ -4,7 +4,7 @@ const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
-const { applySitePricing, applySitePricingMany, salePriceExpr, sortPriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
+const { applySitePricing, applySitePricingMany, resolveSitePrice, PRICE_HIDDEN, salePriceExpr, sortPriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
 const WebWheelSize = require('../../../models/web/catalog/WebWheelSize');
 const WebOrder = require('../../../models/web/order/WebOrder');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
@@ -98,6 +98,48 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+// Katalog "vitrin" filtresi: tema ayarındaki (Tema > Vitrin 1) vitrinin ürünleri listede ayrı bir seçenek olarak süzülebilir.
+// Seçeneğin adı Vitrin 1 Üst Başlık'tan, ürünleri Vitrin 1 Ürün Seçimi'nden gelir (ör. b2b "Kampanyalı Ürünler").
+const CATALOG_SHOWCASE_SLOT = 'First';
+const CATALOG_SHOWCASE_TTL_MS = 60 * 1000;
+const catalogShowcaseCache = new Map(); // site -> { at, data }
+
+/** @returns {Promise<{ key: string, title: string, productKeys: string[] } | null>} */
+async function getCatalogShowcase(site) {
+    const cached = catalogShowcaseCache.get(site);
+    if (cached && Date.now() - cached.at < CATALOG_SHOWCASE_TTL_MS) return cached.data;
+    let data = null;
+    const SiteSetting = require('../../../models/admin/settings/SiteSetting');
+    const WebShowcase = require('../../../models/web/settings/WebShowcase');
+    const theme = (await SiteSetting.findOne({ key: 'theme', site }).lean())?.value || {};
+    const showcaseId = theme[`showcase${CATALOG_SHOWCASE_SLOT}`];
+    const title = String(theme[`showcasename${CATALOG_SHOWCASE_SLOT}`] || '').trim();
+    if (showcaseId && title) {
+        const showcase = await WebShowcase.findOne({ _id: showcaseId, site, isActive: true }).lean().catch(() => null);
+        const productKeys = (showcase?.products || []).map(p => String(p.productId || '')).filter(Boolean);
+        if (productKeys.length) data = { key: CATALOG_SHOWCASE_SLOT.toLowerCase(), title, productKeys };
+    }
+    catalogShowcaseCache.set(site, { at: Date.now(), data });
+    return data;
+}
+
+// Kategorideki ürün türleri (ozelkod7kodu) — site + kategori başına kısa süreli önbellek (her listeleme isteğinde sorulur)
+const CATEGORY_TYPES_TTL_MS = 60 * 1000;
+const categoryTypesCache = new Map(); // `${site}:${categoryId}` -> { at, types }
+
+async function getCategoryProductTypes(site, webCategory) {
+    const cacheKey = `${site}:${webCategory._id}`;
+    const cached = categoryTypesCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < CATEGORY_TYPES_TTL_MS) return cached.types;
+    const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
+    const types = (await WebProduct.distinct('diaData.ozelkod7kodu', {
+        ...getProductListFilters(site),
+        'diaData.m_kategoriler': { $elemMatch: { [diaLevel]: webCategory.diaCategory } }
+    })).filter(Boolean);
+    categoryTypesCache.set(cacheKey, { at: Date.now(), types });
+    return types;
+}
+
 router.get('/filter', async (req, res) => {
     try {
         const {
@@ -134,6 +176,8 @@ router.get('/filter', async (req, res) => {
             cserisi,
             xl,
             ev,
+            // Vitrin filtresi (tema Vitrin 1 ürünleri) — değer: getCatalogShowcase().key
+            vitrin,
             limit,
             // Sıralama parametreleri
             sortBy,
@@ -203,19 +247,10 @@ router.get('/filter', async (req, res) => {
                 }).lean();
 
                 if (webCategory && webCategory.diaCategory) {
-                    const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
-                    const sampleProduct = await WebProduct.findOne({
-                        'diaData.m_kategoriler': {
-                            $elemMatch: {
-                                [diaLevel]: webCategory.diaCategory
-                            }
-                        },
-                        'diaData.ozelkod7kodu': { $exists: true, $ne: '' }
-                    }).select('diaData.ozelkod7kodu').lean();
-
-                    if (sampleProduct?.diaData?.ozelkod7kodu) {
-                        productType = sampleProduct.diaData.ozelkod7kodu;
-                    }
+                    // Kategoride (bu sitede listelenen ürünlerde) TEK ürün türü varsa jant / lastik listeleme davranışı
+                    // o türe göre seçilir. Birden fazla tür varsa (ör. "İkinci El": lastik + jant) varsayılan davranış kullanılır.
+                    const typesInCategory = await getCategoryProductTypes(req.site, webCategory);
+                    if (typesInCategory.length === 1) productType = typesInCategory[0];
                 }
             }
         }
@@ -224,10 +259,11 @@ router.get('/filter', async (req, res) => {
         // jant türevindeyse ("2.El Jant" gibi) kendi tipi korunur
         if ((jantCap || bijon) && !isMultiCategory && !/jant/i.test(productType || '')) {
             productType = 'JANT';
-        }
-        if (productType && !isMultiCategory) {
+            // Jant araması (kategori jant değilken): liste jant türüyle sınırlanır
             filter['diaData.ozelkod7kodu'] = productType;
         }
+        // Kategori listesinde tür kısıtı YOK: ürünler yalnız kategori eşleşmesine göre gelir (türü boş ürünler de dahil).
+        // productType burada yalnız listeleme davranışını (jant / lastik filtreleri) belirler.
 
         // "JANT" ve "2.El Jant" gibi jant türevleri jant listeleme davranışını kullanır
         const isJantCategory = /jant/i.test(productType || '');
@@ -478,6 +514,12 @@ router.get('/filter', async (req, res) => {
             andConditions.push({ 'diaData.aciklama': { $regex: '\\bEV\\b', $options: 'i' } });
         }
 
+        // Vitrin filtresi: yalnız tema Vitrin 1'de seçili vitrinin ürünleri
+        const catalogShowcase = await getCatalogShowcase(req.site);
+        if (vitrin && catalogShowcase && vitrin === catalogShowcase.key) {
+            andConditions.push({ _key: { $in: catalogShowcase.productKeys } });
+        }
+
         // Akıllı serbest metin arama (q): sorgu kelimelere ayrılır.
         //  - Tüm rakamlar (ebat/ürün kodu) tek esnek eşleşmeye toplanır:
         //    "2055516", "205 55 16", "205/55R16" hepsi aynı kabul edilir.
@@ -668,6 +710,21 @@ router.get('/filter', async (req, res) => {
         // doldurmak için kullanılır (o anki sayfanın ürünlerine bağlı kalmaz).
         let facets = null;
         if (req.query.facets === '1') {
+            // Ürün özelliğinin (m_urunOzellikleri) değerini veren aggregation ifadesi
+            const featureValueExpr = (featureName) => ({
+                $let: {
+                    vars: {
+                        matched: {
+                            $filter: {
+                                input: { $ifNull: ['$diaData.m_urunOzellikleri', []] },
+                                as: 'o',
+                                cond: { $eq: ['$$o.ozellikadi', featureName] }
+                            }
+                        }
+                    },
+                    in: { $arrayElemAt: ['$$matched.detayaciklama', 0] }
+                }
+            });
             const facetRes = await WebProduct.aggregate([
                 { $match: baseFilterForFacets },
                 {
@@ -676,6 +733,11 @@ router.get('/filter', async (req, res) => {
                         brands: { $addToSet: '$diaData.marka' },
                         seasons: { $addToSet: '$diaData.ozelkod1kodu' },
                         dots: { $addToSet: '$diaData.ekalan5' },
+                        // Kategorideki ürün türleri (ozelkod7kodu) — ön yüz filtre alanlarını türe göre seçer
+                        productTypes: { $addToSet: '$diaData.ozelkod7kodu' },
+                        // Jant filtreleri: ürün özelliklerindeki ham değerler ("17 İnç", "114.3")
+                        rimDiameterRaw: { $addToSet: featureValueExpr('Jant Çapı') },
+                        boltPatternRaw: { $addToSet: featureValueExpr('Bijon Aralığı') },
                         // OEM özelliğinin ham değeri (ör. "Mercedes (MO)", "Audi(AO),Volkswagen(+)")
                         oemRaw: {
                             $addToSet: {
@@ -715,17 +777,41 @@ router.get('/filter', async (req, res) => {
             }
             const oems = [...oemBrandSet].sort((a, b) => String(a).localeCompare(String(b), 'tr'));
 
+            // Sayıyla başlayan değerleri küçükten büyüğe sıralar (boşlar atılır)
+            const sortNumeric = (values) => (values || [])
+                .map(v => String(v || '').trim())
+                .filter(Boolean)
+                .sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0) || a.localeCompare(b, 'tr'));
+
             facets = {
                 brands: (g.brands || []).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'tr')),
                 seasons: (g.seasons || []).filter(Boolean),
                 dots: (g.dots || []).filter(d => /^(19|20)\d{2}$/.test(String(d))).sort((a, b) => Number(b) - Number(a)),
                 oems,
-                depots
+                depots,
+                productTypes: (g.productTypes || []).filter(Boolean),
+                // Vitrin filtresi seçeneği: ad tema ayarından, adet bu kategorideki vitrin ürünü sayısı (0 ise ön yüz göstermez)
+                showcaseFilter: catalogShowcase
+                    ? { key: catalogShowcase.key, title: catalogShowcase.title, count: await WebProduct.countDocuments({ ...baseFilterForFacets, _key: { $in: catalogShowcase.productKeys } }) }
+                    : null,
+                // Panelde kategori için seçilen "Gizlenecek Filtreler" (siteContent.<site>.hiddenFilters)
+                hiddenFilters: webCategory?.siteContent?.[req.site]?.hiddenFilters || [],
+                rimDiameters: sortNumeric(g.rimDiameterRaw),
+                boltPatterns: sortNumeric(g.boltPatternRaw)
             };
         }
 
         // Kategori bazlı fiyat gösterim ayarı (tek sorgu, önbellekli)
         const fiyatAyarlari = await getFiyatAyarlari(req.site);
+
+        // Plasiyer karşılaştırması: LJA perakende fiyatını ekle (?perakende=1).
+        // b2b fiyatlaması fiyat4'ü ezebileceği için site fiyatlamasından ÖNCE hesapla.
+        if (req.query.perakende === '1') {
+            for (const p of products) {
+                const lp = resolveSitePrice(p, 'lastikjantavm');
+                p.perakendeKurus = (typeof lp === 'number' && lp > 0 && lp !== PRICE_HIDDEN) ? Math.round(lp * 100) : null;
+            }
+        }
 
         applySitePricingMany(products, req.site);
         products.forEach(p => fiyatAyariUygula(p, fiyatAyarlari));

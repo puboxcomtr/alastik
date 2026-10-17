@@ -18,6 +18,7 @@ const diaUnitSchema = new mongoose.Schema({
     fiyat3: Number,
     fiyat4: Number,
     fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
+    fiyatDinamik: Number, // DIA __dinamik__16 (B2C dinamik fiyat); 0 = kartta dinamik fiyat yok
     fiyat10: Number,
     kdvdurumu1: String,
     kdvdurumu2: String,
@@ -242,7 +243,9 @@ const customDataSchema = new mongoose.Schema({
             // XML kaynaklı üründe bu sitenin kargo dahil fiyatı (varsayılan site global
             // customData.shippingIncludedPrice/shippingPerUnit alanlarını kullanır)
             shippingIncludedPrice: { type: Number },
-            shippingPerUnit: { type: Number }
+            shippingPerUnit: { type: Number },
+            // Bu sitede üründe AÇIK olan Ürün Butonları (WebProductButton.key listesi)
+            buttons: { type: [String], default: undefined }
         };
         return acc;
     }, {}),

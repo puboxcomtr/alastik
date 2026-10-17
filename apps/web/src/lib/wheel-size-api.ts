@@ -2,14 +2,9 @@
 // Wheel-Size API Service
 
 // Backend API Base URL
-import { API_ENDPOINTS } from '@/src/config/api';
+import { API_ENDPOINTS, getBaseUrl } from '@/src/config/api';
 
-const getApiBaseUrl = () => {
-  if (typeof window === 'undefined') {
-    return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-  }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
-};
+const getApiBaseUrl = getBaseUrl;
 
 // API Response Tipleri
 export interface ApiResponse<T> {

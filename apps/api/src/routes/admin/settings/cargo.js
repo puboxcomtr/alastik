@@ -5,6 +5,10 @@ const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 const { invalidateShippingRules } = require('../../../services/web/cargo/ShippingRuleService');
+const { assignMissingCargoNos } = require('../../../utils/cargoNo');
+
+// Adresteki kimlik: sıra numarası (ör. "1") ya da kayıt kimliği
+const CARGO_NO_PATTERN = /^\d{1,9}$/;
 const XmlShippingPriceUpdaterService = require('../../../services/web/cargo/XmlShippingPriceUpdaterService');
 
 // XML kargo değişince ürünlerin kargo dahil fiyatlarını güncelle (fire-and-forget)
@@ -138,6 +142,9 @@ router.get('/', async (req, res) => {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
+        // Numarası olmayan eski tanımlara sıra numarası ver (adreste 1, 2, 3 olarak kullanılır)
+        await assignMissingCargoNos(req.site);
+
         // Yalnızca seçili sitenin kargoları
         const filter = { site: req.site };
 
@@ -184,6 +191,55 @@ router.get('/', async (req, res) => {
  * GET /sizes?categoryId=... | ?brandId=... — kapsamdaki (seçili sitede yayında) ürünlerin ebatları.
  * Lastik: Genişlik/Yanak + Jant Çapı (205/55R16); Jant: Jant Genişliği x Jant Çapı (7.0x16); yoksa addan regex.
  */
+/**
+ * Hizmet bölgesi girdisini ({ cityId, districtId? }) adres veritabanındaki il / ilçe adlarıyla tamamlar.
+ * Geçersiz kayıt varsa null döner. Bir ilin tamamı seçildiyse o ilin ilçe satırları gereksizdir, atılır.
+ */
+async function resolveServiceAreas(input) {
+    if (!Array.isArray(input)) return null;
+    const AddressCity = require('../../../models/web/address/AddressCity');
+    const AddressDistrict = require('../../../models/web/address/AddressDistrict');
+    const result = [];
+    for (const item of input) {
+        const cityId = String(item?.cityId || '').trim();
+        const districtId = String(item?.districtId || '').trim();
+        const city = cityId ? await AddressCity.findOne({ cityId }).lean() : null;
+        if (!city) return null;
+        let districtName = '';
+        if (districtId) {
+            const district = await AddressDistrict.findOne({ districtId, cityId }).lean();
+            if (!district) return null;
+            districtName = district.districtName;
+        }
+        if (result.some(a => a.cityId === cityId && a.districtId === districtId)) continue;
+        result.push({ cityId, cityName: city.cityName, districtId, districtName });
+    }
+    const wholeCities = new Set(result.filter(a => !a.districtId).map(a => a.cityId));
+    return result.filter(a => !a.districtId || !wholeCities.has(a.cityId));
+}
+
+/** GET /locations/cities — hizmet bölgesi seçimi için iller */
+router.get('/locations/cities', async (req, res) => {
+    try {
+        const AddressCity = require('../../../models/web/address/AddressCity');
+        const cities = await AddressCity.find().sort({ cityName: 1 }).select('cityId cityName -_id').lean();
+        res.json({ success: true, data: cities });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'İller alınamadı' });
+    }
+});
+
+/** GET /locations/districts/:cityId — seçilen ilin ilçeleri */
+router.get('/locations/districts/:cityId', async (req, res) => {
+    try {
+        const AddressDistrict = require('../../../models/web/address/AddressDistrict');
+        const districts = await AddressDistrict.find({ cityId: req.params.cityId }).sort({ districtName: 1 }).select('districtId districtName -_id').lean();
+        res.json({ success: true, data: districts });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'İlçeler alınamadı' });
+    }
+});
+
 router.get('/sizes', async (req, res) => {
     try {
         const { categoryId, brandId } = req.query;
@@ -259,7 +315,12 @@ router.get('/products', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     try {
-        const cargo = await Cargo.findOne({ _id: req.params.id, site: req.site }).lean();
+        // Adres sıra numarasıyla (/desi/1) ya da kayıt kimliğiyle gelebilir
+        const idParam = String(req.params.id || '');
+        const filter = CARGO_NO_PATTERN.test(idParam)
+            ? { cargoNo: Number(idParam), site: req.site }
+            : { _id: idParam, site: req.site };
+        const cargo = await Cargo.findOne(filter).lean();
 
         if (!cargo) {
             return res.status(404).json({
@@ -552,6 +613,40 @@ router.put('/:id', async (req, res) => {
                 if (!cargo.desiPricing) cargo.desiPricing = { ranges: [], extraPerDesi: 0 };
                 cargo.desiPricing.extraPerDesi = Number(extraPerDesi) || 0;
             }
+        }
+
+        // Stoktaki ürünlerin genel ayarları (XML ayarlarından ayrı)
+        for (const field of ['stockFixedPrice', 'stockFreeShippingThreshold', 'stockFreeShippingDesiLimit']) {
+            if (req.body[field] !== undefined) cargo[field] = Math.max(0, Number(req.body[field]) || 0);
+        }
+
+        if (req.body.stockShippingPriceMode !== undefined) {
+            if (!Cargo.SHIPPING_PRICE_MODES.includes(req.body.stockShippingPriceMode)) {
+                return res.status(400).json({ success: false, message: 'Geçerli bir kargo ücreti gösterimi seçiniz' });
+            }
+            cargo.stockShippingPriceMode = req.body.stockShippingPriceMode;
+        }
+
+        // Stoktaki ürünlerin desi tablosu (XML tablosundan ayrı)
+        if (req.body.stockDesiPricing !== undefined) {
+            const { ranges, extraPerDesi } = req.body.stockDesiPricing || {};
+            if (Array.isArray(ranges)) {
+                const rangeError = validateDesiRanges(ranges);
+                if (rangeError) return res.status(400).json({ success: false, message: `Stoktaki ürünler: ${rangeError}` });
+                if (!cargo.stockDesiPricing) cargo.stockDesiPricing = { ranges: [], extraPerDesi: 0 };
+                cargo.stockDesiPricing.ranges = ranges;
+            }
+            if (extraPerDesi !== undefined) {
+                if (!cargo.stockDesiPricing) cargo.stockDesiPricing = { ranges: [], extraPerDesi: 0 };
+                cargo.stockDesiPricing.extraPerDesi = Number(extraPerDesi) || 0;
+            }
+        }
+
+        // Hizmet bölgesi (il / ilçe): adlar adres veritabanından doğrulanarak yazılır
+        if (req.body.serviceAreas !== undefined) {
+            const areas = await resolveServiceAreas(req.body.serviceAreas);
+            if (!areas) return res.status(400).json({ success: false, message: 'Hizmet bölgesinde geçersiz il veya ilçe var' });
+            cargo.serviceAreas = areas;
         }
 
         await cargo.save();

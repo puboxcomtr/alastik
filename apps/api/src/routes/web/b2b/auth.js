@@ -3,42 +3,81 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const WebMember = require('../../../models/web/user/WebMember');
 const authMiddleware = require('../../../middleware/authMiddleware');
+const { overdueKurusOf, discountsBlocked } = require('../../../services/web/b2b/financialDiscounts');
+const { CREDIT_PAYMENT_METHOD, CREDIT_CLOSED_MESSAGES, CREDIT_CLOSED_REASONS, ORDERING_CLOSED_MESSAGES, CART_CLOSED_MESSAGE, CREDIT_LIMIT_INSUFFICIENT_MESSAGE, pendingOrderKurusOf, getCreditStatus } = require('../../../services/web/b2b/creditLimit');
+
+const { getDeliveryMethods } = require('../../../services/web/cargo/deliveryMethods');
+const { isShippingEnabled, shippingForStockCodes } = require('../../../services/web/b2b/b2bShipping');
+
+/** Bayinin kayıtlı teslimat adreslerinden (DIA senkronu) seçilenin ili / ilçesi; adres bulunamazsa boş konum */
+function deliveryLocationOf(member, addressId) {
+    const address = (member?.diaCari?.addresses || []).find(a => String(a.id) === String(addressId || ''));
+    return { city: address?.il || '', district: address?.ilce || '' };
+}
 
 /**
  * POST /login — bayi girişi: CARİ KODU veya E-POSTA + şifre.
  * Başarıda B2C üye token'ıyla aynı biçimde JWT döner (type: member) —
  * mevcut authenticate middleware'i bayi oturumları için de geçerlidir.
  */
+// Başarısız bayi girişini kaydeder (destek için); kayıt hatası girişi etkilemez. Şifre yazılmaz.
+function recordLoginFailure(req, identifier, reason, member) {
+    const B2bLoginFailure = require('../../../models/web/user/B2bLoginFailure');
+    B2bLoginFailure.create({
+        site: req.site,
+        identifier: String(identifier || '').slice(0, 120),
+        reason,
+        memberId: member?._id,
+        cariKodu: member?.diaCustomerCode,
+        ip: req.ip,
+        userAgent: String(req.headers['user-agent'] || '').slice(0, 300)
+    }).catch(e => console.error('[b2b-auth] Hatalı giriş kaydı yazılamadı:', e.message));
+}
+
 router.post('/login', async (req, res) => {
     try {
         const { identifier, password } = req.body || {};
         const kimlik = String(identifier || '').trim();
 
-        if (!kimlik || !password) {
-            return res.status(400).json({ success: false, message: 'Bayi kodu (veya e-posta) ve şifre giriniz.' });
+        if (!kimlik) {
+            return res.status(400).json({ success: false, message: 'Bayi kodu (veya e-posta) giriniz.' });
         }
 
-        const member = await WebMember.findOne({
-            site: req.site,
-            $or: [
-                { diaCustomerCode: kimlik },
-                { email: kimlik.toLowerCase() }
-            ]
-        });
+        // Kimlik: bayi kodu, e-posta VEYA cep telefonu. Telefon format farklarını (boşluk/0/90) tolere et.
+        const or = [
+            { diaCustomerCode: kimlik },
+            { email: kimlik.toLowerCase() },
+            { phone: kimlik }
+        ];
+        let tel = kimlik.replace(/\D/g, '');
+        if (tel.startsWith('90')) tel = tel.slice(2);
+        if (tel.startsWith('0')) tel = tel.slice(1);
+        tel = tel.slice(-10);
+        if (tel.length === 10) or.push({ phone: new RegExp(tel.split('').join('\\D*')) });
+
+        const member = await WebMember.findOne({ site: req.site, $or: or });
 
         if (!member) {
-            return res.status(401).json({ success: false, message: 'Bayi kodu/e-posta veya şifre hatalı.' });
+            recordLoginFailure(req, kimlik, 'not_found');
+            return res.status(401).json({ success: false, message: 'Cariniz sisteme kayıt edilmemiştir.' });
         }
         if (member.status === 'suspended') {
+            recordLoginFailure(req, kimlik, 'suspended', member);
             return res.status(403).json({ success: false, message: 'Hesabınız askıya alınmıştır. Lütfen bizimle iletişime geçiniz.' });
         }
         if (member.status !== 'active') {
+            recordLoginFailure(req, kimlik, 'inactive', member);
             return res.status(403).json({ success: false, message: 'Hesabınız henüz aktif değil. Lütfen bizimle iletişime geçiniz.' });
         }
 
-        const isPasswordValid = await member.comparePassword(password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ success: false, message: 'Bayi kodu/e-posta veya şifre hatalı.' });
+        // Şifre kontrolü YALNIZ bayi kendi şifresini belirlediyse yapılır.
+        // Aksi halde cari kodu yeterlidir; şifre ne girilirse girilsin (boş dahil) giriş yapılır.
+        if (member.customPasswordSet === true) {
+            const isPasswordValid = await member.comparePassword(String(password || ''));
+            if (!isPasswordValid) {
+                recordLoginFailure(req, kimlik, 'wrong_password', member);
+                return res.status(401).json({ success: false, message: 'Şifre hatalı.' });
+            }
         }
 
         const token = jwt.sign(
@@ -47,8 +86,8 @@ router.post('/login', async (req, res) => {
             { expiresIn: '30d' }
         );
 
-        // Varsayılan şifre (12345) ile giriş → zorunlu şifre değiştirme bayrağı
-        member.mustChangePassword = String(password) === '12345';
+        // Kendi şifresini belirlememişse şifre değiştirme ekranı HATIRLATILIR (zorunlu değil)
+        member.mustChangePassword = member.customPasswordSet !== true;
         member.lastLoginAt = new Date();
         member.loginAttempts = 0;
         await member.save();
@@ -82,6 +121,7 @@ router.get('/me', authMiddleware, async (req, res) => {
         if (!member) {
             return res.status(404).json({ success: false, message: 'Bayi bulunamadı.' });
         }
+        const credit = await getCreditStatus(req.site, member);
         res.json({
             success: true,
             data: {
@@ -90,7 +130,27 @@ router.get('/me', authMiddleware, async (req, res) => {
                 email: member.email,
                 cariKodu: member.diaCustomerCode || '',
                 phone: member.phone || '',
-                mustChangePassword: member.mustChangePassword === true
+                // Premium cari (DIA özel kodundan senkronlanır) — bayi panelinde rozet
+                premium: member.diaCari?.premium === true,
+                // Vadesi geçen borç varsa iskontolar iptaldir (anasayfa ve sepette uyarı gösterilir)
+                overdueKurus: overdueKurusOf(member),
+                discountsBlocked: await discountsBlocked(req.site, member),
+                // Vadeli alım kapalıysa (limit tanımsız ya da aşılmış) Cari Sipariş verilemez — yalnız kredi kartı / havale
+                creditClosed: credit.closed,
+                creditClosedReason: credit.reason,
+                // Vadesi geçen borç nedeniyle de vadeli alım kapalıdır (limit nedeni öne geçse bile)
+                creditClosedByOverdue: credit.cartClosed,
+                totalLimitKurus: credit.totalLimitKurus,
+                // Limit tanımsız, bitmiş ya da vadesi geçen borç varsa hiçbir yöntemle sipariş verilemez (anasayfa + sepette uyarı)
+                orderingClosed: credit.orderingClosed,
+                orderingClosedReason: credit.orderingClosedReason,
+                orderingClosedMessage: credit.orderingClosed ? ORDERING_CLOSED_MESSAGES[credit.orderingClosedReason] : '',
+                // Vadesi geçen borçta sepete ürün eklemek de kapalıdır (ekranda ortada uyarı açılır)
+                cartClosed: credit.cartClosed,
+                cartClosedMessage: credit.cartClosed ? CART_CLOSED_MESSAGE : '',
+                // Plasiyerin bayi adına açtığı oturumda bayinin şifre belirleme hatırlatması gösterilmez
+                mustChangePassword: member.mustChangePassword === true && !req.impersonatedBy,
+                impersonated: !!req.impersonatedBy
             }
         });
     } catch (error) {
@@ -103,22 +163,30 @@ router.get('/me', authMiddleware, async (req, res) => {
  */
 router.post('/sifre-degistir', authMiddleware, async (req, res) => {
     try {
+        // Plasiyer, bayi adına açtığı oturumdan bayinin şifresini değiştiremez
+        if (req.impersonatedBy) {
+            return res.status(403).json({ success: false, code: 'IMPERSONATED_SESSION', message: 'Bayi adına açılan oturumda bayinin şifresi değiştirilemez.' });
+        }
         const { currentPassword, newPassword } = req.body || {};
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ success: false, message: 'Mevcut ve yeni parola zorunludur.' });
+        if (!newPassword) {
+            return res.status(400).json({ success: false, message: 'Yeni parola zorunludur.' });
         }
         if (String(newPassword).length < 4) {
             return res.status(400).json({ success: false, message: 'Yeni parola en az 4 karakter olmalıdır.' });
         }
-        const member = await WebMember.findOne({ _id: req.user._id, site: req.site });
-        if (!member) return res.status(404).json({ success: false, message: 'Bayi bulunamadı.' });
-        const ok = await member.comparePassword(currentPassword);
-        if (!ok) return res.status(400).json({ success: false, message: 'Mevcut parolanız hatalı.' });
         if (String(newPassword) === '12345') {
             return res.status(400).json({ success: false, message: 'Yeni parola varsayılan parola olamaz.' });
         }
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site });
+        if (!member) return res.status(404).json({ success: false, message: 'Bayi bulunamadı.' });
+        // Daha önce kendi şifresini belirlediyse mevcut parola doğrulanır; ilk kez belirliyorsa sorulmaz.
+        if (member.customPasswordSet === true) {
+            const ok = await member.comparePassword(String(currentPassword || ''));
+            if (!ok) return res.status(400).json({ success: false, message: 'Mevcut parolanız hatalı.' });
+        }
         member.password = String(newPassword); // pre-save hook bcrypt ile hashler
-        member.mustChangePassword = false; // zorunlu değiştirme tamamlandı
+        member.customPasswordSet = true;        // artık yalnız bu şifre kabul edilir
+        member.mustChangePassword = false;      // hatırlatma kapanır
         await member.save();
         return res.json({ success: true, message: 'Parolanız güncellendi.' });
     } catch (error) {
@@ -146,12 +214,7 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
         }
 
         // Platformdaki bekleyen siparişler (Mongo — anlık)
-        const WebOrder = require('../../../models/web/order/WebOrder');
-        const bekleyenler = await WebOrder.aggregate([
-            { $match: { site: req.site, memberId: new (require('mongoose').Types.ObjectId)(String(req.user._id)), isActive: true, status: { $in: ['pending', 'confirmed', 'processing'] } } },
-            { $group: { _id: null, toplam: { $sum: '$pricing.total' } } }
-        ]);
-        const bekleyenSiparisKurus = Math.round((bekleyenler[0]?.toplam || 0) * 100);
+        const bekleyenSiparisKurus = await pendingOrderKurusOf(req.site, req.user._id);
 
         // Borç/Alacak — ekstre özetinden türet (DIA carikart borc/alacak çoğu zaman 0).
         // borç = debit + max(açılış,0), alacak = credit + max(−açılış,0) → borç−alacak = bakiye
@@ -169,7 +232,8 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
         // Vadesi geçen borç: gerçek bakiye FIFO ile fatura vadelerine dağıtılıp
         // bugünden önceki kısmı toplanır. DIA hatasında null döner (kart "—" gösterir).
         const computeOverdueKurus = async (balanceKurus) => {
-            if (!(balanceKurus > 0)) return balanceKurus === 0 ? 0 : null;
+            // Borç yoksa (sıfır veya alacaklı/negatif bakiye) vadesi geçen de yoktur
+            if (!(balanceKurus > 0)) return Number.isFinite(balanceKurus) ? 0 : null;
             try {
                 const { invoiceDueDates } = require('../../../services/plugins/dia/b2bInvoiceReport');
                 const due = await invoiceDueDates(req.site, member.diaCustomerKey, balanceKurus / 100);
@@ -217,7 +281,7 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
                 donem_kodu: svc.donemKodu,
                 filters: [{ field: '_key', operator: '=', value: cacheKey }],
                 sorts: '',
-                params: { selectedcolumns: ['carikartkodu', 'bakiye', 'borc', 'alacak', 'risklimiti'] },
+                params: { selectedcolumns: ['carikartkodu', 'orjbakiye', 'borctoplam', 'alacaktoplam', 'risklimiti'] },
                 limit: 1,
                 offset: 0
             }
@@ -231,7 +295,10 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
         }
 
         const kurus = (v) => Math.round((parseFloat(v) || 0) * 100);
-        const balanceKurus = kurus(kart.bakiye) || (kurus(kart.borc) - kurus(kart.alacak));
+        // `bakiye` işaretsiz; işaretli bakiye `orjbakiye` (alacaklı → negatif)
+        const balanceKurus = String(kart.orjbakiye ?? '').trim() !== ''
+            ? kurus(kart.orjbakiye)
+            : (kurus(kart.borctoplam) - kurus(kart.alacaktoplam));
         const totalLimitKurus = kurus(kart.risklimiti);
 
         const data = {
@@ -255,61 +322,65 @@ router.get('/cari-ozet', authMiddleware, async (req, res) => {
     }
 });
 
-// Depo stok önbelleği: kod başına 5 dk (DIA'yı yormasın)
-const depoStokCache = new Map();
-const DEPO_STOK_TTL_MS = 5 * 60 * 1000;
-
 /**
  * GET /depo-stok?codes=kod1,kod2 — verilen stok kodlarının depo bazlı stoğu.
- * Depolar b2b DIA ayarındaki vitrinDepolari'ndan (Maslak/Merkez/Fabrika) gelir.
- * Yanıt: { "kod": [{ ad, adet }, ...], ... }
+ * Depolar b2b DIA ayarındaki vitrinDepolari'ndan gelir. Yanıt: { "kod": [{ ad, adet }, ...], ... }
  */
 router.get('/depo-stok', authMiddleware, async (req, res) => {
     try {
-        const kodlar = String(req.query.codes || '')
-            .split(',').map(s => s.trim()).filter(Boolean).slice(0, 120);
-        if (kodlar.length === 0) return res.json({ success: true, data: {} });
-
-        const WebDia = require('../../../models/plugins/dia/DiaSettings');
-        const settings = await WebDia.getSettings(req.site);
-        const depolar = Array.isArray(settings.vitrinDepolari) ? settings.vitrinDepolari : [];
-        if (depolar.length === 0) return res.json({ success: true, data: {} });
-
-        const sonuc = {};
-        const eksik = [];
-        for (const kod of kodlar) {
-            const cached = depoStokCache.get(kod);
-            if (cached && Date.now() - cached.at < DEPO_STOK_TTL_MS) sonuc[kod] = cached.data;
-            else eksik.push(kod);
-        }
-
-        if (eksik.length > 0) {
-            const { DiaOrderService } = require('../../../services/plugins/dia/DiaOrderService');
-            const svc = new DiaOrderService(req.site);
-            svc.settings = settings;
-            svc.firmaKodu = settings.firmaKodu || 1;
-            svc.donemKodu = settings.donemKodu || 1;
-            await svc.login();
-
-            // Her depo için TEK toplu DIA çağrısı (stokkartkodu IN) — eskiden ürün×depo
-            // sayısınca çağrı yapılıyordu (100 ürün = 300 çağrı, çok yavaş). Artık depo
-            // sayısı kadar çağrı (3) yapılır.
-            const depoMaps = [];
-            for (const d of depolar) {
-                const map = await svc.getDepotStockBatch(eksik, d.key).catch(() => ({}));
-                depoMaps.push({ ad: d.ad, map });
-            }
-            for (const kod of eksik) {
-                const satirlar = depoMaps.map(dm => ({ ad: dm.ad, adet: Math.max(0, Math.floor(dm.map[kod] || 0)) }));
-                depoStokCache.set(kod, { at: Date.now(), data: satirlar });
-                sonuc[kod] = satirlar;
-            }
-        }
-
-        res.json({ success: true, data: sonuc });
+        const { parseCodes, getDepotStocks } = require('../../../services/web/b2b/depotStock');
+        res.json({ success: true, data: await getDepotStocks(req.site, parseCodes(req.query.codes)) });
     } catch (error) {
         console.error('[b2b-auth] Depo stok hatası:', error.message);
         res.status(500).json({ success: false, message: 'Depo stoğu alınamadı.' });
+    }
+});
+
+// Bayi sepeti sunucu kaydı: en fazla bu kadar kalem; sepet sayılmayacak kadar uzun süre dokunulmazsa kayıt süresi dolar
+const DEALER_CART_MAX_LINES = 200;
+const DEALER_CART_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * PUT /sepet — bayinin tarayıcıdaki sepetini sunucuya yazar (admin Aktif Sepetler bayi sepetlerini buradan görür).
+ * Body: { lines: [{ productId, stockCode, diaStockCode, name, brand, image, quantity, unitPrice, warehouseName, xml }] }
+ * Kayıt bayiye bağlıdır (userId = bayi, site = b2b); boş sepet gelirse kalemler temizlenir. Fiyatlar yalnız panelde
+ * gösterim içindir — sipariş fiyatı siparişte sunucuda yeniden hesaplanır. Son hareket zamanı yalnız içerik değişince güncellenir.
+ */
+router.put('/sepet', authMiddleware, async (req, res) => {
+    try {
+        const WebCart = require('../../../models/web/cart/WebCart');
+        const lines = Array.isArray(req.body?.lines) ? req.body.lines.slice(0, DEALER_CART_MAX_LINES) : [];
+        const items = lines
+            .map(l => ({
+                productKey: String(l?.productId || '').slice(0, 64),
+                productName: String(l?.name || '').slice(0, 200),
+                productImage: String(l?.image || '').slice(0, 500),
+                brandName: String(l?.brand || '').slice(0, 80),
+                quantity: Math.max(1, Math.min(10000, parseInt(l?.quantity) || 1)),
+                unitPrice: Math.max(0, Math.round((Number(l?.unitPrice) || 0) * 100) / 100),
+                itemType: 'tire'
+            }))
+            .filter(i => i.productKey);
+        const sameContent = (a, b) => a.length === b.length
+            && a.every((x, i) => x.productKey === b[i]?.productKey && x.quantity === b[i]?.quantity && x.unitPrice === b[i]?.unitPrice);
+
+        const existing = await WebCart.findOne({ site: req.site, userId: req.user._id });
+        if (existing && sameContent(existing.items, items)) {
+            return res.json({ success: true, changed: false });
+        }
+        const now = new Date();
+        await WebCart.updateOne(
+            { site: req.site, userId: req.user._id },
+            {
+                $set: { items, lastActivity: now, expiresAt: new Date(now.getTime() + DEALER_CART_TTL_MS) },
+                $setOnInsert: { sessionId: `${req.site}-${req.user._id}` }
+            },
+            { upsert: true }
+        );
+        res.json({ success: true, changed: true });
+    } catch (error) {
+        console.error('[b2b-auth] Sepet kaydı hatası:', error.message);
+        res.status(500).json({ success: false, message: 'Sepet kaydedilemedi.' });
     }
 });
 
@@ -392,43 +463,8 @@ router.post('/adres', authMiddleware, async (req, res) => {
         // `_key_scf_carikart` ile bağlanır ve DIA'da "Diğer Adresler" sekmesine
         // düşer. (scf_carikart_ekle yalnız INSERT'tir; tüm kartı yazmak vergi
         // no/kod/e-posta zorunluluklarına ve kopya cari riskine yol açıyordu.)
-        const adresKart = {
-            _key_scf_carikart: parseInt(member.diaCustomerKey),
-            _key_dag_bolge: 0,
-            _key_sis_ulkeler: 0,
-            _key_sis_vergidairesi: 0,
-            _key_sis_sehirler: il ? { sehiradi: String(il).toLocaleUpperCase('tr-TR') } : 0,
-            adres1: String(adres).trim(),
-            adres2: (adresDetay || '').trim(),
-            adresadi: (baslik && String(baslik).trim()) || 'Teslimat Adresi',
-            adrestipi: 'T', // Teslimat → Fatura (F) dışı, "Diğer Adresler"e düşer
-            anaadres: '0',
-            bolge: '',
-            unvan: (adSoyad || '').trim(),
-            ceptel: telefon ? svc.normalizePhone(telefon) : '',
-            telefon1: '',
-            telefon2: '',
-            fax: '',
-            ilce: (ilce || '').toLocaleUpperCase('tr-TR'),
-            sehir: '',
-            postakodu: (postaKodu || '').trim(),
-            ulke: 'TÜRKİYE',
-            ulkeno: '',
-            tckimlikno: '',
-            verginumarasi: '',
-            kayitturu: 'SHS',
-            yabanciuyruklu: 'H',
-            koordinat_latitude: '0',
-            koordinat_longitude: '0'
-        };
-        const upd = await svc.sendRequest('/api/v3/scf/json', {
-            scf_carikart_adresleri_ekle: {
-                session_id: svc.sessionId,
-                firma_kodu: svc.firmaKodu,
-                donem_kodu: svc.donemKodu,
-                kart: adresKart
-            }
-        });
+        const { addDiaDeliveryAddress } = require('../../../services/plugins/dia/b2bAddress');
+        const upd = await addDiaDeliveryAddress(svc, member.diaCustomerKey, { baslik, adSoyad, adres, adresDetay, il, ilce, telefon, postaKodu });
         console.log('[b2b-adres] DIA adres ekle cevabı:', JSON.stringify({ code: upd?.code, key: upd?.key, msg: upd?.msg }));
         if (String(upd?.code) !== '200') {
             return res.status(502).json({ success: false, message: upd?.msg || 'Adres DIA cariye eklenemedi.' });
@@ -486,6 +522,9 @@ router.post('/adres', authMiddleware, async (req, res) => {
     }
 });
 
+// Finansal iskonto ucunda tek istekte sorulabilecek en fazla ürün kodu
+const FINANCIAL_DISCOUNT_MAX_CODES = 300;
+
 // Cari segment (özelkod2, ör. F4) önbelleği — ödeme iskontoları buna bağlı.
 const segmentCache = new Map();
 const SEGMENT_TTL_MS = 10 * 60 * 1000;
@@ -529,7 +568,7 @@ async function getCariSegment(site, diaCustomerCode) {
 router.get('/odeme-yontemleri', authMiddleware, async (req, res) => {
     try {
         const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
-            .select('diaCustomerKey diaCustomerCode').lean();
+            .select('diaCustomerKey diaCustomerCode diaCari.overdueKurus diaCari.riskLimitiKurus diaCari.bakiyeKurus diaCari.paymentTermDays').lean();
         if (!member?.diaCustomerCode) {
             return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
         }
@@ -544,7 +583,29 @@ router.get('/odeme-yontemleri', authMiddleware, async (req, res) => {
         }
         const { getB2bPaymentPricing } = require('../../../services/plugins/dia/diaCampaignPricing');
         const pricing = await getB2bPaymentPricing(req.site, segment);
-        res.json({ success: true, data: pricing });
+        // Cari limiti: limit tanımsızsa ya da aşıldıysa vadeli (Cari Sipariş) yöntemi kapalı döner; sepet kalan limiti de bilir
+        const credit = await getCreditStatus(req.site, member);
+        const creditLimit = { hasLimit: credit.hasLimit, closed: credit.closed, reason: credit.reason, methodId: CREDIT_PAYMENT_METHOD, totalLimitKurus: credit.totalLimitKurus, remainingLimitKurus: credit.remainingLimitKurus, orderingClosed: credit.orderingClosed, orderingClosedReason: credit.orderingClosedReason, orderingClosedMessage: credit.orderingClosed ? ORDERING_CLOSED_MESSAGES[credit.orderingClosedReason] : '', cartClosed: credit.cartClosed, cartClosedMessage: credit.cartClosed ? CART_CLOSED_MESSAGE : '' };
+        const blocked = await discountsBlocked(req.site, member);
+        // Vadeli alım kapalıysa (limit tanımsız, limit aşıldı ya da vadesi geçen borç) Cari Sipariş listede HİÇ gösterilmez
+        const hideCreditMethod = credit.closed;
+        const methods = (pricing.methods || []).filter(m => !(hideCreditMethod && m.id === CREDIT_PAYMENT_METHOD)).map(m => ({
+            ...m,
+            // Vadesi geçen borcu olan caride ödeme yöntemi iskontoları sıfırlanır (yöntemler seçilebilir kalır)
+            ...(blocked ? { discountPct: 0 } : {}),
+            ...(credit.closed && m.id === CREDIT_PAYMENT_METHOD ? { disabled: true } : {}),
+            // Cari Sipariş: carinin DIA ödeme planındaki vade günü (ör. 30) — sepette yöntemin yanında yazar
+            ...(m.id === CREDIT_PAYMENT_METHOD && Number.isFinite(member.diaCari?.paymentTermDays) ? { termDays: member.diaCari.paymentTermDays } : {})
+        }));
+        res.json({
+            success: true,
+            data: {
+                ...pricing,
+                methods,
+                ...(blocked ? { brandMap: {}, defaultDiscounts: Object.fromEntries(Object.keys(pricing.defaultDiscounts || {}).map(k => [k, 0])), discountsBlocked: true } : {}),
+                creditLimit
+            }
+        });
     } catch (error) {
         console.error('[b2b-auth] Ödeme yöntemleri hatası:', error.message);
         res.status(500).json({ success: false, message: 'Ödeme yöntemleri alınamadı.' });
@@ -568,7 +629,8 @@ router.get('/fiyat-orani', authMiddleware, async (req, res) => {
         }
         const { getSabitCariRate } = require('../../../services/plugins/dia/diaCampaignPricing');
         const rate = await getSabitCariRate(req.site, segment);
-        res.json({ success: true, data: { segment, ...rate } });
+        // Kargo ücreti açık mı (DIA ayarında kargo bedeli hizmet kartı seçili) — vitrin fiyatına kargo payını buna göre ekler
+        res.json({ success: true, data: { segment, ...rate, shippingEnabled: await isShippingEnabled(req.site) } });
     } catch (error) {
         console.error('[b2b-auth] Fiyat oranı hatası:', error.message);
         res.status(500).json({ success: false, message: 'Fiyat oranı alınamadı.' });
@@ -576,12 +638,89 @@ router.get('/fiyat-orani', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /teslimat-yontemleri?adresId= — seçilen teslimat adresinde sunulan teslimat yöntemleri
+ * (Kargo Firmaları tanımları; hizmet bölgesi tanımlı olanlar yalnız o il / ilçelerde). Sıra: öncelik.
+ */
+router.get('/teslimat-yontemleri', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site }).select('diaCari.addresses').lean();
+        if (!member) return res.status(404).json({ success: false, message: 'Bayi kaydınız bulunamadı.' });
+        const methods = await getDeliveryMethods(req.site, deliveryLocationOf(member, req.query.adresId));
+        res.json({ success: true, data: methods });
+    } catch (error) {
+        console.error('[b2b-auth] Teslimat yöntemleri hatası:', error.message);
+        res.status(500).json({ success: false, message: 'Teslimat yöntemleri alınamadı.' });
+    }
+});
+
+/**
+ * POST /finansal-iskonto — oturumdaki carinin tipine (Premium / Normal) göre, verilen ürünler için
+ * panelde tanımlı finansal iskonto oranları: { tier, methods: [{ id, title }], discounts: { stokKodu: { ödemeYöntemi: oran } }, discountsBlocked }.
+ * Yalnız kuralı eşleşen ürün/yöntemler döner. Ürün listesi ve sepet bunu gösterir; /siparis aynı kuralı uygular.
+ */
+router.post('/finansal-iskonto', authMiddleware, async (req, res) => {
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site }).select('diaCari.premium diaCari.overdueKurus diaCari.paymentTermDays').lean();
+        if (!member) return res.status(404).json({ success: false, message: 'Bayi kaydınız bulunamadı.' });
+        const { tierOfMember, resolveForStocks } = require('../../../services/web/b2b/financialDiscounts');
+        const { PAYMENT_METHODS } = require('../../../services/plugins/dia/diaCampaignPricing');
+        const tier = tierOfMember(member);
+        const codes = [...new Set((Array.isArray(req.body?.codes) ? req.body.codes : []).map(c => String(c || '').trim()).filter(Boolean))]
+            .slice(0, FINANCIAL_DISCOUNT_MAX_CODES);
+        // Ödeme yöntemleri (sıra + ad) — bayi ekranı yöntem bazlı fiyatları bu sırayla gösterir
+        // Cari Sipariş yanında carinin DIA ödeme planındaki vade günü (ürün listesi fiyat kutusunda gösterilir)
+        const termDays = Number.isFinite(member.diaCari?.paymentTermDays) ? member.diaCari.paymentTermDays : null;
+        const methods = PAYMENT_METHODS.map(m => ({ id: m.id, title: m.title, ...(m.id === CREDIT_PAYMENT_METHOD && termDays > 0 ? { termDays } : {}) }));
+        // Vadesi geçen borcu olan caride iskontolar SEPETTE ve SİPARİŞTE uygulanmaz (discountsBlocked); oranlar yine döner ki
+        // ürün listesinde bayi alabileceği iskontoyu görsün. Sepet ve sepet paneli bu bayrakla oranları yok sayar.
+        const blocked = await discountsBlocked(req.site, member);
+        if (!codes.length) return res.json({ success: true, data: { tier, methods, discounts: {}, discountsBlocked: blocked } });
+        const DiaStock = require('../../../models/plugins/DiaStock');
+        const { getNetPriceRule, netPriceSelect } = require('../../../services/web/b2b/netPrice');
+        const netRule = await getNetPriceRule(req.site);
+        const stocks = await DiaStock.find({ stokkartkodu: { $in: codes } }).select(`stokkartkodu marka ekalan5 m_kategoriler ${netPriceSelect(netRule)}`).lean();
+        const discounts = await resolveForStocks(req.site, tier, stocks, PAYMENT_METHODS.map(m => m.id));
+        // Kargo payları (sitede kargo açıksa): liste / sepet bunu ürün fiyatına ekler ya da ayrı satır gösterir
+        const shipping = await isShippingEnabled(req.site)
+            ? Object.fromEntries([...(await shippingForStockCodes(req.site, codes)).entries()].filter(([, v]) => v.perUnit > 0))
+            : {};
+        res.json({ success: true, data: { tier, methods, discounts, discountsBlocked: blocked, shipping } });
+    } catch (error) {
+        console.error('[b2b-auth] Finansal iskonto hatası:', error.message);
+        res.status(500).json({ success: false, message: 'İskonto bilgisi alınamadı.' });
+    }
+});
+
+/**
  * POST /siparis — b2b bayi siparişi oluşturur ve DIA'ya aktarır.
  * Fiyat SUNUCUDA hesaplanır (istemciye güvenilmez): DiaStock.fiyat1 → Cari taban
- * (fiyat1 × oran) → seçilen ödeme yöntemi + Gel Al iskontosu. Kalemler DIA'ya
+ * (fiyat1 × oran) → seçilen ödeme yöntemi iskontosu. Kalemler DIA'ya
  * müşteri siparişi (scf_siparis_ekle) olarak gider; b2b'de şirketler arası zincir
  * kapalı olduğu için fiziksel stok hareketi olmaz. Sipariş yönetici paneline düşer.
  */
+// XML (tedarikçi) kartlarının DIA stok kodu eki
+const XML_STOCK_CODE_SUFFIX = '-XML';
+
+/** XML ürünün sitede gösterilen satış fiyatı (KDV dahil; katalog /products/filter ile aynı hesap). Fiyat yoksa 0. */
+async function xmlSalePrice(site, stokkartkodu) {
+    const WebProduct = require('../../../models/web/catalog/WebProduct');
+    const { applySitePricingMany } = require('../../../utils/sitePricing');
+    const product = await WebProduct.findOne({
+        sites: site,
+        'diaData.stokkartkodu': stokkartkodu,
+        'syncInfo.syncSource': 'xml_integration'
+    }).lean();
+    if (!product) return 0;
+    applySitePricingMany([product], site);
+    if (product.customData?.priceHidden) return 0;
+    return Math.round((Number(product.customData?.webPrice) || 0) * 100) / 100;
+}
+
+// Aynı bayiden birebir aynı Cari/Havale siparişi bu süre içinde tekrar gelirse yeni sipariş açılmaz
+const DUPLICATE_ORDER_WINDOW_MS = 2 * 60 * 1000;
+// Sipariş açıklaması azami uzunluğu (DIA açıklama satırı 128 karakter; sepet alanıyla aynı)
+const ORDER_NOTE_MAX_LENGTH = 128;
+
 router.post('/siparis', authMiddleware, async (req, res) => {
     try {
         const member = await WebMember.findOne({ _id: req.user._id, site: req.site }).lean();
@@ -594,9 +733,44 @@ router.post('/siparis', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Sepetiniz boş.' });
         }
 
+        // Mükerrer koruma: bayi yanıtı beklerken sayfayı yenileyip tekrar gönderirse aynı Cari/Havale siparişi ikinci kez açılmaz,
+        // son DUPLICATE_ORDER_WINDOW_MS içindeki birebir aynı sipariş döner (kartlı siparişte yeni deneme serbesttir)
+        const requestedMethod = ['cari', 'havale'].includes(paymentMethod) ? paymentMethod : null;
+        if (requestedMethod) {
+            const WebOrderModel = require('../../../models/web/order/WebOrder');
+            const itemsKey = (list) => list
+                .map(it => `${String(it?.stockCode || '').trim()}:${Math.max(1, parseInt(it?.quantity) || 1)}`)
+                .sort().join('|');
+            const requestedKey = itemsKey(items);
+            const recentOrders = await WebOrderModel.find({
+                site: req.site,
+                memberId: member._id,
+                'payment.method': requestedMethod === 'havale' ? 'bank_transfer' : 'cari',
+                status: { $nin: ['cancelled', 'payment_failed'] },
+                createdAt: { $gte: new Date(Date.now() - DUPLICATE_ORDER_WINDOW_MS) }
+            }).select('orderNumber items.stockCode items.quantity pricing.total').sort({ createdAt: -1 }).lean();
+            const duplicate = recentOrders.find(o => itemsKey(o.items || []) === requestedKey);
+            if (duplicate) {
+                console.log('[b2b-auth] Mükerrer sipariş isteği, mevcut sipariş döndü:', duplicate.orderNumber);
+                return res.json({ success: true, data: { orderNumber: duplicate.orderNumber, total: duplicate.pricing?.total, duplicate: true } });
+            }
+        }
+
+        // Limit tanımsız, bitmiş ya da vadesi geçen borç varsa ödeme yönteminden bağımsız olarak sipariş verilemez
+        const orderCredit = await getCreditStatus(req.site, member);
+        if (orderCredit.orderingClosed) {
+            return res.status(400).json({ success: false, code: 'ORDERING_CLOSED', reason: orderCredit.orderingClosedReason, message: ORDERING_CLOSED_MESSAGES[orderCredit.orderingClosedReason] });
+        }
+
         const DiaStock = require('../../../models/plugins/DiaStock');
         const WebOrder = require('../../../models/web/order/WebOrder');
         const { getSabitCariRate, getB2bPaymentPricing, discountFor } = require('../../../services/plugins/dia/diaCampaignPricing');
+        const { getActiveRules, matchFinancialDiscount, splitMethodDiscount, productScope, tierOfMember, getSecondHandRule, isSecondHandStock } = require('../../../services/web/b2b/financialDiscounts');
+        const secondHandRule = await getSecondHandRule();
+        // Panelde tanımlı finansal iskontolar (cari tipine göre) — eşleşen satırda DIA ödeme iskontosunun yerine geçer
+        const financialRules = await getActiveRules(req.site);
+        const customerTier = tierOfMember(member);
+        const noDiscounts = await discountsBlocked(req.site, member);
 
         // Segment + Cari oranı + ödeme yöntemi iskonto haritası
         let segment = await getCariSegment(req.site, member.diaCustomerCode);
@@ -609,42 +783,72 @@ router.post('/siparis', authMiddleware, async (req, res) => {
         const oran = (Number(cariRate.fiyatyuzde) > 0 ? Number(cariRate.fiyatyuzde) : 50) / 100;
         const pricing = await getB2bPaymentPricing(req.site, segment);
         const methodId = ['cari', 'havale', 'kkTek', 'kkTaksit'].includes(paymentMethod) ? paymentMethod : 'cari';
-        const gelAlBonus = deliveryMethod === 'gelAl' ? (Number(pricing.gelAlBonus) || 0) : 0;
+        // Teslimat yöntemi: yalnız seçilen teslimat adresinde sunulan yöntemler kabul edilir (Kargo Firmaları + hizmet bölgesi);
+        // geçersiz / bölge dışı seçimde o adresin ilk yöntemi kullanılır
+        const deliveryMethods = await getDeliveryMethods(req.site, deliveryLocationOf(member, req.body?.deliveryAddressId));
+        const shippingMethod = (deliveryMethods.find(d => d.id === deliveryMethod) || deliveryMethods[0])?.id || '';
 
         // Kalemler — fiyat sunucuda DiaStock.fiyat1'den
+        // Net Fiyat ürünleri (DIA ek alanı) yalnız Cari iskontosu alır
+        const { getNetPriceRule, netPriceSelect, isNetPriceStock } = require('../../../services/web/b2b/netPrice');
+        const netRule = await getNetPriceRule(req.site);
         const orderItems = [];
         let subtotal = 0, vatAmount = 0, total = 0, discountAmount = 0;
         for (const it of items) {
-            const kod = String(it?.stockCode || '').trim();
+            const requestedCode = String(it?.stockCode || '').trim();
             const qty = Math.max(1, parseInt(it?.quantity) || 1);
-            if (!kod) continue;
-            const stock = await DiaStock.findOne({ stokkartkodu: kod })
-                .select('_key stokkartkodu aciklama marka m_birimler birimindirimorani b2c_indirimorani').lean();
-            if (!stock) {
-                return res.status(400).json({ success: false, message: `Ürün bulunamadı: ${kod}` });
+            if (!requestedCode) continue;
+            // XML ürün: katalog kodu "-XML" eki olmadan gösterir; eski sepet kayıtları kısa kodla gelebilir.
+            // xml işaretli satırda önce XML kartı, diğerlerinde önce gelen kod aranır
+            const xmlCode = requestedCode.endsWith(XML_STOCK_CODE_SUFFIX) ? requestedCode : `${requestedCode}${XML_STOCK_CODE_SUFFIX}`;
+            const lookupCodes = [...new Set(it?.xml === true ? [xmlCode, requestedCode] : [requestedCode, xmlCode])];
+            let stock = null;
+            for (const code of lookupCodes) {
+                stock = await DiaStock.findOne({ stokkartkodu: code })
+                    .select(`_key stokkartkodu aciklama marka ekalan5 m_kategoriler m_birimler birimindirimorani b2c_indirimorani ${netPriceSelect(netRule)}`).lean();
+                if (stock) break;
             }
-            const isXml = kod.includes('-XML');
+            if (!stock) {
+                return res.status(400).json({ success: false, message: `Ürün bulunamadı: ${requestedCode}` });
+            }
+            const kod = stock.stokkartkodu;
+            const isXml = kod.endsWith(XML_STOCK_CODE_SUFFIX);
             const fiyat1 = Number(stock.m_birimler?.[0]?.fiyat1) || 0;
             const fiyat4 = Number(stock.m_birimler?.[0]?.fiyat4) || 0;
-            if (fiyat1 <= 0) {
-                return res.status(400).json({ success: false, message: `Fiyatı tanımsız ürün: ${kod}` });
+            // XML ürün: sipariş fiyatı katalogda gösterilen XML fiyatıdır (KDV dahil, iskontosuz) — DIA fiyat1'i XML kartında boştur
+            const xmlPrice = isXml ? await xmlSalePrice(req.site, kod) : 0;
+            if (isXml ? xmlPrice <= 0 : fiyat1 <= 0) {
+                return res.status(400).json({ success: false, message: `Fiyatı tanımsız ürün: ${requestedCode}` });
             }
             // B2C İndirim Oranı 0 (2.El vb.) → cari iskonto UYGULANMAZ, baz = fiyat4 (bayi).
             const b2cOran = parseFloat(String(stock.birimindirimorani || '').replace(/[^0-9.]/g, ''))
                 || Number(stock.b2c_indirimorani) || 0;
-            const oranSifir = !isXml && b2cOran === 0 && fiyat4 > 0;
+            // İkinci el üründe hiçbir iskonto yoktur (cari iskontosu da): baz = fiyat4 (bayi)
+            const secondHand = isSecondHandStock(stock, secondHandRule);
+            const oranSifir = !isXml && (b2cOran === 0 || secondHand) && fiyat4 > 0;
             const baseFiyat = oranSifir ? fiyat4 : fiyat1;
-            // İskonto oranları AYRI ve ZİNCİRLİ: Cari (fiyat1→cari) + ödeme yöntemi + Gel Al.
+            // İskonto oranları AYRI ve ZİNCİRLİ: Cari (fiyat1→cari) + ödeme yöntemi.
             // XML ve oran=0 üründe cari iskonto yok.
             const cariPct = (isXml || oranSifir) ? 0 : Math.round((1 - oran) * 100 * 1e6) / 1e6; // ör. %50
-            const paymentPct = isXml ? 0 : discountFor(pricing, stock.marka, methodId);
-            const gelAlPct = (!isXml && deliveryMethod === 'gelAl') ? gelAlBonus : 0;
-            // POZİSYONEL: [indirim1=Cari, indirim2=ödeme, indirim3=Gel Al]. Zincirli.
-            const discountRates = isXml ? [] : [cariPct, paymentPct, gelAlPct];
+            const scope = productScope(stock);
+            // Seçilen yöntemin oranı; kural eşleşmezse DIA oranı
+            const methodRateOf = id => {
+                const rule = matchFinancialDiscount(financialRules, { tier: customerTier, methodId: id, scope });
+                return rule ? rule.rate : discountFor(pricing, stock.marka, id);
+            };
+            // Vadesi geçen borcu olan caride ve Net Fiyat ürününde ödeme iskontosu yok (yalnız taban cari fiyatı)
+            const netPrice = isNetPriceStock(stock, netRule);
+            const noPaymentDiscount = isXml || noDiscounts || netPrice || secondHand;
+            const paymentPct = noPaymentDiscount ? 0 : methodRateOf(methodId);
+            // Yöntem oranı DIA'ya iki satırda gider: yıl + marka iskontosu (Cari Sipariş oranı) + ödeme yönteminden kalan fark
+            const split = splitMethodDiscount(noPaymentDiscount ? 0 : methodRateOf(CREDIT_PAYMENT_METHOD), paymentPct);
+            // POZİSYONEL: [indirim1=Cari, indirim2=yıl + marka, indirim3=ödeme yöntemi farkı]. Zincirli.
+            const discountRates = isXml ? [] : [cariPct, split.yearBrandRate, split.remainderRate];
+            // Satış fiyatı yöntemin TAM oranından hesaplanır (bölünmüş oranların yuvarlaması fiyata yansımaz)
             let factor = 1;
-            for (const r of discountRates) if (r > 0.000001) factor *= (1 - r / 100);
-            const listUnitPrice = isXml ? fiyat1 : baseFiyat;                              // KDV dahil LİSTE (oran=0: fiyat4)
-            const unitPrice = isXml ? fiyat1 : Math.round(baseFiyat * factor * 100) / 100; // KDV dahil final satış
+            for (const r of [cariPct, paymentPct]) if (r > 0.000001) factor *= (1 - r / 100);
+            const listUnitPrice = isXml ? xmlPrice : baseFiyat;                              // KDV dahil LİSTE (oran=0: fiyat4)
+            const unitPrice = isXml ? xmlPrice : Math.round(baseFiyat * factor * 100) / 100; // KDV dahil final satış (XML: iskontosuz)
             // Breakdown (KDV hariç): Ara Toplam = net mal bedeli, İskonto = liste−satış farkı
             const lineNetHaric = Math.round((unitPrice * qty / 1.2) * 100) / 100;
             const lineGrossHaric = Math.round((listUnitPrice * qty / 1.2) * 100) / 100;
@@ -671,6 +875,33 @@ router.post('/siparis', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçerli ürün bulunamadı.' });
         }
 
+        // Kargo bedeli (DIA ayarında kargo hizmet kartı seçiliyse): ürün başına pay, iskontosuz; toplamlara eklenir,
+        // DIA'ya ürün satırlarından ayrı hizmet satırı olarak gider
+        let shippingCost = 0;
+        if (await isShippingEnabled(req.site)) {
+            const shipping = await shippingForStockCodes(req.site, orderItems.map(i => i.stockCode));
+            for (const item of orderItems) {
+                const perUnit = shipping.get(item.stockCode)?.perUnit || 0;
+                if (!(perUnit > 0)) continue;
+                const line = Math.round(perUnit * item.quantity * 100) / 100;
+                const lineHaric = Math.round((line / 1.2) * 100) / 100;
+                item.shippingPerUnit = perUnit;
+                item.shippingTotal = line;
+                shippingCost += line;
+                subtotal += lineHaric;
+                vatAmount += Math.round((line - lineHaric) * 100) / 100;
+                total += line;
+            }
+        }
+
+        // Cari limiti: vadeli (Cari Sipariş) yöntem kapalıysa reddedilir; HER ödeme yönteminde sipariş tutarı kalan limiti aşamaz
+        if (methodId === CREDIT_PAYMENT_METHOD && orderCredit.closed) {
+            return res.status(400).json({ success: false, code: 'CREDIT_CLOSED', reason: orderCredit.reason, message: CREDIT_CLOSED_MESSAGES[orderCredit.reason] });
+        }
+        if (Math.round(total * 100) > orderCredit.remainingLimitKurus) {
+            return res.status(400).json({ success: false, code: 'CREDIT_LIMIT_INSUFFICIENT', message: CREDIT_LIMIT_INSUFFICIENT_MESSAGE });
+        }
+
         // Ödeme yöntemi → WebOrder payment (DIA ödeme planı bunun üstünden seçilir)
         const paymentMap = {
             cari: { method: 'cari', installment: 1 },
@@ -680,14 +911,20 @@ router.post('/siparis', authMiddleware, async (req, res) => {
         };
         const pay = paymentMap[methodId];
 
-        // Teslimat adresi (bilgi amaçlı; DIA carinin kendi adresini kullanır)
-        const adr = address || {};
+        // Teslimat adresi: bayinin sepette seçtiği adres (cari kartındaki DIA adres kaydı) — DIA siparişinde sevk adresi olur.
+        // Seçim yoksa carinin ana (fatura) adresi teslimat adresi sayılır; cari kartında hiç adres yoksa boş kalır
+        // (syncOrderToDia fatura adresini DIA'dan bağlar).
+        const memberAddresses = member.diaCari?.addresses || [];
+        const selectedAddress = memberAddresses.find(a => String(a.id) === String(req.body?.deliveryAddressId || ''));
+        const defaultAddress = memberAddresses.find(a => a.ana) || memberAddresses[0];
+        const adr = selectedAddress || address || defaultAddress || {};
         const musteriAd = adr.fullName || member.unvan || member.companyName
             || `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.diaCustomerCode || 'Bayi';
         const musteriTel = adr.phone || adr.telefon || member.phone || '';
         const shippingSnapshot = {
             addressName: adr.baslik || adr.addressName || 'Teslimat',
             fullName: musteriAd,
+            email: member.email || '',
             phone: musteriTel,
             cityName: adr.il || adr.cityName || '',
             districtName: adr.ilce || adr.districtName || '',
@@ -710,18 +947,29 @@ router.post('/siparis', authMiddleware, async (req, res) => {
             customerName: musteriAd,
             customerPhone: musteriTel,
             items: orderItems,
+            // Fatura bilgileri carinin DIA kartından (panelde sipariş detayında görünür)
+            billingSnapshot: require('../../../services/web/b2b/orderBilling').buildBillingSnapshot(member, musteriAd),
             pricing: {
                 subtotal: Math.round(subtotal * 100) / 100,
                 vatAmount: Math.round(vatAmount * 100) / 100,
                 discountAmount: Math.round(discountAmount * 100) / 100,
+                shippingCost: Math.round(shippingCost * 100) / 100,
                 total: Math.round(total * 100) / 100,
                 currency: 'TRY'
             },
-            payment: { method: pay.method, status: 'pending', installment: pay.installment, paymentGuid: paymentToken },
-            shipping: { method: deliveryMethod || 'standard' },
+            payment: {
+                method: pay.method, status: 'pending', installment: pay.installment, paymentGuid: paymentToken,
+                // Cari Sipariş: carinin kendi DIA ödeme planı (vade günü sepette gösterilenle aynı)
+                ...(methodId === CREDIT_PAYMENT_METHOD && member.diaCari?.paymentPlanKey ? { diaPaymentPlanKey: member.diaCari.paymentPlanKey } : {})
+            },
+            shipping: { method: shippingMethod },
             shippingSnapshot,
-            customerNote: `Ödeme: ${methodId} · Teslimat: ${deliveryMethod || '-'}`,
-            status: 'pending'
+            customerNote: `Ödeme: ${methodId} · Teslimat: ${shippingMethod}`,
+            // Bayinin sepette yazdığı açıklama (tek satır; DIA açıklama satırına gider)
+            orderNote: String(req.body?.orderNote || '').replace(/\s+/g, ' ').trim().slice(0, ORDER_NOTE_MAX_LENGTH) || undefined,
+            // Cari Sipariş limit ve borç denetimlerinden geçmiştir, ödeme beklemez: doğrudan onaylıdır.
+            // Havale ve kart siparişi onay / ödeme bekler (kartta ödeme alınınca onaylanır).
+            status: methodId === CREDIT_PAYMENT_METHOD ? 'confirmed' : 'pending'
         });
 
         // Kredi kartında (kkTek/kkTaksit) DIA aktarımı ÖDEME ONAYINDAN SONRA yapılır
@@ -739,21 +987,23 @@ router.post('/siparis', authMiddleware, async (req, res) => {
             });
         }
 
-        // Cari / Havale: sipariş oluşur oluşmaz DIA'ya aktarılır (stok hareketi yok)
-        let diaResult = null;
-        try {
-            const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
-            diaResult = await syncOrderToDia(order.toObject());
-        } catch (e) {
-            diaResult = { success: false, message: e.message };
-        }
+        // Cari / Havale: sipariş oluşur oluşmaz DIA'ya aktarılır (stok hareketi yok). Aktarım arka planda sürer:
+        // DIA kilidi başka işte meşgulse bayi yanıtı beklerken "yükleniyor"da kalıp siparişi tekrar göndermesin
+        const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
+        syncOrderToDia(order.toObject())
+            .then(result => {
+                if (!result?.success) console.error('[b2b-auth] Sipariş DIA aktarımı başarısız:', orderNumber, result?.message);
+            })
+            .catch(e => console.error('[b2b-auth] Sipariş DIA aktarım hatası:', orderNumber, e.message));
+
+        // Bayiye "siparişiniz alındı" maili (yönetici kopyasıyla); kart siparişinde ödeme sonrası makbuzla gider
+        require('../../../services/web/b2b/b2bMail').queueOrderMail(order._id);
 
         res.json({
             success: true,
             data: {
                 orderNumber,
-                total: order.pricing.total,
-                dia: diaResult
+                total: order.pricing.total
             }
         });
     } catch (error) {
@@ -828,14 +1078,25 @@ router.get('/siparislerim', authMiddleware, async (req, res) => {
         if (!member?.diaCustomerKey) {
             return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
         }
+        // Sipariş Açıklaması: yalnız bayinin sepette yazdığı not (WebOrder.orderNote). DIA açıklama alanları
+        // personelin iç notlarını taşıdığı için bayiye gösterilmez; panel dışı siparişte açıklama boş kalır.
+        const withNotes = async (orders) => {
+            const WebOrder = require('../../../models/web/order/WebOrder');
+            const notes = await WebOrder.find({ site: req.site, memberId: req.user._id, orderNote: { $nin: [null, ''] } })
+                .select('orderNumber orderNote').lean();
+            const byNumber = new Map(notes.map(n => [n.orderNumber, n.orderNote]));
+            return orders.map(o => ({ ...o, orderNote: byNumber.get(o.orderNumber) || '' }));
+        };
         const key = String(member.diaCustomerKey);
         const cached = siparisListesiCache.get(key);
         if (cached && Date.now() - cached.at < 15 * 60 * 1000) {
-            return res.json({ success: true, data: { orders: cached.orders, total: cached.orders.length }, cached: true });
+            const orders = await withNotes(cached.orders);
+            return res.json({ success: true, data: { orders, total: orders.length }, cached: true });
         }
         const { fetchOrders } = require('../../../services/plugins/dia/b2bOrderList');
-        const orders = await fetchOrders(req.site, member.diaCustomerKey);
-        siparisListesiCache.set(key, { at: Date.now(), orders });
+        const diaOrders = await fetchOrders(req.site, member.diaCustomerKey);
+        siparisListesiCache.set(key, { at: Date.now(), orders: diaOrders });
+        const orders = await withNotes(diaOrders);
         res.set('Cache-Control', 'no-store');
         return res.json({ success: true, data: { orders, total: orders.length } });
     } catch (error) {
@@ -1007,6 +1268,45 @@ router.get('/cari-ekstre', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /cari-ekstre/excel?yil=&q=&sort=&dir= — ekranda görülen ekstreyi renkli,
+ * biçimlendirilmiş Excel (.xlsx) olarak indirir (aynı süzgeç ve sıralama).
+ */
+router.get('/cari-ekstre/excel', authMiddleware, async (req, res) => {
+    try {
+        const r = await getEkstre(req);
+        if (r.notFound) return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site })
+            .select('firstName lastName diaCustomerCode').lean();
+        let company = {};
+        try {
+            const WebSettings = require('../../../models/web/settings/WebSettings');
+            company = (await WebSettings.getSettings(req.site))?.companyInfo || {};
+        } catch (_) { /* firma bilgisi olmasa da dosya oluşur */ }
+
+        const yil = /^\d{4}$/.test(String(req.query.yil || '')) ? String(req.query.yil) : '';
+        const { buildEkstreExcel } = require('../../../services/web/b2b/ekstreExcel');
+        const buffer = await buildEkstreExcel({
+            movements: r.data.movements,
+            summary: r.data.summary,
+            filter: { yil, q: String(req.query.q || ''), sort: String(req.query.sort || ''), dir: String(req.query.dir || '') },
+            member: {
+                name: `${member?.firstName || ''} ${member?.lastName || ''}`.replace(/ \.$/, '').trim(),
+                cariKodu: member?.diaCustomerCode || ''
+            },
+            company,
+            generatedAt: r.data.generatedAt
+        });
+        res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.set('Content-Disposition', `attachment; filename="cari-ekstre-${yil || 'tumu'}.xlsx"`);
+        res.set('Cache-Control', 'no-store');
+        return res.send(buffer);
+    } catch (error) {
+        console.error('[b2b-auth] Cari ekstre Excel hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Excel dosyası şu an oluşturulamadı.' });
+    }
+});
+
+/**
  * GET /odemeler — ekstredeki tahsilat/ödeme (saf alacak) hareketleri.
  */
 router.get('/odemeler', authMiddleware, async (req, res) => {
@@ -1053,6 +1353,36 @@ router.get('/makbuz/:orderNumber', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('[b2b-auth] Makbuz PDF hatası:', error.message);
         res.status(500).json({ success: false, message: 'Makbuz oluşturulamadı.' });
+    }
+});
+
+/**
+ * GET /fatura-pdf?fisno=&belgeNo=&tarih= — ekstredeki faturanın resmi e-Fatura /
+ * e-Arşiv PDF'ini indirir. Arama bayinin kendi cari key'i ile süzülür.
+ */
+router.get('/fatura-pdf', authMiddleware, async (req, res) => {
+    const fisno = String(req.query.fisno || '').trim();
+    if (!fisno) return res.status(400).json({ success: false, message: 'Fatura numarası eksik.' });
+    try {
+        const member = await WebMember.findOne({ _id: req.user._id, site: req.site }).select('diaCustomerKey').lean();
+        if (!member?.diaCustomerKey) return res.status(404).json({ success: false, message: 'Cari kaydınız bulunamadı.' });
+
+        const { getInvoicePdf } = require('../../../services/plugins/dia/b2bInvoicePdf');
+        const r = await getInvoicePdf(req.site, member.diaCustomerKey, {
+            fisno,
+            belgeNo: String(req.query.belgeNo || '').trim(),
+            tarih: String(req.query.tarih || '').trim()
+        });
+        if (r.notFound) return res.status(404).json({ success: false, message: 'Bu faturanın PDF kopyası sistemde bulunamadı.' });
+        if (r.noEbelge) return res.status(404).json({ success: false, message: 'Bu faturanın e-belge (PDF) kopyası bulunmuyor.' });
+
+        res.set('Content-Type', 'application/pdf');
+        res.set('Content-Disposition', `attachment; filename="${r.fileName}"`);
+        res.set('Cache-Control', 'no-store');
+        return res.send(r.pdf);
+    } catch (error) {
+        console.error('[b2b-auth] Fatura PDF hatası:', error.message);
+        return res.status(502).json({ success: false, message: 'Fatura şu an indirilemedi, lütfen biraz sonra tekrar deneyin.' });
     }
 });
 

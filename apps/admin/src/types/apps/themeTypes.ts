@@ -5,6 +5,9 @@ export interface ThemeSettings {
     // Gösterilecek fiyat: DIA stok kartı fiyat alanı (fiyat1..fiyat4) + indirim modu (none | b2c_oran)
     priceField?: string
     priceDiscountMode?: string
+    // Havale ve Peşin Ödeme indirim oranları (%) — boş/0 ise kutu gösterilmez
+    pickupCashDiscountNewTire?: string
+    pickupCashDiscountSecondHand?: string
     showcaseDisplayCount?: string
     blogDisplayCount?: string
     isActive?: boolean
@@ -13,6 +16,13 @@ export interface ThemeSettings {
     isFacebook?: boolean
     isGoogle?: boolean
     isLazyLoad?: boolean
+    // Vitrinde hafif kar yağışı efekti (site bazlı)
+    snowEffect?: boolean
+    // Giriş ekranı duyuru popup'ı (yalnız giriş ekranı olan sitede; ziyaretçiye günde bir kez gösterilir)
+    loginPopupEnabled?: boolean
+    loginPopupImage?: string
+    // Perakende plasiyere sıfır lastikte fiyatın altında gösterilen not (bayi sitesi)
+    retailSalespersonPriceNote?: string
     logo?: string
     defaultCatalogImage?: string
 

@@ -3,8 +3,9 @@
 // Kapatılamaz; bayi seçilince o bayinin oturumu açılır (impersonation) ve panel yenilenir.
 import { useCallback, useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
+import { PremiumBadge } from './premium-badge';
 
-type Cari = { id: string; name: string; cariKodu: string; email: string; phone: string };
+type Cari = { id: string; name: string; cariKodu: string; email: string; phone: string; premium?: boolean };
 
 export function PlasiyerBayiSecModal({ onDevamEt }: { onDevamEt?: () => void }) {
     const [token, setToken] = useState<string | null>(null);
@@ -93,7 +94,10 @@ export function PlasiyerBayiSecModal({ onDevamEt }: { onDevamEt?: () => void }) 
                                 style={{ textAlign: 'left', background: '#f7f7f7', border: '1px solid #e5e5e5', borderRadius: 6, padding: '10px 14px', cursor: entering ? 'default' : 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: entering && entering !== cari.id ? 0.5 : 1 }}>
                                 <span>
                                     <span style={{ display: 'block', fontWeight: 600, fontSize: 14 }}>{cari.name || '(isimsiz)'}</span>
-                                    <span style={{ display: 'block', fontSize: 12, color: '#888' }}>Cari Kodu: {cari.cariKodu || '-'}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 2, fontSize: 12, color: '#888' }}>
+                                        Cari Kodu: {cari.cariKodu || '-'}
+                                        {cari.premium ? <PremiumBadge /> : null}
+                                    </span>
                                 </span>
                                 <span style={{ color: 'var(--brand-primary, #1e56b3)', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
                                     {entering === cari.id ? 'Giriliyor...' : 'Cari ile Giriş Yap'}

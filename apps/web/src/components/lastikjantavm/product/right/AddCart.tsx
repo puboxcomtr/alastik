@@ -11,9 +11,10 @@ import { Product } from '@/src/types/products';
 import { useBrands } from '@/src/context/BrandsContext';
 import { useCart } from '@/src/context/CartContext';
 import { useFavourites } from '@/src/context/FavouritesContext';
+import { useSettings } from '@/src/context/SettingsContext';
 import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 
-import { getProductPrice, getDisplayPrice, getDeliveryDateRange } from '@/src/hooks/Products/productHelpers';
+import { getProductPrice, getDisplayPrice, getDeliveryDateRange, isLastik } from '@/src/hooks/Products/productHelpers';
 import { checkPurchaseLimit, productToLimitCheckItem, clampQuantityToStock } from '@/src/hooks/Products/purchaseLimitHelpers';
 import { toast } from 'react-toastify';
 
@@ -23,8 +24,11 @@ interface CartProps {
     product: Product;
 }
 
-// Gel Al Nakit: 2.El ürünlerde mağazadan teslim + nakit ödemede satış fiyatına uygulanan indirim oranı
-const PICKUP_CASH_DISCOUNT_RATE = 0.10;
+// Panelden gelen yüzde değerini (ör. "5") orana çevirir; geçersiz/boş → 0
+const toRate = (percent: unknown): number => {
+    const n = Number(String(percent ?? '').replace(',', '.'));
+    return Number.isFinite(n) && n > 0 && n < 100 ? n / 100 : 0;
+};
 
 export default function Cart({ product }: CartProps) {
     const deliveryInfo = getDeliveryDateRange(product);
@@ -36,22 +40,28 @@ export default function Cart({ product }: CartProps) {
     const { addToCart } = useCart();
     const { toggleFavourite, isFavourite } = useFavourites();
     const { definition } = useDefinition();
+    const { theme } = useSettings();
     const getWhatsAppUrl = () => {
         const phone = definition?.companyInfo?.phone || '0539 825 71 01';
         const formatted = phone.replace(/\s+/g, '').replace(/^0/, '90');
         return `https://wa.me/${formatted}`;
     };
     const hasStock = product.diaData?.gercek_stok > 0;
-    // Gel Al Nakit Fiyatı yalnız İkinci El kategorisindeki ürünlerde gösterilir
     const isSecondHand = (product.diaData?.m_kategoriler || []).some(
         (k: any) => String(k?.kategori_aciklama_1 || '').startsWith('İkinci El')
     );
+    // Havale ve Peşin Ödeme fiyatı kutusu: oranlar panelden (Tema > Genel) gelir.
+    // İkinci El ürünlerde kendi oranı, sıfır lastiklerde sıfır lastik oranı; diğer ürünlerde gösterilmez.
+    const pickupCashRate = isSecondHand
+        ? toRate(theme?.pickupCashDiscountSecondHand)
+        : isLastik(product) ? toRate(theme?.pickupCashDiscountNewTire) : 0;
     // Hizmetlerimiz (montaj, rot, sibop vb.) ürünlerinde taksit promosyonu ve
     // tahmini teslim tarihi gösterilmez (hizmet kargolanmaz, tek çekim uygulanır).
     const isHizmet = (product.diaData?.m_kategoriler || []).some(
         (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
     );
-    const pickupCashValue = Math.round(gosterim.value * (1 - PICKUP_CASH_DISCOUNT_RATE) * 100) / 100;
+    // Seçilen adetin toplamı üzerinden (adet değiştikçe güncellenir)
+    const pickupCashValue = Math.round(gosterim.value * quantity * (1 - pickupCashRate) * 100) / 100;
     const handleAddToCart = async () => {
         if (adding) return;
         setAdding(true);
@@ -112,8 +122,8 @@ export default function Cart({ product }: CartProps) {
                             <Image
                                 src={brandLogo}
                                 alt={brandName || 'Marka'}
-                                width={190}
-                                height={90}
+                                width={130}
+                                height={62}
                                 style={{ objectFit: 'contain' }}
                             />
                         ) : (
@@ -172,61 +182,31 @@ export default function Cart({ product }: CartProps) {
                                             </span>
                                         </div>
                                     </div>
-                                    {isSecondHand && (
-                                        <div
-                                            className="mt-2 rounded"
-                                            style={{ background: '#1a1a1a', whiteSpace: 'nowrap', padding: '10px 14px' }}
-                                        >
-                                            {/* Satırlar eşleşir: üstte başlık ↔ rozet, altta Montaj Dahil ↔ fiyat (aynı y hizası) */}
-                                            <div className="d-flex justify-content-between align-items-center" style={{ gap: 8 }}>
-                                                <span className="fw-bold" style={{ fontSize: 13, color: '#fff' }}>
-                                                    Gel Al Nakit Fiyatı
-                                                </span>
-                                                <span
-                                                    className="rounded fw-bold"
-                                                    style={{ background: '#e4cc15', color: '#1a1a1a', fontSize: 11, padding: '1px 6px', lineHeight: '16px' }}
-                                                >
-                                                    %{Math.round(PICKUP_CASH_DISCOUNT_RATE * 100)} İndirim
-                                                </span>
-                                            </div>
-                                            <div className="d-flex justify-content-between align-items-center" style={{ gap: 8, marginTop: 4 }}>
-                                                <span style={{ fontSize: 11, color: '#c9c9c9' }}>
-                                                    Montaj Dahil
-                                                </span>
-                                                <span className="fw-bold" style={{ fontSize: 13, color: '#fff' }}>
+                                    {pickupCashRate > 0 && (
+                                        <>
+                                            <hr className="my-3" />
+                                            <div className="rounded-3 border border-success-subtle bg-success-subtle p-3 mb-3">
+                                                <div className="fw-bold fs-sm text-dark text-nowrap">Havale ve Peşin Ödemelerde</div>
+                                                <div className="fw-bold fs-lg text-success text-nowrap mt-2 lh-sm">
                                                     {pickupCashValue.toLocaleString('tr-TR', {
                                                         minimumFractionDigits: 2,
                                                         maximumFractionDigits: 2
                                                     })} TL{gosterim.suffix}
-                                                </span>
+                                                </div>
+                                                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-1">
+                                                    <span className="fs-xs text-body-secondary">
+                                                        %{(pickupCashRate * 100).toLocaleString('tr-TR')} İndirim Fırsatı
+                                                    </span>
+                                                    <span className="badge rounded-pill bg-success">Montaj Dahil</span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </>
                                     )}
-                                    <div>
-                                        <p className='productshipping_info'>
-                                            Belirtilen fiyat, kargo bedeli hariçtir. Toplam tutarı <span className="text-underline">sepet aşamasında görüntüleyebilirsiniz.</span>
-                                        </p>
-                                    </div>
                                     <hr className="m-0 p-2" />
                                     </div>
-                                    {/* Kargo bilgisi ürün başlığının altında "Ücretsiz Kargo" olarak gösterilir (Middle) */}
                                     {/* Kampanyalar — hizmet ürünlerinde ödeme promosyonları gösterilmez */}
                                     {!isHizmet && (
                                     <>
-                                    <div>
-                                        <div className="d-flex align-items-center gap-1">
-                                            <i className="ri-cash-fill text-black"></i>
-                                            <p className='m-0 fw-bold text-black'>
-                                                Peşin Fiyatına %5 İndirim
-                                            </p>
-                                        </div>
-                                        <div className="d-flex align-items-center gap-1 mt-1">
-                                            <p>
-                                                Havale/EFT veya şubemizde nakit ödemede %5 indirim uygulanır.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <hr className="m-0 p-2" />
                                     <div>
                                         <div className="d-flex align-items-center gap-1">
                                             <i className="ri-bank-card-fill text-black"></i>

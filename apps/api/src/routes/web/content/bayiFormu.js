@@ -1,5 +1,6 @@
-// Herkese açık: Montaj Noktası (Bayi) Bilgi ve Fiyat Formu — /api/bayi-formu (yalnızca lastikjantavm)
-// Tek ortak link; giriş yok. Tüm doğrulama config/bayiFormu.js tanımına göre sunucuda yapılır.
+// Montaj Noktası (Bayi) Bilgi ve Fiyat Formu — /api/bayi-formu (config/bayiFormu.js SITELER'deki sitelerde)
+// lastikjantavm: tek ortak link, giriş yok. b2b: yalnız giriş yapmış bayi; kayıt bayiye bağlanır.
+// Tüm doğrulama config/bayiFormu.js tanımına göre sunucuda yapılır.
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
@@ -8,9 +9,14 @@ const AddressCity = require('../../../models/web/address/AddressCity');
 const AddressDistrict = require('../../../models/web/address/AddressDistrict');
 const form = require('../../../config/bayiFormu');
 
-// Form yalnızca tanımlı sitede vardır; diğer sitelerde bu uçlar yok gibi davranır
+const authMiddleware = require('../../../middleware/authMiddleware');
+
+// Form yalnızca tanımlı sitelerde vardır; diğer sitelerde bu uçlar yok gibi davranır.
+// Giriş gerektiren sitede bayi oturumu doğrulanır (req.user = bayi)
 router.use((req, res, next) => {
-    if (req.site !== form.SITE) return res.status(404).json({ success: false, message: 'Bulunamadı' });
+    const ayar = form.SITELER[req.site];
+    if (!ayar) return res.status(404).json({ success: false, message: 'Bulunamadı' });
+    if (ayar.girisGerekli) return authMiddleware(req, res, next);
     next();
 });
 
@@ -93,14 +99,19 @@ router.post('/', gonderimLimiti, async (req, res) => {
         const telefonAnahtar = temiz.telefon1.replace(/\D/g, '');
         const simdi = new Date();
         const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || '';
-        const mevcut = await WebDealerForm.findOne({ site: req.site, telefonAnahtar });
+        // Giriş gerektiren sitede kayıt bayiye bağlıdır: bayinin önceki formu (telefon değişse de) güncellenir
+        const bayi = form.SITELER[req.site]?.girisGerekli && req.user
+            ? { memberId: req.user._id, cariKodu: req.user.diaCustomerCode || '' }
+            : {};
+        const mevcut = (bayi.memberId && await WebDealerForm.findOne({ site: req.site, memberId: bayi.memberId }))
+            || await WebDealerForm.findOne({ site: req.site, telefonAnahtar });
         if (mevcut) {
-            Object.assign(mevcut, temiz, { sonGuncelleme: simdi, ip, gonderimSayisi: (mevcut.gonderimSayisi || 1) + 1 });
+            Object.assign(mevcut, temiz, bayi, { telefonAnahtar, sonGuncelleme: simdi, ip, gonderimSayisi: (mevcut.gonderimSayisi || 1) + 1 });
             mevcut.markModified('saatler'); mevcut.markModified('fiyatlar'); mevcut.markModified('tesis'); mevcut.markModified('gorseller');
             await mevcut.save();
             return res.json({ success: true, guncellendi: true });
         }
-        await WebDealerForm.create({ ...temiz, site: req.site, telefonAnahtar, ilkGonderim: simdi, sonGuncelleme: simdi, gonderimSayisi: 1, ip });
+        await WebDealerForm.create({ ...temiz, ...bayi, site: req.site, telefonAnahtar, ilkGonderim: simdi, sonGuncelleme: simdi, gonderimSayisi: 1, ip });
         res.json({ success: true, guncellendi: false });
     } catch (error) {
         console.error('Bayi formu kaydedilemedi:', error);

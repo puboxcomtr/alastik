@@ -1,4 +1,6 @@
 export interface CartTotals {
+    /** Ürün fiyatından hariç tutulan kargo (KDV dahil); fiyata dahilse 0 / tanımsız */
+    shipping?: number;
     /** Tüm kalemler, KDV hariç (montaj dahil) */
     subtotal: number;
     /** Montaj/hizmet hariç ürünler, KDV hariç */
