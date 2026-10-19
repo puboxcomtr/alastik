@@ -1,0 +1,23 @@
+const A = 'http://localhost:3082/api';
+const H = { 'Content-Type': 'application/json', 'X-Site': 'lastikjantavm' };
+const j = async (url, opt) => (await fetch(A + url, { headers: H, ...opt })).json();
+(async () => {
+    const list = await j('/montage-points');
+    const point = list.data.find(p => p.services.some(s => s.sku === '600.201' && s.price === 0));
+    const svc = sku => point.services.find(s => s.sku === sku);
+    console.log('nokta', point._id, '| 600.201 price', svc('600.201').price, '| 600.94 price', svc('600.94').price);
+    const sessionId = 'montaj-test-' + Date.now();
+    const add = (productKey) => j('/cart/add', { method: 'POST', body: JSON.stringify({ sessionId, productKey, quantity: 1, montagePointId: point._id }) });
+    console.log('add 600.201 →', JSON.stringify(await add(svc('600.201').productKey)).slice(0, 120));
+    console.log('add 600.94  →', JSON.stringify(await add(svc('600.94').productKey)).slice(0, 120));
+    console.log('add 600.94 noktasız →', JSON.stringify(await j('/cart/add', { method: 'POST', body: JSON.stringify({ sessionId: sessionId + '-b', productKey: svc('600.94').productKey, quantity: 1 }) })).slice(0, 120));
+    const cart = await j('/cart/' + sessionId);
+    cart.data.items.forEach(i => console.log('  sepet:', i.productName.slice(0, 40), '|', i.unitPrice, '|', i.montagePointLabel));
+    console.log('  toplam', cart.data.totals);
+    const cartB = await j('/cart/' + sessionId + '-b');
+    cartB.data.items.forEach(i => console.log('  sepet-b (noktasız):', i.productName.slice(0, 40), '|', i.unitPrice));
+    require('dotenv').config({ path: '/var/www/alastik/apps/api/.env.production' });
+    const m = require('mongoose'); await m.connect(process.env.MONGODB_URI);
+    const r = await m.connection.db.collection('webcarts').deleteMany({ sessionId: /^montaj-test-/ });
+    console.log('test sepetleri silindi', r.deletedCount); process.exit(0);
+})().catch(e => { console.error(e); process.exit(1); });
