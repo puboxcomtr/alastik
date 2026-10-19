@@ -1,13 +1,5 @@
-/**
- * SEO modülü dönem çözümleyici.
- *
- * Search Console verisi gün bazlıdır ve 2-3 gün geriden gelir; bu yüzden dönemler
- * "bugün"e değil, elimizdeki EN SON VERİ GÜNÜNE göre kurulur. Tarihler YYYY-MM-DD
- * dizeleri olarak (UTC gün) taşınır — Search Console API de aynı biçimi kullanır.
- */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Search Console'un veriyi kesinleştirme gecikmesi (gün)
 const GSC_LAG_DAYS = 2;
 
 const PERIOD_LABELS = {
@@ -28,11 +20,6 @@ const parseDate = (str) => new Date(`${str}T00:00:00Z`);
 const addDays = (str, n) => toDateString(new Date(parseDate(str).getTime() + n * DAY_MS));
 const isValidDate = (str) => DATE_RE.test(str || '') && !Number.isNaN(parseDate(str).getTime());
 
-/**
- * @param {object} query  req.query (period, from, to)
- * @param {string|null} latestDate  Veritabanındaki en son veri günü (YYYY-MM-DD) ya da null
- * @returns {object|null} { key, label, start, end, prevStart, prevEnd, days, granularity, latestDate }
- */
 function resolveSeoPeriod(query = {}, latestDate = null) {
     const key = String(query.period || '30d');
     const today = toDateString(new Date());
@@ -66,7 +53,6 @@ function resolveSeoPeriod(query = {}, latestDate = null) {
         prevStart,
         prevEnd,
         days,
-        // 3 aydan uzun dönemler ay bazında çizilir
         granularity: days > 92 ? 'month' : 'day',
         latestDate: last
     };

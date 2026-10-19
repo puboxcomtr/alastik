@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 import type { SyntheticEvent } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -28,19 +26,15 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 
-// Component Imports
 import Link from '@components/Link'
 import CustomTabList from '@/@core/components/mui/TabList'
 
-// Styled Component Imports
 import AppReactDatepicker from '@/libs/styles/AppReactDatepicker'
 
 const ProductInventory = () => {
-  // States
   const [activeTab, setActiveTab] = useState('restock')
   const [date, setDate] = useState<Date | null>(null)
 
-  // Hooks
   const theme = useTheme()
   const isBelowMdScreen = useMediaQuery(theme.breakpoints.down('md'))
 

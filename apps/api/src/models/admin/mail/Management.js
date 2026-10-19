@@ -2,7 +2,6 @@ const mongoose = require('mongoose')
 const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const managementSchema = new mongoose.Schema({
-    // Her site için ayrı mail şablonları
     site: {
         type: String,
         enum: Object.keys(SITES),

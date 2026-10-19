@@ -1,25 +1,19 @@
 'use client';
 
-/* * React Core * */
 import { useState, useEffect } from 'react';
 
-/* * Next.js * */
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-/* * Third Party Libraries */
 import { toast } from 'react-toastify';
 
-/* * Internal Imports  */
 import { api } from '@lib/api';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import { useCart } from '@/src/context/CartContext';
 
-/* Routes */
 import { ROUTES } from '@/src/config/routes';
 
-/* Helpers */
 import { getSetting } from '@/src/hooks/Theme/useGeneralSettings';
 
 export default function LoginView() {
@@ -34,7 +28,6 @@ export default function LoginView() {
     const [showPassword, setShowPassword] = useState(false);
     const [guestCheckoutEnabled, setGuestCheckoutEnabled] = useState(false);
 
-    /* Şifremi Unuttum Modal */
     const [forgotModalOpen, setForgotModalOpen] = useState(false);
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
@@ -92,7 +85,6 @@ export default function LoginView() {
         }
     };
 
-    /* Şifremi Unuttum Submit */
     const handleForgotSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -127,7 +119,6 @@ export default function LoginView() {
                 <div className="col-lg-10">
                     <div className="card shadow">
                         <div className="row g-0">
-                            {/* Login Form */}
                             <div className="col-md-6 p-5">
                                 <h5 className="mb-4 h5">{t('login_title')}</h5>
                                 <form onSubmit={handleSubmit}>
@@ -204,7 +195,6 @@ export default function LoginView() {
                                     </p>
                                 </div>
                             </div>
-                            {/* Register Form */}
                             <div className="col-md-6 bg-light p-5 d-flex flex-column justify-content-center">
                                 <h5 className="mb-4 h5">{t('register_title')}</h5>
                                 <p className="text-muted mb-4">
@@ -257,7 +247,6 @@ export default function LoginView() {
                     </div>
                 </div>
             </div>
-            {/* Şifremi Unuttum Modal */}
             {forgotModalOpen && (
                 <>
                     <div

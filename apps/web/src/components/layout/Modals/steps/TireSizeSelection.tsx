@@ -118,7 +118,6 @@ export default function TireSizeSelection({
         return map[fuel] || fuel;
     };
 
-    // Filtrelenmiş sayılar
     const counts = useMemo(() => ({
         all: groupedTires.front.length + groupedTires.rear.length + groupedTires.both.length,
         front: groupedTires.front.length,
@@ -126,7 +125,6 @@ export default function TireSizeSelection({
         both: groupedTires.both.length
     }), [groupedTires]);
 
-    // Staggered var mı?
     const hasStaggered = groupedTires.front.length > 0 || groupedTires.rear.length > 0;
 
     const renderTireGroup = (title: string, tires: TireOption[], position: 'front' | 'rear' | 'both', badgeColor: string) => {
@@ -137,7 +135,6 @@ export default function TireSizeSelection({
                 <h4 className="mb-1" style={{ fontSize: '16px', fontWeight: 600 }}>{title}</h4>
                 <Divider sx={{ mb: 2 }} />
 
-                {/* Masaüstü: Tablo */}
                 <div className="table-responsive d-none d-md-block">
                     <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
                         <thead>
@@ -192,7 +189,6 @@ export default function TireSizeSelection({
                     </table>
                 </div>
 
-                {/* Mobil: Kart Listesi */}
                 <div className="d-block d-md-none">
                     {tires.map(tire => {
                         const isSelected = selectedId === tire.id;
@@ -268,14 +264,12 @@ export default function TireSizeSelection({
     return (
         <div className="tire-size-selection">
             <div className="row">
-                {/* Sol Panel - Araç Bilgisi + Filtreler */}
                 <div className="d-none d-md-block col-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Araç Bilgisi
                     </Typography>
                     <Divider />
 
-                    {/* Araç Görseli */}
                     <div className="text-center py-3">
                         {vehicleImage ? (
                             <img
@@ -289,7 +283,6 @@ export default function TireSizeSelection({
                         )}
                     </div>
 
-                    {/* Araç Detayları */}
                     <div className="small">
                         <div className="d-flex justify-content-between py-1">
                             <span className="text-muted">Araç:</span>
@@ -323,7 +316,6 @@ export default function TireSizeSelection({
                         )}
                     </div>
 
-                    {/* Pozisyon Filtresi */}
                     <Box sx={{ mt: 2 }} />
                     <Divider />
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
@@ -396,18 +388,14 @@ export default function TireSizeSelection({
                     </div>
                 </div>
 
-                {/* Sağ Panel - Lastik Grupları */}
                 <div className="col-md-9">
                     <div className="tire-groups">
-                        {/* Ön/Arka Aynı Ebatlar */}
                         {(positionFilter === 'all' || positionFilter === 'both') &&
                             renderTireGroup('Ön ve Arka Lastik Ebatları', groupedTires.both, 'both', 'bg-success')}
 
-                        {/* Sadece Ön Ebatlar */}
                         {(positionFilter === 'all' || positionFilter === 'front') &&
                             renderTireGroup('Ön Lastik Ebatları', groupedTires.front, 'front', 'bg-primary')}
 
-                        {/* Sadece Arka Ebatlar */}
                         {(positionFilter === 'all' || positionFilter === 'rear') &&
                             renderTireGroup('Arka Lastik Ebatları', groupedTires.rear, 'rear', 'bg-warning text-dark')}
                     </div>

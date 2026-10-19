@@ -25,7 +25,6 @@ export default function ViewModeProductList({ products, servicePoints = [] }: Pr
             <Row>
                 {products.map((product) => (
                     <Col key={product._key} xs={12} className="px-2 mb-3">
-                        {/* Tekli görünüm buraya gelecek */}
                         <OneColumn product={product} servicePoints={servicePoints} />
                     </Col>
                 ))}

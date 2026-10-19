@@ -1,14 +1,11 @@
 'use client'
 
-// Next Imports
 import dynamic from 'next/dynamic'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
 const TotalSales = () => {

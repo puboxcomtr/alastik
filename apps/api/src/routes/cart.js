@@ -3,10 +3,6 @@ const User = require('../models/User');
 const { authenticateUser } = require('../middleware/auth');
 const router = express.Router();
 
-/**
- * Sepeti getir
- * GET /api/cart
- */
 router.get('/', authenticateUser, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('activeCart');
@@ -17,8 +13,6 @@ router.get('/', authenticateUser, async (req, res) => {
         message: 'Kullanıcı bulunamadı'
       });
     }
-
-    // Sepet süresi dolmuş olsa bile kullanıcı elle temizlemedikçe silme
 
     res.json({
       success: true,
@@ -33,10 +27,6 @@ router.get('/', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sepete ürün ekle
- * POST /api/cart/add
- */
 router.post('/add', authenticateUser, async (req, res) => {
   try {
     const { 
@@ -67,17 +57,14 @@ router.post('/add', authenticateUser, async (req, res) => {
       });
     }
 
-    // Sepette aynı ürün var mı kontrol et
     const existingItemIndex = user.activeCart.items.findIndex(
       item => item.productId === productId
     );
 
     if (existingItemIndex > -1) {
-      // Ürün zaten sepette, miktarını artır
       user.activeCart.items[existingItemIndex].quantity += quantity;
       user.activeCart.items[existingItemIndex].updatedAt = new Date();
     } else {
-      // Yeni ürün ekle
       user.activeCart.items.push({
         productId,
         name,
@@ -93,11 +80,10 @@ router.post('/add', authenticateUser, async (req, res) => {
       });
     }
 
-    // Sepet toplamlarını güncelle
     user.activeCart.totalItems = user.activeCart.items.reduce((total, item) => total + item.quantity, 0);
     user.activeCart.totalPrice = user.activeCart.items.reduce((total, item) => total + (item.price * item.quantity), 0);
     user.activeCart.lastUpdated = new Date();
-    user.activeCart.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 gün uzat
+    user.activeCart.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     await user.save();
 
@@ -115,10 +101,6 @@ router.post('/add', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sepetten ürün çıkar
- * DELETE /api/cart/remove/:productId
- */
 router.delete('/remove/:productId', authenticateUser, async (req, res) => {
   try {
     const { productId } = req.params;
@@ -131,12 +113,10 @@ router.delete('/remove/:productId', authenticateUser, async (req, res) => {
       });
     }
 
-    // Ürünü sepetten çıkar
     user.activeCart.items = user.activeCart.items.filter(
       item => item.productId !== productId
     );
 
-    // Sepet toplamlarını güncelle
     user.activeCart.totalItems = user.activeCart.items.reduce((total, item) => total + item.quantity, 0);
     user.activeCart.totalPrice = user.activeCart.items.reduce((total, item) => total + (item.price * item.quantity), 0);
     user.activeCart.lastUpdated = new Date();
@@ -157,10 +137,6 @@ router.delete('/remove/:productId', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sepetteki ürün miktarını güncelle
- * PUT /api/cart/update/:productId
- */
 router.put('/update/:productId', authenticateUser, async (req, res) => {
   try {
     const { productId } = req.params;
@@ -182,7 +158,6 @@ router.put('/update/:productId', authenticateUser, async (req, res) => {
       });
     }
 
-    // Ürünü bul ve miktarını güncelle
     const itemIndex = user.activeCart.items.findIndex(
       item => item.productId === productId
     );
@@ -197,7 +172,6 @@ router.put('/update/:productId', authenticateUser, async (req, res) => {
     user.activeCart.items[itemIndex].quantity = quantity;
     user.activeCart.items[itemIndex].updatedAt = new Date();
 
-    // Sepet toplamlarını güncelle
     user.activeCart.totalItems = user.activeCart.items.reduce((total, item) => total + item.quantity, 0);
     user.activeCart.totalPrice = user.activeCart.items.reduce((total, item) => total + (item.price * item.quantity), 0);
     user.activeCart.lastUpdated = new Date();
@@ -218,10 +192,6 @@ router.put('/update/:productId', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sepeti temizle
- * DELETE /api/cart/clear
- */
 router.delete('/clear', authenticateUser, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -233,7 +203,6 @@ router.delete('/clear', authenticateUser, async (req, res) => {
       });
     }
 
-    // Sepeti temizle
     user.activeCart = {
       items: [],
       totalItems: 0,
@@ -259,10 +228,6 @@ router.delete('/clear', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sepet özetini getir
- * GET /api/cart/summary
- */
 router.get('/summary', authenticateUser, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('activeCart');

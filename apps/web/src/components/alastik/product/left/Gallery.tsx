@@ -1,24 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-/* Library */
 import "/public/alastik/assets/css/modules/ProductGallery.css";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import Lightbox from "yet-another-react-lightbox";
 
-/* Resize Image */
 import { resizeMultipleImages, ResizeError } from "@lib/resize";
 
-/* MUI */
 import { Typography } from '@mui/material';
 
-/* Swiper */
 import "swiper/css";
 import "swiper/css/navigation";
 import "yet-another-react-lightbox/styles.css";
 
-/* Helpers */
 import { getProductImages } from '@src/hooks/Products/productHelpers';
 import type { Product } from '@src/types/products';
 

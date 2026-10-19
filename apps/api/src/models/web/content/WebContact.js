@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const webContactSchema = new mongoose.Schema({
-    // Mesajın geldiği site (tenant) — req.site üzerinden yazılır
     site: { type: String, default: 'alastik', index: true },
     name: { type: String, required: true },
     surname: { type: String, required: true },

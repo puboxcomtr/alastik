@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const winston = require('winston');
 
-// Configure logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -22,7 +21,6 @@ const logger = winston.createLogger({
   ]
 });
 
-// Payment webhook endpoint
 router.post('/payment', async (req, res) => {
   try {
     logger.info('Payment webhook received:', {
@@ -31,23 +29,17 @@ router.post('/payment', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     
-    // Ödeme sonucu işlemleri burada
     const { orderReference, status, amount, last4, paymentDate, referenceCode, transactionStatusId, paymentGuid } = req.body;
     
-    // ✅ OrderReference'ı güvenli şekilde al
     let finalOrderRef = orderReference;
     if (!finalOrderRef || finalOrderRef === 'UNKNOWN') {
-      // PaymentGuid'den veya diğer alanlardan orderRef çıkarmaya çalış
       finalOrderRef = paymentGuid || referenceCode || 'WEBHOOK_UNKNOWN';
     }
 
-    // ✅ Session'dan payment verilerini al (fallback olarak)
     let sessionOrderRef = 'WEBHOOK_UNKNOWN';
     let sessionReferenceCode = null;
     let sessionTransactionId = null;
 
-    // Eğer webhook'ta orderReference yoksa session'dan almaya çalış
-    // Not: Webhook'larda session olmayabilir, bu durumda sadece webhook verilerini kullan
     if (req.session && req.session.metadata && req.session.metadata.paymentGatewayData) {
       const paymentData = req.session.metadata.paymentGatewayData;
       sessionOrderRef = paymentData.clientReferenceCode || paymentData.orderId;
@@ -58,19 +50,16 @@ router.post('/payment', async (req, res) => {
       logger.info('No session data found for webhook - using webhook data only');
     }
 
-    // ✅ Final orderReference belirleme
     if (finalOrderRef === 'WEBHOOK_UNKNOWN' && sessionOrderRef !== 'WEBHOOK_UNKNOWN') {
       finalOrderRef = sessionOrderRef;
     }
     
-    // ✅ Webhook'tan gelen tüm verileri logla
     logger.info('Full webhook data received', {
       allBodyKeys: Object.keys(req.body),
       allBodyData: req.body,
       timestamp: new Date().toISOString()
     });
     
-    // Sipariş durumunu güncelle
     if (finalOrderRef && status) {
       logger.info('Processing payment webhook:', {
         orderReference: finalOrderRef,
@@ -83,30 +72,8 @@ router.post('/payment', async (req, res) => {
         paymentGuid
       });
       
-      // TODO: Burada sipariş veritabanını güncelleyin
-      // const Order = require('../models/Order');
-      // await Order.findOneAndUpdate(
-      //   { orderReference },
-      //   { 
-      //     paymentStatus: status,
-      //     paymentAmount: amount,
-      //     paymentDate: paymentDate,
-      //     paymentReference: referenceCode,
-      //     last4: last4
-      //   }
-      // );
       
-      // TODO: Email gönderimi
-      // if (status === 'SUCCESS') {
-      //   await sendPaymentSuccessEmail(orderReference);
-      // } else {
-      //   await sendPaymentFailureEmail(orderReference);
-      // }
       
-      // TODO: Stok güncelleme
-      // if (status === 'SUCCESS') {
-      //   await updateInventoryAfterPayment(orderReference);
-      // }
     }
     
     res.status(200).json({ 
@@ -133,7 +100,6 @@ router.post('/payment', async (req, res) => {
   }
 });
 
-// Health check endpoint for webhook
 router.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',

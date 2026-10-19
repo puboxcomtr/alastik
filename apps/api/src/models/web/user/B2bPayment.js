@@ -1,11 +1,3 @@
-/**
- * B2bPayment — bayi cari borç tahsilatı (kredi kartı ile tek çekim).
- *
- * Sipariş DEĞİLDİR; carinin açık borcuna karşılık kart tahsilatıdır. Para Paynet
- * ile alınır, kayıt burada tutulur. DIA tahsilat fişi muhasebe tarafından girilir
- * (diaPosted ile takip). Kart bilgisi bu koleksiyona HİÇ yazılmaz; yalnız maskeli
- * son 4 hane + banka adı saklanır.
- */
 const mongoose = require('mongoose');
 
 const b2bPaymentSchema = new mongoose.Schema({
@@ -15,15 +7,15 @@ const b2bPaymentSchema = new mongoose.Schema({
     cariKodu: { type: String },
 
     amountKurus: { type: Number, required: true },
-    reference: { type: String, required: true, unique: true }, // Paynet referenceNo
-    paymentGuid: { type: String }, // dönüş doğrulaması için tek kullanımlık nonce
+    reference: { type: String, required: true, unique: true },
+    paymentGuid: { type: String },
 
-    gateway: { type: String, default: 'paynet' }, // paynet (peşin) | netahsilat (taksit)
-    type: { type: String, default: 'tekcekim' }, // tekcekim (peşin) | taksit
+    gateway: { type: String, default: 'paynet' },
+    type: { type: String, default: 'tekcekim' },
     status: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending', index: true },
 
-    installment: { type: Number }, // taksit sayısı (netahsilat)
-    referenceCode: { type: String, index: true }, // sağlayıcı referans (netahsilat callback eşleşmesi)
+    installment: { type: Number },
+    referenceCode: { type: String, index: true },
     transactionId: { type: String },
     authCode: { type: String },
     cardInfo: {
@@ -35,9 +27,7 @@ const b2bPaymentSchema = new mongoose.Schema({
     paidAt: { type: Date },
     returnOrigin: { type: String },
 
-    // DIA tahsilat fişi işlendi mi (muhasebe) — panel takibi
     diaPosted: { type: Boolean, default: false },
-    // Ödeme makbuzu maili gönderildi mi (tekrar gönderimi önler)
     mailSent: { type: Boolean, default: false }
 }, { timestamps: true });
 

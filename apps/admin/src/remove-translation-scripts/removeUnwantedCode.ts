@@ -13,7 +13,6 @@ const removeUnwantedCodeAndComments = async () => {
     files.forEach(file => {
       let content = fs.readFileSync(file, 'utf8')
 
-      // Remove single-line comments with optional whitespace characters and a blank line after
       content = content.replace(/\/\/.* Imports\n{2,}/g, '')
 
       fs.writeFileSync(file, content)

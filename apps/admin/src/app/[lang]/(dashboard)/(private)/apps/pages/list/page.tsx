@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import classnames from 'classnames'
 
-/* API */
 import { fetchPages, deletePage, type PageType } from '@/utils/api/pages'
 import { getSiteUrl } from '@/utils/activeSite'
 
-/* MUI */
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -22,17 +20,14 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import type { TextFieldProps } from '@mui/material/TextField'
 
-/* Dialog */
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
-/* Tanstack */
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
     createColumnHelper,
@@ -202,7 +197,6 @@ const PageListTable = () => {
             columnHelper.accessor('title', {
                 header: 'Sayfa Başlığı',
                 cell: ({ row }) => (
-                    // Başlık vitrindeki sayfaya açılır; üzerine gelince bağlantı simgesi belirir
                     <Tooltip title='Sayfayı Ziyaret Et'>
                         <Link
                             href={`${getSiteUrl()}/sayfa/${row.original.slug}`}

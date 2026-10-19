@@ -2,7 +2,6 @@ const router = require('express').Router();
 const WebRedirect = require('../../../models/web/other/WebRedirect');
 const { clearRedirectCache } = require('../../web/other/redirects');
 
-// GET / — liste (arama + sayfalama)
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -25,7 +24,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST / — yeni kayıt
 router.post('/', async (req, res) => {
     try {
         const source = WebRedirect.normalizeSource(req.body.source);
@@ -54,7 +52,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /:id — güncelle
 router.put('/:id', async (req, res) => {
     try {
         const update = {};
@@ -81,7 +78,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /:id
 router.delete('/:id', async (req, res) => {
     try {
         const doc = await WebRedirect.findOneAndDelete({ _id: req.params.id, site: req.site });
@@ -94,7 +90,6 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// POST /import — toplu içe aktarım: items [{source, target}] (upsert)
 router.post('/import', async (req, res) => {
     try {
         const items = Array.isArray(req.body.items) ? req.body.items : [];

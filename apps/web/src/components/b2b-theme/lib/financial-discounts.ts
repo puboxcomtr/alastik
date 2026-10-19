@@ -1,35 +1,25 @@
-// Finansal iskontolar — panelde (Finansal İskontolar) tanımlanan, carinin tipine (Premium / Normal) göre
-// ürün × ödeme yöntemi bazlı iskonto oranları. Eşleştirme SUNUCUDA yapılır; burası yalnız sorar ve gösterir.
-// Sipariş ucu aynı kuralı uygular: listede/sepette görünen fiyat = sipariş tutarı.
 import { API_ENDPOINTS } from "@src/config/api";
 
-/** stokKodu → { ödemeYöntemi: oran(%) } (yalnız kuralı eşleşen ürün/yöntemler) */
 export type FinancialDiscountMap = Record<string, Record<string, number>>;
 
-/** Ödeme yöntemi (sunucudaki sıra ve adla): cari / havale / kkTek / kkTaksit */
-// termDays: Cari Sipariş için carinin DIA ödeme planındaki vade günü
 export type FinancialPaymentMethod = { id: string; title: string; termDays?: number };
 
-/** Ürün başına kargo payı (TL, KDV dahil, 1 adet); excluded = fiyata dahil değil, sepette ayrı satır */
 export type ProductShipping = { perUnit: number; excluded: boolean };
 
-/** blocked: carinin vadesi geçen borcu var — oranlar ürün listesinde gösterilir ama sepette / siparişte uygulanmaz.
- *  shipping: stokKodu → kargo payı (sitede kargo ücreti kapalıysa boş). */
 export type FinancialDiscounts = {
   tier: string;
   discounts: FinancialDiscountMap;
   methods?: FinancialPaymentMethod[];
   blocked?: boolean;
   shipping?: Record<string, ProductShipping>;
+  freeDelivery?: boolean;
 };
 
 export const PREMIUM_TIER = "premium";
-// Ürün listesinde gösterilen fiyatın ödeme yöntemi (taban: Cari Sipariş)
 export const BASE_PAYMENT_METHOD = "cari";
 
 const EMPTY: FinancialDiscounts = { tier: "", discounts: {} };
 
-/** Verilen stok kodları için oturumdaki carinin finansal iskontolarını getirir. Hata/oturumsuzlukta boş döner. */
 export async function fetchFinancialDiscounts(codes: string[]): Promise<FinancialDiscounts> {
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
   const unique = [...new Set(codes.filter(Boolean))];
@@ -48,6 +38,7 @@ export async function fetchFinancialDiscounts(codes: string[]): Promise<Financia
           methods: json.data.methods || [],
           blocked: json.data.discountsBlocked === true,
           shipping: json.data.shipping || {},
+          freeDelivery: json.data.freeDelivery === true,
         }
       : EMPTY;
   } catch {
@@ -55,13 +46,15 @@ export async function fetchFinancialDiscounts(codes: string[]): Promise<Financia
   }
 }
 
-/** Sepet ve sepet paneli için: vadesi geçen borcu olan caride iskontolar uygulanmaz → oranlar boş döner. */
 export async function fetchCartFinancialDiscounts(codes: string[]): Promise<FinancialDiscounts> {
   const result = await fetchFinancialDiscounts(codes);
   return result.blocked ? { ...result, discounts: {} } : result;
 }
 
-/** Ürünün birim kargo payı (kuruş, KDV dahil) ve fiyata dahil olup olmadığı; kargo yoksa 0 */
+export function catalogShipping(financial: FinancialDiscounts): Record<string, ProductShipping> | undefined {
+  return financial.freeDelivery ? undefined : financial.shipping;
+}
+
 export function productShippingKurus(
   shipping: Record<string, ProductShipping> | null | undefined,
   stockCode: string,
@@ -70,7 +63,6 @@ export function productShippingKurus(
   return s && s.perUnit > 0 ? { kurus: Math.round(s.perUnit * 100), excluded: s.excluded === true } : { kurus: 0, excluded: false };
 }
 
-/** Ürün + ödeme yöntemi için panel iskontosu; kural yoksa null (çağıran DIA oranına düşer). */
 export function financialDiscountPct(map: FinancialDiscountMap | null | undefined, stockCode: string, methodId: string): number | null {
   const pct = map?.[stockCode]?.[methodId];
   return typeof pct === "number" ? pct : null;

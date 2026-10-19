@@ -4,10 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import classnames from 'classnames'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -24,7 +22,6 @@ import type { TextFieldProps } from '@mui/material/TextField'
 
 import { toast } from 'react-toastify'
 
-// Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
     createColumnHelper,
@@ -40,10 +37,8 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Component Imports
 import EditFeatureDrawer from '@/views/features/EditFeatureDrawer'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -113,7 +108,6 @@ const FeatureListTable = () => {
     const [globalFilter, setGlobalFilter] = useState('')
     const [loading, setLoading] = useState(true)
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)

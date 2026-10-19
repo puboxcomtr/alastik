@@ -1,34 +1,25 @@
 'use client'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
-// Type Imports
 import type { Mode } from '@/@core/types'
 
-// Component Imports
 import Illustrations from '@components/Illustrations'
 
-// Hook Imports
 import { useImageVariant } from '@/@core/hooks/useImageVariant'
 
 const NotAuthorized = ({ mode }: { mode: Mode }) => {
-  // Vars
   const darkImg = '/images/pages/misc-mask-dark.png'
   const lightImg = '/images/pages/misc-mask-light.png'
 
-  // Hooks
   const { lang: locale } = useParams()
   const miscBackground = useImageVariant(mode, lightImg, darkImg)
 

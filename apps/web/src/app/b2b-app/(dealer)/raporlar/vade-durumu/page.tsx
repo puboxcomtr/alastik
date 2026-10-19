@@ -1,8 +1,5 @@
 "use client";
 
-// Vade Durumu — açık (kalanı olan) satış faturalarının yaşlandırması.
-// Kaynak: /vade-durumu (DB-öncelikli, finans senkronu). Gün sayısı = vade − bugün
-// (negatif = vadesi geçmiş, satır pembe). Fatura no ile arama + Excel.
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { CsvDownload } from "@components/b2b-theme/csv-download";
@@ -30,7 +27,6 @@ function gun(iso: string): string {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
-// Vade − bugün (gün). Negatif = vadesi geçmiş, pozitif = kalan gün.
 function dayCount(dueDate: string, today: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return null;
   const due = Date.parse(`${dueDate}T00:00:00Z`);

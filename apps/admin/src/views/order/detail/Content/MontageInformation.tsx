@@ -18,7 +18,6 @@ interface MontageInformationProps {
 }
 
 const MontageInformation = ({ montagePoints }: MontageInformationProps) => {
-    // Siparişte montaj noktası yoksa gösterme
     if (!montagePoints || montagePoints.length === 0) {
         return null
     }

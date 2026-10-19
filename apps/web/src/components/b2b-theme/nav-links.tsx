@@ -7,24 +7,15 @@ import { useEffect, useRef, useState } from "react";
 export type NavItem = {
   href: string;
   label: string;
-  /** Ödeme Yap gibi öne çıkan öğeler sarı metinle gösterilir. */
   vurgu?: boolean;
-  /** Varsa öğe açılır menü olur; href yalnızca aktiflik kontrolünde kullanılır. */
   alt?: Array<{ href: string; label: string }>;
 };
 
 type Konum = { top: number; left: number };
 
-/** Panel ile buton ve ekran kenarı arasındaki boşluk (px). */
 const BOSLUK = 8;
-/** CSS'teki min-width (13.5rem); ilk ölçümde panel henüz DOM'da yokken kullanılır. */
 const VARSAYILAN_GENISLIK = 216;
 
-/**
- * Panel `position: fixed` olduğu için konumu görüntü alanına göre hesaplanır;
- * böylece üst menünün `overflow-x: auto` kırpma bağlamına takılmaz. Sağ kenarı
- * taşacaksa panel içeri çekilir.
- */
 function panelKonumu(dugme: HTMLElement, panelGenisligi: number): Konum {
   const kutu = dugme.getBoundingClientRect();
   const enSag = Math.max(BOSLUK, window.innerWidth - panelGenisligi - BOSLUK);
@@ -34,17 +25,10 @@ function panelKonumu(dugme: HTMLElement, panelGenisligi: number): Konum {
   };
 }
 
-/**
- * Üst menü: soldan başlar, aktif öğe sarı vurgu alır (--brand-primary).
- * "Raporlar" gibi öğeler alt menüyle açılır; site tasarımına ait açılır
- * kutu kullanılır (tarayıcının native menüsü değil).
- */
 export function NavLinks({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState<string | null>(null);
-  // Dar ekranda (CSS kırılımı) menü gizlenir; menü düğmesiyle yandan açılan mobil menü kullanılır
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Mobil menüde açık olan alt menü (ör. Raporlar)
   const [mobileGroup, setMobileGroup] = useState<string | null>(null);
   const [konum, setKonum] = useState<Konum | null>(null);
   const kokRef = useRef<HTMLElement>(null);
@@ -52,11 +36,10 @@ export function NavLinks({ items }: { items: NavItem[] }) {
   const panelRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
-    setOpen(null); // page değişince menü kapanır
+    setOpen(null);
     setMobileOpen(false);
   }, [pathname]);
 
-  // Mobil menü açıkken Esc kapatır, arka sayfa kaymaz
   useEffect(() => {
     if (!mobileOpen) return;
     const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
@@ -72,8 +55,6 @@ export function NavLinks({ items }: { items: NavItem[] }) {
   const isActive = (href: string) =>
     href === "/" || href === "/admin" ? pathname === href : pathname.startsWith(href);
 
-  // Panel açıkken gerçek genişlikle konumu tazeler; kaydırma/yeniden boyutlandırmada
-  // butonun altında kalmaya devam eder.
   useEffect(() => {
     if (!open) return;
     function update(): void {
@@ -121,8 +102,6 @@ export function NavLinks({ items }: { items: NavItem[] }) {
                     setOpen(null);
                     return;
                   }
-                  // İlk konum tıklama anında ölçülür: panel ilk karede doğru
-                  // yerde çizilir, efekt yalnızca gerçek genişlikle tazeler.
                   setKonum(panelKonumu(e.currentTarget, VARSAYILAN_GENISLIK));
                   setOpen(item.href);
                 }}
@@ -174,7 +153,6 @@ export function NavLinks({ items }: { items: NavItem[] }) {
       })}
     </nav>
 
-    {/* Dar ekran: menü düğmesi + yandan açılan mobil menü */}
     <button
       type="button"
       className="nav-burger"
@@ -247,7 +225,6 @@ export function NavLinks({ items }: { items: NavItem[] }) {
   );
 }
 
-/** Ödeme Yap öğesinin kart simgesi */
 function CardGlyph() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

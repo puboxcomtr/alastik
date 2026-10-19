@@ -1,17 +1,13 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 
-// Util Imports
 import { formatDecimal, toNumber } from './format'
 
 type KpiCardProps = {
@@ -23,7 +19,6 @@ type KpiCardProps = {
     subtitle?: string
 }
 
-// Dashboard'daki CardStatVertical kalıbı; menü yerine isteğe bağlı trend ve alt yazı
 const KpiCard = ({ title, value, icon, color, trend, subtitle }: KpiCardProps) => {
     const hasTrend = typeof trend === 'number' && Number.isFinite(trend)
     const trendValue = toNumber(trend)

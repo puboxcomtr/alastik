@@ -3,10 +3,8 @@
 import Link from 'next/link';
 import { MONTAGE_MARQUEE } from '@/src/config/montageMarquee';
 
-/** Siyah şeritte sürekli kayan "81 ilde montaj" yazısı; tüm şerit montaj noktalarına link verir */
 export default function MontageMarquee() {
     const { text, href, gapPx, repeat, durationSec, durationSecMobile } = MONTAGE_MARQUEE;
-    // İki eş kopya art arda kayar; ilk kopya bitince ikinci başa gelir → kesintisiz döngü
     const track = Array.from({ length: repeat }, (_, i) => (
         <span key={i} className="lja-marquee-item">
 {text}

@@ -11,13 +11,11 @@ import { getOtherSeo } from '@/src/services/seoService';
 
 import Breadcrumb from "@components/search/Header/Breadcrumb";
 
-/* Components - ALastik */
 import AlastikSidebar from '@components/alastik/category/Sidebar/Content';
 import AlastikCategoryTop from '@components/alastik/category/Top/Content';
 import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
 import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
 
-/* Components - LastikJantAVM */
 import LjaSidebar from '@components/lastikjantavm/category/Sidebar/Content';
 import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
 import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
@@ -55,7 +53,6 @@ export default async function SearchPage({ searchParams }: Props) {
     const Pagination = site === 'lastikjantavm' ? LjaPagination : AlastikPagination;
     const ViewModeProductList = site === 'lastikjantavm' ? LjaViewModeProductList : AlastikViewModeProductList;
 
-
     const params = await searchParams;
     const q = params.q || '';
 
@@ -67,7 +64,6 @@ export default async function SearchPage({ searchParams }: Props) {
     const currentPage = parseInt(params.page || '1');
     const perPage = showcaseSettings.productsPerPage || 24;
 
-    // Backend'e filtre parametrelerini de gönder
     const queryParams = new URLSearchParams();
     queryParams.set('q', q);
     queryParams.set('page', String(currentPage));

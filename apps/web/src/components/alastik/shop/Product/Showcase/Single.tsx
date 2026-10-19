@@ -120,7 +120,6 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'alastik'
                                     }}
                                 >
                                     <div className="showcase__group row w-100 position-relative z-2 py-5">
-                                        {/* Yazı */}
                                         <div className="col-sm-9 col-md-8 col-xl-7 d-flex flex-column">
                                             <div className="text-center">
                                                 <h1 style={{ color: '#FFF' }}>
@@ -144,7 +143,6 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'alastik'
                                                 </a>
                                             </div>
                                         </div>
-                                        {/* Ürün Kartı */}
                                         <div className="col-md-2 col-xl-3 d-flex justify-content-center justify-content-md-end">
                                             <div style={{ maxWidth: '320px' }}>
                                                 <ProductSlideCard product={product} />
@@ -155,7 +153,6 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'alastik'
                             </SwiperSlide>
                         ))}
                     </Swiper>
-                    {/* Prev/Next Butonları */}
                     <button
                         onClick={() => swiperRef.current?.slidePrev()}
                         className="btn btn-icon btn-light d-none d-md-flex rounded-circle position-absolute top-50 start-0 translate-middle-y ms-2 z-3"

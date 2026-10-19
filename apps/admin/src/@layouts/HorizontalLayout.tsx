@@ -1,22 +1,15 @@
-// React Imports
 import type { ReactNode } from 'react'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { ChildrenType } from '@core/types'
 
-// Context Imports
 import { HorizontalNavProvider } from '@menu/contexts/horizontalNavContext'
 
-// Component Imports
 import LayoutContent from './components/horizontal/LayoutContent'
 
-// Util Imports
 import { horizontalLayoutClasses } from './utils/layoutClasses'
 
-// Styled Component Imports
 import StyledContentWrapper from './styles/horizontal/StyledContentWrapper'
 
 type HorizontalLayoutProps = ChildrenType & {
@@ -25,7 +18,6 @@ type HorizontalLayoutProps = ChildrenType & {
 }
 
 const HorizontalLayout = (props: HorizontalLayoutProps) => {
-  // Props
   const { header, footer, children } = props
 
   return (

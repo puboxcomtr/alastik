@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const InventorySchema = new mongoose.Schema({
-  // Ürün referansı
   productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
@@ -9,7 +8,6 @@ const InventorySchema = new mongoose.Schema({
     unique: true
   },
   
-  // Stok miktarları
   quantity: {
     type: Number,
     required: [true, 'Stok miktarı gereklidir'],
@@ -29,7 +27,6 @@ const InventorySchema = new mongoose.Schema({
     min: [0, 'Mevcut miktar negatif olamaz']
   },
   
-  // Stok seviyeleri
   minStockLevel: {
     type: Number,
     default: 5,
@@ -54,14 +51,12 @@ const InventorySchema = new mongoose.Schema({
     min: [1, 'Yeniden sipariş miktarı 1\'den az olamaz']
   },
   
-  // Stok durumu
   status: {
     type: String,
     enum: ['in_stock', 'low_stock', 'out_of_stock', 'discontinued', 'backordered'],
     default: 'in_stock'
   },
   
-  // Lokasyon bilgileri
   locations: [{
     warehouse: {
       type: String,
@@ -87,7 +82,6 @@ const InventorySchema = new mongoose.Schema({
     }
   }],
   
-  // Tedarikçi bilgileri
   supplier: {
     name: {
       type: String,
@@ -111,7 +105,6 @@ const InventorySchema = new mongoose.Schema({
     }
   },
   
-  // Maliyet bilgileri
   cost: {
     unitCost: {
       type: Number,
@@ -134,7 +127,6 @@ const InventorySchema = new mongoose.Schema({
     }
   },
   
-  // Stok hareketleri
   lastMovement: {
     type: {
       type: String,
@@ -157,7 +149,6 @@ const InventorySchema = new mongoose.Schema({
     }
   },
   
-  // Otomatik yeniden sipariş
   autoReorder: {
     enabled: {
       type: Boolean,
@@ -171,7 +162,6 @@ const InventorySchema = new mongoose.Schema({
     }
   },
   
-  // Kalite kontrol
   qualityControl: {
     lastInspectionDate: Date,
     inspectionStatus: {
@@ -187,7 +177,6 @@ const InventorySchema = new mongoose.Schema({
     notes: String
   },
   
-  // Tarih bilgileri
   createdAt: {
     type: Date,
     default: Date.now
@@ -203,7 +192,6 @@ const InventorySchema = new mongoose.Schema({
     default: Date.now
   },
   
-  // Geçmiş stok seviyeleri (son 30 gün)
   stockHistory: [{
     date: {
       type: Date,
@@ -226,14 +214,12 @@ const InventorySchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes for performance
 InventorySchema.index({ status: 1 });
 InventorySchema.index({ quantity: 1 });
 InventorySchema.index({ lastStockUpdate: -1 });
 InventorySchema.index({ 'supplier.name': 1 });
 InventorySchema.index({ 'locations.warehouse': 1 });
 
-// Virtual fields
 InventorySchema.virtual('isInStock').get(function() {
   return this.availableQuantity > 0;
 });
@@ -251,7 +237,6 @@ InventorySchema.virtual('stockValue').get(function() {
 });
 
 InventorySchema.virtual('turnoverRate').get(function() {
-  // Basit bir hesaplama - daha karmaşık iş mantığı eklenebilir
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
@@ -263,12 +248,9 @@ InventorySchema.virtual('turnoverRate').get(function() {
   return this.quantity > 0 ? (totalOut / this.quantity) : 0;
 });
 
-// Middleware
 InventorySchema.pre('save', function(next) {
-  // Available quantity hesaplama
   this.availableQuantity = this.quantity - this.reservedQuantity;
   
-  // Stok durumu güncelleme
   if (this.availableQuantity === 0) {
     this.status = 'out_of_stock';
   } else if (this.availableQuantity <= this.minStockLevel) {
@@ -277,17 +259,14 @@ InventorySchema.pre('save', function(next) {
     this.status = 'in_stock';
   }
   
-  // Toplam maliyet hesaplama
   this.cost.totalCost = this.quantity * this.cost.unitCost;
   
-  // Timestamp güncelleme
   this.updatedAt = Date.now();
   this.lastStockUpdate = Date.now();
   
   next();
 });
 
-// Static methods
 InventorySchema.statics.findLowStock = function() {
   return this.find({ status: 'low_stock' });
 };
@@ -316,11 +295,9 @@ InventorySchema.statics.getTotalStockValue = function() {
   ]);
 };
 
-// Instance methods
 InventorySchema.methods.addStock = function(quantity, reason = 'stock_in', reference = '', userId = null) {
   this.quantity += quantity;
   
-  // Stok geçmişine ekle
   this.stockHistory.push({
     date: new Date(),
     quantity: quantity,
@@ -328,7 +305,6 @@ InventorySchema.methods.addStock = function(quantity, reason = 'stock_in', refer
     reference: reference
   });
   
-  // Son hareket güncelle
   this.lastMovement = {
     type: 'in',
     quantity: quantity,
@@ -338,7 +314,6 @@ InventorySchema.methods.addStock = function(quantity, reason = 'stock_in', refer
     userId: userId
   };
   
-  // Geçmiş 30 günle sınırla
   if (this.stockHistory.length > 30) {
     this.stockHistory = this.stockHistory.slice(-30);
   }
@@ -353,7 +328,6 @@ InventorySchema.methods.removeStock = function(quantity, reason = 'stock_out', r
   
   this.quantity -= quantity;
   
-  // Stok geçmişine ekle
   this.stockHistory.push({
     date: new Date(),
     quantity: -quantity,
@@ -361,7 +335,6 @@ InventorySchema.methods.removeStock = function(quantity, reason = 'stock_out', r
     reference: reference
   });
   
-  // Son hareket güncelle
   this.lastMovement = {
     type: 'out',
     quantity: quantity,
@@ -371,7 +344,6 @@ InventorySchema.methods.removeStock = function(quantity, reason = 'stock_out', r
     userId: userId
   };
   
-  // Geçmiş 30 günle sınırla
   if (this.stockHistory.length > 30) {
     this.stockHistory = this.stockHistory.slice(-30);
   }
@@ -397,7 +369,6 @@ InventorySchema.methods.adjustStock = function(newQuantity, reason = 'adjustment
   const difference = newQuantity - this.quantity;
   this.quantity = newQuantity;
   
-  // Stok geçmişine ekle
   this.stockHistory.push({
     date: new Date(),
     quantity: difference,
@@ -405,7 +376,6 @@ InventorySchema.methods.adjustStock = function(newQuantity, reason = 'adjustment
     reference: reference
   });
   
-  // Son hareket güncelle
   this.lastMovement = {
     type: 'adjustment',
     quantity: Math.abs(difference),

@@ -234,7 +234,6 @@ export default function RimSizeSelection({
         return map[fuel] || fuel;
     };
 
-    // Filtrelenmiş sayılar
     const counts = useMemo(() => ({
         all: groupedRims.front.length + groupedRims.rear.length + groupedRims.both.length,
         front: groupedRims.front.length,
@@ -314,14 +313,12 @@ export default function RimSizeSelection({
     return (
         <div className="rim-size-selection">
             <div className="row">
-                {/* Sol Panel - Araç Bilgisi + Filtreler */}
                 <div className="col-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Araç Bilgisi
                     </Typography>
                     <Divider />
 
-                    {/* Araç Görseli */}
                     <div className="text-center py-3">
                         {vehicleImage ? (
                             <img
@@ -335,7 +332,6 @@ export default function RimSizeSelection({
                         )}
                     </div>
 
-                    {/* Araç Detayları */}
                     <div className="small">
                         <div className="d-flex justify-content-between py-1">
                             <span className="text-muted">Araç:</span>
@@ -369,7 +365,6 @@ export default function RimSizeSelection({
                         )}
                     </div>
 
-                    {/* Pozisyon Filtresi */}
                     <Box sx={{ mt: 2 }} />
                     <Divider />
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
@@ -442,7 +437,6 @@ export default function RimSizeSelection({
                     </div>
                 </div>
 
-                {/* Sağ Panel - Jant Grupları */}
                 <div className="col-md-9">
                     <div className="rim-groups">
                         {(positionFilter === 'all' || positionFilter === 'both') &&

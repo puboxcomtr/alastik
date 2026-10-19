@@ -1,13 +1,3 @@
-/**
- * Kategori bazlı fiyat gösterim ayarı (KDV dahil / hariç).
- *
- * Panelde kategoriye "Fiyat gösterimi: KDV Hariç" seçilirse ürünün vitrin fiyatından KDV
- * İÇERİDEN çıkarılıp "+ KDV" olarak gösterilir — ÖDENEN TUTAR DEĞİŞMEZ, yalnız gösterim ayrışır.
- * Kaynak: WebCategory.siteContent.<site>.priceDisplay / vatRate
- *
- * Ürün listeleme, ürün detayı ve sepet aynı ayarı buradan okur (tek kaynak).
- */
-// Kategori fiyat gösterim ayarları (60 sn önbellekli): kategori adı -> { priceDisplay, vatRate }
 const fiyatAyarOnbellek = new Map();
 
 async function getFiyatAyarlari(site) {
@@ -44,14 +34,9 @@ async function getFiyatAyarlari(site) {
     return harita;
 }
 
-/**
- * Ürünün kategorilerinden birinde "KDV Hariç" ayarı varsa ürüne işler.
- */
 function fiyatAyariUygula(urun, harita) {
     if (!harita.size) return urun;
 
-    // En özel kategoriden en genele doğru taranır: alt kategori ayarı üst kategoriyi ezer.
-    // Ters sırada tarandığında üst kategori haritada olduğu anda alttakini gölgeliyordu.
     const adlar = (urun.diaData?.m_kategoriler || []).flatMap(k => [
         k.kategori_aciklama_3, k.kategori_aciklama_2, k.kategori_aciklama_1
     ]).filter(Boolean);

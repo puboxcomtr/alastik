@@ -24,10 +24,8 @@ import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 const ShowcaseManagement = ({ formData, setFormData }) => {
   const fileInputRef = useRef(null)
 
-  // Yalnızca panel görünümü için; kaydedilen bir ayar değildir
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  // Filigran dışında tutulacak kategorileri seçebilmek için liste
   const [categories, setCategories] = useState([])
 
   useEffect(() => {
@@ -44,7 +42,6 @@ const ShowcaseManagement = ({ formData, setFormData }) => {
     kategorileriYukle()
   }, [])
 
-  // Autocomplete seçili değerleri kategori nesnesi olarak ister; id listesini eşleyip veriyoruz
   const secilenKategoriler = formData.watermarkExcludedCategories
     .map((id) => categories.find((k) => String(k.id) === String(id)) || { id, name: String(id) })
 
@@ -240,7 +237,6 @@ const ShowcaseManagement = ({ formData, setFormData }) => {
                         gap: 3
                       }}
                     >
-                      {/* Yüklü filigran varsa küçük önizlemesi burada gösterilir */}
                       {formData.watermarkImagePreview && (
                         <img
                           src={formData.watermarkImagePreview}

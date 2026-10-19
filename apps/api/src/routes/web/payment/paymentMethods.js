@@ -2,12 +2,10 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-// GET - Aktif banka havale yöntemlerini getir
 router.get('/bank-transfer', async (req, res) => {
     try {
         const PaymentMethod = mongoose.connection.collection('paymentmethods');
 
-        // Yalnızca isteğin geldiği sitenin banka hesapları
         const bankAccounts = await PaymentMethod.find({
             type: 'bank_transfer',
             isActive: true,
@@ -32,8 +30,6 @@ router.get('/bank-transfer', async (req, res) => {
     }
 });
 
-// GET /credit-card-options — site bazlı Tek Çekim / Taksitli aktif mi (public)
-// Kaynak: credit_card yöntemlerinin detay bayrakları (tekCekimAktif/taksitAktif).
 router.get('/credit-card-options', async (req, res) => {
     try {
         const { getCreditCardOptions } = require('../../../services/plugins/payment/creditCardOptions');

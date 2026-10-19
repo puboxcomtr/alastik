@@ -1,6 +1,5 @@
 "use client";
 
-// Sipariş Detayı — bayinin siparişi (WebOrder, bizim DB). /siparis/:orderNumber.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";

@@ -1,7 +1,5 @@
-// Third-party Imports
 import styled from '@emotion/styled'
 
-// Type Imports
 import type { VerticalNavProps } from '../vertical-menu'
 
 type StyledBackdropProps = Pick<VerticalNavProps, 'backdropColor'>

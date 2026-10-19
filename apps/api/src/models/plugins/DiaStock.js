@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const DiaStockSchema = new mongoose.Schema({
-  // DIA ERP benzersiz identifier
   _key: {
     type: String,
     required: [true, 'DIA _key gereklidir'],
@@ -9,7 +8,6 @@ const DiaStockSchema = new mongoose.Schema({
     trim: true
   },
 
-  // Senkronizasyon Kontrolü
   synchronization: {
     type: String,
     enum: ['Y', 'N'],
@@ -33,11 +31,9 @@ const DiaStockSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  // Tarih bilgileri
   _cdate: String,
   _date: String,
 
-  // DIA Foreign Key'ler (nullable)
   _key_scf_karebarkod: String,
   _key_scf_marka: String,
   _key_scf_odeme_plani: String,
@@ -57,17 +53,14 @@ const DiaStockSchema = new mongoose.Schema({
   _key_sis_ulkeler_mensei: String,
   _key_web_b2c_magazalar: String,
 
-  // Temel ürün bilgileri
   aciklama: {
     type: String,
-    trim: true // Arama için index
+    trim: true
   },
 
-  // Barkod bilgileri
   anabarkod: { type: String, index: true },
   barkodu: String,
   karebarkod: String,
-  // Birim bilgileri
   anabirimbrutagirlik: Number,
   anabirimdesi: Number,
   anabirimkey: String,
@@ -75,10 +68,9 @@ const DiaStockSchema = new mongoose.Schema({
   birimadi: String,
   birimindirimorani: String,
 
-  // Stok bilgileri
   fiili_stok: {
     type: Number,
-    default: 0 // Stok sorgular için index
+    default: 0
   },
   gercek_stok: {
     type: Number,
@@ -87,7 +79,6 @@ const DiaStockSchema = new mongoose.Schema({
   azamimiktar: Number,
   azamimiktar_firma: Number,
 
-  // B2B/B2C durum bilgileri
   b2b_depomiktari: Number,
   b2b_gonder: {
     type: String,
@@ -114,30 +105,26 @@ const DiaStockSchema = new mongoose.Schema({
   b2c_kargobedava_birim: String,
   b2c_kargodurumu: String,
 
-  // Fiyat bilgileri
   fiyat1: Number,
   fiyat2: Number,
   fiyat3: Number,
   fiyat4: Number,
-  fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
-  fiyatDinamik: Number, // DIA __dinamik__16 (B2C dinamik fiyat); 0 = kartta dinamik fiyat yok
+  fiyat4Ham: Number,
+  fiyatDinamik: Number,
   fiyat10: Number,
   sontuketicifiyati: Number,
 
-  // Döviz bilgileri
   doviz1: String,
   doviz2: String,
   doviz3: String,
   doviz4: String,
 
-  // Durum bilgileri
   durum: {
     type: String,
-    enum: ['A', 'P'], // A=Aktif, P=Pasif
+    enum: ['A', 'P'],
     default: 'A'
   },
 
-  // Ek alanlar
   ekalan1: String,
   ekalan2: String,
   ekalan3: String,
@@ -150,12 +137,10 @@ const DiaStockSchema = new mongoose.Schema({
   ekalan10: String,
   ekalantum: String,
 
-  // Firma ve kullanıcı bilgileri
   ekleyenkullaniciadi: String,
   kullaniciadi: String,
   firmaadi: String,
 
-  // KDV bilgileri
   kdvalis: Number,
   kdvdurumu: String,
   kdvdurumu1: String,
@@ -169,7 +154,6 @@ const DiaStockSchema = new mongoose.Schema({
   kdvtevkifatkodu: String,
   kdvtevkifatorani: Number,
 
-  // Diğer alanlar
   gtipno: String,
   images_count: Number,
   is_aws: String,
@@ -179,18 +163,15 @@ const DiaStockSchema = new mongoose.Schema({
   kilitli: String,
   kodveaciklama: String,
 
-  // Marka bilgileri
   marka: {
     type: String,
-    trim: true // Marka filtresi için index
+    trim: true
   },
   markaack: String,
   menseiulkeadi: String,
 
-  // Not alanı
   note: String,
 
-  // Özel kodlar
   ozelkod1: String,
   ozelkod1kodu: String,
   ozelkod2: String,
@@ -214,17 +195,14 @@ const DiaStockSchema = new mongoose.Schema({
   ozelkod11: String,
   ozelkod11kodu: String,
 
-  // Stok kart bilgileri
   stokkartkodu: {
     type: String,
-    trim: true // Stok kart kodu ile arama için
+    trim: true
   },
 
-  // Ürün ağaçları
   urunagaci1: String,
   urunagaclari: String,
 
-  // Birimler array - performans için embedded
   m_birimler: [{
     _key: String,
     _key_scf_stokkart: String,
@@ -240,8 +218,8 @@ const DiaStockSchema = new mongoose.Schema({
     fiyat2: Number,
     fiyat3: Number,
     fiyat4: Number,
-    fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
-    fiyatDinamik: Number, // DIA __dinamik__16 (B2C dinamik fiyat); 0 = kartta dinamik fiyat yok
+    fiyat4Ham: Number,
+    fiyatDinamik: Number,
     fiyat10: Number,
     kdvdurumu1: String,
     kdvdurumu2: String,
@@ -252,7 +230,6 @@ const DiaStockSchema = new mongoose.Schema({
     oranlama: String
   }],
 
-  // Kategoriler array - performans için embedded
   m_kategoriler: [{
     _key: String,
     _key_scf_stokkart: String,
@@ -276,7 +253,6 @@ const DiaStockSchema = new mongoose.Schema({
     kategori_durum_6: String
   }],
 
-  // Ürün özellikleri array - performans için embedded
   m_urunOzellikleri: [{
     _key: String,
     _key_scf_stokkart: String,
@@ -288,7 +264,6 @@ const DiaStockSchema = new mongoose.Schema({
     ozellisirano: String
   }],
 
-  // Resimler array - performans için embedded
   m_resimler: [{
     _key: String,
     _key_kayit: String,
@@ -302,14 +277,11 @@ const DiaStockSchema = new mongoose.Schema({
     yukleyen: String
   }],
 
-  // Senkronizasyon bilgileri
   syncInfo: {
     lastSyncDate: {
       type: Date,
       default: Date.now
     },
-    // Kartın DIA yanıtında en son GÖRÜLDÜĞÜ an (değişmemiş olsa bile). lastSyncDate yalnız
-    // değişiklikte güncellenir; "DIA'dan kaybolan kart" kararı bu alana göre verilir.
     lastSeenAt: { type: Date },
     syncStatus: {
       type: String,
@@ -324,7 +296,6 @@ const DiaStockSchema = new mongoose.Schema({
     }
   },
 
-  // Performans alanları (virtual alanlar için hesaplanmış)
   isActive: {
     type: Boolean,
     default: true
@@ -345,16 +316,14 @@ const DiaStockSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Performans için compound index'ler
 DiaStockSchema.index({ durum: 1, b2c_gonder: 1 });
 DiaStockSchema.index({ marka: 1, durum: 1 });
 DiaStockSchema.index({ stokkartkodu: 1, durum: 1 });
 DiaStockSchema.index({ fiili_stok: 1, durum: 1 });
 DiaStockSchema.index({ 'syncInfo.lastSyncDate': 1 });
 DiaStockSchema.index({ 'syncInfo.syncStatus': 1 });
-DiaStockSchema.index({ synchronization: 1 }); // **YENİ INDEX**
+DiaStockSchema.index({ synchronization: 1 });
 
-// Text search index
 DiaStockSchema.index({
   aciklama: 'text',
   marka: 'text',
@@ -363,7 +332,6 @@ DiaStockSchema.index({
   ekalan2: 'text'
 });
 
-// Virtual alanlar
 DiaStockSchema.virtual('isInStock').get(function () {
   return this.fiili_stok > 0;
 });
@@ -397,24 +365,18 @@ DiaStockSchema.virtual('primaryImage').get(function () {
   return null;
 });
 
-// Middleware - performans alanlarını otomatik güncelle
 DiaStockSchema.pre('save', function (next) {
-  // Durum kontrolü
   this.isActive = this.durum === 'A';
 
-  // Stok kontrolü
   this.hasStock = this.fiili_stok > 0;
 
-  // B2C aktiflik kontrolü
   this.isB2CActive = this.b2c_gonder === 'E' && this.durum === 'A';
 
-  // Sync bilgisi güncelle
   this.syncInfo.lastSyncDate = new Date();
 
   next();
 });
 
-// Static methods
 DiaStockSchema.statics.findActiveProducts = function () {
   return this.find({ durum: 'A', isActive: true });
 };
@@ -450,16 +412,14 @@ DiaStockSchema.statics.findSyncErrors = function () {
   return this.find({ 'syncInfo.syncStatus': 'error' });
 };
 
-// **YENİ STATIC METHODS - Synchronization için**
 DiaStockSchema.statics.findLimitedSyncProducts = function () {
-  return this.find({ synchronization: 'N' }); // N: Sadece stok/fiyat
+  return this.find({ synchronization: 'N' });
 };
 
 DiaStockSchema.statics.findFullSyncProducts = function () {
-  return this.find({ synchronization: 'Y' }); // Y: Her şey
+  return this.find({ synchronization: 'Y' });
 };
 
-// Instance methods
 DiaStockSchema.methods.markSyncSuccess = function () {
   this.syncInfo.syncStatus = 'synced';
   this.syncInfo.errorMessage = null;
@@ -482,9 +442,7 @@ DiaStockSchema.methods.updateStock = function (newStock) {
 };
 
 DiaStockSchema.methods.updateFromDiaData = function (diaData) {
-  // synchronization kontrolü
   if (this.synchronization === 'N') {
-    // Sadece stok ve fiyat alanlarını güncelle
     const limitedFields = ['fiili_stok', 'gercek_stok', 'fiyat1', 'fiyat2', 'fiyat3', 'fiyat4', 'fiyat10', 'sontuketicifiyati'];
     limitedFields.forEach(field => {
       if (diaData.hasOwnProperty(field)) {
@@ -492,7 +450,6 @@ DiaStockSchema.methods.updateFromDiaData = function (diaData) {
       }
     });
   } else {
-    // Tüm alanları güncelle (normal senkronizasyon)
     Object.keys(diaData).forEach(key => {
       if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt') {
         this[key] = diaData[key];
@@ -500,7 +457,6 @@ DiaStockSchema.methods.updateFromDiaData = function (diaData) {
     });
   }
 
-  // Sync bilgilerini güncelle
   this.syncInfo.lastSyncDate = new Date();
   this.syncInfo.syncStatus = 'synced';
   this.syncInfo.errorMessage = null;

@@ -1,4 +1,3 @@
-// apps/api/src/scripts/seedRimTags.js
 const mongoose = require('mongoose');
 require('dotenv').config();
 
@@ -11,7 +10,6 @@ async function seedRimTags() {
 
         const db = mongoose.connection.db;
 
-        // 1. webproducts collection'indan JANT urunlerini cek
         const products = await db.collection('webproducts').find({
             'diaData.durum': 'A',
             'diaData.ozelkod7kodu': 'JANT',
@@ -23,7 +21,6 @@ async function seedRimTags() {
 
         console.log(`Toplam ${products.length} jant urunu bulundu`);
 
-        // PCD bazinda gruplama
         const pcdMap = new Map();
 
         for (const product of products) {
@@ -31,7 +28,6 @@ async function seedRimTags() {
 
             if (!pcd) continue;
 
-            // Format kontrolu: 4X100, 5X108, 5X114.3 gibi
             if (!/^\d+[Xx]\d+(\.\d+)?$/.test(pcd)) continue;
 
             const pcdUpper = pcd.toUpperCase();
@@ -45,13 +41,11 @@ async function seedRimTags() {
 
         console.log(`Toplam ${pcdMap.size} farkli PCD bulundu`);
 
-        // 2. Her PCD icin webtags olustur
         const webtagsCollection = db.collection('webtags');
         let inserted = 0;
         let updated = 0;
 
         for (const [pcd, productKeys] of pcdMap) {
-            // URL icin nokta kaldir: 5X114.3 -> 5-1143
             const urlPcd = pcd.toLowerCase().replace('x', '-').replace('.', '');
             const seoUrl = `${urlPcd}-jant-fiyatlari`;
 
@@ -88,7 +82,6 @@ async function seedRimTags() {
         console.log(`Yeni eklenen: ${inserted}`);
         console.log(`Guncellenen: ${updated}`);
 
-        // Istatistikler
         const stats = await webtagsCollection.aggregate([
             { $match: { type: 'rim_pcd' } },
             {
@@ -106,7 +99,6 @@ async function seedRimTags() {
             console.log(`Toplam urun: ${stats[0].totalProducts}`);
         }
 
-        // En cok urun olan ilk 10 PCD
         const topPcds = await webtagsCollection.find({ type: 'rim_pcd' })
             .sort({ productCount: -1 })
             .limit(10)

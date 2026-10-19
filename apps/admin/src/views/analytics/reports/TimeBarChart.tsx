@@ -1,18 +1,13 @@
 'use client'
 
-// Next Imports
 import dynamic from 'next/dynamic'
 
-// MUI Imports
 import { useTheme } from '@mui/material/styles'
 
-// Third-party Imports
 import type { ApexOptions } from 'apexcharts'
 
-// Util Imports
 import { formatCompact } from './format'
 
-// Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
 type TimeBarChartProps = {
@@ -23,11 +18,9 @@ type TimeBarChartProps = {
     axisFormatter?: (value: number) => string
     barColors?: string[]
     height?: number
-    // Verilirse her çubuğun üstüne değer yazılır (boş dize dönen değer gizlenir)
     dataLabelFormatter?: (value: number) => string
 }
 
-// Tek serili, ince çubuklu zaman grafiği (tek eksen, tooltip açık, legend yok)
 const TimeBarChart = ({
     categories,
     values,
@@ -42,8 +35,6 @@ const TimeBarChart = ({
 
     const distributed = Boolean(barColors && barColors.length > 0)
     const colors = distributed && barColors ? barColors : [theme.palette.primary.main]
-    // Renkler CSS değişkeni olarak verilir: tema değerleri "rgb(var(--…) / a)" biçiminde ve ApexCharts
-    // bunları ayrıştırırken çöküyor (eksenler çizilmiyordu). var(--mui-palette-…) doğrudan SVG'ye geçer.
     const labelStyle = { colors: 'var(--mui-palette-text-disabled)', fontSize: String(theme.typography.body2.fontSize) }
 
     const options: ApexOptions = {
@@ -68,8 +59,6 @@ const TimeBarChart = ({
                   enabled: true,
                   formatter: (value: number) => dataLabelFormatter(Number(value) || 0),
                   offsetY: -20,
-                  // Not: tema yazı renkleri CSS değişkeni (rgb(var(--…))) — ApexCharts çözümleyemeyip
-                  // çöküyor; etiket rengi çubuk rengiyle (düz renk) verilir
                   style: { fontSize: '12px', fontWeight: 600, colors: [colors[0]] }
               }
             : { enabled: false },

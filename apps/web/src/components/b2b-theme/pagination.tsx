@@ -1,6 +1,5 @@
 "use client";
 
-// Basit istemci sayfalama bileşeni — 1 2 3 … penceresi + önceki/sonraki.
 import { ArrowLeftIcon, ArrowRightIcon } from "./icons";
 
 function pageList(page: number, total: number): (number | "...")[] {

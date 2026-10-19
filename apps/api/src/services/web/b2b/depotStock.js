@@ -1,25 +1,11 @@
-/**
- * Depo bazlı stok — bayi sitesinde ürünün stok ipucunda (depo dağılımı) gösterilir.
- * Depolar sitenin DIA ayarındaki vitrinDepolari listesinden gelir; stok DIA'dan canlı okunur.
- * Bayi oturumu (/b2b/auth/depo-stok) ve plasiyer oturumu (/b2b/plasiyer/depo-stok) aynı veriyi kullanır.
- */
 const DiaSettings = require('../../../models/plugins/dia/DiaSettings');
 
-// Kod başına önbellek süresi (DIA'yı yormasın)
 const CACHE_TTL_MS = 5 * 60 * 1000;
-// Tek istekte kabul edilen en fazla stok kodu
 const MAX_CODES = 120;
-const cache = new Map(); // stok kodu -> { at, data }
+const cache = new Map();
 
-/** İstekteki "kod1,kod2" metnini stok kodu listesine çevirir */
 const parseCodes = value => String(value || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, MAX_CODES);
 
-/**
- * Verilen stok kodlarının depo bazlı stoğu.
- * @param {string} site
- * @param {string[]} codes
- * @returns {Promise<Record<string, { ad: string, adet: number }[]>>} { "kod": [{ ad, adet }, ...] }
- */
 async function getDepotStocks(site, codes) {
     if (!codes.length) return {};
     const settings = await DiaSettings.getSettings(site);
@@ -42,7 +28,6 @@ async function getDepotStocks(site, codes) {
         svc.donemKodu = settings.donemKodu || 1;
         await svc.login();
 
-        // Her depo için TEK toplu DIA çağrısı (stokkartkodu IN): depo sayısı kadar çağrı yapılır
         const depotMaps = [];
         for (const depot of depots) {
             const map = await svc.getDepotStockBatch(missing, depot.key).catch(() => ({}));

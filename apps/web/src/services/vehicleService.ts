@@ -1,5 +1,3 @@
-// Araç uyumluluk verisi (/api/vehicles) — /arac sayfaları ve sitemap için.
-// Sayfa verisi çağrıları: 404 → null, API hatası → hata fırlatılır (sayfa 500; bkz. lib/apiError).
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 
@@ -105,10 +103,8 @@ export interface VehicleModelDetail {
     };
 }
 
-// API kök adresi lib/sitemap.ts'teki yöntemle çözülür (config/api.ts'e dokunmadan)
 const base = () => `${API_ENDPOINTS.definition.get().replace(/\/definition$/, '')}/vehicles`;
 
-// site: x-site header'ı olmayan isteklerde (sitemap route'ları) site açıkça verilir
 async function getJson<T>(path: string, what: string, site?: string): Promise<T | null> {
     try {
         const res = await fetch(`${base()}${path}`, {
@@ -143,7 +139,6 @@ export interface VehicleForSize {
     indexable: boolean;
 }
 
-// Yardımcı bloklar için (ebat/ürün sayfası, footer): hata sayfayı bozmaz, boş liste döner
 export async function getVehiclesBySize(sizeKey: string): Promise<VehicleForSize[]> {
     try {
         return (await getJson<VehicleForSize[]>(`/by-size/${encodeURIComponent(sizeKey)}`, 'getVehiclesBySize')) || [];

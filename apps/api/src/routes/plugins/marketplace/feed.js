@@ -1,12 +1,3 @@
-/**
- * GET /api/feed/urunler — pazar yeri ürün feed'i (docs/PAZAR-YERI-FEED.md)
- *   X-Feed-Key: <MARKETPLACE_FEED_KEY>   (zorunlu kalınırsa ?key= de kabul edilir)
- *   ?tip=lastik|jant                     (varsayılan ikisi)
- *   ?site=lastikjantavm                  (yoksa Host/X-Site'tan çözülen site)
- *   ?refresh=1                           (5 dk önbelleği atla)
- * Anahtar site başına ayrı (MarketplaceFeedService.feedKey). Yanlış anahtar → 401, sitenin anahtarı tanımsız → 503. Sıklık: 15 dk'da 20 istek.
- * Yalnız MARKETPLACE_FEED_SITES (varsayılan: lastikjantavm,alastik) listesindeki siteler feed verir; diğerleri 404.
- */
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');

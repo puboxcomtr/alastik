@@ -4,40 +4,24 @@ const WheelSizeService = require('../../services/plugins/wheelsize/WheelSizeServ
 
 require('dotenv').config({ path: path.join(__dirname, '../../../.env.production') });
 
-/**
- * Lastik çapı (mm) hesaplar
- * Formül: rim_diameter_inch × 25.4 + 2 × (section_width × aspect_ratio / 100)
- */
 function calcTireDiameter(width, aspectRatio, rimDiameter) {
     const sidewallHeight = (width * aspectRatio) / 100;
     const rimMm = rimDiameter * 25.4;
     return rimMm + (2 * sidewallHeight);
 }
 
-/**
- * Çevre (mm)
- */
 function calcCircumference(diameter) {
     return diameter * Math.PI;
 }
 
-/**
- * Çap farkı yüzdesi
- */
 function calcDiameterDiff(original, target) {
     return ((target - original) / original) * 100;
 }
 
-/**
- * Hız göstergesi sapması (km/h - 100 km/h referans)
- */
 function calcSpeedoDiff(originalCirc, targetCirc, refSpeed = 100) {
     return (refSpeed * targetCirc / originalCirc) - refSpeed;
 }
 
-/**
- * Uygunluk değerlendirmesi
- */
 function evaluateFitment(diffPercent) {
     const abs = Math.abs(diffPercent);
     if (abs <= 2) return { status: 'safe', label: 'Uygun - Güvenle Kullanılabilir', color: 'green' };

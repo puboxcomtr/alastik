@@ -1,14 +1,10 @@
-// MUI Imports
 import type { StepIconProps } from '@mui/material/StepIcon'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Style Imports
 import styles from './styles.module.css'
 
 const StepperCustomDot = (props: StepIconProps) => {
-  // Props
   const { active, completed, error } = props
 
   if (error) {

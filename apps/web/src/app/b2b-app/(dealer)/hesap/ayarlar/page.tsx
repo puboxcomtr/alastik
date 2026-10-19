@@ -1,6 +1,5 @@
 "use client";
 
-// Hesap Ayarları — profil (salt okunur, DIA'dan) + parola değiştirme.
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { PasswordForm } from "@components/b2b-theme/password-form";

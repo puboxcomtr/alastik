@@ -1,8 +1,5 @@
 "use client";
 
-// Aranabilir açılır liste (autocomplete). Yerel <select> yerine kullanılır:
-// yazarak filtreleme, klavye ile gezinme ve temizleme (×) sağlar. Görünüm
-// tema select'leriyle aynı (yükseklik/kenar/renk CSS'ten gelir).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type AutoOption = { value: string; label: string; icon?: ReactNode };
@@ -22,7 +19,6 @@ export function AutoComplete({
   placeholder: string;
   ariaLabel?: string;
   className?: string;
-  /** Çoklu seçim: value virgülle ayrılmış değerler; seçim listeyi kapatmaz. */
   multiple?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -30,13 +26,11 @@ export function AutoComplete({
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Seçili değer(ler): tekli modda tek eleman, çoklu modda virgülle ayrılmış.
   const selectedValues = useMemo(
     () => (multiple ? value.split(",").map((s) => s.trim()).filter(Boolean) : value ? [value] : []),
     [multiple, value],
   );
 
-  // Girişte gösterilecek metin (çoklu modda etiketler / "N seçili")
   const selectedLabel = useMemo(() => {
     const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? v;
     if (!multiple) return options.find((o) => o.value === value)?.label ?? "";
@@ -45,14 +39,12 @@ export function AutoComplete({
     return `${selectedValues.length} seçili`;
   }, [multiple, options, value, selectedValues]);
 
-  // Açıkken yazılana göre süz; kapalıyken tüm liste
   const filteredOptions = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("tr");
     if (!q) return options;
     return options.filter((o) => o.label.toLocaleLowerCase("tr").includes(q));
   }, [options, query]);
 
-  // Dışarı tıklayınca kapan
   useEffect(() => {
     if (!open) return;
     function elTikla(e: MouseEvent) {
@@ -77,7 +69,6 @@ export function AutoComplete({
     setQuery("");
   }
 
-  // Çoklu modda bir değeri ekler/çıkarır; liste açık kalır.
   function degistir(v: string) {
     const set = new Set(selectedValues);
     if (set.has(v)) set.delete(v);
@@ -87,7 +78,6 @@ export function AutoComplete({
     setActiveIndex(-1);
   }
 
-  // Bir seçeneğe tıklandığında: çoklu modda toggle (açık kal), tekli modda seç + kapat.
   function secOrToggle(v: string) {
     if (multiple) degistir(v);
     else sec(v);

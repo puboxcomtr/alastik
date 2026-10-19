@@ -1,4 +1,3 @@
-// React Imports
 import type { SVGAttributes } from 'react'
 
 const Edit = (props: SVGAttributes<SVGElement>) => {

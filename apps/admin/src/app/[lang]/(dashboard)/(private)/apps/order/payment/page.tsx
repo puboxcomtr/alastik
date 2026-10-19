@@ -1,4 +1,3 @@
-// Component Imports
 import PaymentLogsView from '@/views/order/payment/PaymentLogsView'
 
 const PaymentLogs = () => {

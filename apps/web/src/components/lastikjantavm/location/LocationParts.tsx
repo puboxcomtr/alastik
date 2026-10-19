@@ -1,4 +1,3 @@
-// /lastikci konum sayfalarının ortak parçaları (server component)
 import React from 'react';
 import Link from 'next/link';
 import { fmtKm } from '@/src/lib/geo';
@@ -67,7 +66,6 @@ export function TopSizes({ sizes, regionName }: { sizes: string[]; regionName: s
     );
 }
 
-// İstanbul sayfaları: en yakın şube + hizmet bağlantıları
 export function BranchBox({ branch, km, placeName }: { branch: Branch; km: number; placeName: string }) {
     return (
         <Card title={`${placeName} için En Yakın Şubemiz: ${branch.shortName}`}>

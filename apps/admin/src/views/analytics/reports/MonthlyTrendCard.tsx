@@ -1,22 +1,17 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 
-// Type Imports
 import type { MonthlyTrendPoint } from './types'
 
-// Util Imports
 import { formatNumber, formatTRY, toNumber } from './format'
 
-// Component Imports
 import TimeBarChart from './TimeBarChart'
 import EmptyState from './EmptyState'
 
@@ -27,7 +22,6 @@ type MonthlyTrendCardProps = {
     trend?: MonthlyTrendPoint[] | null
 }
 
-// Son 12 ayın tahsilat / sipariş sayısı trendi; metrik ve aralık toggle'ları
 const MonthlyTrendCard = ({ trend }: MonthlyTrendCardProps) => {
     const [metric, setMetric] = useState<MetricKey>('collected')
     const [range, setRange] = useState<RangeKey>(12)

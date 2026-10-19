@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const InstallmentRateSchema = new mongoose.Schema({
-  // Banka bilgileri
   bankName: {
     type: String,
     required: [true, 'Banka adı gereklidir'],
@@ -29,7 +28,6 @@ const InstallmentRateSchema = new mongoose.Schema({
     max: [12, 'Maksimum taksit 12\'den büyük olamaz']
   },
   
-  // Taksit seçenekleri
   installment2: { type: Boolean, default: false },
   installment3: { type: Boolean, default: false },
   installment4: { type: Boolean, default: false },
@@ -42,7 +40,6 @@ const InstallmentRateSchema = new mongoose.Schema({
   installment11: { type: Boolean, default: false },
   installment12: { type: Boolean, default: false },
   
-  // Taksit oranları (%)
   rate2: { type: Number, default: 0, min: 0, max: 100 },
   rate3: { type: Number, default: 0, min: 0, max: 100 },
   rate4: { type: Number, default: 0, min: 0, max: 100 },
@@ -55,14 +52,12 @@ const InstallmentRateSchema = new mongoose.Schema({
   rate11: { type: Number, default: 0, min: 0, max: 100 },
   rate12: { type: Number, default: 0, min: 0, max: 100 },
   
-  // Logo ve görsel
   imageUrl: {
     type: String,
     trim: true,
     maxlength: [255, 'Logo URL 255 karakterden uzun olamaz']
   },
   
-  // Netahsilat POS bilgileri
   vposId: {
     type: Number,
     required: [true, 'VPos ID gereklidir']
@@ -74,7 +69,6 @@ const InstallmentRateSchema = new mongoose.Schema({
     maxlength: [100, 'VPos adı 100 karakterden uzun olamaz']
   },
   
-  // Komisyon oranları
   commissionRate: {
     type: Number,
     default: 0,
@@ -89,7 +83,6 @@ const InstallmentRateSchema = new mongoose.Schema({
     max: [100, 'Servis komisyon oranı 100\'den büyük olamaz']
   },
   
-  // Tarih bilgileri
   createdDate: {
     type: Date,
     default: Date.now
@@ -109,12 +102,10 @@ const InstallmentRateSchema = new mongoose.Schema({
   collection: 'installmentrates'
 });
 
-// Indexes
 InstallmentRateSchema.index({ bankCode: 1 });
 InstallmentRateSchema.index({ isActive: 1 });
 InstallmentRateSchema.index({ vposId: 1 });
 
-// Virtual methods
 InstallmentRateSchema.virtual('availableInstallments').get(function() {
   const installments = [];
   for (let i = 2; i <= 12; i++) {
@@ -129,7 +120,6 @@ InstallmentRateSchema.virtual('availableInstallments').get(function() {
   return installments;
 });
 
-// Instance methods
 InstallmentRateSchema.methods.getInstallmentRate = function(installmentCount) {
   if (installmentCount < 2 || installmentCount > 12) {
     return 0;
@@ -162,7 +152,6 @@ InstallmentRateSchema.methods.calculateInstallmentAmount = function(totalAmount,
   };
 };
 
-// Static methods
 InstallmentRateSchema.statics.findByBankCode = function(bankCode) {
   return this.findOne({ bankCode: bankCode.toLowerCase(), isActive: true });
 };

@@ -1,6 +1,3 @@
-// Konum sayfaları (/lastikci) için yardımcılar: Türkçe slug, mesafe, konum verisi erişimi.
-// Konum verisi (il / ilçe / İstanbul mahalleleri + koordinatlar) data/geo/konumlar.json içindedir;
-// adres koleksiyonlarından (address_cities / districts / neighborhoods) ve OpenStreetMap koordinatlarından üretilmiştir.
 import konumlar from '@/src/data/geo/konumlar.json';
 
 export interface GeoPoint { lat: number; lng: number }
@@ -27,7 +24,6 @@ export function trSlug(s: string): string {
 
 export const hasGeo = (p: Partial<GeoPoint>): p is GeoPoint => typeof p.lat === 'number' && typeof p.lng === 'number';
 
-// Kuş uçuşu mesafe (km)
 export function distanceKm(a: GeoPoint, b: GeoPoint): number {
     const R = 6371, rad = Math.PI / 180;
     const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
@@ -43,7 +39,6 @@ export const ilceBySlug = (cityId: string, slug: string) => ILCELER.find(d => d.
 export const mahallelerOf = (districtId: string) => MAHALLELER.filter(m => m.districtId === districtId).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 export const mahalleBySlug = (districtId: string, slug: string) => MAHALLELER.find(m => m.districtId === districtId && m.slug === slug);
 
-// En yakın n öğe (kendisi hariç)
 export function nearest<T extends Partial<GeoPoint>>(from: GeoPoint, items: T[], n: number, exclude?: T): Array<T & { km: number }> {
     return items
         .filter(i => i !== exclude && hasGeo(i))
@@ -52,7 +47,6 @@ export function nearest<T extends Partial<GeoPoint>>(from: GeoPoint, items: T[],
         .slice(0, n);
 }
 
-// Model/konum adına göre sabit cümle seçimi (sayfalar arası metin çeşitliliği)
 export function pick<T>(seed: string, salt: string, arr: T[]): T {
     let h = 2166136261;
     const s = seed + salt;

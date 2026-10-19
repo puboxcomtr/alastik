@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useMemo } from 'react'
 
-// MUI Imports
 import Alert from '@mui/material/Alert'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -12,12 +10,10 @@ import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 
-// Components Imports
 import Link from '@components/Link'
 import TurkeyMap from '@views/analytics/shared/TurkeyMap'
 import { findProvince } from '@views/analytics/shared/turkeyProvinces'
 
-// Type Imports
 import type { LiveVisitorLocation } from './types'
 import { formatCount } from './types'
 
@@ -27,9 +23,7 @@ type Props = {
     lang: string
 }
 
-// Aktif ziyaretçilerin il düzeyinde dağılımı (harita + şehir chip'leri)
 const VisitorLocationsCard = ({ locations, geoAvailable = true, lang }: Props) => {
-    // Aynı il farklı yazımlarla gelirse (Istanbul / İstanbul) tek satırda toplanır
     const cities = useMemo(() => {
         const merged = new Map<string, { city: string; count: number }>()
 

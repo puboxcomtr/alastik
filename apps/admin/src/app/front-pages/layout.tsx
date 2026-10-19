@@ -1,29 +1,21 @@
-// MUI Imports
 import Button from '@mui/material/Button'
 import InitColorSchemeScript from '@mui/material/InitColorSchemeScript'
 
-// Third-party Imports
 import 'react-perfect-scrollbar/dist/css/styles.css'
 
-// Type Imports
 import type { ChildrenType } from '@/@core/types'
 
-// Context Imports
 import { IntersectionProvider } from '@/contexts/intersectionContext'
 
-// Component Imports
 import Providers from '@components/Providers'
 import BlankLayout from '@layouts/BlankLayout'
 import FrontLayout from '@components/layout/front-pages'
 import ScrollToTop from '@/@core/components/scroll-to-top'
 
-// Util Imports
 import { getSystemMode } from '@/@core/utils/serverHelpers'
 
-// Style Imports
 import '@/app/globals.css'
 
-// Generated Icon CSS Imports
 import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
@@ -33,7 +25,6 @@ export const metadata = {
 }
 
 const Layout = async ({ children }: ChildrenType) => {
-  // Vars
   const systemMode = await getSystemMode()
 
   return (

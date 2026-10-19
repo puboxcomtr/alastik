@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -16,7 +14,6 @@ import MenuItem from '@mui/material/MenuItem'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 
-// Style Imports
 import ConfirmationDialog from '../confirmation-dialog'
 
 type UpgradePlanProps = {
@@ -25,7 +22,6 @@ type UpgradePlanProps = {
 }
 
 const UpgradePlan = ({ open, setOpen }: UpgradePlanProps) => {
-  // States
   const [openConfirmation, setOpenConfirmation] = useState(false)
 
   const handleClose = () => {

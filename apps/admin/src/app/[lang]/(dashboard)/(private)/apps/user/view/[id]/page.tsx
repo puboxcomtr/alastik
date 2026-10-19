@@ -1,4 +1,3 @@
-// Component Imports
 import MemberViewSwitch from '@views/members/view/MemberViewSwitch'
 
 const UserView = () => {

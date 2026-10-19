@@ -1,4 +1,3 @@
-// apps/api/src/models/web/user/WebVehicle.js
 const mongoose = require('mongoose');
 const webVehicleSchema = new mongoose.Schema({
     memberId: {
@@ -25,7 +24,6 @@ const webVehicleSchema = new mongoose.Schema({
         enginePower: String    
     },
 
-    // Araç görseli
     image: {
         url: String,          
         source: {              

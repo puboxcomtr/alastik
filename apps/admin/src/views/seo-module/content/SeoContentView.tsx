@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -16,23 +14,17 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { ContentListData, ContentRow, ContentType, ScanState, ScoreStatus } from '../types'
 import { SOURCE_LABELS, STATUS_COLORS, STATUS_LABELS, TYPE_LABELS } from '../types'
 
-// Util Imports
 import { formatNumber } from '@/views/analytics/reports/format'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Component Imports
 import SeoTabs from '../SeoTabs'
 import ContentDetailDrawer from './ContentDetailDrawer'
 import EmptyState from '@/views/analytics/reports/EmptyState'
@@ -71,7 +63,6 @@ const SeoContentView = () => {
     const [selected, setSelected] = useState<ContentRow | null>(null)
     const [scanStarting, setScanStarting] = useState(false)
 
-    // Arama kutusu yazarken istek atmasın
     useEffect(() => {
         const timer = setTimeout(() => {
             setQuery(search.trim())
@@ -113,7 +104,6 @@ const SeoContentView = () => {
 
     const scan: ScanState = data?.scan ?? null
 
-    // Tarama sürerken liste sessizce yenilenir
     useEffect(() => {
         if (!scan?.running) return
 

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-/* MUI */
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
@@ -21,7 +20,6 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import FormLabel from '@mui/material/FormLabel'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
 import {
@@ -43,20 +41,17 @@ import {
 } from '@/utils/api/menus'
 import { fetchBlogCategories, type BlogCategoryType } from '@/utils/api/blogCategories'
 
-// 2000'den fazla blog kaydı var; listede aynı anda en fazla 50 seçenek çizilir
 const blogFilterOptions = createFilterOptions<BlogOptionType>({ limit: 50 })
 
 const AddMenuForm = () => {
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    // Menü detayından "Öğe Ekle" ile gelindiyse ana menü ve alan hazır seçili gelir
     const presetParentId = searchParams.get('parentId') || ''
     const presetArea = searchParams.get('displayArea') as 'header' | 'footer' | 'mobile' | 'general' | 'blog' | 'ustlink' | null
 
     const [loading, setLoading] = useState(false)
 
-    // Form state
     const [name, setName] = useState('')
     const [menuType, setMenuType] = useState<'link' | 'category' | 'page' | 'blog' | 'product' | 'tag' | 'brand' | 'heading'>('link')
     const [linkUrl, setLinkUrl] = useState('')
@@ -74,14 +69,11 @@ const AddMenuForm = () => {
     const [displayArea, setDisplayArea] = useState<'header' | 'footer' | 'mobile' | 'general' | 'blog' | 'ustlink'>(
         presetArea && ['header', 'footer', 'mobile', 'general', 'blog', 'ustlink'].includes(presetArea) ? presetArea : 'header'
     )
-    // Grup bağlamında "Ana Menü" seçimi = üst bar öğesi (grup gizli üst olur);
-    // "Alt Menü" = seçilen üst bar öğesinin açılır menüsüne girer
     const [rowLevel, setRowLevel] = useState<1 | 2>(1)
     const [parentId, setParentId] = useState('')
     const [order, setOrder] = useState(999)
     const [isActive, setIsActive] = useState(true)
 
-    // Options state
     const [categories, setCategories] = useState<CategoryOptionType[]>([])
     const [pages, setPages] = useState<PageOptionType[]>([])
     const [blogs, setBlogs] = useState<BlogOptionType[]>([])
@@ -98,14 +90,12 @@ const AddMenuForm = () => {
     const [parentMenus, setParentMenus] = useState<ParentMenuOptionType[]>([])
     const [loadingOptions, setLoadingOptions] = useState(false)
 
-    // Blog kategorilerini yükle (menü hedefi seçimi için)
     useEffect(() => {
         fetchBlogCategories()
             .then((r: any) => { if (r?.success) setBlogCategories(r.data || []) })
             .catch(() => {})
     }, [])
 
-    // Kategorileri yükle
     const loadCategories = async (level?: 1 | 2) => {
         try {
             setLoadingOptions(true)
@@ -120,7 +110,6 @@ const AddMenuForm = () => {
         }
     }
 
-    // Sayfaları yükle
     const loadPages = async () => {
         try {
             setLoadingOptions(true)
@@ -135,7 +124,6 @@ const AddMenuForm = () => {
         }
     }
 
-    // Blog yazılarını yükle
     const loadBlogs = async () => {
         try {
             setLoadingOptions(true)
@@ -150,7 +138,6 @@ const AddMenuForm = () => {
         }
     }
 
-    // Ürün araması: yazarken sunucuda aranır (katalog büyük)
     useEffect(() => {
         if (menuType !== 'product') return
 
@@ -169,7 +156,6 @@ const AddMenuForm = () => {
         return () => clearTimeout(timer)
     }, [menuType, productQuery])
 
-    // Etiket araması: yazarken sunucuda aranır (etiket sayısı yüksek)
     useEffect(() => {
         if (menuType !== 'tag') return
 
@@ -189,7 +175,6 @@ const AddMenuForm = () => {
         return () => clearTimeout(timer)
     }, [menuType, tagQuery])
 
-    // Marka araması
     useEffect(() => {
         if (menuType !== 'brand') return
 
@@ -209,7 +194,6 @@ const AddMenuForm = () => {
         return () => clearTimeout(timer)
     }, [menuType, brandQuery])
 
-    // Ana menüleri yükle
     const loadParentMenus = async (area: string) => {
         try {
             setLoadingOptions(true)
@@ -224,7 +208,6 @@ const AddMenuForm = () => {
         }
     }
 
-    // MenuType değiştiğinde ilgili verileri yükle
     useEffect(() => {
         if (menuType === 'category') {
             setCategories([])
@@ -241,7 +224,6 @@ const AddMenuForm = () => {
         }
     }, [menuType])
 
-    // CategoryLevel değiştiğinde kategorileri yeniden yükle
     useEffect(() => {
         if (menuType === 'category') {
             setCategories([])
@@ -250,7 +232,6 @@ const AddMenuForm = () => {
         }
     }, [categoryLevel])
 
-    // DisplayArea veya RowLevel değiştiğinde parent menüleri yükle
     useEffect(() => {
         if (rowLevel === 2) {
             setParentMenus([])
@@ -328,7 +309,6 @@ const AddMenuForm = () => {
                 displayArea,
                 icon: icon.trim(),
                 rowLevel,
-                // Alt menüde seçilen üst öğe; "Ana Menü"de grup bağlamı varsa görünmez üst olarak grup gönderilir
                 ...(rowLevel === 2 ? { parentId } : (presetParentId ? { parentId: presetParentId } : {})),
                 order,
                 isActive
@@ -338,7 +318,6 @@ const AddMenuForm = () => {
 
             if (result.success) {
                 toast.success('Menü başarıyla oluşturuldu')
-                // Eklenen öğenin ait olduğu menünün detayına dön
                 const groupId = presetParentId || (rowLevel === 2 ? parentId : '')
                 router.push(groupId ? `/tr/apps/design/menu?menu=${groupId}` : '/tr/apps/design/menu')
             } else {
@@ -381,7 +360,6 @@ const AddMenuForm = () => {
                                     <CardContent>
                                         <Typography variant='h6' className='mb-4'>Menü Bilgileri</Typography>
                                         <Grid container spacing={8}>
-                                            {/* Menü Adı */}
                                             <Grid size={{ xs: 12 }}>
                                                 <TextField
                                                     fullWidth
@@ -392,7 +370,6 @@ const AddMenuForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Menü Tipi */}
                                             <Grid size={{ xs: 12 }}>
                                                 <FormControl fullWidth>
                                                     <InputLabel>Menü Tipi</InputLabel>
@@ -416,7 +393,6 @@ const AddMenuForm = () => {
                                                 </FormControl>
                                             </Grid>
 
-                                            {/* Link URL - Sadece menuType: link ise */}
                                             {menuType === 'link' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <TextField
@@ -429,7 +405,6 @@ const AddMenuForm = () => {
                                                 </Grid>
                                             )}
 
-                                            {/* Kategori Seçimi - Sadece menuType: category ise */}
                                             {menuType === 'category' && (
                                                 <>
                                                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -472,7 +447,6 @@ const AddMenuForm = () => {
                                                 </>
                                             )}
 
-                                            {/* Blog Kategori Seçimi - Sadece menuType: blogCategory ise */}
                                             {menuType === 'blogCategory' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
@@ -496,7 +470,6 @@ const AddMenuForm = () => {
                                                 </Grid>
                                             )}
 
-                                            {/* Sayfa Seçimi - Sadece menuType: page ise */}
                                             {menuType === 'page' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
@@ -522,7 +495,6 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-                                            {/* Blog Seçimi - Sadece menuType: blog ise */}
                                             {menuType === 'blog' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
@@ -549,7 +521,6 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-                                            {/* Ürün Seçimi - Sadece menuType: product ise */}
                                             {menuType === 'product' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
@@ -580,7 +551,6 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-                                            {/* Etiket Seçimi - Sadece menuType: tag ise */}
                                             {menuType === 'tag' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
@@ -611,7 +581,6 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-                                            {/* Marka Seçimi - Sadece menuType: brand ise */}
                                             {menuType === 'brand' && (
                                                 <Grid size={{ xs: 12 }}>
                                                     <FormControl fullWidth>
@@ -642,7 +611,6 @@ const AddMenuForm = () => {
                                                     </FormControl>
                                                 </Grid>
                                             )}
-                                            {/* Sıralama */}
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <TextField
                                                     fullWidth
@@ -653,7 +621,6 @@ const AddMenuForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Yeni Sekmede Aç - Başlık tipinde gösterme */}
                                             {menuType !== 'heading' && (
                                                 <Grid size={{ xs: 12, sm: 6 }}>
                                                     <FormControlLabel
@@ -718,7 +685,6 @@ const AddMenuForm = () => {
                                                     <FormControlLabel key="row-2" value={2} control={<Radio />} label='Alt Menü' />
                                                 </RadioGroup>
 
-                                                {/* Parent Menü Seçimi - Sadece rowLevel: 2 ise */}
                                                 {rowLevel === 2 && (
                                                     <FormControl fullWidth className='mt-4'>
                                                         <InputLabel>Ana Menü Seç</InputLabel>
@@ -732,7 +698,6 @@ const AddMenuForm = () => {
                                                             <MenuItem key="empty-parent" value="">
                                                                 <em>{loadingOptions ? 'Yükleniyor...' : (parentMenus.length === 0 ? 'Üst menü bulunamadı' : 'Seçiniz')}</em>
                                                             </MenuItem>
-                                                            {/* Menü grupları (gruplama kayıtları) üst öğe olarak listelenmez */}
                                                             {parentMenus
                                                                 .filter(menu => !(menu.rowLevel === 1 && menu.menuType === 'heading'))
                                                                 .map((menu) => (

@@ -1,66 +1,27 @@
 
-// ============================================
-// DEPENDENCIES
-// ============================================
 const express = require('express');
 const { CATEGORY_FILTERS, CATEGORY_FILTER_KEYS } = require('../../../config/categoryFilters');
 
-// ============================================
-// MODELS
-// ============================================
-// DIA ERP stock model (raw data from ERP system)
 const DiaStock = require('../../../models/plugins/DiaStock');
 
-// Web product model (for category statistics)
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
-// Web category model (synced and enhanced version for frontend)
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 
-// ============================================
-// MIDDLEWARE
-// ============================================
-// Authentication middleware for admin routes
 const { authenticateAdmin } = require('../../../middleware/auth');
 
-// Request validation middleware
 const { body, validationResult } = require('express-validator');
 
-// ============================================
-// SERVICES
-// ============================================
-// DIA ERP integration service
 const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
-// ============================================
-// CONFIGURATION
-// ============================================
-// DIA filter configurations
 const { MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 
-// ============================================
-// ROUTER INITIALIZATION
-// ============================================
 const router = express.Router();
 
-// ============================================
-// AUTHENTICATION STRATEGY
-// ============================================
-// Conditional authentication based on environment
-// - Development (DISABLE_AUTH=true): Bypasses authentication for easier testing
-// - Production (DISABLE_AUTH=false): Enforces admin authentication
 const maybeAuth = process.env.DISABLE_AUTH === 'true'
   ? (req, res, next) => next()
   : authenticateAdmin;
 
-// ============================================
-// ROUTES
-// ============================================
-/**
- * GET /api/categories/sliders
- * Slider listesini getir (kategori düzenleme için)
- */
-// Kategori Düzenle → Gizlenecek Filtreler seçenekleri
 router.get('/filter-options', maybeAuth, (req, res) => {
   res.json({ success: true, data: CATEGORY_FILTERS });
 });
@@ -86,18 +47,6 @@ router.get('/sliders/list', maybeAuth, async (req, res) => {
     });
   }
 });
-/**
- * GET /api/categories
- * Get all categories with filtering and statistics
- * 
- * Query Parameters:
- * - search: Search term for category name
- * - level: Category level (1: Main, 2: Sub, 3: Sub-Sub)
- * - web_status: Filter by status (active/hidden/empty)
- * - parent_id: Filter by parent category
- * - visible_only: Show only visible categories (default: true)
- * - with_children: Include child categories (default: false)
- */
 router.get('/', maybeAuth, async (req, res) => {
   try {
     const {
@@ -109,20 +58,16 @@ router.get('/', maybeAuth, async (req, res) => {
       with_children = 'false'
     } = req.query;
 
-    // WebCategory filtreleri (görünürlük/sıralama/ürün sayısı seçili siteye göre)
     const siteVisibleField = `siteSettings.${req.site}.webVisible`;
     const siteOrderField = `siteSettings.${req.site}.webOrder`;
     const siteCountField = `siteSettings.${req.site}.productCount`;
     const webFilter = {};
 
-    // Sadece görünür kategoriler mi? (seçili sitede yayınlanmış ürünü olmayan kategori listelenmez;
-    // görmek için "Boş" durum filtresi kullanılır)
     if (visible_only === 'true') {
       webFilter[siteVisibleField] = true;
       webFilter[siteCountField] = { $gt: 0 };
     }
 
-    // Web durumu filtreleme
     if (web_status && web_status.trim() !== '') {
       if (web_status.trim() === 'active') {
         webFilter[siteVisibleField] = true;
@@ -134,27 +79,22 @@ router.get('/', maybeAuth, async (req, res) => {
       }
     }
 
-    // Level filtreleme (1: Ana, 2: Alt, 3: Alt-Alt)
     if (level && !isNaN(level)) {
       webFilter.level = parseInt(level);
     }
 
-    // Üst kategori filtreleme
     if (parent_id && parent_id !== '') {
       if (parent_id === 'null' || parent_id === 'main') {
-        webFilter.parent = null; // Ana kategoriler
+        webFilter.parent = null;
       } else {
         webFilter.parent = parent_id;
       }
     }
 
-    // Arama - text search
     if (search && search.trim() !== '') {
       webFilter.$text = { $search: String(search.trim()) };
     }
 
-
-    // WebCategory'leri getir
     let query = WebCategory.find(webFilter)
       .select({
         name: 1,
@@ -184,22 +124,18 @@ router.get('/', maybeAuth, async (req, res) => {
       })
       .sort({ level: 1, [siteOrderField]: 1, name: 1 });
 
-    // Parent bilgilerini populate et
     if (with_children === 'true' || level !== '1') {
       query = query.populate('parent', 'name slug level');
     }
 
     const categories = await query.lean();
 
-    // Response formatını product.js gibi ayarla
     const formattedCategories = categories.map(cat => {
-      // Seçili sitenin görünürlük/sıralama/ürün sayısı (eski ortak alanlar yedek)
       const siteSet = cat.siteSettings?.[req.site] || {};
       const siteVisible = siteSet.webVisible !== undefined ? siteSet.webVisible : cat.webVisible;
       const siteOrder = siteSet.webOrder !== undefined ? siteSet.webOrder : (cat.webOrder || 0);
       const siteProductCount = siteSet.productCount !== undefined ? siteSet.productCount : (cat.productCount || 0);
 
-      // Web durumu belirleme
       let webStatus = 'Inactive';
       if (siteVisible && siteProductCount > 0) {
         webStatus = 'Active';
@@ -209,14 +145,12 @@ router.get('/', maybeAuth, async (req, res) => {
         webStatus = 'Hidden';
       }
 
-      // Level görüntü adları
       const levelNames = {
         1: 'Ana Kategori',
         2: 'Alt Kategori',
         3: 'Alt-Alt Kategori'
       };
 
-      // Parent path oluştur
       let parentPath = '';
       if (cat.parent && cat.parent.name) {
         parentPath = cat.parent.name;
@@ -232,26 +166,21 @@ router.get('/', maybeAuth, async (req, res) => {
         level: cat.level,
         levelName: levelNames[cat.level] || 'Bilinmeyen',
 
-        // Hiyerarşi
         parent: cat.parent || null,
         parentName: cat.parent?.name || '',
         parentPath: parentPath,
 
-        // DIA bağlantısı
         diaCategory: cat.diaCategory,
         diaLevel: cat.diaLevel,
 
-        // Web yönetimi (seçili site)
         webVisible: siteVisible,
         webOrder: siteOrder,
         status: webStatus,
 
-        // SEO (seçili site öncelikli)
         seoTitle: cat.siteContent?.[req.site]?.seoTitle || cat.seoTitle || cat.name,
         seoDescription: cat.siteContent?.[req.site]?.seoDescription || cat.seoDescription || '',
         seoUrl: cat.seoUrl || cat.slug,
 
-        // Slider (seçili site öncelikli)
         sliderId: (cat.siteContent?.[req.site]?.sliderId !== undefined
           ? cat.siteContent[req.site].sliderId
           : cat.sliderId) || null,
@@ -260,22 +189,18 @@ router.get('/', maybeAuth, async (req, res) => {
           return c.menuIds && c.menuIds.length ? c.menuIds : (c.menuId ? [c.menuId] : []);
         })(),
 
-        // Fiyat gösterimi (KDV dahil / hariç)
         priceDisplay: cat.siteContent?.[req.site]?.priceDisplay || 'dahil',
         vatRate: cat.siteContent?.[req.site]?.vatRate ?? 20,
         hideStockCode: cat.siteContent?.[req.site]?.hideStockCode === true,
         hiddenFilters: cat.siteContent?.[req.site]?.hiddenFilters || [],
 
-        // İstatistikler (ürün sayısı seçili sitenin yayınlanmış ürünleri)
         productCount: siteProductCount,
         totalDiaProductCount: cat.productCount || 0,
         activeProductCount: cat.activeProductCount || 0,
         totalStock: cat.totalStock || 0,
 
-        // Opsiyonel Alanlar (seçili site öncelikli)
         description: cat.siteContent?.[req.site]?.description ?? (cat.description || ''),
 
-        // Tarihler
         createdAt: cat.createdAt,
         updatedAt: cat.updatedAt,
         lastSync: cat.syncInfo?.lastSync,
@@ -308,9 +233,6 @@ router.get('/', maybeAuth, async (req, res) => {
   }
 });
 
-/**
- * Kategori Detay Güncelleme - WebProduct Kullanarak
- */
 router.patch('/:id', maybeAuth, [
   body('description').optional().isLength({ max: 500 }).withMessage('Açıklama en fazla 500 karakter olabilir'),
   body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
@@ -337,10 +259,8 @@ router.patch('/:id', maybeAuth, [
     if (webOrder !== undefined) updateData[`siteSettings.${req.site}.webOrder`] = Number(webOrder) || 0;
     if (webVisible !== undefined) updateData[`siteSettings.${req.site}.webVisible`] = webVisible === true || webVisible === 'true';
     if (sliderId !== undefined) updateData[`siteContent.${req.site}.sliderId`] = sliderId || null;
-    // Kategori sayfasında gösterilecek menüler (boş bırakılabilir, birden fazla olabilir)
     if (menuIds !== undefined) {
       updateData[`siteContent.${req.site}.menuIds`] = Array.isArray(menuIds) ? menuIds.filter(Boolean) : [];
-      // Eski tek alan artık kullanılmıyor; çakışmaması için temizlenir
       updateData[`siteContent.${req.site}.menuId`] = null;
     } else if (menuId !== undefined) {
       updateData[`siteContent.${req.site}.menuId`] = menuId || null;

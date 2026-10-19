@@ -1,11 +1,5 @@
 "use client";
 
-// Taksitli kart formu — cari borç için. Kart numarasının ilk 6 hanesinden (BIN) + tutardan taksit seçenekleri
-// çekilir; sunucu kartın bankasına göre sağlayıcıyı da bildirir:
-//  • NetTahsilat (PirPos): kart sunucuya gelir → PirPos'a iletilir (saklanmaz).
-//    /netahsilat/ratios → /netahsilat/borc-init → 3D → /netahsilat/borc-callback → /odeme-sonuc.
-//  • Paynet: kart tarayıcıda Paynet formuyla token'lanır, sunucuya gelmez.
-//    /netahsilat/ratios → /tekcekim/baslat (taksit sayısıyla) → Paynet formu + 3D → /tekcekim/return → /odeme-sonuc.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { CardIcon, SpinnerIcon } from "./icons";
@@ -47,7 +41,6 @@ interface TaksitOption {
   instalmentAmount: number;
   totalAmount: number;
   commission: number;
-  // Yalnız NetTahsilat seçeneklerinde
   vPosId?: number;
 }
 
@@ -75,7 +68,6 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
   };
   const setName = (v: string) => setHolder(v.replace(/[^a-zA-ZÀ-ſ\s]/g, ""));
 
-  // BIN (ilk 6) + tutar hazır olunca taksit seçeneklerini çek.
   useEffect(() => {
     if (bin.length < 6 || !(amountKurus > 0)) { setOptions(null); setSelected(null); return; }
     const key = `${bin}:${amountKurus}`;
@@ -121,7 +113,6 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
       const expYear = `20${(yy || "").padStart(2, "0")}`;
 
       if (provider === PAYNET_PROVIDER) {
-        // Paynet taksit: ödeme kaydı açılır, kart tarayıcıda Paynet formuyla işlenir
         const start = await fetch(API_ENDPOINTS.b2b.tekCekimBaslat(), {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Site": "b2b" },
@@ -163,7 +154,6 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
       });
       const data = await res.json();
       if (data?.success && data.threeDUrl) {
-        // 3D sayfasına yönlen; banka onayından sonra /odeme-sonuc'a döner.
         window.location.href = data.threeDUrl;
         return;
       }
@@ -202,7 +192,6 @@ export function InstallmentForm({ amountKurus }: { amountKurus: number }) {
           </label>
         </div>
 
-        {/* Taksit seçenekleri (BIN + tutardan) */}
         <div className="taksit-box">
           <div className="taksit-title">Taksit Seçenekleri</div>
           {!(amountKurus > 0) ? (

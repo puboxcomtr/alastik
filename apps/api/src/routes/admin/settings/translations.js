@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebTranslation = require('../../../models/web/settings/WebTranslation');
 
-// GET /api/admin/settings/translations
 router.get('/', async (req, res) => {
     
     try {
@@ -69,7 +68,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/admin/settings/translations/categories
 router.get('/categories', async (req, res) => {
     try {
         const categories = await WebTranslation.distinct('category', { isActive: true, site: req.site });
@@ -96,7 +94,6 @@ router.get('/categories', async (req, res) => {
     }
 });
 
-// GET /api/admin/settings/translations/:id
 router.get('/:id', async (req, res) => {
     try {
         const translation = await WebTranslation.findOne({ _id: req.params.id, site: req.site });
@@ -123,7 +120,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/admin/settings/translations
 router.post('/', async (req, res) => {
     try {
         const { key, value, category, description } = req.body;
@@ -169,8 +165,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-
-// PUT /api/admin/settings/translations/:id
 router.put('/:id', async (req, res) => {
     try {
         const { value, category, description, isActive } = req.body;
@@ -217,7 +211,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/settings/translations/:id
 router.delete('/:id', async (req, res) => {
     try {
         const translation = await WebTranslation.findOneAndUpdate(

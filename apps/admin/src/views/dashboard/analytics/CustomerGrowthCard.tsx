@@ -1,6 +1,5 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -8,13 +7,11 @@ import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 import Chip from '@mui/material/Chip'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
 import { formatInt } from './format'
 import type { OverviewData } from './format'
 
-// Bu ay kayıt olan yeni üyeler
 const CustomerGrowthCard = ({ growth }: { growth: OverviewData['customerGrowth'] }) => {
     const total = growth.thisMonth + growth.lastMonth
     const progress = total ? Math.round((growth.thisMonth / total) * 100) : 0

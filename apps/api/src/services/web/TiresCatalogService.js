@@ -1,24 +1,16 @@
 const axios = require('axios');
 const logger = require('../../utils/logger');
 
-/**
- * Tires Catalog API Servisi
- * http://217.195.202.170:5000 üzerindeki lastik kataloğu API'si ile iletişim kurar
- */
-
 class TiresCatalogService {
     constructor() {
         this.baseURL = 'http://wheelsizeapi.compiturk.com.tr';
-        this.timeout = 30000; // 30 saniye timeout (WheelSize API yavaş olabilir)
+        this.timeout = 30000;
         
         logger.info('TiresCatalogService başlatıldı', {
             baseURL: this.baseURL
         });
     }
 
-    /**
-     * HTTP istek gönderme yardımcı metodu
-     */
     async sendRequest(endpoint, params = {}) {
         try {
             const url = `${this.baseURL}${endpoint}`;
@@ -56,9 +48,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Tüm lastik markalarını getirir
-     */
     async getBrands(options = {}) {
         try {
             const params = {};
@@ -89,9 +78,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Belirli bir markanın ürünlerini getirir
-     */
     async getBrandProducts(brandSlug, options = {}) {
         try {
             const params = {};
@@ -135,9 +121,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Tek lastik ürününün detay bilgilerini getirir
-     */
     async getProductDetails(brandSlug, productSlug) {
         try {
             const result = await this.sendRequest(`/api/tires/catalog/${brandSlug}/${productSlug}/`);
@@ -159,9 +142,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Ürünün Buy/Not-Buy nedenlerini getirir
-     */
     async getProductBNB(brandSlug, productSlug) {
         try {
             const result = await this.sendRequest(`/api/tires/catalog/${brandSlug}/${productSlug}/bnb`);
@@ -182,9 +162,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Ürünün modifikasyonlarını (ebat varyasyonları) getirir
-     */
     async getProductModes(brandSlug, productSlug) {
         try {
             const result = await this.sendRequest(`/api/tires/catalog/${brandSlug}/${productSlug}/modes`);
@@ -206,14 +183,11 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Ürünün ilgili materyallerini getirir
-     */
     async getProductMaterials(brandSlug, productSlug, type = null) {
         try {
             const params = {};
             if (type) {
-                params.type = type; // article, video, benchmark, link
+                params.type = type;
             }
 
             const result = await this.sendRequest(`/api/tires/catalog/${brandSlug}/${productSlug}/materials`, params);
@@ -250,9 +224,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Bölgeleri getirir
-     */
     async getRegions() {
         try {
             const result = await this.sendRequest('/api/tires/regions');
@@ -270,9 +241,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Performans kategorilerini getirir
-     */
     async getPerformanceCategories() {
         try {
             const result = await this.sendRequest('/api/tires/performance-categories');
@@ -290,9 +258,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Profesyonel testleri getirir
-     */
     async getTests(options = {}) {
         try {
             const params = {};
@@ -329,9 +294,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Tek test detayını getirir
-     */
     async getTestDetails(testSlug, options = {}) {
         try {
             const params = {};
@@ -356,9 +318,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Top-Charts listesini getirir
-     */
     async getTopCharts(options = {}) {
         try {
             const params = {};
@@ -395,9 +354,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Top-Chart detayını getirir
-     */
     async getTopChartDetails(chartSlug, options = {}) {
         try {
             const params = {};
@@ -422,9 +378,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Basit arama yapar
-     */
     async searchTires(query) {
         try {
             const result = await this.sendRequest('/api/tires/search', query);
@@ -444,9 +397,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Gelişmiş arama yapar
-     */
     async advancedSearchTires(query) {
         try {
             const result = await this.sendRequest('/api/tires/search/advanced', query);
@@ -466,12 +416,8 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Lastik adından marka ve ürün slug'larını çıkarır
-     */
     parseProductName(productName) {
         try {
-            // Yaygın lastik marka adları ve WheelSize'daki karşılıkları
             const brandPatterns = [
                 { brand: 'michelin', regex: /michelin|mıchelın/i },
                 { brand: 'bridgestone', regex: /bridgestone|brıdgestone/i },
@@ -500,7 +446,6 @@ class TiresCatalogService {
 
             let detectedBrand = null;
             
-            // Marka adını bul
             for (const pattern of brandPatterns) {
                 if (pattern.regex.test(productName)) {
                     detectedBrand = pattern.brand;
@@ -513,25 +458,18 @@ class TiresCatalogService {
                 return null;
             }
 
-            // Ürün adından model adını çıkar
             let productModel = productName;
             
-            // Marka adını kaldır
             productModel = productModel.replace(new RegExp(detectedBrand, 'gi'), '').trim();
             
-            // Lastik ebatını kaldır (205/60R16, 245/45ZR18 vb.)
             productModel = productModel.replace(/\b\d{3}\/\d{2}[rz]?\d{2}\b/gi, '').trim();
             
-            // Yük ve hız indekslerini kaldır (96V, 100Y XL vb.)
             productModel = productModel.replace(/\b\d{2,3}[a-z]\s*(xl|rf|rft|runflat)?\b/gi, '').trim();
             
-            // Özel kodları kaldır (BMW(*), Mercedes(MO), M+S, 3PMSF vb.)
             productModel = productModel.replace(/\b(bmw\s*\(\*?\)|mercedes\s*\(mo\)|m\+s|3pmsf|rft|runflat|xl|rf)\b/gi, '').trim();
             
-            // Fazla boşlukları temizle
             productModel = productModel.replace(/\s+/g, ' ').trim();
             
-            // Bilinen model adlarını normalize et
             const modelMappings = {
                 'cinturato rosso pc01': 'cinturato-rosso',
                 'cinturato p7': 'cinturato-p7',
@@ -548,10 +486,8 @@ class TiresCatalogService {
                 'carmile': 'carmile'
             };
             
-            // Model adını slug haline getir
             let productSlug = productModel.toLowerCase();
             
-            // Bilinen model eşleştirmeleri kontrol et
             for (const [key, value] of Object.entries(modelMappings)) {
                 if (productSlug.includes(key.toLowerCase())) {
                     productSlug = value;
@@ -559,14 +495,13 @@ class TiresCatalogService {
                 }
             }
             
-            // Eğer eşleştirme bulunamadıysa, genel slug oluştur
             if (!Object.values(modelMappings).includes(productSlug)) {
                 productSlug = productModel
                     .toLowerCase()
-                    .replace(/[^a-z0-9\s\-]/g, '') // Özel karakterleri kaldır
-                    .replace(/\s+/g, '-') // Boşlukları tire ile değiştir
-                    .replace(/^-+|-+$/g, '') // Başındaki ve sonundaki tireleri kaldır
-                    .replace(/-+/g, '-'); // Çoklu tireleri tek tire yap
+                    .replace(/[^a-z0-9\s\-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/^-+|-+$/g, '')
+                    .replace(/-+/g, '-');
             }
 
             logger.info('Ürün adı parse edildi', {
@@ -590,9 +525,6 @@ class TiresCatalogService {
         }
     }
 
-    /**
-     * Ürün adından tüm lastik verilerini getirir
-     */
     async getTireDataByProductName(productName) {
         try {
             const parsed = this.parseProductName(productName);
@@ -602,7 +534,6 @@ class TiresCatalogService {
 
             const { brand, product } = parsed;
 
-            // Paralel olarak tüm verileri çek
             const [details, bnb, modes, materials] = await Promise.allSettled([
                 this.getProductDetails(brand, product),
                 this.getProductBNB(brand, product),

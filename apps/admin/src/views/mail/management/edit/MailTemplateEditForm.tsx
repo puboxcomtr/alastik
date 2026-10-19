@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -20,7 +19,6 @@ import MenuItem from '@mui/material/MenuItem'
 import CircularProgress from '@mui/material/CircularProgress'
 import Box from '@mui/material/Box'
 
-/* Editor */
 import { useEditor, EditorContent } from '@tiptap/react'
 import { StarterKit } from '@tiptap/starter-kit'
 import { Underline } from '@tiptap/extension-underline'
@@ -36,13 +34,10 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Image } from '@tiptap/extension-image'
 
-/* Components */
 import MailEditorToolbar from '../components/MailEditorToolbar'
 
-/* API */
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-/* Styles */
 import '@/libs/styles/tiptapEditor.css'
 
 type RecipientType = 'mail_group' | 'user' | 'single_email'
@@ -113,7 +108,6 @@ const MailTemplateEditForm = ({ templateId }: Props) => {
         parseOptions: { preserveWhitespace: 'full' }
     })
 
-    // Mevcut şablonu çek
     useEffect(() => {
         const loadTemplate = async () => {
             try {
@@ -154,14 +148,12 @@ const MailTemplateEditForm = ({ templateId }: Props) => {
         loadTemplate()
     }, [templateId])
 
-    // Editor'a içeriği yükle
     useEffect(() => {
         if (editor && !isHtmlMode && htmlContent) {
             editor.commands.setContent(htmlContent, false)
         }
     }, [editor, htmlContent])
 
-    // Mail grup/kullanıcı seçeneklerini çek
     useEffect(() => {
         const loadOptions = async () => {
             try {

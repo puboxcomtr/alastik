@@ -1,14 +1,8 @@
 'use client';
 
-// ============================================
-// React & Next.js
-// ============================================
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
-// ============================================
-// MUI Components
-// ============================================
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -19,22 +13,13 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
-// ============================================
-// Types
-// ============================================
 import type { TireSearchState, SearchStep } from '@/src/types/tire-search';
 
-// ============================================
-// Services & Hooks
-// ============================================
 import { buildTagUrl, buildTireSizeTagFallback } from '@/src/config/routes';
 import { CONDITION_QUERY_PARAM } from '@/src/config/productCondition';
 import tagService from '@/src/services/tagService';
 import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 
-// ============================================
-// Components
-// ============================================
 import MakeSelection from './steps/MakeSelection';
 import ModelSelection from './steps/ModelSelection';
 import GenerationSelection from './steps/GenerationSelection';
@@ -52,7 +37,6 @@ interface TireSearchModalProps {
     mode?: ModalMode;
     onSearchComplete?: (searchData: any) => void;
     onVehicleSaved?: () => void;
-    /** Sonuç sayfasında açılacak ürün durumu sekmesi (örn. 'ikinci-el') */
     condition?: string;
 }
 
@@ -93,7 +77,6 @@ export default function TireSearchModal({
 
     const currentStepIndex = stepOrder.indexOf(currentStep);
 
-    // Mode'a göre modal başlığı
     const modalTitle = useMemo(() => {
         switch (mode) {
             case 'addVehicle':
@@ -200,7 +183,6 @@ export default function TireSearchModal({
             setIsRedirecting(false);
         }
     };
-    // Jant Arama
     const handleShowRims = async () => {
         if (!searchState.selectedRimSize) return;
         setIsRedirecting(true);
@@ -254,7 +236,6 @@ export default function TireSearchModal({
             setIsRedirecting(false);
         }
     };
-    // Kar Paleti
     const handleShowChains = async () => {
         if (!searchState.selectedChainSize) return;
         setIsRedirecting(true);
@@ -267,7 +248,6 @@ export default function TireSearchModal({
             params.set('yanak', aspectRatio.toString());
             params.set('jant', diameter.toString());
 
-            // kar-zinciri üst kategoridir (kar paleti + kar çorabı alt kategorileri); eski adres 404 veriyordu
             const chainUrl = `/kategori/kar-zinciri?${params.toString()}`;
 
             const vehicleData = {
@@ -301,7 +281,6 @@ export default function TireSearchModal({
             setIsRedirecting(false);
         }
     };
-    // Araç Kaydetme
     const handleSaveVehicle = async (details: { plateNumber: string; mileage?: number; isPrimary: boolean }) => {
         setIsSaving(true);
 
@@ -342,10 +321,8 @@ export default function TireSearchModal({
         }
     };
 
-    // Son adımda footer butonu gösterme (details için)
     const showFooter = currentStep !== 'details';
 
-    // Son adım buton metni ve handler
     const getActionButton = () => {
         if (currentStep === 'size') {
             return {
@@ -383,7 +360,6 @@ export default function TireSearchModal({
                 sx: { minHeight: '600px' }
             }}
         >
-            {/* Header */}
             <DialogTitle sx={{ pb: 1 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="h6">{modalTitle}</Typography>
@@ -393,7 +369,6 @@ export default function TireSearchModal({
                 </Box>
             </DialogTitle>
 
-            {/* Body */}
             <DialogContent dividers sx={{ minHeight: '400px' }}>
                 {currentStep === 'make' && (
                     <MakeSelection
@@ -508,7 +483,6 @@ export default function TireSearchModal({
                 )}
             </DialogContent>
 
-            {/* Footer */}
             {showFooter && (
                 <DialogActions sx={{ justifyContent: 'space-between', p: 2 }}>
                     <button

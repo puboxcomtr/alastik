@@ -1,7 +1,5 @@
 "use client";
 
-// Ödemelerim — bayinin hesabına işlenen tahsilat/ödeme hareketleri (ekstre alacak).
-// Kaynak: /odemeler (cari ekstredeki alacak kalemleri, DB-öncelikli). Kalem fatura ise (ör. iade faturası) PDF'i görüntülenebilir.
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { SpinnerIcon, CloseIcon, ViewIcon, FileIcon } from "@components/b2b-theme/icons";
@@ -40,7 +38,6 @@ export default function OdemelerimPage() {
   const [applied, setApplied] = useState({ no: "", tarih: "" });
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "tarih", dir: "desc" });
   const [secili, setSecili] = useState<Payment | null>(null);
-  // PDF'i açılmakta olan faturanın anahtarı (düğme bekleme göstergesi)
   const [acilan, setAcilan] = useState<string | null>(null);
 
   async function faturaGoruntule(p: Payment) {

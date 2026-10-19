@@ -2,17 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-/* Component */
 import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/lastikjantavm/Header/Middle/Main';
 import Navbar from '@components/lastikjantavm/Header/Navbar/Main';
 import MobileMenu from '@components/lastikjantavm/Header/MobileMenu';
 import MontageMarquee from '@components/lastikjantavm/Header/MontageMarquee';
 
-/* Api Connection */
 import { api } from '@src/lib/api';
 
-/* Variables */
 export default function Header() {
     const [logo, setLogo] = useState('');
     const [siteName, setSiteName] = useState('LastikJantAVM');

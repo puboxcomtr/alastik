@@ -1,7 +1,5 @@
-// apps/web/src/services/cartService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 
-// SessionId al veya olustur
 export function getCartSessionId(): string {
     if (typeof window === 'undefined') return '';
 
@@ -13,15 +11,12 @@ export function getCartSessionId(): string {
     return sessionId;
 }
 
-// Giriş yapmış üyenin tokenı: API sepeti üyeye bağlayabilsin diye eklenir.
-// Token yoksa/geçersizse misafir akışı aynen sürer.
 function getAuthHeader(): Record<string, string> {
     if (typeof window === 'undefined') return {};
     const token = localStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// Sepeti getir
 export async function getCart() {
     const sessionId = getCartSessionId();
     if (!sessionId) return null;
@@ -31,7 +26,6 @@ export async function getCart() {
             headers: { ...(await getServerSiteHeaders()) }
         });
         const data = await res.json();
-        // notes: sepet açılırken yapılan düzeltmeler (stok azaldığı için adet indirildi vb.)
         return data.success ? { ...data.data, notes: data.notes } : null;
     } catch (error) {
         console.error('[cartService] getCart error:', error);
@@ -39,8 +33,6 @@ export async function getCart() {
     }
 }
 
-// Sepete ekle
-// ownTire: "Montaj Satın Al" sayfası — müşterinin kendi lastiği için montaj (sepette lastik şartı aranmaz)
 export async function addToCart(productKey: string, quantity: number = 1, montagePointId?: string, ownTire?: boolean) {
     const sessionId = getCartSessionId();
 
@@ -61,7 +53,6 @@ export async function addToCart(productKey: string, quantity: number = 1, montag
     }
 }
 
-// Adet guncelle
 export async function updateCartItem(productKey: string, quantity: number) {
     const sessionId = getCartSessionId();
 
@@ -82,7 +73,6 @@ export async function updateCartItem(productKey: string, quantity: number) {
     }
 }
 
-// Urun kaldir
 export async function removeFromCart(productKey: string) {
     const sessionId = getCartSessionId();
 
@@ -102,7 +92,6 @@ export async function removeFromCart(productKey: string) {
     }
 }
 
-// Sepeti temizle
 export async function clearCart() {
     const sessionId = getCartSessionId();
 

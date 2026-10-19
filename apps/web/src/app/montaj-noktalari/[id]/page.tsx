@@ -19,7 +19,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const point = await getPoint(id);
     if (!point) return { title: siteTitle('Montaj Noktası') };
     const bolge = `${point.city}${point.district ? ` / ${point.district}` : ''}`;
-    // Bilgileri açık noktalarda başlıkta bayi adı kullanılır
     const label = point.isPublicInfo && point.name ? `${point.name} - ${bolge}` : `Anlaşmalı Montaj Noktası - ${bolge}`;
     return {
         title: siteTitle(label),

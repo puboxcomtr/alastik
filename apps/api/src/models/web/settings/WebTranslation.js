@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const webTranslationSchema = new mongoose.Schema({
-    // Her site için ayrı çeviri seti (site + key benzersiz)
     site: {
         type: String,
         enum: Object.keys(SITES),

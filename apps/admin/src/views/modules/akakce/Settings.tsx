@@ -58,13 +58,11 @@ interface AkakceSettings {
     includeAdditionalImages: boolean
     productSources: ProductSources
     fieldMapping: AkakceFieldMapping
-    // Kargo / Teslimat
     shippingPrice: number
     freeShippingThreshold: number
     dayOfDelivery: number
     expressDeliveryTime: string
     localDelivery: string
-    // Diğer
     distributor: boolean
     campaignCode: string
     lastGenerated: string | null
@@ -105,7 +103,6 @@ const defaultSettings: AkakceSettings = {
     productCount: 0
 }
 
-// Kod alanları için sabit seçenekler (DIA stok kartı alanları)
 const CODE_FIELD_OPTIONS = [
     { key: 'diaData.stokkartkodu', label: 'Stok Kartı Kodu (stokkartkodu)' },
     { key: 'diaData.anabarkod', label: 'Ana Barkod (anabarkod)' },
@@ -115,7 +112,6 @@ const CODE_FIELD_OPTIONS = [
 
 type FieldOption = { key: string, label: string, group: string, preview?: string }
 
-// Eşleştirme satırı: solda alan adı, sağda kaynak kontrolü
 const MappingRow = ({ title, required, children }: {
     title: string
     required?: boolean
@@ -131,7 +127,6 @@ const MappingRow = ({ title, required, children }: {
     </>
 )
 
-// Alan seçici (aranabilir)
 const FieldAutocomplete = ({ value, onChange, options, allowEmpty }: {
     value: string
     onChange: (v: string) => void
@@ -171,7 +166,6 @@ const FieldAutocomplete = ({ value, onChange, options, allowEmpty }: {
     )
 }
 
-// Kategori çoklu seçici
 const CategoryPicker = ({ value, onChange, options, loading }: {
     value: PickItem[]
     onChange: (v: PickItem[]) => void
@@ -200,7 +194,6 @@ const CategoryPicker = ({ value, onChange, options, loading }: {
     />
 )
 
-// Ürün çoklu seçici (aramalı)
 const ProductPicker = ({ value, onChange }: {
     value: PickItem[]
     onChange: (v: PickItem[]) => void
@@ -279,7 +272,6 @@ const ProductPicker = ({ value, onChange }: {
     )
 }
 
-// Özel seçim: aramalı ürün tablosu
 const CustomProductSelector = ({ value, onChange }: {
     value: PickItem[]
     onChange: (v: PickItem[]) => void
@@ -313,7 +305,6 @@ const CustomProductSelector = ({ value, onChange }: {
             }
 
             const matchedById = new Map((matched as PickItem[]).map(m => [m.id, m]))
-            // Zaten seçili olanların xmlName'ini güncelle, yenileri ekle
             const updatedExisting = value.map(v => {
                 const m = matchedById.get(v.id)
                 return m?.xmlName ? { ...v, xmlName: m.xmlName } : v
@@ -386,7 +377,6 @@ const CustomProductSelector = ({ value, onChange }: {
                 Ürün Seçimi ({value.length} ürün seçili)
             </Typography>
 
-            {/* Seçili ürünler */}
             {value.length > 0 && (
                 <Box
                     display="flex"
@@ -412,7 +402,6 @@ const CustomProductSelector = ({ value, onChange }: {
                 </Box>
             )}
 
-            {/* Arama Alanı */}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -462,7 +451,6 @@ const CustomProductSelector = ({ value, onChange }: {
                 </Grid>
             </Grid>
 
-            {/* Ürün Listesi Tablosu */}
             <div className="overflow-x-auto mt-4" style={{ maxHeight: 400, overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--mui-palette-background-paper)', zIndex: 1 }}>
@@ -540,7 +528,6 @@ const CustomProductSelector = ({ value, onChange }: {
     )
 }
 
-// Ürün kaynağı filtre bölümü (Stoklu / XML)
 const SourceFilterSection = ({ title, filter, onChange, categoryOptions, categoriesLoading }: {
     title: string
     filter: SourceFilter
@@ -710,7 +697,6 @@ export default function Settings() {
         }))
     }
 
-    // Autocomplete seçenekleri (kod alanları + DIA + özel alanlar)
     const fieldOptions: FieldOption[] = [
         ...CODE_FIELD_OPTIONS.map(f => ({ ...f, group: 'Kod Alanları' })),
         ...textFields.diaFields.map(f => ({ key: f.key, label: f.key.replace('diaData.', ''), group: 'DIA Alanları', preview: f.preview })),
@@ -731,7 +717,6 @@ export default function Settings() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 8 }} container spacing={3} alignContent="flex-start">
 
-                        {/* Ürün Filtreleme */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -758,7 +743,6 @@ export default function Settings() {
                             </Card>
                         </Grid>
 
-                        {/* Alan Eşleştirmeleri — Akakçe XML şeması */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -938,7 +922,6 @@ export default function Settings() {
                             </Card>
                         </Grid>
 
-                        {/* Ürün Filtresi */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -981,7 +964,6 @@ export default function Settings() {
 
                     </Grid>
 
-                    {/* Sağ Kolon */}
                     <Grid size={{ xs: 4 }} container spacing={5} alignContent="flex-start">
                         <Grid size={{ xs: 12 }}>
                             <Card className="mb-5">

@@ -4,10 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import classnames from 'classnames'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import type { TextFieldProps } from '@mui/material/TextField'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -25,10 +23,8 @@ import FormControl from '@mui/material/FormControl'
 
 import { toast } from 'react-toastify'
 
-// Component Imports
 import TableFilters from './TableFilters'
 
-// Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
     createColumnHelper,
@@ -44,7 +40,6 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -109,7 +104,6 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     return itemRank.passed
 }
 
-// Durum renkleri
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     const colors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
         pending: 'warning',
@@ -124,7 +118,6 @@ const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | '
     return colors[status] || 'default'
 }
 
-// Ödeme durumu renkleri
 const getPaymentStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     const colors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
         pending: 'warning',
@@ -136,7 +129,6 @@ const getPaymentStatusColor = (status: string): 'default' | 'primary' | 'seconda
     return colors[status] || 'default'
 }
 
-// Fiyat formatla
 const formatPrice = (price: number) => {
     return new Intl.NumberFormat('tr-TR', {
         minimumFractionDigits: 2,
@@ -144,7 +136,6 @@ const formatPrice = (price: number) => {
     }).format(price) + ' TL'
 }
 
-// Tarih formatla
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('tr-TR', {
         day: '2-digit',
@@ -164,7 +155,6 @@ const OrderListTable = () => {
     const [loading, setLoading] = useState(true)
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(20)
     const [totalCount, setTotalCount] = useState(0)

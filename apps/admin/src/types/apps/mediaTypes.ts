@@ -1,4 +1,3 @@
-// Media Library Types
 export interface MediaFile {
     id: string
     filename: string

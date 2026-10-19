@@ -26,7 +26,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
     modifikasyonlar: false
   });
 
-  // Markaları yükle
   useEffect(() => {
     loadMarkalar();
   }, []);
@@ -57,7 +56,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
     }
   };
 
-  // Marka seçildiğinde modelleri yükle
   const loadModellerCallback = useCallback(async (marka: string) => {
     setLoading(prev => ({ ...prev, modeller: true }));
     console.log('🔍 [TIRE SEARCH] Modeller yükleniyor...', {
@@ -89,7 +87,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
   useEffect(() => {
     if (selectedMarka) {
       loadModellerCallback(selectedMarka);
-      // Diğer seçimleri sıfırla
       setSelectedModel('');
       setSelectedYil('');
       setSelectedModifikasyon('');
@@ -98,7 +95,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
     }
   }, [selectedMarka, loadModellerCallback]);
 
-  // Model seçildiğinde yılları yükle
   const loadYillarCallback = useCallback(async (marka: string, model: string) => {
     setLoading(prev => ({ ...prev, yillar: true }));
     console.log('🔍 [TIRE SEARCH] Yıllar yükleniyor...', {
@@ -132,7 +128,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
   useEffect(() => {
     if (selectedMarka && selectedModel) {
       loadYillarCallback(selectedMarka, selectedModel);
-      // Sonraki seçimleri sıfırla
       setSelectedYil('');
       setSelectedModifikasyon('');
       setModifikasyonlar([]);
@@ -169,7 +164,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
           hata: response.hata,
           mesaj: response.mesaj
         });
-        // Kullanıcıya hata mesajı göster
         if (response.hata || response.mesaj) {
           alert(`Modifikasyonlar yüklenirken hata: ${response.hata || response.mesaj}`);
         }
@@ -182,7 +176,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
     }
   }, []);
 
-  // Yıl seçildiğinde modifikasyonları yükle
   useEffect(() => {
     if (selectedMarka && selectedModel && selectedYil) {
       loadModifikasyonlar(selectedMarka, selectedModel, parseInt(selectedYil));
@@ -207,7 +200,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
     const navigateToCategory = (url: string) => {
       console.log('🧭 [TIRE SEARCH][NAVIGATE_START]', { url, ts: new Date().toISOString() });
       try {
-        // Bootstrap modal / offcanvas kalıntılarını temizle
         const body = document.body;
         body.classList.remove('modal-open');
         body.classList.remove('offcanvas-backdrop');
@@ -219,11 +211,9 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
         console.warn('Modal temizliği sırasında uyarı:', e);
       }
       try {
-        // Log stoğu çok büyüdüyse engel olmasın diye temizle
         localStorage.removeItem('web_logs');
       } catch {}
 
-      // Navigasyon için sağlamlaştırılmış yönlendirme
       const attemptUrl = url;
       try { sessionStorage.setItem('force_category_url', attemptUrl); } catch {}
       setTimeout(() => {
@@ -266,7 +256,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
           timestamp: new Date().toISOString()
         });
 
-        // Modal'ı kapat
         const modal = document.getElementById('tireSearch') as HTMLElement | null;
         if (modal) {
           console.log('🔧 [TIRE SEARCH] Modal element bulundu, kapatılıyor...');
@@ -276,7 +265,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
               const instance = bs.Modal.getInstance(modal) || bs.Modal.getOrCreateInstance(modal);
               instance.hide();
             } else {
-              // Bootstrap yoksa manuel olarak gizle/temizle
               modal.classList.remove('show');
               modal.setAttribute('aria-hidden', 'true');
               if ((modal as any).style) {
@@ -296,7 +284,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
           console.error('❌ [TIRE SEARCH] Modal element bulunamadı!');
         }
 
-        // Arama sonuçlarını gönder
         if (onSearchComplete) {
           console.log('📞 [TIRE SEARCH] onSearchComplete callback çağrılıyor...', {
             callbackData: {
@@ -323,7 +310,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
           });
         }
 
-        // Her durumda kategori sayfasına yönlendir
         const params = new URLSearchParams({
           tip: 'arac',
           marka: selectedMarka,
@@ -340,14 +326,12 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
           hata: response.hata,
           mesaj: response.mesaj
         });
-        // Kullanıcıya hata mesajı göster
         if (response.hata || response.mesaj) {
           alert(`Arama sırasında hata: ${response.hata || response.mesaj}`);
         } else {
           alert('Arama sonucu bulunamadı');
         }
 
-        // Başarısız olsa dahi kategori sayfasına yönlendir (sonuç yok ekranı göstereceğiz)
         const params = new URLSearchParams({
           tip: 'arac',
           marka: selectedMarka,
@@ -363,7 +347,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
       console.error('❌ [TIRE SEARCH] Final arama hatası:', error);
       alert(`Arama sırasında hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
 
-      // Hata olsa bile kategori sayfasına yönlendir (kategori sayfası hata mesajını gösterecek)
       const params = new URLSearchParams({
         tip: 'arac',
         marka: selectedMarka,
@@ -399,7 +382,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
           </div>
           <div className="modal-body">
             <form>
-              {/* Marka Seçimi */}
               <div className="mb-3">
                 <label htmlFor="marka" className="form-label">Marka</label>
                 <select 
@@ -418,7 +400,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
                 </select>
               </div>
 
-              {/* Model Seçimi */}
               <div className="mb-3">
                 <label htmlFor="model" className="form-label">Model</label>
                 <select 
@@ -437,7 +418,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
                 </select>
               </div>
 
-              {/* Yıl Seçimi */}
               <div className="mb-3">
                 <label htmlFor="yil" className="form-label">Yıl</label>
                 <select 
@@ -456,7 +436,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
                 </select>
               </div>
 
-              {/* Modifikasyon Seçimi (Opsiyonel) */}
               <div className="mb-3">
                 <label htmlFor="modifikasyon" className="form-label">
                   Modifikasyon <small className="text-muted">(Opsiyonel)</small>
@@ -477,7 +456,6 @@ export default function TireSearchModal({ onSearchComplete }: TireSearchModalPro
                 </select>
               </div>
 
-              {/* Araç Resmi Preview */}
               {modifikasyonlar.length > 0 && modifikasyonlar[0].generation?.bodies?.[0]?.image && (
                 <div className="mb-3">
                   <label className="form-label">Araç Görünümü</label>

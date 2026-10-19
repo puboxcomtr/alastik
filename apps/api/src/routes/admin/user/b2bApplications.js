@@ -11,9 +11,6 @@ const STATUS_LABELS = {
     rejected: 'Reddedildi'
 };
 
-/**
- * GET / — bayi başvuruları listesi (site bazlı, durum filtresi + arama + sayfalama)
- */
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -71,9 +68,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * PUT /:id/status — başvuru durumunu ve yönetici notunu günceller
- */
 router.put('/:id/status', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) {

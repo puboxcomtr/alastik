@@ -43,12 +43,10 @@ export default function MobileMenu({ show, onClose }: Props) {
                 <MainMenu handleClose={onClose} />
             </Offcanvas.Body>
             <div className="border-top px-0 py-3 mt-3 d-md-none">
-                {/* Kendi lastiğiyle montaj satın alma (alastik ile aynı akış) */}
                 <Link href={ROUTES.MONTAGE_BUY} className="nav-link justify-content-center fw-semibold mb-2" onClick={onClose}>
                     <BuildOutlinedIcon className="opacity-60 me-2" sx={{ fontSize: 20 }} />
                     Montaj Satın Al
                 </Link>
-                {/* Montaj noktası (bayi) başvuru formu */}
                 <Link href="/bayi-formu" className="nav-link justify-content-center fw-semibold mb-2" onClick={onClose}>
                     <StorefrontOutlinedIcon className="opacity-60 me-2" sx={{ fontSize: 20 }} />
                     Montaj Noktamız Ol

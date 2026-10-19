@@ -7,7 +7,6 @@ function escapeRegex(str) {
     return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Aktarım Ayarları seçicileri — kaynak: diastocks (DIA'daki TÜM ürünler)
 router.get('/aktarim/products', async (req, res) => {
     try {
         const search = (req.query.search || '').trim();
@@ -76,7 +75,6 @@ router.get('/aktarim/brands', async (req, res) => {
     }
 });
 
-// GET - Ayarları getir (X-Site header'ına göre site bazlı)
 router.get('/settings', async (req, res) => {
     try {
         const settings = await WebDia.getSettings(req.site || 'alastik');
@@ -87,7 +85,6 @@ router.get('/settings', async (req, res) => {
     }
 });
 
-// PUT - Ayarları güncelle (X-Site header'ına göre site bazlı)
 router.put('/settings', async (req, res) => {
     try {
         const settings = await WebDia.updateSettings(req.body, req.site || 'alastik');
@@ -98,7 +95,6 @@ router.put('/settings', async (req, res) => {
     }
 });
 
-// POST - Bağlantı testi
 router.post('/test-connection', async (req, res) => {
     try {
         const { baseURL, apiKey, username, password, firmaKodu, donemKodu } = req.body;
@@ -119,7 +115,6 @@ router.post('/test-connection', async (req, res) => {
         const data = loginRes.data;
 
         if (data.code === '200' && data.msg) {
-            // Logout yap session'ı düşürme
             try {
                 await axios.post(`${baseURL}/api/v3/sis/json`, {
                     logout: { session_id: data.msg }
@@ -142,10 +137,7 @@ router.post('/test-connection', async (req, res) => {
     }
 });
 
-// Sipariş Entegrasyonu key alanları için DIA seçenek listeleri.
-// Şube/depo ve yetki kodlarının doğrudan listeleme servisi yoktur —
-// mevcut belgelerden (sipariş/fatura/irsaliye/cari) türetilir.
-const siparisOptionsCache = new Map(); // site → { at, data }
+const siparisOptionsCache = new Map();
 const SIPARIS_OPTIONS_TTL = 10 * 60 * 1000;
 
 router.get('/siparis-options', async (req, res) => {
@@ -193,7 +185,6 @@ router.get('/siparis-options', async (req, res) => {
             return Array.isArray(response?.result) ? response.result : [];
         };
 
-        // Doğrudan listelenebilenler (kargo firmaları krg modülündedir)
         const [kargoRows, elemanRows, planRows, hizmetRows] = [
             await list('krg_firma_listele', 100, '', '/api/v3/krg/json'),
             await list('scf_satiselemani_listele', 200),
@@ -201,7 +192,6 @@ router.get('/siparis-options', async (req, res) => {
             await list('scf_hizmetkart_listele', 500)
         ];
 
-        // Belgelerden türetilenler (son kayıtlar, _key azalan)
         const desc = [{ field: '_key', sorttype: 'DESC' }];
         const [siparisRows, faturaRows, irsaliyeRows, cariRows] = [
             await list('scf_siparis_listele', 100, desc),
@@ -224,11 +214,9 @@ router.get('/siparis-options', async (req, res) => {
         const data = {
             subeler: collectPairs(belgeRows, '_key_sis_sube_source', '__sourcesubeadi'),
             depolar: collectPairs(belgeRows, '_key_sis_depo_source', '__sourcedepoadi'),
-            // Alan adları DIA yanıtına göre: kargo adı 'aciklama', satış elemanı adı 'kodu' + açıklaması 'aciklama'
             kargoFirmalari: kargoRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: `${r.aciklama || ''} (${r.kodu || ''})`.trim() })),
             satisElemanlari: elemanRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: [r.kodu, r.aciklama].filter(Boolean).join(' — ') || String(r._key) })).sort((a, b) => a.label.localeCompare(b.label, 'tr')),
             odemePlanlari: planRows.filter(r => r.durum === 'A').map(r => ({ key: parseInt(r._key), label: [r.kodu, r.aciklama || r.adi].filter(Boolean).join(' — ') || String(r._key) })).sort((a, b) => a.label.localeCompare(b.label, 'tr')),
-            // Verilen (satış) hizmet kartları — kargo bedeli satırı için
             hizmetKartlari: hizmetRows.filter(r => r.durum === 'A' && r.hizmetkartturu === 'V').map(r => ({ key: parseInt(r._key), label: [r.hizmetkartkodu, r.aciklama].filter(Boolean).join(' — ') || String(r._key) })),
             cariOzelKodlari: collectPairs(cariRows, '_key_sis_ozelkod1', 'ozelkod1kod'),
             cariYetkiKodlari: collectPairs(cariRows, '_key_sis_seviyekodu', 'yetkikodu'),

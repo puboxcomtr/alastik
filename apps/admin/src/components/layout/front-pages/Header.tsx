@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 
 import IconButton from '@mui/material/IconButton'
@@ -11,27 +9,20 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import useScrollTrigger from '@mui/material/useScrollTrigger'
 import type { Theme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { Mode } from '@core/types'
 
-// Component Imports
 import Logo from '@components/layout/shared/Logo'
 
-// Util Imports
 import { frontLayoutClasses } from '@layouts/utils/layoutClasses'
 
 
 const Header = ({ mode }: { mode: Mode }) => {
-  // States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  // Hooks
   const isBelowLgScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('lg'))
 
-  // Detect window scroll
   const trigger = useScrollTrigger({
     threshold: 0,
     disableHysteresis: true

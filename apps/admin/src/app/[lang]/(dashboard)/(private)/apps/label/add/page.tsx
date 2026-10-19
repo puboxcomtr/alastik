@@ -4,10 +4,8 @@ import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -156,7 +154,6 @@ const AddLabelPage = () => {
     return (
         <form onSubmit={handleSubmit}>
             <Grid container spacing={6}>
-                {/* Header */}
                 <Grid size={{ xs: 12 }}>
                     <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col' style={{ gap: '10px' }}>
                         <div className='flex items-center gap-3'>
@@ -185,10 +182,8 @@ const AddLabelPage = () => {
                     </div>
                 </Grid>
 
-                {/* Sol Kolon */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={6}>
-                        {/* Genel Bilgiler */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -222,7 +217,6 @@ const AddLabelPage = () => {
                             </Card>
                         </Grid>
 
-                        {/* Ürün Seçimi */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -230,7 +224,6 @@ const AddLabelPage = () => {
                                         Ürün Seçimi ({selectedProducts.length} ürün seçili)
                                     </Typography>
 
-                                    {/* Arama Alanı */}
                                     <Grid container spacing={3}>
                                         <Grid size={{ xs: 12, md: 8 }}>
                                             <TextField
@@ -267,7 +260,6 @@ const AddLabelPage = () => {
                                         </Grid>
                                     </Grid>
 
-                                    {/* Ürün Listesi Tablosu */}
                                     <div className='overflow-x-auto mt-4' style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 1 }}>
@@ -350,7 +342,6 @@ const AddLabelPage = () => {
                     </Grid>
                 </Grid>
 
-                {/* Sağ Kolon */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Grid container spacing={6}>
                         <Grid size={{ xs: 12 }}>

@@ -7,13 +7,11 @@ import { CalendarIcon, CardIcon, FileIcon, OrdersIcon, UserIcon, WalletIcon } fr
 import { PremiumBadge } from "./premium-badge";
 import { clearStoredCart } from "./cart-status";
 
-/** Üst bardaki hesap menüsü: oturumdaki cari bilgisi + ayarlar, siparişler, ödeme, çıkış. */
 export function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [cari, setCari] = useState<{ unvan: string; email: string; cariKodu: string; premium: boolean } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Oturumdaki bayinin gerçek cari bilgisi (/me) çekilir.
   useEffect(() => {
     const t = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
     if (!t) return;
@@ -83,7 +81,6 @@ export function AccountMenu() {
             href="/giris"
             onClick={() => {
               setOpen(false);
-              // Plasiyer oturumundaysa (bayi adına ya da bayisiz) plasiyer de çıkar ve sepeti temizlenir; bayinin sepeti korunur
               if (localStorage.getItem("plasiyerToken")) {
                 localStorage.removeItem("plasiyerToken");
                 clearStoredCart();

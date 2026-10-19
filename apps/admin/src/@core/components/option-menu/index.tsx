@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useRef, useState } from 'react'
 import type { ReactElement, ReactNode, SyntheticEvent } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 
-// MUI Imports
 import Tooltip from '@mui/material/Tooltip'
 import Box from '@mui/material/Box'
 import Popper from '@mui/material/Popper'
@@ -19,17 +16,13 @@ import Paper from '@mui/material/Paper'
 import IconButton from '@mui/material/IconButton'
 import Divider from '@mui/material/Divider'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { OptionsMenuType, OptionType, OptionMenuItemType } from './types'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
 const IconButtonWrapper = (props: Pick<OptionsMenuType, 'tooltipProps'> & { children: ReactElement }) => {
-  // Props
   const { tooltipProps, children } = props
 
   return tooltipProps?.title ? <Tooltip {...tooltipProps}>{children}</Tooltip> : children
@@ -48,16 +41,12 @@ const MenuItemWrapper = ({ children, option }: { children: ReactNode; option: Op
 }
 
 const OptionMenu = (props: OptionsMenuType) => {
-  // Props
   const { tooltipProps, icon, iconClassName, options, leftAlignMenu, iconButtonProps } = props
 
-  // States
   const [open, setOpen] = useState(false)
 
-  // Refs
   const anchorRef = useRef<HTMLButtonElement>(null)
 
-  // Hooks
   const { settings } = useSettings()
 
   const handleToggle = () => {

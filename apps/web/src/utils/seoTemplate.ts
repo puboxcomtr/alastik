@@ -1,4 +1,3 @@
-// SEO template degisken değiştiricis.
 export function applyTemplate(
     template: string | undefined,
     vars: Record<string, string>

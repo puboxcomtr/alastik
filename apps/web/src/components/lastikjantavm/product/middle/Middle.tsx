@@ -1,14 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-/* ========================================
-   MUI Components
-   ======================================== */
 import { Grid, Typography, Rating, Link, Divider, Tooltip } from '@mui/material';
 
-/* ========================================
-   Custom Hooks & Helpers
-   ======================================== */
 import {
     getProductDetailFeatures,
     getProductSeason,
@@ -21,13 +15,9 @@ import { getRelatedBlogs } from '@/src/services/productService';
 import { API_ENDPOINTS } from '@/src/config/api';
 import { ROUTES } from '@/src/config/routes';
 
-/* ========================================
-   Layout Components
-   ======================================== */
 import AlternativeSizesModal from '@/src/components/layout/Modals/AlternativeSizesModal';
 import ShareProductModal from '@/src/components/layout/Modals/ShareProductModal';
 
-/* @import Page */
 interface MiddleProps {
     product: Product;
     productName: string;
@@ -59,7 +49,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
         checkAlternatives();
     }, [product]);
     const [blogCount, setBlogCount] = useState(0);
-    // Kendi şubelerimiz (panelde kimlik bilgisi vitrine açık montaj noktaları) — lastiklerde montaj butonları
     const [montageBranches, setMontageBranches] = useState<{ _id: string; name: string }[]>([]);
     useEffect(() => {
         if (!isLastik(product)) return;
@@ -67,7 +56,7 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
         fetch(API_ENDPOINTS.montage.branches())
             .then(r => r.json())
             .then(d => { if (!cancelled && d?.success && Array.isArray(d.data)) setMontageBranches(d.data); })
-            .catch(() => { /* butonlar isteğe bağlı; hata ürün sayfasını etkilemez */ });
+            .catch(() => {  });
         return () => { cancelled = true; };
     }, [product]);
     useEffect(() => {
@@ -85,7 +74,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
         setEbatDialogOpen(true);
     };
 
-    // AB lastik etiketi rozetleri: değeri boş olanlar hiç gösterilmez (2.El ürünlerde genelde boştur)
     const euLabelValue = (name: string) => {
         const value = getProductFeature(product, name);
         return value && value !== '-' ? value : '';
@@ -113,7 +101,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                         </Grid>
                         <Grid size={12}>
                             <div className="d-flex align-items-end gap-4 mb-4">
-                                {/* Rating Component */}
                                 {reviewCount > 0 ? (
                                     <div className="d-flex gap-1">
                                         <Rating
@@ -140,7 +127,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                         Henüz Yorum Yok
                                     </Typography>
                                 )}
-                                {/* Test Sonuçları */}
                                 {blogCount > 0 && (
                                     <div className='d-flex gap-1'>
                                         <Link
@@ -287,7 +273,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                 ))}
                             </ul>
 
-                            {/* Şubelerimizde montaj — her şube için bir buton (şubenin montaj noktası sayfasına gider) */}
                             {montageBranches.length > 0 && (
                                 <div className="d-flex flex-column align-items-start gap-2 mt-3">
                                     {montageBranches.map(branch => (
@@ -303,7 +288,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                 </div>
                             )}
 
-                            {/* Ürünü Paylaş */}
                             <div className="mt-3">
                                 <button
                                     type="button"

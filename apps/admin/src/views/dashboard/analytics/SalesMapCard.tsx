@@ -1,6 +1,5 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -8,13 +7,11 @@ import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 import Grid from '@mui/material/Grid2'
 
-// Components Imports
 import TurkeyMap from '@/views/analytics/shared/TurkeyMap'
 
 import { formatTRY } from './format'
 import type { OverviewData } from './format'
 
-// Şehre göre tahsil edilen ciro: harita + sıralı liste
 const SalesMapCard = ({ salesMap, window }: { salesMap: OverviewData['salesMap']; window: string }) => {
     const rows = salesMap.slice(0, 8)
     const max = rows.length ? Math.max(...rows.map(r => r.total)) : 0

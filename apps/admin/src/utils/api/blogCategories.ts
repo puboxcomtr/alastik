@@ -1,4 +1,3 @@
-// apps/admin/src/utils/api/blogCategories.ts
 import { apiClient } from './apiClient'
 
 export type BlogCategoryType = {

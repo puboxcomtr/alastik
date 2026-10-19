@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { forwardRef } from 'react'
 import type { ComponentProps, ForwardedRef, MouseEvent } from 'react'
 
-// Next Imports
 import NextLink from 'next/link'
 
 type Props = Omit<ComponentProps<typeof NextLink>, 'href' | 'onClick'> & {
@@ -13,7 +11,6 @@ type Props = Omit<ComponentProps<typeof NextLink>, 'href' | 'onClick'> & {
 }
 
 const Link = (props: Props, ref: ForwardedRef<HTMLAnchorElement>) => {
-  // Props
   const { href, onClick, ...rest } = props
 
   return (

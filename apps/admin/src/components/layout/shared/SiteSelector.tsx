@@ -30,7 +30,6 @@ const SiteSelector = () => {
     const current = getActiveSite()
     setSite(current)
 
-    // Yöneticinin yetkili olduğu siteleri öğren; aktif site yetkisizse ilk yetkili siteye geç
     const loadAllowedSites = async () => {
       try {
         const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
@@ -46,7 +45,6 @@ const SiteSelector = () => {
           }
         }
       } catch {
-        // Yetki bilgisi alınamazsa mevcut davranış korunur
       }
     }
     loadAllowedSites()

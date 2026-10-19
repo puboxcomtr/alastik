@@ -1,4 +1,3 @@
-// apps/web/src/types/settings.ts
 
 export interface Setting {
     _id: string;

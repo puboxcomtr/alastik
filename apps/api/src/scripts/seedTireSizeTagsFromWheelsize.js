@@ -1,4 +1,3 @@
-// apps/api/src/scripts/seedTireSizeTagsFromWheelsize.js
 const mongoose = require('mongoose');
 require('dotenv').config();
 
@@ -6,7 +5,6 @@ const WheelSizeService = require('../services/plugins/wheelsize/WheelSizeService
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://alastik:34gm4191M.@217.195.202.170:27017/alastik_db?authSource=admin';
 
-// Mevsim tipleri
 const SEASONS = [
     { key: 'all', title: '', urlSuffix: '' },
     { key: 'summer', title: 'Yaz', urlSuffix: '-yaz' },
@@ -22,7 +20,6 @@ async function seedTireSizeTagsFromWheelsize() {
         const db = mongoose.connection.db;
         const webtagsCollection = db.collection('webtags');
 
-        // 1. Wheelsize API'den lastik ebat verilerini çek
         console.log('\nWheelsize API\'den veriler çekiliyor...');
 
         const [widths, aspectRatios, rimDiameters] = await Promise.all([
@@ -44,7 +41,6 @@ async function seedTireSizeTagsFromWheelsize() {
         console.log(`\nToplam kombinasyon: ${totalKombinasyon}`);
         console.log(`Toplam etiket (x${SEASONS.length} mevsim): ${totalEtiket}`);
 
-        // 2. Tüm kombinasyonları oluştur ve webtags'e aktar
         let inserted = 0;
         let skipped = 0;
         let processed = 0;
@@ -73,7 +69,6 @@ async function seedTireSizeTagsFromWheelsize() {
                             updatedAt: new Date()
                         };
 
-                        // Var olan etiketi atla
                         const exists = await webtagsCollection.findOne({ seoUrl: seoUrl }, { projection: { _id: 1 } });
                         if (exists) {
                             skipped++;
@@ -95,14 +90,12 @@ async function seedTireSizeTagsFromWheelsize() {
             }
         }
 
-        // 3. Sonuç istatistikleri
         console.log('\n=== SONUÇ ===');
         console.log(`Toplam kombinasyon: ${totalKombinasyon}`);
         console.log(`Toplam etiket: ${totalEtiket}`);
         console.log(`Yeni eklenen: ${inserted}`);
         console.log(`Atlanan (zaten var): ${skipped}`);
 
-        // Mevsim bazlı istatistik
         const stats = await webtagsCollection.aggregate([
             { $match: { type: 'tire_size' } },
             { $group: { _id: '$season', count: { $sum: 1 } } },

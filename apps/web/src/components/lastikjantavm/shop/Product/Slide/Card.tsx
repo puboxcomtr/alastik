@@ -90,7 +90,6 @@ export default function ProductSlideCard({ product }: Props) {
   }
   const productUrl = getProductUrl(product)
   const price = getProductPrice(product)
-  // Kategori ayarı 'KDV Hariç' ise fiyattan KDV çıkarılıp '+ KDV' ibaresi eklenir
   const gosterim = getDisplayPrice(product, price)
   const originalPrice = getProductOriginalPrice(product)
   const hasDiscount = hasProductDiscount(product)
@@ -108,7 +107,6 @@ export default function ProductSlideCard({ product }: Props) {
   return (
     <Container className="slide__card p-0" style={{ backgroundColor: '#fff' }}>
       <div className="position-relative p-3 p-sm-4">
-        {/* Favori / Şampiyonluk Butonu */}
         {!isMobile && (
           championship ? (
             <div style={{
@@ -144,7 +142,6 @@ export default function ProductSlideCard({ product }: Props) {
           )
         )}
 
-        {/* Ürün görseli */}
         <Link href={productUrl} className="d-block rounded-top overflow-hidden">
           {season && (
             <span className="season_icon position-absolute top-0 start-0 mt-5 ms-2 mt-lg-5 ms-lg-3" style={{ zIndex: 1 }}>
@@ -157,7 +154,6 @@ export default function ProductSlideCard({ product }: Props) {
             className="w-100"
           />
         </Link>
-        {/* Mobil Şampiyonluk Etiketi */}
         {isMobile && championship && (
           <div className="d-inline-flex align-items-center gap-1 mt-2 mb-1" style={{
             background: 'linear-gradient(90deg, #B8860B, #DAA520, #B8860B)',
@@ -171,7 +167,6 @@ export default function ProductSlideCard({ product }: Props) {
             <span>{championship.name}</span>
           </div>
         )}
-        {/* Marka logosu / adı */}
         <div className="d-flex justify-content-between align-items-center mt-2 mb-1">
           <div>
             {brandLogo ? (
@@ -186,7 +181,6 @@ export default function ProductSlideCard({ product }: Props) {
               <span className="fw-medium fs-xs">{brandName || ''}</span>
             )}
           </div>
-          {/* Rating */}
           <div className="d-flex align-items-center gap-1">
             {product.customData?.reviewStats?.reviewCount > 0 && (
               <>
@@ -203,7 +197,6 @@ export default function ProductSlideCard({ product }: Props) {
           </div>
         </div>
 
-        {/* Stok kodu + ürün adı — stok kodu kategori ayarı açıksa gösterilmez */}
         <h3 className="mb-2">
           {(product as any)?.hideStockCode !== true && (
             <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">{stockCode}</span>
@@ -213,8 +206,6 @@ export default function ProductSlideCard({ product }: Props) {
           </Link>
         </h3>
 
-        {/* Fiyat */}
-        {/* Fiyat */}
         <div className="d-flex justify-content-end border-top pt-3 gap-2">
           <span>
             {hasDiscount && originalPrice && (
@@ -229,7 +220,6 @@ export default function ProductSlideCard({ product }: Props) {
         </div>
 
         <div className="d-flex justify-content-end gap-2">
-          {/* Sepete Ekle / Stok Sorunuz */}
           {product.diaData?.gercek_stok > 0 ? (
             <Tooltip title="Sepete Ekle">
               <button

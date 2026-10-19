@@ -7,25 +7,21 @@ import { consola } from 'consola'
 const exec = promisify(execCallback)
 
 export const updateEslintConfig = async () => {
-  const eslintConfigPath = '../../.eslintrc.js' // Directly using the file name
+  const eslintConfigPath = '../../.eslintrc.js'
 
-  // Requiring the .eslintrc.js directly. Note: This may cache the module, affecting repeated calls.
-  const eslintConfigModule = await import(eslintConfigPath) // Importing the module to avoid caching
+  const eslintConfigModule = await import(eslintConfigPath)
   const eslintConfig = eslintConfigModule.default
 
-  // Ensure the plugins array exists and add 'unused-imports' plugin
   eslintConfig.plugins = eslintConfig.plugins || []
 
   if (!eslintConfig.plugins.includes('unused-imports')) {
     eslintConfig.plugins.push('unused-imports')
   }
 
-  // Update rules
   eslintConfig.rules = eslintConfig.rules || {}
   eslintConfig.rules['@typescript-eslint/no-unused-vars'] = 'off'
   eslintConfig.rules['unused-imports/no-unused-imports'] = 'error'
 
-  // Update the file
   fs.writeFileSync('.eslintrc.js', `module.exports = ${JSON.stringify(eslintConfig, null, 2)}`)
   console.log('Updated .eslintrc.js successfully.')
 }
@@ -33,7 +29,6 @@ export const updateEslintConfig = async () => {
 export const reverseEslintConfig = async () => {
   consola.log('Reverse the eslint-plugin-unused-imports...')
 
-  // Detect package manager
   const packageManager = fs.existsSync('yarn.lock')
     ? 'yarn uninstall eslint-plugin-unused-imports'
     : fs.existsSync('pnpm-lock.yaml')
@@ -44,20 +39,17 @@ export const reverseEslintConfig = async () => {
     consola.success('eslint-plugin-unused-imports uninstalled successfully\n')
   })
 
-  const eslintConfigPath = '../../.eslintrc.js' // Directly using the file name
+  const eslintConfigPath = '../../.eslintrc.js'
 
-  // Requiring the .eslintrc.js directly. Note: This may cache the module, affecting repeated calls.
-  const eslintConfigModule = await import(eslintConfigPath) // Importing the module to avoid caching
+  const eslintConfigModule = await import(eslintConfigPath)
   const eslintConfig = eslintConfigModule.default
 
-  // Ensure the plugins array exists and add 'unused-imports' plugin
   eslintConfig.plugins = eslintConfig.plugins || []
 
   if (eslintConfig.plugins.includes('unused-imports')) {
     eslintConfig.plugins = eslintConfig.plugins.filter((plugin: string) => plugin !== 'unused-imports')
   }
 
-  // Update rules
   eslintConfig.rules = eslintConfig.rules || {}
 
   eslintConfig.rules['@typescript-eslint/no-unused-vars'] = 'error'
@@ -66,7 +58,6 @@ export const reverseEslintConfig = async () => {
     delete eslintConfig.rules['unused-imports/no-unused-imports']
   }
 
-  // Update the file
   fs.writeFileSync('.eslintrc.js', `module.exports = ${JSON.stringify(eslintConfig, null, 2)}`)
   console.log('Updated .eslintrc.js successfully.')
 }

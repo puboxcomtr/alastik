@@ -1,19 +1,15 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Tab from '@mui/material/Tab'
 import TabContext from '@mui/lab/TabContext'
 import TabPanel from '@mui/lab/TabPanel'
 
-// Component Imports
 import CustomTabList from '@core/components/mui/TabList'
 
 const Order = ({ tabContentList }) => {
-  // States
   const [activeTab, setActiveTab] = useState('tab1')
 
   const handleChange = (event, value) => {

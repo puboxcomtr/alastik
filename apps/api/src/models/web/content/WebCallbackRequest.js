@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const { CALLBACK_STATUSES } = require('../../../config/callbackForm');
 
-// "Biz Sizi Arayalım" formundan gelen geri arama talepleri
 const webCallbackRequestSchema = new mongoose.Schema({
     site: { type: String, default: 'alastik', index: true },
     name: { type: String, required: true, trim: true },

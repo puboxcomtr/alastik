@@ -1,8 +1,5 @@
 'use client';
 
-// "Ürün Sepetine Eklendi" — montaj noktası seçimi (referans: ikinciellastik /sepete-eklendi, alastik paleti).
-// Solda il/ilçe filtreli anlaşmalı nokta listesi; sağda seçim yoksa tanıtım + SSS, seçim varsa nokta detayı
-// (mobilde alttan açılan panel). Altta sabit şerit: "Montaj Almadan, Sepete Git" / "Sepete Git".
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,16 +12,9 @@ import {
 } from './shared';
 import { api } from '@src/lib/api';
 
-
-// "Montaj Satın Al" (kendi lastiği) modu: ownTireRim verilince bu ekran /montaj-satin-al içinde kullanılır —
-// noktalar ve hizmetler seçilen jant çapına göre süzülür, montaj lastiksiz eklenir (ownTire), sepet boş olabilir.
-// ownTireRim verilmezse davranış /montaj-noktasi-sec ile birebir aynıdır.
 const OWN_TIRE_DEFAULT_QUANTITY = 4;
-// Sitenin genelindeki ifade: "Türkiye'nin 81 ilinde montaj hizmeti"
 const SERVICE_CITY_COUNT = 81;
 
-// Hizmet adındaki jant çapı aralığı: "13inç - 16inç", "Jant Pres 13 - 14 - 15 - 16", "19inç ve Üzeri", "19inç Rot Ayarı".
-// Aralık yoksa hizmet her çapa uygundur.
 function rimFits(name: string, rim: number): boolean {
     const nums = (name.match(/\b(1[2-9]|2[0-4])\b/g) || []).map(Number);
     if (!nums.length) return true;
@@ -33,7 +23,6 @@ function rimFits(name: string, rim: number): boolean {
     return rim >= min && rim <= max;
 }
 
-// lg altı = mobil: detay paneli alttan açılan sayfada gösterilir
 function useMobile() {
     const [m, setM] = useState(false);
     useEffect(() => {
@@ -46,7 +35,6 @@ function useMobile() {
     return m;
 }
 
-// Tanıtım + SSS (sağ panel, nokta seçilmeden önce)
 function Promo({ pointCount, cityCount, plain = false, ownTire = false }: { pointCount: number; cityCount: number; plain?: boolean; ownTire?: boolean }) {
     const { domain: SITE_DOMAIN } = useMontageSite();
     const ownTireFaq = [
@@ -103,7 +91,6 @@ function Promo({ pointCount, cityCount, plain = false, ownTire = false }: { poin
     const [open, setOpen] = useState(0);
     return (
         <div className={plain ? '' : 'sk-card sk-card-red'}>
-            {/* Tanıtım bloğu (CSS gradyan + pin çizimi, dış görsel yok) */}
             <div className="sk-hero">
                 <div className="sk-hero-pin" aria-hidden="true">
                     <svg width="220" height="220" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -142,7 +129,6 @@ function Promo({ pointCount, cityCount, plain = false, ownTire = false }: { poin
     );
 }
 
-// Detay paneli: masaüstünde sağ kolonda kart; mobilde alttan açılan sayfa
 function DetailPanel({ mobile, open, onClose, onContinue, continueLabel, title = 'Montaj Noktaları', children }: {
     mobile: boolean; open: boolean; onClose: () => void; onContinue?: () => void; continueLabel?: string; title?: string; children: React.ReactNode;
 }) {
@@ -187,7 +173,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
     const { items, removeItem, refreshCart, loading } = useCart();
     const mobile = useMobile();
 
-    // İller alfabetik; İstanbul varsa en başta ve varsayılan seçili
     const cities = useMemo(() => {
         const list = [...new Set(points.map(p => p.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
         const ist = list.indexOf('İstanbul');
@@ -201,14 +186,12 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
     const [sheetOpen, setSheetOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
-    // Site adı ve alan adı sayfanın verdiği site bağlamından (MontageTheme) okunur
     const { domain: SITE_DOMAIN, name: siteName } = useMontageSite();
-    // Site logosu ("güvencesiyle" rozeti) panel tema ayarından okunur — header ile aynı kaynak
     const [siteLogo, setSiteLogo] = useState('');
     useEffect(() => {
         api.get('/admin/design/settings/theme').then(data => {
             if (data.success && data.data?.logo) setSiteLogo(api.getImageUrl(data.data.logo));
-        }).catch(() => { /* logo yüklenemezse rozet gizli kalır */ });
+        }).catch(() => {  });
     }, []);
 
     useEffect(() => { refreshCart(); }, [refreshCart]);
@@ -217,7 +200,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
         () => [...new Set(points.filter(p => p.city === city).map(p => p.district).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')),
         [points, city]
     );
-    // İl seçilmeden ilk açılışta tüm illerden ilk 4 nokta listelenir; il seçilince kısıt yok
     const INITIAL_POINT_COUNT = 4;
     const listed = city
         ? points.filter(p => p.city === city && (!district || p.district === district))
@@ -226,28 +208,23 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
     const cityCount = SERVICE_CITY_COUNT;
 
     const serviceItems = items.filter(i => i.itemType === 'montage' || i.itemType === 'service' || Boolean(i.montagePointId));
-    // Hizmetler tek noktadan: sepette hizmet varsa o nokta "aktif"tir, diğer noktalarda seçim kilitlenir
     const activePointId = serviceItems.find(i => i.montagePointId)?.montagePointId || '';
 
-    // Seçili hizmetleri sepetten kaldırır (başka noktadan seçince / montaj almadan)
     const clearServices = async () => {
         for (const i of serviceItems) {
-            try { await removeItem(String(i.productKey), ''); } catch { /* sessiz */ }
+            try { await removeItem(String(i.productKey), ''); } catch {  }
         }
     };
-    // İl değişimi seçimi SİLMEZ; silme yalnız başka noktada "Seç"e basınca olur
     const changeCity = (value: string) => {
         setCity(value); setDistrict(''); setOpenId(null);
     };
 
     const goCart = () => router.push(ROUTES.CART);
-    // Montaj almadan: sepetteki montaj/hizmet kalemleri kaldırılır, sepete gidilir (operatör kararı)
     const goCartWithoutMontage = async () => {
         await clearServices();
         router.push(ROUTES.CART);
     };
 
-    // Sepet henüz yüklenirken "boş" denmez; yalnızca yükleme bitince boş ekranı gösterilir.
     if (loading && !ownTire) {
         return (
             <Container className="py-5 text-center">
@@ -274,7 +251,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
     }
 
     const renderDetail = (p: MontagePoint) => {
-        // Başka noktadan seçilmiş hizmet varsa, bu noktadan seçim yapılınca öncekiler otomatik kaldırılır
         const beforeSelect = async () => {
             if (activePointId && String(activePointId) !== String(p._id)) await clearServices();
         };
@@ -318,7 +294,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                     <div className="sk-section-title">Bu Noktadan Alabileceğiniz Hizmetler</div>
                     {p.services.length ? (
                         <div className="sk-services-list">
-                            {/* Montaj hizmetleri başta; kalın ayraçtan sonra diğer hizmetler */}
                             {(() => {
                                 const montages = p.services.filter(s => s.isMontage && (!ownTire || (s.rimRange && rim >= s.rimRange.min && rim <= s.rimRange.max)));
                                 const others = p.services.filter(s => !s.isMontage && (!ownTire || rimFits(s.name, rim)));
@@ -406,12 +381,10 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                 )}
 
                 <div className="sk-grid">
-                    {/* SOL: nokta listesi */}
                     <div className="sk-card">
                         <div className="d-flex">
                             <span className="sk-tab">Mağazada Montaj</span>
                         </div>
-                        {/* Kurumsal uyarı: hizmet seçiminde lastikler seçilen noktaya gönderilir */}
                         <div className="sk-notice">
                             <i className="ri-error-warning-line" />
                             <span>{ownTire
@@ -438,7 +411,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                                                             <span className="sk-muted-xs">({p.rating.count}) Yorum</span>
                                                         </div>
                                                     )}
-                                                    {/* Çalışma saatleri: kart boş kalmasın diye il/ilçe bloğunun altında özet */}
                                                     {(() => { const h = hoursSummary(p); return (
                                                         <div className="sk-point-hours">
                                                             <div>Haftaiçi: {h.week}</div>
@@ -446,7 +418,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                                                         </div>
                                                     ); })()}
                                                 </div>
-                                                {/* Sağ kolon: rozet + fiyat + buton tek blok, karta göre dikeyde ortalı */}
                                                 <div className="sk-point-right">
                                                     {String(activePointId) === String(p._id) && <div className="sk-selected">✓ Seçildi</div>}
                                                     {siteLogo && (
@@ -477,7 +448,6 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                         )}
                     </div>
 
-                    {/* SAĞ: seçim yoksa tanıtım + SSS; seçim varsa nokta detayı */}
                     {!openPoint && !mobile && <Promo pointCount={points.length} cityCount={cityCount} ownTire={ownTire} />}
                     {openPoint && (
                         <DetailPanel mobile={mobile} open={sheetOpen} onClose={() => setSheetOpen(false)} onContinue={goCart} continueLabel="Sepete Ekle Ve Git">
@@ -487,10 +457,8 @@ export default function AddedToCart({ points, ownTireRim, onPointOpen }: { point
                 </div>
             </Container>
 
-            {/* alt şerit */}
             <div className="sk-bar">
                 <Container className="sk-bar-in">
-                    {/* Alt şeritte yalnızca lastik montajı hizmeti gösterilir (ad üstte, fiyat altta) */}
                     <div className="sk-bar-services">
                         {serviceItems.filter(i => i.itemType === 'montage').map(i => (
                             <div key={`${i.productKey}-${i.montagePointId || ''}`} className="sk-bar-service">

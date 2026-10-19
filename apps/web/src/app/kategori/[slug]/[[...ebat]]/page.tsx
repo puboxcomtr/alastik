@@ -1,11 +1,9 @@
-/* Library */
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 
-/* Services */
 import { getCategory, getCategoryMenus, getCategoryWithSize, getParentCategory } from '@/src/services/categoryService';
 import { isSecondHandCategory, SECOND_HAND_CONDITION } from '@/src/config/productCondition';
 import { filterProducts } from '@/src/services/productService';
@@ -18,7 +16,6 @@ import Link from 'next/link';
 import { BRANCHES } from '@/src/data/lja/subeler';
 import { SERVICE_GROUPS } from '@/src/data/lja/hizmetGruplari';
 
-/* Components - ALastik */
 import AlastikSidebar from "@components/alastik/category/Sidebar/Content";
 import AlastikBreadcrumb from "@components/alastik/category/Header/Breadcrumb";
 import AlastikCategorySlider from '@components/alastik/category/Top/Slider';
@@ -28,7 +25,6 @@ import AlastikCategoryTireSearch from '@components/alastik/category/Top/Category
 import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
 import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
 
-/* Components - LastikJantAVM */
 import LjaSidebar from "@components/lastikjantavm/category/Sidebar/Content";
 import LjaBreadcrumb from "@components/lastikjantavm/category/Header/Breadcrumb";
 import LjaCategorySlider from '@components/lastikjantavm/category/Top/Slider';
@@ -39,13 +35,10 @@ import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/Catego
 import LjaMobileFilterSort from '@components/lastikjantavm/category/Top/MobileFilterSort';
 import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPagination';
 
-/* Utils */
 import { parseTireSize } from '@/src/config/routes';
 
-/* Context */
 import { ViewModeProvider } from '@/src/context/ViewModeContext';
 
-/* Product Mode */
 import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
 import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
 
@@ -57,10 +50,9 @@ interface Props {
     searchParams: Promise<{ [key: string]: string | undefined }>;
 }
 
-// Ebat slug'ı "205-55-r16" biçiminde olmalı; bozuk adres parseTireSize'ı çökertiyordu (500)
 function isValidSizeSlug(ebat?: string[]): boolean {
     if (!ebat || ebat.length === 0) return true;
-    if (ebat.length > 1) return false; // /kategori/x/205-55-r16/fazla/parca → sonsuz kopya adres
+    if (ebat.length > 1) return false;
     return /^[0-9.]+-[0-9.]+-r?[0-9.]+[a-z]?$/i.test(ebat[0]);
 }
 
@@ -85,7 +77,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     if (!ebat || ebat.length === 0) {
         const vars = {
             'kategori-adi': category.name,
-            // Çok kısa açıklamalar ("Aksesuar" gibi) meta açıklama olamaz; anlamlı bir cümleye düşülür
             'kategori-aciklamasi': (category.description && category.description.length >= 50)
                 ? category.description
                 : `${category.name} modelleri ve güncel fiyatları. ${category.name} kategorisindeki ürünleri inceleyin, size uygun olanı seçin.`
@@ -93,7 +84,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         const title = category.seoTitle
             ? category.seoTitle
             : (applyTemplate(tpl?.titleTemplate, vars) || category.name);
-        // Meta açıklama önce SEO alanından, yoksa sayfadaki tanıtım metninden alınır
         const description = category.seoDescription
             ? category.seoDescription
             : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['kategori-aciklamasi']);
@@ -105,7 +95,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         };
     }
 
-    // Ebatli kategori
     const ebatSlug = ebat[0];
     const { formatted } = parseTireSize(ebatSlug);
     const varsEbat = {
@@ -152,22 +141,16 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const sizeInfo = hasSize ? parseTireSize(ebat[0]) : null;
     const displayName = category.name;
 
-    // Kategoriye bağlı menüler (seçilmemişse boş dizi döner)
     const categoryMenus = await getCategoryMenus((category as any).menuIds);
 
-    // Showcase ayarlarını al
     const showcaseSettings = await getShowcaseSettings();
 
-    // Servis noktaları — hizmet ürünlerinin kartlarında gösterilir
     const servicePoints = await getServicePoints();
 
-    // Sayfa numarasını al
     const currentPage = parseInt(filters.page || '1');
 
-    // Ürünleri filtrele (pagination ile)
     const productsData = await filterProducts({
         category: slug,
-        // Lastik parametreleri
         genislik: filters.genislik || sizeInfo?.genislik,
         yukseklik: filters.yanak || sizeInfo?.yukseklik,
         cap: filters.jant || sizeInfo?.cap,
@@ -177,38 +160,31 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         yukEndeksi: filters.yukEndeksi,
         hizEndeksi: filters.hizEndeksi,
         uretim: filters.uretim,
-        // Jant parametreleri
         jantCap: filters.jantCap,
         bijon: filters.bijon,
-        // Ortak parametreler
         arac: filters.arac,
         marka: filters.marka,
         fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
         fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined,
         page: currentPage,
         limit: showcaseSettings.productsPerPage,
-        // Sıralama parametreleri
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder
     });
 
     const displayProductCount = productsData?.pagination?.totalProducts ?? category.activeProductCount;
 
-    // Ürünü olmayan ebat adresi (ör. /kategori/lastik/999-99-r99) boş sayfa yerine 404 döner.
-    // Yalnızca ebat dışında filtre yokken; filtreli boş sonuçlar kullanıcıya boş liste olarak gösterilir.
     const hasExtraFilters = Object.keys(filters).some(k => k !== 'page' && filters[k]);
     if (hasSize && !hasExtraFilters && productsData?.pagination?.totalProducts === 0) {
         notFound();
     }
 
-    // Görünen breadcrumb ile aynı adımlar
     const breadcrumbLd = breadcrumbJsonLd(await getSiteOrigin(), [
         ...(parentCategory ? [{ name: parentCategory.name, path: `/kategori/${parentCategory.slug}` }] : []),
         { name: displayName, path: `/kategori/${slug}` },
         ...(sizeInfo ? [{ name: sizeInfo.formatted }] : [])
     ]);
 
-    // LJA hizmet kategorileri: hizmetin verildiği şube sayfalarına bağlantı
     const serviceGroup = site === 'lastikjantavm' ? SERVICE_GROUPS.find(g => g.categorySlug === slug) : undefined;
     const isServiceRoot = site === 'lastikjantavm' && slug === 'hizmetlerimiz';
 
@@ -217,7 +193,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             <JsonLd data={breadcrumbLd} />
             {(serviceGroup || isServiceRoot) && (
                 <Container>
-                    {/* Tek satırlık sade bağlantı (görünümü kalabalıklaştırmaz) */}
                     <p className="small text-muted my-2">
                         {'Şubelerimizde: '}
                         {BRANCHES.map((b, i) => (
@@ -255,10 +230,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                     <Container className="category-page-container">
                         <div className="row-fluid">
                             <Row>
-                                {/* Mobilde önce ürünler, sonra sidebar gösterilir */}
                                 <Col
                                  lg={3} className="mt-4 order-2 order-lg-1">
-                                    {/* Menüler mobilde ayrı düğmelerle açılır, burada yalnızca masaüstünde listelenir */}
                                     <div className="d-none d-md-block">
                                         {categoryMenus.map((menu: any) => (
                                             <CategoryMenu key={menu._id} menu={menu} />
@@ -297,9 +270,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                         </Col>
                                     </Row>
 
-                                    {/* Ürün Listesi */}
                                     <ViewModeProductList products={productsData?.products || []} servicePoints={servicePoints} />
-                                    {/* Pagination */}
                                     {productsData?.pagination && (
                                         <Row>
                                             <Col md={12}>
@@ -313,7 +284,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                     )}
                                 </Col>
                                 <Col lg={12} className="order-3">
-                                    {/* Kategori SEO Icerigi (site bazli) */}
                                     {category.siteContentHtml && (
                                         <Row>
                                             <Col md={12}>

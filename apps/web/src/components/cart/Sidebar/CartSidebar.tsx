@@ -30,7 +30,6 @@ export default function CartSidebar({
 
     return (
         <>
-            {/* Masaüstü Sidebar */}
             <div className="d-none d-lg-block">
                 <div className="card bg-white rounded">
                     <div className="card-body">
@@ -99,7 +98,6 @@ export default function CartSidebar({
                 </div>
             </div>
 
-            {/* Mobil Bottom Bar */}
             <div className="d-lg-none">
                 {mobileExpanded && (
                     <div

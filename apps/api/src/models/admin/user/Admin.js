@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const { SITES } = require('../../../config/sites');
 
 const adminSchema = new mongoose.Schema({
-  // Yöneticinin erişebildiği siteler — listede olmayan sitede işlem yapamaz
   sites: {
     type: [String],
     enum: Object.keys(SITES),
@@ -71,24 +70,20 @@ const adminSchema = new mongoose.Schema({
   collection: 'adminusers'
 });
 
-// Index'ler
 adminSchema.index({ email: 1 });
 adminSchema.index({ role: 1 });
 adminSchema.index({ isActive: 1 });
 
-// Virtual - Hesap Kilitli mi?
 adminSchema.virtual('isLocked').get(function () {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
-// Virtual - Status (yeni API ile uyumlu)
 adminSchema.virtual('status').get(function () {
   if (!this.isActive) return 'inactive';
   if (this.isLocked) return 'blocked';
   return 'active';
 });
 
-// Virtual - firstName ve lastName (uyumluluk için)
 adminSchema.virtual('firstName').get(function () {
   return this.name.split(' ')[0] || this.name;
 });
@@ -102,12 +97,10 @@ adminSchema.virtual('fullName').get(function () {
   return this.name;
 });
 
-// Şifre karşılaştırma metodu
 adminSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Login denemesi artırma
 adminSchema.methods.incLoginAttempts = function () {
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
@@ -127,7 +120,6 @@ adminSchema.methods.incLoginAttempts = function () {
   return this.updateOne(updates);
 };
 
-// Login attempts sıfırlama
 adminSchema.methods.resetLoginAttempts = function () {
   return this.updateOne({
     $set: { loginAttempts: 0 },
@@ -135,7 +127,6 @@ adminSchema.methods.resetLoginAttempts = function () {
   });
 };
 
-// Son login güncelleme
 adminSchema.methods.updateLastLogin = function (ip, userAgent) {
   return this.updateOne({
     $set: {
@@ -146,27 +137,21 @@ adminSchema.methods.updateLastLogin = function (ip, userAgent) {
   });
 };
 
-// Session oluşturma (basitleştirilmiş)
 adminSchema.methods.createSession = function (ip, userAgent) {
   return Math.random().toString(36).substring(7);
 };
 
-// Session'ı invalid etme
 adminSchema.methods.invalidateSession = function (token) {
   return Promise.resolve();
 };
 
-// Yetki kontrolü
 adminSchema.methods.hasPermission = function (resource, action) {
-  // Superadmin her şeyi yapabilir
   if (this.role === 'superadmin') return true;
 
-  // Permission string kontrolü: "products.view", "products.create" vs.
   const permissionString = `${resource}.${action}`;
   return this.permissions.includes(permissionString);
 };
 
-// JSON'a çevirirken şifreyi gösterme
 adminSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
@@ -175,7 +160,6 @@ adminSchema.methods.toJSON = function () {
   return obj;
 };
 
-// Static metodlar
 adminSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase() }).select('+password');
 };

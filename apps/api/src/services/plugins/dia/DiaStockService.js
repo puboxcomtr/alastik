@@ -2,23 +2,16 @@ const crypto = require('crypto');
 const axios = require('axios');
 const winston = require('winston');
 
-/* DİA Ürün Modeli  */
 const DiaStock = require('../../../models/plugins/DiaStock');
 
-/* WEB Ürün Modeli */
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
-/* Web kategori Modeli */
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 
-/* Web marka Modeli */
 const WebBrand = require('../../../models/web/catalog/WebBrand');
-
 
 const CacheManager = require('../../../../../../packages/cache/');
 
-
-/* Filter Config */
 const { getFiltersForSyncType, logFilterConfig, getBasicFilters, getDiaFields, getSyncRules, getAllSyncRules, SERVICE_VAT_RULE } = require('../../../config/diaFilters');
 const imageMirror = require('../../media/ImageMirrorService');
 const { moveLabelImagesLast, reorderLabelImagesForAllProducts } = require('../../../utils/productImages');
@@ -42,7 +35,6 @@ class DiaStockService {
         new winston.transports.Console()
       ]
     });
-    // DIA API konfigürasyonu
     this.diaApiConfig = {
       baseURL: '',
       apiKey: '',
@@ -61,12 +53,9 @@ class DiaStockService {
 
     this.configLoaded = false;
 
-
-    // Session yönetimi
     this.cachedSessionId = null;
     this.sessionExpireTime = null;
 
-    // Performans ayarları
     this.batchSize = parseInt(process.env.DIA_DB_BATCH_SIZE) || 500;
     this.apiBatchSize = parseInt(process.env.DIA_API_BATCH_SIZE) || 1000;
     this.maxRetries = parseInt(process.env.DIA_MAX_RETRIES) || 3;
@@ -79,11 +68,10 @@ class DiaStockService {
     this.fullSyncDelay = parseInt(process.env.DIA_FULLSYNC_DELAY) || 3000;
     this.fullSyncMaxBatches = parseInt(process.env.DIA_FULLSYNC_MAX_BATCHES) || 300;
 
-    // Timeout ayarları
     this.timeouts = {
-      login: parseInt(process.env.DIA_LOGIN_TIMEOUT) || 600000, // 10 dakika
-      api: parseInt(process.env.DIA_API_TIMEOUT) || 1800000,  // 30 dakika
-      batch: parseInt(process.env.DIA_BATCH_TIMEOUT) || 2400000 // 40 dakika
+      login: parseInt(process.env.DIA_LOGIN_TIMEOUT) || 600000,
+      api: parseInt(process.env.DIA_API_TIMEOUT) || 1800000,
+      batch: parseInt(process.env.DIA_BATCH_TIMEOUT) || 2400000
     };
 
     this.performanceMetrics = {
@@ -126,9 +114,6 @@ class DiaStockService {
       }
     );
   }
-  /**
-  * DIA DB Ayarları
-  */
   async loadConfig() {
     if (this.configLoaded) return;
     try {
@@ -167,24 +152,17 @@ class DiaStockService {
       this.configLoaded = true;
     }
   }
-  /**
-   * Session'ın geçerli olup olmadığını kontrol et
-   */
   isSessionValid() {
     return this.cachedSessionId &&
       this.sessionExpireTime &&
       new Date() < this.sessionExpireTime;
   }
 
-  /**
-   * DIA ERP'ye login ol ve session ID al
-   */
   async loginAsync() {
     await this.loadConfig();
     const loginStartTime = Date.now();
     const loginId = `login_${Date.now()}`;
 
-    // Session cache kontrolü
     if (this.isSessionValid()) {
       this.logger.info('=== CACHED SESSION KULLANILIYOR ===', {
         loginId,
@@ -243,10 +221,9 @@ class DiaStockService {
 
       const responseBody = response.data;
 
-      // Response'u parse et
       if (responseBody && responseBody.code === "200" && responseBody.msg) {
         this.cachedSessionId = responseBody.msg;
-        this.sessionExpireTime = new Date(Date.now() + 60 * 60 * 1000); // 60 dakika
+        this.sessionExpireTime = new Date(Date.now() + 60 * 60 * 1000);
 
         const totalDuration = Date.now() - loginStartTime;
 
@@ -289,9 +266,6 @@ class DiaStockService {
     }
   }
 
-  /**
-   * DIA ERP'den stok verilerini getir - FİLTRELENMİŞ
-   */
   async fetchStockFromDia(params = {}) {
     const requestStartTime = Date.now();
 
@@ -353,7 +327,6 @@ class DiaStockService {
         throw new Error(`DIA API Error: ${response.data.msg || 'Unknown error'}`);
       }
 
-      // DIA'dan dönen tüm veriyi direkt döndür - MANUEL FİLTRELEME KALDIRILDI
       let stockData = response.data.result || [];
 
       this.logger.info('=== CONFIG FİLTRE SONUÇLARI (MANUEL FİLTRE KALDIRILDI) ===', {
@@ -371,9 +344,6 @@ class DiaStockService {
         } : null
       });
 
-      // Web stoğu daraltması: gercek_stok/fiili_stok yalnız ayardaki depoların
-      // (ör. MASLAK,MERKEZ) toplamına indirilir; E-Ticaret/Toptan gibi depolar
-      // web'de satılabilir sayılmaz. XML/XMLA (tedarikçi) ürünleri hariç.
       stockData = await this.applyWebStockDepots(stockData, sessionId, params);
 
       return stockData;
@@ -407,7 +377,6 @@ class DiaStockService {
     }
   }
 
-  /** Web stoğunun hesaplanacağı depo key'leri (ayardan; boşsa []). */
   getWebStockDepots() {
     return String(this.diaApiConfig.webStokDepolari || '')
       .split(',')
@@ -415,10 +384,6 @@ class DiaStockService {
       .filter(Boolean);
   }
 
-  /**
-   * Verilen stok kodlarının TEK depodaki gercek_stok/fiili_stok'unu döner.
-   * { stokkartkodu: { gercek, fiili } } — depo filtreli tek DIA çağrısı.
-   */
   async fetchDepotStockMap(sessionId, codes, depoKey) {
     if (!Array.isArray(codes) || codes.length === 0) return {};
     const payload = {
@@ -452,16 +417,6 @@ class DiaStockService {
     return map;
   }
 
-  /**
-   * Sipariş anında CANLI stok kontrolü için: verilen stok kodlarının
-   * webStokDepolari (MASLAK+MERKEZ) toplam gercek_stok'unu DIA'dan çeker.
-   * { stokkartkodu: gercekToplam } döner (0 stoklu geçerli üründe de satır gelir).
-   *
-   * DIA erişilemez / oturum çakışır / bir depo BOŞ dönerse **null** döner —
-   * çağıran DB stoğuna düşsün (satış baltalanmasın). Boş yanıt "0 stok" değil,
-   * geçici hatadır; geçerli stok kartı 0 stokta bile satır döndürür.
-   * Kendi oturumunu açar (Ws_alastik_B2C).
-   */
   async fetchLiveStockSum(codes) {
     const list = [...new Set((Array.isArray(codes) ? codes : []).map(c => String(c).trim()).filter(Boolean))];
     if (!list.length) return {};
@@ -474,19 +429,12 @@ class DiaStockService {
     for (const c of list) sum[c] = 0;
     for (const depoKey of depots) {
       const map = await this.fetchDepotStockMap(sid, list, depoKey);
-      // Boş map = DIA geçici hata / oturum çakışması → güvenilmez, DB'ye düş
       if (!map || Object.keys(map).length === 0) return null;
       for (const c of list) { const v = map[c]; if (v) sum[c] += v.gercek; }
     }
     return sum;
   }
 
-  /**
-   * Batch'teki (kendi stok) ürünlerin gercek_stok/fiili_stok'unu, ayardaki
-   * depoların (webStokDepolari, ör. MASLAK+MERKEZ) toplamına indirir.
-   * Ayar boşsa veya batch boşsa dokunmaz. XML/XMLA ürünleri hariç tutulur —
-   * onların stoğu bu depolarda tutulmaz, tedarikçi stoğuyla yönetilir.
-   */
   async applyWebStockDepots(stockData, sessionId, params) {
     const depots = this.getWebStockDepots();
     if (!depots.length || !Array.isArray(stockData) || stockData.length === 0) return stockData;
@@ -511,20 +459,11 @@ class DiaStockService {
         depots, urunAdedi: hedef.length
       });
     } catch (e) {
-      // Depo stoğu çekilemezse ürünü stoksuz göstermek yerine mevcut (toplam)
-      // stoğu korumak daha güvenli — senkron devam etsin.
       this.logger.warn('Web stoğu depo daraltması yapılamadı, toplam stok korunuyor', { error: e.message });
     }
     return stockData;
   }
 
-  /**
-   * Web stoğunu (gercek_stok/fiili_stok) TÜM dia_api web ürünleri için ayardaki
-   * depoların (webStokDepolari = MASLAK+MERKEZ) toplamına günceller. Incremental
-   * senkronun kaçırdığı stok-hareketi değişikliklerini yakalamak için zamanlanmış
-   * çalışır (stok kartının _date'i değişmese bile stok güncel kalır).
-   * Verimli: web ürün kodlarını depo başına tek çağrıyla sorgular.
-   */
   async refreshWebDepotStock() {
     await this.loadConfig();
     const depots = this.getWebStockDepots();
@@ -549,8 +488,6 @@ class DiaStockService {
           const sid = await this.loginAsync();
           const ms = [];
           for (const d of depots) ms.push(await this.fetchDepotStockMap(sid, chunk, d));
-          // DIA bazen hata fırlatmadan boş sonuç döner (eşzamanlı erişim). Bir depo
-          // map'i tamamen boşsa bu geçici hatadır — asla 0 yazma, yeni oturumla dene.
           if (ms.every(m => Object.keys(m).length > 0)) maps = ms;
           else { this.cachedSessionId = null; this.sessionExpireTime = null; await sleep(3000 * t); }
         } catch (e) {
@@ -558,11 +495,9 @@ class DiaStockService {
           await sleep(3000 * t);
         }
       }
-      if (!maps) continue; // chunk çözülemedi — mevcut stok korunur, 0'la ezilmez
+      if (!maps) continue;
       const wpOps = [], dsOps = [];
       for (const kod of chunk) {
-        // DIA bu kodu hiçbir depoda döndürmediyse veriyi bilmiyoruz demektir —
-        // ürünü atla (mevcut stoğu koru). Gerçek 0 stok bile depo satırı döner.
         if (!maps.some(m => m[kod] != null)) continue;
         let g = 0, f = 0;
         for (const m of maps) { const v = m[kod]; if (v) { g += v.gercek; f += v.fiili; } }
@@ -570,17 +505,14 @@ class DiaStockService {
         dsOps.push({ updateOne: { filter: { stokkartkodu: kod }, update: { $set: { gercek_stok: g, fiili_stok: f } } } });
       }
       if (!wpOps.length) continue;
-      try { const r = await WebProduct.bulkWrite(wpOps, { ordered: false }); updated += r.modifiedCount; } catch (e) { /* devam */ }
-      try { await DiaStock.bulkWrite(dsOps, { ordered: false }); } catch (e) { /* devam */ }
+      try { const r = await WebProduct.bulkWrite(wpOps, { ordered: false }); updated += r.modifiedCount; } catch (e) {  }
+      try { await DiaStock.bulkWrite(dsOps, { ordered: false }); } catch (e) {  }
       await sleep(200);
     }
     this.logger.info('Web stok tazeleme tamamlandı (webStokDepolari)', { depots, urun: codes.length, guncellenen: updated });
     return { updated, total: codes.length };
   }
 
-  /**
-   * Batch halinde stok verilerini getir *
-   */
   async fetchAllStockFromDia(batchSize = null) {
     const operationStartTime = Date.now();
     const operationId = `batch_${Date.now()}`;
@@ -617,7 +549,6 @@ class DiaStockService {
         let retryCount = 0;
         let batchSuccess = false;
 
-        // Retry mekanizması
         while (!batchSuccess && retryCount < this.maxRetries) {
           try {
             if (retryCount > 0) {
@@ -653,7 +584,6 @@ class DiaStockService {
         allStockData = allStockData.concat(batchData);
         offset += effectiveBatchSize;
 
-        // Memory kontrolü
         if (allStockData.length >= maxRecords) {
           this.logger.warn('Maksimum kayıt sayısına ulaşıldı', {
             totalRecords: allStockData.length,
@@ -663,7 +593,6 @@ class DiaStockService {
           break;
         }
 
-        // Rate limiting
         if (this.requestDelay > 0 && hasMore) {
           await this.sleep(this.requestDelay);
         }
@@ -692,13 +621,6 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Web Ürünlerini DİA Collections Çek *
-  **/
-  /**
-   * DIA görsel yolu göreli gelirse (örn. "Resimler/38029249.PNG") tam S3 URL'sine çevirir.
-   * DIA S3 kovası sabittir; sunucu kodu (artlastik) baseURL'den türetilir.
-   */
   normalizeImageUrls(resimler) {
     if (!Array.isArray(resimler)) return resimler || [];
     const host = String(this.diaApiConfig?.baseURL || '').replace(/^https?:\/\//, '');
@@ -711,10 +633,6 @@ class DiaStockService {
       return r;
     });
   }
-  /**
-   * Daha önce sunucumuza indirilmiş görselleri yerel yola çevirir (yalnızca disk kontrolü).
-   * İndirme işi processBatch/sync adımlarında toplu yapılır; burada ağ isteği yoktur.
-   */
   mapMirroredImages(images) {
     if (!Array.isArray(images) || images.length === 0) return images || [];
 
@@ -787,14 +705,12 @@ class DiaStockService {
       ozelkod10kodu: diaProduct.ozelkod10kodu,
       ozelkod11: diaProduct.ozelkod11,
       ozelkod11kodu: diaProduct.ozelkod11kodu,
-      // LJA fiyatlaması: B2C indirim oranları (tam senkron diaData'yı baştan yazdığından burada da taşınmalı)
       b2c_indirimorani: parseFloat(diaProduct.b2c_indirimorani) || 0,
       birimindirimorani: diaProduct.birimindirimorani || '',
 
       stokkartkodu: diaProduct.stokkartkodu,
       synced: diaProduct.synced || 'synced',
 
-      // diastocks üst düzey fiyatDinamik yetkilidir (fiyat senkronları yalnız onu günceller)
       m_birimler: (diaProduct.m_birimler || []).map((birim, index) => (
         index === 0 && typeof diaProduct.fiyatDinamik === 'number'
           ? { ...birim, fiyatDinamik: diaProduct.fiyatDinamik }
@@ -805,9 +721,6 @@ class DiaStockService {
       m_urunOzellikleri: diaProduct.m_urunOzellikleri || []
     };
   }
-  /**
-     * Web Ürünlerini DB Kaydet *
-  **/
   generateSmartCustomData(diaProduct, existingCustomData = null) {
     const determineWebCategory = (product) => {
       if (!product.m_kategoriler || product.m_kategoriler.length === 0) return 'diger';
@@ -839,64 +752,51 @@ class DiaStockService {
       }
       return false;
     };
-    // Smart update - sadece boş veya varsayılan değerleri güncelle
     const smartCustomData = {
-      // SEO Bilgileri - manuel güncellenmişse DIA karışmaz
       seoUrl: existingCustomData?.seoUrl || this.generateSeoUrl(diaProduct.aciklama || diaProduct.stokkartkodu),
       seoTitle: existingCustomData?.seoTitle || diaProduct.aciklama,
       seoDescription: existingCustomData?.seoDescription || this.generateSeoDescription(diaProduct),
       seoKeywords: existingCustomData?.seoKeywords || this.generateWebTags(diaProduct),
 
-      // Web görünüm - mevcut değerleri koru
       webOrder: existingCustomData?.webOrder || 0,
       webVisible: existingCustomData?.webVisible !== undefined ? existingCustomData.webVisible : true,
       delivery: existingCustomData?.delivery && existingCustomData.delivery !== 'next_week'
         ? existingCustomData.delivery
         : (diaProduct.stokkartkodu && diaProduct.stokkartkodu.includes('-XMLA') ? 'next_day' : 'same_day'),
 
-      // İçerik - her zaman null, manuel doldurulur
       customDescription: existingCustomData?.customDescription || null,
       shortDescription: existingCustomData?.shortDescription || null,
 
-      // Kategoriler - her zaman null, manuel doldurulur
       webTags: existingCustomData?.webTags || null,
       webCategory: existingCustomData?.webCategory || null,
       webSubCategory: existingCustomData?.webSubCategory || null,
 
-      // Görseller - her zaman null, manuel doldurulur
       customImages: existingCustomData?.customImages || [],
       featuredImage: existingCustomData?.featuredImage || null,
 
-      // Fiyatlandırma - her zaman null, manuel doldurulur
       webPrice: existingCustomData?.webPrice || null,
       originalPrice: existingCustomData?.originalPrice || null,
       webDiscount: existingCustomData?.webDiscount !== undefined ? existingCustomData.webDiscount : 0,
       discountType: existingCustomData?.discountType || 'percentage',
 
-      // Stok bilgileri - her zaman null, manuel doldurulur
       minOrderQuantity: existingCustomData?.minOrderQuantity || 1,
       maxOrderQuantity: existingCustomData?.maxOrderQuantity || null,
       stockAlert: existingCustomData?.stockAlert || 5,
 
-      // Meta bilgiler - her zaman null, manuel doldurulur
       isNew: existingCustomData?.isNew || false,
       isBestSeller: existingCustomData?.isBestSeller || false,
       isFeatured: existingCustomData?.isFeatured || false,
 
-      // Marka gizleme — hizmet kategorisinde varsayılan açık, manuel değer korunur
       hideBrand: existingCustomData?.hideBrand !== undefined
         ? existingCustomData.hideBrand
         : (diaProduct.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1),
-      // Üretim tarihi gizleme — hizmet kategorisinde varsayılan açık, manuel değer korunur
       hideProductionDate: existingCustomData?.hideProductionDate !== undefined
         ? existingCustomData.hideProductionDate
         : (diaProduct.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1),
-      // Stok gizleme — hizmet kategorisinde varsayılan açık, manuel değer korunur
       hideStock: existingCustomData?.hideStock !== undefined
         ? existingCustomData.hideStock
         : (diaProduct.m_kategoriler || []).some(k => k && k.kategori_aciklama_1 === SERVICE_VAT_RULE.categoryLevel1),
 
-      // Site bazlı alanlar ve hesaplanan değerler — sync bunları asla ezmez
       siteDescriptions: existingCustomData?.siteDescriptions || {},
       siteData: existingCustomData?.siteData || {},
       shippingIncludedPrice: existingCustomData?.shippingIncludedPrice ?? 0,
@@ -906,7 +806,6 @@ class DiaStockService {
 
     return smartCustomData;
   }
-  /* (Boşsa) Otomatik SEO Etiket Oluştur */
   generateWebTags(product) {
     const tags = [];
     if (product.marka) tags.push(product.marka.toLowerCase());
@@ -918,10 +817,8 @@ class DiaStockService {
     }
     return [...new Set(tags)];
   }
-  /* (Boşsa) Otomatik SEO URL Oluştur */
   generateSeoUrl(text) {
     if (!text) return null;
-    // Türkçe karakterler silinmez, Latin karşılığına çevrilir (Değişim -> degisim)
     const trCharMap = {
       'ç': 'c', 'Ç': 'c', 'ğ': 'g', 'Ğ': 'g', 'ǧ': 'g', 'Ǧ': 'g',
       'ı': 'i', 'I': 'i', 'İ': 'i', 'ö': 'o', 'Ö': 'o',
@@ -937,7 +834,6 @@ class DiaStockService {
       .replace(/^-+|-+$/g, '')
       .substring(0, 100);
   }
-  /* (Boşsa) Otomatik SEO Description Oluştur */
   generateSeoDescription(product) {
     const parts = [];
     if (product.marka) parts.push(product.marka);
@@ -945,13 +841,9 @@ class DiaStockService {
     if (product.ekalan1) parts.push(product.ekalan1);
     return parts.join(' - ').substring(0, 160);
   };
-  /**
- * Unique SEO URL oluştur
- */
   async generateUniqueSeoUrl(text, productKey) {
     let seoUrl = this.generateSeoUrl(text);
 
-    // Unique slug kontrolü
     const existingProduct = await WebProduct.findOne({
       'customData.seoUrl': seoUrl,
       '_key': { $ne: productKey }
@@ -974,10 +866,6 @@ class DiaStockService {
 
     return seoUrl;
   }
-  /**
-   * DIA Verilerini
-   * Kategori Listesini Senkronize Et (categories collection'da)
-  */
   async syncCategoriesToWebCategory() {
     const operationId = `sync_categories_${Date.now()}`;
     const startTime = Date.now();
@@ -1130,7 +1018,6 @@ class DiaStockService {
       return { created: true };
     }
   }
-  /* Ürün Slug Oluştur */
   generateCategorySlug(text) {
     return text
       .toLowerCase()
@@ -1146,7 +1033,6 @@ class DiaStockService {
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
   }
-  /* Web Product Kategori İçerisindeki Ürün Sayılarını Kaydet (site bazlı sayılar dahil) */
   async updateCategoryProductCounts() {
     const WebCategory = require('../../../models/web/catalog/WebCategory');
     const { SITES } = require('../../../config/sites');
@@ -1166,7 +1052,6 @@ class DiaStockService {
         ...(activeDurum ? { 'diaData.durum': activeDurum } : {})
       });
 
-      // Sitede yayınlanmış ürün sayısı — vitrin ve admin listesi boş kategoriyi otomatik gizler
       const siteCountOps = {};
       for (const site of siteSlugs) {
         siteCountOps[`siteSettings.${site}.productCount`] = await WebProduct.countDocuments({
@@ -1188,10 +1073,6 @@ class DiaStockService {
       );
     }
   }
-  /**
-   * DIA Verilerini
-   * Marka Listesini Senkronize Et (brands collection'da)
-  */
   async syncBrandsToWebBrand() {
     const operationId = `sync_brands_${Date.now()}`;
     const startTime = Date.now();
@@ -1199,7 +1080,6 @@ class DiaStockService {
     try {
       this.logger.info('=== MARKA SENKRONİZASYONU BAŞLANGICI ===', { operationId });
 
-      // diastocks collection'ından markaları topla
       const brandPipeline = [
         {
           $match: {
@@ -1247,7 +1127,6 @@ class DiaStockService {
         }
       }
 
-      // Site bazlı ürün sayıları — sitede yayınlanmış ürünü olmayan marka o sitede otomatik gizlenir
       const siteCountResult = await this.updateBrandSiteCounts();
 
       const duration = Date.now() - startTime;
@@ -1301,7 +1180,6 @@ class DiaStockService {
         }));
 
       if (existingBrand) {
-        // Mevcut marka - güncelle
         await WebBrand.updateOne(
           { _id: existingBrand._id },
           {
@@ -1325,7 +1203,6 @@ class DiaStockService {
         );
         return { updated: true };
       } else {
-        // Yeni marka oluştur
         await WebBrand.create({
           name: brandData._id.toUpperCase(),
           slug: slug,
@@ -1371,10 +1248,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
-   * DB ayarlarındaki sync kurallarından DiaStock sorgusu üret
-   * (eski hardcoded { durum: 'A', ozelkod11kodu: 'E' } karşılığı)
-   */
   buildRuleQuery(site) {
     const rules = getSyncRules(site);
     const query = {};
@@ -1385,17 +1258,10 @@ class DiaStockService {
     return query;
   }
 
-  /**
-   * Ürünün yayınlanacağı sitelerin listesi (her sitenin kendi kurallarına göre)
-   * Boş dizi dönerse ürün hiçbir sitede yayınlanmaz → webproducts'a aktarılmaz.
-   */
   sitesForItem(item, allRules = getAllSyncRules()) {
     return Object.keys(allRules).filter(site => this.passesWebFilter(item, allRules[site]));
   }
 
-  /**
-   * İki site listesi aynı kümeyi mi içeriyor?
-   */
   sitesEqual(a, b) {
     const setA = new Set(a || []);
     const setB = new Set(b || []);
@@ -1404,13 +1270,7 @@ class DiaStockService {
     return true;
   }
 
-  /**
-   * Ürün web'e (webproducts) aktarılmalı mı?
-   * DB ayarlarındaki durum/ozelkod11 kuralları + Aktarım Ayarları (dahil/hariç) birlikte uygulanır.
-   */
   passesWebFilter(item, rules = getSyncRules()) {
-    // Her Zaman Dahil: ozelkod11 / b2c kurallarını ve "Hariç Bırak" listesini atlar.
-    // Kartın DIA'daki aktiflik durumu (durum) yine de geçerlidir — pasif kart yayınlanmaz.
     if (this.zorunluDahilMatches(item, rules.zorunluDahil)) {
         return !rules.durum || item.durum === rules.durum;
     }
@@ -1426,16 +1286,11 @@ class DiaStockService {
 
     const matched = this.aktarimMatches(item, aktarim);
 
-    // Dahil Et: seçilenler kural filtrelerine takılsa bile web'e aktarılır (istisna)
     if (aktarim.mode === 'dahil') return rulesPass || matched;
 
-    // Hariç Bırak: kurallardan geçse bile seçilenler aktarılmaz
     return rulesPass && !matched;
   }
 
-  /**
-   * Aktarım Ayarları seçimlerine (ürün/kategori/marka) göre eşleşme kontrolü
-   */
   aktarimMatches(item, aktarim) {
     const norm = v => String(v || '').trim().toLowerCase();
 
@@ -1466,12 +1321,6 @@ class DiaStockService {
     return false;
   }
 
-  /**
-   * Her Zaman Dahil listesi eşleşmesi.
-   * Aktarım Ayarları'ndan farkı: tek bir filterType'a bağlı değildir —
-   * ürün, kategori ve marka listelerinin HERHANGİ BİRİ eşleşirse ürün dahil edilir.
-   * (Örn. montaj hizmetleri "Hizmetlerimiz" kategorisinden, sibop kalemleri tek tek üründen gelir.)
-   */
   zorunluDahilMatches(item, zorunluDahil) {
     if (!zorunluDahil) return false;
     return ['urun', 'kategori', 'marka'].some(filterType =>
@@ -1479,14 +1328,6 @@ class DiaStockService {
     );
   }
 
-  /**
-   * Ürünün kritik alanlarından hash oluştur
-   */
-  /**
-   * DIA __dinamik__16 (B2C dinamik fiyat) değeri; kartta yoksa/geçersizse 0.
-   * fiyat4 bu değerle ezildiği için "dinamik var mı" bilgisi AYRI alanda (fiyatDinamik)
-   * saklanır — dinamik fiyat ham fiyat4 ile aynı tutarsa fiyatlardan çıkarılamaz.
-   */
   parseDynamicPrice(product) {
     const value = parseFloat(product && product.__dinamik__16);
     return !isNaN(value) && value > 0 ? value : 0;
@@ -1494,8 +1335,6 @@ class DiaStockService {
 
   generateProductHash(product) {
     const hashData = {
-      // Sürüm damgası: yeni bir türetilmiş alan eklendiğinde tüm ürünlerin bir kez yeniden
-      // işlenip o alanın doldurulması için hash'i değiştirir. (v1: fiyat4Ham, v2: fiyatDinamik)
       _hashSurumu: 'dinamik-fiyat-v2',
       stokkartkodu: product.stokkartkodu || '',
       aciklama: product.aciklama || '',
@@ -1525,7 +1364,6 @@ class DiaStockService {
       m_urunOzellikleri: JSON.stringify((product.m_urunOzellikleri || []).map(o => ({
         ad: o.ozellikadi, deger: o.detayaciklama
       }))),
-      // Görsel değişiklikleri de senkrona yansısın (sadece görseli değişen ürün atlanmasın)
       m_resimler: JSON.stringify((product.m_resimler || []).map(r => ({
         key: r._key, url: r.aws_url, sira: r.order_id
       })))
@@ -1533,9 +1371,6 @@ class DiaStockService {
 
     return crypto.createHash('md5').update(JSON.stringify(hashData)).digest('hex');
   }
-  /**
-   * Fiyat hash'i oluştur (light sync için)
-   */
   generatePriceHash(product) {
     const data = {
       fiyat1: parseFloat(product.fiyat1) || 0,
@@ -1551,18 +1386,12 @@ class DiaStockService {
     };
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
   }
-  /**
-   * Stok hash'i oluştur (light sync için)
-   */
   generateStockHash(product) {
     const data = {
       gercek_stok: parseFloat(product.gercek_stok) ?? 0
     };
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
   }
-  /**
- * Özelkod hash'i oluştur
- */
   generateOzelkodHash(product) {
     const data = {
       marka: product.marka || '',
@@ -1598,9 +1427,6 @@ class DiaStockService {
     };
     return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
   }
-  /**
-   * Marka için slug oluştur
-   */
   generateBrandSlug(brandName) {
     if (!brandName) return null;
     const slug = brandName
@@ -1622,9 +1448,6 @@ class DiaStockService {
     return slug;
   }
 
-  /**
-   * Markalardaki ürün sayılarını güncelle
-   */
   async updateBrandProductCounts() {
     const brands = await WebBrand.find({});
 
@@ -1652,10 +1475,6 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Marka başına site bazlı yayınlanmış ürün sayılarını hesaplar.
-   * Vitrin bu sayıya bakarak sitede ürünü olmayan markayı otomatik gizler.
-   */
   async updateBrandSiteCounts() {
     const { SITES } = require('../../../config/sites');
     const siteSlugs = Object.keys(SITES);
@@ -1679,10 +1498,6 @@ class DiaStockService {
 
     return { updatedBrands, sites: siteSlugs.length };
   }
-  /**
-   * DIA Verilerini
-   * Özellik Listesini Senkronize Et (feature collection'da)
-  **/
   async syncFeaturesToWebFeature() {
     const operationId = `sync_features_${Date.now()}`;
     const startTime = Date.now();
@@ -1692,7 +1507,6 @@ class DiaStockService {
 
       const WebFeature = require('../../../models/web/catalog/WebFeature');
 
-      // WebProduct'lardan tüm özellikleri topla (site başına ürün sayılarıyla)
       const { SITES: featureSites } = require('../../../config/sites');
       const siteCountAccumulators = {};
       for (const siteSlug of Object.keys(featureSites)) {
@@ -1791,7 +1605,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /* Özellik Listesini DB Kaydet */
   async createOrUpdateWebFeature(featureData) {
     const WebFeature = require('../../../models/web/catalog/WebFeature');
 
@@ -1839,9 +1652,6 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Stok verilerini MongoDB'ye senkronize et *
-   */
   async syncStockToDatabase(stockData) {
     if (!stockData || stockData.length === 0) {
       this.logger.warn('Senkronize edilecek stok verisi yok');
@@ -1861,7 +1671,6 @@ class DiaStockService {
         errors: []
       };
 
-      // Batch'lere böl
       for (let i = 0; i < stockData.length; i += this.batchSize) {
         const batch = stockData.slice(i, i + this.batchSize);
 
@@ -1886,7 +1695,6 @@ class DiaStockService {
         }
       }
 
-      // Cache'i temizle
       await this.invalidateCache();
 
       this.logger.info('Veritabanı senkronizasyonu tamamlandı', result);
@@ -1897,11 +1705,7 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
-   * Batch verilerini işle - FİLTRE KONTROLÜ İLE *
-   */
   async processBatch(batch) {
-    // Görseller ürün adıyla kendi sunucumuza indirilir (indirilmişse ağ isteği yapılmaz)
     const mirroredImages = new Map();
     for (const item of batch) {
       if (!item || !item.m_resimler || item.m_resimler.length === 0) continue;
@@ -1918,11 +1722,8 @@ class DiaStockService {
     const webOperations = [];
     const errors = [];
 
-    // Mevcut WebProduct'ları toplu çek (performans için)
     const keys = batch.map(item => item._key).filter(key => key);
 
-    // Bu turda DIA'dan GÖRÜLEN tüm kartlar (hash'i aynı olup atlanacaklar dahil) işaretlenir.
-    // archiveStaleProducts yalnız DIA'dan gerçekten kaybolan kartları pasifler.
     if (keys.length) {
       await DiaStock.updateMany({ _key: { $in: keys } }, { $set: { 'syncInfo.lastSeenAt': new Date() } });
     }
@@ -1933,7 +1734,6 @@ class DiaStockService {
       webProductMap[wp._key] = wp;
     });
 
-    // Mevcut DiaStock hash'lerini toplu çek
     const existingDiaStocks = await DiaStock.find(
       { _key: { $in: keys } },
       { _key: 1, dataHash: 1 }
@@ -1947,7 +1747,6 @@ class DiaStockService {
     let processedInLoop = 0;
 
     for (const item of batch) {
-      // CPU yoğun döngüde event loop'a nefes aldır (Bull kilit yenilemesi için)
       if (++processedInLoop % 25 === 0) {
         await new Promise(resolve => setImmediate(resolve));
       }
@@ -1959,28 +1758,23 @@ class DiaStockService {
           });
           continue;
         }
-        // Web aktarım filtresi (site bazlı DB ayarları: durum/ozelkod11 + Aktarım Ayarları)
-        // DiaStock'a HER ürün yazılır; filtre yalnızca WebProduct aktarımını ve sites alanını belirler
         const rules = getSyncRules();
         const itemSites = this.sitesForItem(item);
         const passesWeb = itemSites.length > 0;
 
-        // Hash bazlı değişiklik kontrolü
         const newHash = this.generateProductHash(item);
         const existingHash = diaHashMap[item._key];
         const existingWeb = webProductMap[item._key];
         const hasWebProduct = !!existingWeb;
         const webConsistent = passesWeb
           ? (hasWebProduct && this.sitesEqual(existingWeb.sites, itemSites))
-          : true; // web'de olmaması gereken ürünler temizlik adımında silinir
+          : true;
 
-        // Hash aynı ve web tarafı tutarlıysa atla (hashKontrol kapalıysa atlanmaz)
         if (rules.hashKontrol && existingHash && existingHash === newHash && webConsistent) {
           skippedCount++;
           continue;
         }
 
-        // 1. DiaStock operation
         const cleanedData = this.cleanDiaData(item);
         diaOperations.push({
           updateOne: {
@@ -1998,12 +1792,10 @@ class DiaStockService {
           }
         });
 
-        // 2. WebProduct operation — sadece filtreden geçen ürünler web'e aktarılır
         const existingWebProduct = webProductMap[item._key];
         const transformedDiaData = this.transformDiaDataForWeb(item);
 
         if (passesWeb && existingWebProduct) {
-          // Mevcut ürün - sadece DIA data ve akıllı customData güncelle
           const smartCustomData = this.generateSmartCustomData(item, existingWebProduct.customData);
 
           webOperations.push({
@@ -2127,13 +1919,6 @@ class DiaStockService {
       webProductsProcessed: webOperations.length
     };
   }
-  /**
-   * Hizmet kategorisi KDV kuralı (config/diaFilters.js -> SERVICE_VAT_RULE):
-   * Yalnızca 'Hizmetlerimiz' kategorisindeki ürünlerde ve fiyat4 KDV hariçse
-   * (kdvdurumu4='H') fiyat4'e KDV eklenir. Oran üründen (kdvsatis) gelir,
-   * yoksa varsayılan kullanılır. Ham DIA fiyatından her seferinde yeniden
-   * hesaplandığı için tekrarlanan senkronlarda çift uygulama olmaz.
-   */
   applyServiceVatToFiyat4(fiyat4, categories, firstUnit, kdvsatis) {
     if (!fiyat4 || fiyat4 <= 0) return fiyat4;
     const isService = (categories || []).some(
@@ -2145,16 +1930,11 @@ class DiaStockService {
     return Math.round(fiyat4 * (1 + rate / 100) * 100) / 100;
   }
 
-  /**
-   * DIA verisini temizle ve dönüştür
-   */
   cleanDiaData(item) {
     const cleaned = { ...item };
 
-    // Göreli görsel yollarını tam S3 URL'sine çevir
     if (cleaned.m_resimler) cleaned.m_resimler = this.normalizeImageUrls(cleaned.m_resimler);
 
-    // Sayısal alanları dönüştür
     const numericFields = [
       'fiili_stok', 'gercek_stok', 'fiyat1', 'fiyat2', 'fiyat3', 'fiyat4', 'fiyat10',
       'sontuketicifiyati', 'azamimiktar', 'azamimiktar_firma', 'b2b_depomiktari',
@@ -2187,8 +1967,6 @@ class DiaStockService {
       }
     });
 
-    // Ham fiyat4 (DIA'nın gerçek F4 toptan fiyatı) — b2b/toptan bunu kullanır.
-    // __dinamik__16 ise ALastik (B2C) dinamik fiyatıdır; yalnız B2C fiyat4'ünü ezer.
     let hamFiyat4 = 0;
     if (item.fiyat4 !== undefined && item.fiyat4 !== null && item.fiyat4 !== '') {
       const of = parseFloat(item.fiyat4);
@@ -2205,14 +1983,12 @@ class DiaStockService {
     if (finalFiyat4 === null && hamFiyat4 > 0) {
       finalFiyat4 = hamFiyat4;
     }
-    // Hizmet kategorisi KDV kuralı (yalnızca Hizmetlerimiz + kdvdurumu4='H')
     finalFiyat4 = this.applyServiceVatToFiyat4(
       finalFiyat4,
       cleaned.m_kategoriler,
       cleaned.m_birimler && cleaned.m_birimler[0],
       cleaned.kdvsatis
     );
-    // Ham fiyat4'e de aynı hizmet-KDV kuralı uygulanır (tutarlılık için).
     hamFiyat4 = this.applyServiceVatToFiyat4(
       hamFiyat4,
       cleaned.m_kategoriler,
@@ -2221,9 +1997,9 @@ class DiaStockService {
     );
 
     const fiyatDinamik = this.parseDynamicPrice(item);
-    cleaned.fiyat4 = finalFiyat4;       // B2C (ALastik/LJA) — __dinamik__16 override'lı
-    cleaned.fiyat4Ham = hamFiyat4;      // b2b/toptan — DIA ham F4 fiyatı
-    cleaned.fiyatDinamik = fiyatDinamik; // dinamik fiyat var mı (0 = yok)
+    cleaned.fiyat4 = finalFiyat4;
+    cleaned.fiyat4Ham = hamFiyat4;
+    cleaned.fiyatDinamik = fiyatDinamik;
     if (cleaned.m_birimler && cleaned.m_birimler[0]) {
       cleaned.m_birimler[0].fiyat4 = finalFiyat4;
       cleaned.m_birimler[0].fiyat4Ham = hamFiyat4;
@@ -2232,9 +2008,6 @@ class DiaStockService {
 
     return cleaned;
   }
-  /**
-   * DIA'dan veri çek ve her batch'i hemen veritabanına yaz *
-   */
   async fetchAndSyncIncrementally() {
     const operationStartTime = Date.now();
     const operationId = `incremental_sync_${Date.now()}`;
@@ -2322,9 +2095,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
-   * Tek batch veri çek *
-   */
   async fetchSingleBatch(offset, limit, batchNumber) {
     const params = {
       limit: limit,
@@ -2340,10 +2110,6 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Sadece Kategorileri Güncelle
-   * 3 collection birden: diastocks + webproducts + webcategories
-   */
   async syncOnlyCategories() {
     const operationId = `sync_categories_only_${Date.now()}`;
     const startTime = Date.now();
@@ -2395,7 +2161,6 @@ class DiaStockService {
             }
           });
 
-          // XML kaynağından gelen ürünlere DIA stok yazma
           webOps.push({
             updateOne: {
               filter: {
@@ -2465,15 +2230,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
-   * Tam senkronizasyon işlemi - FİLTRELENMİŞ *
-   */
-  /**
-   * Web aktarımı — DIA'ya TEKRAR GİTMEDEN, diastocks'taki taze veriden beslenir.
-   * (fullSync 1. adımı diastocks'ı güncel tuttuğu için ikinci DIA çekimi gereksizdir.)
-   * Mevcut web ürünlerinin diaData/sites alanlarını günceller; eksik ürünleri
-   * syncMissingWebProducts oluşturur, silinecekleri archiveStaleProducts temizler.
-   */
   async syncWebProductsFromDiaStock(subProgressCallback = null) {
     const startTime = Date.now();
     const operationId = `web_from_diastock_${Date.now()}`;
@@ -2511,7 +2267,6 @@ class DiaStockService {
         for (const dia of diaDocs) {
           if (!dia._key) continue;
 
-          // CPU yoğun döngüde event loop'a nefes aldır
           if (++loopCount % 25 === 0) {
             await new Promise(resolve => setImmediate(resolve));
           }
@@ -2519,16 +2274,12 @@ class DiaStockService {
           totalProcessed++;
 
           const existingWeb = webMap[dia._key];
-          // Web'de olmayanlar burada oluşturulmaz (syncMissingWebProducts halleder)
           if (!existingWeb) continue;
-          // XML kaynaklı ürünlere dokunulmaz
           if (existingWeb.syncInfo?.syncSource === 'xml_integration') continue;
 
           const itemSites = this.sitesForItem(dia);
-          // Hiçbir siteden geçmeyenler temizlik adımında silinir
           if (itemSites.length === 0) continue;
 
-          // Hash + sites değişmemişse atla
           if (
             hashKontrol &&
             dia.dataHash &&
@@ -2602,7 +2353,6 @@ class DiaStockService {
         this.logger.info(message, detail);
       };
 
-      // 1. DiaStock'a TÜM ürünleri yaz
       reportProgress(0, 'Dia Programı senkronizasyonu başlıyor...');
       const diaStockResult = await this.syncAllToDiaStock((batchInfo) => {
         const subPercent = Math.min(19, Math.round((batchInfo.current / batchInfo.total) * 19));
@@ -2612,7 +2362,6 @@ class DiaStockService {
       });
       reportProgress(1, 'Dia Programı senkronizasyonu tamamlandı', { processed: diaStockResult.processed });
 
-      // 2. Web aktarımı — DIA'ya tekrar gitmeden diastocks'taki taze veriden
       reportProgress(1, 'Web Sitesine aktarılıyor (DB kaynaklı)...');
       const webProductResult = await this.syncWebProductsFromDiaStock((info) => {
         if (progressCallback) {
@@ -2621,33 +2370,26 @@ class DiaStockService {
       });
       reportProgress(2, 'Web Sitesine aktarımı tamamlandı', { processed: webProductResult.processed, updated: webProductResult.updated, skipped: webProductResult.skipped });
 
-      // 2.5 Eksik ürünleri diastocks'tan webproducts'a aktar
       reportProgress(2, 'Eksik ürünler kontrol ediliyor...');
       const missingResult = await this.syncMissingWebProducts();
       reportProgress(2, 'Eksik ürün aktarımı tamamlandı', { created: missingResult.created });
 
-      // 3. Kategorileri senkronize et
       reportProgress(2, 'Kategori senkronizasyonu başlıyor...');
       const categoryResult = await this.syncCategoriesToWebCategory();
       reportProgress(3, 'Kategori senkronizasyonu tamamlandı', { created: categoryResult.created, updated: categoryResult.updated });
 
-      // 4. Markaları senkronize et
       reportProgress(3, 'Marka senkronizasyonu başlıyor...');
       const brandResult = await this.syncBrandsToWebBrand();
       reportProgress(4, 'Marka senkronizasyonu tamamlandı', { created: brandResult.created, updated: brandResult.updated });
 
-      // 5. H/P olanları temizle
-      // 5. H/P olanları temizle
       reportProgress(4, 'Ürün temizleme başlıyor...');
       const deletedCount = await this.archiveStaleProducts();
       reportProgress(5, 'Ürün temizleme tamamlandı', { deleted: deletedCount });
 
-      // 6. Özelkod senkronizasyonu
       reportProgress(5, 'Özelkod senkronizasyonu başlıyor...');
       const ozelkodResult = await this.syncOnlyOzelkodlar();
       reportProgress(6, 'Özelkod senkronizasyonu tamamlandı', { updated: ozelkodResult.updated, skipped: ozelkodResult.skipped });
 
-      // 7. Ürün özellikleri (feature) senkronizasyonu
       reportProgress(6, 'Ürün özellikleri senkronizasyonu başlıyor...');
       const featureResult = await this.syncFeaturesToWebFeature();
       reportProgress(7, 'Görsel senkronizasyonu başlıyor...');
@@ -2674,9 +2416,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
-   * DiaStock'a TÜM ürünleri yaz (sadece durum=A)
-   */
   async syncAllToDiaStock(subProgressCallback = null) {
     const startTime = Date.now();
 
@@ -2691,7 +2430,6 @@ class DiaStockService {
         batchCount++;
 
         const syncRules = getSyncRules();
-        // DIA'dan FİLTRESİZ çekilir — tüm ürünler diastocks'a yazılır
         const batchData = await this.fetchStockFromDia({
           limit: this.fullSyncBatchSize,
           offset: offset,
@@ -2704,10 +2442,6 @@ class DiaStockService {
         }
 
         const keys = batchData.map(item => item._key).filter(k => k);
-        // Hash + SİTES ALANLARI birlikte kontrol edilir: hash aynı olsa bile
-        // ozelkod11kodu/durum/b2c_gonder/b2b_gonder DIA'dan farklıysa kart ATLANMAZ.
-        // (Aksi halde alan/hash tutarsızlığı kartı sonsuza dek takıyor; alastik/LJA/b2b
-        // üyeliği yanlış kalıyordu — kalıcı öz-onarım.)
         const existingDocs = await DiaStock.find(
           { _key: { $in: keys } },
           { _key: 1, dataHash: 1, ozelkod11kodu: 1, durum: 1, b2c_gonder: 1, b2b_gonder: 1 }
@@ -2722,7 +2456,6 @@ class DiaStockService {
         for (const item of batchData) {
           if (!item._key) continue;
 
-          // CPU yoğun döngüde event loop'a nefes aldır (Bull kilit yenilemesi için)
           if (++loopCount % 25 === 0) {
             await new Promise(resolve => setImmediate(resolve));
           }
@@ -2758,8 +2491,6 @@ class DiaStockService {
         if (operations.length > 0) {
           await DiaStock.bulkWrite(operations);
         }
-        // DIA yanıtında GÖRÜLEN tüm kartlar (atlananlar dahil) işaretlenir —
-        // archiveStaleProducts yalnız DIA'dan gerçekten kaybolan kartları pasifler.
         if (keys.length > 0) {
           await DiaStock.updateMany({ _key: { $in: keys } }, { $set: { 'syncInfo.lastSeenAt': new Date() } });
         }
@@ -2798,9 +2529,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
- * diastocks'ta olup webproducts'ta olmayan ürünleri aktar
- */
   async syncMissingWebProducts() {
     const operationId = `sync_missing_${Date.now()}`;
     const startTime = Date.now();
@@ -2808,7 +2536,6 @@ class DiaStockService {
     try {
       this.logger.info('=== EKSİK ÜRÜN AKTARIMI BAŞLANGICI ===', { operationId });
 
-      // Herhangi bir sitenin filtresinden geçen ürün key'lerini al (site bazlı kurallar)
       const allRules = getAllSyncRules();
       const ruleDocs = await DiaStock.find(
         {},
@@ -2816,11 +2543,9 @@ class DiaStockService {
       ).lean();
       const diaKeys = ruleDocs.filter(d => this.sitesForItem(d, allRules).length > 0).map(d => d._key);
 
-      // webproducts'taki key'leri al
       const webKeys = await WebProduct.distinct('_key');
       const webKeySet = new Set(webKeys);
 
-      // Eksik key'leri bul
       const missingKeys = diaKeys.filter(k => !webKeySet.has(k));
 
       this.logger.info(`Eksik ürün sayısı: ${missingKeys.length}`, { operationId });
@@ -2832,26 +2557,21 @@ class DiaStockService {
       let created = 0;
       let errors = 0;
 
-      // Batch içinde seoUrl çakışmasını önlemek için set tut
       const usedSeoUrls = new Set();
 
-      // Batch halinde işle
       for (let i = 0; i < missingKeys.length; i += 50) {
         const batchKeys = missingKeys.slice(i, i + 50);
 
-        // diastocks'tan ürünleri çek
         const diaProducts = await DiaStock.find({ _key: { $in: batchKeys } }).lean();
 
         for (const dia of diaProducts) {
           try {
-            // Site bazlı aktarım filtrelerinden hiçbirinden geçmeyenler web'e aktarılmaz
             const diaSites = this.sitesForItem(dia);
             if (diaSites.length === 0) continue;
 
             const transformedDiaData = this.transformDiaDataForWeb(dia);
             let seoUrl = await this.generateUniqueSeoUrl(dia.aciklama || dia.stokkartkodu, dia._key);
 
-            // Batch içi çakışma kontrolü
             let counter = 1;
             while (usedSeoUrls.has(seoUrl)) {
               seoUrl = seoUrl.replace(/-\d+$/, '') + '-' + (++counter);
@@ -2908,7 +2628,6 @@ class DiaStockService {
               created++;
             } catch (writeErr) {
               if (writeErr.code === 11000) {
-                // seoUrl duplicate - sonuna key ekle
                 const fallbackUrl = seoUrl + '-' + dia._key;
                 usedSeoUrls.add(fallbackUrl);
                 await WebProduct.updateOne(
@@ -2986,16 +2705,10 @@ class DiaStockService {
       return { success: false, created: 0, error: error.message };
     }
   }
-  /**
-   * Senkronizasyonda güncellenmeyen ürünleri arşivle
-   */
   async archiveStaleProducts(syncStartTime) {
     try {
       this.logger.info('=== WEBPRODUCTS TEMİZLEME BAŞLANGICI ===');
 
-      // Son 7 gündür DIA yanıtında GÖRÜLMEYEN (DIA'dan kaybolan) kartları diastocks'ta pasif yap.
-      // lastSyncDate kullanılmaz: değişmeyen kartta güncellenmediği için DIA'da hâlâ E olan
-      // ürünleri haftada bir yanlışlıkla H'ye çeviriyordu. lastSeenAt'i hiç olmayan karta dokunulmaz.
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const staleOzelkod = getSyncRules().ozelkod11Kodu;
       const staleResult = staleOzelkod
@@ -3017,8 +2730,6 @@ class DiaStockService {
         });
       }
 
-      // Her ürünün yayınlanacağı siteleri site bazlı kurallardan hesapla
-      // (TÜM diastocks taranır — "Dahil Et" istisnaları kural sorgusuna takılmasın diye)
       const allRules = getAllSyncRules();
       const ruleDocs = await DiaStock.find(
         {},
@@ -3033,8 +2744,6 @@ class DiaStockService {
 
       this.logger.info(`diastocks'tan ${sitesByKey.size} web'de kalacak ürün key'i alındı`);
 
-      // Web ürünlerini gez: hiçbir sitede yayınlanmayacaklar silinir,
-      // sites alanı güncel kurallardan sapmış olanlar düzeltilir (XML ürünlerine dokunulmaz)
       const webProducts = await WebProduct.find(
         {},
         { _key: 1, sites: 1, 'syncInfo.syncSource': 1 }
@@ -3094,13 +2803,8 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Cache'i temizle *
-   */
   async invalidateCache() {
     try {
-      // Bull kuyruk anahtarları (bull:dia-stock-sync:*) aynı Redis'te ve adında "stock" geçer —
-      // silinirse saatlik stok taramasının zamanlaması ve çalışan işin kaydı kaybolur. Dokunma.
       const keys = (await this.cache.redis.keys('*stock*')).filter(k => !k.startsWith('bull:'));
       if (keys.length > 0) {
         await this.cache.redis.del(...keys);
@@ -3114,16 +2818,10 @@ class DiaStockService {
     }
   }
 
-  /**
-   * Yardımcı fonksiyon - Sleep *
-   */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * Performans metriklerini güncelle
-   */
   updatePerformanceMetrics(response) {
     if (!response.config.metadata) {
       response.config.metadata = {};
@@ -3139,11 +2837,6 @@ class DiaStockService {
       this.performanceMetrics.slowRequests++;
     }
   }
-  /**
-   * DIA Verilerini
-   * Ürün Listesi Üzerinden Manuel Senkronize Etme
-  */
-  /* * Sadece Ürün İsmi Güncelle * */
   async syncOnlyNames() {
     const operationId = `sync_names_${Date.now()}`;
     const startTime = Date.now();
@@ -3175,11 +2868,9 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          // 1. DiaStock güncelle
           const diaUpdated = await this.updateOnlyProductNames(product);
           if (diaUpdated) totalUpdated++;
 
-          // 2. WebProduct güncelle
           const webUpdateResult = await this.updateOnlyWebProductNames(product);
           if (webUpdateResult) webUpdated++;
 
@@ -3242,7 +2933,6 @@ class DiaStockService {
       return false;
     }
   }
-  /* * Sadece Stok Kodu Güncelle * */
   async syncOnlyCodes() {
     const operationId = `sync_codes_${Date.now()}`;
     const startTime = Date.now();
@@ -3274,11 +2964,9 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          // 1. DiaStock güncelle
           const diaUpdated = await this.updateOnlyProductCodes(product);
           if (diaUpdated) totalUpdated++;
 
-          // 2. WebProduct güncelle
           const webUpdateResult = await this.updateOnlyWebProductCodes(product);
           if (webUpdateResult) webUpdated++;
 
@@ -3361,7 +3049,6 @@ class DiaStockService {
     }
   }
 
-  /* * Sadece Fiyat Güncelle * */
   async syncOnlyPrices() {
     const operationId = `sync_prices_${Date.now()}`;
     const startTime = Date.now();
@@ -3390,7 +3077,6 @@ class DiaStockService {
           break;
         }
 
-        // Mevcut fiyat hash'lerini toplu çek (KDV kuralı için kategori + kdv durumu da alınır)
         const keys = batchData.map(item => item._key).filter(k => k);
         const existingDocs = await DiaStock.find(
           { _key: { $in: keys } },
@@ -3415,7 +3101,6 @@ class DiaStockService {
             continue;
           }
 
-          // fiyat4 öncelik: __dinamik__16 (HEPSİBURADA) → yoksa orijinal fiyat4
           let finalFiyat4 = null;
           if (product.__dinamik__16 !== undefined && product.__dinamik__16 !== null && product.__dinamik__16 !== '') {
             const dinamikFiyat = parseFloat(product.__dinamik__16);
@@ -3430,7 +3115,6 @@ class DiaStockService {
             }
           }
 
-          // Hizmet kategorisi KDV kuralı — kategori/kdv durumu mevcut kayıttan okunur
           {
             const meta = metaMap[product._key];
             finalFiyat4 = this.applyServiceVatToFiyat4(
@@ -3441,7 +3125,6 @@ class DiaStockService {
             );
           }
 
-          // DiaStock bulk op
           diaOps.push({
             updateOne: {
               filter: { _key: product._key },
@@ -3465,7 +3148,6 @@ class DiaStockService {
             }
           });
 
-          // WebProduct bulk op
           webOps.push({
             updateOne: {
               filter: { _key: product._key },
@@ -3514,7 +3196,6 @@ class DiaStockService {
     }
   }
 
-  /* * Sadece Görsel Güncelle * */
   async syncOnlyImages() {
     const operationId = `sync_images_${Date.now()}`;
     const startTime = Date.now();
@@ -3546,11 +3227,9 @@ class DiaStockService {
         }
 
         for (const product of batchData) {
-          // 1. DiaStock güncelle
           const diaUpdated = await this.updateOnlyProductImages(product);
           if (diaUpdated) totalUpdated++;
 
-          // 2. WebProduct güncelle
           const webUpdateResult = await this.updateOnlyWebProductImages(product);
           if (webUpdateResult) webUpdated++;
 
@@ -3639,7 +3318,6 @@ class DiaStockService {
       return false;
     }
   }
-  /* * Sadece Stok Güncelle * */
   async syncOnlyStocks() {
     const operationId = `sync_stocks_${Date.now()}`;
     const startTime = Date.now();
@@ -3668,7 +3346,6 @@ class DiaStockService {
           break;
         }
 
-        // Mevcut stok hash'lerini toplu çek
         const keys = batchData.map(item => item._key).filter(k => k);
         const existingDocs = await DiaStock.find(
           { _key: { $in: keys } },
@@ -3691,7 +3368,6 @@ class DiaStockService {
 
           const stokMiktari = parseFloat(product.gercek_stok) || parseFloat(product.fiili_stok) || 0;
 
-          // DiaStock bulk op
           diaOps.push({
             updateOne: {
               filter: { _key: product._key },
@@ -3708,7 +3384,6 @@ class DiaStockService {
             }
           });
 
-          // WebProduct bulk op
           webOps.push({
             updateOne: {
               filter: { _key: product._key },
@@ -3749,10 +3424,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /* * Fiyat + Stok Birlikte Güncelle (tek DIA taraması) * */
-  /**
-   * DIA _date değerleri Europe/Istanbul yerel saatiyle "YYYY-MM-DD HH:mm:ss" formatındadır
-   */
   formatDiaDate(date) {
     return new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Europe/Istanbul',
@@ -3761,14 +3432,6 @@ class DiaStockService {
       hour12: false
     }).format(date).replace('T', ' ');
   }
-  /**
-   * TARİH FİLTRELİ HAFİF SENKRON: yalnızca DIA'da son çalışmadan beri DEĞİŞEN
-   * stok kartlarını çeker (filter: _date > son senkron - 30 dk tampon) ve
-   * processBatch ile TAM kart güncellemesi yapar (fiyat, ad, görsel, kategori, siteler).
-   * Kontör dostudur: değişiklik yoksa tek DIA çağrısıyla biter.
-   * DİKKAT: Stok hareketleri kartın _date alanını DEĞİŞTİRMEZ — stoklar bu metodla
-   * gelmez; saatlik syncOnlyStocks tam taraması ve gece tam senkronu stok içindir.
-   */
   async syncChangedCards() {
     const operationId = `sync_changed_${Date.now()}`;
     const startTime = Date.now();
@@ -3777,7 +3440,6 @@ class DiaStockService {
     const settings = await DiaSettings.getSettings();
     const syncStartedAt = new Date();
     const last = settings?.sync?.lastCardSyncAt ? new Date(settings.sync.lastCardSyncAt) : null;
-    // Tampon: sınırda kalan kayıtlar kaçmasın (işlemler idempotent, tekrar zararsız)
     const sinceDate = last
       ? new Date(last.getTime() - 30 * 60 * 1000)
       : new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -3809,7 +3471,6 @@ class DiaStockService {
       await this.sleep(200);
     }
 
-    // Başarıyla bitti — bir sonraki çalışma bu andan devam eder
     await DiaSettings.updateSettings({ sync: { lastCardSyncAt: syncStartedAt } });
     if (processed > 0) await this.invalidateCache();
 
@@ -3861,7 +3522,6 @@ class DiaStockService {
           break;
         }
 
-        // Mevcut fiyat + stok hash'lerini toplu çek (KDV kuralı için kategori + kdv durumu da alınır)
         const keys = batchData.map(item => item._key).filter(k => k);
         const existingDocs = await DiaStock.find(
           { _key: { $in: keys } },
@@ -3907,7 +3567,6 @@ class DiaStockService {
           };
 
           if (priceChanged) {
-            // fiyat4 öncelik: __dinamik__16 (HEPSİBURADA) → yoksa orijinal fiyat4
             let finalFiyat4 = null;
             if (product.__dinamik__16 !== undefined && product.__dinamik__16 !== null && product.__dinamik__16 !== '') {
               const dinamikFiyat = parseFloat(product.__dinamik__16);
@@ -3922,7 +3581,6 @@ class DiaStockService {
               }
             }
 
-            // Hizmet kategorisi KDV kuralı — kategori/kdv durumu mevcut kayıttan okunur
             finalFiyat4 = this.applyServiceVatToFiyat4(
               finalFiyat4,
               existing.m_kategoriler,
@@ -4034,7 +3692,7 @@ class DiaStockService {
         batchCount++;
 
         const batchData = await DiaStock.find(
-          {}, // tüm siteler + dahil istisnaları kapsansın; web'de olmayan key'ler no-op
+          {},
           {
             _key: 1, marka: 1, markaack: 1, anabarkod: 1,
             ozelkod1: 1, ozelkod1kodu: 1, ozelkod2: 1, ozelkod2kodu: 1,
@@ -4132,10 +3790,6 @@ class DiaStockService {
       throw error;
     }
   }
-  /**
-   * Tüm ürünlerde AB etiketi görsellerini ürün görsellerinin arkasına alır.
-   * Her DIA senkronu sonunda çalıştırılır; siteler arası ortak alan olduğu için tek geçiş yeterlidir.
-   */
   async reorderLabelImages() {
     const result = await reorderLabelImagesForAllProducts(WebProduct);
     this.logger.info('Etiket görselleri sona alındı', result);
@@ -4159,8 +3813,7 @@ class DiaStockService {
         batchCount++;
 
         const diaStocks = await DiaStock.find(
-          {}, // tüm siteler + dahil istisnaları kapsansın; web'de olmayan key'ler no-op
-          // aciklama/stokkartkodu: YENİ indirilen görseller ürün adıyla (slug) kaydedilsin
+          {},
           { _key: 1, m_resimler: 1, aciklama: 1, stokkartkodu: 1 }
         ).skip(offset).limit(batchSize).lean();
 
@@ -4169,20 +3822,15 @@ class DiaStockService {
           break;
         }
 
-        // Bu partinin görsellerini ürün adıyla kendi sunucumuza indir
         const mirrored = new Map();
         for (const d of diaStocks) {
           try {
-            // refresh: kaynakta AYNI URL ile içerik değişmişse (HTTP conditional ile algılanır)
-            // görsel yeni isimle yeniden indirilir; böylece "eski görsel kalıyor" sorunu kalıcı çözülür.
             mirrored.set(d._key, await imageMirror.mirrorProductImages(d.m_resimler || [], d.aciklama || d.stokkartkodu, { refresh: true }));
           } catch (error) {
             this.logger.warn('Görsel aynalama atlandı (syncImagesToWebProducts)', { key: d._key, error: error.message });
           }
         }
 
-        // Vekil görsel temizliği: gerçek (bastırılmamış) görseli olan ürünlerde temsiliYedek
-        // işaretli customImages kaldırılır — "daha güzel görseli gelince o değişsin" kuralı
         const keysWithReal = diaStocks.filter(d => (mirrored.get(d._key) || []).length > 0).map(d => d._key);
         const subs = keysWithReal.length
           ? await WebProduct.find(
@@ -4192,9 +3840,6 @@ class DiaStockService {
           : [];
         const subMap = new Map(subs.map(p => [p._key, (p.customData.customImages || []).filter(i => !i.temsiliYedek)]));
 
-        // Manuel görsel koruması: elle GERÇEK görsel yüklenmiş (temsiliYedek olmayan
-        // customImages) ürünlerde diaData.m_resimler ÜZERİNE YAZILMAZ; sadece lastDiaSync
-        // güncellenir. temsiliYedek (vekil) görseller korumaya girmez — gerçek görsel gelince değişir.
         const korumaKeys = getSyncRules().manuelGorselKoru
           ? new Set((await WebProduct.find(
               {

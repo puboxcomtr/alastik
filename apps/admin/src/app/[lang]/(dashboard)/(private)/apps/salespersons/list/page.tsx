@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Components */
 import SalespersonsView from '@views/salespersons/SalespersonsView'
 
 const SalespersonsListPage = () => {

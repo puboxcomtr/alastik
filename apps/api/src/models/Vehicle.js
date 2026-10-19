@@ -23,7 +23,6 @@ const vehicleSchema = new mongoose.Schema({
         uppercase: true,
         trim: true
     },
-    // Teknik özellikler
     specs: {
         engineSize: String,
         fuelType: String,
@@ -45,11 +44,9 @@ const vehicleSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index'ler
 vehicleSchema.index({ userId: 1, isActive: 1 });
 vehicleSchema.index({ userId: 1, isDefault: 1 });
 
-// Soft delete
 vehicleSchema.methods.softDelete = function () {
     this.isActive = false;
     this.deletedAt = new Date();

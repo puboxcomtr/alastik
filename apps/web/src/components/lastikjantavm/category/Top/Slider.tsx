@@ -60,14 +60,11 @@ export default function CategorySlider({ sliderId }: CategorySliderProps) {
     if (autoStart) modules.push(Autoplay);
 
     return (
-        // Kategori slider'ı her zaman tek slayt gösterir; gezinme noktalarla yapılır, ok düğmesi yoktur
         <Swiper
             modules={modules}
             loop={settings.loop !== false && activeSlides.length > 1}
             autoplay={autoplayConfig}
             speed={300}
-            // Yükseklik en uzun slayttan değil aktif slayttan alınır; yüklenmemiş
-            // slaytların yer tutucusu yüzünden altta boşluk kalmasını engeller
             autoHeight
             pagination={showDots ? { clickable: true } : false}
             className="mb-4"
@@ -86,8 +83,6 @@ export default function CategorySlider({ sliderId }: CategorySliderProps) {
                                 alt={slide.description || `${slider.name} - Slide ${index + 1}`}
                                 width={width}
                                 height={height}
-                                // Tembel yükleme kapalı: yüklenmemiş slayt şişkin yer
-                                // tutucu oranında kalıp slider'ı uzatıyordu
                                 priority={index === 0}
                                 loading='eager'
                                 quality={95}
@@ -100,8 +95,6 @@ export default function CategorySlider({ sliderId }: CategorySliderProps) {
                             alt={slide.description || `${slider.name} - Slide ${index + 1}`}
                             width={width}
                             height={height}
-                            // Tembel yükleme kapalı: yüklenmemiş slayt şişkin yer
-                            // tutucu oranında kalıp slider'ı uzatıyordu
                             priority={index === 0}
                             loading='eager'
                             quality={95}

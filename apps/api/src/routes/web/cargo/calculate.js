@@ -2,12 +2,6 @@ const express = require('express');
 const router = express.Router();
 const CargoCalculatorService = require('../../../services/web/cargo/CargoCalculatorService');
 
-/**
- * POST /api/cargo/calculate
- * Sepet ürünleri için kargo hesaplama
- * 
- * Body: { items: [{ _key: string, quantity: number }] }
- */
 router.post('/calculate', async (req, res) => {
     try {
         const { items } = req.body;

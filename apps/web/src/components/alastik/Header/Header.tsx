@@ -2,17 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-/* Component */
 import BlockRenderer from '@components/BlockRenderer';
 import Middle from '@components/alastik/Header/Middle/Main';
 import Navbar from '@components/alastik/Header/Navbar/Main';
 import MobileMenu from '@components/alastik/Header/MobileMenu';
 import MontageBanner from '@components/alastik/Header/MontageBanner';
 
-/* Api Connection */
 import { api } from '@src/lib/api';
 
-/* Variables */
 export default function Header() {
     const [logo, setLogo] = useState('');
     const [siteName, setSiteName] = useState('A Lastik');

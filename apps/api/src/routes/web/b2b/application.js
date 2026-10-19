@@ -2,11 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebB2BApplication = require('../../../models/web/user/WebB2BApplication');
 
-/**
- * POST / — B2B bayi başvurusu (public form).
- * Başvuru kaydedilir ve sitenin SMTP posta kutusuna bildirim gönderilir.
- * Hesap/şifre OLUŞTURMAZ — bayilik DIA tarafında açılır.
- */
 router.post('/', async (req, res) => {
     try {
         const {
@@ -28,7 +23,6 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Sözleşme koşullarını kabul etmeniz gereklidir' });
         }
 
-        // Aynı e-postadan kısa aralıklı tekrarları engelle (basit koruma)
         const son = await WebB2BApplication.findOne({
             site: req.site,
             email: String(email).toLowerCase().trim(),
@@ -59,8 +53,6 @@ router.post('/', async (req, res) => {
             ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || ''
         });
 
-        // Bildirim: sitenin mail şablonundan (panelde Mail Şablonları > Bayi Başvuru
-        // Bildirimi) render edilir, SMTP posta kutusuna gönderilir
         try {
             const SmtpSettings = require('../../../models/admin/mail/smtp/SmtpSettings');
             const WebMailTemplate = require('../../../models/admin/mail/Template');
@@ -68,14 +60,12 @@ router.post('/', async (req, res) => {
             const { sendMail } = require('../../../services/web/mail/MailService');
 
             const smtp = await SmtpSettings.findOne({ site: req.site }).lean();
-            // Bildirim alıcıları ayarı (settings: group b2b / basvuruBildirimAdresleri,
-            // virgülle çok adres); tanımlı değilse SMTP posta kutusuna düşer
             let bildirimAdresi = smtp?.username;
             try {
                 const Setting = require('../../../models/admin/settings/Setting');
                 const ayar = await Setting.findOne({ site: req.site, group: 'b2b', key: 'basvuruBildirimAdresleri' }).lean();
                 if (ayar?.value && String(ayar.value).includes('@')) bildirimAdresi = String(ayar.value);
-            } catch { /* ayar okunamazsa SMTP kutusu kullanılır */ }
+            } catch {  }
             const template = await WebMailTemplate.findOne({
                 site: req.site, templateKey: 'b2b_bayi_basvuru_bildirim', isActive: true
             }).lean();

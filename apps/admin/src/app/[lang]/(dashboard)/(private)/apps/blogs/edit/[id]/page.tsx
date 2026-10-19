@@ -13,10 +13,6 @@ type Props = {
     params: { id: string }
 }
 
-/**
- * Veri tarayıcı tarafında çekilir: admin API'si oturum anahtarı ister,
- * sunucu bileşeninde bu anahtar bulunmadığı için istek yetkisiz kalıyordu.
- */
 const BlogEdit = ({ params }: Props) => {
     const [blog, setBlog] = useState<any>(null)
     const [loading, setLoading] = useState(true)

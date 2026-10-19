@@ -1,4 +1,3 @@
-// apps/web/src/config/api.ts
 import { DOMAIN_TO_SLUG, SITES } from './siteConfig';
 
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
@@ -7,7 +6,6 @@ export const getBaseUrl = () => {
     if (typeof window === 'undefined') {
         return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
     }
-    // sameOriginApi açık sitede API sitenin kendi adresinden çağrılır (bkz. SiteConfig.sameOriginApi)
     const slug = DOMAIN_TO_SLUG[window.location.hostname.toLowerCase()];
     if (slug && SITES[slug]?.sameOriginApi) return `${window.location.origin}/api`;
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api';
@@ -28,7 +26,6 @@ export const API_ENDPOINTS = {
         themeSettings: () => `${getBaseUrl()}/admin/design/settings/theme`,
         login: () => `${getBaseUrl()}/b2b/auth/login`,
         me: () => `${getBaseUrl()}/b2b/auth/me`,
-        // Plasiyer (satış personeli) girişi + bayi adına oturum
         plasiyerLogin: () => `${getBaseUrl()}/b2b/plasiyer/login`,
         plasiyerMe: () => `${getBaseUrl()}/b2b/plasiyer/me`,
         plasiyerCariler: (search: string) => `${getBaseUrl()}/b2b/plasiyer/cariler?search=${encodeURIComponent(search)}`,
@@ -37,7 +34,6 @@ export const API_ENDPOINTS = {
         cariOzet: () => `${getBaseUrl()}/b2b/auth/cari-ozet`,
         depoStok: (codes: string) => `${getBaseUrl()}/b2b/auth/depo-stok?codes=${encodeURIComponent(codes)}`,
         sepet: () => `${getBaseUrl()}/b2b/auth/sepet`,
-        // Plasiyer gözü (bayi seçilmeden) aynı depo dağılımı
         plasiyerDepoStok: (codes: string) => `${getBaseUrl()}/b2b/plasiyer/depo-stok?codes=${encodeURIComponent(codes)}`,
         plasiyerXmlKaynak: (codes: string) => `${getBaseUrl()}/b2b/plasiyer/xml-kaynak?codes=${encodeURIComponent(codes)}`,
         adresler: () => `${getBaseUrl()}/b2b/auth/adresler`,
@@ -62,16 +58,12 @@ export const API_ENDPOINTS = {
         odemeler: () => `${getBaseUrl()}/b2b/auth/odemeler`,
         paynetConfig: () => `${getBaseUrl()}/b2b/payment/paynet/config`,
         paynetReturn: () => `${getBaseUrl()}/b2b/payment/paynet/return`,
-        // Cari borç tek çekim (Peşin) — Paynet
         tekCekimBaslat: () => `${getBaseUrl()}/b2b/payment/tekcekim/baslat`,
         tekCekimReturn: () => `${getBaseUrl()}/b2b/payment/tekcekim/return`,
         paynetClientError: () => `${getBaseUrl()}/b2b/payment/paynet/client-error`,
-        // Taksit oranları — NetTahsilat PirPos (BIN + tutar → seçenekler).
         taksitRatios: () => `${getBaseUrl()}/b2b/payment/netahsilat/ratios`,
         installmentTable: () => `${getBaseUrl()}/b2b/payment/netahsilat/installment-table`,
-        // Taksitli 3D ödeme başlatma (kart + seçilen taksit/vPos → 3D URL).
         taksitInit: () => `${getBaseUrl()}/b2b/payment/netahsilat/3d-init`,
-        // Cari borç taksitli (NetTahsilat) — kart + taksit → 3D URL.
         borcTaksitInit: () => `${getBaseUrl()}/b2b/payment/netahsilat/borc-init`,
     },
     brands: {
@@ -148,13 +140,10 @@ export const API_ENDPOINTS = {
     },
     payment: {
         bankAccounts: () => `${getBaseUrl()}/payment-methods/bank-transfer`,
-        // Site bazlı kredi kartı seçenekleri: { tekCekim, taksit }
         creditCardOptions: () => `${getBaseUrl()}/payment-methods/credit-card-options`,
-        // Netahsilat
         threeDInit: () => `${getBaseUrl()}/web/payments/netahsilat/3d-init`,
         threeDCommit: () => `${getBaseUrl()}/web/payments/netahsilat/3d-commit`,
         binCheck: (bin: string) => `${getBaseUrl()}/web/payments/netahsilat/bin/${bin}`,
-        // Nkolay
         nkolayInit: () => `${getBaseUrl()}/web/payments/nkolay/3d-init`,
     },
     search: {
@@ -245,13 +234,6 @@ export const API_ENDPOINTS = {
     },
 };
 
-/**
- * Sunucu tarafinda aktif sitenin X-Site header'ini uretir.
- * Middleware her istege x-site request header'i ekler; server component /
- * servis fetch'leri bunu API'ye iletmek zorundadir — aksi halde API
- * varsayilan siteyi (alastik) cozer ve site verileri karisir.
- * Client tarafinda bos doner (tarayici Origin'i siteyi zaten belirler).
- */
 export async function getServerSiteHeaders(): Promise<Record<string, string>> {
     if (typeof window !== 'undefined') return {};
     try {
@@ -260,31 +242,21 @@ export async function getServerSiteHeaders(): Promise<Record<string, string>> {
         const site = h.get('x-site');
         return site ? { 'X-Site': site } : {};
     } catch {
-        // Request kapsami disinda (build ani vb.) — header eklenmez
         return {};
     }
 }
 
-/**
- * Istemcide birinci-taraf `sid` cookie'sini (middleware uretir) X-Session-Id olarak iletir.
- * API oturumu bu baslikla surdurur; cross-origin cookie'ye bagimlilik kalmaz.
- * Sunucu tarafinda bos doner (SSR cagrilari API'de oturum sayilmaz).
- */
 function getClientSessionHeaders(): Record<string, string> {
     if (typeof document === 'undefined') return {};
     const match = document.cookie.match(/(?:^|;\s*)sid=([A-Za-z0-9-]+)/);
     return match ? { 'X-Session-Id': match[1] } : {};
 }
 
-/**
- * Genel fetch helper - Server side ve client side uyumlu
- */
 export async function fetchAPI<T = any>(
     url: string,
     options?: RequestInit
 ): Promise<{ success: boolean; data: T | null; message?: string }> {
     try {
-        // options once yayilir; headers en sonda birlesir ki X-Site ezilmesin
         const response = await fetch(url, {
             ...options,
             headers: {
@@ -307,10 +279,6 @@ export async function fetchAPI<T = any>(
     }
 }
 
-/**
- * Gorsel URL helper
- */
-// Her iki sitede de kendi alan adından servis edilen medya yolları
 const MEDIA_PATH_PREFIXES = [
     '/urun/', '/blog/', '/kategori/', '/marka/', '/sliders/',
     '/theme/', '/uploads/', '/general/', '/genel/', '/banners/', '/montage/'
@@ -319,8 +287,6 @@ const MEDIA_PATH_PREFIXES = [
 export function getImageUrl(path?: string | null): string {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    // Medya her sitenin KENDİ alan adından servis edilir (nginx karşılar):
-    // göreli bırakılır ki adres alastik'e sabitlenmesin
     if (MEDIA_PATH_PREFIXES.some(prefix => path.startsWith(prefix))) return path;
     return `${MEDIA_URL}${path.startsWith('/') ? path : '/' + path}`;
 }

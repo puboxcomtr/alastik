@@ -1,14 +1,6 @@
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Build çıktısı klasörü. Canlıda build'i çalışan siteye dokunmadan ayrı klasöre almak için
-  // NEXT_DIST_DIR=.next-yeni ile build alınır, sonra klasör .next ile yer değiştirir.
-  // Değişken verilmezse varsayılan .next (mevcut davranış).
   distDir: process.env.NEXT_DIST_DIR || '.next',
   async rewrites() {
-    // Medya yolları API'de duruyor; next/image iyileştiricisi dosyayı KENDİ sunucusundan
-    // istediği için bu yollar iletilmezse görseller kırık görünür.
-    // DİKKAT: /marka/<slug>, /urun/<slug>, /blog/<slug> gerçek sayfa rotalarıdır — bu yüzden
-    // kural yalnızca GÖRSEL UZANTILARIYLA eşleşir ve sayfa rotalarını etkilemez.
     const mediaFolders = ['urun', 'uploads', 'blog', 'kategori', 'marka', 'sliders', 'theme', 'banners', 'montage', 'general'];
     const imagePattern = '(.+\\.(?:jpg|jpeg|png|webp|gif|avif|svg|ico))';
 
@@ -28,7 +20,6 @@ const nextConfig = {
         },
       ],
       afterFiles: [],
-      // Görsel olmayan medya (pdf vb.) sayfa rotaları çözüldükten sonra iletilir
       fallback: mediaFolders.map(folder => ({
         source: `/${folder}/:path*`,
         destination: `http://localhost:3082/${folder}/:path*`,

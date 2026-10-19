@@ -1,4 +1,3 @@
-// Raporlar sayfası veri tipleri — GET /admin/analytics/reports yanıtı ile birebir
 
 export type PeriodKey = 'today' | 'week' | 'month' | 'last_month' | 'year' | 'custom'
 export type Granularity = 'hour' | 'day' | 'month'

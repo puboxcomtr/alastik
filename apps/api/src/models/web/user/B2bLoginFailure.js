@@ -1,8 +1,3 @@
-/**
- * B2bLoginFailure — bayi girişinde başarısız denemeler (destek için: "giremiyorum" diyen bayinin
- * ne yazdığını görmek). Girilen bayi kodu / e-posta / telefon olduğu gibi saklanır, ŞİFRE HİÇ YAZILMAZ.
- * Kayıtlar RETENTION_DAYS sonra MongoDB TTL ile kendiliğinden silinir.
- */
 const mongoose = require('mongoose');
 
 const RETENTION_DAYS = 90;
@@ -10,9 +5,9 @@ const FAILURE_REASONS = ['not_found', 'wrong_password', 'suspended', 'inactive']
 
 const b2bLoginFailureSchema = new mongoose.Schema({
     site: { type: String, required: true, index: true },
-    identifier: { type: String, default: '' }, // giriş kutusuna yazılan (bayi kodu / e-posta / telefon)
+    identifier: { type: String, default: '' },
     reason: { type: String, enum: FAILURE_REASONS, required: true },
-    memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'WebMember', index: true }, // eşleşen bayi (bulunamadıysa boş)
+    memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'WebMember', index: true },
     cariKodu: { type: String },
     ip: { type: String },
     userAgent: { type: String },

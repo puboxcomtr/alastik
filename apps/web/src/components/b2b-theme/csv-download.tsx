@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * CSV indirme düğmesi.
- *
- * Dosya tarayıcıda üretilir (sunucu yok). İndirilen dosya ne ise o adla
- * sunulur: üretilen içerik CSV olduğu için uzantı `.csv`, tür `text/csv`.
- * Excel'in Türkçe yerelinde ayraç olarak noktalı virgül beklenir; BOM da
- * eklenir ki Türkçe karakterler bozulmasın.
- */
 export function CsvDownload({
   dosyaAdi,
   basliklar,

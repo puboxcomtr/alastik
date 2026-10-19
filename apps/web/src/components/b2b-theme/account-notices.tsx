@@ -1,7 +1,4 @@
 'use client';
-// Cari uyarıları (anasayfa + sepet) — kuralları sunucu uygular, burada bayiye nedeni gösterilir. Bilgi /me yanıtından gelir.
-//  • Limit tanımlı değil ya da bitti: hiçbir ödeme yöntemiyle sipariş verilemez (metin sunucudan).
-//  • Vadesi geçen borç: sepete ürün eklenemez ve sipariş verilemez (metin sunucudan); borç ödeme açıktır.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { formatKurus } from '@components/b2b-theme/lib/format';
@@ -12,7 +9,6 @@ type AccountState = {
     cartClosed: boolean; cartClosedMessage: string;
 };
 
-// Sunucudaki neden anahtarları (creditLimit.CREDIT_CLOSED_REASONS)
 const EXCEEDED_REASON = 'exceeded';
 const OVERDUE_REASON = 'overdue';
 
@@ -43,24 +39,20 @@ export function AccountNotices() {
     }, []);
 
     if (!state || !(state.cartClosed || state.orderingClosed)) return null;
-    // Sipariş vadesi geçen borç dışında bir nedenle (limit) de kapalı mı?
     const limitClosed = state.orderingClosed && state.orderingClosedReason !== OVERDUE_REASON;
     return (
         <>
-            {/* Limit tanımsız / bitmiş: sipariş tamamen kapalı */}
             {limitClosed ? (
                 <div className="alert error account-notice" role="alert">
                     <span>{state.orderingClosedMessage}</span>
                     {state.orderingClosedReason === EXCEEDED_REASON ? <a className="account-notice-link" href="/odeme">Ödeme Yap</a> : null}
                 </div>
             ) : null}
-            {/* Vadesi geçen borç: sepete ekleme ve sipariş kapalı */}
             {state.cartClosed ? (
                 <div className="alert error account-notice" role="alert">
                     <span>
                         Vadesi geçen borç: <strong>{formatKurus(state.overdueKurus)}</strong>. {state.cartClosedMessage}
                     </span>
-                    {/* Limit doluysa Ödeme Yap bağlantısı üstteki uyarıda */}
                     {limitClosed && state.orderingClosedReason === EXCEEDED_REASON ? null : <a className="account-notice-link" href="/odeme">Ödeme Yap</a>}
                 </div>
             ) : null}

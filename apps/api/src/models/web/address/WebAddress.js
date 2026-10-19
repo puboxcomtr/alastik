@@ -4,28 +4,22 @@ const webAddressSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     sessionId: { type: String, index: true },
 
-    // Adres Bilgileri
-    addressName: String, // "Ev", "İş" vs.
+    addressName: String,
     addressDescription: String,
 
-    // Fatura Tipi
     invoiceType: { type: String, enum: ['individual', 'corporate'], default: 'individual' },
 
-    // Bireysel
     fullName: String,
     tcNo: { type: String, default: '11111111111' },
 
-    // Kurumsal
     companyName: String,
     taxOffice: String,
     taxNo: String,
     authorizedPerson: String,
 
-    // Ortak
     email: { type: String, required: true },
     phone: { type: String, required: true },
 
-    // Adres
     cityId: { type: String, required: true },
     cityName: String,
     districtId: { type: String, required: true },
@@ -38,12 +32,10 @@ const webAddressSchema = new mongoose.Schema({
     apartmentNo: String,
     addressNote: String,
 
-    // Flags
     isDefault: { type: Boolean, default: false },
     isBilling: { type: Boolean, default: true },
     isShipping: { type: Boolean, default: true },
 
-    // Adres Teslimat İlişkilendirilmesi
     linkedShippingAddressId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'WebAddress',

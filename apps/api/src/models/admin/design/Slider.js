@@ -43,7 +43,6 @@ const sliderSchema = new mongoose.Schema({
     collection: 'sliders'
 });
 
-// Aynı key her sitede bir kez kullanılabilir (site + key benzersiz)
 sliderSchema.index({ site: 1, key: 1 }, { unique: true });
 
 sliderSchema.pre('save', async function (next) {

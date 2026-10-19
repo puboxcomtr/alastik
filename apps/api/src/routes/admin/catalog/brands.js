@@ -1,6 +1,3 @@
-// ============================================
-// DEPENDENCIES
-// ============================================
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -8,39 +5,20 @@ const fs = require('fs');
 
 const MediaService = require('../../../services/web/MediaService');
 
-// ============================================
-// MODELS
-// ============================================
-// DIA ERP stock model (raw data from ERP system)
 const DiaStock = require('../../../models/plugins/DiaStock');
 
-// Web product model (for brand statistics)
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
-// Web category model (for brand-category relations)
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 
-// Web brand model (synced and enhanced version for frontend)
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 
-// ============================================
-// MIDDLEWARE
-// ============================================
-// Authentication middleware for admin routes
 const { authenticateAdmin } = require('../../../middleware/auth');
 
-// Request validation middleware
 const { body, validationResult } = require('express-validator');
 
-// ============================================
-// SERVICES
-// ============================================
-// DIA ERP integration service
 const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
-// ============================================
-// MULTER CONFIG - Marka Logo Upload
-// ============================================
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path.join(__dirname, '../../../../public/marka');
@@ -50,7 +28,6 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // Benzersiz dosya adı: marka-slug-timestamp.ext
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname).toLowerCase();
         cb(null, `brand-${uniqueSuffix}${ext}`);
@@ -59,7 +36,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -72,28 +49,14 @@ const upload = multer({
     }
 });
 
-// ============================================
-// ROUTER INITIALIZATION
-// ============================================
 const router = express.Router();
 
-// ============================================
-// AUTHENTICATION STRATEGY
-// ============================================
-// Conditional authentication based on environment
-// - Development (DISABLE_AUTH=true): Bypasses authentication for easier testing
-// - Production (DISABLE_AUTH=false): Enforces admin authentication
 const maybeAuth = process.env.DISABLE_AUTH === 'true'
     ? (req, res, next) => next()
     : authenticateAdmin;
-// Multer uploader
 
 const uploadLogo = MediaService.createUploader('brand', 'logo');
 
-/**
- * Marka Listeleme - WebBrand Collection'dan
- * GET /api/brands
- */
 router.get('/', maybeAuth, async (req, res) => {
     try {
         const {
@@ -107,16 +70,12 @@ router.get('/', maybeAuth, async (req, res) => {
             has_logo
         } = req.query;
 
-        // WebBrand filtreleri (görünürlük/sıralama seçili siteye göre)
         const siteVisibleField = `siteSettings.${req.site}.webVisible`;
         const siteOrderField = `siteSettings.${req.site}.webOrder`;
         const webFilter = {};
 
-        // Web durumu filtreleme (ürün sayısı seçili sitenin yayın durumuna göre)
         const siteCountField = `siteSettings.${req.site}.productCount`;
 
-        // Sadece görünür markalar mı? (seçili sitede yayınlanmış ürünü olmayan marka listelenmez;
-        // görmek için "Boş" durum filtresi kullanılır)
         if (visible_only === 'true') {
             webFilter[siteVisibleField] = true;
             webFilter[siteCountField] = { $gt: 0 };
@@ -132,7 +91,6 @@ router.get('/', maybeAuth, async (req, res) => {
             }
         }
 
-        // Ürün sayısı filtreleme
         if (min_products && !isNaN(min_products)) {
             webFilter.productCount = { ...webFilter.productCount, $gte: parseInt(min_products) };
         }
@@ -140,7 +98,6 @@ router.get('/', maybeAuth, async (req, res) => {
             webFilter.productCount = { ...webFilter.productCount, $lte: parseInt(max_products) };
         }
 
-        // Logo varlığı filtreleme
         if (has_logo === 'true') {
             webFilter['logo.url'] = { $exists: true, $ne: null, $ne: '' };
         } else if (has_logo === 'false') {
@@ -204,9 +161,7 @@ router.get('/', maybeAuth, async (req, res) => {
             .sort(sortOptions)
             .lean();
 
-        // Response formatı
         const formattedBrands = brands.map(brand => {
-            // Seçili sitenin ayarları (eski ortak alanlar yedek)
             const siteSet = brand.siteSettings?.[req.site] || {};
             const siteVisible = siteSet.webVisible !== undefined ? siteSet.webVisible : brand.webVisible;
             const siteOrder = siteSet.webOrder !== undefined ? siteSet.webOrder : (brand.webOrder || 0);
@@ -214,7 +169,6 @@ router.get('/', maybeAuth, async (req, res) => {
             const siteHomepageOrder = siteSet.homepageOrder !== undefined ? siteSet.homepageOrder : (brand.homepageOrder || 0);
             const siteProductCount = siteSet.productCount !== undefined ? siteSet.productCount : (brand.productCount || 0);
 
-            // Seçili sitenin içerik/SEO metinleri (yoksa ortak alanlar)
             const sc = brand.siteContent?.[req.site] || {};
 
             let webStatus = 'Inactive';
@@ -244,30 +198,24 @@ router.get('/', maybeAuth, async (req, res) => {
                 name: brand.name,
                 slug: brand.slug,
 
-                // DIA bağlantısı
                 diaBrand: brand.diaBrand,
                 diaMarkaAck: brand.diaMarkaAck,
                 diaKey: brand.diaKey,
 
-                // Web yönetimi (seçili site)
                 webVisible: siteVisible,
                 webOrder: siteOrder,
                 status: webStatus,
 
-                // Anasayfa Gösterimi (seçili site)
                 showOnHomepage: siteShowOnHomepage,
                 homepageOrder: siteHomepageOrder,
 
-                // SEO (seçili site öncelikli)
                 seoTitle: sc.seoTitle || brand.seoTitle || brand.name,
                 seoDescription: sc.seoDescription || brand.seoDescription || `${brand.name} markası ürünleri`,
                 seoUrl: brand.seoUrl || brand.slug,
                 seoKeywords: (sc.seoKeywords && sc.seoKeywords.length ? sc.seoKeywords : brand.seoKeywords) || [],
 
-                // İçerik (seçili site öncelikli)
                 description: sc.description || brand.description || '',
 
-                // Görseller — seçili site logosu öncelikli (siteContent.<site>.logoUrl), yoksa ortak logo
                 logo: (() => {
                     const logoUrl = sc.logoUrl || brand.logo?.url || brand.bannerImage?.url || brand.customImage?.url;
                     if (!logoUrl) {
@@ -291,14 +239,12 @@ router.get('/', maybeAuth, async (req, res) => {
                     about: brand.brandInfo?.about || null
                 },
 
-                // İstatistikler (ürün sayısı seçili sitenin yayınlanmış ürünleri)
                 productCount: siteProductCount,
                 totalDiaProductCount: brand.productCount || 0,
                 activeProductCount: brand.activeProductCount || 0,
                 totalStock: brand.totalStock || 0,
                 totalValue: brand.totalValue || 0,
 
-                // Fiyat bilgileri
                 priceRange: {
                     min: minPrice,
                     max: maxPrice,
@@ -307,14 +253,12 @@ router.get('/', maybeAuth, async (req, res) => {
                     averageFormatted: formattedAvgPrice
                 },
 
-                // Kategori dağılımı
                 categories: brand.categoryDistribution || [],
                 categoriesText: categoryText,
                 mainCategory: brand.categoryDistribution && brand.categoryDistribution.length > 0
                     ? brand.categoryDistribution[0].categoryName
                     : 'Kategori yok',
 
-                // Tarihler
                 createdAt: brand.createdAt,
                 updatedAt: brand.updatedAt,
                 lastSync: brand.syncInfo?.lastSync,
@@ -322,7 +266,6 @@ router.get('/', maybeAuth, async (req, res) => {
                 lastProductSync: brand.syncInfo?.lastProductSync,
                 syncStatus: brand.syncInfo?.syncStatus || 'unknown',
 
-                // Kalite skorları
                 completenessScore: calculateBrandCompleteness(brand),
                 hasLogo: !!(sc.logoUrl || brand.logo?.url),
                 hasDescription: !!(brand.description),
@@ -331,7 +274,6 @@ router.get('/', maybeAuth, async (req, res) => {
             };
         });
 
-        // Kalite skoru hesaplama fonksiyonu
         function calculateBrandCompleteness(brand) {
             let score = 0;
             const checks = [
@@ -380,9 +322,6 @@ router.get('/', maybeAuth, async (req, res) => {
         });
     }
 });
-/**
- * Marka Detay Güncelleme - WebBrand Collection'dan
- */
 router.patch('/:id', maybeAuth, [
     body('description').optional().isLength({ max: 500 }).withMessage('Açıklama en fazla 500 karakter olabilir'),
     body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
@@ -396,7 +335,6 @@ router.patch('/:id', maybeAuth, [
         const { description, seoTitle, seoDescription, seoUrl, webOrder, webVisible } = req.body
 
         const updateData = {}
-        // İçerik/SEO metinleri seçili siteye yazılır; seoUrl ortak kalır (URL kimliği tek)
         if (description !== undefined) updateData[`siteContent.${req.site}.description`] = description
         if (seoTitle !== undefined) updateData[`siteContent.${req.site}.seoTitle`] = seoTitle?.trim()
         if (seoDescription !== undefined) updateData[`siteContent.${req.site}.seoDescription`] = seoDescription?.trim()
@@ -434,17 +372,11 @@ router.patch('/:id', maybeAuth, [
     }
 })
 
-/**
- * Marka Güncelleme - PUT
- * PUT /api/brands/:id
- */
 router.put('/:id', maybeAuth, async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
 
-        // İzin verilen alanlar: içerik/SEO metinleri siteContent, yönetim alanları siteSettings altına yazılır
-        // seoUrl ve brandInfo ortak kalır (URL kimliği tek, marka bilgisi olgusal)
         const allowedFields = ['seoUrl', 'brandInfo'];
         const siteContentFields = ['description', 'seoTitle', 'seoDescription', 'seoKeywords'];
         const siteScopedFields = ['webVisible', 'webOrder', 'showOnHomepage', 'homepageOrder'];
@@ -497,10 +429,6 @@ router.put('/:id', maybeAuth, async (req, res) => {
     }
 });
 
-/**
- * Marka Logo Yükleme
- * POST /api/brands/:id/logo
- */
 router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
     try {
         const { id } = req.params;
@@ -520,14 +448,10 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
                 message: 'Marka bulunamadi'
             });
         }
-        // Logo SEÇİLİ SİTEYE yazılır (siteContent.<site>.logoUrl); ortak logo alanına DOKUNULMAZ.
-        // Eski site logosu (varsa) silinir; ortak logo fallback olarak korunur.
         const oldSiteLogoUrl = brand.siteContent?.[req.site]?.logoUrl;
 
-        // Yeni logo URL
         const logoUrl = MediaService.getFileUrl('brand', req.file.filename);
 
-        // Güncelle
         const updatedBrand = await WebBrand.findByIdAndUpdate(
             id,
             {
@@ -540,7 +464,6 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
             { new: true }
         );
 
-        // Yukleme basarili, simdi eski site logosunu sil (ortak logo/başka sitenin logosu değilse)
         if (oldSiteLogoUrl && oldSiteLogoUrl !== logoUrl && oldSiteLogoUrl !== brand.logo?.url) {
             const digerSiteKullaniyor = Object.entries(brand.siteContent || {})
                 .some(([slug, sc]) => slug !== req.site && sc?.logoUrl === oldSiteLogoUrl);
@@ -569,10 +492,6 @@ router.post('/:id/logo', maybeAuth, uploadLogo, async (req, res) => {
     }
 });
 
-/**
- * Marka Logo Silme
- * DELETE /api/brands/:id/logo
- */
 router.delete('/:id/logo', maybeAuth, async (req, res) => {
     try {
         const { id } = req.params;
@@ -585,17 +504,14 @@ router.delete('/:id/logo', maybeAuth, async (req, res) => {
             });
         }
 
-        // SEÇİLİ SİTENİN logosu silinir; ortak logo (fallback) korunur.
         const siteLogoUrl = brand.siteContent?.[req.site]?.logoUrl;
 
-        // Dosyayı sil — ortak logo veya başka sitenin logosu değilse
         if (siteLogoUrl && siteLogoUrl !== brand.logo?.url) {
             const digerSiteKullaniyor = Object.entries(brand.siteContent || {})
                 .some(([slug, sc]) => slug !== req.site && sc?.logoUrl === siteLogoUrl);
             if (!digerSiteKullaniyor) MediaService.deleteFile(siteLogoUrl);
         }
 
-        // DB güncelle — yalnız seçili sitenin logo alanları temizlenir
         const updatedBrand = await WebBrand.findByIdAndUpdate(
             id,
             { $unset: { [`siteContent.${req.site}.logoUrl`]: '', [`siteContent.${req.site}.logoAlt`]: '' }, $set: { updatedAt: new Date() } },

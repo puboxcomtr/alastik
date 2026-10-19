@@ -10,24 +10,18 @@ const TIER_IDS = CUSTOMER_TIERS.map(t => t.id);
 const METHOD_IDS = PAYMENT_METHODS.map(m => m.id);
 const SOURCE_IDS = STOCK_SOURCES.map(x => x.id);
 
-/**
- * İstek gövdesini doğrular ve kayıt alanlarına çevirir.
- * @returns {{ data: object } | { error: string }}
- */
 function parseBody(body) {
     const name = String(body.name || '').trim();
     const customerTier = String(body.customerTier || '');
     const paymentMethod = String(body.paymentMethod || '');
     const categories = cleanList(body.categories);
     const brands = cleanList(body.brands);
-    // Alt kategori yalnız seçili bir ana kategoriye aitse kabul edilir
     const seenSub = new Set();
     const subCategories = (Array.isArray(body.subCategories) ? body.subCategories : [])
         .map(item => ({ main: String(item?.main || '').trim(), name: String(item?.name || '').trim() }))
         .filter(item => item.main && item.name && categories.includes(item.main))
         .filter(item => { const key = `${item.main}>${item.name}`; if (seenSub.has(key)) return false; seenSub.add(key); return true; });
     const productionYear = String(body.productionYear || '').trim();
-    // "ve öncesi" yalnız yıl seçiliyken anlamlıdır
     const productionYearAndOlder = !!productionYear && body.productionYearAndOlder === true;
     const stockSource = String(body.stockSource || '');
     const rate = Number(body.rate);
@@ -43,7 +37,6 @@ function parseBody(body) {
     return { data: { name, ...scope, rate, isActive: body.isActive !== false, scopeKey: buildScopeKey(scope) } };
 }
 
-// Liste sıralaması: istemcinin gönderebileceği sütun → veritabanı alanı
 const SORT_FIELDS = {
     name: 'name',
     stockSource: 'stockSource',
@@ -58,14 +51,11 @@ const DEFAULT_SORT = { customerTier: -1, paymentMethod: 1, productionYear: -1, n
 
 const DUPLICATE_MESSAGE = 'Aynı cari tipi, stok kaynağı, kategori, marka, üretim yılı ve ödeme yöntemiyle zaten bir iskonto tanımı var';
 
-/** Metin listesini temizler: boşlukları kırpar, boşları ve tekrarları atar */
 function cleanList(input) {
     return [...new Set((Array.isArray(input) ? input : []).map(v => String(v || '').trim()).filter(Boolean))];
 }
 const PRODUCTION_YEAR_PATTERN = /^\d{4}$/;
 
-// GET /options — form/filtre seçenekleri: cari tipleri, ödeme yöntemleri ve sitedeki ürünlerden
-// kategori / marka / üretim yılı listeleri
 router.get('/options', async (req, res) => {
     try {
         const base = { sites: req.site, 'diaData.durum': 'A' };
@@ -80,7 +70,6 @@ router.get('/options', async (req, res) => {
         ]);
         const clean = list => [...new Set(list.map(v => String(v || '').trim()).filter(Boolean))];
         const byName = (a, b) => a.localeCompare(b, 'tr');
-        // Ana kategori → alt kategorileri
         const tree = new Map();
         for (const row of categoryRows) {
             const main = String(row._id?.main || '').trim();
@@ -106,7 +95,6 @@ router.get('/options', async (req, res) => {
     }
 });
 
-// GET / — liste (arama + filtre + sayfalama)
 router.get('/', async (req, res) => {
     try {
         const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -116,10 +104,8 @@ router.get('/', async (req, res) => {
         if (req.query.search?.trim()) query.name = new RegExp(escapeRegex(req.query.search.trim()), 'i');
         if (TIER_IDS.includes(req.query.customerTier)) query.customerTier = req.query.customerTier;
         if (METHOD_IDS.includes(req.query.paymentMethod)) query.paymentMethod = req.query.paymentMethod;
-        // Dizi alanlarında "içeriyor" eşleşmesi
         if (req.query.brand?.trim()) query.brands = req.query.brand.trim();
         if (req.query.category?.trim()) query.categories = req.query.category.trim();
-        // Yıl filtresi: o yılı kapsayan kurallar (tam yıl ya da "ve öncesi" aralığı)
         if (req.query.productionYear?.trim()) {
             const year = req.query.productionYear.trim();
             query.$or = [{ productionYear: year }, { productionYearAndOlder: true, productionYear: { $gte: year } }];
@@ -128,7 +114,6 @@ router.get('/', async (req, res) => {
         if (req.query.status === 'active') query.isActive = true;
         else if (req.query.status === 'passive') query.isActive = false;
 
-        // Sütun başlığına tıklanınca gelen sıralama (tüm kayıtlarda, sayfadan bağımsız); ikincil anahtar ad
         const sortField = SORT_FIELDS[req.query.sort];
         const sort = sortField
             ? { [sortField]: req.query.order === 'desc' ? -1 : 1, ...(sortField === 'name' ? {} : { name: 1 }), _id: 1 }
@@ -149,7 +134,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST / — yeni iskonto
 router.post('/', async (req, res) => {
     try {
         const parsed = parseBody(req.body || {});
@@ -164,7 +148,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /:id — güncelle
 router.put('/:id', async (req, res) => {
     try {
         const parsed = parseBody(req.body || {});
@@ -184,7 +167,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// PATCH /:id/status — aktif/pasif
 router.patch('/:id/status', async (req, res) => {
     try {
         const doc = await FinancialDiscount.findOne({ _id: req.params.id, site: req.site });
@@ -199,7 +181,6 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
-// DELETE /:id — sil
 router.delete('/:id', async (req, res) => {
     try {
         const doc = await FinancialDiscount.findOneAndDelete({ _id: req.params.id, site: req.site });

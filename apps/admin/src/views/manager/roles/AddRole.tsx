@@ -7,7 +7,6 @@ import { useSession } from 'next-auth/react'
 
 import { fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -79,7 +78,6 @@ const RoleForm = ({ modules, role, isEdit = false }: RoleFormProps) => {
         }>
     })
 
-    // Role değiştiğinde form'u güncelle
     useEffect(() => {
         if (role) {
             setFormData({
@@ -236,7 +234,6 @@ const RoleForm = ({ modules, role, isEdit = false }: RoleFormProps) => {
         )
     }
 
-    // Sistem rolü düzenleme engeli
     if (isEdit && role?.isSystem) {
         return (
             <Grid container spacing={6} className='flex items-center justify-center'>

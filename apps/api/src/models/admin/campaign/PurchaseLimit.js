@@ -2,7 +2,6 @@ const mongoose = require('mongoose')
 const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const purchaseLimitSchema = new mongoose.Schema({
-    // Her limit bir siteye aittir — siteler bağımsız limit kuralları kullanır
     site: {
         type: String,
         enum: Object.keys(SITES),

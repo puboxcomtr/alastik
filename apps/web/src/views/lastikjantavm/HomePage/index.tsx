@@ -1,14 +1,11 @@
 'use client';
-// Next
 import React from 'react';
 
-// Library
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-// @import Shop
 import MainTireSearch from '@src/app/homepage/TireSearch/page';
 import HomeSlider from '@src/app/homepage/Slider/page';
 import Brand from '@app/homepage/Brand/page';
@@ -19,7 +16,6 @@ import SingleShowCase from '@app/homepage/Product/Single/page';
 import Testimonials from '@app/homepage/Testimonials/page';
 import CallbackForm from '@components/lastikjantavm/homepage/CallbackForm/CallbackForm';
 
-// @İmport
 import HomeBlog from '@app/homepage/Blog/page';
 import Banner from '@components/shop/Banner';
 

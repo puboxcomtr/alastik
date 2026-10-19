@@ -13,17 +13,13 @@ const removeTranslationInNavigation = async (path: string) => {
   let fileContent = await fs.readFile(path, 'utf8')
 
   fileContent = fileContent.replace(/href={`\/\$\{locale\}\/(.*?)`}/g, (match: string, p1: string) => {
-    // Check if there's any dynamic segment like `${id || '4987'}` and preserve it as is
     if (p1.includes('${')) {
-      // Rebuild the path with preserved dynamic expressions
       return `href={\`/${p1}\`}`
     } else {
-      // For static paths, simply remove the `${locale}` part
       return `href='/${p1}'`
     }
   })
 
-  // Replace dictionary references in labels and MenuItem children
   fileContent = fileContent
     .replace(/label=\{dictionary\['navigation'\]\.(\w+)\}/g, "label='$1'")
     .replace(/\{dictionary\['navigation'\]\.(\w+)\}/g, '$1')
@@ -40,7 +36,6 @@ const removeFromMenuData = async (path: string) => {
 
   let fileContent = await fs.readFile(path, 'utf8')
 
-  // Transform `label` by directly using the key from the dictionary reference
   fileContent = fileContent.replace(/label: dictionary\['navigation'\]\.(\w+)/g, "label: '$1'")
 
   await fs.writeFile(path, fileContent)

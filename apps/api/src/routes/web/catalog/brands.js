@@ -1,12 +1,7 @@
-// apps/api/src/routes/web/catalog/brands.js
 const express = require('express');
 const router = express.Router();
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 
-/**
- * GET /api/brands
- * TÜM MARKALARI LİSTELE - Frontend için (Public)
- */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -20,16 +15,13 @@ router.get('/', async (req, res) => {
             min_products
         } = req.query;
 
-        // Filtre oluştur (görünürlük ziyaret edilen siteye göre)
         const filter = {};
 
-        // Sadece görünür markalar (sitede yayınlanmış ürünü olmayan marka otomatik gizlenir)
         if (visible_only === 'true' || visible_only === '1') {
             filter[`siteSettings.${req.site}.webVisible`] = true;
             filter[`siteSettings.${req.site}.productCount`] = { $gt: 0 };
         }
 
-        // Arama
         if (search && search.trim() !== '') {
             const searchTerm = search.trim();
             filter.$or = [
@@ -39,27 +31,22 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Logo varlığı
         if (has_logo === 'true') {
             filter['logo.url'] = { $exists: true, $ne: null, $ne: '' };
         }
 
-        // Minimum ürün sayısı
         if (min_products && !isNaN(min_products)) {
             filter.productCount = { $gte: parseInt(min_products) };
         }
 
-        // Sıralama (webOrder site bazlı alandan okunur)
         const sortOptions = {};
         const validSortFields = ['name', 'productCount', 'totalStock', 'webOrder'];
         const sortField = validSortFields.includes(sort_by) ? sort_by : 'name';
         const resolvedSortField = sortField === 'webOrder' ? `siteSettings.${req.site}.webOrder` : sortField;
         sortOptions[resolvedSortField] = sort_order === 'desc' ? -1 : 1;
 
-        // Sayfalama
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Markaları getir
         const [brands, total] = await Promise.all([
             WebBrand.find(filter)
                 .select('name slug diaBrand diaMarkaAck customName siteContent seoUrl seoTitle logo productCount activeProductCount totalStock webVisible webOrder')
@@ -70,7 +57,6 @@ router.get('/', async (req, res) => {
             WebBrand.countDocuments(filter)
         ]);
 
-        // Frontend formatına dönüştür
         const formattedBrands = brands.map(brand => {
             const logoUrl = brand.siteContent?.[req.site]?.logoUrl || brand.logo?.url;
             let formattedLogoUrl = '/images/urun/gorsel-bulunamadi.jpg';
@@ -123,10 +109,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * GET /api/brands/homepage
- * Anasayfada gösterilecek markaları getirir
- */
 router.get('/homepage', async (req, res) => {
     try {
         const brands = await WebBrand.find({
@@ -178,10 +160,6 @@ router.get('/homepage', async (req, res) => {
     }
 });
 
-/**
- * GET /api/brands/:slug
- * Tekil marka detayı - Frontend için
- */
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -207,10 +185,8 @@ router.get('/:slug', async (req, res) => {
             });
         }
 
-        // Sitenin kendi içerik/SEO metinleri (yoksa ortak alanlar)
         const sc = brand.siteContent?.[req.site] || {};
 
-        // Logo URL düzenleme
         const logoUrl = brand.siteContent?.[req.site]?.logoUrl || brand.logo?.url;
         let formattedLogoUrl = null;
 

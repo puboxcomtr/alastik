@@ -4,12 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import classnames from 'classnames'
 
-/* API */
 import { fetchBlogs, deleteBlog, type BlogType } from '@/utils/api/blogs'
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 import { getSiteUrl } from '@/utils/activeSite'
 
-/* MUI */
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -23,17 +21,14 @@ import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import type { TextFieldProps } from '@mui/material/TextField'
 
-/* Dialog */
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
-/* Tanstack */
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
     createColumnHelper,

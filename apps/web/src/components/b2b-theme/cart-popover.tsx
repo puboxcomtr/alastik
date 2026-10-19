@@ -1,7 +1,5 @@
 "use client";
 
-// Sepet ikonuna tıklayınca "Sepete Ekle" kontrolünü (adet + depo) popover içinde
-// açar. 2.El İşlemler sütununda "Görüntüle" popover'ından AYRI, kendi ikonuyla.
 import { useEffect, useRef, useState } from "react";
 import { CartIcon } from "@components/b2b-theme/icons";
 import { AddToCart } from "@components/b2b-theme/add-to-cart";

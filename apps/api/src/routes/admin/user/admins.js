@@ -5,14 +5,8 @@ const Role = require('../../../models/admin/user/Role');
 const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const { authenticateAdmin, authorize, getClientIP } = require('../../../middleware/auth');
 
-// Tüm route'lar admin authentication gerektirir
 router.use(authenticateAdmin);
 
-/**
- * @route   GET /api/admin/user/admins
- * @desc    Admin listesi
- * @access  Private
- */
 router.get('/', async (req, res) => {
   try {
     const {
@@ -25,7 +19,6 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Filtreler (seçili siteye yetkili yöneticiler listelenir)
     const filter = { sites: req.site };
 
     if (search) {
@@ -45,11 +38,9 @@ router.get('/', async (req, res) => {
       filter.role = role;
     }
 
-    // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    // Query
     const admins = await Admin.find(filter)
       .populate('role')
       .sort(sort)
@@ -58,7 +49,6 @@ router.get('/', async (req, res) => {
 
     const total = await Admin.countDocuments(filter);
 
-    // İstatistikler (seçili siteye yetkili adminler)
     const stats = {
       total: await Admin.countDocuments({ sites: req.site }),
       active: await Admin.countDocuments({ status: 'active', sites: req.site }),
@@ -89,11 +79,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/admin/user/admins/:id
- * @desc    Admin detayı
- * @access  Private
- */
 router.get('/:id', async (req, res) => {
   try {
     const admin = await Admin.findOne({ _id: req.params.id, sites: req.site }).populate('role');
@@ -105,7 +90,6 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Son aktiviteleri getir
     const recentActivities = await ActivityLog.getUserActivities(admin._id, 10);
 
     res.json({
@@ -125,11 +109,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/admin/user/admins
- * @desc    Yeni admin oluştur
- * @access  Private
- */
 router.post('/', async (req, res) => {
   try {
     const {
@@ -146,7 +125,6 @@ router.post('/', async (req, res) => {
 
     const name = `${firstName} ${lastName}`.trim();
 
-    // Site erişim listesi doğrulama
     const { isValidSite } = require('../../../config/sites');
     const requestedSites = Array.isArray(sites) ? sites.filter(s => isValidSite(s)) : [];
     if (Array.isArray(sites) && requestedSites.length === 0) {
@@ -156,7 +134,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Validasyon
     if (!name || !username || !email || !password || !role) {
       return res.status(400).json({
         success: false,
@@ -164,7 +141,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Email kontrolü
     const existingEmail = await Admin.findByEmail(email);
     if (existingEmail) {
       return res.status(400).json({
@@ -173,7 +149,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Username kontrolü
     const existingUsername = await Admin.findByUsername(username);
     if (existingUsername) {
       return res.status(400).json({
@@ -182,7 +157,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Rol kontrolü
     const roleDoc = await Role.findById(role);
     if (!roleDoc) {
       return res.status(400).json({
@@ -191,7 +165,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Şifre uzunluğu kontrolü
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -201,7 +174,6 @@ router.post('/', async (req, res) => {
 
     const isActive = status === 'active';
 
-    // Admin oluştur
     const admin = new Admin({
       name,
       username,
@@ -209,7 +181,6 @@ router.post('/', async (req, res) => {
       password,
       role,
       permissions,
-      // Site belirtilmediyse yalnızca oluşturulduğu siteye yetkili olur
       sites: requestedSites.length > 0 ? requestedSites : [req.site],
       isActive
     });
@@ -217,7 +188,6 @@ router.post('/', async (req, res) => {
     await admin.save();
     await admin.populate('role');
 
-    // Activity log
     await ActivityLog.logActivity({
       site: req.site,
       user: req.adminId,
@@ -253,11 +223,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-/**
- * @route   PUT /api/admin/user/admins/:id
- * @desc    Admin güncelle
- * @access  Private
- */
 router.put('/:id', async (req, res) => {
   try {
     const {
@@ -280,7 +245,6 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Kendi kendini devre dışı bırakmayı engelle
     if (req.adminId.toString() === admin._id.toString() && status === 'inactive') {
       return res.status(400).json({
         success: false,
@@ -288,7 +252,6 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Email değişikliği kontrolü
     if (email && email !== admin.email) {
       const existingEmail = await Admin.findByEmail(email);
       if (existingEmail) {
@@ -300,7 +263,6 @@ router.put('/:id', async (req, res) => {
       admin.email = email;
     }
 
-    // firstName ve lastName varsa name'e çevir
     if (firstName || lastName) {
       const newFirstName = firstName || admin.firstName;
       const newLastName = lastName || admin.lastName;
@@ -320,7 +282,6 @@ router.put('/:id', async (req, res) => {
           message: 'En az bir geçerli site seçilmelidir'
         });
       }
-      // Kendi site erişimini kısıtlayıp kilitlenmeyi önle
       if (req.adminId.toString() === admin._id.toString() && !validSites.includes(req.site)) {
         return res.status(400).json({
           success: false,
@@ -333,7 +294,6 @@ router.put('/:id', async (req, res) => {
     await admin.save();
     await admin.populate('role');
 
-    // Activity log
     await ActivityLog.logActivity({
       site: req.site,
       user: req.adminId,
@@ -364,11 +324,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-/**
- * @route   DELETE /api/admin/user/admins/:id
- * @desc    Admin sil
- * @access  Private
- */
 router.delete('/:id', async (req, res) => {
   try {
     const admin = await Admin.findOne({ _id: req.params.id, sites: req.site });
@@ -380,7 +335,6 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    // Kendi kendini silmeyi engelle
     if (req.adminId.toString() === admin._id.toString()) {
       return res.status(400).json({
         success: false,
@@ -390,7 +344,6 @@ router.delete('/:id', async (req, res) => {
 
     await admin.deleteOne();
 
-    // Activity log
     await ActivityLog.logActivity({
       site: req.site,
       user: req.adminId,
@@ -422,6 +375,5 @@ router.delete('/:id', async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;

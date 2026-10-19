@@ -7,55 +7,35 @@ const { lookupLocation } = require('../utils/geoLookup');
 const { isInternalRequest } = require('../utils/requestOrigin');
 const { SITES } = require('../config/sites');
 
-// Panel API'sinin yolu (bu istekler ziyaret oturumu açmaz)
 const ADMIN_API_PREFIX = '/api/admin';
-// Oturum numarası göndermeyen istek, aynı IP + tarayıcıdan bu süre içinde açılmış oturumu kullanır
 const VISIT_REUSE_WINDOW_MS = 30 * 60 * 1000;
 
-// JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'; // en az 1 hafta
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
-/**
- * JWT Token oluştur
- */
 const generateToken = (payload, secret = JWT_SECRET, expiresIn = JWT_EXPIRES_IN) => {
   return jwt.sign(payload, secret, { expiresIn });
 };
 
-/**
- * JWT Token doğrula
- */
 const verifyToken = (token, secret = JWT_SECRET) => {
   return jwt.verify(token, secret);
 };
 
-/**
- * Session ID oluştur
- */
 const generateSessionId = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-/**
- * IP adresini al
- */
 const getClientIP = (req) => {
   const raw = req.headers['x-forwarded-for'] ||
     req.connection.remoteAddress ||
     req.socket.remoteAddress ||
     (req.connection.socket ? req.connection.socket.remoteAddress : null);
-  // Vekil zincirinde ("istemci, vekil1, vekil2") gerçek istemci ilk adrestir
   return typeof raw === 'string' ? raw.split(',')[0].trim() : raw;
 };
 
-/**
- * User Agent bilgisini parse et
- */
 const parseUserAgent = (userAgent) => {
-  // Basit user agent parsing
   const browser = userAgent.includes('Chrome') ? 'Chrome' :
     userAgent.includes('Firefox') ? 'Firefox' :
       userAgent.includes('Safari') ? 'Safari' :
@@ -67,25 +47,16 @@ const parseUserAgent = (userAgent) => {
   return { browser, device };
 };
 
-/**
- * Session middleware - her request için session kontrolü
- */
 const sessionMiddleware = async (req, res, next) => {
-  // Next.js sunucusunun kendi SSR çağrıları tarayıcı cookie'si taşımaz; oturum sayılırlarsa
-  // her sayfa üretimi sunucu IP'li sahte oturumlar yaratır. Bu çağrılar kayıt dışı bırakılır.
   if (isInternalRequest(req)) return next();
-  // Panel API'si ve ziyaret izlenmeyen siteler (sites.js trackVisits: false — b2b bayi paneli) oturum açmaz
   if ((req.originalUrl || '').startsWith(ADMIN_API_PREFIX) || SITES[req.site]?.trackVisits === false) return next();
 
   try {
     const cookies = (req && req.cookies) ? req.cookies : {};
-    // Istemciden gelen id (x-session-id basligi veya cookie) biçim kontrolünden geçmezse yok sayılır
     const incomingId = String(req.headers['x-session-id'] || cookies.sessionId || '');
     let sessionId = /^[A-Za-z0-9-]{16,128}$/.test(incomingId) ? incomingId : null;
     let session = null;
 
-    // Session ID yoksa: aynı IP + tarayıcıdan yakın zamanda açılmış oturum varsa o kullanılır (oturum numarası
-    // göndermeyen her istek yeni ziyaretçi sayılmasın); yoksa yeni oturum açılır
     if (!sessionId) {
       const userAgent = req.headers['user-agent'] || '';
       const ipAddress = getClientIP(req);
@@ -99,7 +70,6 @@ const sessionMiddleware = async (req, res, next) => {
     }
 
     if (session) {
-      // Yakın zamandaki oturum yeniden kullanılıyor; tarayıcıya kimliği yazılır
       res.cookie('sessionId', sessionId, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -124,20 +94,16 @@ const sessionMiddleware = async (req, res, next) => {
         }
       });
 
-      // Cookie olarak session ID'yi set et
       res.cookie('sessionId', sessionId, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000 // 24 saat
+        maxAge: 24 * 60 * 60 * 1000
       });
     } else {
-      // Mevcut session'ı bul
       session = await Session.findBySessionId(sessionId);
 
       if (!session || session.isExpired) {
-        // Kayıt yoksa istemcinin gönderdiği id KORUNUR (x-session-id ile gelen ilk istek); böylece sonraki
-        // istekler aynı başlıkla bu oturumu bulur. Süresi dolmuşsa aynı id ile yeniden yaratılamaz, yeni id üretilir.
         if (session && session.isExpired) sessionId = generateSessionId();
 
         const userAgent = req.headers['user-agent'] || '';
@@ -166,11 +132,9 @@ const sessionMiddleware = async (req, res, next) => {
       }
     }
 
-    // Session'ı request'e ekle
     req.session = session;
     req.sessionId = sessionId;
 
-    // Session aktivitesini güncelle
     await session.updateActivity('page_view', {
       url: req.originalUrl,
       method: req.method
@@ -183,9 +147,6 @@ const sessionMiddleware = async (req, res, next) => {
   }
 };
 
-/**
- * Authentication middleware - kullanıcı girişi kontrolü
- */
 const authenticate = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '') ||
@@ -198,10 +159,8 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Token'ı doğrula
     const decoded = verifyToken(token);
 
-    // Kullanıcıyı bul
     const user = await User.findById(decoded.userId).select('+password');
 
     if (!user) {
@@ -211,7 +170,6 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Kullanıcı aktif mi kontrol et
     if (user.accountStatus !== 'active') {
       console.warn('🟥 [AUTH][ACCOUNT_INACTIVE]', { userId: user._id });
       return res.status(401).json({
@@ -219,7 +177,6 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Kullanıcı kilitli mi kontrol et
     if (user.isLocked) {
       console.warn('🟥 [AUTH][ACCOUNT_LOCKED]', { userId: user._id });
       return res.status(401).json({
@@ -227,16 +184,13 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Son aktivite zamanını güncelle
     user.lastActiveAt = new Date();
     await user.save();
 
-    // Session'ı authenticate et
     if (req.session && req.session.type === 'guest') {
       await req.session.authenticate(user._id);
     }
 
-    // Kullanıcıyı request'e ekle
     req.user = user;
     req.userId = user._id;
 
@@ -263,9 +217,6 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-/**
- * Optional authentication - token varsa doğrula, yoksa devam et
- */
 const optionalAuth = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '') ||
@@ -279,12 +230,10 @@ const optionalAuth = async (req, res, next) => {
         req.user = user;
         req.userId = user._id;
 
-        // Session'ı authenticate et
         if (req.session && req.session.type === 'guest') {
           await req.session.authenticate(user._id);
         }
 
-        // Son aktivite zamanını güncelle
         user.lastActiveAt = new Date();
         await user.save();
       }
@@ -292,14 +241,10 @@ const optionalAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
-    // Optional auth'da hata olursa devam et
     next();
   }
 };
 
-/**
- * Admin authentication middleware
- */
 const authenticateAdmin = async (req, res, next) => {
   try {
 
@@ -314,11 +259,9 @@ const authenticateAdmin = async (req, res, next) => {
       });
     }
 
-    // Token'ı doğrula
     const decoded = verifyToken(token);
     console.log('📋 Decoded Token:', decoded)
 
-    // ✅ Hem adminId hem id'yi kontrol et (uyumluluk için)
     const adminId = decoded.adminId || decoded.id;
 
     console.log('🔍 Admin ID:', adminId)
@@ -329,7 +272,6 @@ const authenticateAdmin = async (req, res, next) => {
       });
     }
 
-    // Admin'i bul
     const admin = await Admin.findById(adminId).select('+password');
 
     console.log('👤 Admin bulundu mu?', admin ? `Evet - ${admin.email}` : 'Hayır')
@@ -340,22 +282,18 @@ const authenticateAdmin = async (req, res, next) => {
       });
     }
 
-    // Admin aktif mi kontrol et - ✅ isActive kullan (admin modelinde bu var)
     if (!admin.isActive) {
       return res.status(401).json({
         error: 'Admin account is not active.'
       });
     }
 
-    // Admin kilitli mi kontrol et
     if (admin.isLocked) {
       return res.status(401).json({
         error: 'Admin account is temporarily locked.'
       });
     }
 
-    // Site erişim kontrolü — yönetici yalnızca yetkili olduğu sitelerde işlem yapabilir
-    // (kendi profil/çıkış uçları hariç: yetkisiz sitedeyken bile kim olduğunu öğrenebilmeli)
     const isAuthSelfEndpoint = (req.originalUrl || '').startsWith('/api/admin/user/auth/');
     const adminSites = Array.isArray(admin.sites) && admin.sites.length > 0 ? admin.sites : null;
     if (!isAuthSelfEndpoint && adminSites && req.site && !adminSites.includes(req.site)) {
@@ -368,13 +306,11 @@ const authenticateAdmin = async (req, res, next) => {
       });
     }
 
-    // Son aktivite zamanını güncelle (lastActiveAt yoksa skip et)
     if (admin.lastActiveAt !== undefined) {
       admin.lastActiveAt = new Date();
       await admin.save();
     }
 
-    // Admin'i request'e ekle
     req.admin = admin;
     req.adminId = admin._id;
 
@@ -400,9 +336,6 @@ const authenticateAdmin = async (req, res, next) => {
   }
 };
 
-/**
- * Authorization middleware - yetki kontrolü
- */
 const authorize = (resource, action) => {
   return async (req, res, next) => {
     try {
@@ -412,7 +345,6 @@ const authorize = (resource, action) => {
         });
       }
 
-      // Yetki kontrolü
       if (!req.admin.hasPermission(resource, action)) {
         return res.status(403).json({
           error: `Access denied. Missing permission: ${resource}.${action}`
@@ -429,9 +361,6 @@ const authorize = (resource, action) => {
   };
 };
 
-/**
- * Role-based authorization
- */
 const requireRole = (roles) => {
   return (req, res, next) => {
     if (!req.admin) {
@@ -452,9 +381,6 @@ const requireRole = (roles) => {
   };
 };
 
-/**
- * Rate limiting middleware - Test süreçleri için yüksek limit
- */
 const rateLimiter = (windowMs = 1 * 60 * 1000, max = 100) => {
   const requests = new Map();
 
@@ -487,9 +413,6 @@ const rateLimiter = (windowMs = 1 * 60 * 1000, max = 100) => {
   };
 };
 
-/**
- * CSRF protection middleware
- */
 const csrfProtection = (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next();
@@ -507,50 +430,41 @@ const csrfProtection = (req, res, next) => {
   next();
 };
 
-/**
- * Login helper function
- */
 const loginUser = async (user, req, res) => {
   try {
-    // Login attempts'ı sıfırla
     await user.resetLoginAttempts();
 
-    // Son login bilgilerini güncelle
     const ip = getClientIP(req);
     const userAgent = req.headers['user-agent'] || '';
     await user.updateLastLogin(ip, userAgent);
 
-    // JWT token oluştur
     const token = generateToken({
       userId: user._id,
       email: user.email,
       type: 'user'
     });
 
-    // Refresh token oluştur
     const refreshToken = generateToken({
       userId: user._id,
       type: 'refresh'
     }, JWT_REFRESH_SECRET, JWT_REFRESH_EXPIRES_IN);
 
-    // Session'ı authenticate et
     if (req.session) {
       await req.session.authenticate(user._id);
     }
 
-    // Cookie'leri set et
     res.cookie('authToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 gün
+      maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
     return {
@@ -569,9 +483,6 @@ const loginUser = async (user, req, res) => {
   }
 };
 
-/**
- * Login admin helper function
- */
 const loginAdmin = async (admin, req, res) => {
   try {
     await admin.resetLoginAttempts();
@@ -580,10 +491,8 @@ const loginAdmin = async (admin, req, res) => {
     const userAgent = req.headers['user-agent'] || '';
     await admin.updateLastLogin(ip, userAgent);
 
-    // Session oluştur
     const sessionToken = admin.createSession(ip, userAgent);
 
-    // JWT token oluştur
     const token = generateToken({
       adminId: admin._id,
       email: admin.email,
@@ -620,17 +529,12 @@ const loginAdmin = async (admin, req, res) => {
     throw error;
   }
 };
-/**
- * Logout helper function
- */
 const logoutUser = async (req, res) => {
   try {
-    // Session'ı terminate et
     if (req.session) {
       await req.session.terminate();
     }
 
-    // Cookie'leri temizle
     res.clearCookie('authToken');
     res.clearCookie('refreshToken');
     res.clearCookie('sessionId');
@@ -641,12 +545,8 @@ const logoutUser = async (req, res) => {
   }
 };
 
-/**
- * Logout admin helper function
- */
 const logoutAdmin = async (req, res) => {
   try {
-    // Admin session'ı invalid et
     if (req.admin) {
       const sessionToken = req.cookies.adminSession;
       if (sessionToken) {
@@ -654,7 +554,6 @@ const logoutAdmin = async (req, res) => {
       }
     }
 
-    // Cookie'leri temizle
     res.clearCookie('adminToken');
     res.clearCookie('adminSession');
 
@@ -664,9 +563,6 @@ const logoutAdmin = async (req, res) => {
   }
 };
 
-/**
- * Refresh token helper function
- */
 const refreshUserToken = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
@@ -675,24 +571,20 @@ const refreshUserToken = async (req, res) => {
       throw new Error('No refresh token provided');
     }
 
-    // Refresh token'ı doğrula
     const decoded = verifyToken(refreshToken, JWT_REFRESH_SECRET);
 
-    // Kullanıcıyı bul
     const user = await User.findById(decoded.userId);
 
     if (!user || user.accountStatus !== 'active') {
       throw new Error('Invalid refresh token');
     }
 
-    // Yeni token oluştur
     const newToken = generateToken({
       userId: user._id,
       email: user.email,
       type: 'user'
     });
 
-    // Cookie'yi güncelle
     res.cookie('authToken', newToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -709,7 +601,7 @@ const refreshUserToken = async (req, res) => {
 module.exports = {
   sessionMiddleware,
   authenticate,
-  authenticateUser: authenticate, // Alias for user authentication
+  authenticateUser: authenticate,
   optionalAuth,
   authenticateAdmin,
   authorize,

@@ -1,4 +1,3 @@
-// LJA şube sayfalarının ortak parçaları (server component — tüm içerik sunucuda HTML olarak basılır)
 import React from 'react';
 import Link from 'next/link';
 import type { Branch, BranchFaq } from '@/src/data/lja/subeler';
@@ -8,7 +7,6 @@ import { DAYS, AMENITY_LABELS, formatPrice, mapUrl, type BranchPoint, type Servi
 export const ACCENT = '#e58a00';
 export const DARK = '#313131';
 
-// Adres, telefon, harita, çalışma saatleri, olanaklar
 export function BranchInfoCard({ branch, point }: { branch: Branch; point: BranchPoint }) {
     return (
         <div className="card border-0 shadow-sm rounded-3 mb-4">
@@ -74,7 +72,6 @@ export function BranchInfoCard({ branch, point }: { branch: Branch; point: Branc
     );
 }
 
-// Hizmet fiyat tablosu (hizmet adı → ürün sayfası bağlantısı)
 export function ServiceTable({ rows, caption }: { rows: ServiceRow[]; caption?: string }) {
     if (rows.length === 0) {
         return <p className="text-muted">Bu hizmet için güncel fiyat bilgisini şubemizden alabilirsiniz.</p>;
@@ -123,7 +120,6 @@ export function FaqList({ faqs }: { faqs: BranchFaq[] }) {
     );
 }
 
-// Şubedeki diğer hizmet gruplarına bağlantılar
 export function GroupLinks({ branch, groups, currentSlug }: { branch: Branch; groups: ServiceGroup[]; currentSlug?: string }) {
     return (
         <ul className="list-unstyled mb-0 row row-cols-1 row-cols-md-2 g-2">

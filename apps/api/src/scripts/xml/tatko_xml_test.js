@@ -18,7 +18,6 @@ async function test() {
 
     console.log('Toplam ürün:', urunler.length);
 
-    // xmlproducts formatına dönüştür
     const donusturulen = urunler.map(u => ({
         source: 'tatko',
         sourceProductId: u.stokkodu,
@@ -41,7 +40,6 @@ async function test() {
         console.log(`\n[${i + 1}]`, JSON.stringify(u.mappedData, null, 2));
     });
 
-    // dot boş olanları say
     const dotBos = urunler.filter(u => !u.dot || u.dot === '0' || String(u.dot).trim() === '');
     console.log(`\nDot boş olan (filtrelenecek): ${dotBos.length}`);
     console.log(`Aktarılacak: ${urunler.length - dotBos.length}`);

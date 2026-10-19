@@ -1,7 +1,5 @@
 "use client";
 
-// AB Lastik Etiketi — ürün adının üzerine gelince açılan bilgi kutusu.
-// Yol Tutuş / Gürültü / Yakıt; yalnız DOLU alanlar gösterilir.
 import type { Tire } from "@components/b2b-theme/lib/sample-data";
 
 function WetIcon() {

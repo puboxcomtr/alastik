@@ -1,5 +1,3 @@
-// XmlDiaService.js
-// API'ler XML formatına dönüştürülecek
 
 class XmlDiaService {
     async syncToDia() {

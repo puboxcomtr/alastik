@@ -402,7 +402,6 @@ const TableFilters = ({
               </TextField>
             </Grid>
 
-            {/* Özel Kod Değerleri */}
             <Grid size={{ xs: 12 }}>
               <Divider textAlign='left' sx={{ mt: 2, mb: 1 }}>Özel Kod Değerleri</Divider>
             </Grid>
@@ -471,7 +470,6 @@ const TableFilters = ({
               />
             </Grid>
 
-            {/* Eksik Veri Filtreleri */}
             <Grid size={{ xs: 12 }}>
               <Divider textAlign='left' sx={{ mt: 2, mb: 1 }}>Eksik Veri Filtreleri</Divider>
             </Grid>

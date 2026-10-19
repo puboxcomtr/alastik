@@ -7,8 +7,6 @@ import { z } from 'zod';
 import { locationService, City, District, Neighborhood } from '@/src/services/locationService';
 import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
 
-
-// Zod Schema
 const billingSchema = z.object({
     invoiceType: z.enum(['individual', 'corporate']),
     fullName: z.string().optional(),
@@ -196,7 +194,6 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
 
     return (
         <>
-            {/* Ortak İçerik */}
             <div className="card border-0">
                 <div className="card-body py-0">
                     <h5>Kişisel Bilgiler</h5>
@@ -229,7 +226,6 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
                         </div>
                     </div>
 
-                    {/* Adres Alanları */}
                     <div className="row">
                         <div className="col-md-4 mb-3">
                             <label className="form-label">İl <span className="text-danger">*</span></label>
@@ -324,7 +320,6 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
                         />
                     </div>
 
-                    {/* Adres Önizleme */}
                     {watchAll.neighborhoodId && (
                         <div className="alert alert-secondary font-size-sm">
                             <strong>Adres:</strong> {getAddressPreview()}
@@ -335,7 +330,6 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
                 </div>
             </div>
 
-            {/* Fatura Tipi */}
             <div className="card border-0">
                 <div className='card-body py-0'>
                     <h5>Fatura Tipi <small className="fw-light">(Kurumsal veya Bireysel)</small></h5>
@@ -350,12 +344,10 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
                 </div>
             </div>
 
-            {/* Fatura Tipi İçerik */}
             <div className="card border-0">
                 <div className="card-body py-0">
                     <h5>{invoiceType === 'individual' ? 'Bireysel' : 'Kurumsal'} Fatura Bilgileri</h5>
 
-                    {/* Bireysel Alanlar */}
                     {invoiceType === 'individual' && (
                         <div className="row">
                             <div className="col-md-6 mb-3">
@@ -380,7 +372,6 @@ export default function BillingForm({ data, onChange }: BillingFormProps) {
                         </div>
                     )}
 
-                    {/* Kurumsal Alanlar */}
                     {invoiceType === 'corporate' && (
                         <>
                             <div className="row">

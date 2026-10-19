@@ -1,6 +1,3 @@
-// Hepsiburada Mağaza Scraper Test Scripti
-// Çalıştırma: node apps/api/src/scripts/marketplace/testHepsiburadaScraper.js
-// Görsel mod: HEADLESS=false node apps/api/src/scripts/marketplace/testHepsiburadaScraper.js
 
 const { chromium } = require('playwright-extra');
 const stealth = require('puppeteer-extra-plugin-stealth')();
@@ -102,8 +99,6 @@ async function scrapeHepsiburadaStore(url) {
 
             const bodyText = document.body.innerText;
 
-            // Hepsiburada puan formatı: mağaza adının hemen ardından "9,5" (max 10 üzerinden)
-            // Sayfa metni örneği: "A Lastik\n9,5\n763 takipçi\n6B ürün"
             if (result.storeName) {
                 const escapedName = result.storeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const ratingRegex = new RegExp(`${escapedName}[\\s\\S]{0,80}?(\\d+[.,]\\d+)\\s*[\\n\\r]?\\s*[\\d.,]+\\s*takip[çc]i`, 'i');

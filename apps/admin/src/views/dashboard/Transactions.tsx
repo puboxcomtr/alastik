@@ -1,4 +1,3 @@
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -12,7 +11,6 @@ export type TransactionItem = {
 const formatTRY = (value: number) =>
     value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// Seçili sitenin son 28 gün ödeme yöntemi kırılımı
 const Transactions = ({ items = [] }: { items?: TransactionItem[] }) => {
     return (
         <Card>

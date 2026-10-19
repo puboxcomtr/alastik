@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const webChampionshipSchema = new mongoose.Schema({
-    // Her site için ayrı şampiyonluk seti
     site: {
         type: String,
         enum: Object.keys(SITES),

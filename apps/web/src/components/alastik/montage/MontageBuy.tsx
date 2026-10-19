@@ -1,8 +1,5 @@
 'use client';
 
-// "Montaj Satın Al" — lastiğini başka yerden almış müşteri için montaj / balans / rot / depolama satın alma
-// (referans: ikinciellastik /montaj-satin-al). 1. adım: araç türü + jant çapı. 2–3. adım: /montaj-noktasi-sec ekranının
-// kendisi (AddedToCart) "kendi lastiği" modunda — aynı liste, filtre, detay paneli, mobil alttan açılan panel ve alt şerit.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Container } from 'react-bootstrap';
@@ -16,9 +13,7 @@ const VEHICLE_TYPES = [
     { value: 'ticari', label: 'Hafif Ticari' }
 ];
 const RIM_SIZES = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
-// Sitenin genelindeki ifade: "Türkiye'nin 81 ilinde montaj hizmeti"
 const SERVICE_CITY_COUNT = 81;
-// Görsel sitenin kendi varlık klasöründen okunur (public/<site>/assets/img/montaj/…)
 const HERO_IMAGE = '/img/montaj/montaj-satin-al.webp';
 
 const hasMontageFor = (p: MontagePoint, rim: number) =>
@@ -66,7 +61,6 @@ export default function MontageBuy({ points }: { points: MontagePoint[] }) {
         router.push(`?${q.toString()}`, { scroll: false });
     };
 
-    // Seçilen çapta montaj hizmeti veren noktalar
     const eligible = useMemo(() => (rim ? points.filter(p => hasMontageFor(p, rim)) : points), [points, rim]);
     const allCityCount = SERVICE_CITY_COUNT;
     const vehicleLabel = VEHICLE_TYPES.find(v => v.value === vehicle)?.label || 'Araç';
@@ -82,7 +76,6 @@ export default function MontageBuy({ points }: { points: MontagePoint[] }) {
                 </p>
                 <Stepper step={step} />
 
-                {/* ADIM 1: araç bilgileri */}
                 {step === 1 && (
                     <>
                         <div className="ms-intro">
@@ -140,7 +133,6 @@ export default function MontageBuy({ points }: { points: MontagePoint[] }) {
                 )}
             </Container>
 
-            {/* ADIM 2–3: montaj noktası seçimi — /montaj-noktasi-sec ekranının aynısı, kendi lastiği modunda */}
             {step >= 2 && <AddedToCart key={rim} points={eligible} ownTireRim={rim} onPointOpen={setPointOpen} />}
 
             <style jsx global>{`

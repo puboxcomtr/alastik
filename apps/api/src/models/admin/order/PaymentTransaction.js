@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const PaymentTransactionSchema = new mongoose.Schema(
   {
-    clientReferenceCode: { type: String, index: true }, // orderNumber
+    clientReferenceCode: { type: String, index: true },
     orderNumber: { type: String, index: true },
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', index: true },
     referenceCode: { type: String, index: true },
@@ -15,5 +15,4 @@ const PaymentTransactionSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.models.PaymentTransaction || mongoose.model('PaymentTransaction', PaymentTransactionSchema);
-
 

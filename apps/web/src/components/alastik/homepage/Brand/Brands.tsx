@@ -3,20 +3,15 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-/* Swiper */
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 
-/* Routes */
 import { buildBrandUrl } from '@/src/config/routes';
 
-/* Types */
 import type { HomepageBrand } from '@/src/types/brand';
 
-/* Service */
 import { getHomepageBrands, getBrandImageUrl } from '@/src/services/brandService';
 
-/* Swiper Css */
 import 'swiper/css';
 
 export default function Brand() {
@@ -37,7 +32,6 @@ export default function Brand() {
 
         fetchBrands();
     }, []);
-    // Bos state
     if (brands.length === 0) {
         return null;
     }

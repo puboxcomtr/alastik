@@ -4,12 +4,6 @@
   padding: 0;
 }
 
-/* ─────────────────────────────────────────────────────────
-   LastikJantAVM Design Tokens — TEK KAYNAK.
-   Bileşen içinde renk hard-code ETME; bu değişkenleri kullan.
-   Mavi/lacivert marka rengi olarak KULLANILMAZ. Kırmızı yalnız
-   hata / gecikme / iptal / gerçek kampanya indirimi içindir.
-   ───────────────────────────────────────────────────────── */
 :root {
   --brand-primary: #e6cf17;
   --brand-primary-hover: #dbc614;
@@ -20,31 +14,23 @@
   --brand-background: #f1f5f8;
   --brand-surface: #ffffff;
   --brand-success: #28ce5b;
-  /* Success'in metin/rakam için koyulaştırılmış türevi (WCAG kontrastı;
-     #28CE5B beyaz zeminde okunmuyor). Kurumsal yeşil ailesinde kalır. */
   --success-text: #12833a;
 
-  /* Türetilmiş tonlar (yalnızca token'lardan) */
   --text: var(--brand-dark);
   --muted: #6b6b68;
   --border: #e1e5e9;
   --divider: #c7ced5;
-  --primary-soft: #fbf6d4; /* sarı zemin tonu (seçili/vurgu) */
+  --primary-soft: #fbf6d4;
   --success-soft: #e5f9ec;
   --danger: #d92d20;
   --danger-soft: #fee4e2;
   --warn: #b45309;
   --warn-soft: #fef3c7;
-  /* Mevsim ikon renkleri — semantik, marka rengi DEĞİL.
-     Mavi burada "kış" anlamı taşır; kurumsal kimlikte kullanılmaz.
-     Fazla canlı durmasın diye doygunluğu düşürülmüş (muted) tonlar. */
   --mevsim-yaz: #c98f2f;
   --mevsim-kis: #5c86a6;
   --radius: 12px;
 }
 
-/* Not: b2b sayfasına başka bir stil (Bootstrap) sızıp body arka planını
-   !important ile eziyor; panel her zaman beyaz kalsın diye biz de zorluyoruz. */
 html, body { background: #ffffff !important; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto,
@@ -53,12 +39,8 @@ body {
   color: var(--text);
   min-height: 100vh;
   font-size: 15px;
-  /* Dikey kaydırma çubuğu her zaman görünür — header (sticky) ve içerik aynı
-     genişlik referansını kullanır, sayfalar arası kayma/hizasızlık olmaz */
   overflow-y: scroll;
 }
-/* B2B paneli her zaman AÇIK tema — kök globals.css'in karanlık mod body
-   arka planını (#0a0a0a) ez, panel beyaz kalsın. */
 @media (prefers-color-scheme: dark) {
   html, body { background: #ffffff !important; color: var(--text); }
 }
@@ -67,7 +49,6 @@ a {
   color: inherit;
 }
 
-/* ── Üst menü — siyah zemin, sola yaslı menü ──────────── */
 .topnav {
   height: 74px;
   background: var(--brand-black);
@@ -78,7 +59,6 @@ a {
   z-index: 20;
 }
 
-/* Header içeriği, sayfa içeriğiyle (main.page) aynı hizada durur */
 .topnav-inner {
   max-width: 1480px;
   width: 100%;
@@ -112,7 +92,6 @@ a {
   letter-spacing: 0.06em;
 }
 
-/* Menü SOLDAN başlar (ortalanmaz) */
 .topnav nav {
   display: flex;
   gap: 0.2rem;
@@ -143,7 +122,6 @@ a {
   color: var(--brand-black);
 }
 
-/* Vurgulu menü öğesi (Ödeme Yap) — sağa yaslanır, sarı zemin siyah yazı */
 .topnav nav a.vurgu {
   background: var(--brand-primary);
   color: var(--brand-black);
@@ -172,7 +150,6 @@ a {
   white-space: nowrap;
 }
 
-/* Hesap menüsü */
 .account-btn {
   display: inline-flex;
   align-items: center;
@@ -233,7 +210,6 @@ a {
   letter-spacing: 0.02em;
 }
 
-/* Premium cari rozeti — üst bar (outline), karşılama başlığı, hesap menüsü, Cari Özet (solid) */
 .premium-badge,
 .account-menu .kim .premium-badge {
   display: inline-flex;
@@ -262,7 +238,6 @@ a {
   margin-top: 0.4rem;
 }
 
-/* Finansal iskonto etiketi — ürün listesi fiyat hücresi ve sepet satırı */
 .financial-tag {
   display: inline-flex;
   align-items: center;
@@ -288,7 +263,6 @@ a {
   margin-top: 0;
 }
 
-/* Karşılama başlığı: cari adının yanında taç amblemi + ince yazı */
 .premium-crown {
   display: inline-flex;
   align-items: center;
@@ -398,7 +372,6 @@ button.linkbtn:hover {
   color: var(--brand-surface);
 }
 
-/* ── Admin: sol dikey menü düzeni ─────────────────────── */
 .admin-shell {
   display: flex;
   min-height: 100vh;
@@ -544,7 +517,6 @@ button.linkbtn:hover {
   }
 }
 
-/* Filtre paneli (admin ürünler) */
 .filter-panel {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -612,7 +584,6 @@ button.linkbtn:hover {
   outline: none;
 }
 
-/* Sayfalama */
 .pagination {
   display: flex;
   gap: 0.5rem;
@@ -623,7 +594,6 @@ button.linkbtn:hover {
   color: var(--muted);
 }
 
-/* DIA veri çekme kutusu */
 .dia-box {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -671,7 +641,6 @@ button.linkbtn:hover {
   color: var(--warn);
 }
 
-/* ── Sepet paneli (sağdan açılır) ─────────────────────── */
 .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -766,7 +735,6 @@ button.linkbtn:hover {
   margin-bottom: 0.75rem;
 }
 
-/* Sepet satırı: görsel + bilgi yan yana (silme butonuna çarpmasın) */
 .drawer .satir .satir-ust {
   display: flex;
   gap: 0.7rem;
@@ -805,14 +773,12 @@ button.linkbtn:hover {
   font-weight: 750;
   font-size: 0.95rem;
   margin-top: 0.1rem;
-  /* Uzun ürün adı satırı taşırmasın — tek satır, sonuna "…" */
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Sepet satırında marka logosu (metin yerine) */
 .drawer .satir .marka .marka-logo {
   height: 20px;
   width: auto;
@@ -889,7 +855,6 @@ button.linkbtn:hover {
   font-size: 0.95rem;
 }
 
-/* Adet artır/azalt */
 .stepper {
   display: inline-flex;
   align-items: center;
@@ -898,12 +863,6 @@ button.linkbtn:hover {
   overflow: hidden;
 }
 
-/**
- * Ürün sepete eklenince satır içi adet kutusu görünür. Kolon genişliği
- * ÖNCEDEN AYRILMAZ (bkz. .actions-col) — kutu belirdiğinde kolon kendiliğinden
- * genişler. Açılış animasyonu yalnız boyama katmanındadır (opacity/transform);
- * genişlik animasyonu her karede tabloyu baştan dizeceği için kullanılmaz.
- */
 @keyframes sepet-ac {
   from {
     opacity: 0;
@@ -947,7 +906,6 @@ button.linkbtn:hover {
   font-weight: 650;
 }
 
-/* ── Depo seçimli sepet ─────────────────────────────────── */
 .depot-cart {
   display: inline-flex;
 }
@@ -1060,7 +1018,6 @@ button.linkbtn:hover {
   border-color: #c0392b;
 }
 
-/* ── Toast bildirimi ────────────────────────────────────── */
 .toast-box {
   position: fixed;
   right: 18px;
@@ -1104,7 +1061,6 @@ button.linkbtn:hover {
   }
 }
 
-/* ── Sayfa ────────────────────────────────────────────── */
 main.page {
   max-width: 1480px;
   margin: 0 auto;
@@ -1141,7 +1097,6 @@ h2.section {
   font-size: 0.875rem;
 }
 
-/* ── Kartlar ──────────────────────────────────────────── */
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
@@ -1195,7 +1150,6 @@ h2.section {
   border-color: var(--brand-primary);
 }
 
-/* ── Arama + filtreler ────────────────────────────────── */
 .searchbar {
   display: flex;
   gap: 0.75rem;
@@ -1236,20 +1190,15 @@ h2.section {
   background: var(--brand-primary-active);
 }
 
-/* Katalog çapası: arama/filtre/sayfa değişiminde ekran buraya getirilir.
-   scroll-margin-top, 74px'lik yapışkan üst barın altında kalmasını sağlar. */
 .catalog-anchor {
   scroll-margin-top: 90px;
 }
 
-/* Arama gönderilirken: renk korunur, yalnızca ikon döner. */
 .searchbar button[aria-busy="true"] {
   cursor: progress;
   opacity: 0.85;
 }
 
-/* Filtre uygulanırken bar hafifçe soluklaşır — hangi bölgenin
-   güncellendiği belli olsun, sayfa yerinde kalır. */
 .filterbar.loading {
   opacity: 0.6;
   pointer-events: none;
@@ -1261,7 +1210,6 @@ h2.section {
   transform-origin: center;
 }
 
-/* Yükleniyor göstergesi — dönen ikon sarı (marka rengi) */
 .loading-brand {
   color: var(--brand-primary);
 }
@@ -1296,10 +1244,6 @@ h2.section {
   margin-bottom: 1.1rem;
 }
 
-/**
- * Açılır kutu — tarayıcının/işletim sisteminin kendi seçim menüsü yerine
- * siteye ait panel. Ok ikonu metinle aynı hizada, panel yumuşak açılır.
- */
 .acilir {
   position: relative;
 }
@@ -1447,11 +1391,6 @@ h2.section {
   background: var(--brand-background);
 }
 
-/* Özellik çipleri (RFT / C-Tipi / EV / XL) — seçilince sarı-siyah */
-/**
- * Özellik çipleri (RFT / C-Tipi / EV / XL). Beyaz zeminde kaybolmasınlar diye
- * bir tık koyu gri-mavi zemin + belirgin kenar kullanılır.
- */
 .feature-chip {
   display: inline-flex;
   align-items: center;
@@ -1482,7 +1421,6 @@ h2.section {
   color: var(--brand-black);
 }
 
-/* Gel-Al anahtarı */
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -1548,7 +1486,6 @@ h2.section {
   color: var(--brand-black);
 }
 
-/* Mevsim ikon renkleri */
 .icon-summer {
   color: var(--mevsim-yaz);
 }
@@ -1557,7 +1494,6 @@ h2.section {
   color: var(--mevsim-kis);
 }
 
-/* 4 Mevsim ikonu iki renkli: parçalar kendi sınıflarından boyanır. */
 .mv-sun-filled {
   fill: var(--mevsim-yaz);
   stroke: none;
@@ -1593,7 +1529,6 @@ h2.section {
   background: var(--brand-primary-hover);
 }
 
-/* "Temizle" bağlantı görünümündedir — buton olarak işaretlendiğinde de. */
 .filterbar a.clear,
 .filterbar button.clear {
   font-size: 0.82rem;
@@ -1609,7 +1544,6 @@ h2.section {
   text-decoration: underline;
 }
 
-/* ── Tablo ────────────────────────────────────────────── */
 .tablewrap {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -1661,22 +1595,8 @@ table.data th.num {
   font-variant-numeric: tabular-nums;
 }
 
-/**
- * Sepete ekle sütunu.
- *
- * 1) Adet kutusu açılınca hücre genişlemesin: tablo otomatik yerleşimli
- *    olduğu için bu sütun büyüdüğünde BÜTÜN sütunlar yeniden dizilip satırlar
- *    kayıyordu. Kapalı hâlde de açık hâldeki genişlik kadar yer ayrılır.
- * 2) Sütun SAĞA yaslı: yer ayrıldığı için düğme sağ kenarda durur, başlık da
- *    onun üstüne gelsin diye sağa yaslanır (aksi hâlde arada boşluk kalıyor).
- * 3) Dar ekranda tablo yatay kaydığında düğmeye ulaşılamıyordu; sütun yapışkan
- *    yapıldı, her zaman görünür kalır.
- */
 table.data th.actions-col,
 table.data td.actions-col {
-  /* Sabit genişlik YOK: sepet boşken kolon yalnızca düğme kadar yer kaplar,
-     ürün sepete girince stepper için kendiliğinden genişler. Önceden 172px
-     ayrılıyordu ve düğmenin solunda kalıcı bir boşluk oluşuyordu. */
   width: 1%;
   white-space: nowrap;
   text-align: center;
@@ -1695,7 +1615,6 @@ table.data th.actions-col {
   color: var(--muted);
 }
 
-/* Ürün listesinde stok kodu kalın */
 .sku.sku-strong {
   font-weight: 700;
 }
@@ -1734,7 +1653,6 @@ table.data th.actions-col {
   cursor: default;
 }
 
-/* Geçerli sayfa: marka rengi zemin */
 .pagination button.aktif {
   background: var(--brand-primary);
   border-color: var(--brand-primary-active);
@@ -1748,7 +1666,6 @@ table.data th.actions-col {
   color: var(--muted);
 }
 
-/* Daha Fazla Göster (load-more) butonu */
 .load-more {
   display: flex;
   justify-content: center;
@@ -1789,7 +1706,6 @@ table.data th.actions-col {
   gap: 0.7rem;
 }
 
-/* DIA'dan gelen ürün görseli; yoksa aynı boyutta boş kutu (satırlar kaymasın). */
 .product-image {
   width: 46px;
   height: 46px;
@@ -1805,7 +1721,6 @@ table.data th.actions-col {
   background: var(--zemin, #f4f5f7);
 }
 
-/* Büyük görsel galerisi: sağa/sola oklar + sayaç */
 .lightbox-ok {
   position: fixed; top: 50%; transform: translateY(-50%); z-index: 2;
   width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
@@ -1832,14 +1747,12 @@ table.data th.actions-col {
   color: #52525b;
 }
 
-/* Ürün adına gelince AB Lastik Etiketi popover'ı */
 .ad-etiket-wrap {
   position: relative;
   display: inline-block;
   max-width: 100%;
 }
 
-/* AB etiketi olan ürün adında imleç el (hover'da bilgi çıkar) */
 .ad-etiket-wrap:has(.ab-label-pop) {
   cursor: pointer;
 }
@@ -1922,7 +1835,6 @@ table.data th.actions-col {
   color: var(--text);
 }
 
-/* Tabloda görsel sütunu (en başta) — önizleme biraz daha büyük */
 table.data .gorsel-col {
   width: 92px;
   text-align: center;
@@ -1941,7 +1853,6 @@ table.data .gorsel-col .product-image {
   flex-wrap: wrap;
 }
 
-/* ── Rozetler ─────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1967,7 +1878,6 @@ table.data .gorsel-col .product-image {
   color: var(--warn);
 }
 
-/* Nötr bilgi rozeti (depo, durum vb.) — antrasit/gri */
 .badge.info {
   background: #ececea;
   color: var(--brand-dark);
@@ -2002,15 +1912,12 @@ table.data .gorsel-col .product-image {
   color: var(--muted);
 }
 
-/* ── Fiyat ────────────────────────────────────────────── */
 .price-list {
   color: var(--brand-gray);
   text-decoration: line-through;
   font-size: 0.82rem;
 }
 
-/* Bayi fiyatı: ana ve güçlü metin — siyah/antrasit */
-/* Fiyat hücresi: üstte üstü çizili liste (fiyat1), altında satış (Cari) fiyatı */
 .fiyat-hucre {
   display: flex;
   flex-direction: column;
@@ -2032,11 +1939,9 @@ table.data .gorsel-col .product-image {
   font-variant-numeric: tabular-nums;
 }
 
-/* Yalnızca GERÇEK kampanya/özel fiyat indirimi kırmızı olabilir */
 .price-net.kampanya {
   color: var(--danger);
 }
-/* Perakende plasiyer: fiyatın altındaki satış notu (metin panelden) */
 .price-note {
   margin-top: 0.25rem;
   font-size: 0.7rem;
@@ -2046,7 +1951,6 @@ table.data .gorsel-col .product-image {
   text-align: right;
   white-space: nowrap;
 }
-/* İndirim oranı 0 ürünlerde (2.El) fiyat KDV hariç → "+ KDV" küçük notu */
 .kdv-not {
   font-size: 0.72rem;
   font-weight: 600;
@@ -2060,7 +1964,6 @@ table.data .gorsel-col .product-image {
   font-size: 0.72rem;
 }
 
-/* ── Butonlar / formlar ───────────────────────────────── */
 button.primary,
 a.btn-primary {
   display: inline-flex;
@@ -2211,8 +2114,6 @@ input.mini {
   grid-column: 1 / -1;
 }
 
-/* ── Uyarılar ─────────────────────────────────────────── */
-/* Uyarı kutusu içindeki uzun metin ve form öğeleri düzgün sarmalanır. */
 .alert p,
 .alert .actions-row {
   max-width: 100%;
@@ -2249,7 +2150,6 @@ input.mini {
   color: var(--warn);
 }
 
-/* Cari uyarıları (vadesi geçen borç, limit aşımı — anasayfa + sepet): metin solda, "Ödeme Yap" sağda */
 .account-notice {
   display: flex;
   align-items: center;
@@ -2273,7 +2173,6 @@ input.mini {
   text-decoration: none;
 }
 
-/* ── Sipariş kartı ────────────────────────────────────── */
 .order-card {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -2343,7 +2242,6 @@ input.mini {
   gap: 0.5rem;
 }
 
-/* Adım göstergesi — tamamlanan adımlar sarı, iptal kırmızı */
 .steps {
   display: flex;
   align-items: center;
@@ -2386,7 +2284,6 @@ input.mini {
   background: var(--brand-primary);
 }
 
-/* ── Sepet toplamı ────────────────────────────────────── */
 .totals {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -2413,7 +2310,6 @@ input.mini {
   font-size: 1.05rem;
 }
 
-/* ── Sepet sayfası: iki kolon (sol içerik / sağ özet) ─────────────── */
 .cart-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
@@ -2421,7 +2317,6 @@ input.mini {
   align-items: start;
 }
 
-/* Sol: teslimat + ödeme yöntemi · Sağ: ürünler + sipariş özeti */
 .cart-left,
 .cart-right {
   display: flex;
@@ -2430,12 +2325,10 @@ input.mini {
   min-width: 0;
 }
 
-/* Teslimat ile Ödeme Yöntemi cardları arası biraz daha ferah */
 .cart-left {
   gap: 1.5rem;
 }
 
-/* Teslimat adresi kartı (taslak) */
 .delivery-card .delivery-top {
   display: flex;
   align-items: center;
@@ -2486,7 +2379,6 @@ input.mini {
   line-height: 1.4;
 }
 
-/* Adres listesi (DIA cariden) */
 .delivery-card {
   padding-bottom: 1rem;
 }
@@ -2518,7 +2410,6 @@ input.mini {
   display: none;
 }
 
-/* Seçim noktası — ödeme yöntemi kartlarıyla aynı */
 .delivery-card .adres-secenek .adres-radio {
   flex: 0 0 auto;
   width: 18px;
@@ -2555,7 +2446,6 @@ input.mini {
   gap: 0.4rem;
 }
 
-/* "Varsayılan" rozeti — ödeme kartındaki iskonto hapıyla aynı yeşil */
 .delivery-card .adres-rozet {
   font-size: 0.68rem;
   font-weight: 700;
@@ -2579,12 +2469,10 @@ input.mini {
   margin-top: 0.15rem;
 }
 
-/* Yeni adres formu */
 .delivery-card .delivery-empty {
   padding: 1.1rem 0.15rem 0.6rem;
 }
 
-/* Adres ekleme popup'ı (modal) */
 .adres-modal-overlay {
   position: fixed;
   inset: 0;
@@ -2682,7 +2570,6 @@ input.mini {
   height: 40px;
 }
 
-/* Tıklayınca odak çerçevesi/outline çıkmasın — sınır sabit kalsın */
 .delivery-card .adres-form input:focus,
 .delivery-card .adres-form textarea:focus,
 .delivery-card .adres-form select:focus {
@@ -2709,7 +2596,6 @@ input.mini {
   margin-top: 0.2rem;
 }
 
-/* Sol: tek card, ürünler içinde satır satır (aralarında divider) */
 .cart-card {
   background: var(--brand-surface);
   border: 1px solid #d3d9df;
@@ -2756,7 +2642,6 @@ input.mini {
   min-width: 0;
 }
 
-/* Ürün adı: küçük font, tek satır (taşarsa "…") */
 .cart-card .product-name {
   font-weight: 500;
   font-size: 0.9rem;
@@ -2768,7 +2653,6 @@ input.mini {
   text-overflow: ellipsis;
 }
 
-/* Ürün adının altında: marka + yıl + mevsim ikonu + stok kodu */
 .cart-card .cli-brand-row {
   display: flex;
   align-items: center;
@@ -2800,7 +2684,17 @@ input.mini {
   color: var(--muted);
 }
 
-/* Adet (küçük) + kaldır ikonu — ürün adının altında yan yana */
+.cart-card .cli-stock-warning {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
 .cart-card .cli-qty-row {
   display: flex;
   align-items: center;
@@ -2836,7 +2730,6 @@ input.mini {
   color: var(--danger);
 }
 
-/* Sağ: üstte adet stepper, altında satır toplamı */
 .cart-card .cli-right {
   display: flex;
   flex-direction: column;
@@ -2845,7 +2738,6 @@ input.mini {
   white-space: nowrap;
 }
 
-/* Adet 1 iken "−" yerine çöp ikonu */
 .cart-card .cli-stepper .stepper-remove {
   color: var(--muted);
 }
@@ -2861,14 +2753,12 @@ input.mini {
   font-variant-numeric: tabular-nums;
 }
 
-/* Sepetiniz kartının altındaki özet (Ara Toplam / KDV / Toplam) */
 .cart-summary {
   border-top: 1px solid var(--border);
   margin-top: 0.4rem;
   padding-top: 0.9rem;
 }
 
-/* Teslimat yöntemi seçimi (Sepetiniz kartının altında) */
 .cart-summary .summary-teslimat {
   display: flex;
   flex-direction: column;
@@ -2906,7 +2796,6 @@ input.mini {
   border-color: var(--sari, #e6b800);
 }
 
-/* Sipariş açıklaması (Ödeme Yöntemi kartının altında) */
 .order-note-card .cart-card-title {
   margin-bottom: 1.1rem;
 }
@@ -2938,8 +2827,6 @@ input.mini {
   color: var(--muted);
 }
 
-/* Banka hesap bilgileri (havale ile ödeme seçilince) */
-/* Başlık dividerinden sonra boşluk — Ödeme Yöntemi kartıyla aynı ritim. */
 .bank-accounts-card .cart-card-title {
   margin-bottom: 1.1rem;
 }
@@ -3049,8 +2936,6 @@ input.mini {
   color: var(--danger);
 }
 
-/* Ödeme yöntemi kartı (Sepetiniz altında) — seçilebilir kart grid'i.
-   Başlık Teslimat Adresi gibi: alt çizgi (base kuraldan gelir) + grid'e boşluk. */
 .payment-method-card .cart-card-title {
   margin-bottom: 1.1rem;
 }
@@ -3068,7 +2953,6 @@ input.mini {
   padding-bottom: 0.6rem;
 }
 
-/* Sepet satırında marka iskonto rozeti */
 .cart-line .cli-indirim {
   font-size: 0.7rem;
   font-weight: 700;
@@ -3079,7 +2963,6 @@ input.mini {
   padding: 1px 7px;
 }
 
-/* Özet iskonto satırı */
 .cart-summary .summary-row.indirim {
   color: var(--danger);
   font-weight: 600;
@@ -3110,7 +2993,6 @@ input.mini {
   display: none;
 }
 
-/* Seçim noktası — seçilince tema sarısıyla dolar */
 .payment-option .po-radio {
   flex: 0 0 auto;
   width: 18px;
@@ -3142,7 +3024,6 @@ input.mini {
   line-height: 1.25;
 }
 
-/* İskonto — sağda gri hap */
 .payment-option .po-discount {
   flex: 0 0 auto;
   font-weight: 700;
@@ -3161,7 +3042,6 @@ input.mini {
   }
 }
 
-/* Sağdaki sipariş özeti kartı (ürünlerin altında) */
 .summary-card {
   background: var(--brand-surface);
   border: 1px solid #d3d9df;
@@ -3237,7 +3117,6 @@ input.mini {
   }
 }
 
-/* ── Login ────────────────────────────────────────────── */
 .login-wrap {
   min-height: 100vh;
   display: flex;
@@ -3315,7 +3194,6 @@ input.mini {
   align-items: center;
 }
 
-/* ── Duyarlılık ───────────────────────────────────────── */
 @media (max-width: 720px) {
   .topnav {
     gap: 0.6rem;
@@ -3335,7 +3213,6 @@ input.mini {
   }
 }
 
-/* ── Anasayfa banner alanı ────────────────────────────── */
 .banner-area {
   margin-bottom: 1.4rem;
   position: relative;
@@ -3353,11 +3230,6 @@ input.mini {
   display: block;
 }
 
-/**
- * Banner görseli geniş olacak şekilde tasarlanır (örn. 1600×420). Yanlış
- * oranda bir görsel yüklenirse sayfayı kaplamasın diye yükseklik sınırlanır
- * ve kırpılarak sığdırılır.
- */
 .banner-image {
   width: 100%;
   height: 100%;
@@ -3365,7 +3237,6 @@ input.mini {
   display: block;
 }
 
-/* Yatay kayan şerit: slaytlar yan yana, sira değişince translateX ile kayar (push efekti) */
 .banner-track {
   display: flex;
   width: 100%;
@@ -3383,7 +3254,6 @@ input.mini {
   line-height: 0;
 }
 
-/* Noktalar slider'ın İÇİNDE, alt ortada durur */
 .banner-dots {
   position: absolute;
   left: 0;
@@ -3417,7 +3287,6 @@ input.mini {
   transform: scale(1.25);
 }
 
-/* Admin banner yönetimi */
 .banner-form {
   display: flex;
   flex-wrap: wrap;
@@ -3495,7 +3364,6 @@ input.mini {
   }
 }
 
-/* ── Cari Hesap Özeti ─────────────────────────────────── */
 .account-top {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
@@ -3511,7 +3379,6 @@ input.mini {
   padding: 1.2rem 1.3rem;
 }
 
-/* Borçlu durumda kart antrasit zemine geçer — sarı marka rengiyle vurgu. */
 .account-balance.borclu {
   background: var(--brand-dark);
   border-color: var(--brand-black);
@@ -3679,8 +3546,6 @@ input.mini {
 }
 
 .alert.warn {
-  /* Uzun açıklama metni ve form barındırabildiği için flex DEĞİL akış
-     düzeni; ikonlu kısa uyarılar .alert.warn.satir ile flex olur. */
   display: block;
   background: var(--warn-soft);
   border: 1px solid var(--warn);
@@ -3702,7 +3567,6 @@ input.mini {
   }
 }
 
-/* ── Giriş: bölünmüş düzen (sol marka paneli + sağ form) ── */
 .login-split {
   min-height: 100vh;
   display: grid;
@@ -3954,14 +3818,6 @@ input.mini {
   }
 }
 
-/* ── Satır içi sepet kontrolü ── */
-/*
- * Kolon genişliği önceden ayrılmaz (bkz. table.data td.actions-col): ürün
- * sepette değilken yalnızca sepet düğmesi kadar yer tutar, eklenince kutu
- * belirir ve kolon o anda genişler. Beliriş animasyonu boyama katmanında
- * (opacity/transform) yapılır; genişlik animasyonu tabloyu her karede
- * yeniden dizerdi.
- */
 .row-cart {
   display: inline-flex;
   flex-direction: column;
@@ -4039,7 +3895,6 @@ input.mini {
   text-decoration: underline;
 }
 
-/* ── Üst menü açılır (Raporlar) ── */
 .nav-dropdown {
   display: inline-flex;
 }
@@ -4067,13 +3922,6 @@ input.mini {
   font-weight: 700;
 }
 
-/*
- * Konum JS ile ölçülür (nav-links.tsx): üst menü dar ekranda yana kaydığı için
- * `.topnav nav` üzerinde `overflow-x: auto` var; bu, hesaplanan `overflow-y`yi
- * de `auto` yapıp bir kırpma bağlamı oluşturur ve absolute panel görünmez olur.
- * `fixed` panel üst kapsayıcıların overflow'undan etkilenmez, böylece yatay
- * kaydırma davranışı da korunur.
- */
 .nav-dropdown-panel {
   position: fixed;
   min-width: 13.5rem;
@@ -4087,10 +3935,6 @@ input.mini {
   z-index: 60;
 }
 
-/*
- * `.topnav nav a` açık gri metin veriyor; panel beyaz zeminde olduğu için
- * seçici oraya kadar uzatılır, yoksa yazılar okunmaz olur.
- */
 .topnav nav .nav-dropdown-panel a {
   color: var(--text);
   padding: 0.55rem 0.75rem;
@@ -4106,7 +3950,6 @@ input.mini {
   color: var(--brand-black);
 }
 
-/* ── Raporlar: ortak parçalar ── */
 .report-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -4150,7 +3993,6 @@ input.mini {
   color: var(--success-text);
 }
 
-/* Vurgulu kart: kurumsal SARI zemin (mavi/lacivert kullanılmaz). */
 .report-card.vurgulu {
   background: var(--primary-soft);
   border-color: var(--brand-primary);
@@ -4160,7 +4002,6 @@ input.mini {
   color: var(--brand-black);
 }
 
-/* Vade takvimi ızgarası */
 .takvim {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -4246,7 +4087,6 @@ input.mini {
   text-align: center;
 }
 
-/* Ödeme kartı listesi */
 .payment-card {
   background: var(--brand-surface);
   border: 1px solid var(--border);
@@ -4280,7 +4120,6 @@ input.mini {
   flex-wrap: wrap;
 }
 
-/* ── Veri kaynağı şeridi (rapor şeffaflığı) ── */
 .data-source {
   display: flex;
   flex-wrap: wrap;
@@ -4316,7 +4155,6 @@ input.mini {
   color: var(--brand-black);
 }
 
-/* Başlık yanındaki kaynak etiketi ("Platform Siparişleri") */
 .title-label {
   display: inline-block;
   vertical-align: middle;
@@ -4331,13 +4169,11 @@ input.mini {
   letter-spacing: 0.01em;
 }
 
-/* Taksit tablosunda "yapılabilir" işareti (komisyon iddiası YOK) */
 .has-installment {
   color: var(--success-text);
   font-weight: 800;
 }
 
-/* Satır içi sepet hatası (stok aşımı vb.) */
 .row-cart-error {
   max-width: 11rem;
   font-size: 0.7rem;
@@ -4347,15 +4183,12 @@ input.mini {
   white-space: normal;
 }
 
-/* İkonlu tek satırlık uyarı (uzun metin içermeyen kullanımlar için). */
 .alert.warn.satir {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-
-/* ── Üst bar ipucu balonu (Hesabım / Sepetim) ─────────── */
 .topnav [data-tip] {
   position: relative;
 }
@@ -4377,11 +4210,8 @@ input.mini {
   z-index: 30;
 }
 
-
-/* ── 4'lü arama bloğu: arama + Mevsim + Marka + DOT ───── */
 .search-block {
   display: grid;
-  /* sütun sayısı görünen filtre alanına göre bileşenden gelir (--search-cols) */
   grid-template-columns: repeat(var(--search-cols, 4), 1fr);
   gap: 10px;
   margin-bottom: 0.9rem;
@@ -4415,8 +4245,6 @@ input.mini {
   }
 }
 
-
-/* ── Tablo filtre/sayfa yükleme durumu ─────────────────── */
 .tablewrap {
   position: relative;
 }
@@ -4425,7 +4253,6 @@ input.mini {
   pointer-events: none;
 }
 
-/* Tüm sayfayı kaplayan hafif overlay + düz siyah yazı */
 .table-loading {
   position: fixed;
   inset: 0;
@@ -4440,7 +4267,6 @@ input.mini {
   font-weight: 700;
 }
 
-/* ── İşlemler: 2.El sepete ekle + düzenle + detay ─────────────────── */
 .actions-group {
   display: flex;
   align-items: center;
@@ -4470,7 +4296,6 @@ input.mini {
   color: var(--brand-black);
 }
 
-/* Tıklanabilir ürün görseli + büyük görsel lightbox'ı */
 .product-image.tiklanir {
   cursor: zoom-in;
 }
@@ -4513,7 +4338,6 @@ input.mini {
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* Sepete Ekle popover'ı (2.El) */
 .cart-popover {
   position: fixed;
   z-index: 1200;
@@ -4524,7 +4348,6 @@ input.mini {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 }
 
-/* Hover etiketi — marka logosu / mevsim ikonu üzerine gelince ad gösterir */
 .hover-tip {
   position: relative;
   display: inline-flex;
@@ -4553,7 +4376,6 @@ input.mini {
   opacity: 1;
 }
 
-/* 2.El hızlı detay popover'ı */
 .detail-popover {
   position: fixed;
   z-index: 1200;
@@ -4620,7 +4442,6 @@ input.mini {
   font-weight: 750;
 }
 
-/* ── Sevkiyat süresi etiketi ─────────────────── */
 .shipping-badge {
   display: inline-block;
   padding: 2px 9px;
@@ -4646,12 +4467,10 @@ input.mini {
   color: #4a7358;
 }
 
-/* ── Aranabilir açılır liste (autocomplete) ─────────────────── */
 .autocomplete {
   position: relative;
 }
 
-/* İkinci filtre satırındaki depo autocomplete: select ile aynı taban genişlik */
 .autocomplete.fs2-select-ac {
   min-width: 170px;
 }
@@ -4741,7 +4560,6 @@ input.mini {
   color: var(--muted);
 }
 
-/* ── Katalog sekmeleri: Sıfır / 2.El ─────────────────── */
 .catalog-tabs {
   display: flex;
   gap: 0.25rem;
@@ -4766,7 +4584,6 @@ input.mini {
   border-bottom-color: var(--brand-primary);
 }
 
-/* Arama bloğunun altındaki sağa yaslı Ara butonu */
 .search-bottom {
   display: flex;
   justify-content: flex-end;
@@ -4789,13 +4606,10 @@ input.mini {
   background: var(--brand-primary-hover);
 }
 
-/* Kaydırma çubuğu yeri sabit tutulur — liste kısalınca sayfa genişleyip
-   içeriğin "daralmış/kaymış" görünmesini engeller */
 html {
   scrollbar-gutter: stable;
 }
 
-/* ── İkinci filtre satırı: Ebat + Depo + özellik kutuları + Ara/Temizle ── */
 .filter-row2 {
   display: flex;
   align-items: center;
@@ -4863,7 +4677,6 @@ html {
   background: var(--brand-primary-hover);
 }
 
-/* ── Özellik kutuları YENİ tasarım: yumuşak toggle görünümü ─────────── */
 .feature-boxes {
   gap: 22px !important;
   padding: 0 8px !important;
@@ -4892,7 +4705,6 @@ html {
   border-color: var(--brand-primary-active);
 }
 
-/* Sarı zeminde siyah tik */
 .feature-box input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
@@ -4905,7 +4717,6 @@ html {
   transform: rotate(45deg);
 }
 
-/* Temizle: Ara ile aynı ölçü, outline */
 .filter-row2 .clear-button {
   height: 44px;
   padding: 0 2.2rem;
@@ -4923,7 +4734,6 @@ html {
   background: rgba(0, 0, 0, 0.03);
 }
 
-/* ── Anasayfa vitrini ─────────────────────────────────── */
 .vitrin { margin: 1.5rem 0; }
 .showcase-head { margin-bottom: 0.9rem; }
 .showcase-head h2 { font-size: 1.15rem; font-weight: 800; margin: 0; }
@@ -4963,7 +4773,6 @@ html {
 .showcase-price { font-size: 1.05rem; font-weight: 800; color: var(--text); margin-top: 4px; }
 .showcase-price small { font-size: 0.7rem; font-weight: 600; color: var(--muted); }
 
-/* Katalog tablosu: gerçek ürün görseli + marka logosu */
 img.product-image {
   width: 48px;
   height: 48px;
@@ -4979,12 +4788,10 @@ img.brand-logo {
   object-fit: contain;
 }
 
-/* Yardımcı: hücre/başlık ortalama */
 .text-center {
   text-align: center;
 }
 
-/* ── Stok rozeti hover: depo kırılımı balonu ──────────── */
 .stock-cell {
   position: relative;
   display: inline-block;
@@ -5034,8 +4841,6 @@ img.brand-logo {
 }
 .stock-tooltip-row strong { color: var(--brand-primary); font-size: 1rem; }
 
-/* En üstteki satırda tooltip yukarı açılınca tablo/başlık kenarına takılıp
-   kırpılıyordu; ilk satırda AŞAĞI açılır ve ok yönü ters çevrilir. */
 table.data tbody tr:first-child .stock-tooltip {
   bottom: auto;
   top: calc(100% + 10px);
@@ -5051,7 +4856,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   border-bottom-color: var(--brand-dark);
 }
 
-/* ===== Kredi Kartı — Tek Çekim formu (Ödeme Yöntemi kartının altında) ===== */
 .credit-card-card {
   padding-bottom: 1.1rem;
 }
@@ -5064,12 +4868,10 @@ table.data tbody tr:first-child .stock-tooltip::after {
   margin-bottom: 1rem;
 }
 .credit-card-card .cc-head .cc-title {
-  /* base .cart-card-title alt çizgisini/padding'ini bu satırda sıfırla */
   padding: 0;
   border-bottom: 0;
   font-size: 1.1rem;
 }
-/* Form alanları */
 .credit-card-card .cc-form {
   margin-top: 0.2rem;
   display: flex;
@@ -5102,7 +4904,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   color: #b3b3b0;
   letter-spacing: normal;
 }
-/* Focus vurgusu istenmedi — odakta da nötr görünür */
 .credit-card-card .cc-field input:focus {
   outline: none;
   border-color: var(--border);
@@ -5130,7 +4931,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   flex: none;
 }
 
-/* ── Ödeme Makbuzu / Proforma ───────────────────────────────────── */
 .makbuz-wrap {
   max-width: 820px;
   margin: 0 auto;
@@ -5293,7 +5093,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
     text-align: left;
   }
 }
-/* Yazdırma → PDF: yalnız makbuzu göster, sayfa/menü chrome'unu gizle */
 @media print {
   .no-print {
     display: none !important;
@@ -5315,7 +5114,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* ── Taksit seçimi (Kredi Kartı — Taksitli) ─────────────────────── */
 .taksit-secim {
   margin-top: 0.4rem;
 }
@@ -5400,9 +5198,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   white-space: nowrap;
 }
 
-/* ── Ödeme yöntemine bağlı kartların yumuşak belirişi ────────────── */
-/* Havale (banka bilgileri) / Kredi Kartı formu seçime göre mount olur;
-   aniden açılıp kapanmasın diye hafif bir fade + yukarı kayma efekti. */
 @keyframes b2bCardReveal {
   from {
     opacity: 0;
@@ -5427,7 +5222,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* ── Ödeme sonuç sayfası (Paynet 3D dönüşü) ──────────────────────── */
 .odeme-sonuc {
   display: flex;
   justify-content: center;
@@ -5534,9 +5328,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* ============================================================
-   Alım Adet / Ciro grafikleri (raporlar/alim-adet)
-   ============================================================ */
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5624,7 +5415,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* Grafik tooltip (nokta üzerine gelince) */
 .chart-svg .tip-box {
   fill: #111827;
   opacity: 0.96;
@@ -5639,9 +5429,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   font-weight: 700;
 }
 
-/* ============================================================
-   Hızlı İşlemler — anasayfa 4'lü kısayol bloğu (grafiğin altında)
-   ============================================================ */
 .quick-actions {
   margin-top: 20px;
 }
@@ -5714,9 +5501,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* ============================================================
-   Gelecek Vadeler — vade takvimi (anasayfa)
-   ============================================================ */
 .due-section {
   margin-top: 22px;
 }
@@ -5789,7 +5573,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   background: var(--primary-soft);
 }
 
-/* Takvim ızgarası */
 .due-grid {
   width: 100%;
   border-collapse: collapse;
@@ -5852,7 +5635,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   background: var(--primary-soft);
 }
 
-/* Haftalık toplam sütunu */
 .due-grid th.due-wk,
 .due-grid td.due-wk {
   width: 96px;
@@ -5873,7 +5655,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   color: var(--text);
 }
 
-/* Sağ detay paneli */
 .due-detail {
   width: 300px;
   flex: none;
@@ -5982,7 +5763,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* Anasayfa başlık aksiyon butonları (Cari Hesap Özeti + Sipariş Ver + Cari Ekstre) */
 .page-head-actions {
   display: flex;
   align-items: center;
@@ -5990,8 +5770,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   flex-wrap: wrap;
 }
 
-/* OEM + Depo select'leri arama kutusu/diğer select'lerle AYNI genişlikte olsun:
-   search-block ile birebir aynı 4'lü grid (ilk iki kolon dolu). */
 .filter-selects {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -5999,7 +5777,7 @@ table.data tbody tr:first-child .stock-tooltip::after {
   margin-bottom: 0.9rem;
 }
 .filter-selects .fs2-select-ac {
-  min-width: 0; /* genişliği grid belirlesin (170px min'i ez) */
+  min-width: 0;
 }
 @media (max-width: 860px) {
   .filter-selects {
@@ -6007,7 +5785,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* Çoklu seçim (Mevsim) — seçili seçenek çentiği */
 .ac-option .ac-check {
   margin-left: auto;
   padding-left: 0.6rem;
@@ -6018,7 +5795,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   min-width: 0;
 }
 
-/* Mevsim seçeneği ikonu (dropdown) */
 .ac-option .ac-opt-icon {
   display: inline-flex;
   align-items: center;
@@ -6030,7 +5806,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   align-items: center;
 }
 
-/* Marka dropdown'unda logo görseli */
 .ac-brand-logo {
   height: 18px;
   width: auto;
@@ -6043,8 +5818,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   justify-content: center;
 }
 
-/* Tüm filtre input'ları aynı genişlikte: OEM/Depo, arama satırı kolonlarıyla (¼) eşit.
-   search-block: repeat(4,1fr) gap 10px → kolon = (100% - 30px)/4. Aynısını uygula. */
 .filter-row2 .fs2-select-ac {
   flex: 0 0 calc((100% - 30px) / 4);
   min-width: 170px;
@@ -6056,9 +5829,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   }
 }
 
-/* ============================================================
-   Cari Hesap Özeti — 2x2 kart düzeni (referans tasarım)
-   ============================================================ */
 .cari-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -6133,7 +5903,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .cari-pill .dot.red { background: #dc2626; }
 .cari-pill .dot.green { background: #16a34a; }
 
-/* Vadesi geçen kart */
 .cari-overdue {
   background: #fffbeb;
   border-color: #fde9c8;
@@ -6162,7 +5931,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 }
 .cari-btn-odeme:hover { background: #a86209; }
 
-/* Hesap bilgileri */
 .cari-block-title {
   font-size: 15px;
   font-weight: 700;
@@ -6173,7 +5941,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .cari-info .k { display: block; font-size: 13px; font-weight: 700; color: var(--text); }
 .cari-info .v { display: block; font-size: 14px; color: #1e3a8a; margin-top: 2px; }
 
-/* Şifre formu */
 .cari-pw-form { display: flex; flex-direction: column; gap: 12px; }
 .cari-pw-form input {
   height: 46px;
@@ -6202,7 +5969,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   .cari-grid { grid-template-columns: 1fr; }
 }
 
-/* Cari Hesap Özeti — MARKA RENKLERİ (jenerik turuncu/mavi override) */
 .cari-ico { background: var(--primary-soft); color: var(--brand-dark); }
 .cari-ico.warn { background: var(--warn-soft); color: var(--warn); }
 .cari-badge.borc { background: var(--warn-soft); color: var(--warn); }
@@ -6214,7 +5980,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .cari-pill .dot.green { background: var(--success-text); }
 .cari-overdue { background: var(--warn-soft); border-color: #f6e2b8; border-left: 4px solid var(--warn); }
 .cari-note { color: var(--warn); }
-/* Ödeme Yap + Güncelle → marka sarısı, siyah metin (btn-primary gibi) */
 .cari-btn-odeme { background: var(--brand-primary); color: var(--brand-black); }
 .cari-btn-odeme:hover { background: var(--brand-primary-hover); }
 .cari-btn-guncelle { background: var(--brand-primary); color: var(--brand-black); }
@@ -6222,9 +5987,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .cari-info .v { color: var(--brand-dark); }
 .cari-pw-form input:focus { border-color: var(--brand-primary); }
 
-/* ============================================================
-   Siparişlerim — filtre barı + sıralanabilir tablo
-   ============================================================ */
 .order-filter {
   display: flex;
   gap: 12px;
@@ -6262,7 +6024,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .order-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 .order-table th.sortable:hover { color: var(--brand-dark); }
 .order-table .sarrow { color: var(--muted); font-weight: 400; }
-/* Sipariş Açıklaması: en çok 128 karakter; dar sütunda iki satırla sınırlanır, tamamı üzerine gelince görünür */
 .order-table .order-note-cell { max-width: 280px; min-width: 160px; color: var(--muted); }
 .order-table .order-note-text { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .order-no-link { color: var(--brand-dark); font-weight: 700; text-decoration: none; }
@@ -6294,9 +6055,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 }
 .order-action:hover { background: var(--primary-soft); color: var(--brand-dark); }
 
-/* ============================================================
-   Sipariş Detayı — invoice/proforma modal
-   ============================================================ */
 .inv-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: rgba(17, 24, 39, 0.55);
@@ -6369,7 +6127,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
   .inv-totals > div { min-width: 100%; }
 }
 
-/* order-no-link / order-action <button> oldu — varsayılan buton görünümünü sıfırla */
 .order-table .order-no-link {
   background: none; border: none; padding: 0; margin: 0;
   font-size: inherit; font-family: inherit; font-weight: 700;
@@ -6380,27 +6137,22 @@ table.data tbody tr:first-child .stock-tooltip::after {
   border: none; padding: 0 10px; cursor: pointer; background: transparent;
   width: auto; gap: 6px; font-size: 0.85rem; font-weight: 600;
 }
-/* İŞLEM sütunu sağa yaslı (başlık + hücre) */
 .order-table th:last-child,
 .order-table td:last-child { text-align: right; }
 
-/* Invoice modal — büyüt + ortala, durum & genel toplam arka planını kaldır */
 .inv-overlay { align-items: center; }
 .inv-modal { max-width: 900px; padding: 36px 40px 30px; }
-/* Durum: modal başlığında arka plansız, renkli metin */
 .inv-meta .durum-badge {
   background: transparent; padding: 0; color: var(--text); font-weight: 700;
 }
 .inv-meta .durum-badge.ok { color: var(--success-text); }
 .inv-meta .durum-badge.err { color: var(--danger); }
 .inv-meta .durum-badge.wait { color: var(--warn); }
-/* Genel Toplam: arka plan yok, üstte ince ayraç */
 .inv-totals .inv-grand {
   background: transparent; padding: 12px 0 0; margin-top: 8px;
   border-top: 1px solid var(--border);
 }
 
-/* Modal Durum — görseldeki gibi dolu yeşil rozet (metin değil) */
 .inv-meta .durum-badge {
   display: inline-block;
   background: #1a9e4e; color: #fff;
@@ -6410,7 +6162,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .inv-meta .durum-badge.err { background: var(--danger); color: #fff; }
 .inv-meta .durum-badge.wait { background: var(--warn); color: #fff; }
 
-/* Modal Durum — düz yazı: arka plan yok, renk yok (koyu kalın metin) */
 .inv-meta .durum-badge,
 .inv-meta .durum-badge.ok,
 .inv-meta .durum-badge.err,
@@ -6419,13 +6170,11 @@ table.data tbody tr:first-child .stock-tooltip::after {
   color: var(--text); font-weight: 700; font-size: 14px;
 }
 
-/* Modal başlık — Sipariş Belgesi/Proforma kalktı; bilgiler sola yaslı, etiketler hizalı */
 .inv-head { justify-content: flex-start; }
 .inv-meta { text-align: left; align-items: flex-start; }
 .inv-meta > div { justify-content: flex-start; }
 .inv-meta > div > span:first-child { min-width: 130px; color: var(--muted); }
 
-/* Modal — başlık + daha az padding + daha geniş */
 .inv-modal { max-width: 1040px; padding: 24px 28px 22px; }
 .inv-modal-title {
   font-size: 1.25rem; font-weight: 800; color: var(--brand-dark);
@@ -6433,7 +6182,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 }
 .inv-head { padding-bottom: 14px; margin-bottom: 14px; }
 
-/* Ödeme ekstresi modalı */
 .pay-modal { max-width: 640px; }
 .pay-block {
   background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
@@ -6445,16 +6193,12 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .pay-block strong { color: var(--text); }
 .pay-amount { font-size: 1.15rem; color: var(--brand-dark); font-weight: 800; }
 
-/* Ödeme modalı Durum — arka plan yok, düz yazı */
 .pay-block .durum-badge,
 .pay-block .durum-badge.ok {
   background: transparent; padding: 0; border-radius: 0;
   color: var(--text); font-weight: 700; font-size: 14px;
 }
 
-/* ============================================================
-   Cari Hesap Ekstresi tablosu
-   ============================================================ */
 .ekstre-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ekstre-actions .mini { height: 40px; }
 .ekstre-search {
@@ -6479,7 +6223,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .tut-alacak { color: var(--success-text); font-weight: 700; }
 .ekstre-table td.num strong { color: var(--brand-dark); }
 
-/* İstemci sayfalama */
 .pager {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; margin-top: 16px;
@@ -6498,7 +6241,6 @@ table.data tbody tr:first-child .stock-tooltip::after {
 .pager-arrow:disabled { opacity: 0.45; cursor: default; }
 .pager-dots { color: var(--muted); padding: 0 4px; }
 
-/* CsvDownload <button class="btn-ghost"> — a.btn-ghost gibi stillensin (default görünüm gitmiş) */
 button.btn-ghost {
   display: inline-flex; align-items: center; gap: 0.4rem;
   padding: 0.5rem 1rem;
@@ -6509,7 +6251,6 @@ button.btn-ghost {
 button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--primary-soft); }
 .ekstre-actions button.btn-ghost { height: 40px; }
 
-/* Vade Durumu (yaşlandırma) tablosu */
 .aging-inv { font-weight: 700; color: #2c5aa0; }
 .aging-table td.num strong { color: var(--brand-dark); }
 .aging-table tr.overdue-row td { background: #fdf1f1; }
@@ -6517,7 +6258,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 .day-late { color: var(--danger); font-weight: 800; }
 .day-ok { color: var(--brand-dark); font-weight: 700; }
 
-/* Ekstre footer: bilgilendirme kutusu + dönem özeti */
 .ekstre-footer {
   display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; margin-top: 18px;
 }
@@ -6547,20 +6287,16 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
   .ekstre-summary { flex-basis: 100%; }
 }
 
-/* ── Ödeme Yap sayfası ── */
 .pay-top {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 24px; flex-wrap: wrap; margin-bottom: 8px;
 }
-/* Ödeme sayfası içeriği: col-md-8 (≈%66.7) ortalı — md ve üstünde daralır */
 @media (min-width: 768px) { .pay-col8 { max-width: 66.6667%; margin-inline: auto; } }
 .pay-form { flex: 1 1 360px; min-width: 260px; }
-/* Tutar + tip satırı full width, input ve select %50-%50 */
 .pay-form-wide { flex: 1 1 100%; width: 100%; }
 .pay-form-wide .pay-amount-row { flex-wrap: nowrap; }
 .pay-form-wide .pay-amount-row input,
 .pay-form-wide .pay-amount-row .pay-select { flex: 1 1 0; width: auto; min-width: 0; }
-/* Placeholder'lar daha soluk + ince — çok dominant durmasın */
 .pay-form input::placeholder,
 .pm-form input::placeholder { color: #c2c2be; opacity: 1; font-weight: 400; font-size: 13px; }
 .pay-form label { display: block; font-size: 13px; font-weight: 600; color: var(--brand-dark); margin-bottom: 6px; }
@@ -6598,7 +6334,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 .bank-table code.bank-iban { font-size: 13.5px; color: var(--brand-dark); letter-spacing: 0.3px; background: none; padding: 0; }
 .bank-table .bank-name { color: var(--brand-dark); font-weight: 700; }
 
-/* Cari hesap özeti kartları */
 .pay-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .psum {
   background: var(--brand-surface); border: 1px solid var(--border); border-radius: 12px;
@@ -6635,7 +6370,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
   .btn-pay { min-width: 100%; }
 }
 
-/* ── Tek Çekim ödeme — sayfada açılan blok (popup değil) ── */
 .pm-inline {
   background: transparent; border: none; box-shadow: none;
   margin-top: 4px;
@@ -6656,7 +6390,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 }
 .pm-inline .pm-form { max-width: none; margin: 0; }
 
-/* Canlı kart önizleme */
 .cc-card {
   position: relative; border-radius: 14px; padding: 18px; margin-bottom: 20px; color: #fff;
   background: linear-gradient(135deg, #2b2b2b 0%, #454548 60%, #2b2b2b 100%);
@@ -6686,7 +6419,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 .cc-lbl { display: block; font-size: 9px; letter-spacing: 0.5px; opacity: 0.6; margin-bottom: 3px; }
 .cc-val { font-size: 13.5px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
 
-/* Form alanları */
 .pm-form { display: flex; flex-direction: column; gap: 13px; margin-bottom: 18px; }
 .pm-field { display: flex; flex-direction: column; gap: 6px; }
 .pm-field > span { font-size: 12.5px; font-weight: 600; color: var(--brand-dark); }
@@ -6703,7 +6435,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 }
 .pm-err-top { margin: 0 0 14px; line-height: 1.5; }
 
-/* Taksit seçenekleri (NetTahsilat) */
 .taksit-box { margin: 4px 0 2px; }
 .taksit-title { font-size: 13px; font-weight: 700; color: var(--brand-dark); margin-bottom: 8px; }
 .taksit-hint { font-size: 13px; color: var(--muted); margin: 0; display: flex; align-items: center; gap: 6px; }
@@ -6734,7 +6465,6 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
   .cc-number { font-size: 18px; letter-spacing: 2px; }
 }
 
-/* ── Ödeme sonuç sayfası ── */
 .osonuc { display: flex; justify-content: center; padding: 24px 0; }
 .osonuc-card {
   width: 480px; max-width: 100%; background: var(--brand-surface);
@@ -6763,12 +6493,10 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 .osonuc-link:hover { color: var(--brand-primary-active); }
 @media (prefers-reduced-motion: reduce) { .osonuc-ico { animation: none; } }
 
-/* Plasiyer içerik: dar ekranda sidebar alta iner */
 @media (max-width: 820px) {
   .plasiyer-icerik { grid-template-columns: 1fr !important; }
 }
 
-/* Plasiyer fiyat popover (kategori tablosu): Perakende (LJA) / Toptan (b2b) */
 .fiyat-hucre.has-pop { position: relative; cursor: pointer; }
 .fiyat-pop {
   position: absolute;
@@ -6795,30 +6523,25 @@ button.btn-ghost:hover { border-color: var(--brand-primary); background: var(--p
 .fiyat-hucre.has-pop:hover .fiyat-pop { opacity: 1; visibility: visible; transform: translateY(0); }
 .fiyat-pop .fp-row { display: flex; justify-content: space-between; gap: 18px; font-size: 0.9rem; white-space: nowrap; }
 .fiyat-pop .fp-row b { font-weight: 700; }
-/* Bayi gözü: ödeme yöntemi | oran | fiyat — sütunlar satırlar arasında hizalı */
 .fiyat-pop-methods { display: grid; grid-template-columns: auto auto auto; column-gap: 16px; row-gap: 8px; align-items: baseline; }
 .fiyat-pop-methods .fp-row { display: contents; }
 .fiyat-pop-methods .fp-row > * { white-space: nowrap; font-size: 0.88rem; }
 .fiyat-pop-methods .fp-pct { opacity: 0.75; text-align: right; font-variant-numeric: tabular-nums; }
 .fiyat-pop-methods .fp-row b { text-align: right; font-variant-numeric: tabular-nums; }
 .fiyat-pop .fp-sub { font-size: 0.72rem; opacity: 0.7; margin-top: 2px; }
-/* İlk satırda üste taşma olmasın: aşağı aç */
 table.data tbody tr:first-child .fiyat-pop { bottom: auto; top: calc(100% + 10px); }
 table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--brand-dark); }
 .fiyat-pop .fp-divider { height: 1px; background: rgba(255,255,255,0.18); margin: 2px 0; }
 
-/* Ürün görseli üzerindeki özellik rozetleri (RFT / C Tipi / EV), sağ üst */
 .gorsel-kutu { position: relative; display: inline-block; line-height: 0; }
 .urun-rozetler { position: absolute; top: 3px; right: 3px; display: flex; flex-direction: column; gap: 3px; pointer-events: none; z-index: 2; }
 .urun-rozet { width: 24px; height: 24px; object-fit: contain; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
 
-/* B2B giriş ekranı: dar ekranda tek sütun (sol tanıtım paneli gizlenir) */
 @media (max-width: 860px) {
   .b2b-giris-sol { display: none !important; }
   .b2b-giris-sag { flex: 1 1 100% !important; }
 }
 
-/* B2B giriş sol paneli — artlastik hero yörünge etiketleri (animasyonlu) */
 .b2b-orbit-label {
   position: absolute;
   display: inline-flex; align-items: center; gap: 8px;
@@ -6840,10 +6563,8 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
 @keyframes b2bOrbitIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes b2bOrbitFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 @media (prefers-reduced-motion: reduce) { .b2b-orbit-label { opacity: 1; animation: none; } }
-/* Dar ekranda etiketler gizlenir (sol panel zaten gizli) */
 .b2b-orbit-katman { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 
-/* Kapalı ödeme yöntemi (ör. cari limiti aşıldığında Cari Sipariş) */
 .payment-option.kapali {
   opacity: 0.55;
   cursor: not-allowed;
@@ -6855,7 +6576,6 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
   color: var(--danger);
 }
 
-/* Uyarı tonundaki bildirimde (ör. "önce bayi seçin") çerçeve ve buton uyarı rengini kullanır */
 .alert.warn.account-notice {
   border-color: var(--warn);
 }
@@ -6865,7 +6585,6 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
   color: var(--brand-black);
 }
 
-/* Cari Sipariş yanında vade günü (carinin DIA ödeme planı) */
 .payment-option .po-term {
   display: inline-block;
   margin-left: 8px;
@@ -6879,13 +6598,11 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
   vertical-align: middle;
 }
 
-/* Fiyat kutusunda Cari Sipariş vade günü */
 .fiyat-pop .fp-term {
   opacity: 0.75;
   font-weight: 400;
 }
 
-/* Cari ekstre — satır işlemleri (Fatura İndir + Görüntüle) ve detay modalı butonu */
 .ekstre-row-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; white-space: nowrap; }
 .order-table .order-action:disabled { opacity: 0.6; cursor: wait; }
 .ekstre-modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
@@ -6893,7 +6610,6 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
 .excel-btn { display: inline-flex; align-items: center; gap: 6px; }
 .excel-btn:disabled { opacity: 0.6; cursor: wait; }
 
-/* Vadesi geçen borç uyarısı — sepete ekleme / sipariş denemesinde ekran ortasında açılır */
 .cart-blocked-overlay {
   position: fixed; inset: 0; z-index: 3000;
   background: rgba(17, 24, 39, 0.6);
@@ -6940,9 +6656,7 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
 .cart-blocked-actions a.btn-primary,
 .cart-blocked-actions button.ghost { min-width: 140px; justify-content: center; text-align: center; }
 
-/* Ödeme Yap — "Taksitli" seçiliyken ödeme düğmesinin altında görünen banka taksit tablosu */
 .installment-rates { margin-top: 18px; }
-/* Dar ekranda tablo kendi kutusunda yatay kayar; sayfa taşmaz */
 .installment-rates .tablewrap { overflow-x: auto; }
 .installment-rates-table .bank-name { color: var(--brand-dark); font-weight: 700; }
 .installment-rates-table td { vertical-align: middle; }
@@ -6957,7 +6671,6 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
   margin-inline: 2px;
 }
 
-/* Giriş ekranı duyuru popup'ı (görsel panelden) */
 .login-popup-overlay {
   position: fixed; inset: 0; z-index: 3000;
   background: rgba(17, 24, 39, 0.7);
@@ -6989,9 +6702,6 @@ table.data tbody tr:first-child .fiyat-pop::after { top: auto; bottom: 100%; bor
 .login-popup-close svg { stroke-width: 3; }
 .login-popup-close:hover { background: var(--brand-primary-hover); }
 
-/* ── Mobil menü ──────────────────────────────────────────
- * Üst menü 1100px altında sığmıyor (yana kayıyordu): orada menü gizlenir,
- * sağdaki menü düğmesi yandan açılan mobil menüyü açar. */
 .nav-burger {
   display: none;
   align-items: center;

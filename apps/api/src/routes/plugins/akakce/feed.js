@@ -3,8 +3,6 @@ const router = express.Router();
 const { generateFeed } = require('../../../services/plugins/akakce/AkakceFeedService');
 const { isValidSite } = require('../../../config/sites');
 
-// Akakçe XML çıktısı (30 dk önbellekli; ?refresh=1 ile zorla yenilenir)
-// Site seçimi: ?site=lastikjantavm > X-Site/Host (req.site) > varsayılan
 router.get('/', async (req, res) => {
     try {
         const querySite = (req.query.site || '').toString().trim().toLowerCase();

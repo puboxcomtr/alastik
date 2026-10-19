@@ -1,4 +1,3 @@
-// Etiket sitemap'i (/etiket/<seoUrl>) — aktif ve ürünü olan etiketler, site kapsamlı
 import { getSiteBase, fetchSitemapData, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 
 export const dynamic = 'force-dynamic';

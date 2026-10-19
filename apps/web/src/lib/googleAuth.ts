@@ -1,7 +1,3 @@
-/**
- * Google OAuth Entegrasyonu
- * Google Sign-In API kullanarak kullanıcı kimlik doğrulaması
- */
 import { API_ENDPOINTS } from '@/src/config/api';
 
 interface GoogleUser {
@@ -28,30 +24,23 @@ class GoogleAuthService {
   constructor() {
     this.clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
-    // Client ID kontrolü
     if (!this.clientId) {
       console.warn('⚠️ Google Client ID bulunamadı. Google OAuth devre dışı.');
     }
   }
 
-  /**
-   * Google API'yi başlatır
-   */
   async initialize(): Promise<boolean> {
     if (this.isInitialized) return true;
     if (typeof window === 'undefined') return false;
 
-    // Client ID yoksa initialize etme
     if (!this.clientId) {
       console.warn('⚠️ Google Client ID eksik, OAuth başlatılamıyor');
       return false;
     }
 
     try {
-      // Google API script'ini yükle
       await this.loadGoogleScript();
 
-      // gapi'yi başlat
       await new Promise<void>((resolve, reject) => {
         (window as any).gapi.load('auth2', {
           callback: () => {
@@ -75,9 +64,6 @@ class GoogleAuthService {
     }
   }
 
-  /**
-   * Google script'ini dinamik olarak yükler
-   */
   private loadGoogleScript(): Promise<void> {
     return new Promise((resolve, reject) => {
       if ((window as any).gapi) {
@@ -93,9 +79,6 @@ class GoogleAuthService {
     });
   }
 
-  /**
-   * Google ile giriş yapar
-   */
   async signIn(): Promise<GoogleAuthResponse> {
     try {
       if (!this.isInitialized) {
@@ -113,7 +96,6 @@ class GoogleAuthService {
       const profile = googleUser.getBasicProfile();
       const idToken = googleUser.getAuthResponse().id_token;
 
-      // Backend'e token gönder ve kullanıcı bilgilerini al
       const user: GoogleUser = {
         id: profile.getId(),
         email: profile.getEmail(),
@@ -124,7 +106,6 @@ class GoogleAuthService {
         verified_email: true
       };
 
-      // Backend'e gönderilecek token ve user bilgisi
       const backendResponse = await this.sendToBackend(idToken, user);
 
       if (backendResponse.success) {
@@ -144,9 +125,6 @@ class GoogleAuthService {
     }
   }
 
-  /**
-   * Google'dan çıkış yapar
-   */
   async signOut(): Promise<void> {
     try {
       if (this.isInitialized && this.gapi) {
@@ -158,9 +136,6 @@ class GoogleAuthService {
     }
   }
 
-  /**
-   * Backend'e Google token ve user bilgilerini gönderir
-   */
   private async sendToBackend(idToken: string, user: GoogleUser): Promise<{ success: boolean, error?: string }> {
     try {
       const response = await fetch(API_ENDPOINTS.auth.google(), {
@@ -177,7 +152,6 @@ class GoogleAuthService {
       const data = await response.json();
 
       if (response.ok) {
-        // JWT token'ları localStorage'a kaydet
         if (data.tokens) {
           localStorage.setItem('token', data.tokens.accessToken);
           localStorage.setItem('refreshToken', data.tokens.refreshToken);
@@ -192,9 +166,6 @@ class GoogleAuthService {
     }
   }
 
-  /**
-   * Mevcut kullanıcının giriş durumunu kontrol eder
-   */
   isSignedIn(): boolean {
     if (!this.isInitialized || !this.gapi) return false;
 
@@ -206,9 +177,6 @@ class GoogleAuthService {
     }
   }
 
-  /**
-   * Mevcut kullanıcı bilgilerini döner
-   */
   getCurrentUser(): GoogleUser | null {
     if (!this.isSignedIn()) return null;
 
@@ -233,7 +201,6 @@ class GoogleAuthService {
   }
 }
 
-// Singleton instance
 const googleAuthService = new GoogleAuthService();
 
 export default googleAuthService;

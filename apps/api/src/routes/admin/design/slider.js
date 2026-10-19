@@ -5,12 +5,8 @@ const fs = require('fs').promises;
 const Slider = require('../../../models/admin/design/Slider');
 const MediaService = require('../../../services/web/MediaService');
 
-// Multer upload
 const uploadSlider = MediaService.createUploader('slider', 'images', 10);
 
-/**
- * GET /api/design/slider/key/:key
- */
 router.get('/key/:key', async (req, res) => {
     try {
         const { key } = req.params;
@@ -47,9 +43,6 @@ router.get('/key/:key', async (req, res) => {
     }
 });
 
-/**
- * GET /api/design/slider/:id
- */
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -79,9 +72,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-/**
- * GET /api/design/slider
- */
 router.get('/', async (req, res) => {
     try {
         const sliders = await Slider.find({ site: req.site })
@@ -102,9 +92,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * POST /api/design/slider
- */
 router.post('/', uploadSlider, async (req, res) => {
     try {
         const { name, key, sliders, settings } = req.body;
@@ -179,10 +166,6 @@ router.post('/', uploadSlider, async (req, res) => {
     }
 });
 
-/**
- * PUT /api/design/slider/:id
- * Slider güncelle
- */
 router.put('/:id', uploadSlider, async (req, res) => {
     try {
         const { id } = req.params;
@@ -210,7 +193,6 @@ router.put('/:id', uploadSlider, async (req, res) => {
         });
 
         slider.name = name;
-        // slider.key = DOKUNMA, değiştirme
         slider.sliders = parsedSliders;
         slider.settings = parsedSettings;
 
@@ -231,10 +213,6 @@ router.put('/:id', uploadSlider, async (req, res) => {
     }
 });
 
-/**
- * DELETE /api/design/slider/:id
- * Slider sil
- */
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;

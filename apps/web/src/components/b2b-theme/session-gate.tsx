@@ -1,8 +1,4 @@
 'use client';
-// Bayi paneli oturum kapısı. İki oturum türü:
-//  - Bayi/impersonation (authToken): normal panel.
-//  - Plasiyer (plasiyerToken, henüz bayi seçmemiş): panele girer, bayi seçim modalı açılır.
-// Varsayılan şifre (12345) ile girişte zorunlu şifre değiştirme modalı açılır.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { SpinnerIcon } from '@components/b2b-theme/icons';
@@ -11,9 +7,9 @@ import { PlasiyerBayiSecModal } from '@components/b2b-theme/plasiyer-bayi-sec-mo
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
     const [hazir, setHazir] = useState(false);
-    const [sifreBayi, setSifreBayi] = useState(false);       // bayi zorunlu şifre
-    const [sifrePlasiyer, setSifrePlasiyer] = useState(false); // plasiyer zorunlu şifre
-    const [bayiSec, setBayiSec] = useState(false);           // plasiyer bayi seçim modalı
+    const [sifreBayi, setSifreBayi] = useState(false);
+    const [sifrePlasiyer, setSifrePlasiyer] = useState(false);
+    const [bayiSec, setBayiSec] = useState(false);
 
     useEffect(() => {
         const authToken = localStorage.getItem('authToken');
@@ -24,7 +20,6 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
                 .then(r => r.json())
                 .then(d => {
                     if (d?.success) {
-                        // Şifre belirleme hatırlatması (zorunsuz): bu oturumda "daha sonra" denmediyse göster
                         if (d.data?.mustChangePassword && sessionStorage.getItem('sifreHatirlatma') !== '1') setSifreBayi(true);
                         setHazir(true);
                     } else {
@@ -44,7 +39,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
                     if (d?.success) {
                         const devam = sessionStorage.getItem('plasiyerDevam') === '1';
                         if (d.data?.mustChangePassword) setSifrePlasiyer(true);
-                        else if (!devam) setBayiSec(true); // "plasiyer olarak devam" seçilmediyse bayi seçim modalı
+                        else if (!devam) setBayiSec(true);
                         setHazir(true);
                     } else {
                         localStorage.removeItem('plasiyerToken');

@@ -1,14 +1,11 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Radio from '@mui/material/Radio'
 import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { CustomInputVerticalProps } from './types'
 
 const Root = styled('div', {
@@ -79,10 +76,8 @@ const CheckboxInput = styled(Checkbox, {
 }))
 
 const CustomInputVertical = (props: CustomInputVerticalProps) => {
-  // Props
   const { type, data, name, selected, gridProps, handleChange, color = 'primary' } = props
 
-  // Vars
   const { title, value, content, asset } = data
 
   const renderComponent = () => {

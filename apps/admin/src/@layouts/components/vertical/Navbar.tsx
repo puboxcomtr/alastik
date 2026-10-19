@@ -1,26 +1,19 @@
 'use client'
 
-// MUI Imports
 import { useTheme } from '@mui/material/styles'
 import useScrollTrigger from '@mui/material/useScrollTrigger'
 
-// Third-party Imports
 import classnames from 'classnames'
 import type { CSSObject } from '@emotion/styled'
 
-// Type Imports
 import type { ChildrenType } from '@core/types'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
-// Util Imports
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
 
-// Styled Component Imports
 import StyledHeader from '@layouts/styles/vertical/StyledHeader'
 
 type Props = ChildrenType & {
@@ -28,10 +21,8 @@ type Props = ChildrenType & {
 }
 
 const Navbar = (props: Props) => {
-  // Props
   const { children, overrideStyles } = props
 
-  // Hooks
   const { settings } = useSettings()
   const theme = useTheme()
 
@@ -40,7 +31,6 @@ const Navbar = (props: Props) => {
     disableHysteresis: true
   })
 
-  // Vars
   const { navbarContentWidth } = settings
 
   const headerFixed = themeConfig.navbar.type === 'fixed'

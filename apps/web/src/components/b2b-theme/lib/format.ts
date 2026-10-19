@@ -1,13 +1,4 @@
-/**
- * Biçimlendirme yardımcıları.
- *
- * Tutarlar tam sayı **kuruş** olarak tutulur (1 TL = 100). Kayan noktalı sayı
- * kullanılmaz; para hesabında yuvarlama hatası birikmesin diye bu şablonda da
- * aynı alışkanlık korunmuştur. Gerçek veri kaynağına bağlanırken tutarları
- * kuruş tam sayısı olarak vermek yeterlidir.
- */
 
-// Sembol sonda gösterilir: "987,66₺" (Intl'in "₺987,66" düzeni yerine)
 const TL = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -27,7 +18,6 @@ export function formatDate(d: Date): string {
   });
 }
 
-/** Sadece gün/ay/yıl — vade ve belge tarihlerinde saat gürültü yapıyor. */
 export function formatDay(d: Date | null): string {
   if (!d) return "—";
   return d.toLocaleDateString("tr-TR", {

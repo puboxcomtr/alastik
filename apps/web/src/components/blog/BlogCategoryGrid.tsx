@@ -20,7 +20,6 @@ type CategoryInfo = {
     cardImageRatio?: CardImageRatio;
 };
 
-// Admin > Blog Kategorileri > Kart Görseli ayarının CSS karşılığı (dikey = kampanya afişleri)
 const CARD_IMAGE_ASPECT: Record<CardImageRatio, string> = {
     square: '1 / 1',
     portrait: '2 / 3',
@@ -29,7 +28,6 @@ const CARD_IMAGE_ASPECT: Record<CardImageRatio, string> = {
 
 const defaultImage = '/alastik/assets/img/blog/continental-lastik.jpg';
 
-/** "28 Eylül 2026" biçiminde Türkçe tarih. */
 function formatDate(d?: string): string {
     if (!d) return '';
     try {
@@ -45,7 +43,6 @@ export default function BlogCategoryGrid({ category, blogs }: { category: Catego
     return (
         <Container className="pt-2 pt-lg-3 pb-4 pb-lg-5">
           <div className="row-fluid">
-            {/* Başlık alanı — header/blog-detay ile aynı Row/Col hizası */}
             <Row>
                 <Col lg={12}>
                     <nav aria-label="breadcrumb" className="mb-2">

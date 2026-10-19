@@ -5,14 +5,12 @@ const router = express.Router()
 const MailManagement = require('../../../models/admin/mail/Management')
 const MailGroup = require('../../../models/admin/mail/MailGroup')
 
-// Liste - GET /admin/mail-management
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1
         const limit = parseInt(req.query.limit) || 50
         const skip = (page - 1) * limit
 
-        // Yalnızca seçili sitenin şablonları (X-Site başlığından çözülür)
         const filter = { site: req.site }
 
         if (req.query.search) {
@@ -60,7 +58,6 @@ router.get('/', async (req, res) => {
     }
 })
 
-// Mail Grupları - GET /admin/mail-management/groups
 router.get('/groups', async (req, res) => {
     try {
         const groups = await MailGroup.find({ isActive: true, site: req.site })
@@ -81,7 +78,6 @@ router.get('/groups', async (req, res) => {
     }
 })
 
-// Kullanıcı listesi (alıcı seçimi için) - GET /admin/mail-management/users
 router.get('/users', async (req, res) => {
     try {
         const WebMember = mongoose.model('WebMember')
@@ -105,7 +101,6 @@ router.get('/users', async (req, res) => {
     }
 })
 
-// Detay - GET /admin/mail-management/:id
 router.get('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -139,7 +134,6 @@ router.get('/:id', async (req, res) => {
     }
 })
 
-// Oluştur - POST /admin/mail-management
 router.post('/', async (req, res) => {
     try {
         const { title, subject, body, recipientType, recipientValue, isActive } = req.body
@@ -182,7 +176,6 @@ router.post('/', async (req, res) => {
     }
 })
 
-// Güncelle - PATCH /admin/mail-management/:id
 router.patch('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -233,7 +226,6 @@ router.patch('/:id', async (req, res) => {
     }
 })
 
-// Sil - DELETE /admin/mail-management/:id
 router.delete('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {

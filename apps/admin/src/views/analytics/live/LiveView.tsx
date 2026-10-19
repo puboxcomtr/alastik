@@ -1,12 +1,9 @@
 'use client'
 
-// React Imports
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-// Next Imports
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -15,19 +12,15 @@ import Grid from '@mui/material/Grid2'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 import CustomerBehaviorCard from './CustomerBehaviorCard'
 import RecentSalesCard from './RecentSalesCard'
 import VisitorLocationsCard from './VisitorLocationsCard'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 import type { LiveAnalyticsData } from './types'
 import { formatCount, formatTRY } from './types'
@@ -45,7 +38,6 @@ const resolveUpdatedAt = (data: LiveAnalyticsData | null): Date | null => {
     return Number.isNaN(date.getTime()) ? null : date
 }
 
-// Küçük istatistik kartı (ikon + başlık + değer)
 const SmallStatCard = ({
     title,
     value,
@@ -119,7 +111,6 @@ const LiveView = () => {
         fetchLive()
 
         intervalRef.current = setInterval(() => {
-            // Sekme görünmezken ağ isteği yapma
             if (typeof document !== 'undefined' && document.hidden) return
 
             fetchLive()
@@ -172,7 +163,6 @@ const LiveView = () => {
                 </div>
             </Grid>
 
-            {/* Sol sütun */}
             <Grid size={{ xs: 12, md: 5 }}>
                 <Grid container spacing={6}>
                     <Grid size={{ xs: 12 }}>
@@ -226,7 +216,6 @@ const LiveView = () => {
                 </Grid>
             </Grid>
 
-            {/* Sağ sütun */}
             <Grid size={{ xs: 12, md: 7 }}>
                 <VisitorLocationsCard
                     locations={data.visitorLocations}

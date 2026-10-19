@@ -1,8 +1,5 @@
 'use client'
 
-// Ürün Butonları — her ürün için butonlara tıklanarak o ürüne özel açılıp kapatılır.
-// Buton tanımları ve ürün başına açık butonlar API'den gelir (site bazlı); seçili ürünlere
-// toplu açma/kapama yapılabilir. Değişiklik anında kaydedilir.
 import { Suspense, useCallback, useEffect, useState } from 'react'
 
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -34,13 +31,11 @@ import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 type ButtonDef = { key: string; label: string; isActive: boolean }
 type ProductRow = { key: string; name: string; stockCode: string; brand: string; stock: number; image: string; buttons: string[] }
 
-// Filtreler — alanlar ve seçenek kaynakları Ürünler listesindeki filtrelerle aynıdır
 type Filters = { brand: string; season: string; main_category: string; sub_category: string; stock_source: string; stock_min: string; stock_max: string }
 type FilterOptions = { brands: string[]; seasons: string[]; mainCategories: string[] }
 
 const EMPTY_FILTERS: Filters = { brand: '', season: '', main_category: '', sub_category: '', stock_source: '', stock_min: '', stock_max: '' }
 
-// Stok kaynağı: kendi depomuzdaki ürünler / tedarikçi XML ürünleri
 const STOCK_SOURCES = [
     { value: 'own', label: 'Stoktaki Ürünler' },
     { value: 'xml', label: 'XML Ürünleri' }
@@ -58,7 +53,6 @@ const ProductButtonsList = () => {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // Sayfa adreste tutulur (?page=2)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
 
     const [definitions, setDefinitions] = useState<ButtonDef[]>([])
@@ -70,13 +64,11 @@ const ProductButtonsList = () => {
     const [search, setSearch] = useState('')
     const [selected, setSelected] = useState<string[]>([])
 
-    // Filtre paneli: taslak değerler "Filtrele" ile uygulanır
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS)
     const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
     const [options, setOptions] = useState<FilterOptions>({ brands: [], seasons: [], mainCategories: [] })
     const [subCategories, setSubCategories] = useState<string[]>([])
-    // Kaydı süren buton: "<ürün>:<buton>" (tek) veya "bulk:<buton>" (toplu)
     const [pending, setPending] = useState<string | null>(null)
 
     const setPage = useCallback((next: number) => {
@@ -86,23 +78,20 @@ const ProductButtonsList = () => {
         router.push(`${pathname}?${query.toString()}`, { scroll: false })
     }, [router, pathname, searchParams])
 
-    // Buton tanımları (yalnız aktif olanlar listelenir)
     useEffect(() => {
         fetchAPI(API_ENDPOINTS.productButtons.definitions(), { cache: 'no-store' })
             .then(res => setDefinitions((res.data || []).filter((d: ButtonDef) => d.isActive)))
             .catch(error => toast.error(errorMessage(error, 'Ürün butonları yüklenemedi')))
     }, [])
 
-    // Filtre seçenekleri (marka, mevsim, ana kategori)
     useEffect(() => {
         fetchAPI(API_ENDPOINTS.filters.productOptions())
             .then(res => {
                 if (res.success) setOptions({ brands: res.data.brands || [], seasons: res.data.seasons || [], mainCategories: res.data.mainCategories || [] })
             })
-            .catch(() => { /* seçenekler yüklenemezse filtreler boş kalır, liste çalışmaya devam eder */ })
+            .catch(() => {  })
     }, [])
 
-    // Alt kategoriler seçilen ana kategoriye göre yüklenir
     useEffect(() => {
         if (!draft.main_category) {
             setSubCategories([])
@@ -121,7 +110,6 @@ const ProductButtonsList = () => {
 
     const changeDraft = (field: keyof Filters) => (e: { target: { value: string } }) => setDraftValue(field, e.target.value)
 
-    // Yazarak aranabilen seçim alanı (boş = Tümü)
     const renderAutocomplete = (field: keyof Filters, label: string, choices: string[], disabled = false) => (
         <Autocomplete
             size='small'
@@ -149,7 +137,6 @@ const ProductButtonsList = () => {
 
     const activeFilterCount = Object.values(filters).filter(v => v.trim() !== '').length
 
-    // Arama: yazarken kısa bir bekleme sonrası uygulanır
     useEffect(() => {
         if (searchInput.trim() === search) return
 
@@ -197,7 +184,6 @@ const ProductButtonsList = () => {
         }))
     }
 
-    // Tek üründe butonu aç/kapat
     const toggle = async (row: ProductRow, button: string) => {
         const active = !row.buttons.includes(button)
 
@@ -213,7 +199,6 @@ const ProductButtonsList = () => {
         }
     }
 
-    // Seçili ürünlerde toplu: hepsinde açıksa kapatır, değilse hepsinde açar
     const bulkToggle = async (button: string) => {
         const allActive = rows.filter(r => selected.includes(r.key)).every(r => r.buttons.includes(button))
         const active = !allActive
@@ -492,7 +477,6 @@ const ProductButtonsList = () => {
     )
 }
 
-// useSearchParams kullanan liste Suspense içinde olmalıdır
 const ProductButtonsView = () => (
     <Suspense>
         <ProductButtonsList />

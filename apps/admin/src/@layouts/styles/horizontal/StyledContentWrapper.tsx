@@ -1,9 +1,7 @@
 'use client'
 
-// Third-party Imports
 import styled from '@emotion/styled'
 
-// Util Imports
 import { commonLayoutClasses, horizontalLayoutClasses } from '@layouts/utils/layoutClasses'
 
 const StyledContentWrapper = styled.div`

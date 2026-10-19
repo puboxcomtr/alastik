@@ -13,17 +13,12 @@ const { loadMontagePrices } = require('../../../utils/montagePricing');
 const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 const { withDiaLock } = require('../../../services/plugins/dia/diaLock');
 
-/**
- * Sepet ürünleri için backend'de items + pricing hesapla
- * Her ürün DB'den çekilir, gerçek webPrice ve shippingPerUnit ayrı kaydedilir
- */
 const calculateOrderPricing = async (cartItems, site) => {
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
         throw new Error('Sepet boş');
     }
 
     const keys = cartItems.map(i => String(i.productKey));
-    // Site filtresi: yalnız bu sitede satılan ürünler siparişe girer (siteler arası sızmayı engeller)
     const products = await WebProduct.find(
         { _key: { $in: keys }, sites: site },
         {
@@ -35,16 +30,13 @@ const calculateOrderPricing = async (cartItems, site) => {
             'diaData.birimindirimorani': 1,
             'customData.webPrice': 1,
             'customData.shippingPerUnit': 1,
-            // Site bazlı XML fiyatı ve kargo payı (siteData.<site>.xmlPrice/shippingPerUnit)
             'customData.siteData': 1,
             'syncInfo.syncSource': 1,
-            // Kural tabanlı kargo payı için (ürün/marka/kategori/ebat/desi eşleşmesi)
             'diaData.marka': 1,
             'diaData.anabirimdesi': 1,
             'diaData.ozelkod7kodu': 1,
             'diaData.m_kategoriler': 1,
             'diaData.m_urunOzellikleri': 1,
-            // Kritik stok kontrolü için gerçek stok
             'diaData.gercek_stok': 1
         }
     ).lean();
@@ -54,30 +46,17 @@ const calculateOrderPricing = async (cartItems, site) => {
         productMap[p._key] = p;
     }
 
-    // Kritik stok kontrolü ayarı (site bazlı). Kapalıysa ekstra sorgu yapılmaz.
-    // Amaç: stoğu olmayan ürünün satılmasını (oversell) engellemek. İki katmanlı:
-    //   1) CANLI DIA stoğu (webStokDepolari = MASLAK+MERKEZ) sipariş anında çekilir
-    //      → kesin. Böylece senkron bayat kalsa bile stoksuz ürün satılamaz.
-    //   2) Canlı DIA erişilemezse (oturum çakışması/boş yanıt) DB stoğuna düşülür,
-    //      ancak yalnız esik ve altı stoklu üründe blok — dolu stoğu OLAN ürün
-    //      canlı okuma yapılamadı diye HAKSIZ bloklanmaz (satış baltalanmasın).
-    // XML ürünler stok kontrolünden hariçtir (stokları tedarikçi tarafında).
     const diaSet = await WebDia.getSettings(site).catch(() => null);
     const kritikAktif = !!diaSet?.kritikStok?.kontrolAktif;
     const kritikEsik = Number(diaSet?.kritikStok?.esik) || 5;
-    // Açık siparişin stok ayırdığı süre (gün) — ayar: kritikStok.rezervasyonGun (şema varsayılanı)
     const rezervasyonGun = Number(diaSet?.kritikStok?.rezervasyonGun) > 0
         ? Number(diaSet.kritikStok.rezervasyonGun)
         : WebDia.schema.path('kritikStok.rezervasyonGun').defaultValue;
 
-    // Stok kontrolüne dahil (kendi stok / non-XML, stokkartkodu olan) ürünler
     const stokKontrolUrunler = kritikAktif
         ? products.filter(p => p.syncInfo?.syncSource !== 'xml_integration' && p.diaData?.stokkartkodu)
         : [];
 
-    // Sipariş anında CANLI DIA stoğu (worker ile aynı WS kullanıcısı → diaLock ile
-    // seri; kilit kısa süre beklenir, alınamazsa best-effort çalışır/boş dönerse
-    // DB'ye düşülür → checkout bloklanmaz). null = canlı okuma başarısız.
     let liveStokMap = null;
     if (stokKontrolUrunler.length) {
         const codes = [...new Set(stokKontrolUrunler.map(p => String(p.diaData.stokkartkodu)))];
@@ -87,17 +66,10 @@ const calculateOrderPricing = async (cartItems, site) => {
                 { label: 'order-live-stock', waitMs: 6000, ttlMs: 30000 }
             );
         } catch (e) {
-            liveStokMap = null; // canlı okuma başarısız → DB yedeğine düş
+            liveStokMap = null;
         }
     }
 
-    // İlgili ürünlerin açık (henüz depodan ÇIKMAMIŞ) sipariş adetleri.
-    // Kullanılabilir = stok − açık siparişler; web siparişleri DIA'da yalnız sipariş
-    // (fiziksel stok hareketi değil) olduğu için gercek_stok'a yansımaz, düşülmeli.
-    // 'shipped' (Kargoya Verildi) DAHİL DEĞİLDİR: kargoya verilen ürünün irsaliyesi kesilmiş,
-    // stoktan zaten düşmüştür — sayılırsa aynı adet iki kez düşülür ve "Teslim Edildi"ye
-    // çekilmeyen eski siparişler stoğu olan ürünün satışını kilitler.
-    // Rezervasyon süresinden (kritikStok.rezervasyonGun) eski açık siparişler de sayılmaz.
     const acikSiparisMap = {};
     if (stokKontrolUrunler.length) {
         const kontrolKeys = stokKontrolUrunler.map(p => p._key);
@@ -107,7 +79,6 @@ const calculateOrderPricing = async (cartItems, site) => {
                     site,
                     isActive: true,
                     status: { $in: ['pending', 'confirmed', 'processing'] },
-                    // Yalnız rezervasyon süresi içindeki siparişler stok ayırır (bayat kayıtlar hariç)
                     createdAt: { $gte: new Date(Date.now() - rezervasyonGun * 24 * 60 * 60 * 1000) }
                 }
             },
@@ -118,7 +89,6 @@ const calculateOrderPricing = async (cartItems, site) => {
         for (const a of acik) acikSiparisMap[a._id] = a.toplam;
     }
 
-    // Montaj noktasına bağlı hizmetlerde noktaya özel fiyat (0 = ücretsiz) geçerlidir
     const montagePrices = await loadMontagePrices(cartItems, site);
 
     const items = [];
@@ -129,28 +99,22 @@ const calculateOrderPricing = async (cartItems, site) => {
     for (const cartItem of cartItems) {
         const product = productMap[String(cartItem.productKey)];
         if (!product) {
-            // Ürün bu sitede satılmıyor veya katalogdan kalkmış: kalem siparişe alınmaz
             console.warn(`[Sipariş] Kalem atlandı — ürün ${cartItem.productKey} ${site} sitesinde bulunamadı`);
             continue;
         }
 
         const quantity = parseInt(cartItem.quantity) || 1;
 
-        // Stok kontrolü (yalnız kendi stok / non-XML ürünlerde). Kullanılabilir =
-        // stok − açık siparişler. İstenen adet karşılanmıyorsa kalem çıkarılır.
-        //   • Canlı DIA okundu → o stoğu kullan (kesin), her zaman kontrol et.
-        //   • Canlı okunamadı → DB stoğuna düş, yalnız esik ve altı stokta blok
-        //     (dolu stoklu ürünü haksız bloklamamak için — satış baltalanmasın).
         const stokKod = product.diaData?.stokkartkodu;
         const isXmlStok = product.syncInfo?.syncSource === 'xml_integration';
         if (kritikAktif && !isXmlStok && stokKod) {
             const liveStok = liveStokMap ? liveStokMap[String(stokKod)] : undefined;
             let stok, kontrolEt;
             if (liveStok !== undefined) {
-                stok = liveStok; kontrolEt = true;               // canlı: kesin
+                stok = liveStok; kontrolEt = true;
             } else {
-                stok = Number(product.diaData?.gercek_stok || 0); // DB yedeği
-                kontrolEt = stok <= kritikEsik;                   // yalnız düşük stok
+                stok = Number(product.diaData?.gercek_stok || 0);
+                kontrolEt = stok <= kritikEsik;
             }
             if (kontrolEt) {
                 const kullanilabilir = stok - (acikSiparisMap[product._key] || 0);
@@ -170,11 +134,7 @@ const calculateOrderPricing = async (cartItems, site) => {
         const montagePointId = String(cartItem.montagePointId || '');
         const montagePrice = montagePrices.get(`${montagePointId}:${cartItem.productKey}`);
 
-        // Kargosuz birim fiyat
-        // Site fiyat kuralı önceliklidir (XML üründe siteData.<site>.xmlPrice, panel kuralı);
-        // yoksa webPrice > fiyat4 (global webPrice sahip sitenin fiyatıdır, sitePrice varken kullanılmaz)
         const sitePrice = resolveSitePrice(product, site);
-        // Fiyat gizli (__dinamik__16 seçili + dinamik yok): sipariş dışı bırakılır (sepete de eklenemez)
         if (sitePrice === PRICE_HIDDEN && typeof montagePrice !== 'number') {
             cikarilanlar.push({
                 productKey: product._key,
@@ -191,7 +151,6 @@ const calculateOrderPricing = async (cartItems, site) => {
                 ? sitePrice
                 : (product.customData?.webPrice || product.diaData?.m_birimler?.[0]?.fiyat4 || 0));
 
-        // Kargo payı: XML ürünlerde senkronda yazılan site bazlı sabit değer; stoklu ürünlerde Kargo Tanımları kuralları
         const ruleShipping = isXml ? null : resolveUnitShipping(product, site, unitPrice);
         const shippingPerUnit = isXml
             ? (resolveXmlShipping(product, site)?.shippingPerUnit || 0)
@@ -231,7 +190,6 @@ const calculateOrderPricing = async (cartItems, site) => {
     return { items, pricing, cikarilanlar };
 };
 
-// POST - Yeni sipariş oluştur
 router.post('/', async (req, res) => {
     try {
         const {
@@ -250,11 +208,8 @@ router.post('/', async (req, res) => {
             cartSessionId
         } = req.body;
 
-        // Backend'de items ve pricing hesapla (frontend'den gelene güvenme)
         const { items, pricing, cikarilanlar } = await calculateOrderPricing(rawItems, req.site);
 
-        // Kritik stok koruması: tüm kalemler stok yetersizliğinden çıkarıldıysa
-        // sipariş oluşturulmaz; kısmî çıkarma varsa sipariş devam eder, uyarı döner.
         if (items.length === 0) {
             return res.status(409).json({
                 success: false,
@@ -263,16 +218,13 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Sipariş numarası oluştur (önek siteye göre: AL / LJA)
         const orderNumber = await WebOrder.generateOrderNumber(req.site);
 
-        // Snapshot'ları hazırla
         let billingSnapshot = null;
         let shippingSnapshot = null;
         let memberSnapshot = null;
 
         if (isGuest) {
-            // Misafir sipariş - guestBillingAddress'den snapshot oluştur
             if (guestBillingAddress) {
                 billingSnapshot = {
                     addressName: 'Misafir Fatura Adresi',
@@ -298,7 +250,6 @@ router.post('/', async (req, res) => {
                     addressNote: guestBillingAddress.addressNote
                 };
 
-                // Misafir için memberSnapshot (fatura bilgilerinden)
                 const guestName = guestBillingAddress.invoiceType === 'corporate'
                     ? guestBillingAddress.authorizedPerson
                     : guestBillingAddress.fullName;
@@ -311,7 +262,6 @@ router.post('/', async (req, res) => {
                 };
             }
 
-            // Misafir teslimat adresi
             if (guestShippingAddress) {
                 const shippingName = guestShippingAddress.recipientName
                     || guestShippingAddress.fullName
@@ -341,11 +291,9 @@ router.post('/', async (req, res) => {
                     addressNote: guestShippingAddress.addressNote
                 };
             } else {
-                // Teslimat adresi aynı ise fatura adresini kullan
                 shippingSnapshot = billingSnapshot;
             }
         } else {
-            // Üye bilgilerini al
             if (memberId) {
                 const member = await WebMember.findById(memberId);
                 if (member) {
@@ -358,7 +306,6 @@ router.post('/', async (req, res) => {
                 }
             }
 
-            // Fatura adresini al
             if (billingAddressId) {
                 const billingAddr = await WebAddress.findById(billingAddressId);
                 if (billingAddr) {
@@ -388,7 +335,6 @@ router.post('/', async (req, res) => {
                 }
             }
 
-            // Teslimat adresini al
             if (shippingAddressId) {
                 const shippingAddr = await WebAddress.findById(shippingAddressId);
                 if (shippingAddr) {
@@ -419,7 +365,6 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Sipariş oluştur
         const order = new WebOrder({
             site: req.site,
             orderNumber,
@@ -444,7 +389,6 @@ router.post('/', async (req, res) => {
                     referenceCode: orderNumber
                 } : null
             },
-            // Kartlı sipariş banka dönüşüne kadar "Ödeme Bekleniyor"; dönüş gelmezse zaman aşımında "Ödeme Başarısız" olur (awaitingPaymentTimeout)
             status: paymentMethod === 'credit_card' ? 'awaiting_payment' : 'pending',
             customerNote,
             cartSessionId: typeof cartSessionId === 'string' ? cartSessionId.trim().slice(0, 100) : undefined,
@@ -455,22 +399,15 @@ router.post('/', async (req, res) => {
 
         await order.save();
 
-        // Kartsız ödemede (havale, kapıda ödeme) sipariş bu anda kesinleşir → sepet hemen silinir.
-        // Kartlı ödemede sepet banka sonucuyla (ödeme uçlarında) silinir.
         if (paymentMethod !== 'credit_card') await clearOrderCart(order, 'order-created');
 
-        // Mail gönderim koşulu:
-        // - Havale (bank_transfer) ve kapıda ödeme: hemen mail gönder
-        // - Kart (3D ödeme): commit endpoint'inden tetiklenecek (burada gönderme)
         const shouldSendMailNow = ['bank_transfer', 'cash_on_delivery'].includes(paymentMethod);
 
         if (shouldSendMailNow) {
-            // Müşteri mail adresini belirle
             const customerMail = isGuest
                 ? (guestBillingAddress?.email || customerEmail)
                 : (memberSnapshot?.email || customerEmail);
 
-            // Senkron + try/catch — mail patlasa sipariş etkilenmez
             sendTemplateMail({
                 templateKey: isGuest ? 'uyeliksiz_alisveris_sablonu' : 'siparis_sablonu',
                 context: { orderId: order._id.toString() },
@@ -496,7 +433,6 @@ router.post('/', async (req, res) => {
             success: true,
             data: order,
             message: 'Sipariş başarıyla oluşturuldu',
-            // Kritik stok nedeniyle çıkarılan kalemler (varsa) — frontend uyarı gösterir
             ...(cikarilanlar && cikarilanlar.length ? { cikarilanlar } : {})
         });
 
@@ -506,7 +442,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET - Kullanıcı siparişleri
 router.get('/user/:userId', async (req, res) => {
     try {
         const orders = await WebOrder.find({
@@ -515,7 +450,6 @@ router.get('/user/:userId', async (req, res) => {
             isActive: true
         }).sort({ createdAt: -1 }).lean();
 
-        // Tüm productKey'leri topla
         const allKeys = [];
         orders.forEach(order => {
             order.items.forEach(item => {
@@ -525,13 +459,11 @@ router.get('/user/:userId', async (req, res) => {
             });
         });
 
-        // Tek sorguda tüm ürünleri çek
         const products = await WebProduct.find(
             { _key: { $in: allKeys } },
             { _key: 1, 'diaData.m_resimler': 1, 'customData.featuredImage': 1, 'customData.customImages': 1 }
         ).lean();
 
-        // Key → görsel map
         const imageMap = {};
         products.forEach(p => {
             let image = null;
@@ -555,7 +487,6 @@ router.get('/user/:userId', async (req, res) => {
             imageMap[p._key] = image;
         });
 
-        // Siparişlere görsel ekle
         orders.forEach(order => {
             order.items.forEach(item => {
                 item.image = imageMap[item.productKey] || null;
@@ -568,7 +499,6 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
-// GET - Tek sipariş detayı
 router.get('/:id', async (req, res) => {
     try {
         const order = await WebOrder.findById(req.params.id)
@@ -581,7 +511,6 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
         }
 
-        // Ürün görsellerini çek
         const productKeys = order.items
             .filter(item => item.productKey)
             .map(item => item.productKey);
@@ -620,7 +549,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// GET - Sipariş numarası ile sorgula
 router.get('/number/:orderNumber', async (req, res) => {
     try {
         const order = await WebOrder.findOne({ orderNumber: req.params.orderNumber })
@@ -638,7 +566,6 @@ router.get('/number/:orderNumber', async (req, res) => {
     }
 });
 
-// PUT - Sipariş durumu güncelle
 router.put('/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
@@ -659,7 +586,6 @@ router.put('/:id/status', async (req, res) => {
     }
 });
 
-// PUT - Ödeme durumu güncelle (havale onayı için)
 router.put('/:id/payment', async (req, res) => {
     try {
         const { paymentStatus, approvedBy } = req.body;
@@ -685,7 +611,6 @@ router.put('/:id/payment', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
         }
 
-        // Havale onaylandıysa müşteriye + admine bilgilendirme maili
         if (paymentStatus === 'paid') {
             const customerMail = order.isGuest
                 ? (order.guestBillingAddress?.email || order.customerEmail)

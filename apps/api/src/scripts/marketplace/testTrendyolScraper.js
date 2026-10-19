@@ -1,6 +1,3 @@
-// Trendyol Mağaza Scraper Test Scripti
-// Çalıştırma: node apps/api/src/scripts/testTrendyolScraper.js
-// Veya görsel olarak: HEADLESS=false node apps/api/src/scripts/testTrendyolScraper.js
 
 const { chromium } = require('playwright-extra');
 const stealth = require('puppeteer-extra-plugin-stealth')();

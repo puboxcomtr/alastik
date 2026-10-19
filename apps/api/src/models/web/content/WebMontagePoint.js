@@ -1,9 +1,7 @@
 const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
-// Montaj noktası: lastik alan müşteriye montaj hizmeti verilen bayi/servis noktası
 const webMontagePointSchema = new mongoose.Schema({
-    // Her site kendi montaj noktalarını yönetir
     site: {
         type: String,
         enum: Object.keys(SITES),
@@ -16,7 +14,6 @@ const webMontagePointSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    // İl/ilçe adres veritabanından seçilir (address_cities / address_districts)
     city: {
         type: String,
         required: true,
@@ -46,13 +43,11 @@ const webMontagePointSchema = new mongoose.Schema({
         default: '',
         trim: true
     },
-    // Eski serbest metin alanı (geriye dönük uyumluluk)
     workingHours: {
         type: String,
         default: '',
         trim: true
     },
-    // Gün bazlı çalışma saatleri (HH:MM); open/close boşsa o gün kapalıdır
     workingSchedule: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
         .reduce((acc, day) => {
             acc[day] = {
@@ -61,8 +56,6 @@ const webMontagePointSchema = new mongoose.Schema({
             };
             return acc;
         }, {}),
-    // Alınabilecek hizmetler — Hizmetlerimiz kategorisindeki ürünlerden seçilir
-    // price null ise ürünün varsayılan fiyatı (defaultPrice) geçerlidir
     services: {
         type: [{
             _id: false,
@@ -74,18 +67,15 @@ const webMontagePointSchema = new mongoose.Schema({
         }],
         default: []
     },
-    // Olanaklar (anahtar olarak saklanır, etiketler arayüzde)
     amenities: {
         type: [String],
         enum: ['wc', 'waiting_room', 'wifi', 'air_conditioning', 'refreshments', 'oil_change', 'headlight_check'],
         default: []
     },
-    // Görsel
     image: {
         type: String,
         default: ''
     },
-    // Sözleşme ve diğer evraklar (bayi ile yapılan anlaşma dosyaları)
     documents: {
         type: [{
             _id: false,
@@ -96,26 +86,20 @@ const webMontagePointSchema = new mongoose.Schema({
         }],
         default: []
     },
-    // Yorumlar — panelden eklenenlerde üye "sistem" olarak geçer
     reviews: {
         type: [{
             memberName: { type: String, default: 'sistem', trim: true },
             comment: { type: String, default: '', trim: true },
-            // Montaj Sürecinden Memnun musunuz? (1-5)
             processRating: { type: Number, min: 1, max: 5, default: 5 },
-            // Montaj Noktasından Memnun musunuz? (1-5)
             locationRating: { type: Number, min: 1, max: 5, default: 5 },
             createdAt: { type: Date, default: Date.now }
         }],
         default: []
     },
-    // Harita konumu (ileride vitrin haritası için)
     location: {
         lat: { type: Number, default: null },
         lng: { type: Number, default: null }
     },
-    // Vitrinde kimlik bilgileri (ad, adres, telefon, görsel, tam konum) gösterilsin mi?
-    // Kapalıysa nokta satın alma öncesi "Anlaşmalı Nokta" olarak anonim görünür
     showPublicInfo: {
         type: Boolean,
         default: false

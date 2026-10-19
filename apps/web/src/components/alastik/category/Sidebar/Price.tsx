@@ -8,7 +8,6 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 interface PriceProps {
-  // Fiyat aralığı hesaplanamayan kategorilerde null gelir (filtre gizlenir)
   priceRange?: {
     min: number;
     max: number;
@@ -23,7 +22,6 @@ export default function Price({ priceRange }: PriceProps) {
   const minPrice = priceRange?.min || 0;
   const maxPrice = priceRange?.max || 50000;
 
-  // URL'den mevcut değerleri al
   const urlMin = searchParams.get('fiyatMin');
   const urlMax = searchParams.get('fiyatMax');
 
@@ -32,7 +30,6 @@ export default function Price({ priceRange }: PriceProps) {
     urlMax ? parseInt(urlMax) : maxPrice
   ]);
 
-  // priceRange değiştiğinde güncelle
   useEffect(() => {
     if (!urlMin && !urlMax && priceRange) {
       setValues([priceRange.min, priceRange.max]);
@@ -47,7 +44,6 @@ export default function Price({ priceRange }: PriceProps) {
     const [min, max] = newValue as number[];
     const params = new URLSearchParams(searchParams.toString());
 
-    // Sadece varsayılandan farklıysa URL'e ekle
     if (min > minPrice) {
       params.set('fiyatMin', min.toString());
     } else {
@@ -60,14 +56,12 @@ export default function Price({ priceRange }: PriceProps) {
       params.delete('fiyatMax');
     }
 
-    // Sayfa parametresini sıfırla
     params.delete('sayfa');
 
     const queryString = params.toString();
     router.push(queryString ? `${pathname}?${queryString}` : pathname);
   };
 
-  // Fiyat aralığı yoksa gösterme
   if (!priceRange || maxPrice <= minPrice) {
     return null;
   }

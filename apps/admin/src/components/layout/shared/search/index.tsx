@@ -1,40 +1,30 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
-// Next Imports
 import { useParams, useRouter, usePathname } from 'next/navigation'
 
-// MUI Imports
 import IconButton from '@mui/material/IconButton'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from 'cmdk'
 import { Title, Description } from '@radix-ui/react-dialog'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Component Imports
 import DefaultSuggestions from './DefaultSuggestions'
 import NoResult from './NoResult'
 
-// Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 import { useSettings } from '@core/hooks/useSettings'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
-// Style Imports
 import './styles.css'
 
-// Data Imports
 import data from '@/data/searchData'
 
 type Item = {
@@ -60,7 +50,6 @@ type SearchItemProps = {
   onSelect?: () => void
 }
 
-// Transform the data to group items by their sections
 const transformedData = data.reduce((acc: Section[], item) => {
   const existingSection = acc.find(section => section.title === item.section)
 
@@ -82,7 +71,6 @@ const transformedData = data.reduce((acc: Section[], item) => {
   return acc
 }, [])
 
-// SearchItem Component for introduce the shortcut keys
 const SearchItem = ({ children, shortcut, value, currentPath, url, onSelect = () => {} }: SearchItemProps) => {
   return (
     <CommandItem
@@ -104,7 +92,6 @@ const SearchItem = ({ children, shortcut, value, currentPath, url, onSelect = ()
   )
 }
 
-// Helper function to filter and limit results per section based on the number of sections
 const getFilteredResults = (sections: Section[]) => {
   const limit = sections.length > 1 ? 3 : 5
 
@@ -114,7 +101,6 @@ const getFilteredResults = (sections: Section[]) => {
   }))
 }
 
-// Footer component for the search menu
 const CommandFooter = () => {
   return (
     <div cmdk-footer=''>
@@ -142,11 +128,9 @@ const CommandFooter = () => {
 }
 
 const NavSearch = () => {
-  // States
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
-  // Hooks
   const router = useRouter()
   const pathName = usePathname()
   const { settings } = useSettings()
@@ -154,7 +138,6 @@ const NavSearch = () => {
   const { isBreakpointReached } = useVerticalNav()
   const isAboveMdScreen = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
 
-  // When an item is selected from the search results
   const onSearchItemSelect = (item: Item) => {
     item.url.startsWith('http')
       ? window.open(item.url, '_blank')
@@ -162,7 +145,6 @@ const NavSearch = () => {
     setOpen(false)
   }
 
-  // Filter the data based on the search query
   const filteredData = (sections: Section[], query: string) => {
     const searchQuery = query.trim().toLowerCase()
 
@@ -191,7 +173,6 @@ const NavSearch = () => {
 
   const limitedData = getFilteredResults(filteredData(transformedData, searchValue))
 
-  // Toggle the menu when ⌘K is pressed
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -205,7 +186,6 @@ const NavSearch = () => {
     return () => document.removeEventListener('keydown', down)
   }, [])
 
-  // Reset the search value when the menu is closed
   useEffect(() => {
     if (!open && searchValue !== '') {
       setSearchValue('')

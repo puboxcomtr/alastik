@@ -1,6 +1,5 @@
 'use client';
 
-// Montaj noktaları sayfası alt şeridi: solda sepet tutarı, sağda "Montaj Almadan Sepete Devam Et"
 import Link from 'next/link';
 import { Container } from 'react-bootstrap';
 import { useCart } from '@/src/context/CartContext';
@@ -16,7 +15,6 @@ export default function MontageStickyBar() {
 
     return (
         <>
-        {/* Fixed bar akıştan çıktığı için içeriğin altında eşit boşluk bırakılır */}
         <div style={{ height: 72 }} aria-hidden="true" />
         <div className="lja-montage-bar">
             <Container className="d-flex align-items-center justify-content-between gap-3 py-2">

@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { DEFAULT_SITE, SITES } = require('../../../config/sites');
 
 const xmlPricingRuleSchema = new mongoose.Schema({
-    // Kuralın ait olduğu site — fiyat kuralları site bazlı ayrıdır
     site: {
         type: String,
         enum: Object.keys(SITES),

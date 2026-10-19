@@ -1,8 +1,5 @@
 'use client';
 
-// Anlaşmalı nokta detayı: kimlik bilgisi varsayılan olarak GÖSTERİLMEZ (ad/adres/telefon/harita yok) —
-// hizmet satın alınmadan yalnız bölge, olanaklar, saatler, hizmetler ve yorumlar görünür.
-// Panelde "Bilgileri Gözüksün" açık noktalarda (isPublicInfo) ad, adres ve telefon gösterilir.
 import React from 'react';
 import Link from 'next/link';
 import { Col, Container, Row } from 'react-bootstrap';
@@ -13,7 +10,7 @@ const DARK = '#313131';
 
 export default function MontageDetail({ point }: { point: MontagePoint }) {
     const status = todayStatus(point);
-    const todayIndex = (new Date().getDay() + 6) % 7; // Pazartesi=0
+    const todayIndex = (new Date().getDay() + 6) % 7;
 
     return (
         <section id="montage__detail" className="py-4">
@@ -25,7 +22,6 @@ export default function MontageDetail({ point }: { point: MontagePoint }) {
                 </nav>
 
                 <Row className="g-4">
-                    {/* Sol: kimliksiz özet + olanaklar + saatler */}
                     <Col lg={5}>
                         <div className="card border-0 shadow-sm rounded-3 p-4 mb-4">
                             <div className="d-flex justify-content-between align-items-start">
@@ -102,7 +98,6 @@ export default function MontageDetail({ point }: { point: MontagePoint }) {
                         </div>
                     </Col>
 
-                    {/* Sağ: hizmetler + yorumlar */}
                     <Col lg={7}>
                         <div className="card border-0 shadow-sm rounded-3 p-4 mb-4">
                             <h2 className="fs-5 fw-bold mb-2" style={{ color: '#e58a00' }}>Bu Noktadan Alabileceğiniz Hizmetler</h2>

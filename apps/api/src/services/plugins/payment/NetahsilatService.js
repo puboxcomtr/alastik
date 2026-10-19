@@ -1,22 +1,14 @@
-/**
- * Netahsilat SOAP Service
- * Taksitli kredi karti odemeleri icin
- */
 
 const soap = require('soap');
 const { redact } = require('../../../utils/logRedact');
 
 const WSDL_URL = 'https://otopirpossv2.netahsilatservice.com/VendorPayment/VendorPaymentService.svc?wsdl';
-// Üye işyeri kimlik bilgileri ÖNCE panelden (PaymentMethod, site bazlı) okunur;
-// panelde tanımlı değilse env'e düşer (geçiş güvenliği). Tüm siteler aynı
-// hesabı kullanabilir; her siteye ayrı hesap girilirse o kullanılır.
 const ENV_AUTH = {
     UserName: process.env.NETAHSILAT_USERNAME,
     Password: process.env.NETAHSILAT_PASSWORD
 };
 
 async function getAuth(site) {
-    // Panel (DB) — site bazlı netahsilat kaydı
     try {
         if (site) {
             const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
@@ -27,7 +19,7 @@ async function getAuth(site) {
             const p = doc?.apiCredentials?.password;
             if (u && p) return { UserName: String(u), Password: String(p) };
         }
-    } catch (_) { /* DB hatası → env fallback */ }
+    } catch (_) {  }
     return { UserName: ENV_AUTH.UserName, Password: ENV_AUTH.Password };
 }
 
@@ -117,10 +109,6 @@ class NetahsilatService {
         }
     }
 
-    /**
-     * Tüm sanal POS'lar ve taksit / komisyon oranları (karttan bağımsız genel liste).
-     * @returns {Promise<{ success: boolean, poses?: Array<{ vPosId: number, name: string, rates: Array<{ installment: number, commRate: number }> }>, message?: string }>}
-     */
     async getVirtualPosList(site) {
         try {
             const client = await this.getClient();
@@ -143,7 +131,6 @@ class NetahsilatService {
         }
     }
 
-    // ProcessPayment - 3D Secure başlat
     async processPayment(params) {
         try {
             const client = await this.getClient();
@@ -164,7 +151,6 @@ class NetahsilatService {
                 site
             } = params;
 
-            // Türkçe karakterleri temizle
             const cleanTurkish = (str) => String(str || '')
                 .replace(/İ/g, 'I')
                 .replace(/ı/g, 'i')
@@ -181,8 +167,6 @@ class NetahsilatService {
 
             const cleanCardHolderName = cleanTurkish(cardHolderName);
 
-            // Açıklama düzeni: Sipariş No + Cari Ad Soyad + Site adı
-            // (Netahsilat/banka kayıtlarında siparişle eşleştirme için)
             const { SITES } = require('../../../config/sites');
             const siteLabel = (SITES[site]?.name || site || '').toLocaleUpperCase('tr-TR');
             const description = customerName
@@ -215,7 +199,6 @@ class NetahsilatService {
                 }
             };
 
-            // Kart numarası/CVC ve üye işyeri kimlik bilgileri log'a düz metin YAZILMAZ
             console.log('[Netahsilat] ProcessPayment Request:', JSON.stringify(redact(request), null, 2));
 
             const [result] = await client.ProcessPaymentAsync(request);
@@ -224,7 +207,6 @@ class NetahsilatService {
 
             const data = result?.ProcessPaymentResult;
 
-            // 3D için TransactionStatusId = 4 (Bekleyen) ve ThreeDUrl dolu olmalı
             if (data?.TransactionStatusId === 4 && data?.ThreeDUrl) {
                 return {
                     success: true,
@@ -235,7 +217,6 @@ class NetahsilatService {
                 };
             }
 
-            // 3D'siz başarılı işlem
             if (data?.IsSuccess && data?.TransactionStatusId === 1) {
                 return {
                     success: true,
@@ -256,7 +237,6 @@ class NetahsilatService {
         }
     }
 
-    // CommitPayment - 3D sonrası ödemeyi tamamla
     async commitPayment(paymentGuid, site) {
         try {
             const client = await this.getClient();
@@ -295,7 +275,6 @@ class NetahsilatService {
         }
     }
 
-    // İşlem sorgula
     async getTransaction(orderReference, site) {
         try {
             const client = await this.getClient();

@@ -1,7 +1,5 @@
 'use client'
 
-// Plasiyerler (satış personeli) — DIA sis_kullanici kaynaklı liste.
-// Senkron adayları getirir; admin şifre atar. Kural basit: şifresi olan giriş yapar.
 import { useCallback, useEffect, useState } from 'react'
 
 import Button from '@mui/material/Button'
@@ -35,16 +33,13 @@ type Salesperson = {
     phone?: string
     diaTitle?: string
     hasPassword?: boolean
-    // Plasiyer grubu (admin atar): grubu atanmamış plasiyer giriş yapamaz
     salesGroup?: string
     lastLoginAt?: string
     createdAt?: string
 }
 
-// Gruplar ve "atanmamış" filtre değeri API'den gelir (WebSalesperson.SALES_GROUPS)
 type SalesGroup = { id: string; label: string }
 
-// Türkçe uyumlu baş harf büyük (EMİR BAHÇECİOĞLU → Emir Bahçecioğlu)
 const titleCaseTr = (value?: string) => {
     if (!value) return '-'
 
@@ -76,10 +71,8 @@ const SalespersonsView = () => {
     const [unassignedGroup, setUnassignedGroup] = useState('')
     const [groupFilter, setGroupFilter] = useState('')
     const [editGroup, setEditGroup] = useState('')
-    // Pencere açılırken yüklenen mevcut şifre: değişmediyse kayıtta yeniden gönderilmez
     const [loadedPassword, setLoadedPassword] = useState('')
 
-    // Şifre belirleme dialog'u
     const [editing, setEditing] = useState<Salesperson | null>(null)
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -130,7 +123,6 @@ const SalespersonsView = () => {
         setPassword('')
         setConfirmPassword('')
         setShowPassword(false)
-        // Mevcut şifreyi getir (admin sonradan görebilsin)
         if (sp.hasPassword) {
             try {
                 const res = await fetchAPI(API_ENDPOINTS.salespersons.password(sp._id))
@@ -140,7 +132,6 @@ const SalespersonsView = () => {
                     setLoadedPassword(res.data.password)
                 }
             } catch {
-                // şifre alınamazsa boş bırak
             }
         }
     }
@@ -157,7 +148,6 @@ const SalespersonsView = () => {
 
     const saveEdit = async () => {
         if (!editing) return
-        // Şifre yalnız değiştirildiyse (ya da hiç yoksa) doğrulanır ve gönderilir; grup her kayıtta gönderilir
         const sendPassword = !editing.hasPassword || password !== loadedPassword
         if (sendPassword && !password.trim()) {
             toast.error('Şifre giriniz')

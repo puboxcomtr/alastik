@@ -1,6 +1,5 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -9,10 +8,8 @@ import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 import Chip from '@mui/material/Chip'
 
-// Type Imports
 import type { ReportSource } from '../types'
 
-// Util Imports
 import { formatNumber } from '@/views/analytics/reports/format'
 
 type SetupCardProps = {
@@ -21,7 +18,6 @@ type SetupCardProps = {
     syncing: boolean
 }
 
-// Search Console bağlı değilse kurulum adımları; bağlı ama veri yoksa ilk çekim düğmesi
 const SetupCard = ({ source, onSync, syncing }: SetupCardProps) => {
     const sync = source.sync
 

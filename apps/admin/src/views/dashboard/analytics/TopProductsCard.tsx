@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Typography from '@mui/material/Typography'
@@ -11,7 +9,6 @@ import Chip from '@mui/material/Chip'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 import { formatTRY, formatInt } from './format'
@@ -29,7 +26,6 @@ const StockCell = ({ product }: { product: TopProduct }) => {
     return <Typography color='text.primary'>{formatInt(product.stock)}</Typography>
 }
 
-// En çok satan ürünler: Tümü / Bu Ay / Bu Hafta
 const TopProductsCard = ({ products }: { products: OverviewData['topProducts'] }) => {
     const [range, setRange] = useState<RangeKey>('all')
     const rows = products[range] || []

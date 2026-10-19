@@ -122,7 +122,6 @@ export default function OrdersContent({ orders, showAllLink, onOrderClick }: Pro
 
     return (
         <div className="my-3 py-4">
-            {/* Başlık */}
             <div className="nav flex-nowrap align-items-center justify-content-between pb-1 mb-3">
                 <h2 className="h6 mb-0 text-primary">Siparişlerim</h2>
                 {showAllLink && orders.length > 0 && (
@@ -132,7 +131,6 @@ export default function OrdersContent({ orders, showAllLink, onOrderClick }: Pro
                 )}
             </div>
 
-            {/* Filtreler - sadece tam sayfa */}
             {!showAllLink && (
                 <div className="row align-items-center pb-3 pb-md-4 mb-md-1 mb-lg-2">
                     <div className="col-md-8 col-xl-6 ms-auto">
@@ -191,7 +189,6 @@ export default function OrdersContent({ orders, showAllLink, onOrderClick }: Pro
                 </div>
             )}
 
-            {/* Sipariş Tablosu */}
             {filteredOrders.length === 0 ? (
                 <div className="text-center py-3">
                     Sipariş bulunamadı.

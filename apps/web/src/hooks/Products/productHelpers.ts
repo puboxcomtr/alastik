@@ -1,43 +1,26 @@
-// apps/web/src/hooks/Products/productHelpers.ts
 import { Product } from '@src/types/products';
 import { buildProductUrl } from '@src/config/routes';
 import { API_ENDPOINTS, getImageUrl } from '@/src/config/api';
 
-/**
- * Ürün detay URL'ini oluştur
- */
 export const getProductUrl = (product: Product): string => {
     return product.customData?.seoUrl
         ? buildProductUrl(product.customData.seoUrl)
         : buildProductUrl(product._key);
 };
-/**
- * Ürün ana kategorisini getir
- */
 export const getCategory = (product: Product): string => {
     return product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-';
 };
 
-/**
- * Ürün Set Kontrolü
- */
 export const isSetLastik = (product: Product): boolean => {
     return product?.diaData?.ozelkod2kodu === 'setlastikler';
 };
 
-/**
- * Ürün özelliğini getir
- */
 export const getProductFeature = (product: Product, featureName: string): string => {
     return product.diaData?.m_urunOzellikleri?.find(
         f => f.ozellikadi === featureName
     )?.detayaciklama || '-';
 };
 
-/**
- * Ürün fiyatını hesapla
- * XML ürünleri için kargo dahil fiyat (shippingIncludedPrice) öncelikli kullanılır
- */
 export const getProductPrice = (product: Product): number => {
     const shippingIncluded = product.customData?.shippingIncludedPrice;
     if (shippingIncluded && shippingIncluded > 0) {
@@ -48,17 +31,11 @@ export const getProductPrice = (product: Product): number => {
         0;
 };
 
-/**
- * Ürün orijinal fiyatını hesapla (indirim öncesi)
- */
 export const getProductOriginalPrice = (product: Product): number | undefined => {
     return product.customData?.originalPrice ||
         product.diaData?.m_birimler?.[0]?.fiyat1;
 };
 
-/**
- * Ürünün indirimde olup olmadığını kontrol et
- */
 export const hasProductDiscount = (product: Product): boolean => {
     if (isPriceHidden(product)) return false;
     const price = getProductPrice(product);
@@ -66,42 +43,26 @@ export const hasProductDiscount = (product: Product): boolean => {
     return !!originalPrice && originalPrice > price;
 };
 
-/**
- * Fiyat gizli mi? (Tema "Gösterilecek Fiyat" = __dinamik__16 seçili ve üründe dinamik fiyat yok)
- * Bu durumda fiyat gösterilmez ve ürün sepete eklenemez; başka fiyat alanı ASLA gösterilmez.
- */
 export const isPriceHidden = (product: Product): boolean => {
     return (product.customData as { priceHidden?: boolean })?.priceHidden === true;
 };
 
-// Fiyat gizliyken gösterilecek metin
 export const PRICE_HIDDEN_LABEL = 'Fiyat için arayınız';
 
-/**
- * URL'i normalize et (çift prefix önle)
- */
 const normalizeUrl = (url: string): string => {
     if (!url) return '';
     return getImageUrl(url);
 };
-/**
- * Ürün görselini al
- * @param product - Ürün
- * @param defaultImage - Context'ten gelen default görsel
- */
 export const getProductImage = (product: Product, defaultImage?: string): string => {
-    // 1. customImages varsa ilk görseli kullan (web sıralaması)
     if (product.customData?.customImages && product.customData.customImages.length > 0) {
         const sorted = [...product.customData.customImages].sort((a, b) => a.order - b.order);
         if (sorted[0]?.url) {
             return normalizeUrl(sorted[0].url);
         }
     }
-    // 2. featuredImage varsa kullan
     if (product.customData?.featuredImage) {
         return normalizeUrl(product.customData.featuredImage);
     }
-    // 3. DIA görselleri
     if (product.diaData?.m_resimler && product.diaData.m_resimler.length > 0) {
         const firstImage = product.diaData.m_resimler
             .sort((a, b) => parseInt(a.order_id || '999') - parseInt(b.order_id || '999'))[0];
@@ -116,17 +77,11 @@ export const getProductImage = (product: Product, defaultImage?: string): string
     return getImageUrl('/theme/katalog-gorseli.jpg');
 };
 
-/**
- * Ürün görsel URL'ini al (direkt URL için)
- */
 export const getProductImageUrl = (url: string | null | undefined): string => {
     if (!url) return getImageUrl('/theme/katalog-gorseli.jpg');
     return getImageUrl(url);
 };
 
-/**
- * Ürün ebatını formatla
- */
 export const getProductSize = (product: Product): string => {
     const genislik = getProductFeature(product, 'Genişlik');
     const yanak = getProductFeature(product, 'Yanak');
@@ -134,9 +89,6 @@ export const getProductSize = (product: Product): string => {
     return `${genislik}/${yanak}${cap}`;
 };
 
-/**
- * Ürün özelliklerini toplu al
- */
 export const getProductFeatures = (product: Product) => {
     return {
         genislik: getProductFeature(product, 'Genişlik'),
@@ -150,22 +102,14 @@ export const getProductFeatures = (product: Product) => {
     };
 };
 
-/**
- * Ürün stok kodunu getir
- */
 export const getProductStockCode = (product: Product, site?: string): string => {
-    // Stok Kodu = DIA stok kartı kodu; barkod (anabarkod) yalnızca kod yoksa gösterilir
     const code = product.diaData?.stokkartkodu ||
         product.diaData?.anabarkod ||
         '-';
     const cleaned = code.replace(/-XML$/i, '');
-    // AKD gosterimi yalnizca alastik icindir; LJA sitesi kodu oldugu gibi gosterir
     return site === 'lastikjantavm' ? cleaned : cleaned.replace(/^LJA/i, 'AKD');
 };
 
-/**
- * Rastgele ürünler getir
- */
 export async function getRandomProducts(limit: number = 3) {
     try {
         const response = await fetch(
@@ -189,9 +133,6 @@ export async function getRandomProducts(limit: number = 3) {
     }
 }
 
-/**
- * Ürün mevsim bilgisini getir
- */
 export const getProductSeason = (product: Product): { text: string; icon: string } | null => {
     const seasonFeature = product.diaData?.m_urunOzellikleri?.find(
         f => f.ozellikadi === 'Mevsim'
@@ -220,9 +161,6 @@ export const getProductSeason = (product: Product): { text: string; icon: string
 
     return seasonMap[season] || null;
 };
-/**
- * Ürün görsellerini al (customImages + featuredImage + m_resimler)
- */
 export const getProductImages = (product: Product): Array<{ url: string; alt: string; order: number }> => {
     const images: Array<{ url: string; alt: string; order: number }> = [];
     const productName = product.customData?.seoTitle || product.diaData?.aciklama || 'Ürün';
@@ -265,28 +203,17 @@ export const getProductImages = (product: Product): Array<{ url: string; alt: st
     return images.sort((a, b) => a.order - b.order);
 };
 
-/**
- * Ürün Tipi (ozelkod7kodu bazlı)
- */
 export type ProductType = 'LASTIK' | 'JANT' | 'ZINCIR' | 'AKSESUAR' | 'GENEL';
 
-/**
- * Metni capitalize et (Baş harf büyük, geri kalanı küçük)
- */
 export const capitalizeText = (text: string): string => {
     if (!text || text === '-') return text;
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
-/**
- * Ürün tipini belirle (Backend ile aynı mantık)
- * DİKKAT: Türkçe karakterler! LASTİK, ZİNCİR (Büyük İ)
- */
 export const getProductType = (product: Product): ProductType => {
     const ozelkod7 = product?.diaData?.ozelkod7kodu;
 
     if (!ozelkod7) return 'GENEL';
 
-    // Türkçe karakterlere dikkat! Büyük İ var
     switch (ozelkod7.toUpperCase()) {
         case 'LASTİK':
             return 'LASTIK';
@@ -303,9 +230,6 @@ export const getProductType = (product: Product): ProductType => {
     }
 };
 
-/**
- * Ürün tipi kontrol fonksiyonları
- */
 export const isLastik = (product: Product): boolean => {
     return getProductType(product) === 'LASTIK';
 };
@@ -322,9 +246,6 @@ export const isAksesuar = (product: Product): boolean => {
     return getProductType(product) === 'AKSESUAR';
 };
 
-/**
- * Ürün özelliklerini tip bazlı getir
- */
 export interface ProductFeatureItem {
     label: string;
     value: string | number | Array<{ text: string; tooltip: string }>;
@@ -355,14 +276,10 @@ export const getProductDetailFeatures = (product: Product, site?: string): Produ
                     ? getAksesuarDetailFeatures(product, site)
                     : getGenericFeatures(product, site);
 
-    // Kategori ayarı açıksa stok kodu satırı listelenmez
     return (product as any)?.hideStockCode === true
         ? features.filter(f => f.label !== 'Stok Kodu')
         : features;
 };
-/**
- * Aynı desenin diğer ebatlarını getir
- */
 export const fetchAlternativeSizes = async (product: Product): Promise<Product[]> => {
     const marka = product.diaData?.marka;
     const ozelkod5 = product.diaData?.ozelkod5kodu;
@@ -384,9 +301,6 @@ export const fetchAlternativeSizes = async (product: Product): Promise<Product[]
         return [];
     }
 };
-/**
- * Hız endeksi ve maksimum hız bilgisini formatla
- */
 export const getSpeedIndexDisplay = (speedIndex: string): string => {
     if (speedIndex === '-') return '-';
 
@@ -411,9 +325,6 @@ export const getSpeedIndexDisplay = (speedIndex: string): string => {
     return speed ? `${speedIndex} (max. ${speed})` : speedIndex;
 };
 
-/**
- * Yük endeksi ve maksimum ağırlık bilgisini formatla
- */
 export const getLoadIndexDisplay = (loadIndex: string): string => {
     if (loadIndex === '-') return '-';
 
@@ -434,9 +345,6 @@ export const getLoadIndexDisplay = (loadIndex: string): string => {
     const load = loadMap[loadIndex];
     return load ? `${loadIndex} (${load})` : loadIndex;
 };
-/**
- * Ürün kartı hover detayları için özellikleri getir (Lastik/Jant)
- */
 export const getCardHoverFeatures = (product: Product): Array<{ label: string; value: string }> => {
     const type = getProductType(product);
 
@@ -448,7 +356,6 @@ export const getCardHoverFeatures = (product: Product): Array<{ label: string; v
         ].filter(f => f.value && f.value !== '-');
     }
 
-    // Lastik (varsayılan)
     const { ebat, yukEndeksi, hizEndeksi, uretimTarihi } = getProductFeatures(product);
     return [
         { label: 'Ebat', value: ebat },
@@ -457,9 +364,6 @@ export const getCardHoverFeatures = (product: Product): Array<{ label: string; v
         { label: 'Üretim Tarihi', value: uretimTarihi }
     ].filter(f => f.value && f.value !== '-');
 };
-/**
- * Tüm lastik özelliklerini detaylı getir (Description için)
- */
 export const getAllLastikFeatures = (product: Product, site?: string): Array<{ label: string; value: string }> => {
     const genislik = getProductFeature(product, 'Genişlik');
     const yanak = getProductFeature(product, 'Yanak');
@@ -493,11 +397,9 @@ export const getAllLastikFeatures = (product: Product, site?: string): Array<{ l
         { label: 'Hız Endeksi', value: getSpeedIndexDisplay(hizEndeksi) },
         { label: 'Ekstra Özellikler', value: ekstraOzellikler.length > 0 ? ekstraOzellikler.join(', ') : '-' },
         { label: 'Üretim Tarihi (DOT)', value: product.diaData?.ekalan5 || getProductFeature(product, 'Üretim Tarihi') },
-        // 2.El lastiklerde dolu gelir; boşsa satır gösterilmez
         ...(getProductFeature(product, 'Diş Derinliği') !== '-'
             ? [{ label: 'Diş Derinliği', value: getProductFeature(product, 'Diş Derinliği') }]
             : []),
-        // Garanti: panelde girilen değer öncelikli; boşsa sıfır üründe 2 Yıl, 2.El üründe satır gizlenir
         {
             label: 'Garanti Süresi',
             value: product.customData?.warranty
@@ -509,9 +411,6 @@ export const getAllLastikFeatures = (product: Product, site?: string): Array<{ l
     ].filter(f => f.value && f.value !== '-');
 };
 
-/**
- * Tüm jant özelliklerini detaylı getir (Description için)
- */
 export const getAllJantFeatures = (product: Product, site?: string): Array<{ label: string; value: string }> => {
     return [
         { label: 'Stok Kodu', value: getProductStockCode(product, site) },
@@ -528,11 +427,6 @@ export const getAllJantFeatures = (product: Product, site?: string): Array<{ lab
     ].filter(f => f.value && f.value !== '-');
 };
 
-/**
- * Ürün detayındaki "Ürün Özellikleri" tablosunun satırları.
- * Lastik ve jant dışındaki ürünlerde (hizmet, aksesuar) liste boş döner;
- * bu durumda bölüm hiç gösterilmez.
- */
 export const getProductSpecRows = (product: Product, site?: string): Array<{ label: string; value: string }> => {
     const rows = isLastik(product)
         ? getAllLastikFeatures(product, site)
@@ -540,21 +434,16 @@ export const getProductSpecRows = (product: Product, site?: string): Array<{ lab
             ? getAllJantFeatures(product, site)
             : [];
 
-    // Değeri boş olan satırlar ("-", "- dB" gibi) hiç gösterilmez
     const filled = rows.filter(r => {
         const value = String(r.value ?? '').trim();
         return value !== '' && value !== '-' && !/^-\s*[a-zA-Z]*$/.test(value);
     });
 
-    // Kategori ayarı açıksa stok kodu satırı listelenmez
     return (product as any)?.hideStockCode === true
         ? filled.filter(r => r.label !== 'Stok Kodu')
         : filled;
 };
 
-/**
- * Lastik özellikleri
- */
 const getLastikDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     const genislik = getProductFeature(product, 'Genişlik');
     const yanak = getProductFeature(product, 'Yanak');
@@ -630,9 +519,6 @@ const getLastikDetailFeatures = (product: Product, site?: string): ProductFeatur
     });
 };
 
-/**
- * Jant özellikleri
- */
 const getJantDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
@@ -647,9 +533,6 @@ const getJantDetailFeatures = (product: Product, site?: string): ProductFeatureI
     ].filter(f => f.value && f.value !== '-');
 };
 
-/**
- * Kar zinciri/palet özellikleri
- */
 const getZincirDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || '-' },
@@ -660,9 +543,6 @@ const getZincirDetailFeatures = (product: Product, site?: string): ProductFeatur
     ].filter(f => f.value && f.value !== '-');
 };
 
-/**
- * Aksesuar özellikleri
- */
 const getAksesuarDetailFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
@@ -672,9 +552,6 @@ const getAksesuarDetailFeatures = (product: Product, site?: string): ProductFeat
     ].filter(f => f.value && f.value !== '-');
 };
 
-/**
- * Generic özellikler (tip belirlenemezse)
- */
 const getGenericFeatures = (product: Product, site?: string): ProductFeatureItem[] => {
     return [
         { label: 'Kategori', value: product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1 || '-' },
@@ -683,13 +560,6 @@ const getGenericFeatures = (product: Product, site?: string): ProductFeatureItem
     ].filter(f => f.value && f.value !== '-');
 };
 
-/**
- * Modal Helper
- */
-
-/**
- * Lastik ebatını formatla (modal için)
- */
 export const getLastikEbatDisplay = (product: Product): string => {
     const genislik = getProductFeature(product, 'Genişlik');
     const yanak = getProductFeature(product, 'Yanak');
@@ -702,25 +572,16 @@ export const getLastikEbatDisplay = (product: Product): string => {
     return `${genislik}/${yanak} ${cap} ${yukEndeksi}${hizEndeksi}`;
 };
 
-/**
- * Marka + Model (ozelkod5kodu)
- */
 export const getBrandModel = (product: Product): string => {
     const marka = product.diaData?.marka || '';
     const model = product.diaData?.ozelkod5kodu || '';
     return `${marka} ${model}`.trim();
 };
 
-/**
- * Fiyat2 (orijinal fiyat)
- */
 export const getProductPrice2 = (product: Product): number | null => {
     return product.diaData?.m_birimler?.[0]?.fiyat2 || null;
 };
 
-/**
- * Teslimat tarih aralığını hesapla
- */
 export const getDeliveryDateRange = (product: Product): {
     startDate: string;
     endDate: string
@@ -763,10 +624,6 @@ export const getDeliveryDateRange = (product: Product): {
     }
 };
 
-/**
- * Kategori ayarına göre gösterilecek fiyatı ve ek ibareyi döndürür.
- * "haric" seçiliyken kayıtlı fiyattan KDV çıkarılır ve "+ KDV" ibaresi eklenir.
- */
 export const getDisplayPrice = (product: any, price: number): { value: number; suffix: string } => {
     if (product?.priceDisplay !== 'haric') return { value: price, suffix: '' };
 

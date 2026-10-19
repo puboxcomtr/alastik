@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 import { getSiteUrl } from '@/utils/activeSite'
 import { useRouter } from 'next/navigation'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import Box from '@mui/material/Box'
@@ -25,7 +24,6 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Popover from '@mui/material/Popover'
 
-/* Editor */
 import classnames from 'classnames'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
@@ -43,24 +41,18 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Image } from '@tiptap/extension-image'
 
-/* Media Library */
 import MediaLibrary from '@/components/MediaLibrary/MediaLibrary'
 import type { MediaFile } from '@/types/apps/mediaTypes'
 
-/* Get Image URL */
 import { getImageUrl } from '@/libs/api'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
-/* API */
 import { createBlog, updateBlog, type BlogType } from '@/utils/api/blogs'
 import { fetchBlogCategories, type BlogCategoryType } from '@/utils/api/blogCategories'
 
-/* Components */
 import CustomIconButton from '@/@core/components/mui/IconButton'
 
-/* Styles */
 import '@/libs/styles/tiptapEditor.css'
 
 interface BlogFormProps {
@@ -382,11 +374,9 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
-    // Görsel yönetimi
     const [featuredImage, setFeaturedImage] = useState<string>(blog?.featuredImage || '')
     const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
 
-    // Blog kategorileri (çoklu seçim) — bir yazı birden fazla kategoriye eklenebilir
     const [categoryOptions, setCategoryOptions] = useState<BlogCategoryType[]>([])
     const [selectedCategories, setSelectedCategories] = useState<string[]>(
         (blog?.categories || []).map((c: any) => (typeof c === 'string' ? c : c?._id)).filter(Boolean)
@@ -488,14 +478,12 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
         }
     })
 
-    // Blog içeriğini yükle
     useEffect(() => {
         if (blog?.content) {
             setHtmlContent(blog.content)
         }
     }, [blog?.content])
 
-    // Editor'a içeriği yükle (HTML mode değilse)
     useEffect(() => {
         if (editor && !isHtmlMode && htmlContent) {
             editor.commands.setContent(htmlContent)
@@ -506,13 +494,11 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
         if (!editor) return;
 
         if (isHtmlMode) {
-            // HTML'den Editor'a geç
             setIsHtmlMode(false);
             setTimeout(() => {
                 editor.commands.setContent(htmlContent);
             }, 100);
         } else {
-            // Editor'dan HTML'e geç
             const editorHTML = editor.getHTML()
             setHtmlContent(editorHTML);
             setIsHtmlMode(true);
@@ -558,7 +544,6 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
 
         toast.success('SEO URL otomatik oluşturuldu')
     }
-    // Görsel Ekle
     const handleMediaSelect = (selectedFiles: MediaFile[]) => {
         if (selectedFiles.length > 0) {
             setFeaturedImage(selectedFiles[0].url)
@@ -566,7 +551,6 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
         }
     }
 
-    // Görsel Kaldırma
     const handleRemoveImage = () => {
         setFeaturedImage('')
         toast.success('Görsel kaldırıldı')
@@ -767,7 +751,6 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                             </Card>
                         </Grid>
 
-                        {/* Blog Kategorileri (çoklu seçim — bir yazı birden fazla kategoride) */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -790,7 +773,6 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                             </Card>
                         </Grid>
 
-                        {/* Öne Çıkarılmış Görsel */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -994,7 +976,6 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                                             />
                                         </Grid>
 
-                                        {/* SEO analizi: odak kelime + canlı kriter kontrolü */}
                                         <Grid size={{ xs: 12 }}>
                                             <SeoLivePanel
                                                 type='blog'
@@ -1015,7 +996,6 @@ const BlogForm = ({ blog, isEdit = false }: BlogFormProps) => {
                     </Grid>
                 </Grid>
             </Grid>
-            {/* Media Library Modal */}
             <MediaLibrary
                 open={mediaLibraryOpen}
                 onClose={() => setMediaLibraryOpen(false)}

@@ -1,15 +1,10 @@
 'use client';
-// Satış Raporu — HAFTALIK plasiyer karşılaştırması (Pzt–Cmt, Pazar yok).
-// Tarih seçilerek o hafta; 3 plasiyer yan yana karşılaştırılır. Renk: siyah + sarı + gri.
-// recharts (Materio admin ile aynı kütüphane) + MUI Card/Materio tema.
-// ŞİMDİLİK DEMO veri (frontend, seçilen tarihe göre deterministik) — sonra canlı bağlanacak.
 import { useMemo, useState } from 'react';
 import { Card, CardHeader, Divider, CardContent, Box, Typography, Stack, TextField } from '@mui/material';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-const GUNLER = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']; // Pazar yok
+const GUNLER = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
-// Karşılaştırılan plasiyerler (demo) — 1 siyah, 1 sarı, 1 gri
 const PLASIYERLER = [
     { key: 'p1', ad: 'Emir Bahçecioğlu', renk: '#1F1F1F' },
     { key: 'p2', ad: 'Faruk Kuru', renk: '#E6CF17' },
@@ -19,17 +14,15 @@ const PLASIYERLER = [
 const adet = (n: number) => n.toLocaleString('tr-TR') + ' adet';
 const kisa = (n: number) => n.toLocaleString('tr-TR');
 
-// Seçilen tarihin haftası (Pazartesi başlangıç)
 function haftaBasi(iso: string): Date {
     const x = iso ? new Date(iso) : new Date();
-    const gun = (x.getDay() + 6) % 7; // Pazartesi = 0
+    const gun = (x.getDay() + 6) % 7;
     x.setDate(x.getDate() - gun);
     x.setHours(0, 0, 0, 0);
     return x;
 }
 const fmtGun = (d: Date) => d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
 
-// Deterministik demo üreteç (tarihe göre)
 function seedFrom(s: string): number { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function rng(seed: number) { let x = seed || 1; return () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
 
@@ -72,7 +65,7 @@ export function PlasiyerSalesReport() {
     const [tarih, setTarih] = useState(bugun);
 
     const bas = haftaBasi(tarih);
-    const son = new Date(bas); son.setDate(bas.getDate() + 5); // Cumartesi
+    const son = new Date(bas); son.setDate(bas.getDate() + 5);
 
     const data = useMemo(() => {
         const key = bas.toISOString().slice(0, 10);
@@ -80,7 +73,7 @@ export function PlasiyerSalesReport() {
             const satir: Record<string, number | string> = { gun };
             for (const p of PLASIYERLER) {
                 const r = rng(seedFrom(`${key}-${p.key}-${gi}`));
-                satir[p.key] = Math.round(5 + r() * 55); // 5–60 adet
+                satir[p.key] = Math.round(5 + r() * 55);
             }
             return satir;
         });

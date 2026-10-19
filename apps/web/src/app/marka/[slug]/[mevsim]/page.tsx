@@ -1,6 +1,3 @@
-// Marka × mevsim sayfası — /marka/<marka>/(yaz-lastikleri|kis-lastikleri|4-mevsim-lastikleri) (yalnızca lastikjantavm.com)
-// Ürün listesi marka sayfasıyla aynı bileşenlerle, mevsim sabit olarak listelenir. Sayfa yalnızca lastik markalarında
-// ve en az SEASON_PAGE_MIN üründe açılır; SEASON_INDEX_MIN altındaki sayfalar noindex,follow ve sitemap dışıdır.
 import React from 'react';
 import Link from 'next/link';
 import { Col, Container, Row } from 'react-bootstrap';

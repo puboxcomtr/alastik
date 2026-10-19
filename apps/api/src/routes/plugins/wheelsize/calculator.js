@@ -2,13 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WheelSizeService = require('../../../services/plugins/wheelsize/WheelSizeService');
 
-/**
- * GET /plugins/wheelsize/calculator/sizes
- * Lastik hesaplama için gerekli 3 ebat listesini döner:
- * - widths: Lastik tabanı (mm)
- * - aspectRatios: Yanak oranı (%)
- * - rimDiameters: Jant çapı (inch)
- */
 router.get('/sizes', async (req, res) => {
     try {
         const [widths, aspectRatios, rimDiameters] = await Promise.all([

@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { Box, CircularProgress, Typography, Button } from '@mui/material'
 import Grid from '@mui/material/Grid2'
 
-// Components
 import CompanyInfoSettings from '@/views/settings/definitions/CompanyInfoSettings'
 import EmailInfoSettings from '@/views/settings/definitions/EmailInfoSettings'
 import TaxInfoSettings from '@/views/settings/definitions/TaxInfoSettings'
@@ -12,7 +11,6 @@ import ServicePointsSettings from '@/views/settings/definitions/ServicePointsSet
 import LegalContractsSettings from '@/views/settings/definitions/LegalContractsSettings'
 import ImagesSettings from '@/views/settings/definitions/ImagesSettings'
 
-// Context
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext'
 import { fetchAPI } from '@libs/api'
 

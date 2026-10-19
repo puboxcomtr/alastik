@@ -1,12 +1,7 @@
-// Türkiye'nin 81 ili: il merkezi koordinatları + eşleştirme için ASCII adlar.
-// Geo-ip servisleri "Istanbul", sipariş adresleri "İstanbul" der; normalize() ikisini de aynı anahtara indirger.
 
 export type TurkeyProvince = {
-    /** Türkçe resmi ad */
     name: string
-    /** ASCII (İngilizce/geo-ip) ad */
     ascii: string
-    /** Alternatif yazımlar (eski ad, kısaltma vb.) */
     aliases?: string[]
     lat: number
     lng: number
@@ -35,11 +30,6 @@ const TURKISH_CHAR_MAP: Record<string, string> = {
     Û: 'u'
 }
 
-/**
- * Şehir adını eşleştirme anahtarına çevirir:
- * küçük harf, Türkçe karakterler ASCII'ye, boşluk/tire/noktalama temizlenir.
- * normalize('İstanbul') === normalize('Istanbul') === 'istanbul'
- */
 export const normalize = (value: string): string => {
     if (!value) return ''
 
@@ -138,7 +128,6 @@ export const TURKEY_PROVINCES: TurkeyProvince[] = [
     { name: 'Zonguldak', ascii: 'Zonguldak', lat: 41.4564, lng: 31.7987 }
 ]
 
-// Normalize edilmiş ad -> il (ad, ascii ad ve alias'ların tümü anahtar olur)
 const PROVINCE_INDEX: Map<string, TurkeyProvince> = (() => {
     const index = new Map<string, TurkeyProvince>()
 
@@ -155,7 +144,6 @@ const PROVINCE_INDEX: Map<string, TurkeyProvince> = (() => {
     return index
 })()
 
-/** Şehir adına göre ili bulur; eşleşme yoksa undefined döner (çökme yok). */
 export const findProvince = (cityName: string | null | undefined): TurkeyProvince | undefined => {
     if (!cityName) return undefined
 
@@ -167,7 +155,6 @@ export const findProvince = (cityName: string | null | undefined): TurkeyProvinc
 
     if (direct) return direct
 
-    // "İstanbul İli", "Ankara Province" gibi ekleri temizle
     const stripped = key.replace(/(ili|province|il)$/, '')
 
     return stripped !== key ? PROVINCE_INDEX.get(stripped) : undefined

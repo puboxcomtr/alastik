@@ -1,20 +1,16 @@
 'use client'
 
-// MUI Imports
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 
-// Type Imports
 import type { SalesBreakdown } from './types'
 
-// Util Imports
 import { formatTRY, toNumber } from './format'
 
 type SalesBreakdownListProps = {
     breakdown?: SalesBreakdown | null
 }
 
-// Toplam satış dökümü: etiket + TL tutarı listesi
 const SalesBreakdownList = ({ breakdown }: SalesBreakdownListProps) => {
     const rows: { label: string; value: number; emphasis?: boolean }[] = [
         { label: 'Brüt satışlar', value: toNumber(breakdown?.gross) },

@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Dialog from '@mui/material/Dialog'
 import Button from '@mui/material/Button'
@@ -16,7 +14,6 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 
 type BillingCardData = {
@@ -36,7 +33,6 @@ type BillingCardProps = {
   data?: BillingCardData
 }
 
-// Vars
 const initialCardData: BillingCardProps['data'] = {
   cardNumber: '',
   name: '',
@@ -49,7 +45,6 @@ const initialCardData: BillingCardProps['data'] = {
 }
 
 const BillingCard = ({ open, setOpen, data }: BillingCardProps) => {
-  // States
   const [cardData, setCardData] = useState(initialCardData)
 
   const handleClose = () => {

@@ -1,19 +1,15 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 
-// Type Imports
 import type { HourDensity } from './types'
 
-// Util Imports
 import { formatDecimal, toNumber } from './format'
 
-// Component Imports
 import TimeBarChart from './TimeBarChart'
 import EmptyState from './EmptyState'
 
@@ -23,7 +19,6 @@ type HourDensityChartProps = {
 
 const padHour = (hour: number) => `${hour}`.padStart(2, '0')
 
-// Günün saatine göre ortalama oturum yoğunluğu; en yoğun saat vurgulu
 const HourDensityChart = ({ density }: HourDensityChartProps) => {
     const theme = useTheme()
 

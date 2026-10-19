@@ -3,19 +3,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
-// Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 
-// Swiper CSS
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-// API
 import { API_ENDPOINTS } from '@/src/config/api';
 
-// ProductCard
 import AlastikProductCard from '@components/alastik/shop/Product/Showcase/Card';
 import LjaProductCard from '@components/lastikjantavm/shop/Product/Showcase/Card';
 
@@ -117,7 +113,6 @@ export default function PaymentProducts({ orderNumber }: PaymentProductsProps) {
                     ))}
                 </Swiper>
 
-                {/* Navigation Buttons */}
                 <div className="d-flex justify-content-center gap-2 mb-4">
                     <button
                         type="button"

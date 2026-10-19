@@ -39,7 +39,6 @@ export default function BlogDetail({ blog }: BlogDetailProps) {
 
     return (
         <>
-            {/* Breadcrumb */}
             <section id="breadcumb">
                 <Container>
                     <div className='row-fluid'>
@@ -56,7 +55,6 @@ export default function BlogDetail({ blog }: BlogDetailProps) {
                     <div className='row-fluid'>
                         <Row>
                             <Col lg={9}>
-                                {/* Blog İçerik */}
                                 <h1 className="blog__title mb-3" style={{ fontSize: '1.75rem', fontWeight: 700 }}>
                                     {blog.title}
                                 </h1>
@@ -73,12 +71,10 @@ export default function BlogDetail({ blog }: BlogDetailProps) {
                                             {blog.viewCount} görüntülenme</span>
                                     )}
                                 </div>
-                                {/* HTML İçerik */}
                                 <div
                                     className="blog-content"
                                     dangerouslySetInnerHTML={{ __html: blog.content }}
                                 />
-                                {/* Etiketler */}
                                 {blog.tags && blog.tags.length > 0 && (
                                     <div className="mt-4 pt-3 border-top">
                                         <div className="d-flex flex-wrap gap-2">

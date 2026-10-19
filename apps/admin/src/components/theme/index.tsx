@@ -1,33 +1,25 @@
 'use client'
 
-// React Imports
 import { useMemo } from 'react'
 
-// MUI Imports
 import { deepmerge } from '@mui/utils'
 import { ThemeProvider, lighten, darken, createTheme } from '@mui/material/styles'
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter'
 import CssBaseline from '@mui/material/CssBaseline'
-import type {} from '@mui/material/themeCssVarsAugmentation' //! Do not remove this import otherwise you will get type errors while making a production build
-import type {} from '@mui/lab/themeAugmentation' //! Do not remove this import otherwise you will get type errors while making a production build
+import type {} from '@mui/material/themeCssVarsAugmentation'
+import type {} from '@mui/lab/themeAugmentation'
 
-// Third-party Imports
 import { useMedia } from 'react-use'
 import stylisRTLPlugin from 'stylis-plugin-rtl'
 
-// Type Imports
 import type { ChildrenType, Direction, SystemMode } from '@core/types'
 
-// Component Imports
 import ModeChanger from './ModeChanger'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
-// Core Theme Imports
 import defaultCoreTheme from '@core/theme'
 
 type Props = ChildrenType & {
@@ -36,14 +28,11 @@ type Props = ChildrenType & {
 }
 
 const CustomThemeProvider = (props: Props) => {
-  // Props
   const { children, direction, systemMode } = props
 
-  // Vars
   const isServer = typeof window === 'undefined'
   let currentMode: SystemMode
 
-  // Hooks
   const { settings } = useSettings()
   const isDark = useMedia('(prefers-color-scheme: dark)', systemMode === 'dark')
 
@@ -57,7 +46,6 @@ const CustomThemeProvider = (props: Props) => {
     }
   }
 
-  // Merge the primary color scheme override with the core theme
   const theme = useMemo(() => {
     const newTheme = {
       colorSchemes: {

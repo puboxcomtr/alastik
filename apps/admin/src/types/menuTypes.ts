@@ -1,10 +1,7 @@
-// React Imports
 import type { ReactNode } from 'react'
 
-// MUI Imports
 import type { ChipProps } from '@mui/material/Chip'
 
-// Type Imports
 import type {
   SubMenuProps as VerticalSubMenuProps,
   MenuItemProps as VerticalMenuItemProps,
@@ -16,7 +13,6 @@ import type {
 } from '@menu/horizontal-menu'
 import type { MenuItemExactMatchUrlProps } from '@menu/types'
 
-// Vertical Menu Data
 export type VerticalMenuItemDataType = Omit<
   VerticalMenuItemProps,
   'children' | 'exactMatch' | 'activeUrl' | 'icon' | 'prefix' | 'suffix'
@@ -40,7 +36,6 @@ export type VerticalSectionDataType = Omit<VerticalMenuSectionProps, 'children'>
 }
 export type VerticalMenuDataType = VerticalMenuItemDataType | VerticalSubMenuDataType | VerticalSectionDataType
 
-// Horizontal Menu Data
 export type HorizontalMenuItemDataType = Omit<
   HorizontalMenuItemProps,
   'children' | 'exactMatch' | 'activeUrl' | 'icon' | 'prefix' | 'suffix'

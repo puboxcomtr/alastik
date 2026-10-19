@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebSettings = require('../../../models/web/settings/WebSettings');
 
-// GET /api/definition
 router.get('/', async (req, res) => {
     try {
         const settings = await WebSettings.findOne({ site: req.site }).lean();

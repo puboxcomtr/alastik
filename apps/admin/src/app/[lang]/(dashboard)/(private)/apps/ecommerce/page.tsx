@@ -1,17 +1,13 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// Components Imports
 import CardStatVertical, { CARD_RANGE_LABELS } from '@views/dashboard/Vertical'
 import type { CardRange } from '@views/dashboard/Vertical'
 import TotalProfitStackedBar from '@views/dashboard/TotalProfitStackedBar'
@@ -19,7 +15,6 @@ import Transactions from '@views/dashboard/Transactions'
 import WebsiteStatistics from '@views/dashboard/WebsiteStatistics'
 import Table from '@views/dashboard/Table'
 
-// Analiz widget'ları (Analizler modülü — ayrı uçtan beslenir, pano yüklemesini engellemez)
 import OrderActivityCard from '@views/dashboard/analytics/OrderActivityCard'
 import CustomerGrowthCard from '@views/dashboard/analytics/CustomerGrowthCard'
 import SeasonSplitCard from '@views/dashboard/analytics/SeasonSplitCard'
@@ -27,7 +22,6 @@ import RimSplitCard from '@views/dashboard/analytics/RimSplitCard'
 import SalesMapCard from '@views/dashboard/analytics/SalesMapCard'
 import TopProductsCard from '@views/dashboard/analytics/TopProductsCard'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 import type { ProfitStats } from '@views/dashboard/TotalProfitStackedBar'
@@ -62,7 +56,6 @@ const DashboardECommerce = () => {
     const [loading, setLoading] = useState(true)
     const [overview, setOverview] = useState<OverviewData | null>(null)
 
-    // Üst kartların dönemi (Bugün / Son 7 Gün / Son 30 Gün); 30 gün pano verisinden gelir, diğerleri ayrıca çekilir
     const [cardRange, setCardRange] = useState<CardRange>('30d')
     const [rangeCards, setRangeCards] = useState<DashboardData['cards'] | null>(null)
 
@@ -118,7 +111,6 @@ const DashboardECommerce = () => {
             }
         }
 
-        // Analiz widget'ları ayrı yüklenir; hata verirse yalnızca kendi bölümleri gizlenir
         const fetchOverview = async () => {
             try {
                 const res = await fetchAPI(API_ENDPOINTS.analytics.overview(), { cache: 'no-store' })

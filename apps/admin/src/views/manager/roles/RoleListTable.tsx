@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -19,7 +18,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
   createColumnHelper,
@@ -32,13 +30,10 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 
-// Type Imports
 import type { RoleType } from '@/app/[lang]/(dashboard)/(private)/apps/manager/roles/list/page'
 
-// API Imports
 import { deleteRole } from '@/utils/api/roles'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 const columnHelper = createColumnHelper<RoleType>()
@@ -48,7 +43,6 @@ const RoleListTable = ({ rolesData }: { rolesData: RoleType[] }) => {
   const [data, setData] = useState(() => rolesData)
   const [globalFilter, setGlobalFilter] = useState('')
   
-  // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [roleToDelete, setRoleToDelete] = useState<RoleType | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -69,14 +63,12 @@ const RoleListTable = ({ rolesData }: { rolesData: RoleType[] }) => {
     try {
       await deleteRole(roleToDelete._id)
       
-      // Tablodan rolü kaldır
       setData(prevData => prevData.filter(r => r._id !== roleToDelete._id))
       
       toast.success(`"${roleToDelete.name}" rolü başarıyla silindi`)
       setDeleteDialogOpen(false)
       setRoleToDelete(null)
       
-      // Sayfayı yenile
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || 'Rol silinirken bir hata oluştu')
@@ -285,7 +277,6 @@ const RoleListTable = ({ rolesData }: { rolesData: RoleType[] }) => {
         </div>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onClose={deleteLoading ? undefined : handleDeleteCancel}

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const SeoSettings = require('../../../models/admin/settings/SeoSettings');
 
-// GET /api/seo
 router.get('/', async (req, res) => {
     try {
         const settings = await SeoSettings.findOne({ site: req.site }).lean();

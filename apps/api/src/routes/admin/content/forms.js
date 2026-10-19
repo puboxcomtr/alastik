@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Form = require('../models/admin/content/Form');
 
-// GET /api/admin/forms
 router.get('/', async (req, res) => {
     try {
         const { search, status, formType, startDate, endDate } = req.query;
@@ -35,7 +34,6 @@ router.get('/', async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        // İstatistikler
         const stats = {
             total: await Form.countDocuments(),
             new: await Form.countDocuments({ status: 'new' }),
@@ -59,7 +57,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/admin/forms/:id
 router.get('/:id', async (req, res) => {
     try {
         const form = await Form.findById(req.params.id);
@@ -71,7 +68,6 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Okundu olarak işaretle
         if (form.status === 'new') {
             form.status = 'read';
             form.readAt = new Date();
@@ -92,7 +88,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// PUT /api/admin/forms/:id
 router.put('/:id', async (req, res) => {
     try {
         const { status, adminNotes } = req.body;
@@ -129,7 +124,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/forms/:id
 router.delete('/:id', async (req, res) => {
     try {
         const form = await Form.findByIdAndDelete(req.params.id);

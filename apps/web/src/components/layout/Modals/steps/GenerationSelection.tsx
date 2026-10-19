@@ -3,10 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 
-/* MUI */
 import { Typography, Divider, Box } from '@mui/material';
 
-/* Internal Imports */
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { translateBodyType } from '@/src/utils/vehicleTranslations';
 
@@ -36,7 +34,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
     const { getGenerations, loading } = useWheelSize();
     const [generations, setGenerations] = useState<Generation[]>([]);
     const { t } = useTranslations('general');
-    // Filtreler
     const [filterYear, setFilterYear] = useState<number | null>(null);
     const [filterBody, setFilterBody] = useState<string>('');
 
@@ -127,7 +124,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
     return (
         <div className="generation-selection">
             <div className="row">
-                {/* Sol: Filtreler */}
                 <div className="d-none d-md-blockcol-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black', }}>
                         {t('garage_car')}
@@ -152,7 +148,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                     </Typography>
                     <Divider />
                     <div className="card-body py-2">
-                        {/* Yıl Filtresi */}
                         <div className="mb-3">
                             <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Üretim Yılı</label>
                             <select
@@ -172,7 +167,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                             </select>
                         </div>
 
-                        {/* Kasa Tipi Filtresi */}
                         {allBodyTypes.length > 0 && (
                             <div className="mb-2">
                                 <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Kasa Tipi</label>
@@ -195,7 +189,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                         )}
                     </div>
                 </div>
-                {/* Sağ: Jenerasyon Kartları */}
                 <div className="col-md-9">
                     {filteredGenerations.length > 0 ? (
                         <div className="row g-3">
@@ -214,7 +207,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                                             e.currentTarget.style.transform = 'translateY(0)';
                                         }}
                                     >
-                                        {/* Araç Görseli */}
                                         <div
                                             className="card-img-top bg-light d-flex align-items-center justify-content-center"
                                             style={{ height: '140px', overflow: 'hidden' }}
@@ -231,7 +223,6 @@ export default function GenerationSelection({ make, makeName, model, modelName, 
                                             )}
                                         </div>
 
-                                        {/* Bilgiler */}
                                         <div className="card-body text-center p-2">
                                             <h6 className="mb-1" style={{ fontSize: '14px' }}>{gen.name}</h6>
                                             <small className="text-muted d-block">

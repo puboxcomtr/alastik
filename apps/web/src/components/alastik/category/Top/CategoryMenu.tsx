@@ -47,20 +47,17 @@ function itemUrl(item: MenuItemType): string {
 export default function CategoryMenu({ menu }: CategoryMenuProps) {
     if (!menu || !menu.items || menu.items.length === 0) return null;
 
-    // Açılır öğeler de tek seviyede gösterilir (kategori sayfasında dropdown yoktur)
     const links = menu.items.flatMap(item =>
         item.menuType === 'heading' ? (item.children || []) : [item, ...(item.children || [])]
     );
 
     if (links.length === 0) return null;
 
-    // Başlığa bağlantı verilmişse tıklanabilir olur; "heading" tipinde bağlantı yoktur
     const baslikAdresi = menu.menuType && menu.menuType !== 'heading'
         ? itemUrl({ _id: menu._id, name: menu.name, menuType: menu.menuType, linkData: menu.linkData })
         : null;
 
     return (
-        // Sol sidebar'ın en üstünde dikey liste; kutu çerçevesi yok, ayrım satır altı çizgisiyle
         <div className="category-menu mb-4 pe-lg-4">
             {baslikAdresi ? (
                 <Link href={baslikAdresi} className="h6 mb-2 d-block text-dark text-decoration-none animate-underline animate-target">

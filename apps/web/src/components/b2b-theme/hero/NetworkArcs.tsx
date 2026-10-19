@@ -7,15 +7,6 @@ import { buildArcCurve, latLonToVector3, NETWORK_ARCS, NETWORK_NODES } from './g
 import { HERO_COLORS, HERO_CONFIG } from './hero-config';
 import { clamp01, introAlpha } from './hero-easing';
 
-/**
- * The supply-network layer: a handful of gold arcs leaving Istanbul, small
- * glowing endpoints, and one light pulse travelling each route.
- *
- * Sparse on purpose — the brief wants "global supply network", not a command
- * centre. Everything lives inside the globe's spin group so routes stay glued
- * to their geography as the planet turns.
- */
-
 const ARC_SEGMENTS = 48;
 
 type NetworkArcsProps = {
@@ -73,8 +64,6 @@ function NetworkArcs({ prefersReducedMotion, startedAt }: NetworkArcsProps) {
     () =>
       new THREE.PointsMaterial({
         color: '#fff7b0',
-        // Bigger than the static endpoint nodes: these are the only things in
-        // the scene that actually travel, so they have to be findable.
         size: globe.nodeSize * 1.8,
         sizeAttenuation: true,
         transparent: true,
@@ -95,8 +84,6 @@ function NetworkArcs({ prefersReducedMotion, startedAt }: NetworkArcsProps) {
     return geometry;
   }, [curves.length, globe.pulsesPerArc]);
 
-  // THREE.Line instances (not meshes), built once — recreating them per
-  // render would leak scene objects.
   const arcLines = useMemo(
     () => arcGeometries.map((geometry) => new THREE.Line(geometry, arcMaterial)),
     [arcGeometries, arcMaterial],
@@ -123,8 +110,6 @@ function NetworkArcs({ prefersReducedMotion, startedAt }: NetworkArcsProps) {
     arcMaterial.opacity = globe.arcOpacity * revealed;
     nodeMaterial.opacity = 0.8 * revealed;
 
-    // The travelling pulses are pure motion decoration: parked at the hub and
-    // invisible under reduced motion.
     if (prefersReducedMotion) {
       pulseMaterial.opacity = 0;
 
@@ -142,8 +127,6 @@ function NetworkArcs({ prefersReducedMotion, startedAt }: NetworkArcsProps) {
     const positions = pulses.geometry.getAttribute('position') as THREE.BufferAttribute;
 
     curves.forEach((curve, index) => {
-      // Several lights per route, staggered along it and across routes, so
-      // the network reads as steady traffic rather than a single blip.
       for (let pulse = 0; pulse < globe.pulsesPerArc; pulse += 1) {
         const t = (elapsed / globe.arcPulseSeconds + index * 0.37 + pulse / globe.pulsesPerArc) % 1;
         const point = curve.getPoint(t);

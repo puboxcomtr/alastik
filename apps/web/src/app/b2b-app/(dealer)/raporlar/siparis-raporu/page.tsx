@@ -19,10 +19,6 @@ type Satir = {
   satirToplamKurus: number;
 };
 
-/**
- * Sipariş Raporu — sipariş kalemleri düzeyinde döküm.
- * İptal edilen siparişler tamamen dışlanır.
- */
 export default function SiparisRaporuPage() {
   const [baslangic, setBaslangic] = useState("");
   const [bitis, setBitis] = useState("");

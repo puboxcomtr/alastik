@@ -1,10 +1,7 @@
-// Third-party Imports
 import styled from '@emotion/styled'
 
-// Type Imports
 import type { VerticalNavProps } from '../../components/vertical-menu/VerticalNav'
 
-// Util Imports
 import { verticalNavClasses } from '../../utils/menuClasses'
 
 type StyledVerticalNavContainerProps = Pick<VerticalNavProps, 'width' | 'transitionDuration'>

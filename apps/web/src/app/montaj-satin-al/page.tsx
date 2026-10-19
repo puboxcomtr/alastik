@@ -1,5 +1,3 @@
-// Montaj Satın Al — /montaj-satin-al (siteConfig'de montaj paleti tanımlı siteler: alastik, lastikjantavm)
-// Lastiğini başka yerden almış müşteri için montaj / balans / rot / depolama satın alma (3 adım).
 import React, { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -21,7 +19,6 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     return {
         title: siteTitle('Montaj Satın Al — Lastik Montajı, Balans ve Rot'),
         description: 'Lastiğini başka yerden aldıysan da montaj, balans, rot ve lastik depolama hizmetini online satın al: jant çapını seç, 81 ildeki anlaşmalı montaj noktalarından birini seç, hizmetlerini sepetine ekle.',
-        // Adım parametreli adresler (?jant=, ?nokta=) noindex; sayfanın kendisi dizinde
         ...(await canonicalMeta('/montaj-satin-al', await searchParams))
     };
 }

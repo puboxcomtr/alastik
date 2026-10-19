@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState, useEffect } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -16,7 +14,6 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import DialogActions from '@mui/material/DialogActions'
 import Button from '@mui/material/Button'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 type RoleDialogProps = {
@@ -47,7 +44,6 @@ const defaultData: DataType[] = [
 ]
 
 const RoleDialog = ({ open, setOpen, title }: RoleDialogProps) => {
-  // States
   const [selectedCheckbox, setSelectedCheckbox] = useState<string[]>(
     title
       ? [

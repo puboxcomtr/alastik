@@ -1,8 +1,3 @@
-// apps/web/src/components/lastikjantavm/product/right/MobileBuyBar.tsx
-// Yalnızca mobilde (d-md-none) ürün sayfasının altına sabitlenen çubuk: fiyat + Şimdi Al + Sepete Ekle.
-// Sepete Ekle sonrası, sabit çubuğun ÜZERİNDE onay paneli açılır: "Ürün sepete eklendi!" +
-// aynı ebattaki diğer lastikler (mevcut /products/filter ucundan) + Alışverişe Devam / Sepete Git.
-// Montaj teklifi (LJA'ya özel) panel "Alışverişe Devam" ile kapatılınca tetiklenir.
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
@@ -40,7 +35,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
     const [sheetVisible, setSheetVisible] = useState(false);
     const [suggestions, setSuggestions] = useState<Product[] | null>(null);
 
-    // Panel monte edilir edilmez aşağıdan yukarı yumuşak kayma başlasın
     useEffect(() => {
         if (!sheetOpen) return;
         const id = requestAnimationFrame(() => setSheetVisible(true));
@@ -53,7 +47,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
     const price = getProductPrice(product);
     const gosterim = getDisplayPrice(product, price);
 
-    // Aynı ebattaki diğer lastikler — mevcut filtre ucundan, yalnızca panel ilk açıldığında çekilir
     const loadSuggestions = async () => {
         if (suggestions !== null || !similar) return;
         try {
@@ -79,14 +72,12 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
             check.violations.forEach(v => toast.error(v.message));
             return false;
         }
-        // Boş mesaj: toast yerine onay paneli gösterilir
         return addToCart(product._key, 1, silent ? '' : undefined);
     };
 
     const handleAddToCart = async () => {
         if (busy) return;
         setBusy('add');
-        // Öneriler basıldığı anda paralel yüklenir, panel açılınca hazır olur
         loadSuggestions();
         try {
             const added = await addOne(true);
@@ -117,8 +108,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
         }
     };
 
-    // Panel kapatılınca (alışverişe devam) mevcut montaj teklifi akışı korunur.
-    // Önce yumuşak iniş animasyonu, sonra kaldırma ve montaj teklifi.
     const closeSheet = () => {
         setSheetVisible(false);
         setTimeout(() => {
@@ -129,7 +118,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
 
     return (
         <>
-            {/* Sabit çubuğun içeriği örtmemesi için boşluk */}
             <div className="d-md-none" style={{ height: 104 }} aria-hidden="true" />
             <div
                 className="d-md-none bg-white"
@@ -148,7 +136,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
                     <span className="fw-bold text-black" style={{ fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
                         {formatTL(gosterim.value)} TL{gosterim.suffix}
                     </span>
-                    {/* Şimdi Al dar, Sepete Ekle geniş */}
                     <button
                         type="button"
                         className="btn btn-outline-primary"
@@ -170,7 +157,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
                 </div>
             </div>
 
-            {/* Sepete eklendi onay paneli — sabit çubuğun üzerinde açılır, hiçbir şeyi örtülü bırakmaz */}
             {sheetOpen && (
                 <div className="d-md-none">
                     <div

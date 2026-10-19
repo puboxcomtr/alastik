@@ -1,4 +1,3 @@
-// Ürün sitemap'i (/urun/<seoUrl>)
 import { getSiteBase, fetchSitemapData, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 
 export const dynamic = 'force-dynamic';

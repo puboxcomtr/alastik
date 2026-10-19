@@ -1,5 +1,3 @@
-// Sitemap route handler'larının ortak yardımcıları.
-// Site host'tan çözülür; URL'ler sitenin ana domain'iyle üretilir.
 import { headers } from 'next/headers';
 import { SITES, DEFAULT_SITE, isValidSite, resolveSiteFromHost } from '@/src/config/siteConfig';
 import { API_ENDPOINTS } from '@/src/config/api';
@@ -9,8 +7,6 @@ export interface SitemapEntry {
     updatedAt?: string;
 }
 
-// Middleware .xml/.txt uzantılı istekleri atladığı için x-site header'ı
-// oluşmayabilir; site her zaman Host üzerinden de çözülür
 export function getSiteSlug(): string {
     const hdrs = headers();
     const fromHeader = hdrs.get('x-site');
@@ -21,7 +17,6 @@ export function getSiteSlug(): string {
 export function getSiteBase(): string {
     const slug = getSiteSlug();
     const site = isValidSite(slug) ? SITES[slug] : SITES[DEFAULT_SITE];
-    // domains[0] ana adres kabul edilir (www'suz)
     return `https://${site.domains[0]}`;
 }
 

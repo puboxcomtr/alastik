@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -17,7 +15,6 @@ import MenuItem from '@mui/material/MenuItem'
 import InputAdornment from '@mui/material/InputAdornment'
 
 const Address = () => {
-  // States
   const [state, setState] = useState('')
 
   return (

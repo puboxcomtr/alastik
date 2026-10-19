@@ -94,16 +94,13 @@ export default function RegisterView() {
             if (result.success) {
                 toast.success(result.message || 'Üyeliğiniz başarıyla oluşturuldu');
 
-                // Dönüşüm olayları — kaydolma başarılı
                 if (typeof window !== 'undefined') {
                     const memberId = (result.data?.member as { _id?: string; id?: string })?._id
                         ?? (result.data?.member as { id?: string })?.id
                         ?? '';
 
-                    // GTM dönüşüm tetikleyicileri için dataLayer olayı (her iki site)
                     pushDataLayer({ event: 'sign_up', transaction_id: String(memberId) });
 
-                    // Google Ads dönüşümü — sitenin etiket haritasından (config/tracking.ts)
                     fireAdsConversion('signUp', {
                         value: 1.0,
                         transaction_id: String(memberId)
@@ -135,7 +132,6 @@ export default function RegisterView() {
                 <div className="col-lg-10">
                     <div className="card shadow">
                         <div className="row g-0">
-                            {/* Sol Taraf - Register Form */}
                             <div className="col-md-6 p-5">
                                 <h5 className="mb-4 h5">{t('register_title')}</h5>
 
@@ -324,7 +320,6 @@ export default function RegisterView() {
                                 </div>
                             </div>
 
-                            {/* Sağ Taraf - Login Bilgi */}
                             <div className="col-md-6 bg-light p-5 d-flex flex-column justify-content-center">
                                 <h5 className="mb-4 h5">{t('already_member')}</h5>
                                 <p className="text-muted mb-4">

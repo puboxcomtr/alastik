@@ -2,35 +2,27 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
 
-/**
- * Basit Image Processor - Sadece WebP dönüşüm ve filename temizleme
- */
 class SimpleImageProcessor {
     constructor(uploadPath) {
         this.uploadPath = uploadPath;
     }
 
-    /**
-     * Temiz filename oluştur
-     */
     generateCleanFilename(originalFilename, uploadPath, folder) {
-        // Dosya adını temizle
         const cleanName = originalFilename
             .toLowerCase()
             .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') // Aksan kaldır
+            .replace(/[\u0300-\u036f]/g, '')
             .replace(/[ğüşıöç]/g, match => {
                 const map = { 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ı': 'i', 'ö': 'o', 'ç': 'c' };
                 return map[match];
             })
-            .replace(/[^a-z0-9.-]/g, '-') // Özel karakterleri - yap
-            .replace(/-+/g, '-') // Çoklu - ları tek yap
-            .replace(/^-|-$/g, ''); // Baş/son - kaldır
+            .replace(/[^a-z0-9.-]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
 
         const ext = path.extname(cleanName);
         const nameWithoutExt = path.basename(cleanName, ext) || 'gorsel';
 
-        // Aynı isimde dosya var mı kontrol et
         let finalName = `${nameWithoutExt}${ext}`;
         let counter = 1;
 
@@ -42,9 +34,6 @@ class SimpleImageProcessor {
         return finalName;
     }
 
-    /**
-     * Dosya var mı kontrol et (senkron)
-     */
     fileExists(filePath) {
         try {
             return require('fs').existsSync(filePath);
@@ -53,23 +42,18 @@ class SimpleImageProcessor {
         }
     }
 
-    /**
-     * WebP versiyonu oluştur
-     */
     async createWebPVersion(originalPath, filename, folder) {
         try {
             const ext = path.extname(filename);
             const baseName = path.basename(filename, ext);
             const webpFilename = `${baseName}.webp`;
-            // WebP orijinalin yanına yazılır (site alt klasörlü yüklemelerde de doğru yerde kalır)
             const webpPath = path.join(path.dirname(originalPath), webpFilename);
 
-            // WebP'ye dönüştür - yüksek kalite (90%)
             await sharp(originalPath)
                 .webp({
                     quality: 90,
                     effort: 6,
-                    smartSubsample: true // Daha iyi renk korunumu
+                    smartSubsample: true
                 })
                 .toFile(webpPath);
 
@@ -90,9 +74,6 @@ class SimpleImageProcessor {
         }
     }
 
-    /**
-     * Dosya boyutunu al
-     */
     async getFileSize(filePath) {
         try {
             const stats = await fs.stat(filePath);
@@ -102,9 +83,6 @@ class SimpleImageProcessor {
         }
     }
 
-    /**
-     * Orijinal görsel kalitesini optimize et (boyut değişmez)
-     */
     async optimizeOriginal(originalPath) {
         try {
             const ext = path.extname(originalPath).toLowerCase();
@@ -127,12 +105,11 @@ class SimpleImageProcessor {
                     });
                     break;
                 default:
-                    return; // WebP ve diğerleri için optimize etme
+                    return;
             }
 
             await pipeline.toFile(tempPath);
 
-            // Orijinal ile değiştir
             await fs.rename(tempPath, originalPath);
 
             return true;
@@ -142,9 +119,6 @@ class SimpleImageProcessor {
         }
     }
 
-    /**
-     * Ana işlem - Upload sonrası çalışır
-     */
     async processImage(originalPath, filename, folder) {
         try {
             const results = {
@@ -155,17 +129,14 @@ class SimpleImageProcessor {
                 compressionRatio: 0
             };
 
-            // 1. Orijinal dosyayı optimize et
             results.originalOptimized = await this.optimizeOriginal(originalPath);
             results.originalSize = await this.getFileSize(originalPath);
 
-            // 2. WebP versiyonu oluştur
             const webpResult = await this.createWebPVersion(originalPath, filename, folder);
             results.webpCreated = webpResult.success;
             results.webpSize = webpResult.webpSize;
             results.webpFilename = webpResult.webpFilename;
 
-            // 3. Compression ratio hesapla
             if (results.webpSize > 0) {
                 results.compressionRatio = Math.round(((results.originalSize - results.webpSize) / results.originalSize) * 100);
             }
@@ -178,18 +149,12 @@ class SimpleImageProcessor {
         }
     }
 
-    /**
-     * Background'da işle (kullanıcı beklemez)
-     */
     processInBackground(originalPath, filename, folder) {
         setTimeout(async () => {
             await this.processImage(originalPath, filename, folder);
         }, 100);
     }
 
-    /**
-     * Bytes'ı okunabilir formata çevir
-     */
     formatBytes(bytes) {
         if (bytes === 0) return '0 B';
         const k = 1024;
@@ -198,13 +163,9 @@ class SimpleImageProcessor {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    /**
-     * Responsive image URL'leri oluştur
-     */
     static generateImageUrls(filename, folder, generateFileUrl) {
         const ext = path.extname(filename);
         const baseName = path.basename(filename, ext);
-        // Alt klasör (ör. site öneki) korunur
         const dir = path.dirname(filename);
         const webpRel = dir === '.' ? `${baseName}.webp` : path.join(dir, `${baseName}.webp`);
 

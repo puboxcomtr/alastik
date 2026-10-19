@@ -1,4 +1,3 @@
-// apps/web/src/services/brandService.ts
 import { API_ENDPOINTS, getImageUrl, getServerSiteHeaders } from '@/src/config/api';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 import type {
@@ -8,9 +7,6 @@ import type {
     BrandListResponse
 } from '@/src/types/brand';
 
-/**
- * Anasayfa markalari (showOnHomepage: true)
- */
 export async function getHomepageBrands(): Promise<BrandListResponse> {
     try {
         const response = await fetch(API_ENDPOINTS.brands.homepage(), {
@@ -29,9 +25,6 @@ export async function getHomepageBrands(): Promise<BrandListResponse> {
     }
 }
 
-/**
- * Marka bilgisi (ProductCard icin - basit)
- */
 export async function getBrandByName(brandName: string): Promise<BrandResponse> {
     try {
         const response = await fetch(API_ENDPOINTS.brands.detail(brandName), {
@@ -63,9 +56,6 @@ export async function getBrandByName(brandName: string): Promise<BrandResponse> 
     }
 }
 
-/**
- * Marka detayi (Marka sayfasi icin - tam bilgi)
- */
 export async function getBrandDetail(seoUrl: string): Promise<BrandDetailResponse> {
     try {
         const response = await fetch(API_ENDPOINTS.brands.detail(seoUrl), {
@@ -86,9 +76,6 @@ export async function getBrandDetail(seoUrl: string): Promise<BrandDetailRespons
     }
 }
 
-/**
- * Gorsel URL helper
- */
 export function getBrandImageUrl(url: string | null | undefined): string {
     if (!url) return '/images/marka/gorsel-bulunamadi.jpg';
     return getImageUrl(url);

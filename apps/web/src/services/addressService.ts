@@ -1,9 +1,7 @@
-// apps/web/src/services/addressService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { Address, AddressFormData } from '@/src/types/adress';
 
 export const addressService = {
-    // Kullanici adreslerini getir
     async getUserAddresses(userId: string): Promise<Address[]> {
         try {
             const res = await fetch(API_ENDPOINTS.address.list(userId), {
@@ -17,7 +15,6 @@ export const addressService = {
         }
     },
 
-    // Tek adres getir
     async getAddress(addressId: string): Promise<Address | null> {
         try {
             const res = await fetch(API_ENDPOINTS.address.detail(addressId), {
@@ -31,7 +28,6 @@ export const addressService = {
         }
     },
 
-    // Adres ekle
     async createAddress(userId: string, addressData: AddressFormData): Promise<Address | null> {
         try {
             const res = await fetch(API_ENDPOINTS.address.create(), {
@@ -50,7 +46,6 @@ export const addressService = {
         }
     },
 
-    // Adres guncelle
     async updateAddress(addressId: string, addressData: Partial<AddressFormData>): Promise<Address | null> {
         try {
             const res = await fetch(API_ENDPOINTS.address.update(addressId), {
@@ -69,7 +64,6 @@ export const addressService = {
         }
     },
 
-    // Adres sil
     async deleteAddress(addressId: string): Promise<boolean> {
         try {
             const res = await fetch(API_ENDPOINTS.address.delete(addressId), {
@@ -84,7 +78,6 @@ export const addressService = {
         }
     },
 
-    // Varsayilan adres yap
     async setDefaultAddress(addressId: string): Promise<boolean> {
         try {
             const res = await fetch(API_ENDPOINTS.address.update(addressId), {

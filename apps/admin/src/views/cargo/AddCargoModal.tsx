@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState, useEffect } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -26,13 +24,10 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Tooltip from '@mui/material/Tooltip'
 import type { SelectChangeEvent } from '@mui/material/Select'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
-// Data Imports
 import { CARGO_PROVIDERS } from '@/data/cargo/providers'
 import type { CargoProductType } from './cargoOptions'
 

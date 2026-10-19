@@ -5,29 +5,17 @@ const { authenticateUser } = require('../middleware/auth');
 const crypto = require('crypto');
 const router = express.Router();
 
-// Iyzico SDK (gerçek uygulamada kurulmalı)
-// const Iyzipay = require('iyzipay');
-
-// Bank transfer (Havale/EFT) hesapları (mock)
 const BANK_ACCOUNTS = [
   { id: 'isbank', bankName: 'İş Bankası', iban: 'TR12 3456 7890 1234 5678 9012 34', accountName: 'ALastik Ticaret A.Ş.' },
   { id: 'garanti', bankName: 'Garanti BBVA', iban: 'TR98 7654 3210 9876 5432 1098 76', accountName: 'ALastik Ticaret A.Ş.' },
 ];
 
-/**
- * Mock Iyzico Configuration
- * Gerçek uygulamada environment variables kullanılmalı
- */
 const iyzicoConfig = {
   apiKey: process.env.IYZICO_API_KEY || 'sandbox-api-key',
   secretKey: process.env.IYZICO_SECRET_KEY || 'sandbox-secret-key',
   uri: process.env.IYZICO_URI || 'https://sandbox-api.iyzipay.com'
 };
 
-/**
- * 3D Güvenli ödeme başlat
- * POST /api/payment/3d-secure/initialize
- */
 router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
   try {
     const {
@@ -40,7 +28,6 @@ router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
       installment = 1
     } = req.body;
 
-    // Sipariş kontrolü
     const order = await Order.findOne({
       _id: orderId,
       userId: req.user.userId
@@ -53,15 +40,11 @@ router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
       });
     }
 
-    // Kullanıcı bilgilerini getir
     const user = await User.findById(req.user.userId);
 
-    // 3D Secure için gerekli parametreler
     const conversationId = crypto.randomUUID();
     const callbackUrl = `${process.env.FRONTEND_URL}/payment/callback`;
     
-    // Mock 3D Secure initialization
-    // Gerçek uygulamada Iyzico SDK kullanılacak
     const threeDSecureRequest = {
       locale: 'tr',
       conversationId,
@@ -80,7 +63,7 @@ router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
         surname: user.profile.lastName,
         gsmNumber: user.profile.phone,
         email: user.email,
-        identityNumber: '11111111111', // Test için
+        identityNumber: '11111111111',
         lastLoginDate: user.lastLogin?.date?.toISOString() || new Date().toISOString(),
         registrationDate: user.createdAt.toISOString(),
         registrationAddress: order.billing.address.address,
@@ -121,8 +104,6 @@ router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
       }
     };
 
-    // Mock 3D Secure Response
-    // Gerçek uygulamada Iyzico API çağrısı yapılacak
     const mockResponse = {
       status: 'success',
       locale: 'tr',
@@ -135,7 +116,6 @@ router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
       errorGroup: null
     };
 
-    // Siparişe 3D Secure bilgilerini kaydet
     order.payment.threeDSecure = {
       isEnabled: true,
       status: 'pending',
@@ -174,10 +154,6 @@ router.post('/3d-secure/initialize', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * 3D Secure callback
- * POST /api/payment/3d-secure/callback
- */
 router.post('/3d-secure/callback', async (req, res) => {
   try {
     const {
@@ -190,7 +166,6 @@ router.post('/3d-secure/callback', async (req, res) => {
 
     console.log('3D Secure Callback:', req.body);
 
-    // Siparişi bul
     const order = await Order.findOne({
       'payment.transaction.conversationId': conversationId
     });
@@ -202,9 +177,7 @@ router.post('/3d-secure/callback', async (req, res) => {
       });
     }
 
-    // 3D Secure sonucunu değerlendir
     if (mdStatus === '1' && status === 'success') {
-      // Başarılı 3D doğrulama
       order.payment.threeDSecure.status = 'success';
       order.payment.threeDSecure.mdStatus = mdStatus;
       order.payment.transaction.status = 'success';
@@ -212,7 +185,6 @@ router.post('/3d-secure/callback', async (req, res) => {
       order.status = 'confirmed';
       order.payment.paidAt = new Date();
 
-      // Kullanıcının sepetini temizle
       const user = await User.findById(order.userId);
       if (user) {
         user.activeCart = {
@@ -228,10 +200,8 @@ router.post('/3d-secure/callback', async (req, res) => {
 
       await order.save();
 
-      // Başarı sayfasına yönlendir
       return res.redirect(`${process.env.FRONTEND_URL}/order-success?order=${order.orderNumber}`);
     } else {
-      // Başarısız 3D doğrulama
       order.payment.threeDSecure.status = 'failed';
       order.payment.threeDSecure.mdStatus = mdStatus;
       order.payment.transaction.status = 'failed';
@@ -239,7 +209,6 @@ router.post('/3d-secure/callback', async (req, res) => {
       
       await order.save();
 
-      // Hata sayfasına yönlendir
       return res.redirect(`${process.env.FRONTEND_URL}/payment-failed?order=${order.orderNumber}&error=3d-secure-failed`);
     }
 
@@ -249,10 +218,6 @@ router.post('/3d-secure/callback', async (req, res) => {
   }
 });
 
-/**
- * Ödeme durumunu kontrol et
- * GET /api/payment/status/:orderId
- */
 router.get('/status/:orderId', authenticateUser, async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -287,18 +252,12 @@ router.get('/status/:orderId', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Taksit seçeneklerini getir
- * POST /api/payment/installments
- */
 router.post('/installments', authenticateUser, async (req, res) => {
   try {
     const { cardNumber, amount } = req.body;
 
-    // Kart numarasından banka bilgisini tespit et (mock)
     const cardBin = cardNumber.substring(0, 6);
     
-    // Mock taksit seçenekleri
     const installmentOptions = [
       { installmentCount: 1, installmentAmount: amount, totalAmount: amount },
       { installmentCount: 2, installmentAmount: amount / 2, totalAmount: amount },
@@ -326,9 +285,6 @@ router.post('/installments', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Mock 3D Secure Form Generator
- */
 function generateMock3DForm(conversationId, orderNumber) {
   return `
     <!DOCTYPE html>
@@ -373,10 +329,6 @@ function generateMock3DForm(conversationId, orderNumber) {
 
 module.exports = router;
 
-/**
- * Havale hesaplarını getir
- * GET /api/payment/bank-accounts
- */
 router.get('/bank-accounts', async (req, res) => {
   try {
     res.json({ success: true, data: BANK_ACCOUNTS });
@@ -385,17 +337,12 @@ router.get('/bank-accounts', async (req, res) => {
   }
 });
 
-/**
- * Ödeme bildirimi
- * POST /api/payment/bank-transfer/notify
- */
 router.post('/bank-transfer/notify', authenticateUser, async (req, res) => {
   try {
     const { orderId, bankId, amount, description } = req.body;
     const order = await Order.findOne({ _id: orderId, userId: req.user.userId });
     if (!order) return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
 
-    // Sipariş ödeme durumunu beklemede/confirmed yap
     order.payment.method = 'bank_transfer';
     order.paymentStatus = 'pending';
     order.status = 'pending';

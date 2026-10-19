@@ -1,10 +1,3 @@
-/**
- * İçerik SEO analiz motoru — saf fonksiyon, veritabanına dokunmaz.
- *
- * Rank Math'in temel kontrollerinin bizim alanlarımıza uyarlanmış hali. Girdi olarak
- * vitrinde GERÇEKTEN basılan başlık/açıklama verilir (şablondan üretilen dahil) ki puan ile
- * Google'ın gördüğü sayfa birbirini tutsun. Eşikler SeoSettings.analysis'ten gelir.
- */
 
 const DEFAULT_THRESHOLDS = {
     titleMin: 30,
@@ -14,13 +7,11 @@ const DEFAULT_THRESHOLDS = {
     densityMin: 0.5,
     densityMax: 2.5,
     minWords: { blog: 600, page: 300, product: 150, category: 100, brand: 100, tag: 100 },
-    // Link inşası: içerikten sitenin diğer sayfalarına en az kaç iç link verilmeli
     minInternalLinks: { blog: 2, page: 2, product: 1, category: 1, brand: 1, tag: 1 },
     goodScore: 80,
     fairScore: 50
 };
 
-// key → tanım; sıra arayüzde gösterim sırasıdır
 const CHECK_DEFS = {
     kw_title: { group: 'Odak Kelime', label: 'Odak kelime SEO başlığında', weight: 12 },
     kw_description: { group: 'Odak Kelime', label: 'Odak kelime meta açıklamada', weight: 10 },
@@ -128,20 +119,6 @@ function mergeThresholds(overrides) {
     };
 }
 
-/**
- * @param {object} input
- * @param {string} input.type            product | page | blog | category | brand | tag
- * @param {string} input.focusKeyword
- * @param {string} input.title           Vitrinde basılan başlık (etkin)
- * @param {string} input.description     Vitrinde basılan meta açıklama (etkin)
- * @param {string} input.slug
- * @param {string} input.content         İçerik HTML'i
- * @param {string[]} [input.keywords]    seoKeywords / metaKeywords
- * @param {boolean} [input.hasCustomSeo] Elle girilmiş SEO alanı var mı
- * @param {Array}  [input.usedElsewhere]  Aynı odak kelimeyi kullanan diğer içerikler [{ type, refId, title, url, editPath }]
- * @param {number} [input.galleryImages]  Ürünlerde galeri görsel sayısı (içerik HTML'i yerine bu sayılır)
- * @param {object} [options]             { thresholds, ownHosts }
- */
 function analyzeContent(input, options = {}) {
     const t = mergeThresholds(options.thresholds);
     const type = CHECK_TYPE(input.type);
@@ -183,7 +160,6 @@ function analyzeContent(input, options = {}) {
             ? 'Bu kelime başka içerikte odak olarak kullanılmıyor'
             : `Şu içerikte de odak kelime: ${others.slice(0, 3).map(o => o.title).join(', ')}${others.length > 3 ? ` (+${others.length - 3})` : ''}`);
     } else {
-        // Odak kelime yoksa bu kontroller KALDI sayılır: kelime girilmeden içerik "İyi" olamaz
         for (const key of ['kw_title', 'kw_description', 'kw_url', 'kw_intro', 'kw_content', 'kw_density', 'kw_unique']) {
             add(key, false, 'Odak anahtar kelime girilmemiş');
         }
@@ -206,7 +182,6 @@ function analyzeContent(input, options = {}) {
 
     const images = imageStats(html);
     if (typeof input.galleryImages === 'number') {
-        // Ürün: görseller açıklama HTML'inde değil galeride durur
         add('image_alt', input.galleryImages > 0, input.galleryImages > 0 ? `Ürün galerisinde ${input.galleryImages} görsel` : 'Ürün görseli yok');
     } else {
         add('image_alt', images.total > 0 && images.withoutAlt === 0, images.total === 0
@@ -214,7 +189,6 @@ function analyzeContent(input, options = {}) {
             : images.withoutAlt === 0 ? `${images.total} görselin tümünde alt metni var` : `${images.withoutAlt}/${images.total} görselde alt metni eksik`);
     }
 
-    // Link inşası: iç linkler sitenin diğer sayfalarına otorite taşır; blog/sayfada dış kaynak linki güven verir
     const links = linkStats(html, options.ownHosts || []);
     const minInternal = t.minInternalLinks[type] ?? 1;
     add('links', links.internal >= minInternal, links.internal >= minInternal
@@ -243,7 +217,6 @@ function analyzeContent(input, options = {}) {
     const failed = checks.filter(c => c.passed === false).length;
     const skipped = checks.filter(c => c.passed === null).length;
 
-    // Odak kelime girilmemişse SEO "yapılmamış" sayılır; puan yine hesaplanır ama durum "none"
     const status = !focus
         ? 'none'
         : score >= t.goodScore ? 'good' : score >= t.fairScore ? 'fair' : 'poor';

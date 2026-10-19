@@ -1,11 +1,7 @@
-// Araç sayfası metinleri (LastikJantAVM) — her model için gerçek veriden (yıllar, nesiller, ebatlar,
-// bijon, stok) üretilir. Cümle kalıpları model adına göre sabit ama modelden modele farklı seçilir;
-// böylece sayfalar birbirinin kopyası olmaz. alastik.com için ayrı kalıplar yazılacak (aynı metin kullanılmaz).
 import type { VehicleModelDetail, VehicleSizeStock } from '@/src/services/vehicleService';
 
 export interface Faq { q: string; a: string }
 
-// Model adına göre sabit (deterministik) seçim
 function hash(s: string): number {
     let h = 2166136261;
     for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -25,7 +21,6 @@ export function vehicleName(d: { makeName: string; modelName: string }) {
     return `${d.makeName} ${d.modelName}`;
 }
 
-// Fabrika ebatı → hangi nesillerde/yıllarda kullanıldığı
 export function sizeGenerations(d: VehicleModelDetail, size: string): string {
     const gens = d.generations.filter(g => g.modifications.some(m => m.wheels.some(w => w.oe && (w.front?.tire === size || w.rear?.tire === size))));
     return gens.map(g => `${g.name}${g.start ? ` (${years(g.start, g.end)})` : ''}`).join(', ');

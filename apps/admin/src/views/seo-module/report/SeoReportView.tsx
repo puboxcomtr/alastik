@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useCallback, useEffect, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -18,21 +15,16 @@ import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { ReportData, SeoPeriodSelection, SyncState } from '../types'
 import { SEO_PERIOD_LABELS, buildPeriodQuery } from '../types'
 
-// Util Imports
 import { formatDecimal, formatNumber, formatPercent } from '@/views/analytics/reports/format'
 import { getSiteUrl } from '@/utils/activeSite'
 
-// Component Imports
 import SeoTabs from '../SeoTabs'
 import SeoPeriodSelector from '../SeoPeriodSelector'
 import SetupCard from './SetupCard'
@@ -51,7 +43,6 @@ const formatRange = (start: string, end: string) => {
     return start === end ? fmt(start) : `${fmt(start)} - ${fmt(end)}`
 }
 
-// Sayfa URL'lerini kısa yol olarak göster (https://alastik.com/urun/x → /urun/x)
 const pathOf = (url: string) => {
     try { return new URL(url).pathname || url } catch { return url }
 }
@@ -84,7 +75,6 @@ const SeoReportView = () => {
         fetchReport()
     }, [fetchReport])
 
-    // Arka plandaki çekim bitene kadar rapor sessizce yenilenir
     const sync: SyncState = data?.source?.sync ?? null
 
     useEffect(() => {

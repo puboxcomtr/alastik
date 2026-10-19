@@ -1,10 +1,4 @@
 'use client';
-// Kategori sayfası kataloğu — ürünler canlı /products/filter'dan (X-Site: b2b)
-// SUNUCU TARAFINDA sayfalanır VE filtrelenir. Marka/mevsim/DOT filtreleri tüm
-// ürünlere uygulanır (yalnız görünen sayfaya değil) ve URL'e yansır
-// (?page=2&marka=Lassa&mevsim=yaz). Filtre select seçenekleri facet'ten gelir
-// (kategorinin tüm markaları/mevsimleri/DOT'ları). Depo stoğu page başına
-// toplu çekilir.
 import { useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { Catalog, type ServerOptions, type ServerFilters } from '@components/b2b-theme/catalog';
@@ -14,19 +8,15 @@ import { rawToTire, normalizeBrand, mergeDepotStocks, type RawProduct, type Cari
 import { fetchDepotStocks } from '@components/b2b-theme/lib/depot-stock';
 import type { Tire } from '@components/b2b-theme/lib/sample-data';
 
-const PAGE_SIZE = 50; // her sayfada gösterilecek ürün sayısı
-// Kategori sekmelerinin adres parametresi (category-tabs.tsx CATEGORY_TAB_PARAM ile aynı; döngüsel içe aktarma olmasın diye burada)
+const PAGE_SIZE = 50;
 const PRESERVED_TAB_PARAM = 'tab';
-// Vitrin (kampanya) filtresinin adres parametresi ve sunucudaki vitrin anahtarı (Tema > Vitrin 1)
 const SHOWCASE_URL_PARAM = 'vitrin';
 const DEFAULT_SHOWCASE_KEY = 'first';
 
-// Mevsim: URL/ön yüz anahtarı ↔ DIA değeri (API mevsim parametresi ozelkod1kodu ile eşleşir)
 const SEASON_API: Record<string, string> = { yaz: 'Yaz', kis: 'Kış', '4mevsim': '4 Mevsim' };
 const SEASON_ETIKET: Record<string, string> = { yaz: 'Yaz', kis: 'Kış', '4mevsim': '4 Mevsim' };
 const SEASON_SIRA = ['yaz', 'kis', '4mevsim'];
 
-/** DIA mevsim değerini (ör. "Kış", "2.El-Yaz") URL anahtarına çevirir. */
 function seasonRawToKey(raw: string): string | null {
     const k = String(raw).toLocaleLowerCase('tr');
     if (k.includes('4') || k.includes('mevsim')) return '4mevsim';
@@ -37,18 +27,11 @@ function seasonRawToKey(raw: string): string | null {
 
 const BOS: ServerFilters = { q: '', marka: '', mevsim: '', dot: '', oem: '', depo: '', rft: false, cTipi: false, xl: false, ev: false, jantCap: '', bijon: '', showcase: false };
 
-// Plasiyer gözü: plasiyer girişi var VE bir bayi adına oturum açılmamış (authToken yok).
-// Plasiyer bir bayi seçtiyse (impersonation) ekran BAYİ gözüyle gösterilir: fiyat kutusunda
-// Perakende / Toptan karşılaştırması değil, bayinin iskonto oranı ve satış fiyatı yazar.
 function plasiyerOturumu(): boolean {
     if (typeof window === 'undefined') return false;
     try { return !!localStorage.getItem('plasiyerToken') && !localStorage.getItem('authToken'); } catch { return false; }
 }
 
-/**
- * XML tedarikçi adını isteyecek oturum anahtarı: plasiyer oturumu ya da plasiyerin bayi adına açtığı oturum
- * (bayi token'ında impersonatedBy). Bayinin kendi oturumunda boş döner.
- */
 function plasiyerXmlToken(): string {
     if (typeof window === 'undefined') return '';
     try {
@@ -69,7 +52,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
     const [filters, setFilters] = useState<ServerFilters>(BOS);
     const [sort, setSort] = useState<SortState>(null);
     const [facet, setFacet] = useState<ServerOptions>({ brands: [], brandLogos: {}, seasons: [], dots: [], oems: [], warehouses: [] });
-    // Üst filtre alanları kategorideki ürün türüne göre belirlenir (ör. jantta yalnız depo)
     const [visibleFilters, setVisibleFilters] = useState<CatalogFilterKey[]>(DEFAULT_CATALOG_FILTERS);
     const [hiddenColumns, setHiddenColumns] = useState<CatalogColumnKey[]>([]);
     const markaLogo = useRef<Record<string, string>>({});
@@ -77,9 +59,7 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
     const cariOran = useRef<CariOran>({ tanimlifiyat: 1, fiyatyuzde: 50 });
     const firstLoad = useRef(true);
     const [plasiyer, setPlasiyer] = useState(false);
-    // Plasiyer gözünde fiyat gruba göre gösterilir: Perakende → perakende (LJA) fiyatı, Toptan → toptan fiyatı
     const [plasiyerGroup, setPlasiyerGroup] = useState('');
-    // Perakende plasiyere sıfır lastikte fiyatın altında gösterilen not (panel: Tema Ayarları)
     const [retailPriceNote, setRetailPriceNote] = useState('');
     const [newTireCategory, setNewTireCategory] = useState(false);
     useEffect(() => {
@@ -97,8 +77,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             .catch(() => {});
     }, []);
 
-    // ── URL ↔ durum ────────────────────────────────────────────────
-    // Başlangıç durumunu adres çubuğundan oku (client-only)
     function readFromUrl(): { page: number; filters: ServerFilters; sort: SortState } {
         if (typeof window === 'undefined') return { page: 1, filters: BOS, sort: null };
         const q = new URLSearchParams(window.location.search);
@@ -125,11 +103,9 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         };
     }
 
-    // Durumu adres çubuğuna yaz (Next yeniden render tetiklemeden)
     function writeUrl(s: number, f: ServerFilters, srt: SortState): void {
         if (typeof window === 'undefined') return;
         const q = new URLSearchParams();
-        // Sayfa sekmeliyse (CategoryTabs) aktif sekme adreste kalır
         const activeTab = new URLSearchParams(window.location.search).get(PRESERVED_TAB_PARAM);
         if (activeTab) q.set(PRESERVED_TAB_PARAM, activeTab);
         if (f.q) q.set('q', f.q);
@@ -152,7 +128,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         window.history.pushState(null, '', url);
     }
 
-    // ── Veri çekme ─────────────────────────────────────────────────
     function applyDepotStock(raw: RawProduct[]) {
         const kodlar = raw.map(u => u.diaData?.stokkartkodu).filter(Boolean) as string[];
         fetchDepotStocks(kodlar).then(map => {
@@ -166,12 +141,9 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         });
     }
 
-    // Plasiyer oturumunda ve plasiyerin bayi adına açtığı oturumda XML ürünlerinin tedarikçi firma adı eklenir.
-    // Bayinin kendi oturumunda istek hiç gönderilmez (sunucu da yalnız plasiyer / plasiyerin bayi oturumuna verir).
     function applyXmlSources(raw: RawProduct[]) {
         const token = plasiyerXmlToken();
         if (!token) return;
-        // Eşleştirme ürün kimliğiyle yapılır: katalog stok kodundaki "-XML" ekini sildiği için aynı kodlu kendi ürünle karışmasın
         const idToCode = new Map(raw.filter(u => u.syncInfo?.syncSource === 'xml_integration' && u.diaData?.stokkartkodu)
             .map(u => [u._key, u.diaData!.stokkartkodu as string]));
         const kodlar = [...idToCode.values()];
@@ -186,10 +158,9 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                     return source ? { ...u, xmlSource: source } : u;
                 }));
             })
-            .catch(() => { /* firma adı gelmezse liste olduğu gibi kalır */ });
+            .catch(() => {  });
     }
 
-    // Bir sayfayı verilen filtre+sıralamayla çeker (sıralama SUNUCUDA, tüm ürünlerde)
     function loadPage(p: number, f: ServerFilters, srt: SortState) {
         setLoading(true);
         const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(p) });
@@ -206,10 +177,8 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         if (f.ev) params.set('ev', '1');
         if (f.jantCap) params.set('jantCap', f.jantCap);
         if (f.bijon) params.set('bijon', f.bijon);
-        // Vitrin filtresi: anahtar facet'ten gelir; facet henüz yüklenmediyse (adresten gelen ilk istek) sunucunun bildirdiği varsayılan kullanılır
         if (f.showcase) params.set('vitrin', showcaseKey.current);
         if (srt) { params.set('sortBy', srt.field); params.set('sortOrder', srt.dir); }
-        // Plasiyer oturumu: perakende (LJA) fiyatını da iste (Perakende grubundaki plasiyere bu fiyat gösterilir)
         if (plasiyerOturumu()) params.set('perakende', '1');
         fetch(`${API_ENDPOINTS.products.filter()}?${params.toString()}`, { headers: { 'X-Site': 'b2b' } })
             .then(r => r.json())
@@ -224,7 +193,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             .catch(() => setLoading(false));
     }
 
-    // Facet listeleri (kategorinin tüm marka/mevsim/DOT'ları) bir kez çekilir
     function loadFacets() {
         const params = new URLSearchParams({ facets: '1', limit: '1', page: '1' });
         if (kategori) params.set('category', kategori);
@@ -235,10 +203,8 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                 if (!f) return;
                 if (f.showcaseFilter?.key) showcaseKey.current = f.showcaseFilter.key;
                 setNewTireCategory(hasNewTireProductType((f.productTypes || []) as string[]));
-                // Ürün türünün alanları − panelde bu kategori için gizlenen filtreler
                 setVisibleFilters(withoutHiddenFilters(filtersForProductTypes((f.productTypes || []) as string[]), (f.hiddenFilters || []) as string[]));
                 setHiddenColumns(withHiddenFilterColumns(hiddenColumnsForProductTypes((f.productTypes || []) as string[]), (f.hiddenFilters || []) as string[]));
-                // Mevsim raw değerlerini URL anahtarına indir, tekilleştir, sırala
                 const keySet = new Set<string>();
                 for (const raw of (f.seasons || [])) {
                     const key = seasonRawToKey(raw);
@@ -248,7 +214,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                     .filter(k => keySet.has(k))
                     .map(k => ({ value: k, label: SEASON_ETIKET[k] }));
                 const brands = (f.brands || []) as string[];
-                // Marka adı → logo URL (başlangıçta çekilen markaLogo haritasından)
                 const brandLogos: Record<string, string> = {};
                 for (const name of brands) {
                     const lg = markaLogo.current[normalizeBrand(name)];
@@ -269,7 +234,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
             .catch(() => {});
     }
 
-    // Marka logoları bir kez çekilir; ardından ilk page + facet
     useEffect(() => {
         const baslat = readFromUrl();
         setPage(baslat.page);
@@ -287,7 +251,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
                     }
                     markaLogo.current = map;
                 }).catch(() => {}),
-            // Cari fiyat oranı (fiyat1 × %?) — DIA kampanya fiyat kartından dinamik
             token ? fetch(API_ENDPOINTS.b2b.fiyatOrani(), { headers: { Authorization: `Bearer ${token}`, 'X-Site': 'b2b' } })
                 .then(r => r.json())
                 .then(res => { if (res?.success && res.data) cariOran.current = res.data; }).catch(() => {}) : Promise.resolve(),
@@ -299,7 +262,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [kategori]);
 
-    // Tarayıcı geri/ileri: URL değişince durumu geri yükle
     useEffect(() => {
         function geriIleri() {
             const s = readFromUrl();
@@ -313,7 +275,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [kategori]);
 
-    // ── Kullanıcı etkileşimleri ────────────────────────────────────
     function changePage(p: number) {
         if (p < 1 || p > totalPages || p === page) return;
         setPage(p);
@@ -330,8 +291,6 @@ export function CategoryCatalog({ kategori }: { kategori?: string }) {
         loadPage(1, yeni, sort);
     }
 
-    // Sütun başlığı: aynı sütun ise yön değişir, farklıysa artan başlar.
-    // Sıralama SUNUCUDA tüm ürünlere uygulanır, 1. sayfaya dönülür, URL'e yazılır.
     function onSortChange(field: string) {
         const yeni: SortState =
             sort && sort.field === field

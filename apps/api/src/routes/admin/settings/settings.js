@@ -2,14 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Setting = require('../../../models/admin/settings/Setting');
 
-// GET /api/admin/settings/:group - Grup bazlı ayarları getir
 router.get('/:group', async (req, res) => {
     try {
         const { group } = req.params;
         
         const settings = await Setting.find({ group, site: req.site }).lean();
         
-        // Key-value formatına dönüştür
         const settingsObj = {};
         settings.forEach(setting => {
             settingsObj[setting.key] = setting.value;
@@ -29,7 +27,6 @@ router.get('/:group', async (req, res) => {
     }
 });
 
-// PUT /api/admin/settings/:group - Grup bazlı ayarları güncelle
 router.put('/:group', async (req, res) => {
     try {
         const { group } = req.params;
@@ -40,15 +37,12 @@ router.put('/:group', async (req, res) => {
         for (const [key, value] of Object.entries(updates)) {
             bulkOps.push({
                 updateOne: {
-                    // Benzersiz indeks (site + key) ile aynı ölçüt: grup farklıysa kayıt
-                    // yeniden eklenmeye çalışılıp çakışmasın, grubu güncellensin
                     filter: { key, site: req.site },
                     update: {
                         $set: {
                             value,
                             group,
                             site: req.site,
-                            // Dizi/nesne değerler 'json' olarak işaretlenir (value alanı Mixed)
                             type: typeof value === 'boolean' ? 'boolean' :
                                   typeof value === 'number' ? 'number' :
                                   (value !== null && typeof value === 'object') ? 'json' : 'string'
@@ -63,7 +57,6 @@ router.put('/:group', async (req, res) => {
             await Setting.bulkWrite(bulkOps);
         }
 
-        // Filigran ayarı değiştiyse üretilmiş kopyalar geçersiz olur
         const filigranDegisti = require('../../../services/media/WatermarkService').AYAR_ANAHTARLARI
             .some(key => Object.prototype.hasOwnProperty.call(updates, key));
 
@@ -89,12 +82,10 @@ router.put('/:group', async (req, res) => {
     }
 });
 
-// GET /api/admin/settings - Tüm ayarları getir
 router.get('/', async (req, res) => {
     try {
         const settings = await Setting.find({ site: req.site }).lean();
         
-        // Gruplara göre organize et
         const groupedSettings = {};
         settings.forEach(setting => {
             if (!groupedSettings[setting.group]) {

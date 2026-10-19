@@ -1,4 +1,3 @@
-// apps/web/src/components/product/right/Cart.tsx
 "use client";
 import React, { useState } from "react";
 import { useRouter } from 'next/navigation';
@@ -29,9 +28,7 @@ export default function Cart({ product }: CartProps) {
     const deliveryInfo = getDeliveryDateRange(product);
     const { getBrand } = useBrands();
     const price = getProductPrice(product);
-    // Fiyat gizli (__dinamik__16 seçili + dinamik yok): fiyat gösterilmez, sepete eklenemez
     const priceHidden = isPriceHidden(product);
-    // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
@@ -44,8 +41,6 @@ export default function Cart({ product }: CartProps) {
         return `https://wa.me/${formatted}`;
     };
     const hasStock = product.diaData?.gercek_stok > 0;
-    // Hizmetlerimiz (montaj, rot, sibop vb.) ürünlerinde taksit promosyonu ve
-    // tahmini teslim tarihi gösterilmez (hizmet kargolanmaz, tek çekim uygulanır).
     const isHizmet = (product.diaData?.m_kategoriler || []).some(
         (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
     );
@@ -65,7 +60,6 @@ export default function Cart({ product }: CartProps) {
                 return;
             }
 
-            // Lastiklerde toast yerine montaj noktası seçimi sayfasına yönlendirilir
             const isTire = getProductType(product) === 'LASTIK';
             const added = await addToCart(product._key, quantity, isTire ? '' : undefined);
             if (added && isTire) router.push(ROUTES.MONTAGE_SELECT);
@@ -106,7 +100,6 @@ export default function Cart({ product }: CartProps) {
             <Grid container>
                 <Grid size={12}>
                     <div className='d-none d-md-flex justify-content-center'>
-                        {/* Marka gizle açıksa detay sayfasında marka gösterilmez */}
                         {product.customData?.hideBrand !== true && (brandLogo ? (
                             <Image
                                 src={brandLogo}
@@ -120,11 +113,9 @@ export default function Cart({ product }: CartProps) {
                         ))}
                     </div>
                 </Grid>
-                {/* Add to Cart */}
                 <Grid size={12}>
                     <div className="card bg-white rounded border-0 mt-3" style={{ boxShadow: '0 0 24px 0 rgba(0, 0, 0, .1)' }}>
                         <div className="card-body">
-                            {/* Adet/fiyat ve Sepete Ekle mobilde gizlenir; alttaki sabit satın alma çubuğu kullanılır */}
                             <h5 className={hasStock ? 'card-title d-none d-md-block' : 'card-title'}>{hasStock ? 'Adet Seçimi' : 'Stok Bilgisi'}</h5>
                             {hasStock ? (
                                 <>
@@ -180,7 +171,6 @@ export default function Cart({ product }: CartProps) {
                                     </div>
                                     <hr className="m-0 p-2" />
                                     </div>
-                                    {/* Kargo — hizmet gibi kargolanmayan ürünlerde gizlenir */}
                                     {product?.customData?.hideDelivery !== true && !isHizmet && (
                                         <>
                                             <div>
@@ -199,7 +189,6 @@ export default function Cart({ product }: CartProps) {
                                             <hr className="m-0 p-2" />
                                         </>
                                     )}
-                                    {/* Kampanyalar — hizmet ürünlerinde taksit promosyonu gösterilmez */}
                                     {!isHizmet && (
                                     <>
                                     <div>

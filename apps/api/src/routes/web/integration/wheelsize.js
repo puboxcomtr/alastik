@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WheelSizeService = require('../../../services/plugins/wheelsize/WheelSizeService');
 
-// GET /api/wheelsize/makes - Marka Listesi
 router.get('/makes', async (req, res) => {
     try {
         const { region } = req.query;
@@ -49,7 +48,6 @@ router.get('/models', async (req, res) => {
     }
 });
 
-// GET /api/wheelsize/years - Yıl Listesi
 router.get('/years', async (req, res) => {
     try {
         const { make, model, region } = req.query;
@@ -78,7 +76,6 @@ router.get('/years', async (req, res) => {
     }
 });
 
-// GET /api/wheelsize/generations - Nesil Listesi
 router.get('/generations', async (req, res) => {
     try {
         const { make, model } = req.query;
@@ -90,7 +87,6 @@ router.get('/generations', async (req, res) => {
             });
         }
         const response = await WheelSizeService.getGenerations(make, model);
-
 
         return res.json({
             success: true,
@@ -107,7 +103,6 @@ router.get('/generations', async (req, res) => {
     }
 });
 
-// GET /api/wheelsize/modifications - Modifikasyon Listesi (trims yerine)
 router.get('/modifications', async (req, res) => {
     try {
         const { make, model, year, generation, region } = req.query;
@@ -136,7 +131,6 @@ router.get('/modifications', async (req, res) => {
     }
 });
 
-// GET /api/wheelsize/vehicle-details - Araç Detayları
 router.get('/vehicle-details', async (req, res) => {
     try {
         const { make, model, year, modification, region } = req.query;

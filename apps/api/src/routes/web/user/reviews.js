@@ -14,7 +14,6 @@ router.get('/my', authMiddleware, async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        // Ürün bilgilerini çek
         const productKeys = reviews.map(r => r.productKey).filter(Boolean);
         const products = await WebProduct.find(
             { _key: { $in: productKeys } },
@@ -53,8 +52,6 @@ router.get('/my', authMiddleware, async (req, res) => {
     }
 });
 
-
-// GET /api/reviews/top - Ana sayfa icin en iyi yorumlar
 router.get('/top', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
@@ -70,7 +67,6 @@ router.get('/top', async (req, res) => {
 
         const productKeys = reviews.map(r => r.productKey).filter(Boolean);
 
-        // Sadece aktif ürünleri çek
         const products = await WebProduct.find({
             _key: { $in: productKeys },
             'diaData.durum': 'A'
@@ -100,7 +96,6 @@ router.get('/top', async (req, res) => {
             };
         });
 
-        // Sadece aktif ürünü olan yorumları döndür, limit'e göre kes
         const data = reviews
             .filter(r => productMap[r.productKey])
             .slice(0, limit)
@@ -121,20 +116,17 @@ router.get('/top', async (req, res) => {
     }
 });
 
-// GET /api/reviews/:productKey - Ürün yorumları + istatistik
 router.get('/:productKey', async (req, res) => {
     try {
         const { productKey } = req.params;
         const { page = 1, limit = 10, status = 'active' } = req.query;
 
-        // Toplam yorum sayısı
         const totalReviews = await WebReview.countDocuments({
             site: req.site,
             productKey,
             status
         });
 
-        // Yorumları getir (kullanıcı bilgileriyle birlikte)
         const reviews = await WebReview.find({ site: req.site, productKey, status })
             .populate('userId', 'firstName lastName')
             .sort({ createdAt: -1 })
@@ -142,7 +134,6 @@ router.get('/:productKey', async (req, res) => {
             .limit(parseInt(limit))
             .lean();
 
-        // İstatistik hesapla
         const stats = await WebReview.aggregate([
             { $match: { site: req.site, productKey, status } },
             {
@@ -166,7 +157,6 @@ router.get('/:productKey', async (req, res) => {
             }
         ]);
 
-        // Yıldız dağılımı (1-5)
         const ratingDistribution = await WebReview.aggregate([
             { $match: { site: req.site, productKey, status } },
             {
@@ -178,7 +168,6 @@ router.get('/:productKey', async (req, res) => {
             { $sort: { _id: -1 } }
         ]);
 
-        // Dağılımı obje formatına çevir
         const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
         ratingDistribution.forEach(item => {
             distribution[item._id] = item.count;
@@ -206,7 +195,6 @@ router.get('/:productKey', async (req, res) => {
                     averageQuality: stats[0].averageQuality ? parseFloat(stats[0].averageQuality.toFixed(1)) : 0,
                     averageFuelEfficiency: stats[0].averageFuelEfficiency ? parseFloat(stats[0].averageFuelEfficiency.toFixed(1)) : 0,
                     averageWetGrip: stats[0].averageWetGrip ? parseFloat(stats[0].averageWetGrip.toFixed(1)) : 0,
-                    // Kar Paleti
                     averageSnowGrip: stats[0].averageSnowGrip ? parseFloat(stats[0].averageSnowGrip.toFixed(1)) : 0,
                     averageIceGrip: stats[0].averageIceGrip ? parseFloat(stats[0].averageIceGrip.toFixed(1)) : 0,
                     averageEasyMount: stats[0].averageEasyMount ? parseFloat(stats[0].averageEasyMount.toFixed(1)) : 0,
@@ -238,7 +226,6 @@ router.get('/:productKey', async (req, res) => {
     }
 });
 
-// POST /api/reviews - Yeni yorum ekle
 router.post('/', async (req, res) => {
     try {
         const {
@@ -251,7 +238,6 @@ router.post('/', async (req, res) => {
             quality,
             fuelEfficiency,
             wetGrip,
-            // Kar Paleti
             snowGrip,
             iceGrip,
             easyMount,
@@ -280,27 +266,23 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Yeni yorum oluştur
         const newReview = new WebReview({
             site: req.site,
             productKey,
             userId,
             overallRating,
-            // Lastik özellikleri
             drivingComfort,
             noise,
             braking,
             quality,
             fuelEfficiency,
             wetGrip,
-            // Kar Paleti özellikleri
             snowGrip,
             iceGrip,
             easyMount,
             hillPerformance,
             chainComfort,
             chainQuality,
-            // Diğer
             comment,
             source: source || getSiteBySlug(req.site)?.name || req.site,
             tireSize,

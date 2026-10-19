@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Blog = require('../../../models/admin/content/Blog');
 
-// GET /api/admin/blogs
 router.get('/', async (req, res) => {
     try {
         const { search, status } = req.query;
@@ -37,7 +36,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Blog Öne Çıkarılmış Görsel Ekle
 router.put('/:id/image', async (req, res) => {
     try {
         const { id } = req.params;
@@ -59,7 +57,6 @@ router.put('/:id/image', async (req, res) => {
     }
 });
 
-// Blog Öne Çıkarılmış Görsel Sil
 router.delete('/:id/image', async (req, res) => {
     try {
         const { id } = req.params;
@@ -80,7 +77,6 @@ router.delete('/:id/image', async (req, res) => {
     }
 });
 
-// GET /api/admin/blogs/:id
 router.get('/:id', async (req, res) => {
     try {
         const blog = await Blog.findOne({ _id: req.params.id, site: req.site }).lean();
@@ -106,7 +102,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/admin/blogs
 router.post('/', async (req, res) => {
     try {
         const existingBlog = await Blog.findOne({ slug: req.body.slug, site: req.site });
@@ -143,7 +138,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/admin/blogs/:id
 router.put('/:id', async (req, res) => {
     try {
         if (req.body.slug) {
@@ -161,7 +155,6 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        // site alanı gövdeden ayıklanır; kayıt başka siteye taşınamaz
         const { site: _ignoredSite, ...blogPayload } = req.body || {};
 
         const blog = await Blog.findOneAndUpdate(
@@ -200,7 +193,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/blogs/:id
 router.delete('/:id', async (req, res) => {
     try {
         const blog = await Blog.findOneAndDelete({ _id: req.params.id, site: req.site });

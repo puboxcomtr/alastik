@@ -1,16 +1,11 @@
 'use client';
 
-// Hafif kar yağışı efekti — panelden açılır (Tasarım > Tema > Genel > "Kar Yağışı Efekti", site bazlı).
-// Tüm sayfanın üstünde sabit, tıklamayı engellemeyen tek bir canvas. Sayfayı yormaması için:
-// az sayıda tane, ~30 kare/sn, sekme gizliyken durur, "hareketi azalt" tercihinde hiç çalışmaz.
 import { useEffect, useRef } from 'react';
 import { useSettings } from '@/src/context/SettingsContext';
 
-// Ekran genişliğine göre tane sayısı (hafif yağış)
 const FLAKES_PER_100PX = 3;
 const MAX_FLAKES = 55;
 const FRAME_INTERVAL_MS = 33;
-// Açık zeminde de seçilebilsin diye beyaz taneye soğuk tonlu yumuşak bir gölge verilir
 const FLAKE_FILL = 'rgba(255, 255, 255, 0.95)';
 const FLAKE_GLOW = 'rgba(110, 140, 180, 0.55)';
 

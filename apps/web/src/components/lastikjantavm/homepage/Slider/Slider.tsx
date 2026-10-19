@@ -3,22 +3,18 @@ import React from 'react';
 import Link from 'next/link';
 import Image from "next/image";
 
-// Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, EffectFade, Autoplay } from 'swiper/modules';
 
-// Swiper CSS
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-// Types
 import type { Slider } from '@/src/types/slider';
 
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082';
 
-// Helper fonksiyon
 const getImageUrl = (url: string | undefined | null): string => {
     if (!url) return '/images/slider/gorsel-bulunamadi.jpg';
     if (url.startsWith('http')) return url;
@@ -39,10 +35,6 @@ export default function SliderComponent({ slider }: SliderComponentProps) {
     const height = parseInt(settings.height) || 500;
     const showNavButtons = settings.showNavButtons === true;
     const showDots = settings.showDots === true;
-    // changeSpeed = "Resimlerin Değişme Süresi" (geçiş animasyonu) → Swiper speed
-    // displayDuration = "Resmin Görüntülenme Süresi" (bekleme) → autoplay delay
-    // Not: Eski kayıtlarda changeSpeed'e bekleme süresi (5000) girilmiş olabilir; mantıksız
-    // büyük değer fade'i saniyelerce sürdürür → makul aralık dışını 500 ms'ye sabitle.
     const rawSpeed = parseInt(settings.changeSpeed) || 500;
     const changeSpeed = rawSpeed >= 100 && rawSpeed <= 2000 ? rawSpeed : 500;
     const displayDuration = parseInt(settings.displayDuration) || 5000;

@@ -1,4 +1,3 @@
-// apps/web/src/contexts/SettingsContext.tsx
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';

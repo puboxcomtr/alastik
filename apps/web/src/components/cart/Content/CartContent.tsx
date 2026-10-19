@@ -10,24 +10,19 @@ import { resolveSiteFromHost, getSiteBySlug, DEFAULT_SITE, SiteSlug } from '@/sr
 import { getImageUrl } from '@/src/config/api';
 import { buildProductUrl, ROUTES } from '@/src/config/routes';
 
-// Context
 import { useBrands } from '@/src/context/BrandsContext';
 
 import { CartItem, CartContentProps } from '@/src/types/cart';
 
 export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: CartContentProps) {
-    // Montaj bloğu iki sitede de aynı: montaj noktası seçimine (/montaj-noktasi-sec) gider
     const [siteSlug, setSiteSlug] = useState<SiteSlug>(DEFAULT_SITE);
-    // Site çözülene kadar vurgu rengi bilinmediğinden blok çizilmez (yanlış renkle anlık görünmesin)
     const [siteResolved, setSiteResolved] = useState(false);
     useEffect(() => {
         setSiteSlug(resolveSiteFromHost(window.location.host));
         setSiteResolved(true);
     }, []);
 
-    // Butonun üzerine gelince kullanılacak vurgu rengi site temasından okunur
     const accentColor = getSiteBySlug(siteSlug)?.theme.primary || '';
-    // Vurgu rengi açıksa üstüne siyah, koyuysa beyaz yazı gelir (okunabilirlik)
     const readableTextOn = (hex: string): string => {
         const value = hex.replace('#', '');
         if (value.length !== 6) return '#000';
@@ -38,11 +33,9 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
     };
     const accentTextColor = readableTextOn(accentColor);
 
-    // Montaj/hizmet kalemlerinde ürün görseli ve marka logosu gösterilmez (iki sitede de aynı)
     const isServiceItem = (item: CartItem) =>
         item.itemType === 'montage' || item.itemType === 'service' || Boolean(item.montagePointLabel);
 
-    // Montaj hizmeti: sepette uygun çapta lastik varsa adet tavanı lastik adedidir (daha azı alınabilir)
     const montageCap = (item: CartItem): number | null => {
         if (item.itemType !== 'montage' || !item.rimRange) return null;
         const count = items
@@ -50,7 +43,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
             .reduce((sum, t) => sum + t.quantity, 0);
         return count > 0 ? count : null;
     };
-    // Artırma tavandayken buton tıklanabilir kalır ama uyarı gösterilir; azaltma serbesttir (min 1)
     const handleIncrease = (item: CartItem) => {
         const cap = montageCap(item);
         if (cap !== null && item.quantity >= cap) {
@@ -64,9 +56,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
         return price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
-    // Kategori ayarı 'haric' olan kalemlerde (ör. İkinci El, hizmetler) fiyat KDV hariç gösterilir
-    // ve '+ KDV' ibaresi eklenir. Ödenecek tutar değişmez; KDV sepet özetinde ayrı satırda toplanır.
-    // Satırda ödenen tutar yazan kalemlerde (montaj/hizmet) KDV hariç karşılığı küçük punto ile altına yazılır
     const vatExcludedLabel = (item: CartItem, gross: number): string | null => {
         const isMontageItem = item.itemType === 'montage' || item.itemType === 'service';
         if (!isMontageItem || item.priceDisplay !== 'haric' || gross <= 0) return null;
@@ -76,7 +65,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
     };
 
     const displayAmount = (item: CartItem, gross: number): { value: number; suffix: string } => {
-        // Montaj ve hizmet kalemlerinde satırda ödenen tutar yazılır; KDV kırılımı sepet özetindedir
         const isMontageItem = item.itemType === 'montage' || item.itemType === 'service';
         if (isMontageItem || item.priceDisplay !== 'haric') return { value: gross, suffix: '' };
         const rate = item.kdvRate > 0 ? item.kdvRate : 20;
@@ -91,7 +79,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                         <div className='mb-3' key={item.productKey}>
                             <div className="p-2 border-bottom rounded">
                                 <div className="row align-items-center">
-                                    {/* Resim — alastik'te montaj/hizmet kalemlerinde resim sütunu hiç yok */}
                                     {!isServiceItem(item) && (
                                     <div className="col-3 col-md-2">
                                         <Link href={buildProductUrl(item.productSlug)}>
@@ -116,7 +103,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                     </div>
                                     )}
 
-                                    {/* Bilgiler */}
                                     <div className={isServiceItem(item) ? 'col-12 col-md-6' : 'col-9 col-md-4'}>
                                         <Tooltip title="Ürünü İncele">
                                             <Link
@@ -150,9 +136,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         })()}
                                     </div>
 
-                                    {/* Adet — montaj hizmetinde lastik varsa adet lastik adedini aşamaz */}
                                     <div className="col-6 col-md-3 mt-3 mt-md-0">
-                                        {/* Adet kontrolü + altında çarpan ve birim fiyat (genişlik kontrole göre) */}
                                         <div className="d-inline-block">
                                             <div className="d-flex align-items-center">
                                                 <button
@@ -170,11 +154,9 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                                     <i className="ri-add-line fs-6"></i>
                                                 </button>
                                             </div>
-                                            {/* Çarpan ve birim fiyat sadece montaj/hizmet kalemlerinde gösterilir */}
                                             {(item.itemType === 'montage' || item.itemType === 'service') && (
                                                 <div className="text-center mt-1" style={{ fontSize: '0.72rem', color: '#9a9a9a', whiteSpace: 'nowrap' }}>
                                                     {vatExcludedLabel(item, item.unitPrice) ? (
-                                                        /* Montaj/hizmet: birim fiyat KDV hariç yazılır, satır toplamı ödenen tutardır */
                                                         <span>&times; {vatExcludedLabel(item, item.unitPrice)}</span>
                                                     ) : (
                                                         <span>
@@ -191,9 +173,7 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         </div>
                                     </div>
 
-                                    {/* Fiyat */}
                                     <div className="col-4 col-md-2 mt-3 mt-md-0 text-end">
-                                        {/* Satır toplamı: birim fiyat × adet. İndirim varsa eski toplam üstü çizili görünür */}
                                         {item.originalPrice > item.unitPrice && (
                                             <small className="text-decoration-line-through text-muted fs-7 d-block">
                                                 {formatPrice(displayAmount(item, item.originalPrice * item.quantity).value)} TL
@@ -209,7 +189,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                                         </p>
                                     </div>
 
-                                    {/* Sil */}
                                     <div className="col-2 col-md-1 mt-3 mt-md-0 text-end">
                                         <Tooltip title="Ürünü Sepetten Kaldır">
                                             <button
@@ -238,7 +217,6 @@ export default function CartContent({ items, onUpdateQuantity, onRemoveItem }: C
                     </div>
                 </div>
             )}
-            {/* Siyah montaj bloğu — tamamı tıklanabilir, montaj noktası seçimine gider (iki sitede de aynı) */}
             {siteResolved && (
                 <Link
                     href={ROUTES.MONTAGE_SELECT}

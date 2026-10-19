@@ -3,17 +3,11 @@ const mongoose = require('mongoose');
 const WebSalesperson = require('../../../models/web/user/WebSalesperson');
 const { SALES_GROUPS, SALES_GROUP_IDS } = WebSalesperson;
 
-// Liste filtresinde "grubu atanmamış" değeri
 const UNASSIGNED_GROUP = 'unassigned';
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
-// Şifre alanları listede dönmez; düz şifre yalnız özel /:id/password ucundan alınır
 const HIDDEN_FIELDS = '-password -plainPassword';
 
-/**
- * GET / — plasiyer listesi (arama + durum filtresi + sayfalama).
- * Şifre alanı asla dönmez; hasPassword bayrağı ayrıca hesaplanır.
- */
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -31,7 +25,6 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Grup filtresi: perakende / toptan / atanmamış
         const group = String(req.query.group || '').trim();
         if (SALES_GROUP_IDS.includes(group)) match.salesGroup = group;
         else if (group === UNASSIGNED_GROUP) match.salesGroup = { $nin: SALES_GROUP_IDS };
@@ -44,7 +37,6 @@ router.get('/', async (req, res) => {
             .limit(limit)
             .lean();
 
-        // hasPassword: şifre atanmış mı (değerini sızdırmadan)
         const withFlag = await WebSalesperson.find(match, { password: 1 }).lean();
         const passMap = new Map(withFlag.map(d => [String(d._id), !!d.password]));
 
@@ -57,11 +49,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * POST /sync-dia — DIA sistem kullanıcılarını (sis_kullanici) plasiyer adayı olarak
- * senkronlar. Aktif (durum=A) kullanıcılar { site, diaUserKey } anahtarıyla upsert
- * edilir; şifre ve status'e DOKUNULMAZ (yeniler 'pending' başlar, admin aktive eder).
- */
 router.post('/sync-dia', async (req, res) => {
     try {
         const { DiaOrderService } = require('../../../services/plugins/dia/DiaOrderService');
@@ -80,8 +67,6 @@ router.post('/sync-dia', async (req, res) => {
 
         const cols = ['_key', 'gercekadi', 'kullaniciadi', 'uye_oldugu_gruplar', 'eposta', 'ceptel', 'durum', 'unvan'];
 
-        // Personel olmayan sistem/entegrasyon kullanıcıları plasiyer listesine ALINMAZ.
-        // Önek kuralı (kendini yenileyen): yeni ws_/mobil/sevkiyat... hesapları da otomatik elenir.
         const EXCLUDED_PREFIXES = ['ws_', 'ws-', 'mobil', 'sevkiyat', 'arge', 'maslak-ekran', 'toptan-ekran', 'servis', 'user'];
         const EXCLUDED_EXACT = ['siparis_yonetimi', 'ikinciel', 'devir', 'ferhatm'];
         const isServiceUser = (kullaniciadi) => {
@@ -113,7 +98,7 @@ router.post('/sync-dia', async (req, res) => {
         };
 
         const kullanicilar = [];
-        const diaActiveKeys = new Set(); // DIA'da aktif olan TÜM kullanıcı _key'leri (prune için)
+        const diaActiveKeys = new Set();
         let taranan = 0;
         for (let offset = 0; offset < 20000; offset += 500) {
             const rows = await fetchPage(offset);
@@ -170,8 +155,6 @@ router.post('/sync-dia', async (req, res) => {
             }
         }
 
-        // DIA'da artık aktif olmayan (silinmiş/pasifleşmiş) plasiyerler buradan da silinir.
-        // GÜVENLİK: DIA boş yanıt döndüyse (0 aktif kullanıcı) tümünü silmemek için prune atlanır.
         let silinen = 0;
         if (diaActiveKeys.size > 0) {
             const r = await WebSalesperson.deleteMany({ site: req.site, diaUserKey: { $nin: [...diaActiveKeys] } });
@@ -189,10 +172,6 @@ router.post('/sync-dia', async (req, res) => {
     }
 });
 
-/**
- * PUT /:id — plasiyerin grubunu (Perakende / Toptan) ve/veya şifresini belirler (admin).
- * Grubu ve şifresi atanmış plasiyer giriş yapabilir. Gönderilmeyen alan değişmez; salesGroup '' = atamayı kaldır.
- */
 router.put('/:id', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) {
@@ -223,7 +202,7 @@ router.put('/:id', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Şifre en az 6 karakter olmalıdır' });
             }
             sp.password = password.trim();
-            sp.plainPassword = password.trim(); // admin sonradan görebilsin
+            sp.plainPassword = password.trim();
         }
 
         await sp.save();
@@ -237,10 +216,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-/**
- * GET /:id/password — plasiyerin geri-okunur şifresi (admin sonradan görsün).
- * Yalnız admin-gated bu uçtan döner; liste/diğer uçlarda asla yer almaz.
- */
 router.get('/:id/password', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) {

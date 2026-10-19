@@ -62,7 +62,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtmlMode }: EditorToolbarProp
 
     if (!editor) return null
 
-    // HTML kaynak modunda biçimlendirme düğmeleri iş görmez; yalnızca geri dönüş düğmesi kalır
     if (htmlMode) {
         return (
             <div className='flex flex-wrap gap-x-3 gap-y-1 pbs-5 pbe-4 pli-5'>
@@ -156,11 +155,9 @@ const CategoryEditForm = () => {
     const [editorReady, setEditorReady] = useState(false)
     const [sliders, setSliders] = useState<SliderOption[]>([])
     const [menus, setMenus] = useState<{ _id: string; name: string }[]>([])
-    // Kategori sayfasında gizlenebilecek filtre seçenekleri (API'den gelir)
     const [filterOptions, setFilterOptions] = useState<{ key: string; label: string }[]>([])
     const [categoryName, setCategoryName] = useState('')
     const [pendingContent, setPendingContent] = useState<string | null>(null)
-    // HTML kaynak modu: içerik editörden alınıp düz metin olarak düzenlenir
     const [htmlMode, setHtmlMode] = useState(false)
     const [htmlSource, setHtmlSource] = useState('')
 
@@ -226,7 +223,6 @@ const CategoryEditForm = () => {
         loadSliders()
     }, [])
 
-    // Kategori sayfasında gösterilecek menü seçenekleri (menü grupları)
     useEffect(() => {
         const loadMenus = async () => {
             try {
@@ -285,7 +281,6 @@ const CategoryEditForm = () => {
         if (!editor) return
 
         if (htmlMode) {
-            // Kaynaktan görsel düzenleyiciye dön
             editor.commands.setContent(htmlSource, false)
             setHtmlMode(false)
         } else {

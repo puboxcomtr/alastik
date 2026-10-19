@@ -1,4 +1,3 @@
-/* Library */
 import React from 'react';
 import { Container } from 'react-bootstrap';
 import { Grid } from "@mui/material";
@@ -6,8 +5,6 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 
-
-/* Components - ALastik */
 import AlastikProductBreadcrumb from "@components/alastik/product/top/Breadcrumb";
 import AlastikGallery from '@components/alastik/product/left/Gallery';
 import AlastikMiddle from '@components/alastik/product/middle/Middle';
@@ -15,7 +12,6 @@ import AlastikAddCart from '@components/alastik/product/right/AddCart';
 import AlastikMobileBuyBar from '@components/alastik/product/right/MobileBuyBar';
 import AlastikDescription from '@components/alastik/product/bottom/Description';
 
-/* Components - LastikJantAVM */
 import LjaProductBreadcrumb from "@components/lastikjantavm/product/top/Breadcrumb";
 import LjaGallery from '@components/lastikjantavm/product/left/Gallery';
 import LjaMiddle from '@components/lastikjantavm/product/middle/Middle';
@@ -23,7 +19,6 @@ import LjaAddCart from '@components/lastikjantavm/product/right/AddCart';
 import LjaMobileBuyBar from '@components/lastikjantavm/product/right/MobileBuyBar';
 import LjaDescription from '@components/lastikjantavm/product/bottom/Description';
 
-/* Services */
 import { getProductBySlug, getProductWheelSize, getCompatibleVehicles, getRelatedBlogs } from '@src/services/productService';
 import { getCategorySlugByName } from '@src/services/categoryService';
 import { getDefinition } from '@src/services/definitionService';
@@ -58,14 +53,11 @@ export async function generateMetadata(
         'urun-aciklamasi': `${urunAdi} en uygun fiyatla.`
     };
 
-    // Custom seoTitle varsa sablonu atla, doğrudan goster
     const title = product.customData?.seoTitle
         ? product.customData.seoTitle
         : (applyTemplate(tpl?.titleTemplate, vars) || urunAdi);
-    // Paylaşım önizlemesi (WhatsApp/Facebook): ürün görseli
     const ogImage = product.diaData?.m_resimler?.[0]?.aws_url || product.customData?.featuredImage || '';
 
-    // Custom seoDescription varsa şablonu atla
     const description = product.customData?.seoDescription
         ? product.customData.seoDescription
         : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['urun-aciklamasi']);
@@ -84,7 +76,6 @@ export async function generateMetadata(
             url: `/urun/${slug}`,
             ...(ogImage ? { images: [{ url: ogImage, alt: urunAdi }] } : {})
         },
-        // Parametreler (utm vb.) ne olursa olsun canonical temiz ürün adresidir
         ...(await canonicalMeta(`/urun/${slug}`))
     };
 }
@@ -106,10 +97,6 @@ export default async function ProductDetailPage(
         notFound();
     }
 
-    // Sayfaya gömülen ürün verisinden gereksiz/gizli ham fiyat alanlarını temizle:
-    // yalnız gösterim fiyatı (fiyat4) ve üstü çizili liste fiyatı (fiyat1) kalır.
-    // fiyat2/fiyat3/fiyat10 (KDV hariç) + kdvdurumu alanları hem maliyet/marj sızıntısı
-    // hem de Google'ın yanlış fiyat okumasına (Hatalı fiyat/KDV eksik) yol açıyordu.
     if (product?.diaData?.m_birimler?.length) {
         product.diaData.m_birimler = product.diaData.m_birimler.map((b: any) => ({
             birimadi: b.birimadi,
@@ -150,15 +137,11 @@ export default async function ProductDetailPage(
     ]);
 
     const mainCategory = product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_1;
-    // LJA hizmet ürünleri: hizmetin verildiği şube sayfalarına bağlantı (ör. mantar yama → Şişli/Maslak lastik tamiri)
     const serviceGroup = site === 'lastikjantavm'
         ? getServiceGroup(CATEGORY_NAME_TO_GROUP[product.diaData?.m_kategoriler?.[0]?.kategori_aciklama_2 || ''] || '')
         : undefined;
     const categorySlug = await getCategorySlugByName(mainCategory);
 
-    // Google Merchant/Shopping: ürün sayfasına yapısal fiyat verisi (JSON-LD).
-    // Fiyat = sayfada görünen satış fiyatı (fiyat4) = feed fiyatı (LJA: fiyat1×B2C,
-    // ALastik: fiyat2). Google'a fiyatı net söyleyerek "Hatalı fiyat / KDV eksik" giderilir.
     const siteDomain = site === 'lastikjantavm' ? 'https://lastikjantavm.com' : 'https://alastik.com';
     const salePrice = Number(product.diaData?.m_birimler?.[0]?.fiyat4) || 0;
     const jsonLdImagePath = product.diaData?.m_resimler?.[0]?.aws_url || product.customData?.featuredImage || '';
@@ -225,10 +208,6 @@ export default async function ProductDetailPage(
                 </Grid>
             </Grid>
 
-            {/* Yalnızca mobil: alta sabit fiyat + Şimdi Al + Sepete Ekle çubuğu.
-                Lastiklerde sepete ekleme sonrası aynı ebattaki diğer lastikler önerilir.
-                Bileşenin yer tutucu boşluğu (104px) DOM'daki yerinde açılır; alastik'te
-                bilgi kartı ile Açıklama arasında boşluk kalmasın diye sayfanın sonuna alınır. */}
             {site === 'lastikjantavm' && (
                 <MobileBuyBar
                     product={product}
@@ -266,7 +245,6 @@ export default async function ProductDetailPage(
                 </Grid>
             </Grid>
 
-            {/* LJA lastik ürünleri: bu ebadı fabrika çıkışı kullanan araçlar */}
             {site === 'lastikjantavm' && isLastikProduct && genislik && yanak && cap > 0 && (
                 <VehiclesForSize sizeKey={`${genislik}-${yanak}-r${cap}`} sizeLabel={`${genislik}/${yanak} R${cap}`} />
             )}

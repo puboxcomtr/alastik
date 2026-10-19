@@ -1,19 +1,14 @@
 'use client';
 
-/* * React Core * */
 import { useState, useEffect } from 'react';
 
-/* * Next.js * */
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-/* * Third Party Libraries */
 import { toast } from 'react-toastify';
 
-/* * Internal Imports  */
 import { api } from '@lib/api';
 
-/* Routes */
 import { ROUTES } from '@/src/config/routes';
 
 export default function ResetPasswordView() {
@@ -31,7 +26,6 @@ export default function ResetPasswordView() {
     });
     const [showPassword, setShowPassword] = useState(false);
 
-    /* Token kontrolü - URL'de token var mı */
     useEffect(() => {
         if (!token) {
             toast.error('Geçersiz bağlantı. Lütfen şifre sıfırlama talebinizi tekrarlayınız.');
@@ -78,7 +72,6 @@ export default function ResetPasswordView() {
                 toast.success(result.message || 'Şifreniz başarıyla sıfırlandı.');
                 setSuccess(true);
 
-                // 2 saniye sonra login'e yönlendir
                 setTimeout(() => {
                     router.push(ROUTES.LOGIN);
                 }, 2000);
@@ -105,7 +98,6 @@ export default function ResetPasswordView() {
                         <div className="card-body p-5">
                             <h5 className="h4 text-center mb-0">Şifre Sıfırlama</h5>
                             {!token ? (
-                                /* Token yok - hata mesajı */
                                 <div className="text-center">
                                     <i className="ri-error-warning-line text-danger" style={{ fontSize: '3rem' }}></i>
                                     <p className="text-muted mt-3 mb-4">
@@ -117,7 +109,6 @@ export default function ResetPasswordView() {
                                     </Link>
                                 </div>
                             ) : success ? (
-                                /* Başarılı durum */
                                 <div className="text-center">
                                     <i className="ri-checkbox-circle-line text-success" style={{ fontSize: '3rem' }}></i>
                                     <p className="text-muted mt-3 mb-4">
@@ -126,7 +117,6 @@ export default function ResetPasswordView() {
                                     </p>
                                 </div>
                             ) : (
-                                /* Şifre formu */
                                 <>
                                     <p className="text-muted mb-4 text-center">
                                         Yeni şifrenizi oluşturarak hesabınıza tekrar erişebilirsiniz.

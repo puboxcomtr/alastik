@@ -3,7 +3,6 @@ const router = express.Router();
 const BlogCategory = require('../../../models/admin/content/BlogCategory');
 const { CARD_IMAGE_RATIOS } = BlogCategory;
 
-// Slug üretimi (model ile aynı kural) — boş slug'larda ve isim değişiminde kullanılır
 function slugify(text) {
     return String(text || '')
         .toLowerCase()
@@ -20,7 +19,6 @@ function slugify(text) {
         .trim();
 }
 
-// GET /api/admin/blog-kategoriler — site bazlı liste (sıra + isim)
 router.get('/', async (req, res) => {
     try {
         const { search } = req.query;
@@ -41,7 +39,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/admin/blog-kategoriler/:id
 router.get('/:id', async (req, res) => {
     try {
         const category = await BlogCategory.findOne({ _id: req.params.id, site: req.site }).lean();
@@ -55,7 +52,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/admin/blog-kategoriler
 router.post('/', async (req, res) => {
     try {
         const name = String(req.body.name || '').trim();
@@ -101,7 +97,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/admin/blog-kategoriler/:id
 router.put('/:id', async (req, res) => {
     try {
         const update = {};
@@ -117,7 +112,6 @@ router.put('/:id', async (req, res) => {
             if (!slug) {
                 return res.status(400).json({ success: false, message: 'Geçerli bir URL (slug) üretilemedi' });
             }
-            // Aynı sitede başka kayıtta bu slug varsa reddet
             const clash = await BlogCategory.findOne({ slug, site: req.site, _id: { $ne: req.params.id } });
             if (clash) {
                 return res.status(400).json({ success: false, message: 'Bu URL zaten kullanılıyor' });
@@ -156,7 +150,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/blog-kategoriler/:id
 router.delete('/:id', async (req, res) => {
     try {
         const category = await BlogCategory.findOneAndDelete({ _id: req.params.id, site: req.site });

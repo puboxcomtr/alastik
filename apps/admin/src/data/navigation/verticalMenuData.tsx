@@ -1,9 +1,7 @@
-// Type Imports
 import type { VerticalMenuDataType } from '@/types/menuTypes'
 import type { getDictionary } from '@/utils/getDictionary'
 
 const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>): VerticalMenuDataType[] => [
-  // This is how you will normally render submenu
   {
     label: dictionary['navigation'].dashboards,
     icon: 'ri-home-smile-line',
@@ -12,7 +10,6 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
       color: 'error'
     },
     children: [
-      // This is how you will normally render menu item
       {
         label: dictionary['navigation'].crm,
         href: '/dashboards/crm'
@@ -72,7 +69,6 @@ const verticalMenuData = (dictionary: Awaited<ReturnType<typeof getDictionary>>)
     ]
   },
 
-  // This is how you will normally render menu section
   {
     label: dictionary['navigation'].appsPages,
     isSection: true,

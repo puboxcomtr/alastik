@@ -1,16 +1,12 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 
-// Components
 import SliderComponent from '@components/alastik/homepage/Slider/Slider';
 
-// Services
 import { getSliderById } from '@/src/services/sliderService';
 
-// Context
 import { useSettings } from '@/src/context/SettingsContext';
 
-// Types
 import type { Slider } from '@/src/types/slider';
 
 export default function HomeSlider() {

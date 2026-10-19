@@ -2,8 +2,6 @@ import { CategoryCatalog } from "@components/b2b-theme/category-catalog";
 import { CategoryTabs, type CategoryTab } from "@components/b2b-theme/category-tabs";
 import { API_ENDPOINTS } from "@src/config/api";
 
-/** Slug'ı okunabilir başlığa çevirir: "otomobil-lastikleri" → "Otomobil Lastikleri".
- *  Yalnızca gerçek kategori adı alınamazsa yedek olarak kullanılır. */
 function makeTitle(slug: string): string {
   return slug
     .split("-")
@@ -14,7 +12,6 @@ function makeTitle(slug: string): string {
 
 type CategoryInfo = { name: string | null; menuIds: string[] };
 
-/** Kategorinin gerçek adını (webcategories.name) ve bağlı menülerini (Kategori Menüsü) slug ile getirir. */
 async function getCategoryInfo(slug: string): Promise<CategoryInfo> {
   try {
     const res = await fetch(API_ENDPOINTS.categories.bySlug(slug), {
@@ -32,7 +29,6 @@ async function getCategoryInfo(slug: string): Promise<CategoryInfo> {
 
 type MenuItem = { name: string; menuType: string; linkData?: { categoryUrl?: string } };
 
-/** Kategoriye bağlı menünün kategori türündeki öğelerini sekmeye çevirir (panel: Menü Yönetimi + kategori "Kategori Menüsü"). */
 async function getCategoryTabs(menuIds: string[]): Promise<CategoryTab[]> {
   if (!menuIds.length) return [];
   try {
@@ -68,7 +64,6 @@ export default async function KategoriPage({
           <h1>{title}</h1>
         </div>
       </div>
-      {/* Tek öğeli menü sekme sayılmaz: kategori doğrudan listelenir */}
       {tabs.length > 1 ? <CategoryTabs tabs={tabs} /> : <CategoryCatalog kategori={slug} />}
     </>
   );

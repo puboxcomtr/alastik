@@ -8,11 +8,6 @@ const {
     validateProviderFields
 } = require('../../../config/paymentProviders');
 
-
-// ============================================
-// GET /api/admin/settings/payment/providers
-// Provider template'lerini getir
-// ============================================
 router.get('/providers', async (req, res) => {
     try {
         const { type } = req.query;
@@ -23,7 +18,6 @@ router.get('/providers', async (req, res) => {
             providers = { [type]: providers[type] };
         }
 
-        // Sağlayıcı kataloğu koddan gelir; tarayıcı ESKİ sürümü cache'lememeli
         res.set('Cache-Control', 'no-store');
         res.json({
             success: true,
@@ -40,10 +34,6 @@ router.get('/providers', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/settings/payment
-// Ödeme yöntemlerini listele
-// ============================================
 router.get('/', async (req, res) => {
     try {
         console.log('🔍 GET / hit')
@@ -56,7 +46,6 @@ router.get('/', async (req, res) => {
             limit = 50
         } = req.query;
 
-        // Filtre oluştur (yalnızca seçili sitenin yöntemleri)
         const filter = { isDeleted: false, site: req.site };
 
         if (type) filter.type = type;
@@ -71,10 +60,8 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Sayfalama
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Sorgu
         const [methods, total] = await Promise.all([
             PaymentMethod.find(filter)
                 .sort({ priority: 1, createdAt: -1 })
@@ -84,7 +71,6 @@ router.get('/', async (req, res) => {
             PaymentMethod.countDocuments(filter)
         ]);
 
-        // İstatistikler
         const stats = await PaymentMethod.aggregate([
             { $match: { isDeleted: false, site: req.site } },
             {
@@ -135,10 +121,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/settings/payment/:id
-// Tek ödeme yöntemi detayı
-// ============================================
 router.get('/:id', async (req, res) => {
     try {
         const method = await PaymentMethod.findOne({
@@ -169,10 +151,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/settings/payment
-// Yeni ödeme yöntemi ekle
-// ============================================
 router.post('/', async (req, res) => {
     try {
         const {
@@ -238,7 +216,6 @@ router.post('/', async (req, res) => {
             description,
             priority: priority || 0,
             apiCredentials,
-            // Yeni yöntem varsayılan AKTİF açılır (kullanıcı kararı, 24 Ağu)
             isActive: true,
             providerMeta: {
                 displayName: template.name,
@@ -274,10 +251,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// ============================================
-// PUT /api/admin/settings/payment/:id
-// Ödeme yöntemi güncelle
-// ============================================
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -302,7 +275,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // Validation
         if (apiCredentials) {
             const validation = validateProviderFields(method.type, method.provider, apiCredentials);
             if (!validation.valid) {
@@ -314,14 +286,11 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        // Güncelle
         if (name) method.name = name;
         if (description !== undefined) method.description = description;
         if (priority !== undefined) method.priority = priority;
         if (apiCredentials) method.apiCredentials = apiCredentials;
 
-        // Kredi kartı: her sitede Tek Çekim / Taksitli için EN FAZLA 1 POS.
-        // İkinci bir yöntemde aynı rol açılmak istenirse uyarı ver (reddet).
         if (creditCardSettings && method.type === 'credit_card') {
             if (creditCardSettings.tekCekimAktif === true) {
                 const other = await PaymentMethod.findOne({
@@ -353,12 +322,10 @@ router.put('/:id', async (req, res) => {
 
         await method.save();
 
-        // Kimlik bilgileri değişmiş olabilir; servis önbelleğini temizle
         if (method.provider === 'nkolay') NkolayService.clearCredentials();
 
-        // Kredi kartı rol bayrakları değişmiş olabilir → türetilen seçenek cache'ini düşür.
         if (method.type === 'credit_card') {
-            try { require('../../../services/plugins/payment/creditCardOptions').invalidate(method.site); } catch (_) { /* geç */ }
+            try { require('../../../services/plugins/payment/creditCardOptions').invalidate(method.site); } catch (_) {  }
         }
 
         res.json({
@@ -377,10 +344,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// ============================================
-// PATCH /api/admin/settings/payment/:id/toggle
-// Aktif/Pasif değiştir
-// ============================================
 router.patch('/:id/toggle', async (req, res) => {
     try {
         const method = await PaymentMethod.findOne({
@@ -400,9 +363,8 @@ router.patch('/:id/toggle', async (req, res) => {
         await method.save();
 
         if (method.provider === 'nkolay') NkolayService.clearCredentials();
-        // Kredi kartı aktif/pasif → türetilen Tek Çekim/Taksitli durumu değişebilir.
         if (method.type === 'credit_card') {
-            try { require('../../../services/plugins/payment/creditCardOptions').invalidate(method.site); } catch (_) { /* geç */ }
+            try { require('../../../services/plugins/payment/creditCardOptions').invalidate(method.site); } catch (_) {  }
         }
 
         res.json({
@@ -421,10 +383,6 @@ router.patch('/:id/toggle', async (req, res) => {
     }
 });
 
-// ============================================
-// DELETE /api/admin/settings/payment/:id
-// Ödeme yöntemini arşivle (soft delete)
-// ============================================
 router.delete('/:id', async (req, res) => {
     try {
         const method = await PaymentMethod.findOne({

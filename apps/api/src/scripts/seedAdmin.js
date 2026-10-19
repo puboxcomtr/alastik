@@ -6,7 +6,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://alastik:34gm4191M.@217
 async function createTestAdmin() {
     try {
         console.log('🔄 MongoDB bağlanıyor...');
-        console.log('🔗 URI:', MONGODB_URI.replace(/:[^:@]+@/, ':****@')); // Şifreyi gizle
+        console.log('🔗 URI:', MONGODB_URI.replace(/:[^:@]+@/, ':****@'));
 
         await mongoose.connect(MONGODB_URI);
         console.log('✅ MongoDB bağlantısı başarılı');

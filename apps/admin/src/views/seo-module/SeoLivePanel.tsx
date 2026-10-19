@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
@@ -16,10 +13,8 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
 import Alert from '@mui/material/Alert'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { ContentAnalysis, ContentType, SeoCheck } from './types'
 import { STATUS_COLORS, STATUS_LABELS } from './types'
 
@@ -32,14 +27,10 @@ type SeoLivePanelProps = {
     title: string
     description: string
     slug: string
-    /** İçerik HTML'i; editör içeriği her analizde taze okunsun diye fonksiyon da verilebilir */
     content: string | (() => string)
     keywords?: string[]
-    /** Düzenlenen kaydın kimliği; "aynı kelime başka içerikte" kontrolünde kendisi hariç tutulur */
     refId?: string
-    /** Ürünlerde galeri görsel sayısı (görsel kontrolü içerik HTML'i yerine buna bakar) */
     galleryImages?: number
-    /** Alan altına yazılacak yardımcı metin */
     helperText?: string
 }
 
@@ -50,8 +41,6 @@ const CheckIcon = ({ passed }: { passed: boolean | null }) => {
     return <i className='ri-close-circle-fill text-lg' style={{ color: 'var(--mui-palette-error-main)' }} />
 }
 
-// Ürün / blog / sayfa formlarında Rank Math benzeri canlı kontrol paneli.
-// Kaydetmez; POST /admin/seo/analyze ile formdaki güncel değerleri puanlar.
 const SeoLivePanel = ({ type, focusKeyword, onFocusKeywordChange, title, description, slug, content, keywords, refId, galleryImages, helperText }: SeoLivePanelProps) => {
     const { lang: locale } = useParams()
     const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null)
@@ -85,7 +74,6 @@ const SeoLivePanel = ({ type, focusKeyword, onFocusKeywordChange, title, descrip
         }
     }, [type, focusKeyword, title, description, slug, readContent, keywords, refId, galleryImages])
 
-    // Alanlar değiştikçe kısa bir bekleme ile yeniden analiz
     useEffect(() => {
         const timer = setTimeout(runAnalysis, ANALYZE_DEBOUNCE_MS)
 

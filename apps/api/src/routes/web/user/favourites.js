@@ -4,10 +4,8 @@ const WebFavourite = require('../../../models/web/user/WebFavourite');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const authMiddleware = require('../../../middleware/authMiddleware');
 
-// Tüm route'lar auth gerektirir
 router.use(authMiddleware);
 
-// POST /api/favourites/toggle - Favori ekle/çıkar
 router.post('/toggle', async (req, res) => {
     try {
         const { productKey } = req.body;
@@ -20,7 +18,6 @@ router.post('/toggle', async (req, res) => {
             });
         }
 
-        // Ürün var mı kontrol et
         const product = await WebProduct.findOne({ _key: productKey });
         if (!product) {
             return res.status(404).json({
@@ -29,11 +26,9 @@ router.post('/toggle', async (req, res) => {
             });
         }
 
-        // Favori var mı kontrol et
         const existing = await WebFavourite.findOne({ memberId, productKey });
 
         if (existing) {
-            // Varsa çıkar
             await WebFavourite.deleteOne({ _id: existing._id });
 
             const count = await WebFavourite.countDocuments({ memberId });
@@ -48,7 +43,6 @@ router.post('/toggle', async (req, res) => {
             });
         }
 
-        // Yoksa ekle
         await WebFavourite.create({ memberId, productKey });
 
         const count = await WebFavourite.countDocuments({ memberId });
@@ -71,7 +65,6 @@ router.post('/toggle', async (req, res) => {
     }
 });
 
-// GET /api/favourites - Kullanıcının favorilerini listele
 router.get('/', async (req, res) => {
     try {
         const memberId = req.user._id;
@@ -88,11 +81,9 @@ router.get('/', async (req, res) => {
             WebFavourite.countDocuments({ memberId })
         ]);
 
-        // Ürün detaylarını getir
         const productKeys = favourites.map(f => f.productKey);
         const products = await WebProduct.find({ _key: { $in: productKeys } }).lean();
 
-        // Ürünleri favori sırasına göre eşle
         const productMap = {};
         products.forEach(p => { productMap[p._key] = p; });
 
@@ -130,7 +121,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/favourites/check?keys=key1,key2,key3 - Toplu favori kontrolü
 router.get('/check', async (req, res) => {
     try {
         const memberId = req.user._id;

@@ -1,4 +1,3 @@
-// Component Imports
 import LabelListTable from '@/views/label/LabelListTable'
 
 const LabelList = () => {

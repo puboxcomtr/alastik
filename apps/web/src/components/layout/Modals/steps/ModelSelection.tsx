@@ -1,24 +1,12 @@
 'use client';
 
-// ============================================
-// React
-// ============================================
 import { useState, useEffect } from 'react';
 
-// ============================================
-// MUI
-// ============================================
 import { Typography, Divider } from '@mui/material';
 
-// ============================================
-// Hooks
-// ============================================
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 
-// ============================================
-// Types
-// ============================================
 import type { WheelSizeModel } from '@/src/types/vehicle';
 
 interface ModelSelectionProps {
@@ -70,7 +58,6 @@ export default function ModelSelection({ make, makeName, selectedModel, onSelect
                     </Typography>
                 </div>
                 <div className="col-md-10">
-                    {/* Arama */}
                     <div className='mb-4' style={{ position: 'relative' }}>
                         <input
                             type="text"
@@ -97,7 +84,6 @@ export default function ModelSelection({ make, makeName, selectedModel, onSelect
                             }}
                         ></i>
                     </div>
-                    {/* Model Grid */}
                     {filteredModels.length > 0 ? (
                         <div className="row g-3">
                             {filteredModels.map((model) => (

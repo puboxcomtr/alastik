@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 
-// Next Imports
 import { useParams, useRouter } from 'next/navigation'
 
-// MUI Imports
 import { styled } from '@mui/material/styles'
 import Badge from '@mui/material/Badge'
 import Avatar from '@mui/material/Avatar'
@@ -21,19 +18,14 @@ import Divider from '@mui/material/Divider'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 
-// Third-party Imports
 import { signOut, useSession } from 'next-auth/react'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
-// Styled component for badge content
 const BadgeContentSpan = styled('span')({
   width: 8,
   height: 8,
@@ -44,13 +36,10 @@ const BadgeContentSpan = styled('span')({
 })
 
 const UserDropdown = () => {
-  // States
   const [open, setOpen] = useState(false)
 
-  // Refs
   const anchorRef = useRef<HTMLDivElement>(null)
 
-  // Hooks
   const router = useRouter()
   const { data: session } = useSession()
   const { settings } = useSettings()
@@ -74,13 +63,10 @@ const UserDropdown = () => {
 
   const handleUserLogout = async () => {
     try {
-      // Sign out from the app
       await signOut({ callbackUrl: process.env.NEXT_PUBLIC_APP_URL })
     } catch (error) {
       console.error(error)
 
-      // Show above error in a toast like following
-      // toastService.error((err as Error).message)
     }
   }
 

@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const settingSchema = new mongoose.Schema({
-    // Her ayar bir siteye aittir (anahtar site içinde benzersizdir)
     site: {
         type: String,
         enum: Object.keys(SITES),

@@ -1,4 +1,3 @@
-// apps/web/src/services/paymentService.ts
 import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface BankAccount {

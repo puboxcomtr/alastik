@@ -1,16 +1,3 @@
-/**
- * Analizler — anasayfa ek widget'ları, Raporlar ve Canlı İzleme.
- *
- * Üç uç da /api/admin kapısının arkasındadır (authenticateAdmin + site yetkisi) ve
- * yalnızca req.site'a ait veriyi döner. Ciro tanımı dashboard/ecommerce.js ile aynıdır
- * (utils/dashboardMetrics.revenueMatch); ürün "satışta" tanımı haftalık denetim
- * betiğiyle (scripts/denetim/*-veri-kontrol.js) birebir aynıdır.
- *
- * Oturum verisi: Session.site alanı yalnızca düzeltilmiş middleware ile yazılır; eski
- * kayıtlarda bu alan yoktur. Bu yüzden {site} filtresi analiz başlangıcından önceki
- * bozuk oturumları kendiliğinden dışarıda bırakır. UI'a "şu tarihten beri toplanıyor"
- * bilgisi period.sessionsSince ile verilir.
- */
 const express = require('express');
 const router = express.Router();
 
@@ -37,18 +24,15 @@ const { parseTireSpec, SEASON_LABELS } = require('../../../utils/tireSpec');
 const { BOT_UA_RE } = require('../../../utils/requestOrigin');
 const { isAvailable: geoAvailable } = require('../../../utils/geoLookup');
 
-// ============================================
-// ZAMAN YARDIMCILARI (Türkiye 2016'dan beri sabit UTC+3, yaz saati yok)
-// ============================================
 const IST_OFFSET_MS = 3 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const toWall = (d) => new Date(d.getTime() + IST_OFFSET_MS);   // İstanbul duvar saati, UTC gibi işlenir
+const toWall = (d) => new Date(d.getTime() + IST_OFFSET_MS);
 const fromWall = (w) => new Date(w.getTime() - IST_OFFSET_MS);
 
 const istStartOfDay = (d) => { const w = toWall(d); return fromWall(new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate()))); };
 const istStartOfMonth = (d) => { const w = toWall(d); return fromWall(new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1))); };
 const istStartOfYear = (d) => { const w = toWall(d); return fromWall(new Date(Date.UTC(w.getUTCFullYear(), 0, 1))); };
-const istStartOfWeek = (d) => { // Pazartesi
+const istStartOfWeek = (d) => {
     const w = toWall(d);
     const dow = (w.getUTCDay() + 6) % 7;
     return fromWall(new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate() - dow)));
@@ -70,7 +54,6 @@ const PERIOD_LABELS = {
     today: 'Bugün', week: 'Bu Hafta', month: 'Bu Ay', last_month: 'Geçen Ay', year: 'Bu Yıl', custom: 'Seçili Tarihler'
 };
 
-/** period parametresini [start,end) + önceki dönem + zaman aralığı granülaritesine çevirir */
 function resolvePeriod(query) {
     const now = new Date();
     const key = String(query.period || 'month');
@@ -99,7 +82,6 @@ function resolvePeriod(query) {
     return { key, label: PERIOD_LABELS[key], start, end, prevStart, prevEnd: start, granularity, days: Math.max(1, length / DAY_MS) };
 }
 
-/** Boş kovaları 0 ile doldurarak eksiksiz seri üretir */
 function fillSeries(rows, period, valueField) {
     const g = GRANULARITY[period.granularity];
     const map = Object.fromEntries(rows.map(r => [r._id, r[valueField]]));
@@ -114,13 +96,9 @@ function fillSeries(rows, period, valueField) {
     return series;
 }
 
-// ============================================
-// ORTAK FİLTRELER
-// ============================================
 const notBot = { 'metadata.userAgent': { $not: BOT_UA_RE } };
 const sessionMatch = (site, extra = {}) => ({ site, ...notBot, ...extra });
 
-/** Haftalık denetimle aynı "satışta" tanımı: aktif kart, stoklu, sitede, gizlenmemiş */
 const saleableFilter = (site) => ({
     sites: site,
     'diaData.durum': 'A',
@@ -143,7 +121,6 @@ const descriptionMissing = (site) => ({
     ]
 });
 
-// Düşük stok: 0 < stok <= ürünün kendi uyarı eşiği (stockAlert, varsayılan 5). Tükenenler ayrı sayılır.
 const lowStockFilter = (site) => ({
     sites: site,
     'diaData.durum': 'A',
@@ -160,9 +137,6 @@ const CHECKOUT_URL_RE = '^/api/(order|payment-methods|web/payments|cargo/calcula
 
 const cityExpr = { $trim: { input: { $ifNull: ['$billingSnapshot.cityName', { $ifNull: ['$guestBillingAddress.cityName', ''] }] } } };
 
-// ============================================
-// ÜRÜN YARDIMCILARI
-// ============================================
 async function attachStock(rows) {
     const keys = rows.map(r => r.productKey).filter(Boolean);
     if (!keys.length) return rows.map(r => ({ ...r, stock: null, stockStatus: 'unknown' }));
@@ -184,7 +158,6 @@ async function attachStock(rows) {
     });
 }
 
-/** Dönemdeki ödemesi alınmış siparişlerden en çok satan ürünler */
 async function topProductsFor(site, start, end, limit = 10) {
     const rows = await WebOrder.aggregate([
         { $match: { site, isActive: true, ...revenueMatch, createdAt: { $gte: start, $lt: end } } },
@@ -209,7 +182,6 @@ async function topProductsFor(site, start, end, limit = 10) {
     })));
 }
 
-/** Zil bildirimleri: aranan ürünler (siteler arası ortak), geri arama talepleri, iletişim mesajları */
 async function buildNotifications(site, limit = 20) {
     const [searchRows, callbackRows, contactRows, searchCount7d, newCallbacks, unreadContacts] = await Promise.all([
         FrondSearchTerm.find({ isActive: { $ne: false } }).sort({ lastSearched: -1 }).limit(limit).select('term searchCount lastSearched isMatched').lean(),
@@ -233,9 +205,6 @@ async function buildNotifications(site, limit = 20) {
     };
 }
 
-// ============================================
-// GET /cards?range=today|7d|30d — anasayfa üst kartları (Satış Tutarı / Sipariş / Yeni Üye) dönem seçimi
-// ============================================
 const CARD_RANGE_LABELS = { today: 'Bugün', '7d': 'Son 7 Gün', '30d': 'Son 30 Gün' };
 
 router.get('/cards', async (req, res) => {
@@ -270,7 +239,6 @@ router.get('/cards', async (req, res) => {
         const cur = sales || { total: 0, count: 0 };
         const prev = salesPrev || { total: 0, count: 0 };
 
-        // Trend, mevcut pano ucuyla (dashboard/ecommerce) aynı biçimde tam sayı yüzde
         res.json({
             success: true,
             data: {
@@ -290,9 +258,6 @@ router.get('/cards', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /notifications — üst çubuktaki zil (hafif uç, 60 sn'de bir çekilir)
-// ============================================
 router.get('/notifications', async (req, res) => {
     try {
         res.json({ success: true, data: await buildNotifications(req.site, 20) });
@@ -302,9 +267,6 @@ router.get('/notifications', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /overview — anasayfa ek widget'ları
-// ============================================
 router.get('/overview', async (req, res) => {
     try {
         const site = req.site;
@@ -352,13 +314,11 @@ router.get('/overview', async (req, res) => {
             topProductsFor(site, startOfWeek, now, 5)
         ]);
 
-        // Sipariş aktivitesi kutuları
         const statusCounts = Object.fromEntries(activityRows.map(r => [r._id, r.count]));
         const orderActivity = Object.fromEntries(
             Object.entries(ORDER_ACTIVITY_GROUPS).map(([group, statuses]) => [group, statuses.reduce((s, st) => s + (statusCounts[st] || 0), 0)])
         );
 
-        // Mevsim ve jant çapı dağılımı (ürün adından; son 12 ay)
         const seasonAcc = {}; const rimAcc = {}; let seasonUnits = 0; let rimUnits = 0;
         for (const it of itemRows) {
             const spec = parseTireSpec(it.name);
@@ -388,7 +348,6 @@ router.get('/overview', async (req, res) => {
                 salesMap: cityRows.map(c => ({ city: c.city, total: round2(c.total), count: c.count })),
                 seasonSplit: { totalUnits: seasonUnits, items: seasonSplit },
                 rimSplit: { totalUnits: rimUnits, items: rimSplit },
-                // Geriye uyumluluk: eski admin build'i bu alanı okur; yeni build zil ucunu kullanır
                 notifications: await buildNotifications(site, 25),
                 topProducts: { all: topAll, month: topMonth, week: topWeek }
             }
@@ -399,9 +358,6 @@ router.get('/overview', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /reports?period=today|week|month|last_month|year|custom&from=&to=
-// ============================================
 router.get('/reports', async (req, res) => {
     try {
         const site = req.site;
@@ -527,7 +483,6 @@ router.get('/reports', async (req, res) => {
         const cancelledCount = orderFacet.cancelled[0]?.count || 0;
         const shippedCount = orderFacet.shipped[0]?.count || 0;
 
-        // Geri dönen müşteri: dönemde sipariş verenlerden daha önce de ödemesi alınmış siparişi olanlar
         const emails = orderFacet.customers.map(c => c._id);
         let returningCount = 0;
         if (emails.length) {
@@ -540,8 +495,6 @@ router.get('/reports', async (req, res) => {
             returningCount = earlier.length;
         }
 
-        // Yönlendiren / açılış sayfası: ilk isteğin Referer'ı. Kendi alan adlarımız açılış sayfası,
-        // dışarıdakiler trafik kaynağı olarak sayılır; boş referer = doğrudan/yer imi.
         const ownHosts = new Set(Object.keys(DOMAIN_TO_SLUG));
         const referrers = {}; const landings = {};
         for (const r of referrerRows) {
@@ -558,7 +511,6 @@ router.get('/reports', async (req, res) => {
         }
         const toRows = (obj, limit = 10) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, limit);
 
-        // Saat yoğunluğu: dönemdeki gün sayısına bölünmüş saatlik ortalama
         const hourMap = Object.fromEntries(sessionFacet.hours.map(h => [h._id, h.count]));
         const hourDensity = Array.from({ length: 24 }, (_, h) => ({ hour: h, avg: round2((hourMap[h] || 0) / period.days) }));
         const peak = hourDensity.reduce((best, h) => (h.avg > best.avg ? h : best), hourDensity[0]);
@@ -566,7 +518,6 @@ router.get('/reports', async (req, res) => {
         const funnelRaw = sessionFacet.funnel[0] || { addedToCart: 0, reachedCheckout: 0, ordered: 0 };
         const pct = (n) => (sessionCount ? Math.round((n / sessionCount) * 1000) / 10 : 0);
 
-        // Aylık trend (son 12 ay, boş aylar 0)
         const monthlyMap = Object.fromEntries(monthlyRows.map(m => [m._id, m]));
         const monthlyTrend = [];
         for (let i = 0; i < 12; i++) {
@@ -628,9 +579,6 @@ router.get('/reports', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /live — Canlı İzleme (istemci 10 sn'de bir çeker)
-// ============================================
 router.get('/live', async (req, res) => {
     try {
         const site = req.site;
@@ -697,17 +645,11 @@ router.get('/live', async (req, res) => {
     }
 });
 
-// ============================================
-// SEO ANALİZİ — GET /seo?period=...
-// Ziyaretçi (oturum) davranışı, anahtar kelime envanteri, içerikteki iç/dış linkler ve
-// (etkinse) Google Search Console verisi. Link taraması ağır olduğundan site başına 10 dk önbelleklenir.
-// ============================================
 const SEO_LINK_CACHE_MS = 10 * 60 * 1000;
-const seoLinkCache = new Map(); // site -> { at, data }
+const seoLinkCache = new Map();
 const HREF_RE = /<a\b[^>]*?\bhref\s*=\s*["']([^"'#][^"']*)["'][^>]*>/gi;
 const OWN_HOSTS = new Set(Object.keys(DOMAIN_TO_SLUG));
 
-/** HTML içindeki <a href> linklerini iç/dış/nofollow olarak sayar, dış alan adlarını toplar */
 function countLinks(html, acc) {
     if (!html || typeof html !== 'string') return;
     HREF_RE.lastIndex = 0;
@@ -823,7 +765,6 @@ async function keywordStats(site) {
 
 const SERVICE_ACCOUNT_FILE = path.join(__dirname, '../../../config/alastik-service-account.json');
 
-/** Google Search Console: API etkin ve servis hesabı mülke ekliyse gerçek tıklama/gösterim/sorgu verisi */
 async function searchConsoleStats(site, start, end) {
     const domain = (SITES[site]?.domains || []).find(d => !d.startsWith('www.') && !d.startsWith('dev.') && !d.startsWith('demo.')) || '';
     const setup = {
@@ -838,7 +779,7 @@ async function searchConsoleStats(site, start, end) {
         const auth = new google.auth.GoogleAuth({ keyFile: SERVICE_ACCOUNT_FILE, scopes: ['https://www.googleapis.com/auth/webmasters.readonly'] });
         const sc = google.searchconsole({ version: 'v1', auth });
         const fmt = (d) => d.toISOString().slice(0, 10);
-        const endDate = new Date(Math.min(end.getTime(), Date.now() - 2 * DAY_MS)); // GSC verisi ~2 gün gecikmeli
+        const endDate = new Date(Math.min(end.getTime(), Date.now() - 2 * DAY_MS));
         const body = { startDate: fmt(start), endDate: fmt(endDate), rowLimit: 10 };
         const candidates = [`sc-domain:${domain}`, `https://${domain}/`, `https://www.${domain}/`];
         let lastErr = null;
@@ -946,7 +887,7 @@ router.get('/seo', async (req, res) => {
                     bounced: totals.bounced,
                     bounceRate: totals.sessions ? Math.round((totals.bounced / totals.sessions) * 1000) / 10 : 0,
                     bounceRatePrev: prevSessions ? Math.round((prevBounced / prevSessions) * 1000) / 10 : 0,
-                    exited: totals.sessions, // her oturum sonunda çıkış vardır; tek sayfalık çıkışlar "bounced"
+                    exited: totals.sessions,
                     avgPageViews: totals.sessions ? Math.round((totals.pageViews / totals.sessions) * 10) / 10 : 0,
                     engaged: totals.engaged,
                     series: fillSeries(visitFacet.series, period, 'count'),

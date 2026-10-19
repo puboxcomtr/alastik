@@ -1,8 +1,3 @@
-/**
- * Aktif Sepetler (admin) — vitrinde sepetine ürün eklemiş, henüz sipariş vermemiş ziyaretçiler.
- * Site bazlıdır (req.site). Yalnız saklama süresi içindeki (son hareket ≤ cartRetentionDays gün)
- * dolu sepetler listelenir. Üye girişi yapılmış sepette müşteri bilgisi, yapılmamışsa "ziyaretçi".
- */
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const WebCart = require('../../../models/web/cart/WebCart');
@@ -18,7 +13,6 @@ const cartTotalExpr = {
     $sum: { $map: { input: '$items', as: 'i', in: { $multiply: ['$$i.unitPrice', '$$i.quantity'] } } }
 };
 
-// GET /api/admin/carts — liste (arama + üye/ziyaretçi filtresi + sayfalama) ve özet
 router.get('/', async (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -26,19 +20,16 @@ router.get('/', async (req, res) => {
         const retentionDays = getCartRetentionDays(req.site);
         const since = new Date(Date.now() - retentionDays * DAY_MS);
 
-        // Sitenin saklama süresi içindeki dolu sepetleri
         const baseMatch = { site: req.site, 'items.0': { $exists: true }, lastActivity: { $gte: since } };
         const match = { ...baseMatch };
 
         if (req.query.type === 'member') match.userId = { $ne: null };
         else if (req.query.type === 'guest') match.userId = null;
 
-        // Takip durumu sekmesi: "Beklemede" alanı hiç yazılmamış eski sepetleri de kapsar
         const statusFilter = CART_FOLLOW_UP_STATUSES.includes(req.query.status) ? req.query.status : '';
 
         if (req.query.search && String(req.query.search).trim()) {
             const regex = new RegExp(escapeRegex(req.query.search), 'i');
-            // Üye adı/e-posta/telefon eşleşenlerin sepetleri + ürün adı/markası/anahtarı eşleşen sepetler
             const memberIds = await WebMember.find(
                 { site: req.site, $or: [{ firstName: regex }, { lastName: regex }, { email: regex }, { phone: regex }] },
                 { _id: 1 }
@@ -51,7 +42,6 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Sekme sayaçları: tür + arama filtresi uygulanmış, durum filtresi uygulanmamış kümede
         const contactedMatch = { ...match, followUpStatus: 'contacted' };
         const listMatch = statusFilter === 'contacted'
             ? contactedMatch
@@ -76,7 +66,6 @@ router.get('/', async (req, res) => {
             ])
         ]);
 
-        // Üye bilgileri tek sorguda
         const memberIds = [...new Set(carts.filter(c => c.userId).map(c => String(c.userId)))]
             .filter(id => mongoose.Types.ObjectId.isValid(id));
         const members = memberIds.length
@@ -84,7 +73,6 @@ router.get('/', async (req, res) => {
             : [];
         const memberMap = new Map(members.map(m => [String(m._id), m]));
 
-        // Sepetteki ürünlerin güncel kart bilgileri (stok kodu, üretim yılı, stok, kaynak) tek sorguda
         const productKeys = [...new Set(carts.flatMap(c => (c.items || []).map(i => i.productKey)).filter(Boolean))];
         const products = productKeys.length
             ? await WebProduct.find(
@@ -98,7 +86,6 @@ router.get('/', async (req, res) => {
             const member = cart.userId ? memberMap.get(String(cart.userId)) : null;
             const items = (cart.items || []).map(i => ({
                 productKey: i.productKey,
-                // Ürün kartından: stok kodu, üretim yılı, güncel stok, XML (tedarikçi) ürünü mü
                 stockCode: productMap.get(String(i.productKey))?.diaData?.stokkartkodu || '',
                 productionYear: String(productMap.get(String(i.productKey))?.diaData?.ekalan5 || '').trim(),
                 stock: productMap.has(String(i.productKey)) ? Number(productMap.get(String(i.productKey)).diaData?.gercek_stok) || 0 : null,
@@ -125,7 +112,6 @@ router.get('/', async (req, res) => {
                     email: member.email || '',
                     phone: member.phone || ''
                 } : null,
-                // Ziyaretçiyi ayırt etmek için oturum kimliğinin kısa hali (tam kimlik dışarı verilmez)
                 visitorCode: String(cart.sessionId || '').replace(/^cart_/, '').slice(0, 8).toUpperCase(),
                 items,
                 itemCount: items.reduce((s, i) => s + i.quantity, 0),
@@ -135,7 +121,6 @@ router.get('/', async (req, res) => {
                 followUpBy: cart.followUpBy || '',
                 createdAt: cart.createdAt || null,
                 lastActivity: cart.lastActivity || null,
-                // Son hareketten itibaren saklama süresi dolunca sepet silinmeye adaydır
                 expiresAt: cart.lastActivity ? new Date(new Date(cart.lastActivity).getTime() + retentionDays * DAY_MS) : null
             };
         });
@@ -145,7 +130,6 @@ router.get('/', async (req, res) => {
             success: true,
             data,
             meta: { total, page, limit, totalPages: Math.ceil(total / limit), retentionDays },
-            // Durum sekmelerinin sayaçları
             statusCounts: { all: allCount, pending: allCount - contactedCount, contacted: contactedCount },
             summary: {
                 carts: summary.carts,
@@ -161,7 +145,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// PATCH /api/admin/carts/:id/status — takip durumunu değiştirir (Beklemede / İletişime Geçildi)
 router.patch('/:id/status', async (req, res) => {
     try {
         const status = String(req.body?.status || '');
@@ -171,7 +154,6 @@ router.patch('/:id/status', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(404).json({ success: false, message: 'Sepet bulunamadı' });
         }
-        // updateOne: sepetin son hareket / güncelleme zamanına dokunulmaz (müşteri hareketi sayılmasın)
         const result = await WebCart.updateOne(
             { _id: req.params.id, site: req.site },
             { $set: { followUpStatus: status, followUpAt: new Date(), followUpBy: req.admin?.name || req.admin?.email || '' } },

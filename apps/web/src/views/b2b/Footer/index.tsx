@@ -1,4 +1,3 @@
-// B2B footer — yer tutucu iskelet; B2B tasarımı gelince burada kurulacak.
 import { SITES } from '@src/config/siteConfig';
 
 const B2BFooter = () => {

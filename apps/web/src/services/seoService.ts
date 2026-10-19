@@ -1,4 +1,3 @@
-// apps/web/src/services/seoService.ts
 import { headers } from 'next/headers';
 import { API_ENDPOINTS } from '@/src/config/api';
 import { getSiteBySlug } from '@/src/config/siteConfig';

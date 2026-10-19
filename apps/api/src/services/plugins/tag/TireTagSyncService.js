@@ -1,13 +1,3 @@
-/**
- * TireTagSyncService
- *
- * Lastik etiketlerini webproducts ile senkronize eder.
- *
- * 3 tip etiket eşleştirir:
- *   - tire_size + season:all  -> "215 45 R18 Lastikleri Fiyatları"
- *   - tire_size + season:X    -> "215 45 R18 Yaz Lastikleri Fiyatları"
- *   - general                 -> "215 45 R18 Pirelli Yaz Lastikleri Fiyatları"
- */
 
 const mongoose = require('mongoose');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -74,14 +64,6 @@ class TireTagSyncService {
         return { matched: result.matchedCount, modified: result.modifiedCount };
     }
 
-    /**
-     * Ana sync metodu — her site için ayrı çalışır:
-     * sitenin etiketleri yalnızca o sitede yayında olan ürünlerle eşleştirilir.
-     * @param {Object} options
-     * @param {boolean} options.dryRun - DB'ye yazma yapma
-     * @param {number}  options.limit  - Test için ürün limiti (0 = sınırsız, site başına)
-     * @param {Function} options.onProgress - Progress callback (her 500 üründe)
-     */
     static async sync(options = {}) {
         const { dryRun = false, limit = 0, onProgress = null } = options;
 
@@ -102,7 +84,6 @@ class TireTagSyncService {
 
         const siteSlugs = Object.keys(SITES);
 
-        // Toplamı baştan hesapla (progress yüzdesi doğru aksın)
         for (const site of siteSlugs) {
             stats.totalProducts += await WebProduct.countDocuments({ 'diaData.ozelkod7kodu': 'LASTİK', sites: site });
         }
@@ -143,7 +124,6 @@ class TireTagSyncService {
 
                 let matchedAtLeastOne = false;
 
-                // TIP 1: Sadece ölçü
                 const sizeOnlyTag = await WebTag.findOne({
                     site: site,
                     type: 'tire_size',
@@ -157,7 +137,6 @@ class TireTagSyncService {
                     matchedAtLeastOne = true;
                 }
 
-                // TIP 2: Ölçü + Mevsim
                 if (mevsimInfo) {
                     const sizeSeasonTag = await WebTag.findOne({
                         site: site,
@@ -173,7 +152,6 @@ class TireTagSyncService {
                     }
                 }
 
-                // TIP 3: Ölçü + Marka + Mevsim
                 if (mevsimInfo && marka) {
                     const markaEsc = this.escapeRegex(marka);
                     const brandTag = await WebTag.findOne({

@@ -39,11 +39,9 @@ const roleSchema = new mongoose.Schema({
     collection: 'roles'
 });
 
-// Index'ler
 roleSchema.index({ name: 1 });
 roleSchema.index({ status: 1 });
 
-// Sistem rollerini silme engeli
 roleSchema.pre('remove', function (next) {
     if (this.isSystem) {
         next(new Error('Sistem rolleri silinemez'));
@@ -51,7 +49,6 @@ roleSchema.pre('remove', function (next) {
     next();
 });
 
-// Static metodlar
 roleSchema.statics.getActiveRoles = function () {
     return this.find({ status: 'active' });
 };
@@ -60,7 +57,6 @@ roleSchema.statics.findByName = function (name) {
     return this.findOne({ name });
 };
 
-// Instance metodlar
 roleSchema.methods.hasPermission = function (module, action) {
     const permission = this.permissions.find(p => p.module === module);
     return permission ? permission[action] === true : false;

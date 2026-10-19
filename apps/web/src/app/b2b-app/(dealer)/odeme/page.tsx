@@ -1,8 +1,5 @@
 "use client";
 
-// Ödeme Yap — tutar (Peşin/Taksitli) girişi. Peşin varsayılan seçili ve tek çekim
-// kart formu doğrudan altında açık gelir. Banka hesapları yalnız kredi kartı ödemesi
-// kapalıyken (havale/EFT tek seçenekken) gösterilir.
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { SpinnerIcon } from "@components/b2b-theme/icons";
@@ -16,7 +13,6 @@ function formatIban(iban: string): string {
   return (iban || "").replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
 }
 
-// TR para maskesi (yazarken): nokta = binlik ayracı, virgül = ondalık (en çok 2 hane).
 function maskAmount(raw: string): string {
   let v = (raw || "").replace(/[^\d,]/g, "");
   const firstComma = v.indexOf(",");
@@ -33,7 +29,6 @@ function maskAmount(raw: string): string {
   return intPart;
 }
 
-// Maskeli "1.250,75" → 125075 kuruş. Geçersizse 0.
 function parseAmountToKurus(text: string): number {
   const t = (text || "").trim().replace(/\./g, "").replace(",", ".");
   if (!t) return 0;
@@ -44,10 +39,8 @@ function parseAmountToKurus(text: string): number {
 
 export default function OdemePage() {
   const [amount, setAmount] = useState("");
-  // Peşin → Paynet (Tek Çekim), Taksitli → NetTahsilat (taksit).
   const [odemeTipi, setOdemeTipi] = useState<"pesin" | "taksitli">("pesin");
   const [banks, setBanks] = useState<BankAccount[] | null>(null);
-  // Site bazlı kredi kartı seçenekleri (panelden aç/kapa).
   const [cardOpts, setCardOpts] = useState<{ tekCekim: boolean; taksit: boolean }>({ tekCekim: true, taksit: true });
 
   useEffect(() => {
@@ -65,7 +58,6 @@ export default function OdemePage() {
 
   const amountKurus = parseAmountToKurus(amount);
   const anyCard = cardOpts.tekCekim || cardOpts.taksit;
-  // Etkin tip: seçili tip kapalıysa açık olana kay.
   const effTip: "pesin" | "taksitli" =
     cardOpts.tekCekim && (odemeTipi === "pesin" || !cardOpts.taksit) ? "pesin" : "taksitli";
 
@@ -73,7 +65,6 @@ export default function OdemePage() {
     <div className="pay-col8">
       <div className="page-head"><div><h1>Ödeme Yap</h1></div></div>
 
-      {/* Ödeme tutarı + tip — full width, input/select %50-%50 */}
       <div className="pay-top">
         <div className="pay-form pay-form-wide">
           <label htmlFor="pay-amount">Ödeme Tutarı (TL)</label>
@@ -109,10 +100,8 @@ export default function OdemePage() {
         <InstallmentForm amountKurus={amountKurus} />
       )}
 
-      {/* Bankalara göre taksit oranları — yalnız "Taksitli" seçiliyken, "Taksitli Öde" düğmesinin altında doğrudan görünür */}
       {anyCard && effTip === "taksitli" ? <InstallmentRatesTable /> : null}
 
-      {/* Banka Hesapları — yalnız kredi kartı kapalıyken (bayinin ödeyebileceği tek yol havale/EFT) */}
       {anyCard ? null : (
         <>
           <hr className="pay-divider" />

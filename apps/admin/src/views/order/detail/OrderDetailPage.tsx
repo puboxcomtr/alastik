@@ -28,7 +28,6 @@ const OrderDetailPage = () => {
   const [loading, setLoading] = useState(true)
 
   const verifyNkolayPayment = async (loadedOrder: any) => {
-    // Sadece Nkolay + henüz ödenmemiş siparişler için sessiz doğrulama
     if (loadedOrder?.payment?.gateway !== 'nkolay') return
     if (loadedOrder?.payment?.status === 'paid') return
 
@@ -36,7 +35,6 @@ const OrderDetailPage = () => {
       const verifyRes = await fetchAPI(API_ENDPOINTS.orders.verifyPayment(loadedOrder.id), { method: 'POST' })
       if (verifyRes?.updated) {
         toast.success('Ödeme doğrulandı, sipariş onaylandı')
-        // Güncel veriyi tekrar çek
         const refreshed = await fetchAPI(API_ENDPOINTS.orders.detail(orderId))
         if (refreshed.success) setOrder(refreshed.data)
       }

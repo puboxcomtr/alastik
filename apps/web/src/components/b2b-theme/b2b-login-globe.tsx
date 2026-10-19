@@ -1,7 +1,4 @@
 'use client';
-// B2B giriş sol panelindeki "dünya" — artlastik hero'sundaki WebGL globe + lastik sahnesi
-// (three.js + @react-three/fiber). Dekoratiftir: pointer-events yok, aria-hidden.
-// Sahne yalnız istemcide (ssr:false) ve WebGL destekli cihazlarda yüklenir.
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import useHeroLayout from '@components/b2b-theme/hero/useHeroLayout';
@@ -10,7 +7,6 @@ import useWebGLSupport from '@components/b2b-theme/hero/useWebGLSupport';
 
 const HeroScene = dynamic(() => import('@components/b2b-theme/hero/HeroScene'), { ssr: false });
 
-// Sahne hatasını yutmak yerine ekrana basan basit error boundary (teşhis için)
 class SahneHataSiniri extends React.Component<{ children: React.ReactNode }, { hata: string | null }> {
     constructor(props: { children: React.ReactNode }) {
         super(props);
@@ -35,7 +31,6 @@ class SahneHataSiniri extends React.Component<{ children: React.ReactNode }, { h
     }
 }
 
-// prefers-reduced-motion (SSR güvenli: önce false, effect'te okur)
 function usePrefersReducedMotion(): boolean {
     const [reduced, setReduced] = useState(false);
     useEffect(() => {
@@ -55,8 +50,6 @@ export function B2BLoginGlobe() {
     const isWebGLSupported = useWebGLSupport();
     const motionRef = useHeroMotion(sectionRef, prefersReducedMotion);
 
-    // R3F canvas bazen ilk açılışta 0 boyutla ölçülüyor (globe çizilmiyor). Sahne
-    // yüklenince birkaç frame resize tetikleyerek yeniden ölçülmesini garanti et.
     useEffect(() => {
         if (!isWebGLSupported) return;
         let r = 0;

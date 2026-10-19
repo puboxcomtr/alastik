@@ -1,18 +1,3 @@
-/**
- * Paynet Ödeme Servisi — Özelleştirilmiş Form (paynet-custom.js) modeli
- *
- * MODEL: Kart bilgisi TARAYICIDA paynet-custom.js ile token'lanır (Publishable
- * Key). Ham kart numarası/CVC bizim sunucumuza HİÇ gelmez → PCI güvenli,
- * "kart bilgileriniz saklanmaz". Sunucu yalnızca token ile tahsilat yapar.
- *
- * Yapılandırma env'den DEĞİL, panelden (PaymentMethod) okunur (site bazlı):
- *   apiCredentials.publishableKey  → frontend token
- *   apiCredentials.secretKey       → sunucu tahsilat (Basic Auth)
- *   creditCardSettings.mode/apiUrl → test/canlı uç
- *
- * Tahsilat: POST {apiUrl}/v1/transaction/charge
- *   Authorization: Basic {secretKey}   (Content-Type: application/json)
- */
 
 const axios = require('axios');
 const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
@@ -20,7 +5,6 @@ const { PAYMENT_PROVIDERS } = require('../../../config/paymentProviders');
 
 const PROVIDER = 'paynet';
 
-// paynet-custom.js kaynağı moda göre (canlı / test)
 const JS_SDK_URL = {
     live: 'https://pj.paynet.com.tr/public/js/paynet-custom.js',
     test: 'https://pts-pj.paynet.com.tr/public/js/paynet-custom.js'
@@ -30,7 +14,6 @@ function normalizeMode(mode) {
     return mode === 'live' ? 'live' : 'test';
 }
 
-// Tahsilat uç kök adresi: önce panel apiUrl, yoksa katalog moduna göre
 function resolveApiUrl(doc) {
     const custom = doc?.creditCardSettings?.apiUrl;
     if (custom) return String(custom).replace(/\/+$/, '');
@@ -42,7 +25,6 @@ function resolveApiUrl(doc) {
 
 class PaynetService {
 
-    /** Aktif Paynet yapılandırmasını getirir (site bazlı) */
     static async getMethod(site) {
         return PaymentMethod.findOne({
             site,
@@ -53,10 +35,6 @@ class PaynetService {
         }).lean();
     }
 
-    /**
-     * Frontend için güvenli yapılandırma — secretKey ASLA dönmez.
-     * @returns {Promise<{publishableKey, apiUrl, jsUrl, mode}|null>}
-     */
     static async getPublicConfig(site) {
         const doc = await this.getMethod(site);
         if (!doc) return null;
@@ -71,17 +49,6 @@ class PaynetService {
         };
     }
 
-    /**
-     * Taksit oranları — POST {apiUrl}/v1/ratio/Get.
-     * BIN (kartın ilk 6 hanesi) verilirse yalnız o kartın bankası döner; boşsa
-     * hesapta tanımlı tüm bankalar. amount KURUŞ (integer). ratio_code GÖNDERİLMEZ.
-     * Tam kart numarası bu servise GELMEZ, yalnız BIN.
-     * @param {Object} p
-     * @param {string} p.site
-     * @param {number} p.amount  Tutar (KURUŞ)
-     * @param {string} [p.bin]   Kartın ilk 6 hanesi
-     * @returns {Promise<{success:boolean, banks:Array, message?:string}>}
-     */
     static async getRatios({ site, amount, bin }) {
         const doc = await this.getMethod(site);
         if (!doc) return { success: false, banks: [], message: 'Paynet yapılandırması bulunamadı.' };
@@ -114,7 +81,6 @@ class PaynetService {
                         instalmentAmount: Number(o.instalment_amount ?? 0),
                         totalAmount: Number(o.total_amount ?? 0),
                         commission: Number(o.commision ?? o.commission ?? 0),
-                        // Özelleştirilmiş formun installmentKey'i için olası anahtar alanları
                         key: o.instalment_key ?? o.key ?? o.ratio_code ?? undefined
                     }))
                     .sort((a, b) => a.instalment - b.instalment)
@@ -126,17 +92,6 @@ class PaynetService {
         }
     }
 
-    /**
-     * Token ile tahsilat (Özelleştirilmiş Form → charge).
-     * @param {Object} p
-     * @param {string} p.site
-     * @param {string} p.sessionId  paynet-custom.js'ten gelen session_id
-     * @param {string} p.tokenId    paynet-custom.js'ten gelen token_id
-     * @param {number} p.amount     Tutar (formdaki tutarla AYNI olmalı)
-     * @param {string} [p.referenceNo] Mükerrer koruması / eşleştirme
-     * @param {number} [p.installments] Taksit (1 veya boş = tek çekim)
-     * @param {boolean} [p.tdsRequired=true] 3D Secure zorunlu mu
-     */
     static async charge({ site, sessionId, tokenId, amount, referenceNo, installments, tdsRequired = true }) {
         const doc = await this.getMethod(site);
         if (!doc) {
@@ -156,27 +111,22 @@ class PaynetService {
         const body = {
             session_id: sessionId,
             token_id: tokenId,
-            amount: String(amount),          // KURUŞ — SDK token'ı data-amount×100 ile eşleşir
-            transaction_type: '1',           // 1 = Satış
+            amount: String(amount),
+            transaction_type: '1',
             add_comission_amount: false,
             ratio_code: '',
-            // "installments" izin verilen taksit listesidir ve tarayıcıdaki oturumla (data-installments, boş) AYNI olmalıdır;
-            // seçilen taksit sayısı token'ın içindeki taksit anahtarından gelir. Sayı gönderilirse Paynet
-            // "Taksitler (installments) parametresi uyuşmuyor" hatası verir.
             installments: '',
             no_instalment: !taksitli,
             tds_required: !!tdsRequired,
             reference_no: referenceNo ? String(referenceNo) : ''
         };
 
-        // Not: body'de kart verisi YOKTUR (yalnız session/token/tutar) — loglanması güvenli.
         console.log('[Paynet] charge isteği:', { url: `${apiUrl}/v1/transaction/charge`, ...body });
 
         try {
             const resp = await axios.post(`${apiUrl}/v1/transaction/charge`, body, {
                 headers: {
                     'Content-Type': 'application/json',
-                    // Paynet secret_key doğrudan Basic token olarak kullanılır
                     'Authorization': `Basic ${secretKey}`
                 },
                 timeout: 30000

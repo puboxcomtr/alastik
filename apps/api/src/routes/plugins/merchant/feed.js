@@ -3,7 +3,6 @@ const router = express.Router();
 const { generateFeed } = require('../../../services/plugins/merchant/MerchantFeedService');
 const { isValidSite } = require('../../../config/sites');
 
-// Site seçimi: ?site=lastikjantavm > X-Site/Host (req.site) > varsayılan
 router.get('/', async (req, res) => {
     try {
         const querySite = (req.query.site || '').toString().trim().toLowerCase();

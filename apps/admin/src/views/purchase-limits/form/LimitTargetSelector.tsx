@@ -38,13 +38,11 @@ const titleLabels = {
 }
 
 const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelectorProps) => {
-    // Ortak state'ler
     const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
     const [searchPerformed, setSearchPerformed] = useState(false)
 
-    // Sadece ürün için ek filtreler
     const [productFilters, setProductFilters] = useState({
         brand: '',
         product_type: '',
@@ -59,20 +57,16 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
         sizes: string[]
     }>({ brands: [], productTypes: [], seasons: [], sizes: [] })
 
-    // Kategori/Marka için tüm liste (autocomplete)
     const [allOptions, setAllOptions] = useState<any[]>([])
     const [loadingOptions, setLoadingOptions] = useState(false)
 
     useEffect(() => {
-        // Ürün modunda filtre opsiyonlarını yükle
         if (limitType === 'product') {
             loadFilterOptions()
         }
-        // Kategori/Marka modunda tüm listeyi yükle
         if (limitType === 'category' || limitType === 'brand') {
             loadAllOptions()
         }
-        // Mode değişince search'ü resetle
         setSearchQuery('')
         setSearchResults([])
         setSearchPerformed(false)
@@ -149,7 +143,6 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
         }
     }
 
-    // Bir seçim için targetId döndürür (ürün için sku, kategori/marka için _id)
     const getTargetIdFromProduct = (p: any): string => String(p.sku || p.stokkartkodu || p.id)
     const getTargetIdFromOption = (item: any): string =>
         String(item.id || item._id || item.diaKey || item.code || '')
@@ -193,7 +186,6 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
         onChange(targets.filter(t => t.targetId !== targetId))
     }
 
-    // Kategori/Marka için Autocomplete handler
     const handleOptionSelect = (item: any) => {
         if (!item) return
         const id = getTargetIdFromOption(item)
@@ -213,7 +205,6 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
                 {titleLabels[limitType]} ({targets.length} adet seçili)
             </Typography>
 
-            {/* Mevcut Seçili Liste */}
             {targets.length > 0 && (
                 <Box sx={{ mb: 4 }}>
                     <Typography variant='subtitle2' color='text.secondary' sx={{ mb: 1 }}>
@@ -264,7 +255,6 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
                 </Box>
             )}
 
-            {/* Yeni Seçim Bölümü */}
             <Typography variant='subtitle2' color='text.secondary' sx={{ mb: 2 }}>
                 Yeni {limitType === 'product' ? 'Ürün' : limitType === 'category' ? 'Kategori' : 'Marka'} Ekle
             </Typography>
@@ -389,7 +379,6 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
                         </Grid>
                     </Grid>
 
-                    {/* Arama Sonuçları */}
                     <div className='overflow-x-auto mt-4' style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 4, marginTop: 16 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 1 }}>
@@ -476,7 +465,6 @@ const LimitTargetSelector = ({ limitType, targets, onChange }: LimitTargetSelect
                     </div>
                 </>
             ) : (
-                // Kategori / Marka — Autocomplete + Ekle
                 <Autocomplete
                     options={allOptions}
                     getOptionLabel={(opt: any) =>

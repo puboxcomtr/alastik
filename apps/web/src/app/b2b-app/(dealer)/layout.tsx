@@ -23,7 +23,6 @@ type MenuKaydi = {
 
 type NavItem = { href: string; label: string; vurgu?: boolean; alt?: { href: string; label: string }[] };
 
-/** Menü kaydını tema nav bağlantısına çevirir (tür → adres) */
 function menuHref(menu: MenuKaydi): string {
   const d = menu.linkData || {};
   switch (menu.menuType) {
@@ -35,12 +34,7 @@ function menuHref(menu: MenuKaydi): string {
   }
 }
 
-/**
- * Üst menü PANELDEN yönetilir (Menü Yönetimi, site: B2B, alan: header).
- * API'ye erişilemez ya da menü boşsa varsayılan Lastik/Jant yedeği kullanılır.
- */
 async function ustMenuyuGetir(): Promise<NavItem[]> {
-  // Menü DB'den (kategoriler) gelir; API boş/erişilemezse boş menü ile devam.
   const yedek: NavItem[] = [];
   try {
     const res = await fetch(API_ENDPOINTS.menus.header(), {
@@ -62,7 +56,6 @@ async function ustMenuyuGetir(): Promise<NavItem[]> {
   }
 }
 
-/** Bayi paneli çerçevesi: üst menü (DB) + sepet + hesap menüsü + oturum kapısı. */
 export default async function DealerLayout({
   children,
 }: {

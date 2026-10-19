@@ -11,9 +11,6 @@ class DiaToWebProductMigration {
     this.batchSize = 100;
   }
 
-  /**
-   * Ana migration fonksiyonu
-   */
   async migrate() {
     console.log('🚀 DiaStock → WebProduct migration başlatılıyor...');
     console.log('⏰ Başlangıç:', new Date().toISOString());
@@ -22,16 +19,13 @@ class DiaToWebProductMigration {
       const totalCount = await DiaStock.countDocuments();
       console.log(`📊 Toplam DiaStock kaydı: ${totalCount}`);
 
-      // Mevcut WebProduct kayıtlarını kontrol et
       const existingWebProducts = await WebProduct.countDocuments();
       console.log(`📊 Mevcut WebProduct kaydı: ${existingWebProducts}`);
 
       if (existingWebProducts > 0) {
         console.log('⚠️  Mevcut WebProduct kayıtları bulundu. Devam etmek için onay gerekli.');
-        // Üretim ortamında burada kullanıcı onayı alınabilir
       }
 
-      // Batch'ler halinde işle
       let skip = 0;
       
       while (skip < totalCount) {
@@ -44,7 +38,6 @@ class DiaToWebProductMigration {
         await this.processBatch(batch);
         skip += this.batchSize;
 
-        // İlerleme raporu
         const progress = Math.min((skip / totalCount) * 100, 100);
         console.log(`İlerleme: ${progress.toFixed(1)}% (${this.processedCount}/${totalCount})`);
       }
@@ -57,9 +50,6 @@ class DiaToWebProductMigration {
     }
   }
 
-  /**
-   * Batch işleme
-   */
   async processBatch(diaProducts) {
     const bulkOperations = [];
 
@@ -89,7 +79,6 @@ class DiaToWebProductMigration {
       }
     }
 
-    // Bulk write işlemi
     if (bulkOperations.length > 0) {
       try {
         const result = await WebProduct.bulkWrite(bulkOperations, { 
@@ -103,11 +92,7 @@ class DiaToWebProductMigration {
     }
   }
 
-  /**
-   * DiaStock verisini WebProduct formatına dönüştür
-   */
   transformDiaToWeb(diaProduct) {
-    // Geçerlilik kontrolleri
     if (!diaProduct._key) {
       throw new Error('Missing _key field');
     }
@@ -116,32 +101,25 @@ class DiaToWebProductMigration {
       throw new Error('Missing stokkartkodu field');
     }
 
-    // Filtreleri kontrol et (DIA'da uygulanan filtrelerle aynı)
     if (diaProduct.durum !== 'A') {
-      return null; // Skip inactive products
+      return null;
     }
 
     if (diaProduct.ozelkod11kodu !== 'E') {
-      return null; // Skip non-web products
+      return null;
     }
 
-    // SEO URL oluştur
     const seoUrl = this.generateSeoUrl(diaProduct.aciklama || diaProduct.stokkartkodu);
 
-    // Web kategori belirle
     const webCategory = this.determineWebCategory(diaProduct);
 
-    // Web etiketleri oluştur
     const webTags = this.generateWebTags(diaProduct);
 
-    // Featured image belirle
     const featuredImage = this.getFeaturedImage(diaProduct.m_resimler);
 
-    // WebProduct formatında veri oluştur
     const webProductData = {
       _key: diaProduct._key,
       
-      // DIA Verileri - tam kopyala
       diaData: {
         _key_scf_karebarkod: diaProduct._key_scf_karebarkod,
         _key_scf_marka: diaProduct._key_scf_marka,
@@ -214,7 +192,6 @@ class DiaToWebProductMigration {
         m_urunOzellikleri: diaProduct.m_urunOzellikleri || []
       },
 
-      // Özel veriler - başlangıç değerleri
       customData: {
         seoUrl: seoUrl,
         seoTitle: diaProduct.aciklama,
@@ -238,7 +215,6 @@ class DiaToWebProductMigration {
         isFeatured: false
       },
 
-      // Senkronizasyon bilgileri
       syncInfo: {
         lastDiaSync: new Date(),
         diaStatus: 'synced',
@@ -250,24 +226,18 @@ class DiaToWebProductMigration {
     return webProductData;
   }
 
-  /**
-   * SEO URL oluştur
-   */
   generateSeoUrl(text) {
     if (!text) return null;
     
     return text
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/gi, '') // Özel karakterleri temizle
-      .replace(/\s+/g, '-') // Boşlukları tire yap
-      .replace(/-+/g, '-') // Birden fazla tireyi tek tire yap
-      .replace(/^-+|-+$/g, '') // Baş ve sondaki tireleri temizle
-      .substring(0, 100); // Max 100 karakter
+      .replace(/[^a-z0-9\s-]/gi, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 100);
   }
 
-  /**
-   * Web kategori belirle
-   */
   determineWebCategory(diaProduct) {
     if (!diaProduct.m_kategoriler || diaProduct.m_kategoriler.length === 0) {
       return 'diger';
@@ -290,9 +260,6 @@ class DiaToWebProductMigration {
     return 'diger';
   }
 
-  /**
-   * Web etiketleri oluştur
-   */
   generateWebTags(diaProduct) {
     const tags = [];
     
@@ -314,12 +281,9 @@ class DiaToWebProductMigration {
       }
     }
 
-    return [...new Set(tags)]; // Duplicates'ları temizle
+    return [...new Set(tags)];
   }
 
-  /**
-   * SEO description oluştur
-   */
   generateSeoDescription(diaProduct) {
     const parts = [];
     
@@ -330,33 +294,22 @@ class DiaToWebProductMigration {
     return parts.join(' - ').substring(0, 160);
   }
 
-  /**
-   * Ana görsel belirle
-   */
   getFeaturedImage(images) {
     if (!images || images.length === 0) return null;
     
-    // İlk resmi ana görsel yap
     const firstImage = images[0];
     return firstImage.aws_url || null;
   }
 
-  /**
-   * Yeni ürün mü kontrolü
-   */
   isNewProduct(diaProduct) {
-    // Ekalan5'te üretim yılı varsa kontrol et
     if (diaProduct.ekalan5) {
       const currentYear = new Date().getFullYear();
       const productYear = parseInt(diaProduct.ekalan5);
-      return productYear >= currentYear - 1; // Son 1-2 yılda üretildi
+      return productYear >= currentYear - 1;
     }
     return false;
   }
 
-  /**
-   * Özet rapor
-   */
   async printSummary() {
     console.log('\n📋 MIGRATION ÖZET RAPORU');
     console.log('='.repeat(50));
@@ -376,16 +329,13 @@ class DiaToWebProductMigration {
       }
     }
 
-    // Son kontroller
     const webProductCount = await WebProduct.countDocuments();
     console.log(`\n📊 Toplam WebProduct kayıtları: ${webProductCount}`);
   }
 }
 
-// Script çalıştırma fonksiyonu
 async function runMigration() {
   try {
-    // MongoDB bağlantısını kontrol et
     if (mongoose.connection.readyState !== 1) {
       console.log('MongoDB bağlantısı gerekli');
       return;

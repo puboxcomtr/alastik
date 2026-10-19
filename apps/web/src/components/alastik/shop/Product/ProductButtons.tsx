@@ -1,11 +1,6 @@
-// Üründe açık Ürün Butonları (panel: Ürünler > Ürün Butonları) — kart üzerindeki etiketler.
-// Her butonun renkleri ve ikonu TANIMINDAN gelir (koda renk gömülmez): zemin soldan sağa
-// colorFrom → colorTo geçişlidir, yazı rengi textColor. Renk tanımlı değilse sitenin ana rengi
-// kullanılır (app/globals.css → .product-button). Etiketler köşesizdir.
 import type { CSSProperties } from 'react';
 import type { ProductButton } from '@src/types/products';
 
-// Yalnız #RGB / #RRGGBB biçimindeki değerler stile yazılır
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const validColor = (value?: string) => (value && HEX_COLOR.test(value) ? value : '');
 
@@ -24,7 +19,6 @@ function buttonStyle(button: ProductButton): CSSProperties | undefined {
 
 interface ProductButtonsProps {
     buttons?: ProductButton[];
-    // Kapsayıcının konum/hizalama sınıfları (kart, masaüstü ve mobilde farklı yere koyar)
     className?: string;
 }
 

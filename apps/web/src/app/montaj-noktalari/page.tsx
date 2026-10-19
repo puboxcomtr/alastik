@@ -17,7 +17,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function MontagePointsPage() {
-    // Sayfa şimdilik yalnız LastikJantAVM'de yayında
     if ((headers().get('x-site') || 'alastik') !== 'lastikjantavm') notFound();
 
     const result = await fetchAPI(API_ENDPOINTS.montage.list());

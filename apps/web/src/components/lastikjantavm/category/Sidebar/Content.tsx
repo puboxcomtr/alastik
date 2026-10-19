@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { Offcanvas, Button } from "react-bootstrap";
 import { Grid } from "@mui/material";
 
-// Lastik Filtreleri
 import TireFilter from '@components/lastikjantavm/category/Filter/TireFilter';
 import Brand from "@components/lastikjantavm/category/Sidebar/Brand";
 import Oem from "@components/lastikjantavm/category/Sidebar/Oem";
@@ -15,7 +14,6 @@ import Season from "@components/lastikjantavm/category/Sidebar/Season";
 import SpeedIndex from "@components/lastikjantavm/category/Sidebar/SpeedIndex";
 import ProductionYear from "@components/lastikjantavm/category/Sidebar/ProductionYear";
 
-// Jant Filtreleri
 import RimsFilter from '@components/lastikjantavm/category/Filter/RimsFilter';
 
 import { getTireFilterOptions, type TireFilterOptions } from "@/src/services/filterService";
@@ -27,7 +25,6 @@ interface SidebarProps {
     tagType?: string;
     brandSlug?: string;
     searchQuery?: string;
-    // Kategori ayarından gelen gizli filtre anahtarları (siteContent.hiddenFilters)
     hiddenFilters?: string[];
 }
 
@@ -37,7 +34,6 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
     const [options, setOptions] = useState<TireFilterOptions | null>(null);
     const [productType, setProductType] = useState<string>('LASTİK');
 
-    // searchParams değişikliklerini izlemek için dependency
     const searchParamsString = searchParams.toString();
 
     useEffect(() => {
@@ -46,7 +42,6 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
             setProductType(type);
         }
         const loadOptions = async () => {
-            // Aktif filtreleri searchParams'tan al
             const activeFilters: Record<string, string | undefined> = {
                 genislik: searchParams.get('genislik') || undefined,
                 yanak: searchParams.get('yanak') || undefined,
@@ -89,7 +84,6 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                 </div>
                 <Grid container className="offcanvas-body flex-column py-lg-0">
                     <Grid>
-                        {/* Ortak Filtreler */}
                         {!brandSlug && !hidden.has('brand') && (
                             <Brand
                                 categorySlug={categorySlug}
@@ -98,7 +92,6 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                         )}
                         {!hidden.has('price') && <Price priceRange={options?.priceRange} />}
 
-                        {/* Jant Filtreleri */}
                         {isJant && (
                             <RimsFilter
                                 categorySlug={categorySlug}
@@ -106,7 +99,6 @@ export default function Sidebar({ hideEbatFilters = false, categorySlug, tagSlug
                             />
                         )}
 
-                        {/* Lastik Filtreleri */}
                         {!isJant && (
                             <>
                                 {!hidden.has('season') && <Season seasonOptions={options?.seasons || []} categorySlug={categorySlug} tagSlug={tagSlug} />}

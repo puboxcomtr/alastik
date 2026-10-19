@@ -5,7 +5,6 @@ const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 const KEY_FILE = path.join(__dirname, '../../../config/alastik-service-account.json');
 const SCOPES = ['https://www.googleapis.com/auth/indexing'];
 
-// Site başına URL tabanı (config/sites.js'teki ilk domain)
 function getSiteUrl(site) {
     const domain = SITES[site]?.domains?.[0] || SITES[DEFAULT_SITE].domains[0];
     return `https://${domain}`;

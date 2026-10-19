@@ -65,7 +65,6 @@ export default function ProductionYear({ productionYears = [], categorySlug, tag
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    // Arama filtresi
     const filteredYears = productionYears.filter((year) =>
         (year.label || year.value).includes(search)
     );

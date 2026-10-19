@@ -1,4 +1,3 @@
-// apps/web/src/services/reviewService.ts
 import { headers } from 'next/headers';
 import { API_ENDPOINTS } from '@/src/config/api';
 export async function getProductReviews(productKey: string) {

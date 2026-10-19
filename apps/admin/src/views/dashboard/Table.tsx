@@ -1,23 +1,18 @@
 'use client'
 
-// React Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Typography from '@mui/material/Typography'
 import Tooltip from '@mui/material/Tooltip'
 
-// Third-party Imports
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 export type RecentOrder = {
@@ -38,7 +33,6 @@ const formatTRY = (value: number) =>
 const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })
 
-// Seçili sitenin son siparişleri
 const Table = ({ orders = [] }: { orders?: RecentOrder[] }) => {
     const { lang: locale } = useParams()
 

@@ -1,12 +1,5 @@
 "use client";
 
-// ALastik/LJA ile aynı toast: react-toastify. ToastContainer ve CSS zaten kök
-// layout'ta (src/app/layout.tsx) tanımlı (bottom-right, light). Buradaki
-// showToast yalnız ince bir sarmalayıcıdır; b2b bileşenleri bunu çağırır.
-//
-// Sepet hızlı güncellenince (adet +/−) toast'lar ÜST ÜSTE YIĞILMASIN diye tek
-// bir toastId kullanılır: aktifse mevcut toast güncellenir (içerik + tip) ve
-// süresi baştan sayılır; değilse yeni açılır.
 import { toast } from "react-toastify";
 
 const TOAST_ID = "b2b-toast";

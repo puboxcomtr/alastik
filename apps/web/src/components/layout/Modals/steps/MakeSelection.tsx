@@ -1,35 +1,17 @@
 'use client';
 
-// ============================================
-// React & Next.js
-// ============================================
 import { useState, useEffect, useMemo } from 'react';
 
-// ============================================
-// MUI 
-// ============================================
 import { Typography, Divider, Box, Tooltip, Link } from '@mui/material';
 
-// ============================================
-// Hooks
-// ============================================
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@src/hooks/Theme/useAuth';
 
-// ============================================
-// Types
-// ============================================
 import type { WheelSizeMake } from '@/src/types/vehicle';
 
-// ============================================
-// Routes
-// ============================================
 import { ROUTES } from '@/src/config/routes';
 
-// ============================================
-// Variable
-// ============================================
 const POPULAR_MAKES = [
     'audi', 'bmw', 'mercedes-benz', 'volkswagen',
     'ford', 'renault', 'opel', 'peugeot',
@@ -91,7 +73,6 @@ export default function MakeSelection({ selectedMake, onSelect }: MakeSelectionP
         <div className="make-selection">
             <div className="row">
                 <div className="col-md-8">
-                    {/* Arama */}
                     <div className="mb-4">
                         <div style={{ position: 'relative' }}>
                             <input
@@ -120,7 +101,6 @@ export default function MakeSelection({ selectedMake, onSelect }: MakeSelectionP
                             ></i>
                         </div>
                     </div>
-                    {/* Marka Grid */}
                     {displayedMakes.length > 0 ? (
                         <>
                             <div className="row g-2">

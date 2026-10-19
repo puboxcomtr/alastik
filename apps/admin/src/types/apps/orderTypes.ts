@@ -1,6 +1,4 @@
-// apps/admin/src/types/orderTypes.ts
 
-// Backend'den gelen API response tipi
 export interface OrderApiResponse {
     _id: string;
     _key: string;
@@ -15,7 +13,6 @@ export interface OrderApiResponse {
     itemCount: number;
 }
 
-// Tablo için kullanılan tip
 export interface OrderTableRow {
     id: number;
     order: string;
@@ -30,7 +27,6 @@ export interface OrderTableRow {
     actions: string;
 }
 
-// Durum tipleri
 export type OrderStatus =
     | 'pending'
     | 'confirmed'
@@ -53,7 +49,6 @@ export type OrderSource =
     | 'dia_sync'
     | 'marketplace';
 
-// Tam sipariş detayı (detay sayfası için)
 export interface OrderDetail {
     _id: string;
     orderNumber: string;

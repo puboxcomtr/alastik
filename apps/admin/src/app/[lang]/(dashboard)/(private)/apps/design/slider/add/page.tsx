@@ -167,7 +167,6 @@ const AddSliderPage = () => {
                             </div>
                         </Grid>
 
-                        {/* Slider Görselleri */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -239,7 +238,6 @@ const AddSliderPage = () => {
                         </Grid>
                     </Grid>
 
-                    {/* Genel Özellikler ve Sağ Yan */}
                     <Grid container spacing={6} className='mt-5'>
                         <Grid size={{ xs: 12, md: 8 }}>
                             <Card>

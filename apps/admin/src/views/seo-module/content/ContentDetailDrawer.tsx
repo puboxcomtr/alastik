@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
@@ -19,17 +16,13 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
 import Alert from '@mui/material/Alert'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { ContentDetail, ContentRow, SeoCheck } from '../types'
 import { STATUS_COLORS, STATUS_LABELS, TYPE_LABELS } from '../types'
 
-// Util Imports
 import { getSiteUrl } from '@/utils/activeSite'
 
 type ContentDetailDrawerProps = {
@@ -48,7 +41,6 @@ const CheckIcon = ({ passed }: { passed: boolean | null }) => {
     return <i className='ri-close-circle-fill text-xl' style={{ color: 'var(--mui-palette-error-main)' }} />
 }
 
-// Tek içeriğin kriter listesi + odak anahtar kelime girişi (Rank Math yan paneli karşılığı)
 const ContentDetailDrawer = ({ open, item, onClose, onUpdated }: ContentDetailDrawerProps) => {
     const { lang: locale } = useParams()
     const [detail, setDetail] = useState<ContentDetail | null>(null)

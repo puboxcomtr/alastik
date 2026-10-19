@@ -1,8 +1,5 @@
 'use client'
 
-// B2B bayi başvuruları — login sayfasındaki başvuru formu kayıtları.
-// Durum akışı: Yeni → İncelendi → Onaylandı/Reddedildi. Onay, hesap AÇMAZ:
-// bayilik DIA'da açılır, Cariler sayfasındaki senkronla listeye düşer.
 import { useEffect, useState } from 'react'
 
 import Card from '@mui/material/Card'

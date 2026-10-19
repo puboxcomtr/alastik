@@ -65,19 +65,16 @@
     max-width: 480px;
 }
 
-/* Form container'ı ortala */
 .loginContainer :global(.flex.justify-center.items-center) {
     justify-content: center !important;
     padding: 1.5rem;
 }
 
-/* Form genişliğini sınırla */
 .loginContainer :global(.sm\:max-is-\[400px\]) {
     max-width: 400px;
     width: 100%;
 }
 
-/* Form input spacing */
 .loginContainer :global(.flex.flex-col.gap-5) > * {
     margin-bottom: 1.25rem;
 }
@@ -86,12 +83,10 @@
     margin-bottom: 0;
 }
 
-/* TextField margin fix */
 .loginContainer :global(.MuiTextField-root) {
     margin-bottom: 1.25rem;
 }
 
-/* Button üst boşluk */
 .loginContainer :global(.MuiButton-root) {
     margin-top: 0.5rem;
 }

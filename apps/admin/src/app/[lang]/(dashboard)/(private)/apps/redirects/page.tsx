@@ -1,8 +1,5 @@
 'use client'
 
-// Link Yönlendirme yönetimi: eski URL (kaynak) -> yeni URL (hedef), 301
-// Menüden site seçilerek gelinir (?site=lastikjantavm | alastik);
-// parametre yoksa sağ üstteki aktif site kullanılır.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import Card from '@mui/material/Card'
@@ -46,7 +43,6 @@ type RedirectType = {
 const columnHelper = createColumnHelper<RedirectType>()
 
 export default function RedirectsPage() {
-    // Site ayrımı admin header'daki site seçiminden gelir (X-Site otomatik eklenir)
     const site = ''
     const siteHeaders: Record<string, string> = {}
     const siteLabel = ''
@@ -59,14 +55,12 @@ export default function RedirectsPage() {
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
 
-    // Ekle/Düzenle penceresi
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editing, setEditing] = useState<RedirectType | null>(null)
     const [source, setSource] = useState('')
     const [target, setTarget] = useState('')
     const [saving, setSaving] = useState(false)
 
-    // Toplu içe aktarım
     const [importOpen, setImportOpen] = useState(false)
     const [importText, setImportText] = useState('')
     const [importing, setImporting] = useState(false)
@@ -130,7 +124,6 @@ export default function RedirectsPage() {
     }
 
     const handleImport = async () => {
-        // Her satır: kaynak;hedef (veya kaynak,hedef / TAB)
         const rows = importText.split('\n').map(l => l.trim()).filter(Boolean)
         const parsed = rows.map(l => {
             const parts = l.split(/[;\t]|,(?=https?:\/\/|\/)/)
@@ -280,7 +273,6 @@ export default function RedirectsPage() {
                 onRowsPerPageChange={e => { setLimit(parseInt(e.target.value)); setPage(0) }}
             />
 
-            {/* Ekle / Düzenle */}
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth='sm' fullWidth>
                 <DialogTitle>{editing ? 'Yönlendirmeyi Düzenle' : 'Yeni Yönlendirme'}</DialogTitle>
                 <DialogContent className='flex flex-col gap-4 pt-2'>
@@ -311,7 +303,6 @@ export default function RedirectsPage() {
                 </DialogActions>
             </Dialog>
 
-            {/* Toplu içe aktarım */}
             <Dialog open={importOpen} onClose={() => setImportOpen(false)} maxWidth='md' fullWidth>
                 <DialogTitle>Toplu İçe Aktar</DialogTitle>
                 <DialogContent className='flex flex-col gap-4 pt-2'>

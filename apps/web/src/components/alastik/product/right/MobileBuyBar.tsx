@@ -1,7 +1,3 @@
-// apps/web/src/components/alastik/product/right/MobileBuyBar.tsx
-// Yalnızca mobilde (d-md-none) ürün sayfasının altına sabitlenen çubuk: fiyat + Şimdi Al + Sepete Ekle.
-// Sepete Ekle sonrası, sabit çubuğun ÜZERİNDE onay paneli açılır: "Ürün sepete eklendi!" +
-// aynı ebattaki diğer lastikler (mevcut /products/filter ucundan) + Alışverişe Devam / Sepete Git.
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
@@ -38,7 +34,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
     const [sheetVisible, setSheetVisible] = useState(false);
     const [suggestions, setSuggestions] = useState<Product[] | null>(null);
 
-    // Panel monte edilir edilmez aşağıdan yukarı yumuşak kayma başlasın
     useEffect(() => {
         if (!sheetOpen) return;
         const id = requestAnimationFrame(() => setSheetVisible(true));
@@ -50,12 +45,9 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
 
     const price = getProductPrice(product);
     const priceHidden = isPriceHidden(product);
-    // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
-    // Lastiklerde "Sepete Git" montaj noktası seçimine, diğer ürünlerde sepete gider
     const cartHref = getProductType(product) === 'LASTIK' ? ROUTES.MONTAGE_SELECT : ROUTES.CART;
 
-    // Aynı ebattaki diğer lastikler — mevcut filtre ucundan, yalnızca panel ilk açıldığında çekilir
     const loadSuggestions = async () => {
         if (suggestions !== null || !similar) return;
         try {
@@ -81,14 +73,12 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
             check.violations.forEach(v => toast.error(v.message));
             return false;
         }
-        // Boş mesaj: toast yerine onay paneli gösterilir
         return addToCart(product._key, 1, silent ? '' : undefined);
     };
 
     const handleAddToCart = async () => {
         if (busy || priceHidden) return;
         setBusy('add');
-        // Öneriler basıldığı anda paralel yüklenir, panel açılınca hazır olur
         loadSuggestions();
         try {
             const added = await addOne(true);
@@ -103,7 +93,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
         }
     };
 
-    // Kapanışta da yumuşak iniş: önce animasyon, sonra kaldır
     const closeSheet = () => {
         setSheetVisible(false);
         setTimeout(() => setSheetOpen(false), 260);
@@ -115,7 +104,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
         try {
             const added = await addOne(true);
             if (added) {
-                // Lastikte önce montaj noktası seçimi; diğer ürünlerde doğrudan ödeme
                 if (getProductType(product) === 'LASTIK') router.push(ROUTES.MONTAGE_SELECT);
                 else router.push(isLogged() ? ROUTES.CHECKOUT : `${ROUTES.LOGIN}?from=checkout`);
             }
@@ -129,7 +117,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
 
     return (
         <>
-            {/* Sabit çubuğun içeriği örtmemesi için boşluk */}
             <div className="d-md-none" style={{ height: 104 }} aria-hidden="true" />
             <div
                 className="d-md-none bg-white"
@@ -148,7 +135,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
                     <span className="fw-bold text-black" style={{ fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
                         {priceHidden ? PRICE_HIDDEN_LABEL : `${formatTL(gosterim.value)} TL${gosterim.suffix}`}
                     </span>
-                    {/* Şimdi Al dar, Sepete Ekle geniş */}
                     <button
                         type="button"
                         className="btn btn-outline-primary"
@@ -170,7 +156,6 @@ export default function MobileBuyBar({ product, similar }: MobileBuyBarProps) {
                 </div>
             </div>
 
-            {/* Sepete eklendi onay paneli — sabit çubuğun üzerinde açılır, hiçbir şeyi örtülü bırakmaz */}
             {sheetOpen && (
                 <div className="d-md-none">
                     <div

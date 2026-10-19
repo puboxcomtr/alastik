@@ -1,4 +1,3 @@
-// React Imports
 import type { SVGAttributes } from 'react'
 
 const Dribbble = (props: SVGAttributes<SVGElement>) => {

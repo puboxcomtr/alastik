@@ -1,4 +1,3 @@
-// apps/admin/src/views/seo/brand/index.jsx
 'use client'
 
 import Card from '@mui/material/Card'

@@ -1,41 +1,38 @@
-// Araç uyumluluk verisi (marka + model başına bir kayıt) — kaynak: Wheel-Size API (Avrupa pazarı, eudm).
-// scripts/wheelsize-fitment-sync.js ile doldurulur; /api/vehicles rotaları ve web'deki /arac sayfaları okur.
-// Siteden bağımsızdır (araç verisi iki site için ortaktır; stok/uyum hesabı site bazında yapılır).
 const mongoose = require('mongoose');
 
 const tireSchema = new mongoose.Schema({
-    tire: String,          // "205/55R16"
-    tireFull: String,      // "205/55R16 91V"
+    tire: String,
+    tireFull: String,
     width: Number,
     aspect: Number,
-    diameter: Number,      // jant çapı (inç)
+    diameter: Number,
     loadIndex: Number,
     speedIndex: String,
-    rim: String,           // "6.5Jx16 ET39"
+    rim: String,
     rimWidth: Number,
     rimOffset: Number,
     pressureBar: Number
 }, { _id: false });
 
 const wheelSchema = new mongoose.Schema({
-    oe: Boolean,           // fabrika çıkışı (orijinal) ebat mı
-    winter: Boolean,       // kış için önerilen
+    oe: Boolean,
+    winter: Boolean,
     runflat: Boolean,
-    steel: Boolean,        // sac (çelik) jant
+    steel: Boolean,
     front: tireSchema,
-    rear: { type: tireSchema, default: null } // arka farklıysa
+    rear: { type: tireSchema, default: null }
 }, { _id: false });
 
 const modificationSchema = new mongoose.Schema({
     slug: String,
-    trim: String,          // "1.3 MultiJet"
+    trim: String,
     startYear: Number,
     endYear: Number,
     fuel: String,
     powerHp: Number,
     engineCode: String,
-    tireType: String,      // Passenger / SUV / LT ...
-    boltPattern: String,   // "5x98"
+    tireType: String,
+    boltPattern: String,
     studHoles: Number,
     pcd: Number,
     centreBore: Number,
@@ -46,7 +43,7 @@ const modificationSchema = new mongoose.Schema({
 
 const generationSchema = new mongoose.Schema({
     slug: String,
-    name: String,          // "VI"
+    name: String,
     platform: String,
     start: Number,
     end: Number,
@@ -60,12 +57,11 @@ const webVehicleFitmentSchema = new mongoose.Schema({
     modelSlug: { type: String, required: true },
     modelName: { type: String, required: true },
     generations: [generationSchema],
-    // Sayfalarda ve aramada hızlı kullanım için özet
     summary: {
         yearFrom: Number,
         yearTo: Number,
-        oeTireSizes: [String],        // fabrika ebatları, en yaygından aza
-        optionalTireSizes: [String],  // alternatif (uyumlu) ebatlar
+        oeTireSizes: [String],
+        optionalTireSizes: [String],
         rimDiameters: [Number],
         boltPatterns: [String],
         centreBores: [Number],

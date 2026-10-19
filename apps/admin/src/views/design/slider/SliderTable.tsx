@@ -22,14 +22,12 @@ import { fetchSliders, deleteSlider, type SliderType } from '@/utils/api/sliders
 
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
 
-// Helper: Görsel URL oluştur
 const getImageUrl = (url: string | undefined | null): string => {
   if (!url) return '/images/slider/gorsel-bulunamadi.jpg'
   if (url.startsWith('http')) return url
   return `${MEDIA_URL}${url.startsWith('/') ? url : '/' + url}`
 }
 
-// Helper: Key'i panoya kopyala
 const copyKeyToClipboard = (key: string) => {
   const template = `{{slider:${key}}}`
   navigator.clipboard.writeText(template)
@@ -265,7 +263,6 @@ const SliderTable = () => {
         </div>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Slider'ı Sil</DialogTitle>
         <DialogContent>

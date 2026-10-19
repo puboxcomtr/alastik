@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-// MUI Imports
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -19,7 +18,6 @@ import DialogActions from '@mui/material/DialogActions'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
     createColumnHelper,
@@ -32,13 +30,10 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 
-// Type Imports
 import type { AdminType } from '@/app/[lang]/(dashboard)/(private)/apps/manager/list/page'
 
-// API
 import { deleteAdmin } from '@/utils/api/admins'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 const columnHelper = createColumnHelper<AdminType>()
@@ -49,7 +44,6 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
     const [data, setData] = useState(() => managersData)
     const [globalFilter, setGlobalFilter] = useState('')
 
-    // Delete dialog state
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [adminToDelete, setAdminToDelete] = useState<AdminType | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
@@ -152,7 +146,6 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
                 cell: ({ row }) => {
                     const role = row.original.role;
 
-                    // Eğer role populate edilmişse
                     if (role && typeof role === 'object' && 'name' in role) {
                         return (
                             <Chip
@@ -313,7 +306,6 @@ const ManagerListTable = ({ managersData }: { managersData: AdminType[] }) => {
                 />
             </div>
 
-            {/* Delete Dialog */}
             <Dialog
                 open={deleteDialogOpen}
                 onClose={deleteLoading ? undefined : handleDeleteCancel}

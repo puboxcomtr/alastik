@@ -1,9 +1,3 @@
-/**
- * PayNkolay Ödeme Servisi
- * Tek çekim ve banka kartı ödemeleri için
- * 
- * Dosya: apps/api/src/services/plugins/payment/NkolayService.js
- */
 
 const crypto = require('crypto');
 const axios = require('axios');
@@ -14,11 +8,8 @@ const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 class NkolayService {
 
     constructor() {
-        // Site başına ayrı kimlik önbelleği (her sitenin kendi POS kaydı var)
         this.credentialsBySite = {};
     }
-
-    // ========== CREDENTIALS ==========
 
     async getCredentials(site) {
         const slug = SITES[site] ? site : DEFAULT_SITE;
@@ -48,19 +39,15 @@ class NkolayService {
         return this.credentialsBySite[slug];
     }
 
-    // Credentials cache'ini temizle (credential güncellenirse)
     clearCredentials() {
         this.credentialsBySite = {};
     }
-
-    // ========== HASH HESAPLAMA ==========
 
     generateHash(parts) {
         const hashString = parts.join('|');
         return crypto.createHash('sha512').update(hashString).digest('base64');
     }
 
-    // Ödeme hash'i: sx|clientRefCode|amount|successUrl|failUrl|rnd|customerKey|merchantSecretKey
     generatePaymentHash({ sx, clientRefCode, amount, successUrl, failUrl, rnd, customerKey, merchantSecretKey }) {
         return this.generateHash([
             sx,
@@ -74,7 +61,6 @@ class NkolayService {
         ]);
     }
 
-    // İptal/İade hash'i: sx|referenceCode|type|amount|trxDate|merchantSecretKey
     generateCancelHash({ sx, referenceCode, type, amount, trxDate, merchantSecretKey }) {
         return this.generateHash([
             sx,
@@ -86,8 +72,6 @@ class NkolayService {
         ]);
     }
 
-    // ========== YARDIMCI ==========
-
     getCurrentRnd() {
         const now = new Date();
         const dd = String(now.getDate()).padStart(2, '0');
@@ -98,8 +82,6 @@ class NkolayService {
         const ss = String(now.getSeconds()).padStart(2, '0');
         return `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
     }
-
-    // ========== ÖDEME İŞLEMİ (3D Secure) ==========
 
     async processPayment(params) {
         try {
@@ -123,7 +105,6 @@ class NkolayService {
             const clientRefCode = orderNumber;
             const formattedAmount = parseFloat(amount).toFixed(2);
 
-            // Hash hesapla
             const hashDatav2 = this.generatePaymentHash({
                 sx: creds.sx,
                 clientRefCode,
@@ -135,14 +116,13 @@ class NkolayService {
                 merchantSecretKey: creds.merchantSecretKey
             });
 
-            // Form data oluştur
             const form = new FormData();
             form.append('sx', creds.sx);
             form.append('clientRefCode', clientRefCode);
             form.append('successUrl', successUrl);
             form.append('failUrl', failUrl);
             form.append('amount', formattedAmount);
-            form.append('installmentNo', '1'); // Tek çekim
+            form.append('installmentNo', '1');
             form.append('cardHolderName', cardHolderName);
             form.append('month', String(expMonth));
             form.append('year', String(expYear.length === 2 ? '20' + expYear : expYear));
@@ -153,10 +133,9 @@ class NkolayService {
             form.append('rnd', rnd);
             form.append('hashDatav2', hashDatav2);
             form.append('environment', 'API');
-            form.append('currencyNumber', '949'); // TL
+            form.append('currencyNumber', '949');
             form.append('cardHolderIP', customerIP || '127.0.0.1');
 
-            // Opsiyonel müşteri bilgileri
             if (email) form.append('email', email);
 
             const url = `${creds.baseUrl}/Vpos/v1/Payment`;
@@ -183,7 +162,6 @@ class NkolayService {
                 hasHTML: !!data.BANK_REQUEST_MESSAGE
             });
 
-            // RESPONSE_CODE: 2 = 3D hazırlık başarılı, HTML dönüyor
             if (data.RESPONSE_CODE === 2 && data.BANK_REQUEST_MESSAGE) {
                 return {
                     success: true,
@@ -193,7 +171,6 @@ class NkolayService {
                 };
             }
 
-            // RESPONSE_CODE: 1 = 3D'siz direkt başarılı (tek çekim non-3D durumunda)
             if (data.RESPONSE_CODE === 1 || data.RESPONSE_CODE === 2) {
                 return {
                     success: true,
@@ -203,7 +180,6 @@ class NkolayService {
                 };
             }
 
-            // Hata
             return {
                 success: false,
                 message: data.RESPONSE_DATA || data.ERROR_MESSAGE || 'Ödeme başlatılamadı',
@@ -216,8 +192,6 @@ class NkolayService {
             return { success: false, message: error.message };
         }
     }
-
-    // ========== ÖDEME TAMAMLAMA ==========
 
     async completePayment(referenceCode, site) {
         try {
@@ -260,10 +234,6 @@ class NkolayService {
         }
     }
 
-    // ========== İŞLEM DURUMU SORGULAMA (PaymentList) ==========
-    // clientRefCode (orderNumber) ile Nkolay'dan gerçek işlem durumunu sorgular.
-    // Callback gelmese bile ödeme durumunu doğrular.
-    // Hash: sx + startDate + endDate + clientRefCode + secretkey -> sha1 -> base64
     async checkPaymentStatus({ clientRefCode, startDate, endDate, site }) {
         try {
             const creds = await this.getCredentials(site);
@@ -305,7 +275,6 @@ class NkolayService {
             const data = response.data;
             console.log('[Nkolay] checkPaymentStatus yanit:', JSON.stringify(data).substring(0, 800));
 
-            // LIST icinden clientRefCode eslesen kaydi bul
             const list = (data && data.result && Array.isArray(data.result.LIST)) ? data.result.LIST : [];
             const match = list.find(t => t.CLIENT_REFERENCE_CODE === clientRefCode);
 
@@ -316,7 +285,7 @@ class NkolayService {
             return {
                 success: true,
                 found: true,
-                status: match.STATUS,                         // SUCCESS | ERROR | NEW
+                status: match.STATUS,
                 isPaid: match.STATUS === 'SUCCESS',
                 referenceCode: match.REFERENCE_CODE,
                 authCode: match.AUTH_CODE,
@@ -332,8 +301,6 @@ class NkolayService {
             return { success: false, message: error.message };
         }
     }
-
-    // ========== İPTAL ==========
 
     async cancelPayment({ referenceCode, amount, trxDate, site }) {
         try {
@@ -381,8 +348,6 @@ class NkolayService {
             return { success: false, message: error.message };
         }
     }
-
-    // ========== İADE ==========
 
     async refundPayment({ referenceCode, amount, trxDate, site }) {
         try {

@@ -1,5 +1,3 @@
-// Konum sayfaları sitemap'i (yalnızca lastikjantavm.com) — yalnızca dizine açık sayfalar:
-// 81 il; İstanbul ilçeleri + 30 km içinde montaj noktası / sipariş verisi olan ilçeler; şubeye 7 km'den yakın İstanbul mahalleleri.
 import { getSiteBase, getSiteSlug, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 import { ILLER, ILCELER, MAHALLELER, ISTANBUL_ID, ilById, hasGeo } from '@/src/lib/geo';
 import { getMontagePoints, getRegionStats, nearestPoints, nearestBranch } from '@/src/lib/locationData';

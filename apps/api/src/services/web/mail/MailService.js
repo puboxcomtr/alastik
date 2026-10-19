@@ -2,7 +2,6 @@ const nodemailer = require('nodemailer')
 const SmtpSettings = require('../../../models/admin/mail/smtp/SmtpSettings')
 const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
-// Site başına ayrı transporter önbelleği (her sitenin kendi SMTP ayarı var)
 const cachedBySite = {}
 
 const resolveSite = (site) => (SITES[site] ? site : DEFAULT_SITE)

@@ -1,4 +1,3 @@
-// apps/web/src/hooks/WheelSize/useRimSearch.ts
 'use client';
 import { useState, useCallback, useEffect } from "react";
 import { API_ENDPOINTS } from '@/src/config/api';
@@ -40,7 +39,6 @@ export function useRimSearch() {
         fetchRimSizes();
     }, []);
 
-    // Ebata göre jant arama
     const handleJantArama = useCallback(
         (e: React.FormEvent) => {
             e.preventDefault();

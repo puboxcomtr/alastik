@@ -1,52 +1,21 @@
-// ============================================
-// DEPENDENCIES
-// ============================================
 const express = require('express');
 
-// ============================================
-// MODELS
-// ============================================
-// Legacy product model (deprecated - for backward compatibility)
 const Product = require('../../../models/admin/catalog/Product');
 
-// DIA ERP stock model (raw data from ERP system)
 const DiaStock = require('../../../models/plugins/DiaStock');
 
-// Web product model (synced and enhanced version for frontend)
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
-// Web category model
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 
-// ============================================
-// MIDDLEWARE
-// ============================================
-// Authentication middleware for admin routes
 const { authenticateAdmin } = require('../../../middleware/auth');
 
-// Request validation middleware
 const { body, validationResult } = require('express-validator');
 
-// ============================================
-// SERVICES
-// ============================================
-// DIA ERP integration service for stock synchronization
 const DiaStockService = require('../../../services/plugins/dia/DiaStockService');
 
-// ============================================
-// CONFIGURATION
-// ============================================
-// DIA filter configurations for stock queries
 const { getProductListFilters, getSiteVisibilityFilter, getSyncRules } = require('../../../config/diaFilters');
 
-// ============================================
-// HELPERS
-// ============================================
-/**
- * YouTube adresinden video kimliğini çıkarır.
- * Desteklenen biçimler: watch?v=, youtu.be/, /shorts/, /embed/, /live/
- * Geçersiz veya YouTube dışı adreslerde null döner.
- */
 function extractYoutubeId(rawUrl) {
   const url = String(rawUrl || '').trim();
 
@@ -66,30 +35,17 @@ function extractYoutubeId(rawUrl) {
     if (match) return match[1];
   }
 
-  // Doğrudan video kimliği girildiyse
   if (/^[A-Za-z0-9_-]{11}$/.test(url)) return url;
 
   return null;
 }
 
-// ============================================
-// ROUTER INITIALIZATION
-// ============================================
 const router = express.Router();
 
-// ============================================
-// AUTHENTICATION STRATEGY
-// ============================================
-// Conditional authentication based on environment
-// - Development (DISABLE_AUTH=true): Bypasses authentication for easier testing
-// - Production (DISABLE_AUTH=false): Enforces admin authentication
 const maybeAuth = process.env.DISABLE_AUTH === 'true'
   ? (req, res, next) => next()
   : authenticateAdmin;
 
-/**
- * Ürün Listeleme *
-**/
 router.get('/', maybeAuth, async (req, res) => {
   try {
     const {
@@ -124,7 +80,6 @@ router.get('/', maybeAuth, async (req, res) => {
       } else if (web_status.trim() === 'Draft') {
         webFilter['syncInfo.webStatus'] = 'draft';
       } else if (web_status.trim() === 'Hidden') {
-        // Site ayarı false ise veya ayar yokken ortak değer false ise gizli sayılır
         webFilter.$and = [...(webFilter.$and || []), {
           $or: [
             { [siteVisibleField]: false },
@@ -134,7 +89,6 @@ router.get('/', maybeAuth, async (req, res) => {
       }
     }
 
-    // Kategori filtreleme - diaData içinde
     if (main_category) {
       webFilter['diaData.m_kategoriler.kategori_aciklama_1'] = main_category;
     }
@@ -142,27 +96,21 @@ router.get('/', maybeAuth, async (req, res) => {
       webFilter['diaData.m_kategoriler.kategori_aciklama_2'] = sub_category;
     }
 
-    // Marka filtreleme - diaData içinde
     if (brand && brand !== '') {
       webFilter['diaData.marka'] = brand;
     }
-    // Ürün tipi filtreleme (LASTİK, JANT vb.)
     if (req.query.product_type && req.query.product_type !== '') {
       webFilter['diaData.ozelkod7kodu'] = req.query.product_type;
     }
-    // Mevsim filtreleme (YAZ, KIS vb.)
     if (req.query.season && req.query.season !== '') {
       webFilter['diaData.ozelkod1kodu'] = req.query.season;
     }
-    // Ebat filtreleme (205/50R17 vb.)
     if (req.query.size && req.query.size !== '') {
       webFilter['diaData.ozelkod3kodu'] = req.query.size;
     }
-    // Ebat filtreleme - kombine (205/50R17 vb.)
     if (req.query.size && req.query.size !== '') {
       webFilter['diaData.ozelkod3kodu'] = req.query.size;
     }
-    // Ebat filtreleme - ayrı ayrı (genişlik, yanak, jant çapı)
     if (req.query.width && req.query.width !== '') {
       if (!webFilter.$and) webFilter.$and = [];
       webFilter.$and.push({
@@ -190,29 +138,23 @@ router.get('/', maybeAuth, async (req, res) => {
         }
       });
     }
-    // Stok durumu
     if (req.query.stock_status === 'in_stock') {
       webFilter['diaData.gercek_stok'] = { $gt: 0 };
     } else if (req.query.stock_status === 'out_of_stock') {
       webFilter['diaData.gercek_stok'] = { $lte: 0 };
     }
 
-    // Özel kod değer filtreleri (autocomplete'ten gelen)
     ['1', '2', '3', '4', '5', '6', '7'].forEach(num => {
       const param = req.query[`ozelkod${num}`];
       if (param && String(param).trim() !== '') {
         webFilter[`diaData.ozelkod${num}kodu`] = String(param).trim();
       }
     });
-    // ============================================
-    // EKSİK VERİ FİLTRELERİ (Var/Yok)
-    // ============================================
     const ensureAnd = () => {
       if (!webFilter.$and) webFilter.$and = [];
       return webFilter.$and;
     };
 
-    // Görsel kontrolü: m_resimler + customImages + featuredImage
     if (req.query.has_image === 'yes') {
       ensureAnd().push({
         $or: [
@@ -231,8 +173,6 @@ router.get('/', maybeAuth, async (req, res) => {
       });
     }
 
-    // Açıklama: sitenin kendi açıklaması (customData.siteDescriptions.<site>);
-    // site alanı boşsa eski ortak alan (customData.customDescription) geçerlidir
     if (req.query.has_description === 'yes' || req.query.has_description === 'no') {
       const siteDescField = `customData.siteDescriptions.${req.site}`;
       const legacyDescField = 'customData.customDescription';
@@ -252,7 +192,6 @@ router.get('/', maybeAuth, async (req, res) => {
       }
     }
 
-    // Fiyat: m_birimler[0].fiyat1 VEYA m_birimler[0].fiyat4
     if (req.query.has_price === 'yes') {
       ensureAnd().push({
         $or: [
@@ -269,7 +208,6 @@ router.get('/', maybeAuth, async (req, res) => {
       });
     }
 
-    // Özel kod var/yok kontrolü (ozelkod1,2,3,4,6,7)
     const ozelkodList = ['1', '2', '3', '4', '6', '7'];
     ozelkodList.forEach(num => {
       const param = req.query[`has_ozelkod${num}`];
@@ -287,7 +225,6 @@ router.get('/', maybeAuth, async (req, res) => {
       }
     });
 
-    // ozelkod11 - Aktif kontrolü (DB ayarındaki koda göre, varsayılan E)
     const aktifOzelkod = getSyncRules().ozelkod11Kodu || 'E';
     if (req.query.has_ozelkod11 === 'yes') {
       webFilter['diaData.ozelkod11kodu'] = aktifOzelkod;
@@ -342,26 +279,22 @@ router.get('/', maybeAuth, async (req, res) => {
         const syncInfo = p.syncInfo || {};
         let images = [];
 
-        // Custom images varsa onları kullan
         if (customData.customImages && customData.customImages.length > 0) {
           images = customData.customImages
             .sort((a, b) => a.order - b.order)
             .map(img => ({ aws_url: img.url }))
             .slice(0, 3);
         }
-        // Custom image yoksa DIA images kullan
         else if (diaData.m_resimler && diaData.m_resimler.length > 0) {
           images = diaData.m_resimler
             .sort((a, b) => parseInt(a.order_id || 0) - parseInt(b.order_id || 0))
             .slice(0, 3);
         }
 
-        // Featured image - custom öncelikli
         const featuredImage = customData.featuredImage ||
           (images[0] && images[0].aws_url) ||
           '/images/urun/gorsel-bulunamadi.jpg';
 
-        // Fiyatlandırma - custom price öncelikli
         const pricing = diaData.m_birimler && diaData.m_birimler[0] ? diaData.m_birimler[0] : {};
         const displayPrice = customData.webPrice ||
           pricing.fiyat1 ||
@@ -369,7 +302,6 @@ router.get('/', maybeAuth, async (req, res) => {
           diaData.sontuketicifiyati ||
           0;
 
-        // Ürün özellikleri
         const properties = (diaData.m_urunOzellikleri || [])
           .filter(prop => prop.ozellikadi && prop.detayaciklama)
           .sort((a, b) => parseInt(a.ozellisirano || 0) - parseInt(b.ozellisirano || 0))
@@ -378,7 +310,6 @@ router.get('/', maybeAuth, async (req, res) => {
             return acc;
           }, {});
 
-        // Seçili sitenin görünürlüğü (site ayarı yoksa ortak değer)
         const effVisible = customData.siteData?.[req.site]?.webVisible ?? customData.webVisible;
 
         let webStatus = 'Inactive';
@@ -399,38 +330,30 @@ router.get('/', maybeAuth, async (req, res) => {
           qty: diaData.gercek_stok || 0,
           status: webStatus,
 
-          // Görseller
           image: featuredImage,
           image2: images[1]?.aws_url || null,
           image3: images[2]?.aws_url || null,
 
-          // Kategori bilgileri
           category: (diaData.m_kategoriler && diaData.m_kategoriler[0] &&
             diaData.m_kategoriler[0].kategori_aciklama_1) || 'Genel',
           categorySeoUrl: customData.webCategory || null,
           m_kategoriler: diaData.m_kategoriler,
 
-          // Diğer bilgiler
           kdv: pricing.kdvsatis || diaData.kdvsatis || 20,
           originCountry: diaData.menseiulkeadi || '',
 
-          // Fiyat detayları
-          price1: pricing.fiyat1 || 0, // Liste Fiyatı
+          price1: pricing.fiyat1 || 0,
           price2: pricing.fiyat2 || 0,
           price3: pricing.fiyat3 || 0,
-          price4: pricing.fiyat4 || 0, // Satış Fiyatı
+          price4: pricing.fiyat4 || 0,
           price10: pricing.fiyat10 || 0,
 
-
-          // Web özel alanları
           seoUrl: customData.seoUrl || null,
           webPrice: customData.webPrice || null,
           webVisible: effVisible !== undefined ? effVisible : true,
 
-          // Ürün özellikleri
           properties: properties,
 
-          // Tarih bilgileri
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
           lastDiaSync: syncInfo.lastDiaSync,
@@ -453,14 +376,6 @@ router.get('/', maybeAuth, async (req, res) => {
     });
   }
 });
-/**
- * Ürün Detay Görüntüleme - WebProduct Modeli Kullanarak
- */
-/**
- * POST /api/admin/products/images/reorder-labels
- * Tüm ürünlerde AB etiketi görselini ürün görsellerinin arkasına alır.
- * WebProduct siteler arasında ortak olduğundan ALastik ve LastikJantAVM birlikte düzeltilir.
- */
 router.post('/images/reorder-labels', authenticateAdmin, async (req, res) => {
   try {
     const { reorderLabelImagesForAllProducts } = require('../../../utils/productImages');
@@ -516,7 +431,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
 
     const { diaData = {}, customData = {}, syncInfo = {} } = webProduct;
 
-    // Seçili sitenin değerleri etkin değer olarak yansıtılır (yoksa ortak alanlar)
     const siteData = customData.siteData?.[req.site] || {};
     if (siteData.seoTitle !== undefined) customData.seoTitle = siteData.seoTitle;
     if (siteData.seoDescription !== undefined) customData.seoDescription = siteData.seoDescription;
@@ -534,19 +448,16 @@ router.get('/:id', maybeAuth, async (req, res) => {
         .map(img => img.url)
         .filter(Boolean);
     } else if (diaData.m_resimler && diaData.m_resimler.length > 0) {
-      // DIA görsellerini kullan
       images = diaData.m_resimler
         .sort((a, b) => parseInt(a.order_id || 0) - parseInt(b.order_id || 0))
         .map(img => img.aws_url)
         .filter(Boolean);
     }
 
-    // Featured image - custom öncelikli
     const featuredImage = customData.featuredImage ||
       images[0] ||
       '/images/urun/gorsel-bulunamadi.jpg';
 
-    // Ürün özellikleri - DIA'dan
     const properties = (diaData.m_urunOzellikleri || [])
       .filter(prop => prop.ozellikadi && prop.detayaciklama)
       .sort((a, b) => parseInt(a.ozellisirano || 0) - parseInt(b.ozellisirano || 0))
@@ -554,15 +465,12 @@ router.get('/:id', maybeAuth, async (req, res) => {
         acc[prop.ozellikadi] = prop.detayaciklama;
         return acc;
       }, {});
-    // Fiyat - custom öncelikli, sonra DIA
     const pricing = diaData.m_birimler && diaData.m_birimler[0] ? diaData.m_birimler[0] : {};
     const displayPrice = customData.webPrice ||
       pricing.fiyat1 ||
       0;
-    // Kategori bilgisi
     const mainCategory = (diaData.m_kategoriler && diaData.m_kategoriler[0] &&
       diaData.m_kategoriler[0].kategori_aciklama_1) || 'Genel';
-    // Web durumu
     let webStatus = 'Pasif';
     if (syncInfo.webStatus === 'active' && customData.webVisible) {
       webStatus = 'Yayında';
@@ -572,69 +480,57 @@ router.get('/:id', maybeAuth, async (req, res) => {
       webStatus = 'Gizli';
     }
     const mapped = {
-      // Temel bilgiler
       id: webProduct._key,
       name: diaData.aciklama || diaData.aciklama || customData.seoTitle || 'Ürün',
       sku: diaData.stokkartkodu || '',
       barcode: diaData.barkodu || diaData.anabarkod || '',
       brand: diaData.marka || '',
 
-      // Kategori
       category: customData.webCategory || mainCategory,
       categorySeoUrl: customData.webCategory || null,
       subcategory: customData.webSubCategory || null,
 
-      // Stok ve durum
       stock: (diaData.gercek_stok || 0) > 0,
       qty: diaData.gercek_stok || 0,
       status: diaData.durum === 'A' ? 'Aktif' : 'Pasif',
       webStatus: webStatus,
 
-      // Fiyatlar
       price: displayPrice,
       webPrice: customData.webPrice || null,
       originalPrice: customData.originalPrice || null,
       discount: customData.webDiscount || 0,
       discountType: customData.discountType || 'percentage',
 
-      // Tüm fiyat seviyeleri
-      price1: pricing.fiyat1 || 0, // Liste Fiyatı 
+      price1: pricing.fiyat1 || 0,
       price2: pricing.fiyat2 || 0,
       price3: pricing.fiyat3 || 0,
-      price4: pricing.fiyat4 || 0, // Satış Fiyatı
+      price4: pricing.fiyat4 || 0,
       price10: pricing.fiyat10 || 0,
 
-      // SEO bilgileri
       seoTitle: customData.seoTitle || diaData.aciklama || '',
       seoDescription: customData.seoDescription || diaData.aciklama || '',
       seoUrl: customData.seoUrl || null,
       seoKeywords: customData.seoKeywords || [],
       focusKeyword: customData.focusKeyword || '',
 
-      // Görseller
       image: featuredImage,
       images: images,
       customImages: customData.customImages || [],
       videos: customData.videos || [],
 
-      // Kargo
       delivery: customData.delivery || 'same_day',
 
-      // İçerik
       description: customData.customDescription || null,
       shortDescription: customData.shortDescription || null,
 
-      // Web özel alanları
       webVisible: customData.webVisible !== undefined ? customData.webVisible : true,
       webOrder: customData.webOrder || 0,
       webTags: customData.webTags || [],
 
-      // Stok yönetimi
       minOrderQuantity: customData.minOrderQuantity || 1,
       maxOrderQuantity: customData.maxOrderQuantity || null,
       stockAlert: customData.stockAlert || 5,
 
-      // Etiketler
       isNew: customData.isNew || false,
       isBestSeller: customData.isBestSeller || false,
       isFeatured: customData.isFeatured || false,
@@ -643,7 +539,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
       hideStock: customData.hideStock === true,
       hideDelivery: customData.hideDelivery === true,
 
-      // Ürün özellikleri
       properties: {
         ...properties,
         m_kategoriler: diaData.m_kategoriler || [],
@@ -657,7 +552,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
       note: '',
       tag: Array.isArray(customData.webTags) ? customData.webTags.join(', ') : '',
 
-      // Tarih bilgileri
       createdAt: webProduct.createdAt,
       updatedAt: webProduct.updatedAt,
       lastDiaSync: syncInfo.lastDiaSync,
@@ -679,9 +573,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
     });
   }
 });
-/**
- * Ürün Detay Güncelleme - WebProduct Kullanarak
- */
 router.patch('/:id', maybeAuth, [
   body('seoTitle').optional().isLength({ max: 100 }).withMessage('SEO başlığı en fazla 100 karakter olabilir'),
   body('seoDescription').optional().isLength({ max: 160 }).withMessage('SEO açıklaması en fazla 160 karakter olabilir'),
@@ -715,53 +606,43 @@ router.patch('/:id', maybeAuth, [
 
     const productId = String(req.params.id);
     const {
-      // SEO alanları
       seoTitle,
       seoDescription,
       seoUrl,
       seoKeywords,
       focusKeyword,
 
-      // Web görünüm
       webVisible,
       webOrder,
       webTags,
       webCategory,
       webSubCategory,
 
-      // Kargo
       delivery,
 
-      // İçerik
       customDescription,
       shortDescription,
 
-      // Fiyatlandırma
       webPrice,
       originalPrice,
       webDiscount,
       discountType,
 
-      // Stok yönetimi
       minOrderQuantity,
       maxOrderQuantity,
       stockAlert,
 
-      // Etiketler
       isNew,
       isBestSeller,
       isFeatured,
 
-      // Marka / üretim tarihi / stok gizleme (vitrin/kategori kartlarında gösterilmez)
       hideBrand,
       hideProductionDate,
       hideStock,
 
-      // Kargo bilgisi gizleme (ürün detayında kargoya teslim tarihi gösterilmez)
       hideDelivery
     } = req.body;
 
-    // WebProduct'ı bul
     const existingProduct = await WebProduct.findOne({ _key: productId, sites: req.site });
     if (!existingProduct) {
       return res.status(404).json({
@@ -770,7 +651,6 @@ router.patch('/:id', maybeAuth, [
       });
     }
 
-    // SEO URL benzersizlik kontrolü
     if (seoUrl && seoUrl !== existingProduct.customData?.seoUrl) {
       const urlExists = await WebProduct.findOne({
         'customData.seoUrl': seoUrl,
@@ -785,44 +665,35 @@ router.patch('/:id', maybeAuth, [
       }
     }
 
-    // Güncelleme objesi oluştur - sadece gönderilen alanları güncelle
     const updateData = {};
-    // Seçili siteye özel yazılan alanlar (customData.siteData.<slug>)
     const siteDataPath = `customData.siteData.${req.site}`;
 
-    // SEO Bilgileri (metinler siteye özel; seoUrl ortak — ürün URL kimliği tek)
     if (seoTitle !== undefined) updateData[`${siteDataPath}.seoTitle`] = seoTitle.trim();
     if (seoDescription !== undefined) updateData[`${siteDataPath}.seoDescription`] = seoDescription.trim();
     if (seoUrl !== undefined) updateData['customData.seoUrl'] = seoUrl.trim().toLowerCase();
     if (seoKeywords !== undefined) updateData['customData.seoKeywords'] = seoKeywords;
     if (focusKeyword !== undefined) updateData['customData.focusKeyword'] = String(focusKeyword || '').trim();
 
-    // Web Görünüm (görünürlük ve sıra siteye özel)
     if (webVisible !== undefined) updateData[`${siteDataPath}.webVisible`] = Boolean(webVisible);
     if (webOrder !== undefined) updateData[`${siteDataPath}.webOrder`] = Number(webOrder) || 0;
     if (webTags !== undefined) updateData['customData.webTags'] = Array.isArray(webTags) ? webTags : [];
     if (webCategory !== undefined) updateData['customData.webCategory'] = webCategory;
     if (webSubCategory !== undefined) updateData['customData.webSubCategory'] = webSubCategory;
 
-    // Kargo Süresi
     if (delivery !== undefined) updateData['customData.delivery'] = delivery;
 
-    // İçerik (açıklamalar siteye özel)
     if (customDescription !== undefined) updateData[`customData.siteDescriptions.${req.site}`] = customDescription;
     if (shortDescription !== undefined) updateData[`${siteDataPath}.shortDescription`] = shortDescription;
 
-    // Fiyatlandırma
     if (webPrice !== undefined) updateData['customData.webPrice'] = webPrice ? Number(webPrice) : null;
     if (originalPrice !== undefined) updateData['customData.originalPrice'] = originalPrice ? Number(originalPrice) : null;
     if (webDiscount !== undefined) updateData['customData.webDiscount'] = Number(webDiscount) || 0;
     if (discountType !== undefined) updateData['customData.discountType'] = discountType;
 
-    // Stok Yönetimi
     if (minOrderQuantity !== undefined) updateData['customData.minOrderQuantity'] = Number(minOrderQuantity) || 1;
     if (maxOrderQuantity !== undefined) updateData['customData.maxOrderQuantity'] = maxOrderQuantity ? Number(maxOrderQuantity) : null;
     if (stockAlert !== undefined) updateData['customData.stockAlert'] = Number(stockAlert) || 5;
 
-    // Etiketler
     if (isNew !== undefined) updateData['customData.isNew'] = Boolean(isNew);
     if (isBestSeller !== undefined) updateData['customData.isBestSeller'] = Boolean(isBestSeller);
     if (isFeatured !== undefined) updateData['customData.isFeatured'] = Boolean(isFeatured);
@@ -831,7 +702,6 @@ router.patch('/:id', maybeAuth, [
     if (hideStock !== undefined) updateData['customData.hideStock'] = Boolean(hideStock);
     if (hideDelivery !== undefined) updateData['customData.hideDelivery'] = Boolean(hideDelivery);
 
-    // Görseller — dış adresli görseller kendi sunucumuza indirilir
     if (req.body.customImages !== undefined) {
       const incoming = Array.isArray(req.body.customImages) ? req.body.customImages : [];
       let images = incoming;
@@ -855,7 +725,6 @@ router.patch('/:id', maybeAuth, [
       }
     }
 
-    // Videolar — yalnızca YouTube adresleri kabul edilir, kimlik sunucuda çıkarılır
     if (req.body.videos !== undefined) {
       const incoming = Array.isArray(req.body.videos) ? req.body.videos : [];
 
@@ -877,10 +746,8 @@ router.patch('/:id', maybeAuth, [
 
       updateData['customData.videos'] = videos;
     }
-    // Sync bilgilerini güncelle
     updateData['syncInfo.lastWebUpdate'] = new Date();
 
-    // Web durumunu otomatik ayarla
     if (webVisible === true && existingProduct.syncInfo?.diaStatus === 'synced') {
       updateData['syncInfo.webStatus'] = 'active';
     } else if (webVisible === false) {
@@ -889,7 +756,6 @@ router.patch('/:id', maybeAuth, [
 
     console.log('Update data:', updateData);
 
-    // Güncelleme işlemini yap
     const updatedProduct = await WebProduct.findOneAndUpdate(
       { _key: productId, sites: req.site },
       { $set: updateData },
@@ -964,7 +830,6 @@ router.patch('/:id', maybeAuth, [
       });
     }
 
-    // Genel hata
     res.status(500).json({
       success: false,
       message: 'Ürün güncellenirken hata oluştu',
@@ -978,9 +843,6 @@ router.patch('/:id', maybeAuth, [
   }
 });
 
-/**
- * Frontend: ProductFeatures komponenti
- */
 router.get('/features/all', maybeAuth, async (req, res) => {
   try {
     const allFeatures = await DiaStock.aggregate([
@@ -989,7 +851,7 @@ router.get('/features/all', maybeAuth, async (req, res) => {
           durum: 'A',
           b2c_durum: 'E',
           b2c_gonder: 'E',
-          'm_kategoriler.kategori_aciklama_1': 'Lastik' // Sadece lastik kategorisi
+          'm_kategoriler.kategori_aciklama_1': 'Lastik'
         }
       },
       { $unwind: '$m_urunOzellikleri' },
@@ -1015,7 +877,6 @@ router.get('/features/all', maybeAuth, async (req, res) => {
   }
 });
 
-
 router.get('/debug/:id', async (req, res) => {
   try {
     const product = await DiaStock.findOne({ _key: req.params.id }).lean();
@@ -1025,9 +886,6 @@ router.get('/debug/:id', async (req, res) => {
   }
 });
 
-/**
- * Görsel Sıralama - imageOrder güncelleme
- */
 router.patch('/:id/synchronization', maybeAuth, async (req, res) => {
   try {
     const productId = String(req.params.id);

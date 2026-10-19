@@ -1,26 +1,17 @@
-/**
- * b2b Cari Hesap Ekstresi — biçimlendirilmiş Excel (.xlsx) çıktısı.
- *
- * Bayi ekranındaki tabloyla aynı satırlar (yıl + arama süzgeci, aynı sıralama)
- * kurumsal renklerle yazılır: firma başlığı, cari bilgisi, renkli tablo başlığı,
- * zebra satırlar, borç kırmızı / alacak yeşil, işlem türü rozet rengi, toplamlar.
- * Tarih ve tutarlar gerçek tarih/sayı hücresidir (Excel'de toplanabilir, süzülebilir).
- */
 const ExcelJS = require('exceljs');
 
-// Renkler b2b temasının (b2b-theme.css) belirteçleriyle aynı
 const PALETTE = {
-    brand: 'FFE6CF17',      // --brand-primary
-    brandSoft: 'FFFBF6D4',  // --primary-soft
-    black: 'FF000000',      // --brand-black
-    dark: 'FF2B2B2B',       // --brand-dark
-    muted: 'FF6B6B68',      // --muted
-    border: 'FFE1E5E9',     // --border
+    brand: 'FFE6CF17',
+    brandSoft: 'FFFBF6D4',
+    black: 'FF000000',
+    dark: 'FF2B2B2B',
+    muted: 'FF6B6B68',
+    border: 'FFE1E5E9',
     zebra: 'FFF7F8FA',
     white: 'FFFFFFFF',
-    debit: 'FFD92D20',      // --danger
+    debit: 'FFD92D20',
     debitSoft: 'FFFDECEC',
-    credit: 'FF12833A',     // --success-text
+    credit: 'FF12833A',
     creditSoft: 'FFE8F5EC',
 };
 
@@ -43,13 +34,11 @@ const LAST_COL = COLUMNS.length;
 
 const SORT_KEYS = ['tarih', 'vade', 'fisno', 'belgeNo', 'borc', 'alacak', 'bakiye'];
 
-/** "2026-10-08" → Date (UTC gece yarısı; Excel'de gün kaymaz). */
 function toDate(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
     return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
 }
 
-/** Bayi ekranındaki süzgeç + sıralamanın aynısı (raporlar/cari-hareketler). */
 function selectRows(movements, { yil, q, sort, dir }) {
     let list = movements || [];
     if (yil) list = list.filter((m) => String(m.tarih || '').slice(0, 4) === yil);
@@ -71,16 +60,6 @@ function selectRows(movements, { yil, q, sort, dir }) {
 const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
 const thinBorder = (argb) => ({ style: 'thin', color: { argb } });
 
-/**
- * @param {Object} p
- * @param {Array}  p.movements   ekstre hareketleri
- * @param {Object} p.summary     ekstre özeti (balanceKurus)
- * @param {Object} p.filter      { yil, q, sort, dir }
- * @param {Object} p.member      { name, cariKodu }
- * @param {Object} p.company     companyInfo (name, officialName, phone, website)
- * @param {Date}   [p.generatedAt]
- * @returns {Promise<Buffer>}
- */
 async function buildEkstreExcel({ movements, summary, filter, member, company, generatedAt }) {
     const rows = selectRows(movements, filter);
 
@@ -94,7 +73,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
     });
     ws.columns = COLUMNS.map((c) => ({ key: c.key, width: c.width }));
 
-    // 1) Firma başlığı — marka sarısı bant
     ws.mergeCells(1, 1, 1, LAST_COL);
     const title = ws.getCell(1, 1);
     title.value = company?.name ? `${company.name} — Cari Hesap Ekstresi` : 'Cari Hesap Ekstresi';
@@ -103,7 +81,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
     title.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
     ws.getRow(1).height = 34;
 
-    // 2) Ünvan / iletişim — ince alt bilgi
     ws.mergeCells(2, 1, 2, LAST_COL);
     const sub = ws.getCell(2, 1);
     sub.value = [company?.officialName, company?.phone, company?.website].filter(Boolean).join('   •   ');
@@ -112,7 +89,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
     sub.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
     ws.getRow(2).height = 18;
 
-    // 3-4) Cari bilgisi + dönem / oluşturma
     const infoRows = [
         ['Cari', `${member?.name || ''}${member?.cariKodu ? ` (${member.cariKodu})` : ''}`, 'Dönem', filter.yil || 'Tüm Yıllar'],
         ['Kayıt Sayısı', rows.length, 'Oluşturma', (generatedAt ? new Date(generatedAt) : new Date()).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })],
@@ -133,7 +109,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
     });
     ws.getRow(5).height = 8;
 
-    // 6) Tablo başlığı — siyah zemin, sarı yazı
     const head = ws.getRow(6);
     COLUMNS.forEach((c, i) => {
         const cell = head.getCell(i + 1);
@@ -144,7 +119,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
     });
     head.height = 24;
 
-    // Satırlar
     let debitTotal = 0;
     let creditTotal = 0;
     rows.forEach((m, i) => {
@@ -173,7 +147,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
             if (key === 'tarih' || key === 'vade') cell.numFmt = DATE_FORMAT;
             if (key === 'fisno' || key === 'belgeNo') cell.font = { ...cell.font, bold: true };
             if (key === 'tur') {
-                // Bayi ekranındaki rozet: alacak yeşil, borç kırmızı tonlu
                 cell.fill = fill(isCredit ? PALETTE.creditSoft : PALETTE.debitSoft);
                 cell.font = { name: FONT, size: 9, bold: true, color: { argb: isCredit ? PALETTE.credit : PALETTE.debit } };
             }
@@ -192,7 +165,6 @@ async function buildEkstreExcel({ movements, summary, filter, member, company, g
         ws.autoFilter = { from: { row: 6, column: 1 }, to: { row: 6 + rows.length, column: LAST_COL } };
     }
 
-    // Toplamlar — sağ altta, ekrandaki özet kutusu gibi
     const totals = [
         ['Listelenen Borç Toplamı', debitTotal, PALETTE.debit, null],
         ['Listelenen Alacak Toplamı', creditTotal, PALETTE.credit, null],

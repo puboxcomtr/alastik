@@ -1,9 +1,7 @@
 'use client'
 
-// Site Üyeleri listesi — ürün listesiyle aynı tablo deseni (TanStack + tableStyles)
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Chip from '@mui/material/Chip'
@@ -16,7 +14,6 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
     createColumnHelper,
@@ -30,7 +27,6 @@ import { toast } from 'react-toastify'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 type MemberType = {
@@ -62,7 +58,6 @@ const MemberListTable = () => {
     const [search, setSearch] = useState('')
     const [status, setStatus] = useState('')
 
-    // Sunucu taraflı sayfalama
     const [page, setPage] = useState(0)
     const [limit, setLimit] = useState(100)
     const [total, setTotal] = useState(0)

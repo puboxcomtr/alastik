@@ -1,12 +1,7 @@
 'use client'
 
-// Bayi Formları: lastikjantavm.com/bayi-formu adresindeki ortak formdan gelen cevapların listesi.
-// Montaj Noktaları ekranından ve sitedeki fiyatlardan bağımsızdır; yalnızca toplanan veriyi gösterir.
-
-// React Imports
 import { useCallback, useEffect, useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -24,20 +19,15 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 const FORM_LINK = 'https://lastikjantavm.com/bayi-formu'
 const BASE = `${API_ENDPOINTS.montage.list()}/dealer-forms`
 
-// Bayinin yüklediği dosya: yalnızca panel oturumuyla okunur (sitede yayınlanmaz). Fotoğraf küçük resim, PDF düğme olarak görünür;
-// tıklanınca yeni sekmede tam boy açılır.
 const FileThumb = ({ ad }: { ad: string }) => {
   const [src, setSrc] = useState<string | null>(null)
   const [hata, setHata] = useState(false)
@@ -112,7 +102,6 @@ const DealerFormsTable = () => {
 
   useEffect(() => { load() }, [load])
 
-  // Arama kutusu: yazma bitince sorgula
   useEffect(() => {
     const t = setTimeout(() => { setPage(0); setQuery(search.trim()) }, 400)
 

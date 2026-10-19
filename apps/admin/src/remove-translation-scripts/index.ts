@@ -56,24 +56,18 @@ async function main() {
 
   await updateEslintConfig()
 
-  // ────────────── Lint & Format Files ──────────────
-
-  // Run pnpm lint command to fix all the linting error and give space after imports
   consola.start('Run pnpm lint command to fix all the linting error and give space after imports')
 
   await exec('pnpm run lint:fix')
 
   consola.success('Linted all the files successfully!\n')
 
-  // Run pnpm format command to format all the files using prettier
   consola.start('Run pnpm format command to format all the files using prettier')
 
   await exec('pnpm run format')
   await exec('pnpm run lint:fix')
 
   consola.success('Formatted all the files successfully!\n')
-
-  // ────────────── Remove Unwanted Code & Comments ──────────────
 
   await removeUnwantedCode()
 

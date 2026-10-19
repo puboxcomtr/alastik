@@ -1,7 +1,3 @@
-/**
- * Tek SVG ikon seti — arayüzde emoji KULLANILMAZ.
- * Hepsi currentColor kullanır; boyut `size` ile ayarlanır.
- */
 type IconProps = { size?: number; className?: string };
 
 function svgProps(size: number) {
@@ -18,7 +14,6 @@ function svgProps(size: number) {
   };
 }
 
-/** Taç — Premium cari rozeti */
 export function CrownIcon({ size = 14, className, filled = false }: IconProps & { filled?: boolean }) {
   return (
     <svg {...svgProps(size)} className={className}>
@@ -102,7 +97,6 @@ export function SearchIcon({ size = 18, className }: IconProps) {
   );
 }
 
-/** Yüklenme göstergesi — döner. `.spin` sınıfı globals.css'te animasyonu verir. */
 export function SpinnerIcon({ size = 18, className }: IconProps) {
   return (
     <svg
@@ -221,12 +215,6 @@ export function AlertIcon({ size = 18, className }: IconProps) {
   );
 }
 
-/* ── Mevsim ikonları (tabloda emoji yerine) ─────────────── */
-
-/**
- * YAZ — DOLU güneş: ortada dolu disk (r=5) + 8 kısa ışın (r 7.4→10.1).
- * Renk currentColor; .icon-summer sınıfı var(--mevsim-yaz) verir.
- */
 export function SunIcon({ size = 18, className }: IconProps) {
   return (
     <svg {...svgProps(size)} className={className} aria-label="Yaz lastiği">
@@ -239,11 +227,6 @@ export function SunIcon({ size = 18, className }: IconProps) {
   );
 }
 
-/**
- * KIŞ — 6 kollu ince kar tanesi: merkezden geçen 3 doğru (R=9) + her kolda
- * uçtan içe 45° açılan tek kademe çıkıntı. Tek kademe bilinçli: iki kademe
- * 18px'te yıldız lekesine dönüşüyor.
- */
 export function SnowIcon({ size = 18, className }: IconProps) {
   return (
     <svg
@@ -258,36 +241,25 @@ export function SnowIcon({ size = 18, className }: IconProps) {
   );
 }
 
-/**
- * 4 MEVSİM — tek karede dikey bölünme (x=12): sol yarı dolu sarı yarım güneş
- * diski + 4 ışın, sağ yarı mavi kar tanesinin 3 kolu + iki kademe çıkıntı.
- * İki renkli olduğu için currentColor yerine .mv-* sınıflarını kullanır
- * (fill="var(--x)" bir presentation attribute olarak çalışmaz).
- */
 export function DortMevsimIcon({ size = 18, className }: IconProps) {
   return (
     <svg {...svgProps(size)} className={className} aria-label="4 Mevsim lastiği">
-      {/* sol: dolu yarım güneş diski */}
       <path className="mv-sun-filled" d="M12 7A5 5 0 0 0 12 17Z" />
-      {/* sol: ışınlar */}
       <path
         className="mv-sun"
         strokeWidth={2.1}
         d="M9.36 5.63L8.36 3.22M5.63 9.36L3.22 8.36M5.63 14.64L3.22 15.64M9.36 18.37L8.36 20.78"
       />
-      {/* sağ: kar tanesi kolları */}
       <path
         className="mv-snow"
         strokeWidth={1.7}
         d="M12 12L16.7 3.86M12 12L21.4 12M12 12L16.7 20.14"
       />
-      {/* sağ: dış çıkıntılar */}
       <path
         className="mv-snow"
         strokeWidth={1.7}
         d="M17.52 5.84L15.2 6.46L14.58 4.14M20.1 13.7L18.4 12L20.1 10.3M14.58 19.86L15.2 17.54L17.52 18.16"
       />
-      {/* sağ: iç çıkıntılar — ok işareti okunuşunu kırar */}
       <path
         className="mv-snow"
         strokeWidth={1.5}
@@ -297,7 +269,6 @@ export function DortMevsimIcon({ size = 18, className }: IconProps) {
   );
 }
 
-/** Jantta mevsim yoktur (mevsim null) — ikon yerine tire gösterilir. */
 export function SeasonIcon({
   mevsim,
   size = 18,

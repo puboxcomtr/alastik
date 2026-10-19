@@ -18,9 +18,6 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-// Montaj noktası listesi ve seçimi — siteConfig'de montaj paleti tanımlı sitelerde yayında
-// (alastik ve lastikjantavm); renkler sitenin paletinden gelir, ekran aynıdır.
-// Sepette ürün varken seçim akışı, sepet boşken gezilebilir liste olarak çalışır.
 const currentSite = (): SiteSlug => (headers().get('x-site') || 'alastik') as SiteSlug;
 const montageEnabled = (site: SiteSlug) => Boolean(getSiteBySlug(site)?.theme.montage);
 

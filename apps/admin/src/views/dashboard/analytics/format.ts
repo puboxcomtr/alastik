@@ -1,11 +1,9 @@
-// Anasayfa analiz widget'larının ortak biçimlendiricileri
 
 export const formatTRY = (value: number) =>
     (Number(value) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export const formatInt = (value: number) => (Number(value) || 0).toLocaleString('tr-TR')
 
-/** "2 sa önce", "3 gün önce" gibi göreli zaman */
 export const timeAgo = (iso: string | Date) => {
     const diffMs = Date.now() - new Date(iso).getTime()
     const min = Math.floor(diffMs / 60000)

@@ -1,16 +1,9 @@
-/**
- * ALastik haftalık denetim — veri kontrolleri.
- * Satıştaki (aktif, stoklu, gizlenmemiş) alastik ürünlerinde, Stok (DIA) ve XML ayrımıyla:
- *   1. Görselsiz  2. Açıklamasız  3. Fiyatsız  4. Kargo dahil fiyatı eksik XML ürünler
- * Çıktı: stdout'a markdown bölümleri (haftalık rapora eklenir).
- */
 require('/var/www/alastik/node_modules/dotenv').config({ path: '/var/www/alastik/apps/api/.env.production' });
 const mongoose = require('/var/www/alastik/apps/api/node_modules/mongoose');
 
 const SITE = 'alastik';
 const ORNEK_LIMIT = 20;
 
-// Satışta sayılma koşulu: aktif kart, stoklu, site listesinde ve gizlenmemiş
 const satistaFiltre = {
     sites: SITE,
     'diaData.durum': 'A',
@@ -19,7 +12,6 @@ const satistaFiltre = {
     [`customData.siteData.${SITE}.webVisible`]: { $ne: false }
 };
 
-// Ürün grupları: kendi stok (DIA) ve XML kaynaklı
 const GRUPLAR = [
     ['Stok (DIA)', { 'syncInfo.syncSource': { $ne: 'xml_integration' } }],
     ['XML', { 'syncInfo.syncSource': 'xml_integration' }]
@@ -50,7 +42,6 @@ async function grupluBolum(col, projection, baslik, ekFiltre) {
     const col = mongoose.connection.db.collection('webproducts');
     const projection = { _key: 1, 'diaData.stokkartkodu': 1, 'diaData.aciklama': 1 };
 
-    // 1. Görselsiz: özel görsel yok + öne çıkan görsel yok + DIA görseli yok
     console.log(await grupluBolum(col, projection, '1. Görselsiz ürünler', {
         $and: [
             { $or: [{ 'customData.customImages': { $exists: false } }, { 'customData.customImages': { $size: 0 } }] },
@@ -59,7 +50,6 @@ async function grupluBolum(col, projection, baslik, ekFiltre) {
         ]
     }));
 
-    // 2. Açıklamasız: ne genel açıklama ne site açıklaması var
     console.log(await grupluBolum(col, projection, '2. Açıklamasız ürünler', {
         $and: [
             { $or: [{ 'customData.customDescription': { $exists: false } }, { 'customData.customDescription': { $in: [null, ''] } }] },
@@ -67,13 +57,10 @@ async function grupluBolum(col, projection, baslik, ekFiltre) {
         ]
     }));
 
-    // 3. Fiyatsız: satış fiyatı (fiyat4) > 0 DEĞİL.
-    // Dizi yolunda $in:[null] tuzağına düşmemek için $not/$gt kullanılır.
     console.log(await grupluBolum(col, projection, '3. Fiyatı olmayan ürünler', {
         'diaData.m_birimler.0.fiyat4': { $not: { $gt: 0 } }
     }));
 
-    // 4. XML üründe kargo dahil fiyat eksik (kargo fiyata gömülü olduğundan müşteri fiyatı eksik kalır)
     const kargoFiltre = {
         ...satistaFiltre,
         'syncInfo.syncSource': 'xml_integration',
@@ -89,24 +76,19 @@ async function grupluBolum(col, projection, baslik, ekFiltre) {
             : ['Bulgu yok.', ''])
     ].join('\n'));
 
-    // 5. XML eşleştirme istatistikleri (kaynak başına):
-    //    "gerçek karta eşleşen" = diaKey gerçek DIA stok kartına bağlı;
-    //    "otomatik -XML kart"  = diaKey ozelkod10kodu='XML' olan otomatik açılmış karta bağlı;
-    //    "eşleşmeyen"          = diaKey yok.
     const dbNative = mongoose.connection.db;
     const aktifKaynaklar = await dbNative.collection('webxml')
         .find({ site: SITE, isActive: true }, { projection: { code: 1, name: 1 } }).toArray();
     const kaynakKodlari = aktifKaynaklar.map(k => k.code);
     const kaynakAdi = Object.fromEntries(aktifKaynaklar.map(k => [k.code, k.name || k.code]));
 
-    // Otomatik -XML kartların key kümesi (diastocks)
     const xmlKartKeys = new Set(
         (await dbNative.collection('diastocks')
             .find({ ozelkod10kodu: 'XML' }, { projection: { _key: 1 } }).toArray()
         ).map(d => String(d._key))
     );
 
-    const sayilar = {}; // source -> { toplam, gercek, otoXml, eslesmeyen }
+    const sayilar = {};
     const cursor = dbNative.collection('xmlproducts')
         .find({ source: { $in: kaynakKodlari } }, { projection: { source: 1, diaKey: 1 } });
     for await (const xp of cursor) {

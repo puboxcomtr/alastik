@@ -4,10 +4,8 @@ import { useState, useEffect } from 'react'
 import Grid from '@mui/material/Grid2'
 import { CircularProgress, Box } from '@mui/material'
 
-// Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
 
-// Component Imports
 import ProductHeader from '@views/products/ProductHeader'
 import ProductInformation from '@views/products/ProductInformation'
 import ProductImage from '@views/products/ProductImage'
@@ -17,8 +15,6 @@ import ProductOrganize from '@/views/products/ProductOrganize'
 import ProductBrand from '@/views/products/ProductBrand'
 import ProductChampionship from '@/views/products/ProductChampionship'
 
-
-// Context Import
 import { ProductUpdateProvider } from '@/contexts/ProductUpdateContext'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'

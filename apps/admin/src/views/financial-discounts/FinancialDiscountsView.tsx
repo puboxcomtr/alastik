@@ -1,16 +1,10 @@
 'use client'
 
-// Finansal İskontolar: cari tipi (Premium / Normal) × ürün kategorileri (ana + alt) × markalar × üretim yılı × ödeme yöntemi → iskonto oranı.
-// Liste düzeni ürün listesiyle aynıdır (Filtreler + arama çubuğu, tablo, sayfalama; sayfa adreste ?page=N).
-
-// React Imports
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// Next Imports
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
-// MUI Imports
 import Autocomplete from '@mui/material/Autocomplete'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
@@ -36,14 +30,12 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 // eslint-disable-next-line import/no-duplicates
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import { toast } from 'react-toastify'
 
-// Component Imports
 import ConfirmDialog from '@components/dialogs/ConfirmDialog'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
@@ -51,10 +43,8 @@ import tableStyles from '@core/styles/table.module.css'
 
 type Option = { id: string; title: string }
 
-// Ana kategori ve alt kategorileri (seçenek ağacı)
 type CategoryOption = { name: string; subCategories: string[] }
 
-// Alt kategori seçimi: hangi ana kategoriye ait olduğuyla birlikte tutulur
 type SubCategory = { main: string; name: string }
 
 type DiscountRow = {
@@ -79,9 +69,7 @@ type FormState = { name: string; customerTier: string; paymentMethod: string; ca
 const EMPTY_FILTERS: Filters = { customerTier: '', paymentMethod: '', stockSource: '', category: '', brand: '', productionYear: '', status: '' }
 const EMPTY_FORM: FormState = { name: '', customerTier: '', paymentMethod: '', categories: [], subCategories: [], brands: [], productionYear: '', productionYearAndOlder: false, stockSource: '', rate: '', isActive: true }
 
-// Listede bir hücrede en fazla kaç öğe yazılır (fazlası "+N" olarak gösterilir)
 const MAX_LISTED_ITEMS = 3
-// Seçim kutusunda en fazla kaç etiket görünür
 const MAX_VISIBLE_TAGS = 3
 const PREMIUM_TIER = 'premium'
 const DEFAULT_LIMIT = 50
@@ -90,11 +78,9 @@ const columnHelper = createColumnHelper<DiscountRow & { actions?: string }>()
 
 const formatRate = (rate: number) => `%${Number(rate).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
 
-/** Uzun listeyi kısaltır: ilk birkaç öğe + "+N" */
 const summarize = (items: string[]) =>
     items.length > MAX_LISTED_ITEMS ? `${items.slice(0, MAX_LISTED_ITEMS).join(', ')} +${items.length - MAX_LISTED_ITEMS}` : items.join(', ')
 
-/** Kategori kapsamını satır satır metne çevirir: "Ana Kategori › Alt 1, Alt 2" (alt seçilmemişse yalnız ana kategori) */
 const categoryLines = (row: { categories: string[]; subCategories: SubCategory[] }) =>
     (row.categories || []).map(main => {
         const subs = (row.subCategories || []).filter(sub => sub.main === main).map(sub => sub.name)
@@ -107,7 +93,6 @@ const FinancialDiscountsView = () => {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // Sayfa adresten okunur/yazılır (?page=N)
     const page = Math.max(parseInt(searchParams.get('page') || '1') || 1, 1)
 
     const setPage = useCallback((next: number) => {
@@ -122,10 +107,8 @@ const FinancialDiscountsView = () => {
     const [totalCount, setTotalCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [rowSelection, setRowSelection] = useState({})
-    // Sütun başlığına tıklayınca sıralama SUNUCUDA yapılır (tüm kayıtlar, yalnız görünen sayfa değil)
     const [sorting, setSorting] = useState<SortingState>([])
 
-    // Seçenekler (API): cari tipleri, ödeme yöntemleri; sitedeki ürünlerden kategori / marka / üretim yılı
     const [customerTiers, setCustomerTiers] = useState<Option[]>([])
     const [paymentMethods, setPaymentMethods] = useState<Option[]>([])
     const [stockSources, setStockSources] = useState<Option[]>([])
@@ -133,14 +116,12 @@ const FinancialDiscountsView = () => {
     const [brands, setBrands] = useState<string[]>([])
     const [productionYears, setProductionYears] = useState<string[]>([])
 
-    // Arama çubuğu + filtre paneli (taslak → Filtrele ile uygulanır)
     const [searchInput, setSearchInput] = useState('')
     const [search, setSearch] = useState('')
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS)
     const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
 
-    // Ekle / düzenle penceresi
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editing, setEditing] = useState<DiscountRow | null>(null)
     const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -166,7 +147,6 @@ const FinancialDiscountsView = () => {
             .catch(() => toast.error('Seçenekler yüklenemedi'))
     }, [])
 
-    // Art arda gelen isteklerde (hızlı sıralama/filtre) yalnız EN SON isteğin yanıtı ekrana yazılır
     const requestSeq = useRef(0)
 
     const load = useCallback(async () => {
@@ -219,13 +199,11 @@ const FinancialDiscountsView = () => {
 
     const activeFilterCount = Object.values(filters).filter(value => value.trim() !== '').length
 
-    // Alt kategori seçenekleri: yalnız seçili ana kategorilerin altındakiler
     const subCategoryOptions = useMemo<SubCategory[]>(
         () => categories.filter(c => form.categories.includes(c.name)).flatMap(c => c.subCategories.map(name => ({ main: c.name, name }))),
         [categories, form.categories]
     )
 
-    // Ana kategori değişince, kaldırılan ana kategorilerin alt kategorileri de seçimden düşer
     const changeMainCategories = (next: string[]) =>
         setForm(f => ({ ...f, categories: next, subCategories: f.subCategories.filter(sub => next.includes(sub.main)) }))
 
@@ -331,7 +309,6 @@ const FinancialDiscountsView = () => {
                     return (
                         <div className='flex flex-col items-start gap-1'>
                             <Typography className='font-medium' color='text.primary'>{row.original.name}</Typography>
-                            {/* Cari tipi adın altında gösterilir (ayrı sütun yok) */}
                             <Chip
                                 size='small'
                                 variant='tonal'
@@ -423,7 +400,6 @@ const FinancialDiscountsView = () => {
         pageCount: Math.ceil(totalCount / limit),
         manualPagination: true,
         manualSorting: true,
-        // Her sütunda ilk tıklama artan, ikinci azalan, üçüncü sıralamayı kaldırır
         sortDescFirst: false,
         onSortingChange: setSorting,
         enableRowSelection: true,
@@ -622,7 +598,6 @@ const FinancialDiscountsView = () => {
                 </Card>
             </Grid>
 
-            {/* Ekle / Düzenle */}
             <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} maxWidth='md' fullWidth>
                 <DialogTitle className='flex items-center justify-between' sx={{ px: 8, pt: 6 }}>
                     <Typography variant='h4' component='span'>{editing ? 'İskontoyu Düzenle' : 'İskonto Ekle'}</Typography>

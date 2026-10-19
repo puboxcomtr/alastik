@@ -1,9 +1,7 @@
 'use client'
 
-// MUI Imports
 import { useTheme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
 type Props = {
@@ -13,10 +11,8 @@ type Props = {
 }
 
 const DirectionalIcon = (props: Props) => {
-  // Props
   const { ltrIconClass, rtlIconClass, className } = props
 
-  // Hooks
   const theme = useTheme()
 
   return (

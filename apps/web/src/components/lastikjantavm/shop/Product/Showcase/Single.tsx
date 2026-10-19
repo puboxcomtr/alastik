@@ -120,11 +120,8 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'lastikja
                                     }}
                                 >
                                     <div className="showcase__group row w-100 position-relative z-2 py-5">
-                                        {/* Yazı */}
                                         <div className="col-sm-9 col-md-8 col-xl-7 d-flex flex-column">
                                             <div className="text-center">
-                                                {/* Başlık: özel tanım > ürün adı > vitrin başlığı */}
-                                                {/* h2 + .h1 sınıfı: aynı görünüm, ama ana sayfada her vitrin kartı H1 olmasın */}
                                                 <h2 className="h1" style={{ color: '#FFF' }}>
                                                     {slideConfig[getProductStockCode(product)]?.title || product.diaData?.aciklama || showcase.title || ''}
                                                 </h2>
@@ -143,7 +140,6 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'lastikja
                                                 </a>
                                             </div>
                                         </div>
-                                        {/* Ürün Kartı */}
                                         <div className="col-md-2 col-xl-3 d-flex justify-content-center justify-content-md-end">
                                             <div style={{ maxWidth: '320px' }}>
                                                 <ProductSlideCard product={product} />
@@ -154,7 +150,6 @@ export default function SingleShowcase({ showcaseKey = 'third', site = 'lastikja
                             </SwiperSlide>
                         ))}
                     </Swiper>
-                    {/* Prev/Next Butonları */}
                     <button
                         onClick={() => swiperRef.current?.slidePrev()}
                         className="btn btn-icon btn-light d-none d-md-flex rounded-circle position-absolute top-50 start-0 translate-middle-y ms-2 z-3"

@@ -1,6 +1,3 @@
-/**
-  admin/src/views/modules/xmlListTable/XmlAddModal.tsx
- */
 
 'use client'
 
@@ -183,13 +180,11 @@ const XmlAddModal = ({ open, onClose, onSuccess }: Props) => {
 
             <DialogContent>
                 <Grid container spacing={3} sx={{ mt: 0 }}>
-                    {/* Temel Bilgiler */}
                     <Grid item xs={12}>
                         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                             Temel Bilgiler
                         </Typography>
                     </Grid>
-
 
                     <Grid className='mb-3' item xs={12} sm={12}>
                         <TextField
@@ -247,7 +242,6 @@ const XmlAddModal = ({ open, onClose, onSuccess }: Props) => {
                         />
                     </Grid>
 
-                    {/* Senkronizasyon süresi — her format için */}
                     <Grid item xs={12}>
                         <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
                             Senkronizasyon Ayarları
@@ -268,7 +262,6 @@ const XmlAddModal = ({ open, onClose, onSuccess }: Props) => {
                         />
                     </Grid>
 
-                    {/* API (JSON) seçilince ek alanlar */}
                     {formData.format === 'json' && (
                         <>
                             <Grid item xs={12}>

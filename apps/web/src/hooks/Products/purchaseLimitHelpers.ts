@@ -1,4 +1,3 @@
-// apps/web/src/hooks/Products/purchaseLimitHelpers.ts
 import { Product } from '@src/types/products'
 import { API_ENDPOINTS } from '@/src/config/api'
 
@@ -24,9 +23,6 @@ export interface LimitCheckResponse {
     violations: LimitViolation[]
 }
 
-/**
- * Ürün için kategori isimlerini topla
- */
 export const getCategoryNamesFromProduct = (product: Product): string[] => {
     const cat = product.diaData?.m_kategoriler?.[0]
     if (!cat) return []
@@ -41,20 +37,10 @@ export const getCategoryNamesFromProduct = (product: Product): string[] => {
     ].filter((v): v is string => Boolean(v && v.trim()))
 }
 
-/**
- * Ürünün mevcut stok adedini döndürür
- */
 export const getProductStock = (product: Product): number => {
     return product.diaData?.gercek_stok ?? 0
 }
 
-/**
- * Sepetteki mevcut adet + eklenecek adet stok sınırını aşıyor mu kontrol eder.
- * Adet seçici olmayan (tek tıkla ekle) kartlar için kullanılır.
- * allowed: eklemeye izin var mı
- * maxStock: ürünün toplam stok adedi
- * remaining: sepete daha eklenebilecek adet
- */
 export const canAddToCartStock = (
     product: Product,
     currentInCart: number,
@@ -72,12 +58,6 @@ export const canAddToCartStock = (
     return { allowed: true, maxStock, remaining }
 }
 
-/**
- * Girilen adedi stok ve minimum sınırına göre kısıtlar.
- * clamped: sınıra çekilmiş güvenli adet
- * exceeded: kullanıcı stok sınırını aşmaya çalıştı mı
- * maxStock: ürünün seçilebilir maksimum adedi
- */
 export const clampQuantityToStock = (
     product: Product,
     quantity: number
@@ -95,9 +75,6 @@ export const clampQuantityToStock = (
     }
     return { clamped: quantity, exceeded: false, maxStock }
 }
-/**
- * Ürünü limit check item'a çevir
- */
 export const productToLimitCheckItem = (product: Product, quantity: number): LimitCheckItem => ({
     sku: product.diaData?.stokkartkodu || product.diaData?.anabarkod || '',
     brand: product.diaData?.marka || '',
@@ -105,9 +82,6 @@ export const productToLimitCheckItem = (product: Product, quantity: number): Lim
     quantity
 })
 
-/**
- * Sepete ekleme öncesi limit kontrolü
- */
 export const checkPurchaseLimit = async (
     items: LimitCheckItem[]
 ): Promise<LimitCheckResponse> => {

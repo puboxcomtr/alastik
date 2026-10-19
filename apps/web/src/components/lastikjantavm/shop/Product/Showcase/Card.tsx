@@ -80,7 +80,6 @@ export default function ProductCard({ product }: ProductCardProps) {
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
     const stockCode = getProductStockCode(product, 'lastikjantavm');
 
-    // Marka bilgisini context'ten al
     const brandName = product.diaData.marka || '';
     const brandInfo = getBrand(brandName);
     const brandLogo = brandInfo?.logo && !brandInfo.logo.includes('gorsel-bulunamadi')
@@ -92,7 +91,6 @@ export default function ProductCard({ product }: ProductCardProps) {
         <Container className="p-0">
             <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
                 <div className="position-relative">
-                    {/* Favorite button */}
                     <div className="position-absolute top-0 end-0 z-2 hover-effect-target opacity-1 mt-3 me-3">
                         <div className="d-flex flex-column gap-2">
                             <button
@@ -110,7 +108,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                         </div>
                     </div>
 
-                    {/* Videolu ürün rozeti — favori butonunun tam karşısında */}
                     {product.customData?.videos?.length > 0 && (
                         <span
                             className={`position-absolute top-0 start-0 z-2 ms-2 ms-lg-3 badge rounded-pill text-bg-danger video-badge ${season ? 'mt-6' : 'mt-2 mt-lg-3'}`}
@@ -119,7 +116,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                         </span>
                     )}
 
-                    {/* Product Image */}
                     <Link className="d-block rounded-top overflow-hidden p-0 p-md-3" href={productUrl}>
                         {season && (
                             <span
@@ -148,7 +144,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                 <div className="min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
                     <div className="product__information d-flex justify-content-between gap-2 mb-2">
                         <div>
-                            {/* Marka gizle açıksa kartta marka gösterilmez */}
                             {product.customData?.hideBrand !== true && (brandLogo ? (
                                 <Image
                                     src={brandLogo}
@@ -161,7 +156,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 <span className="fw-medium fs-sm">{brandInfo?.name || brandName || 'Marka Yok'}</span>
                             ))}
                         </div>
-                        {/* Rating */}
                         <div className='d-flex align-items-center'>
                             {product.customData?.reviewStats?.reviewCount > 0 && (
                                 <>
@@ -179,7 +173,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
 
                     <h3 className="pb-1 mb-2">
-                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
                         {(product as any)?.hideStockCode !== true && (
                             <span className="fs-xs text-body-secondary lh-sm mb-1 d-block">
                                 {stockCode}
@@ -202,7 +195,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                             </span>
                         ) : <span />}
                         <span className="fs-xs fw-semibold">
-                            {/* Stok gizle açıksa kartta stok adedi gösterilmez */}
                             {product.customData?.hideStock !== true && (product.diaData?.gercek_stok > 0 ? (
                                 <>
                                     <span className="text-body-secondary">Stok:</span>
@@ -239,7 +231,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                             </span>
                         </div>
                     </div>
-
 
                     {product.diaData?.gercek_stok > 0 ? (
                         <Tooltip title="Sepete Ekle">

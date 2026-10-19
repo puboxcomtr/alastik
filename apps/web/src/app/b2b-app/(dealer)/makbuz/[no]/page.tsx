@@ -4,11 +4,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { API_ENDPOINTS } from "@src/config/api";
 
-/**
- * Ödeme Makbuzu / Proforma — başarılı ödeme sonrası indirilebilir belge.
- * Tarayıcının "PDF olarak kaydet" (yazdır) özelliğiyle indirilir; ek bağımlılık yok.
- */
-
 type OrderItem = {
   name?: string;
   stockCode?: string;
@@ -111,7 +106,6 @@ export default function MakbuzPage({ params }: { params: Promise<{ no: string }>
 
   return (
     <div className="makbuz-wrap">
-      {/* Yazdırmada gizlenecek üst çubuk */}
       <div className="makbuz-toolbar no-print">
         <Link className="btn-ghost" href="/siparisler">
           ← Siparişlerim

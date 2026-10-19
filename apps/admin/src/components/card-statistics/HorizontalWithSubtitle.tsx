@@ -1,15 +1,11 @@
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
 export type UserDataType = {
@@ -23,7 +19,6 @@ export type UserDataType = {
 }
 
 const HorizontalWithSubtitle = (props: UserDataType) => {
-  // Props
   const { title, stats, avatarIcon, avatarColor, trend: trend, trendNumber: trendNumber, subtitle: subtitle } = props
 
   return (

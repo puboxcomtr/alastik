@@ -1,13 +1,10 @@
 'use client';
 
-// Montaj noktası seçimi — ortak tipler ve yardımcılar (referans: ikinciellastik /sepete-eklendi).
-// Ekranlar her iki sitede de kullanılır; renkler ve site bilgisi sayfanın sardığı <MontageTheme site=…> ile gelir.
 import React, { createContext, useContext, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useCart } from '@/src/context/CartContext';
 import { SITES, type SiteSlug } from '@/src/config/siteConfig';
 
-/** Hex rengi verilen oranda koyulaştırır (hover tonu için) */
 const darken = (hex: string, ratio: number): string => {
     const value = hex.replace('#', '');
     if (value.length !== 6) return hex;
@@ -17,7 +14,6 @@ const darken = (hex: string, ratio: number): string => {
     return `#${channel(0)}${channel(2)}${channel(4)}`;
 };
 
-// Marka renkleri CSS değişkenidir; değerleri siteConfig theme.montage'dan MontageTheme verir (koda gömülmez)
 export const BRAND_RED = 'var(--mt-brand)';
 export const BRAND_RED_DARK = 'var(--mt-brand-dark)';
 export const BRAND_ACCENT = 'var(--mt-accent)';
@@ -26,7 +22,6 @@ export const HERO_GRADIENT = 'linear-gradient(135deg, var(--mt-hero-from) 0%, va
 export const TRUST_GREEN = '#16a34a';
 export const TEXT_DARK = '#1a1a1a';
 
-/** Metinlerde geçen site bilgisi (ör. "... alastik.com güvencesi altındadır") ve görsel kök yolu */
 export type MontageSite = { slug: SiteSlug; name: string; domain: string; assetsBase: string };
 const siteInfo = (slug: SiteSlug): MontageSite => {
     const site = SITES[slug];
@@ -35,7 +30,6 @@ const siteInfo = (slug: SiteSlug): MontageSite => {
 const MontageSiteContext = createContext<MontageSite>(siteInfo('alastik'));
 export const useMontageSite = () => useContext(MontageSiteContext);
 
-/** Montaj ekranlarını site paletiyle sarar; sayfa (server) hangi sitede olduğunu bilir ve buraya verir */
 export function MontageTheme({ site, children }: { site: SiteSlug; children: React.ReactNode }) {
     const theme = SITES[site].theme;
     const palette = theme.montage || { brand: theme.primary, accent: theme.primary, tint: '#ffffff', heroFrom: darken(theme.primary, 0.4), heroTo: theme.primary };
@@ -62,20 +56,17 @@ export type MontageReview = {
     createdAt: string;
 };
 
-// price: noktaya özel fiyat (0 = ücretsiz) veya katalog fiyatı; null ise fiyat bilinmiyor
 export type MontageService = {
     productKey: string;
     sku: string;
     name: string;
     price: number | null;
-    /** Kategori ayarı: 'haric' ise fiyat KDV hariç gösterilir ("X TL + KDV") */
     priceDisplay?: 'dahil' | 'haric';
     vatRate?: number;
     isMontage?: boolean;
     rimRange?: { min: number; max: number } | null;
 };
 
-// Satın alma öncesi noktalar anonimdir; "Bilgileri Gözüksün" açık noktalarda ad/adres/telefon gelir
 export type MontagePoint = {
     _id: string;
     name: string;
@@ -109,14 +100,12 @@ export const AMENITY_LABELS: Record<string, { label: string; icon: string }> = {
     headlight_check: { label: 'Far Kontrolü', icon: 'ri-lightbulb-line' },
 };
 
-/** Gün bazlı saatlerden "Haftaiçi / Cumartesi / Pazar" özeti */
 export function hoursSummary(point: MontagePoint): { week: string; sat: string; sun: string } {
     const fmt = (h?: { open: string; close: string }) => (h && h.open && h.close ? `${h.open} - ${h.close}` : 'Kapalı');
     const s = point.workingSchedule || {};
     return { week: fmt(s.monday), sat: fmt(s.saturday), sun: fmt(s.sunday) };
 }
 
-/** Yıldızlar — ikinciellastik ile aynı SVG (amber dolu / gri boş) */
 export function Stars({ value, size = 14 }: { value: number | null; size?: number }) {
     const n = value === null ? 0 : Math.round(value);
     return (
@@ -130,7 +119,6 @@ export function Stars({ value, size = 14 }: { value: number | null; size?: numbe
     );
 }
 
-// Select kutuları: tarayıcı oku yerine sabit chevron (appearance-none)
 export const SELECT_CHEVRON: React.CSSProperties = {
     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
     backgroundRepeat: 'no-repeat',
@@ -139,38 +127,28 @@ export const SELECT_CHEVRON: React.CSSProperties = {
     WebkitAppearance: 'none',
 };
 
-/** Hizmet satırı: ad | adet | fiyat | Seç / Kaldır.
- * Sepet kuralları: montaj adedi uygun çaptaki lastik adedini aşamaz (inç üründen otomatik okunur, daha azı alınabilir);
- * diğer hizmetler ancak sepette montaj varken seçilebilir.
- * ownTire: "Montaj Satın Al" sayfası — müşterinin kendi lastiği; montajda lastik şartı ve lastik adedi tavanı yoktur. */
 export function ServiceRow({ service, montagePointId, onBeforeSelect, ownTire = false, defaultQuantity = 1 }: {
     service: MontageService; montagePointId: string; onBeforeSelect?: () => Promise<void>; ownTire?: boolean; defaultQuantity?: number;
 }) {
     const { items, addToCart, updateQuantity, removeItem } = useCart();
-    // Seçim noktaya özeldir: aynı hizmet başka noktadan seçildiyse burada "Seçildi" sayılmaz
     const cartItem = items.find(i => String(i.productKey) === String(service.productKey) && String(i.montagePointId || '') === String(montagePointId));
     const selected = Boolean(cartItem);
     const [quantity, setQuantity] = useState(ownTire && service.isMontage ? defaultQuantity : 1);
     const [busy, setBusy] = useState(false);
 
-    // Sepet kuralları: montaj adedi uygun çaptaki lastik adedini aşamaz; diğer hizmetler montaj gerektirir
     const tires = items.filter(i => i.itemType === 'tire');
     const montageInCart = items.some(i => i.itemType === 'montage');
     const matchingTireCount = service.isMontage && service.rimRange
         ? tires.filter(t => t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= service.rimRange!.min && t.rimSize <= service.rimRange!.max)
             .reduce((sum, t) => sum + t.quantity, 0)
         : 0;
-    // Tavan: lastikli sepette montaj adedi en fazla uygun çaptaki lastik adedi olabilir
     const montageCap = !ownTire && Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0 ? matchingTireCount : null;
-    // Müşteri adet seçmediyse varsayılan lastik adedidir
     const [quantityTouched, setQuantityTouched] = useState(false);
     let ruleHint = '';
     if (ownTire && service.isMontage) {
-        // Kendi lastiğiyle montajda lastik şartı yok
     } else if (ownTire && !montageInCart) {
         ruleHint = 'Önce lastik montajı hizmeti seçin';
     } else if (service.isMontage && tires.length === 0) {
-        // Montaj yalnızca sıfır lastikle: jant, ikinci el vb. ürünlere montaj eklenemez
         ruleHint = 'Montaj yalnızca sıfır lastik ürünleriyle satın alınabilir';
     } else if (service.isMontage && matchingTireCount === 0) {
         ruleHint = 'Sepetinizdeki lastiklerin jant çapına uygun değil';
@@ -191,7 +169,6 @@ export function ServiceRow({ service, montagePointId, onBeforeSelect, ownTire = 
             if (selected) {
                 await removeItem(String(service.productKey), service.isMontage ? 'Montaj hizmeti sepetinizden çıkarıldı' : 'Hizmet sepetinizden çıkarıldı');
             } else {
-                // Başka noktadan seçilmiş hizmetler varsa önce onlar kaldırılır (hizmetler tek noktadan)
                 if (onBeforeSelect) await onBeforeSelect();
                 await addToCart(service.productKey, shownQuantity, service.isMontage ? 'Montaj hizmeti sepetinize eklendi' : 'Hizmet sepetinize eklendi', montagePointId, ownTire && service.isMontage ? true : undefined);
             }

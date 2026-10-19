@@ -69,20 +69,16 @@ const CategorySchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
 CategorySchema.index({ parent: 1, level: 1 });
 CategorySchema.index({ isActive: 1, sortOrder: 1 });
 
-// Virtual for children categories
 CategorySchema.virtual('children', {
   ref: 'Category',
   localField: '_id',
   foreignField: 'parent'
 });
 
-// Virtual for full path
 CategorySchema.virtual('fullPath').get(function() {
-  // Bu virtual field populate edilmiş parent'larla çalışır
   const path = [this.name];
   let current = this.parent;
   
@@ -94,7 +90,6 @@ CategorySchema.virtual('fullPath').get(function() {
   return path.join(' > ');
 });
 
-// Static methods
 CategorySchema.statics.findByLevel = function(level) {
   return this.find({ level: level, isActive: true });
 };

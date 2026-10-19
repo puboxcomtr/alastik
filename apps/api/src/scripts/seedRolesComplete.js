@@ -10,13 +10,11 @@ async function seedRoles() {
         await mongoose.connect(MONGODB_URI);
         console.log('✅ MongoDB bağlantısı başarılı');
 
-        // Sistem olmayan rolleri temizle
         await Role.deleteMany({ isSystem: false });
         console.log('🗑️  Eski roller temizlendi');
 
         const allModules = getAllModuleKeys();
 
-        // Super Admin Rolü - TÜM yetkiler
         let superAdminRole = await Role.findOne({ name: 'Super Admin' });
         if (!superAdminRole) {
             const superAdminPermissions = allModules.map(module => ({
@@ -40,31 +38,24 @@ async function seedRoles() {
             console.log('ℹ️  Super Admin rolü zaten mevcut');
         }
 
-        // Admin Rolü - Çoğu yetki (kritik silme yetkileri hariç)
         const adminPermissions = [
-            // Katalog - Sync ve görüntüleme
             { module: 'catalog.products', view: true, edit: true, sync: true },
             { module: 'catalog.categories', view: true, edit: true, sync: true },
             { module: 'catalog.brands', view: true, edit: true, sync: true },
             { module: 'catalog.tags', view: true, create: true, edit: true, delete: false },
             { module: 'catalog.features', view: true, edit: true },
 
-            // Siparişler
             { module: 'orders', view: true, edit: true },
 
-            // İçerik
             { module: 'content.pages', view: true, create: true, edit: true, delete: false },
             { module: 'content.blogs', view: true, create: true, edit: true, delete: false },
             { module: 'content.forms', view: true, create: true, edit: true, delete: false },
 
-            // Üyeler
             { module: 'members.users', view: true, create: true, edit: true, delete: false },
             { module: 'members.support', view: true, create: true, edit: true, delete: false },
 
-            // Kampanyalar
             { module: 'campaigns', view: true, create: true, edit: true, delete: false },
 
-            // Ayarlar - Sınırlı
             { module: 'settings.general', view: true, edit: true },
             { module: 'settings.design', view: true, edit: true },
             { module: 'settings.queue', view: true }
@@ -79,7 +70,6 @@ async function seedRoles() {
         });
         console.log('✅ Admin rolü oluşturuldu');
 
-        // Editor Rolü - İçerik yönetimi
         const editorPermissions = [
             { module: 'catalog.products', view: true, edit: true },
             { module: 'catalog.categories', view: true },
@@ -101,7 +91,6 @@ async function seedRoles() {
         });
         console.log('✅ Editor rolü oluşturuldu');
 
-        // Viewer Rolü - Sadece görüntüleme
         const viewerPermissions = allModules.map(module => ({
             module,
             view: true,
@@ -120,7 +109,6 @@ async function seedRoles() {
         });
         console.log('✅ Viewer rolü oluşturuldu');
 
-        // Support Rolü - Destek ve sipariş yönetimi
         const supportPermissions = [
             { module: 'orders', view: true, edit: true },
             { module: 'members.users', view: true, edit: true },
@@ -136,7 +124,6 @@ async function seedRoles() {
         });
         console.log('✅ Support rolü oluşturuldu');
 
-        // Özet
         console.log('\n📋 Oluşturulan Roller:');
         const allRoles = await Role.find();
         allRoles.forEach(role => {

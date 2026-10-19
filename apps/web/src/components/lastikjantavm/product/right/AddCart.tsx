@@ -1,4 +1,3 @@
-// apps/web/src/components/product/right/Cart.tsx
 "use client";
 import React, { useState } from "react";
 import { offerMontageAfterAdd } from '@/src/hooks/Cart/montageRedirect';
@@ -24,7 +23,6 @@ interface CartProps {
     product: Product;
 }
 
-// Panelden gelen yüzde değerini (ör. "5") orana çevirir; geçersiz/boş → 0
 const toRate = (percent: unknown): number => {
     const n = Number(String(percent ?? '').replace(',', '.'));
     return Number.isFinite(n) && n > 0 && n < 100 ? n / 100 : 0;
@@ -50,17 +48,12 @@ export default function Cart({ product }: CartProps) {
     const isSecondHand = (product.diaData?.m_kategoriler || []).some(
         (k: any) => String(k?.kategori_aciklama_1 || '').startsWith('İkinci El')
     );
-    // Havale ve Peşin Ödeme fiyatı kutusu: oranlar panelden (Tema > Genel) gelir.
-    // İkinci El ürünlerde kendi oranı, sıfır lastiklerde sıfır lastik oranı; diğer ürünlerde gösterilmez.
     const pickupCashRate = isSecondHand
         ? toRate(theme?.pickupCashDiscountSecondHand)
         : isLastik(product) ? toRate(theme?.pickupCashDiscountNewTire) : 0;
-    // Hizmetlerimiz (montaj, rot, sibop vb.) ürünlerinde taksit promosyonu ve
-    // tahmini teslim tarihi gösterilmez (hizmet kargolanmaz, tek çekim uygulanır).
     const isHizmet = (product.diaData?.m_kategoriler || []).some(
         (k: any) => String(k?.kategori_aciklama_1 || '') === 'Hizmetlerimiz'
     );
-    // Seçilen adetin toplamı üzerinden (adet değiştikçe güncellenir)
     const pickupCashValue = Math.round(gosterim.value * quantity * (1 - pickupCashRate) * 100) / 100;
     const handleAddToCart = async () => {
         if (adding) return;
@@ -117,7 +110,6 @@ export default function Cart({ product }: CartProps) {
             <Grid container>
                 <Grid size={12}>
                     <div className='d-none d-md-flex justify-content-center'>
-                        {/* Marka gizle açıksa detay sayfasında marka gösterilmez */}
                         {product.customData?.hideBrand !== true && (brandLogo ? (
                             <Image
                                 src={brandLogo}
@@ -131,11 +123,9 @@ export default function Cart({ product }: CartProps) {
                         ))}
                     </div>
                 </Grid>
-                {/* Add to Cart */}
                 <Grid size={12}>
                     <div className="card bg-white rounded border-0 mt-3" style={{ boxShadow: '0 0 24px 0 rgba(0, 0, 0, .1)' }}>
                         <div className="card-body">
-                            {/* Adet/fiyat ve Sepete Ekle mobilde gizlenir; alttaki sabit satın alma çubuğu kullanılır */}
                             <h5 className={hasStock ? 'card-title d-none d-md-block' : 'card-title'}>{hasStock ? 'Adet Seçimi' : 'Stok Bilgisi'}</h5>
                             {hasStock ? (
                                 <>
@@ -204,7 +194,6 @@ export default function Cart({ product }: CartProps) {
                                     )}
                                     <hr className="m-0 p-2" />
                                     </div>
-                                    {/* Kampanyalar — hizmet ürünlerinde ödeme promosyonları gösterilmez */}
                                     {!isHizmet && (
                                     <>
                                     <div>

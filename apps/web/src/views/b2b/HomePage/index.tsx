@@ -1,6 +1,4 @@
 'use client';
-// B2B anasayfa — oturum yoksa giriş ekranı, varsa bayi karşılama ekranı.
-// Bayi deneyimi (katalog/sipariş) site yapım sürecinde bu ekranın yerini alacak.
 import { useEffect, useState } from 'react';
 import { SITES } from '@src/config/siteConfig';
 import { API_ENDPOINTS } from '@src/config/api';
@@ -44,10 +42,8 @@ const B2BHomePage = () => {
 
     if (!bayi) return <B2BLogin />;
 
-    // Giriş yapılmış bayi ANASAYFASI — tema bu iskeletin üzerine kurulacak.
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#141414' }}>
-            {/* Üst bar */}
             <header
                 style={{
                     background: '#1a1a1a',
@@ -77,7 +73,6 @@ const B2BHomePage = () => {
                 </div>
             </header>
 
-            {/* İçerik — tema buraya gelecek */}
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ffffff', textAlign: 'center', padding: 24, gap: 12 }}>
                 <span style={{ background: site.theme.primary, color: '#1a1a1a', borderRadius: 6, padding: '6px 16px', fontWeight: 700, fontSize: 13 }}>
                     Hazırlık Aşamasındadır

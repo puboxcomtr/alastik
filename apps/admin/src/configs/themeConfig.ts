@@ -1,9 +1,7 @@
 
 
-// Third-party Imports
 import type { ToastPosition } from 'react-toastify'
 
-// Type Imports
 import type { Mode, Skin, Layout, LayoutComponentPosition, LayoutComponentWidth } from '@/@core/types'
 
 type Navbar = {
@@ -41,27 +39,27 @@ const themeConfig: Config = {
   templateName: 'A Lastik',
   homePageUrl: '/apps/ecommerce/dashboard',
   settingsCookieName: 'materio-mui-next-demo-1',
-  mode: 'light', // 'system', 'light', 'dark'
-  skin: 'bordered', // 'default', 'bordered'
-  semiDark: true, // true, false
-  layout: 'vertical', // 'vertical', 'collapsed', 'horizontal'
-  layoutPadding: 24, // Common padding for header, content, footer layout components (in px)
-  compactContentWidth: 1440, // in px
+  mode: 'light',
+  skin: 'bordered',
+  semiDark: true,
+  layout: 'vertical',
+  layoutPadding: 24,
+  compactContentWidth: 1440,
   navbar: {
-    type: 'fixed', // 'fixed', 'static'
-    contentWidth: 'wide', // 'compact', 'wide'
-    floating: false, //! true, false (This will not work in the Horizontal Layout)
-    detached: true, //! true, false (This will not work in the Horizontal Layout or floating navbar is enabled)
-    blur: true // true, false
+    type: 'fixed',
+    contentWidth: 'wide',
+    floating: false,
+    detached: true,
+    blur: true
   },
-  contentWidth: 'wide', // 'compact', 'wide'
+  contentWidth: 'wide',
   footer: {
-    type: 'static', // 'fixed', 'static'
-    contentWidth: 'wide', // 'compact', 'wide'
-    detached: true //! true, false (This will not work in the Horizontal Layout)
+    type: 'static',
+    contentWidth: 'wide',
+    detached: true
   },
-  disableRipple: false, // true, false
-  toastPosition: 'bottom-right' // 'top-right', 'top-center', 'top-left', 'bottom-right', 'bottom-center', 'bottom-left'
+  disableRipple: false,
+  toastPosition: 'bottom-right'
 }
 
 export default themeConfig

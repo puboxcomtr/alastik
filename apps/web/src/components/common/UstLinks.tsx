@@ -1,8 +1,4 @@
 'use client';
-// Header üstündeki ikonlu hızlı linkler (Sipariş Takibi, Kampanyalar vb.).
-// Panelden Menü Yönetimi > "Üst Linkler (İkonlu)" alanından yönetilir; her öğe
-// remixicon ikonu taşır. Arama + hesap satırının hemen üstünde, sağa hizalı.
-// lastikjantavm'de en başta (Kampanyalarımız'ın solunda) sabit "Montaj Noktamız Ol" (bayi formu) ve "Montaj Satın Al" bağlantıları durur.
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/src/lib/api';
@@ -18,7 +14,6 @@ type UstLink = {
     linkData?: any;
 };
 
-/** Menü tipine göre hedef URL üretir (useMenu.getMenuUrl ile aynı mantık). */
 function resolveUrl(m: UstLink): string {
     switch (m.menuType) {
         case 'link': return m.linkData?.url || '#';
@@ -35,7 +30,6 @@ function resolveUrl(m: UstLink): string {
 
 export default function UstLinks() {
     const [links, setLinks] = useState<UstLink[]>([]);
-    // Kendi lastiğiyle montaj satın alma bağlantısı yalnız lastikjantavm'de (alastik'te header düğmesi var)
     const [showMontageBuy, setShowMontageBuy] = useState(false);
 
     useEffect(() => {
@@ -43,7 +37,6 @@ export default function UstLinks() {
         api.menu.getUstLinks()
             .then((r: any) => {
                 if (r?.success) {
-                    // Başlık (heading) tipi öğeler link değildir — üst link satırında gösterilmez
                     setLinks((r.data || []).filter((m: UstLink) => m.menuType !== 'heading'));
                 }
             })
@@ -54,7 +47,6 @@ export default function UstLinks() {
 
     return (
         <div className="ust-links d-none d-lg-flex justify-content-end align-items-center gap-4 pt-2">
-            {/* Montaj noktası (bayi) başvuru formu — form yalnız lastikjantavm'de açık olduğu için bağlantı da yalnız orada */}
             {showMontageBuy && (
                 <Link
                     href="/bayi-formu"

@@ -1,17 +1,10 @@
-// LastikJantAVM şube hizmet grupları — /subeler/<sube>/<hizmet> sayfalarının içerik kaynağı.
-// Hizmet listesi ve fiyatlar canlı katalogdan (kategori ürünleri) okunur; burada yalnızca
-// başlıklar ve şubeye özgü açıklama metinleri tutulur. Her grup için iki şubenin metni ayrı yazılmıştır.
 import type { BranchSlug } from './subeler';
 
 export interface ServiceGroup {
     slug: string;
-    // Hizmet ürünlerinin kategorisi (/kategori/<categorySlug>); null: montaj noktası kaydındaki montaj hizmetleri
     categorySlug: string | null;
-    // Başlıklarda kullanılan ad (ör. "Lastik Tamiri ve Mantar Yama")
     name: string;
-    // Kısa açıklama (şube sayfasındaki grup kartı)
     summary: string;
-    // Şubeye özgü açıklama paragrafları
     text: Record<BranchSlug, string[]>;
 }
 
@@ -194,7 +187,6 @@ export function getServiceGroup(slug: string): ServiceGroup | undefined {
     return SERVICE_GROUPS.find(g => g.slug === slug);
 }
 
-// Hizmet ürününün kategori adından (DIA kategori_aciklama_2) grup bulunur — ürün sayfasındaki şube bağlantısı için
 export const CATEGORY_NAME_TO_GROUP: Record<string, string> = {
     'Lastik Tamir Hizmetleri': 'lastik-tamiri-mantar-yama',
     'Rot ve Balans Hizmetleri': 'rot-balans-ayari',

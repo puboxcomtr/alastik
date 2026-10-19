@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState, useEffect } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -26,12 +24,10 @@ import InputAdornment from '@mui/material/InputAdornment'
 
 import type { SelectChangeEvent } from '@mui/material/Select'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
 import { CARGO_PRODUCT_TYPE_OPTIONS, type CargoProductType } from './cargoOptions'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
 type MemberGroupType = 'member' | 'guest' | 'all'

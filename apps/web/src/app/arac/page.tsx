@@ -1,4 +1,3 @@
-// Araca göre lastik — /arac (yalnızca lastikjantavm.com): tüm markalar
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

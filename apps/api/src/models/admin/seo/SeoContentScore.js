@@ -8,30 +8,20 @@ const checkSchema = new mongoose.Schema({
     key: { type: String, required: true },
     group: { type: String, required: true },
     label: { type: String, required: true },
-    // true: geçti, false: kaldı, null: uygulanamadı (ör. odak kelime girilmemiş)
     passed: { type: Boolean, default: null },
     weight: { type: Number, default: 0 },
     detail: { type: String, default: '' }
 }, { _id: false });
 
-/**
- * İçerik SEO puanı — gece taraması ve tekil analizler buraya yazar,
- * İçerik Analizi sekmesi buradan okur. Kaynak belge değişince bir sonraki
- * taramada ya da odak kelime kaydında yeniden hesaplanır.
- */
 const seoContentScoreSchema = new mongoose.Schema({
     site: { type: String, enum: Object.keys(SITES), default: DEFAULT_SITE, required: true },
     type: { type: String, enum: CONTENT_TYPES, required: true },
-    // Ürünlerde _key, diğerlerinde _id
     refId: { type: String, required: true },
     title: { type: String, default: '' },
-    // Vitrindeki yol (/urun/..., /blog/...)
     url: { type: String, default: '' },
-    // Admin düzenleme yolu (/apps/... — locale öneki panel ekler)
     editPath: { type: String, default: '' },
     contentStatus: { type: String, default: '' },
     focusKeyword: { type: String, default: '' },
-    // custom: elle girilmiş SEO alanı var, template: şablondan üretiliyor, empty: hiçbiri yok
     source: { type: String, enum: ['custom', 'template', 'empty'], default: 'empty' },
     score: { type: Number, default: 0 },
     status: { type: String, enum: SCORE_STATUSES, default: 'none' },

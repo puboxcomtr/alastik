@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState, useEffect } from 'react'
 
-// MUI Imports
 import {
   Card,
   CardHeader,
@@ -21,22 +19,15 @@ import {
   Stack
 } from '@mui/material'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Component Imports
 import MediaLibrary from '@/components/MediaLibrary/MediaLibrary'
 
-// Type Imports
 import type { ProductImageProps } from '@/types/apps/productTypes'
 import type { MediaFile } from '@/types/apps/mediaTypes'
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
 type ProductVideo = {
   order?: number
   url: string
@@ -44,10 +35,6 @@ type ProductVideo = {
   title?: string
 }
 
-/**
- * YouTube adresinden video kimliğini çıkarır (video, short, embed, canlı).
- * Sunucu tarafında da aynı kontrol yapılır; buradaki amaç anında geri bildirim.
- */
 const extractYoutubeId = (rawUrl: string): string | null => {
   const url = String(rawUrl || '').trim()
 
@@ -73,7 +60,6 @@ const extractYoutubeId = (rawUrl: string): string | null => {
 }
 
 const ProductImage = ({ product }: ProductImageProps) => {
-  // States
   const [diaImages, setDiaImages] = useState<string[]>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
@@ -82,7 +68,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
   const [videoUrl, setVideoUrl] = useState('')
   const [videoTitle, setVideoTitle] = useState('')
 
-  // Initialize images from product
   useEffect(() => {
     if (product?.images && product.images.length > 0) {
       setDiaImages(product.images)
@@ -91,16 +76,10 @@ const ProductImage = ({ product }: ProductImageProps) => {
     }
   }, [product])
 
-  // Initialize videos from product
   useEffect(() => {
     setVideos((product as any)?.videos || [])
   }, [product])
 
-  // ============================================
-  // HANDLERS
-  // ============================================
-
-  // Media Library'den seçilen görselleri işle
   const handleMediaSelect = (selectedFiles: MediaFile[]) => {
     const selectedUrls = selectedFiles.map(file => file.url)
     setDiaImages(prev => [...prev, ...selectedUrls])
@@ -109,7 +88,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     updateProductSynchronization('N')
   }
 
-  // Ürün senkronizasyonunu güncelle
   const updateProductSynchronization = async (syncValue: 'Y' | 'N') => {
     if (!product?.id) return
 
@@ -146,7 +124,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     }
   }
 
-  // Drag & Drop Handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = 'move'
@@ -173,7 +150,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     setDraggedIndex(null)
   }
 
-  // Videoları kaydet
   const saveVideos = async (nextVideos: ProductVideo[]) => {
     if (!product?.id) return
 
@@ -192,7 +168,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     }
   }
 
-  // Video ekle
   const handleAddVideo = async () => {
     const videoId = extractYoutubeId(videoUrl)
 
@@ -221,7 +196,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     toast.success('Video eklendi')
   }
 
-  // Video sil
   const handleRemoveVideo = async (index: number) => {
     const nextVideos = videos
       .filter((_, i) => i !== index)
@@ -235,7 +209,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     toast.success('Video kaldırıldı')
   }
 
-  // Görsel silme
   const handleRemoveImage = (imageUrl: string, index: number) => {
     const updatedImages = diaImages.filter((_, i) => i !== index)
     setDiaImages(updatedImages)
@@ -243,9 +216,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
     updateProductSynchronization('N')
   }
 
-  // ============================================
-  // RENDER
-  // ============================================
   return (
     <>
       <Card>
@@ -271,7 +241,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
           }
         />
         <CardContent>
-          {/* Mevcut Görseller */}
           {diaImages.length > 0 ? (
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -325,7 +294,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
                       }}
                     />
 
-                    {/* Silme butonu */}
                     <IconButton
                       sx={{
                         position: 'absolute',
@@ -364,7 +332,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
             </Box>
           )}
 
-          {/* Ürün Videoları */}
           {videos.length > 0 && (
             <Box sx={{ mt: 5 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -417,7 +384,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
         </CardContent>
       </Card>
 
-      {/* Video Ekleme Penceresi */}
       <Dialog open={videoDialogOpen} onClose={() => setVideoDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>YouTube Videosu Ekle</DialogTitle>
         <DialogContent>
@@ -457,7 +423,6 @@ const ProductImage = ({ product }: ProductImageProps) => {
         </DialogActions>
       </Dialog>
 
-      {/* Media Library Modal */}
       <MediaLibrary
         open={mediaLibraryOpen}
         onClose={() => setMediaLibraryOpen(false)}

@@ -1,4 +1,3 @@
-// Otomatik Image Hostname Yönetimi
 class ImageHostnameManager {
   private static instance: ImageHostnameManager;
   private allowedHostnames: Set<string> = new Set();
@@ -7,7 +6,6 @@ class ImageHostnameManager {
   private isInitialized = false;
 
   private constructor() {
-    // SSR sırasında çalışmaması için kontrol
     if (typeof window !== 'undefined') {
       this.initialize();
     }
@@ -53,7 +51,6 @@ class ImageHostnameManager {
   }
 
   private setupImageErrorListener(): void {
-    // Image error'larını dinle
     if (typeof document !== 'undefined') {
       document.addEventListener('error', (event) => {
         const target = event.target as HTMLImageElement;
@@ -69,7 +66,6 @@ class ImageHostnameManager {
       const url = new URL(src);
       const hostname = url.hostname;
       
-      // Eğer hostname zaten izin verilenlerde yoksa ve işlenmemişse
       if (!this.allowedHostnames.has(hostname) && !this.pendingHostnames.has(hostname)) {
         this.pendingHostnames.add(hostname);
         this.processNewHostname(hostname);
@@ -85,7 +81,6 @@ class ImageHostnameManager {
     this.isProcessing = true;
     
     try {
-      // Yeni hostname'i console'da göster
       console.warn(`🖼️ Yeni image hostname tespit edildi: ${hostname}`);
       console.warn(`📝 next.config.js'e eklenmesi gereken hostname:`);
       console.warn(`{
@@ -95,11 +90,9 @@ class ImageHostnameManager {
         pathname: '/**',
       }`);
       
-      // Hostname'i izin verilenler listesine ekle
       this.allowedHostnames.add(hostname);
       this.saveAllowedHostnames();
       
-      // Kullanıcıya bildir
       this.showHostnameNotification(hostname);
       
     } catch (error) {
@@ -111,7 +104,6 @@ class ImageHostnameManager {
   }
 
   private showHostnameNotification(hostname: string): void {
-    // Toast notification göster
     if (typeof window !== 'undefined' && (window as any).toast) {
       (window as any).toast.warning(
         `Yeni image hostname tespit edildi: ${hostname}. Lütfen next.config.js'e ekleyin.`,
@@ -123,34 +115,28 @@ class ImageHostnameManager {
     }
   }
 
-  // Client-side'da initialize etmek için
   public ensureInitialized(): void {
     if (typeof window !== 'undefined' && !this.isInitialized) {
       this.initialize();
     }
   }
 
-  // Manuel olarak hostname ekle
   addHostname(hostname: string): void {
     this.allowedHostnames.add(hostname);
     this.saveAllowedHostnames();
   }
 
-  // İzin verilen hostname'leri getir
   getAllowedHostnames(): string[] {
     return [...this.allowedHostnames];
   }
 
-  // Hostname izin verilen mi kontrol et
   isAllowed(hostname: string): boolean {
     return this.allowedHostnames.has(hostname);
   }
 }
 
-// Global instance
 export const imageHostnameManager = ImageHostnameManager.getInstance();
 
-// Window'a ekle (development için)
 if (typeof window !== 'undefined') {
   (window as any).imageHostnameManager = imageHostnameManager;
 } 

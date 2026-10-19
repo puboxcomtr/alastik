@@ -72,7 +72,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                 return;
             }
 
-            // Lastikte toast yerine montaj noktası seçimine yönlendirilir (ürün detayıyla aynı davranış)
             const isTire = getProductType(product) === 'LASTIK';
             const added = await addToCart(product._key, 1, isTire ? '' : undefined);
             if (added && isTire) { router.push(ROUTES.MONTAGE_SELECT); return; }
@@ -91,16 +90,13 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
     const productUrl = getProductUrl(product);
     const price = getProductPrice(product);
     const priceHidden = isPriceHidden(product);
-    // Kategori ayarı "haric" olan ürünlerde fiyat KDV hariç gösterilir (sepetle aynı biçim)
     const gosterim = getDisplayPrice(product, price);
     const originalPrice = getProductOriginalPrice(product);
     const hasDiscount = hasProductDiscount(product);
-    // İndirim yüzdesi: üstü çizili (liste) fiyat ile satış fiyatı arasındaki fark, tam sayıya yuvarlanır
     const discountPercent = hasDiscount && originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
     const imageUrl = getProductImage(product, theme.defaultCatalogImage);
     const stockCode = getProductStockCode(product);
 
-    // Marka bilgisini context'ten al
     const brandName = product.diaData.marka || '';
     const brandInfo = getBrand(brandName);
     const brandLogo = brandInfo?.logo && !brandInfo.logo.includes('gorsel-bulunamadi')
@@ -112,8 +108,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
         <Container className="p-0">
             <div className="product-card animate-underline hover-effect-opacity bg-body rounded">
                 <div className="position-relative">
-                    {/* Sağ üst: üründe açık Ürün Butonları (panelden yönetilir). Favori butonu kartta
-                        gizlidir; yalnız Favorilerim sayfasında (showFavourite) gösterilir. */}
                     <div className="position-absolute top-0 end-0 z-2 mt-2 me-2 mt-lg-3 me-lg-3">
                         <div className="d-flex flex-column align-items-end gap-1">
                             {showFavourite && (
@@ -130,17 +124,14 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                                     )}
                                 </button>
                             )}
-                            {/* Masaüstü: etiketler sağ üstte */}
                             <ProductButtons buttons={product.customData?.buttons} className="align-items-end d-none d-lg-flex" />
                         </div>
                     </div>
-                    {/* Mobil: kart dar olduğu için etiketler görselin sol altında (mevsim ikonuyla çakışmaz) */}
                     <ProductButtons
                         buttons={product.customData?.buttons}
                         className="position-absolute bottom-0 start-0 z-2 mb-2 ms-1 mw-100 align-items-start d-lg-none"
                     />
 
-                    {/* Product Image */}
                     <Link className="d-block rounded-top overflow-hidden p-0 p-md-3" href={productUrl}>
                         {season && (
                             <span
@@ -169,7 +160,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                 <div className="min-w-0 px-1 pb-2 px-sm-3 pb-sm-3">
                     <div className="product__information d-flex justify-content-between gap-2 mb-2">
                         <div>
-                            {/* Marka gizle açıksa kartta marka gösterilmez */}
                             {product.customData?.hideBrand !== true && (brandLogo ? (
                                 <Image
                                     src={brandLogo}
@@ -182,7 +172,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                                 <span className="fw-medium fs-sm">{brandInfo?.name || brandName || 'Marka Yok'}</span>
                             ))}
                         </div>
-                        {/* Rating */}
                         <div className='d-flex align-items-center'>
                             {product.customData?.reviewStats?.reviewCount > 0 && (
                                 <>
@@ -200,7 +189,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                     </div>
 
                     <h3 className="pb-1 mb-2">
-                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
                         {(product as any)?.hideStockCode !== true && (
                             <span className="fs-xs fw-bold text-body-secondary lh-sm mb-1 d-block">
                                 {stockCode}
@@ -223,7 +211,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                             </span>
                         ) : <span />}
                         <span className="fs-xs fw-semibold">
-                            {/* Stok gizle açıksa kartta stok adedi gösterilmez */}
                             {product.customData?.hideStock !== true && (product.diaData?.gercek_stok > 0 ? (
                                 <>
                                     <span className="text-body-secondary">Stok:</span>
@@ -243,7 +230,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                                 <span className="text-body-secondary fs-semibold fs-xs">Adet Fiyatı</span>
                             </div>
                         )}
-                        {/* İndirim oranı: fiyat satırının ÜSTÜNDE, zeminsiz; geri planda kalsın diye ince ve soluk */}
                         {!priceHidden && discountPercent > 0 && (
                             <div className="d-flex justify-content-end mb-1">
                                 <span className="fw-normal fs-xs text-body-tertiary lh-1">%{discountPercent} İndirim Fırsatı</span>
@@ -268,7 +254,6 @@ export default function ProductCard({ product, showFavourite = false }: ProductC
                             </span>
                         </div>
                     </div>
-
 
                     {product.diaData?.gercek_stok > 0 ? (
                         <Tooltip title="Sepete Ekle">

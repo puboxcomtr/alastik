@@ -7,8 +7,6 @@ import { SITES, resolveSiteFromHost } from '@/src/config/siteConfig';
 export default function GlobalLoadingOverlay() {
     const pathname = usePathname();
     const [show, setShow] = useState(true);
-    // Spinner rengi aktif sitenin marka renginden (alastik kırmızı #f2223b, LJA sarı).
-    // b2b'de --brand-primary tanımlı olduğu için o değer önceliklidir.
     const [brandColor, setBrandColor] = useState('#f2223b');
 
     useEffect(() => {
@@ -16,26 +14,20 @@ export default function GlobalLoadingOverlay() {
             const slug = resolveSiteFromHost(window.location.host);
             const c = SITES[slug]?.theme?.primary;
             if (c) setBrandColor(c);
-        } catch { /* host çözülemezse varsayılan kalır */ }
+        } catch {  }
     }, []);
 
     useEffect(() => {
-        // Sayfa değiştiğinde tekrar göster
         setShow(true);
 
-        // Sayfa tamamen yüklendiğinde gizle
         const hideOverlay = () => {
-            // Küçük gecikme ile fade-out
             setTimeout(() => setShow(false), 300);
         };
 
         if (document.readyState === 'complete') {
-            // Sayfa zaten yüklendiyse hemen gizle
             hideOverlay();
         } else {
-            // Yüklenme tamamlanınca gizle
             window.addEventListener('load', hideOverlay, { once: true });
-            // Güvenlik için maksimum 5 saniyede zorla kapat
             const safetyTimer = setTimeout(hideOverlay, 5000);
             return () => {
                 window.removeEventListener('load', hideOverlay);

@@ -1,7 +1,5 @@
 'use client'
 
-// Üye/Cari detay sayfası: aktif site b2b ise cari düzenleme ekranı, değilse üye detayı.
-// Aktif site localStorage'da tutulduğu için seçim istemcide yapılır.
 import { useEffect, useState } from 'react'
 
 import CircularProgress from '@mui/material/CircularProgress'

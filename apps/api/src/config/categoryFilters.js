@@ -1,5 +1,3 @@
-// Kategori sayfası sol filtre bölümleri. Admin "Kategori Düzenle → Gizlenecek Filtreler" seçenekleri
-// buradan gelir; vitrin sidebar'ı aynı anahtarlarla ilgili bölümü gizler (siteContent.<site>.hiddenFilters).
 const CATEGORY_FILTERS = [
   { key: 'brand', label: 'Marka' },
   { key: 'price', label: 'Fiyat' },

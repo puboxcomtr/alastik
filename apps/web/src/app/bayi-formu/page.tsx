@@ -1,5 +1,3 @@
-// Montaj Noktası (Bayi) Bilgi ve Fiyat Formu — /bayi-formu (yalnızca lastikjantavm.com)
-// Tek ortak link; giriş yok. Arama motorlarına kapalıdır (noindex) ve site haritasında yer almaz.
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';

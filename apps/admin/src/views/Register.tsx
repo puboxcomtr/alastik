@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import IconButton from '@mui/material/IconButton'
@@ -17,29 +14,22 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Divider from '@mui/material/Divider'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { Mode } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
-// Component Imports
 import Logo from '@components/layout/shared/Logo'
 import Illustrations from '@components/Illustrations'
 
-// Hook Imports
 import { useImageVariant } from '@/@core/hooks/useImageVariant'
 import { useSettings } from '@/@core/hooks/useSettings'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
 const RegisterV2 = ({ mode }: { mode: Mode }) => {
-  // States
   const [isPasswordShown, setIsPasswordShown] = useState(false)
 
-  // Vars
   const darkImg = '/images/pages/auth-v2-mask-dark.png'
   const lightImg = '/images/pages/auth-v2-mask-light.png'
   const darkIllustration = '/images/illustrations/auth/v2-register-dark.png'
@@ -47,7 +37,6 @@ const RegisterV2 = ({ mode }: { mode: Mode }) => {
   const borderedDarkIllustration = '/images/illustrations/auth/v2-register-dark-border.png'
   const borderedLightIllustration = '/images/illustrations/auth/v2-register-light-border.png'
 
-  // Hooks
   const { lang: locale } = useParams()
   const authBackground = useImageVariant(mode, lightImg, darkImg)
   const { settings } = useSettings()

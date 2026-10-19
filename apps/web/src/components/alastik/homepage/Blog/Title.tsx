@@ -1,7 +1,6 @@
 import React from 'react';
 import Link from 'next/link'
 
-/* Components */
 import { Col } from 'react-bootstrap';
 
 export default function Title() {

@@ -1,20 +1,16 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
-// Type Imports
 import type { SeoPeriodKey, SeoPeriodSelection } from './types'
 import { SEO_PERIOD_LABELS } from './types'
 
-// Util Imports
 import { toDateInputValue } from '@/views/analytics/reports/format'
 
 const PRESET_KEYS: Exclude<SeoPeriodKey, 'custom'>[] = ['yesterday', '7d', '30d', '6m', '1y']
@@ -27,7 +23,6 @@ type SeoPeriodSelectorProps = {
     action?: React.ReactNode
 }
 
-// Search Console verisi 2-3 gün geriden geldiği için "Dün" yerine "Son Veri Günü" kullanılır
 const SeoPeriodSelector = ({ title, subtitle, value, onChange, action }: SeoPeriodSelectorProps) => {
     const now = new Date()
     const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())

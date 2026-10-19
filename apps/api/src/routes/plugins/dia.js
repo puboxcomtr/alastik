@@ -5,7 +5,6 @@ const workerConfig = require('../../config/worker.config');
 const DiaStockService = require('../../services/plugins/dia/DiaStockService');
 const diaStockService = new DiaStockService();
 
-// Bull Queue bağlantıları (sadece client olarak)
 const fullSyncQueue = new Queue('dia-full-sync', {
     redis: workerConfig.redis
 });
@@ -13,10 +12,6 @@ const fullSyncQueue = new Queue('dia-full-sync', {
 const lightSyncQueue = new Queue('dia-light-sync', {
     redis: workerConfig.redis
 });
-
-// ============================================
-// SYNC DURUM
-// ============================================
 
 router.get('/sync/status', async (req, res) => {
     try {
@@ -57,13 +52,8 @@ router.get('/sync/status', async (req, res) => {
     }
 });
 
-// ============================================
-// MANUEL FULL SYNC (Worker üzerinden)
-// ============================================
-
 router.post('/full-sync', async (req, res) => {
     try {
-        // Zaten çalışan full sync var mı kontrol et
         const activeCounts = await fullSyncQueue.getJobCounts();
         if (activeCounts.active > 0 || activeCounts.waiting > 0) {
             return res.json({ success: false, message: 'Senkronizasyon zaten devam ediyor' });
@@ -85,10 +75,6 @@ router.post('/full-sync', async (req, res) => {
         res.status(500).json({ success: false, message: 'Full sync başlatılamadı', error: error.message });
     }
 });
-
-// ============================================
-// MANUEL LIGHT SYNC (Worker üzerinden)
-// ============================================
 
 router.post('/light-sync', async (req, res) => {
     try {
@@ -113,10 +99,6 @@ router.post('/light-sync', async (req, res) => {
         res.status(500).json({ success: false, message: 'Light sync başlatılamadı', error: error.message });
     }
 });
-
-// ============================================
-// MANUEL LIGHT SYNC - FİYAT ve STOK
-// ============================================
 
 router.post('/sync/prices-and-stocks', async (req, res) => {
     try {
@@ -145,10 +127,6 @@ router.post('/sync/prices-and-stocks', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
-// ============================================
-// JOB DURUM TAKİBİ (Polling için)
-// ============================================
 
 router.get('/sync/job/:jobId', async (req, res) => {
     try {
@@ -217,7 +195,6 @@ router.get('/sync/job/:jobId/progress', async (req, res) => {
     }
 });
 
-// GET /api/dia/sync/stats - Senkronizasyon istatistikleri
 router.get('/sync/stats', async (req, res) => {
     try {
         const WebProduct = require('../../models/web/catalog/WebProduct');

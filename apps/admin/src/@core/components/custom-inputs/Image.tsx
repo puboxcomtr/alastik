@@ -1,12 +1,9 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Checkbox from '@mui/material/Checkbox'
 import { styled } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { CustomInputImgProps } from './types'
 
 const Root = styled('div', {
@@ -52,10 +49,8 @@ const Image = styled('img', {
 })
 
 const CustomCheckboxImg = (props: CustomInputImgProps) => {
-  // Props
   const { type, data, name, selected, gridProps, handleChange, color = 'primary' } = props
 
-  // Vars
   const { alt, img, value } = data
 
   const renderComponent = () => {

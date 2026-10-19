@@ -9,32 +9,26 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Google OAuth geçici olarak devre dışı (client yok)
-
-// Rate limiting for auth endpoints - Test süreçleri için yüksek limit
 const authLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 20, // limit each IP to 20 requests per minute (artırıldı)
+  windowMs: 1 * 60 * 1000,
+  max: 20,
   message: 'Çok fazla giriş denemesi, lütfen daha sonra tekrar deneyin.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Development'ta auth rate limiting'i gevşet
     return process.env.NODE_ENV === 'development';
   }
 });
 
 const registerLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 registration attempts per minute (artırıldı)
+  windowMs: 1 * 60 * 1000,
+  max: 10,
   message: 'Çok fazla kayıt denemesi, lütfen daha sonra tekrar deneyin.',
   skip: (req) => {
-    // Development'ta register rate limiting'i gevşet
     return process.env.NODE_ENV === 'development';
   }
 });
 
-// User Registration
 router.post('/register', registerLimiter, async (req, res) => {
   try {
     const requestId = `auth_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
@@ -59,7 +53,6 @@ router.post('/register', registerLimiter, async (req, res) => {
       marketingConsent
     } = req.body;
 
-    // Validation: email veya phone zorunlu; şifre zorunlu
     if ((!email && !phone) || !password || !username) {
       console.warn('🟨 [AUTH][REGISTER][VALIDATION]', { requestId, reason: 'missing_required_fields' });
       return res.status(400).json({
@@ -76,11 +69,9 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    // Input normalize
     const normalizedEmail = email ? email.toLowerCase().trim() : undefined;
     const normalizedPhone = phone ? phone.replace(/\D/g, '') : undefined;
 
-    // Uniqueness checks
     if (normalizedEmail) {
       const existingByEmail = await User.findOne({ email: normalizedEmail });
       if (existingByEmail) {
@@ -97,11 +88,9 @@ router.post('/register', registerLimiter, async (req, res) => {
       }
     }
 
-    // Create user
     const user = new User({
       username,
       ...(normalizedEmail ? { email: normalizedEmail } : {}),
-      // Şifreyi burada hash'lemiyoruz; model pre-save hook'u hash'liyor
       password: password,
       profile: {
         firstName: username,
@@ -128,11 +117,9 @@ router.post('/register', registerLimiter, async (req, res) => {
     await user.save();
     console.info('✅ [AUTH][REGISTER][SAVED]', { requestId, userId: user._id });
 
-    // Create default cart and wishlist
     await Cart.getOrCreateForUser(user._id);
     await Wishlist.getOrCreateDefault(user._id);
 
-    // Generate JWT tokens
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -171,7 +158,6 @@ router.post('/register', registerLimiter, async (req, res) => {
   }
 });
 
-  // User Login
   router.post('/login', authLimiter, async (req, res) => {
   try {
     const requestId = `auth_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
@@ -193,7 +179,6 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    // Find user by email or phone (telefon için normalize et)
     const normalizedPhone = identifier.replace(/\D/g, '');
     const user = await User.findOne({
       $or: [
@@ -209,7 +194,6 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    // Check account status
     if (user.accountStatus !== 'active') {
       console.warn('🟨 [AUTH][LOGIN][INACTIVE]', { requestId, userId: user._id, status: user.accountStatus });
       return res.status(401).json({
@@ -218,7 +202,6 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       console.warn('🟨 [AUTH][LOGIN][WRONG_PASSWORD]', { requestId, userId: user._id });
@@ -228,11 +211,9 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    // Update last active
     user.lastActiveAt = new Date();
     await user.save();
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -273,7 +254,6 @@ router.post('/register', registerLimiter, async (req, res) => {
   }
 });
 
-// Get User Profile
 router.get('/profile', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -314,7 +294,6 @@ router.get('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Update User Profile
 router.put('/profile', authenticate, async (req, res) => {
   try {
     const updates = req.body;
@@ -335,7 +314,6 @@ router.put('/profile', authenticate, async (req, res) => {
       });
     }
 
-    // Update allowed fields
     Object.keys(updates).forEach(key => {
       if (allowedUpdates.includes(key)) {
         if (key.includes('.')) {
@@ -365,7 +343,6 @@ router.put('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Favorites
 router.get('/favorites', authenticate, async (req, res) => {
   const user = await User.findById(req.userId).populate('favorites.productId');
   if (!user) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı' });
@@ -387,7 +364,6 @@ router.delete('/favorites/:productId', authenticate, async (req, res) => {
   res.json({ success: true });
 });
 
-// Garage
 router.get('/garage', authenticate, async (req, res) => {
   const user = await User.findById(req.userId);
   if (!user) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı' });
@@ -415,7 +391,6 @@ router.delete('/garage/:index', authenticate, async (req, res) => {
   res.json({ success: true });
 });
 
-// Add Address
 router.post('/addresses', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -431,7 +406,6 @@ router.post('/addresses', authenticate, async (req, res) => {
       createdAt: new Date()
     };
 
-    // İlk adres ise default yap
     if (user.addresses.length === 0) {
       newAddress.isDefault = true;
     }
@@ -454,7 +428,6 @@ router.post('/addresses', authenticate, async (req, res) => {
   }
 });
 
-// Update Address
 router.put('/addresses/:addressId', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -491,7 +464,6 @@ router.put('/addresses/:addressId', authenticate, async (req, res) => {
   }
 });
 
-// Delete Address
 router.delete('/addresses/:addressId', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -510,7 +482,6 @@ router.delete('/addresses/:addressId', authenticate, async (req, res) => {
       });
     }
 
-    // Default adresi siliyorsa, başka bir adresi default yap
     if (address.isDefault && user.addresses.length > 1) {
       const otherAddress = user.addresses.find(addr => 
         addr._id.toString() !== req.params.addressId
@@ -537,7 +508,6 @@ router.delete('/addresses/:addressId', authenticate, async (req, res) => {
   }
 });
 
-// Change Password
 router.put('/change-password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -564,7 +534,6 @@ router.put('/change-password', authenticate, async (req, res) => {
       });
     }
 
-    // Check current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({
@@ -573,7 +542,6 @@ router.put('/change-password', authenticate, async (req, res) => {
       });
     }
 
-    // Hash new password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     
@@ -593,7 +561,6 @@ router.put('/change-password', authenticate, async (req, res) => {
   }
 });
 
-// Get User Orders
 router.get('/orders', authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
@@ -632,13 +599,10 @@ router.get('/orders', authenticate, async (req, res) => {
   }
 });
 
-// Google OAuth Login
-// Google OAuth geçici olarak devre dışı
 router.post('/google', authLimiter, async (req, res) => {
   return res.status(503).json({ success: false, message: 'Google ile giriş geçici olarak devre dışı' });
 });
 
-// Logout (client-side token removal)
 router.post('/logout', authenticate, (req, res) => {
   res.json({
     success: true,
@@ -646,7 +610,6 @@ router.post('/logout', authenticate, (req, res) => {
   });
 });
 
-// DEV-ONLY: Şifre sıfırlama (sadece development ortamında)
 router.post('/dev/reset-password', async (req, res) => {
   try {
     if (process.env.NODE_ENV === 'production') {
@@ -668,7 +631,7 @@ router.post('/dev/reset-password', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı' });
     }
 
-    user.password = newPassword; // pre-save hook hashleyecek
+    user.password = newPassword;
     await user.save();
     console.info('✅ [AUTH][DEV_RESET_PASSWORD][DONE]', { requestId, userId: user._id });
     return res.json({ success: true, message: 'Şifre güncellendi' });
@@ -678,7 +641,6 @@ router.post('/dev/reset-password', async (req, res) => {
   }
 });
 
-// Access token yenileme (refresh token ile)
 router.post('/refresh-token', async (req, res) => {
   try {
     const { refreshToken } = req.body || {};

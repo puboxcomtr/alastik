@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-/**
- * Panelde görsel önizlemeleri bu uç üzerinden geçer.
- * Medya adresleri artık GÖRELİ geldiği için (/urun/..., /uploads/...) burada
- * medya sunucusuyla birleştirilir; yalnızca kendi sunucularımıza istek yapılır.
- */
 const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://127.0.0.1:3082'
 
 const IZINLI_HOSTLAR = [
@@ -27,7 +22,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'URL parametresi gerekli' }, { status: 400 })
     }
 
-    // Göreli adres medya sunucusuyla tamamlanır
     const hedef = imageUrl.startsWith('http')
         ? imageUrl
         : `${MEDIA_BASE}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`
@@ -40,7 +34,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Geçersiz görsel adresi' }, { status: 400 })
     }
 
-    // Açık yönlendirme/SSRF olmaması için yalnızca kendi medya sunucularımız
     if (!IZINLI_HOSTLAR.includes(hedefUrl.host)) {
         return NextResponse.json({ error: 'Bu adres için görsel getirilemez' }, { status: 400 })
     }

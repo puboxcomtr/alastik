@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 
-/** Parola değiştirme formu — mevcut parola sunucuda doğrulanır. */
 export function PasswordForm({ sinif = "form-grid" }: { sinif?: string }) {
   const [mevcut, setMevcut] = useState("");
   const [yeni, setYeni] = useState("");

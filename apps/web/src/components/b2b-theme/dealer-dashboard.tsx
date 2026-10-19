@@ -1,7 +1,4 @@
 'use client';
-// Anasayfa içeriği:
-//  - Plasiyer bayi SEÇMEDEN devam ettiyse (plasiyerToken var, authToken yok) → PlasiyerOverview.
-//  - Bayi (veya plasiyer bir bayi adına giriş yaptı = authToken) → bayi dashboard'ı (bakiye, satış, vade).
 import { useEffect, useState } from 'react';
 import { AccountSummaryCards } from '@components/b2b-theme/account-summary-cards';
 import { PurchaseChart } from '@components/b2b-theme/purchase-chart';
@@ -15,7 +12,6 @@ export function DealerDashboard() {
     useEffect(() => {
         const authToken = localStorage.getItem('authToken');
         const plasiyerToken = localStorage.getItem('plasiyerToken');
-        // Bayi seçmeden devam eden plasiyer: authToken yok, plasiyerToken var
         setMod(!authToken && plasiyerToken ? 'plasiyer' : 'bayi');
     }, []);
 

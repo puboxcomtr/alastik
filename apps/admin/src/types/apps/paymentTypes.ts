@@ -1,4 +1,3 @@
-// Provider Field Tipi
 export type ProviderField = {
   key: string
   label: string
@@ -8,7 +7,6 @@ export type ProviderField = {
   help?: string
 }
 
-// Provider Template Tipi
 export type ProviderTemplate = {
   code: string
   name: string
@@ -19,21 +17,17 @@ export type ProviderTemplate = {
   icon?: string
 }
 
-// Provider Koleksiyonu
 export type ProvidersData = {
   credit_card: Record<string, ProviderTemplate>
   bank_transfer: Record<string, ProviderTemplate>
 }
 
-// Payment Method Tipleri
 export type PaymentType = 'credit_card' | 'bank_transfer'
 
 export type PaymentMode = 'test' | 'live'
 
-// API Credentials
 export type ApiCredentials = Record<string, string>
 
-// Credit Card Settings
 export type CreditCardSettings = {
   mode: PaymentMode
   has3DSecure: boolean
@@ -43,12 +37,10 @@ export type CreditCardSettings = {
   supportedCurrency?: string[]
   commission?: number
   installmentRates?: number[]
-  // Bu yöntem, sitesi için Tek Çekim / Taksitli rolünü üstlenir mi (site başına maks 1)
   tekCekimAktif?: boolean
   taksitAktif?: boolean
 }
 
-// Bank Transfer Settings
 export type BankTransferSettings = {
   accountName?: string
   accountNumber?: string
@@ -60,7 +52,6 @@ export type BankTransferSettings = {
   processingTime?: string
 }
 
-// Provider Meta
 export type ProviderMeta = {
   displayName: string
   logo: string
@@ -68,7 +59,6 @@ export type ProviderMeta = {
   icon?: string
 }
 
-// Stats
 export type PaymentStats = {
   totalOrders: number
   totalAmount: number
@@ -76,7 +66,6 @@ export type PaymentStats = {
   failedOrders: number
 }
 
-// Payment Method (tam model)
 export type PaymentMethod = {
   _id: string
   type: PaymentType
@@ -96,7 +85,6 @@ export type PaymentMethod = {
   deletedAt?: string
 }
 
-// Form Data
 export type PaymentMethodFormData = {
   name: string
   description: string
@@ -105,7 +93,6 @@ export type PaymentMethodFormData = {
   mode: PaymentMode
 }
 
-// API Response Types
 export type PaymentMethodResponse = {
   success: boolean
   message?: string
@@ -136,7 +123,6 @@ export type ProvidersResponse = {
   data: ProvidersData
 }
 
-// Payment Type Config (frontend için)
 export type PaymentTypeConfig = {
   value: PaymentType
   label: string

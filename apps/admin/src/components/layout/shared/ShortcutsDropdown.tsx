@@ -1,14 +1,11 @@
 'use client'
 
-// React Imports
 import { useCallback, useRef, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import IconButton from '@mui/material/IconButton'
 import Popper from '@mui/material/Popper'
 import Fade from '@mui/material/Fade'
@@ -21,23 +18,17 @@ import Grid from '@mui/material/Grid2'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
 
-// Third Party Components
 import classnames from 'classnames'
 import PerfectScrollbar from 'react-perfect-scrollbar'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
 export type ShortcutsType = {
@@ -60,14 +51,11 @@ const ScrollWrapper = ({ children, hidden }: { children: ReactNode; hidden: bool
 }
 
 const ShortcutsDropdown = ({ shortcuts }: { shortcuts: ShortcutsType[] }) => {
-  // States
   const [open, setOpen] = useState(false)
 
-  // Refs
   const anchorRef = useRef<HTMLButtonElement>(null)
   const ref = useRef<HTMLDivElement | null>(null)
 
-  // Hooks
   const hidden = useMediaQuery((theme: Theme) => theme.breakpoints.down('lg'))
   const isSmallScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const { settings } = useSettings()
@@ -84,7 +72,6 @@ const ShortcutsDropdown = ({ shortcuts }: { shortcuts: ShortcutsType[] }) => {
   useEffect(() => {
     const adjustPopoverHeight = () => {
       if (ref.current) {
-        // Calculate available height, subtracting any fixed UI elements' height as necessary
         const availableHeight = window.innerHeight - 100
 
         ref.current.style.height = `${Math.min(availableHeight, 550)}px`

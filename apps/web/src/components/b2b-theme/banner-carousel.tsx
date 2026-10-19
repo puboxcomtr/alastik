@@ -13,21 +13,12 @@ export type BannerImage = {
 const DONME_SURESI_MS = 6000;
 const SURUKLEME_ESIGI_PX = 50;
 
-/**
- * Anasayfa banner alanı. Tek banner varsa sabit durur; birden fazlaysa
- * kendiliğinden döner, altta noktalarla gezinilir ve fare/parmakla sağa-sola
- * sürüklenerek kaydırılabilir. Bannerlar admin panelinden yönetilir.
- */
 export function BannerCarousel({ banners, aspectRatio, displayDuration }: { banners: BannerImage[]; aspectRatio?: number; displayDuration?: number }) {
-  // Slayt bekleme süresi Slider Yönetimi'nden (displayDuration); yoksa varsayılan
   const donmeSuresi = displayDuration && displayDuration > 0 ? displayDuration : DONME_SURESI_MS;
   const [sira, setSira] = useState(0);
   const adet = banners.length;
 
-  // Sürükleme takibi: basılan nokta + anlık kayma (görsel geri bildirim için)
   const baslangicX = useRef<number | null>(null);
-  // Son sürükleme mesafesi: tıklama koruması için state yerine ref tutulur
-  // (pointerup'ta state sıfırlanınca click olayı korumayı atlıyordu)
   const sonMesafe = useRef(0);
   const [kaymaPx, setKaymaPx] = useState(0);
   const surukleniyor = baslangicX.current !== null;
@@ -65,14 +56,11 @@ export function BannerCarousel({ banners, aspectRatio, displayDuration }: { bann
     baslangicX.current = null;
     setKaymaPx(0);
     if (Math.abs(fark) < SURUKLEME_ESIGI_PX) return;
-    // Sola sürükleme → sonraki, sağa sürükleme → önceki
     setSira((s) => (fark < 0 ? (s + 1) % adet : (s - 1 + adet) % adet));
   };
 
-  // Çerçeve oranı: Slider Yönetimi'ndeki genişlik/yükseklik; yoksa geniş varsayılan (şeridin yüksekliği için)
   const oran = aspectRatio && aspectRatio > 0 ? aspectRatio : 1200 / 300;
 
-  // Tek slaytın görseli (link'li/link'siz)
   const slaytGorsel = (b: BannerImage) => {
     const img = (
       // eslint-disable-next-line @next/next/no-img-element
@@ -101,14 +89,12 @@ export function BannerCarousel({ banners, aspectRatio, displayDuration }: { bann
         onPointerUp={(e) => suruklemeBitir(e.clientX)}
         onPointerLeave={(e) => suruklemeBitir(e.clientX)}
         onClickCapture={(e) => {
-          // Sürükleme sonrası tıklama linki tetiklemesin (8px üstü hareket = sürükleme)
           if (Math.abs(sonMesafe.current) > 8) {
             e.preventDefault();
             e.stopPropagation();
           }
         }}
       >
-        {/* Yatay şerit: slaytlar yan yana; sira değişince translateX ile kayar (biri çıkarken diğeri gelir) */}
         <div
           className="banner-track"
           style={{

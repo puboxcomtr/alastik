@@ -1,18 +1,14 @@
 'use client'
-// React Imports
 import { useEffect, useMemo, useState } from 'react'
 import { getSiteUrl } from '@/utils/activeSite'
 
-// Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Tooltip from '@mui/material/Tooltip'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -23,7 +19,6 @@ import TablePagination from '@mui/material/TablePagination'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
   createColumnHelper,
@@ -40,13 +35,9 @@ import {
 
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 
-
-// Component Imports
 import TableFilters from './TableFilters'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
-
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   const itemRank = rankItem(row.getValue(columnId), value)
@@ -68,12 +59,10 @@ const ProductListTable = () => {
   const [loading, setLoading] = useState(true)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
 
-  // Pagination state
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(100)
   const [totalCount, setTotalCount] = useState(0)
 
-  // Hooks
   const { lang: locale } = useParams()
 
   useEffect(() => {

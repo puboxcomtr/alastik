@@ -4,7 +4,6 @@ const Address = require('../models/admin/user/Address');
 const { authenticate: auth } = require('../middleware/auth');
 const winston = require('winston');
 
-// Logger yapılandırması
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -18,7 +17,6 @@ const logger = winston.createLogger({
   ]
 });
 
-// Tüm adresleri getir
 router.get('/', auth, async (req, res) => {
   try {
     const addresses = await Address.find({ 
@@ -41,7 +39,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Tek bir adresi getir
 router.get('/:id', auth, async (req, res) => {
   try {
     const address = await Address.findOne({
@@ -70,7 +67,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Yeni adres ekle
 router.post('/', auth, async (req, res) => {
   try {
     const addressData = {
@@ -78,7 +74,6 @@ router.post('/', auth, async (req, res) => {
       userId: req.userId
     };
 
-    // Maksimum adres sayısı kontrolü
     const addressCount = await Address.countDocuments({ 
       userId: req.userId,
       isActive: true 
@@ -120,7 +115,6 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Adresi güncelle
 router.put('/:id', auth, async (req, res) => {
   try {
     const address = await Address.findOne({
@@ -136,10 +130,8 @@ router.put('/:id', auth, async (req, res) => {
       });
     }
 
-    // userId değiştirilemez
     delete req.body.userId;
     
-    // isDefault true yapılıyorsa diğerlerini false yap
     if (req.body.isDefault === true) {
       await Address.updateMany(
         { userId: req.userId, _id: { $ne: req.params.id } },
@@ -176,7 +168,6 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Adresi sil (soft delete)
 router.delete('/:id', auth, async (req, res) => {
   try {
     const address = await Address.findOne({
@@ -192,11 +183,9 @@ router.delete('/:id', auth, async (req, res) => {
       });
     }
 
-    // Soft delete
     address.isActive = false;
     await address.save();
 
-    // Eğer silinen adres default ise, başka bir adresi default yap
     if (address.isDefault) {
       const newDefaultAddress = await Address.findOne({
         userId: req.userId,
@@ -224,7 +213,6 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Adresi varsayılan yap
 router.post('/:id/set-default', auth, async (req, res) => {
   try {
     const address = await Address.findOne({
@@ -240,13 +228,11 @@ router.post('/:id/set-default', auth, async (req, res) => {
       });
     }
 
-    // Diğer adreslerin default durumunu kaldır
     await Address.updateMany(
       { userId: req.userId, _id: { $ne: req.params.id } },
       { isDefault: false }
     );
 
-    // Bu adresi default yap
     address.isDefault = true;
     await address.save();
 
@@ -266,8 +252,6 @@ router.post('/:id/set-default', auth, async (req, res) => {
   }
 });
 
-// Türkiye il ve ilçe listesi (basit örnek)
-// Basit bellek içi cache
 const cityCache = { data: null, expiresAt: 0 };
 
 router.get('/data/cities', async (req, res) => {
@@ -277,7 +261,6 @@ router.get('/data/cities', async (req, res) => {
       return res.json({ success: true, data: cityCache.data });
     }
 
-    // TürkiyeAPI üzerinden 81 il
     const response = await fetch('https://turkiyeapi.dev/api/v1/provinces', { timeout: 10000 }).catch(() => null);
     if (!response || !response.ok) throw new Error('Upstream provinces fetch failed');
     const payload = await response.json();
@@ -287,18 +270,15 @@ router.get('/data/cities', async (req, res) => {
       id: String(p?.plateNumber ?? p?.id ?? '').toString().padStart(2, '0'),
       name: p?.name || p?.province || 'Bilinmeyen'
     }))
-    // Geçersizleri ayıkla ve isme göre sırala
     .filter(c => c.id && c.name)
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
-    // 6 saat cache
     cityCache.data = cities;
     cityCache.expiresAt = now + 6 * 60 * 60 * 1000;
 
     return res.json({ success: true, data: cities });
   } catch (err) {
     logger.warn('Cities upstream error, using fallback list', { error: String(err) });
-    // Minimal fallback (en azından UI boş kalmasın)
     return res.json({
       success: true,
       data: [
@@ -310,7 +290,7 @@ router.get('/data/cities', async (req, res) => {
   }
 });
 
-const districtCache = new Map(); // key: cityId(string), value: { data, expiresAt }
+const districtCache = new Map();
 
 router.get('/data/districts/:cityId', async (req, res) => {
   const cityId = String(req.params.cityId || '').padStart(2, '0');
@@ -321,7 +301,6 @@ router.get('/data/districts/:cityId', async (req, res) => {
       return res.json({ success: true, data: cached.data });
     }
 
-    // TürkiyeAPI tek il detayı (ilçeler dahil)
     const response = await fetch(`https://turkiyeapi.dev/api/v1/provinces/${parseInt(cityId, 10)}`, { timeout: 10000 }).catch(() => null);
     if (!response || !response.ok) throw new Error('Upstream province detail fetch failed');
     const payload = await response.json();

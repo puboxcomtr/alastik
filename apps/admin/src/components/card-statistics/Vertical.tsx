@@ -1,17 +1,13 @@
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Types Imports
 import type { CardStatsVerticalProps } from '@/types/pages/widgetTypes'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 import OptionMenu from '@core/components/option-menu'
 
 const CardStatVertical = (props: CardStatsVerticalProps) => {
-  // Props
   const { title, stats, avatarIcon, avatarColor, trendNumber, trend, avatarSkin, avatarSize, moreOptions } =
     props
 

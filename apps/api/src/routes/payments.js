@@ -20,15 +20,11 @@ function verifySignature(req) {
   try {
     const signature = req.get('x-signature') || req.get('X-Signature');
     if (!signature) return false;
-    // Not: En doğru doğrulama, gateway tarafından gönderilen ham body üstünden HMAC hesaplamaktır.
-    // Express JSON parser ham gövdeyi tutmadığı için, burada JSON.stringify(req.body) üzerinden hesaplama yapıyoruz.
-    // Gateway ile mutabık kalın: İmzayı JSON.stringify(req.body) + shared secret ile HMAC-SHA256 olarak üretin.
     const bodyStr = safeJsonStringify(req.body);
     const expected = crypto
       .createHmac('sha256', NETAHSILAT_SHARED_SECRET)
       .update(bodyStr)
       .digest('hex');
-    // Zaman sabit karşılaştırma
     const a = Buffer.from(signature, 'utf8');
     const b = Buffer.from(expected, 'utf8');
     return a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -48,8 +44,6 @@ function mapStatusToOrder(status) {
   return { paymentStatus: 'failed', orderStatus: 'payment_failed' };
 }
 
-// Netahsilat Webhook (Gateway -> Backend)
-// POST /api/payments/netahsilat/webhook
 router.post('/netahsilat/webhook', async (req, res) => {
   const requestId = `wh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   try {
@@ -60,8 +54,8 @@ router.post('/netahsilat/webhook', async (req, res) => {
     }
 
     const {
-      orderReference, // sipariş referansı (bizde orderNumber)
-      status, // SUCCESS | FAIL | CANCEL | PENDING
+      orderReference,
+      status,
       amount,
       currency,
       transactionId,
@@ -81,14 +75,12 @@ router.post('/netahsilat/webhook', async (req, res) => {
       return res.status(404).json({ success: false, message: 'order not found' });
     }
 
-    // Idempotency: aynı SUCCESS tekrar gelirse no-op
     if (order.paymentStatus === 'paid' && (status || '').toUpperCase() === 'SUCCESS') {
       return res.json({ success: true, message: 'already processed' });
     }
 
     const mapped = mapStatusToOrder(status);
 
-    // Order ödeme alanlarını güncelle
     order.payment = order.payment || {};
     order.payment.method = 'credit_card_3d';
     order.paymentStatus = mapped.paymentStatus;
@@ -118,7 +110,6 @@ router.post('/netahsilat/webhook', async (req, res) => {
 
     await order.save();
 
-    // Ödeme başarıysa: kullanıcının sepetini temizle (opsiyonel, biz daha önce yaptık)
     if (mapped.paymentStatus === 'paid') {
       try {
         const user = await User.findById(order.userId);
@@ -139,8 +130,6 @@ router.post('/netahsilat/webhook', async (req, res) => {
   }
 });
 
-// POS listesi (Gateway -> Backend proxy)
-// GET /api/payments/netahsilat/pos
 router.get('/netahsilat/pos', async (req, res) => {
   const requestId = `pos_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   try {
@@ -154,8 +143,6 @@ router.get('/netahsilat/pos', async (req, res) => {
   }
 });
 
-// BIN'e göre POS (Gateway -> Backend proxy)
-// GET /api/payments/netahsilat/pos/bin/:bin
 router.get('/netahsilat/pos/bin/:bin', async (req, res) => {
   const requestId = `bin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const { bin } = req.params || {};
@@ -184,9 +171,6 @@ router.get('/netahsilat/return', async (req, res) => {
     return res.redirect(302, `${FRONTEND_URL}/payment-result?status=FAIL`);
   }
 });
-// 3D başlat (Backend -> Gateway)
-// POST /api/payments/netahsilat/3d-init
-// body: { orderId, cardNumber, cardHolderName, expireMonth, expireYear, cvc, installment }
 router.post('/netahsilat/3d-init', async (req, res) => {
   const requestId = `init_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   try {
@@ -200,7 +184,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
     const bin = (cardNumber || '').replace(/\s/g, '').slice(0, 6);
     logger.info ? logger.info('Netahsilat 3D init received', { requestId, orderId, bin, cardMasked: masked(cardNumber), expireMonth, expireYear, installment, vPosId }) : null;
 
-    // Kullanıcı bilgileri (e-posta/telefon)
     let customerEmail = undefined;
     let customerPhone = undefined;
     try {
@@ -209,8 +192,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
       customerPhone = user?.profile?.phone || undefined;
     } catch { }
 
-    // Kart tarihi normalize: Ay sayı, Yıl 4 haneli
-    // IP ve tarih normalizasyonu
     const forwardedFor = (req.headers['x-forwarded-for'] && String(req.headers['x-forwarded-for']).split(',')[0].trim()) || null;
     const clientIp = forwardedFor || req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || '127.0.0.1';
 
@@ -219,14 +200,12 @@ router.post('/netahsilat/3d-init', async (req, res) => {
     const expYear2 = expYearRaw.length === 2 ? expYearRaw : expYearRaw.slice(-2);
     const expYear4 = expYearRaw.length === 4 ? expYearRaw : `20${expYear2}`;
 
-    // BIN'den uygun POS seçimi (vPosId gelmediyse)
     let selectedVPosId = vPosId || null;
     if (!selectedVPosId && bin && bin.length === 6) {
       try {
         const binRes = await axios.get(`${GATEWAY_BASE_URL}/api/netahsilat/pos/bin/${bin}`, { timeout: 10000 });
         const binData = binRes.data || {};
         const list = binData.virtualPoses || binData.VirtualPoses || binData.poses || binData.Poses || [];
-        // İzinli taksitleri hem explicit installments hem de comissionRates üzerinden topla
         const extractInstallments = (p) => {
           const out = new Set();
           const inst = p.installments || p.Installments || [];
@@ -240,7 +219,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
             if (v) out.add(Number(v));
           }
           if (out.size === 0) {
-            // hiçbir bilgi yoksa en az tek çekim varsay
             out.add(1);
           }
           return Array.from(out);
@@ -258,38 +236,30 @@ router.post('/netahsilat/3d-init', async (req, res) => {
       }
     }
 
-    // Gateway ile maksimum uyumluluk için hem camelCase hem PascalCase alanları gönder
     const payload = {
-      // Kimlik/Referans
       orderReference: order.orderNumber,
       OrderReference: order.orderNumber,
       clientReferenceCode: order.orderNumber,
       ClientReferenceCode: order.orderNumber,
-      // Tutar/Para birimi
       amount: order.pricing?.total,
       Amount: order.pricing?.total,
       currency: order.pricing?.currency || 'TRY',
       Currency: order.pricing?.currency || 'TRY',
-      // 3D
       use3d: true,
       Use3D: true,
       use3DSecure: true,
       Use3DSecure: true,
       installment,
       Installment: installment,
-      // POS seçimi (opsiyonel)
       ...(selectedVPosId ? { vPosId: selectedVPosId, virtualPosId: selectedVPosId, VirtualPosId: selectedVPosId } : {}),
-      // Kart bilgileri
       card: { number: cardNumber, holder: cardHolderName, expireMonth: expMonthStr, expireYear: expYear4, cvc },
       creditCard: { cardNumber, cardHolderName, expMonth: expMonthStr, expYear: expYear2, cvcNumber: cvc },
       CreditCard: { CardNumber: cardNumber, CardHolderName: cardHolderName, ExpMonth: expMonthStr, ExpYear: expYear4, CvcNumber: cvc },
-      // Müşteri bilgileri (opsiyonel)
       email: customerEmail,
       Email: customerEmail,
       description: `Order ${order.orderNumber}`,
       Description: `Order ${order.orderNumber}`,
       customer: { email: customerEmail, phone: customerPhone },
-      // IP ve dönüşler
       customerIp: clientIp,
       CustomerIp: clientIp,
 
@@ -302,7 +272,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
     const gwKeys = typeof gwData === 'object' && gwData ? Object.keys(gwData) : [];
     logger.info ? logger.info('Netahsilat 3D init gateway response', { requestId, status: gwRes.status, keys: gwKeys, sample: { isSuccess: gwData.isSuccess ?? gwData.IsSuccess, bankMessage: gwData.bankMessage ?? gwData.BankMessage, internalMessage: gwData.internalMessage ?? gwData.InternalMessage } }) : null;
 
-    // Önce 3D yönlendirme/HTML var mı diye kontrol et (bazı gateway'lerde isSuccess=false iken 3D başlatılır)
     let htmlContent = gwData.ThreeDSHtmlContent || gwData.threeDSHtmlContent || gwData.ThreeDSHtmlContent;
     let redirectUrl = gwData.ThreeDUrl || gwData.threeDUrl || gwData.redirectUrl || gwData.ThreeDUrl;
     if (htmlContent) {
@@ -312,13 +281,11 @@ router.post('/netahsilat/3d-init', async (req, res) => {
       return res.json({ success: true, data: { redirectUrl, gatewayRef: gwData.ReferenceCode || gwData.referenceCode || gwData.reference } });
     }
 
-    // Başarısızsa mesajı değerlendir ve fallback dene
     if (gwRes.status >= 400 || gwData.success === false || gwData.isSuccess === false || gwData.IsSuccess === false) {
       const msg = gwData.message || gwData.bankMessage || gwData.internalMessage || gwData.Message || gwData.BankMessage || gwData.InternalMessage || 'Gateway hatası';
       const msgLower = String(msg).toLowerCase();
       const needInstallmentFallback = msgLower.includes('taksit') || msgLower.includes('installment');
       if (needInstallmentFallback) {
-        // Tek çekim ve POS belirtmeden yeniden dene
         const fallback = { ...payload, installment: 1, Installment: 1 };
         delete fallback.vPosId; delete fallback.virtualPosId; delete fallback.VirtualPosId;
         logger.info ? logger.info('Netahsilat 3D init fallback (single installment, no vPos)', { requestId }) : null;
@@ -326,7 +293,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
         const fbData = fbRes.data || {};
         const fbKeys = typeof fbData === 'object' && fbData ? Object.keys(fbData) : [];
 
-        // Önce fallback yanıtında yönlendirme/HTML var mı?
         htmlContent = fbData.ThreeDSHtmlContent || fbData.threeDSHtmlContent || fbData.ThreeDSHtmlContent;
         redirectUrl = fbData.ThreeDUrl || fbData.threeDUrl || fbData.redirectUrl || fbData.ThreeDUrl;
         if (htmlContent) {
@@ -343,7 +309,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
         return res.status(400).json({ success: false, message: fbMsg });
       }
 
-      // Geliştirme ortamında ham yanıtı da dön (debug için)
       if (process.env.NODE_ENV !== 'production') {
         return res.status(400).json({ success: false, message: msg, details: { keys: gwKeys, raw: gwData } });
       }
@@ -356,7 +321,6 @@ router.post('/netahsilat/3d-init', async (req, res) => {
       const html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"/><title>3D Secure</title></head><body onload=\"document.forms[0].submit()\"><form method=\"POST\" action=\"${gwData.formAction}\">${inputs}<noscript><button type=\"submit\">Devam</button></noscript></form></body></html>`;
       return res.json({ success: true, data: { threeDSHtmlContent: html, gatewayRef: gwData.reference } });
     }
-    // Beklenen alanlar yoksa hata döndür
     return res.status(400).json({ success: false, message: 'Gateway 3D HTML veya yönlendirme bilgisi döndürmedi' });
   } catch (error) {
     logger.error('Netahsilat 3D init error', { requestId, message: error.message, stack: error.stack, status: error.response?.status, data: error.response?.data });
@@ -365,5 +329,4 @@ router.post('/netahsilat/3d-init', async (req, res) => {
 });
 
 module.exports = router;
-
 

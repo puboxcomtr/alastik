@@ -1,12 +1,9 @@
 "use client";
-// Giriş ekranı duyuru popup'ı — görsel panelden (Tema Ayarları) gelir.
-// Her tarayıcıda günde bir kez gösterilir: gösterildiği gün kaydedilir, aynı gün tekrar açılmaz.
 import { useEffect, useState } from "react";
 import { CloseIcon } from "./icons";
 
 const SEEN_STORAGE_KEY = "b2b-login-popup-seen";
 
-/** Ziyaretçinin yerel tarihine göre bugünün anahtarı (YYYY-AA-GG) */
 function todayKey() {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -22,7 +19,6 @@ export function LoginPopup({ image }: { image: string }) {
       if (localStorage.getItem(SEEN_STORAGE_KEY) === today) return;
       localStorage.setItem(SEEN_STORAGE_KEY, today);
     } catch {
-      // Depolama kapalıysa (gizli sekme vb.) popup yine gösterilir
     }
     setOpen(true);
   }, []);

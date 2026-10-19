@@ -1,19 +1,15 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 
-// Type Imports
 import type { CountItem } from './types'
 
-// Util Imports
 import { formatNumber, formatPercent, toNumber } from './format'
 
-// Component Imports
 import EmptyState from './EmptyState'
 
 type BreakdownListProps = {
@@ -23,7 +19,6 @@ type BreakdownListProps = {
     limit?: number
 }
 
-// Etiket + sayı + ince ilerleme çubuğu listesi (cihaz, konum, yönlendiren, açılış sayfası)
 const BreakdownList = ({ title, items, note, limit = 8 }: BreakdownListProps) => {
     const rows = (items ?? [])
         .map(item => ({ label: item.label || 'Bilinmiyor', count: toNumber(item.count) }))

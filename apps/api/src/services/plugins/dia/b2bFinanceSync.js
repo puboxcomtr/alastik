@@ -1,14 +1,3 @@
-/**
- * b2b cari FİNANSAL senkron — satış faturalarından türetilen ciro/adet grafiği,
- * FIFO vade kalemleri ve vadesi geçen borcu DIA'dan Mongo'ya (WebMember.diaCari)
- * yazar. Günde bir çalışır (worker, diaLock içinde).
- *
- * Uçlar (/alim-adet, /vade-takvimi, /cari-ozet overdue) canlı DIA yerine bu veriyi
- * okur → DIA tek-oturum çakışması / gecikmesi / kesintisi kullanıcıya yansımaz.
- *
- * Verimlilik: faturalar `_key_scf_carikart IN (100 cari)` ile chunk'lı, son 3 dönem
- * (her yıl ayrı dönem) taranır — cari başına ayrı çağrı yerine ~yüzlerce çağrı.
- */
 const { DiaOrderService } = require('./DiaOrderService');
 const WebMember = require('../../../models/web/user/WebMember');
 const B2bCariEkstre = require('../../../models/web/user/B2bCariEkstre');
@@ -17,13 +6,11 @@ const { fetchMovements, computeEkstre } = require('./b2bCariEkstre');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * @param {object} [options]
- * @param {string} [options.memberId] verilirse yalnız o cari senkronlanır (admin "Cariyi Güncelle")
- */
-async function syncB2bFinance(logger = console, { memberId } = {}) {
+async function syncB2bFinance(logger = console, { memberId, onlyMissing } = {}) {
     const query = { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null } };
     if (memberId) query._id = memberId;
+    // Panelden cari çekiminde yalnız finansı hiç alınmamış (yeni) cariler; tamamı gece senkronunda.
+    if (onlyMissing) query['diaCari.financeSyncedAt'] = { $exists: false };
     const members = await WebMember.find(
         query,
         { diaCustomerKey: 1, 'diaCari.bakiyeKurus': 1 }
@@ -34,7 +21,6 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
     await svc.init().catch(() => {});
     await svc.login();
 
-    // Her yıl AYRI dönemdir (dönem 3=2026, 2=2025, 1=2024). Cari _key sabit.
     const currentDonem = svc.donemKodu || 1;
     const donemler = [];
     for (let d = currentDonem; d > currentDonem - 3 && d >= 1; d--) donemler.push(d);
@@ -50,10 +36,6 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
         if (!keys.length) continue;
         chunks++;
 
-        // Bu chunk'ın tüm dönemlerdeki satış faturaları, cari _key'e göre grupla.
-        // Canlı b2b uçları aynı DIA kullanıcısıyla oturum çalabildiği için her
-        // request başarısızlıkta re-login + yeniden dene (3 deneme); ancak 3 deneme
-        // de düşerse chunk'ı atla (eski DB verisini koru).
         const rowsByCari = {};
         let chunkOk = true;
         for (const donem of donemler) {
@@ -75,14 +57,13 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
                                 offset
                             }
                         });
-                        // DIA `code` string ("200") dönebilir — string karşılaştır.
                         if (res && res.code != null && String(res.code) !== '200') {
                             throw new Error('DIA code ' + res.code + ' ' + (res.faultstring || res.msg || ''));
                         }
                         ok = true;
                     } catch (e) {
                         logger.warn?.(`[b2bFinanceSync] chunk#${chunks} dönem${donem} deneme${attempt} hata: ${e.message}`);
-                        try { svc.sessionId = null; await svc.login(); } catch (_) { /* yut */ }
+                        try { svc.sessionId = null; await svc.login(); } catch (_) {  }
                         await sleep(600);
                     }
                 }
@@ -99,10 +80,8 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
             if (!chunkOk) break;
         }
 
-        // DIA hatası olduysa eski veriyi koru (üzerine sıfır yazma)
         if (!chunkOk) { skipped++; await sleep(500); continue; }
 
-        // Son 12 ay sınırı (YYYY-MM-DD) — fatura sayımı için
         const birYilOnce = new Date();
         birYilOnce.setFullYear(birYilOnce.getFullYear() - 1);
         const sinir = birYilOnce.toISOString().slice(0, 10);
@@ -111,7 +90,6 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
         for (const m of batch) {
             const rows = rowsByCari[String(m.diaCustomerKey)] || [];
             const stats = computeStats(rows);
-            // Son 12 aydaki satış faturası sayısı (tarih+fiş no ile tekilleştirilir)
             const invoiceCount12m = new Set(
                 rows.filter((r) => String(r.tarih || '').slice(0, 10) >= sinir)
                     .map((r) => `${String(r.tarih || '').slice(0, 10)}|${r.fisno || r.belgeno || ''}`)
@@ -133,8 +111,6 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
             catch (e) { logger.warn?.('[b2bFinanceSync] bulkWrite hatası: ' + e.message); }
         }
 
-        // Cari EKSTRE (hesap hareketleri) — cari başına (params._key, IN yok) → ayrı koleksiyon.
-        // Hata olursa o cariyi atla (eski ekstre korunur).
         const ekstreOps = [];
         for (const m of batch) {
             let raw;
@@ -142,7 +118,7 @@ async function syncB2bFinance(logger = console, { memberId } = {}) {
                 raw = await fetchMovements(svc, m.diaCustomerKey);
             } catch (e) {
                 ekstreSkipped++;
-                continue; // bu cari atla
+                continue;
             }
             const openBalanceTL = typeof m.diaCari?.bakiyeKurus === 'number' ? m.diaCari.bakiyeKurus / 100 : undefined;
             const ekstre = computeEkstre(raw, openBalanceTL);

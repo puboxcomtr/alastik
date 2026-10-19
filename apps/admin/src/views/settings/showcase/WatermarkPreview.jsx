@@ -8,7 +8,6 @@ import CircularProgress from '@mui/material/CircularProgress'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Panel seçenekleri -> önizleme kutusundaki yerleşim
 const KONUM_STILLERI = {
   'sol-ust': { top: 0, left: 0 },
   'sag-ust': { top: 0, right: 0 },
@@ -25,14 +24,11 @@ const WatermarkPreview = ({ formData }) => {
   const [loading, setLoading] = useState(true)
   const [logoRatio, setLogoRatio] = useState(null)
 
-  // Örnek ürün görseli: görseli olan ilk üründen alınır (sabit adres kullanılmaz).
-  // Panel alan adı /urun/ görsellerini filigransız sunar; önizleme çift basmaz.
   useEffect(() => {
     const loadSample = async () => {
       try {
         const response = await fetchAPI(`${API_ENDPOINTS.products.list()}?has_image=yes&limit=10`)
 
-        // Yer tutucu görselli kayıtlar elenir; gerçek ürün fotoğrafı seçilir
         const urun = (response?.data || []).find(
           (kayit) => kayit?.image && !kayit.image.includes('gorsel-bulunamadi')
         )
@@ -42,7 +38,6 @@ const WatermarkPreview = ({ formData }) => {
           setSampleName(urun.name || '')
         }
       } catch {
-        // Örnek görsel alınamazsa önizleme boş bırakılır
       } finally {
         setLoading(false)
       }
@@ -77,8 +72,6 @@ const WatermarkPreview = ({ formData }) => {
     )
   }
 
-  // Sunucudaki ölçek hesabının aynısı: döndürülen filigranın kapladığı kutu,
-  // logonun en-boy oranına bağlıdır ve ürün görselini aşamaz.
   const aci = Number(formData.watermarkRotation) || 0
   const radyan = (Math.abs(aci) * Math.PI) / 180
   const kosinus = Math.abs(Math.cos(radyan))
@@ -90,7 +83,6 @@ const WatermarkPreview = ({ formData }) => {
   const yukseklikIcin = KUTU_BOYUTU / (sinus + oran * kosinus)
   const logoGenislik = Math.min(genislikIcin, yukseklikIcin)
 
-  // Döndürülmüş halin kapladığı alan: sarmalayıcı bu ölçüde konumlandırılır
   const kutuGenislik = logoGenislik * (kosinus + oran * sinus)
   const kutuYukseklik = logoGenislik * (sinus + oran * kosinus)
 

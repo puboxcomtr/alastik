@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import type { ReactNode } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -17,14 +15,11 @@ import Button from '@mui/material/Button'
 import OutlinedInput from '@mui/material/OutlinedInput'
 import InputAdornment from '@mui/material/InputAdornment'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 import CustomIconButton from '@core/components/mui/IconButton'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
 type ReferEarnProps = {
@@ -38,7 +33,6 @@ type Options = {
   subtitle?: string
 }
 
-// Vars
 const options: Options[] = [
   {
     icon: 'ri-send-plane-2-line',

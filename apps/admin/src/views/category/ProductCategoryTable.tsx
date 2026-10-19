@@ -1,16 +1,12 @@
 'use client'
 import { useRouter, useParams } from 'next/navigation'
 
-// React Imports
 import { useEffect, useMemo, useState } from 'react'
 
-// Types Imports
 import type { CategoryType } from '@/types/apps/productTypes'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -25,7 +21,6 @@ import Tooltip from '@mui/material/Tooltip'
 
 import type { TextFieldProps } from '@mui/material/TextField'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
@@ -43,8 +38,6 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -105,7 +98,6 @@ const ProductCategoryTable = () => {
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // Pagination state
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(50)
   const [totalCount, setTotalCount] = useState(0)

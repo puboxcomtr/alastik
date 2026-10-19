@@ -43,9 +43,6 @@ const KURAL_TIPLERI: { value: KuralTipi; label: string }[] = [
     { value: 'sabit_azalis', label: 'Sabit Azalış (TL)' }
 ]
 
-// Site başına kullanılabilir platformlar. Vitrin fiyatını süren platform
-// api/src/config/sites.js (xmlPricePlatform) ile senkron tutulur:
-// alastik → 'alastik' platformu, lastikjantavm → 'b2c' platformu (site adıyla etiketlenir).
 const SITE_PLATFORMLAR: Record<string, { value: Platform; label: string }[]> = {
     alastik: [
         { value: 'b2b', label: 'B2B' },
@@ -77,7 +74,6 @@ const bosKural = (platform: Platform): Omit<FiyatKurali, 'id'> => ({
 const XmlPricingTable = () => {
     const router = useRouter()
 
-    // Aktif siteye göre platform seçenekleri (LJA'da b2c "LastikJantAVM" olarak görünür)
     const platformlar = buildPlatformlar(getActiveSite())
 
     const [loading, setLoading] = useState(true)
@@ -184,7 +180,6 @@ const XmlPricingTable = () => {
             </Card>
         )
     }
-    // Sitenin platform listesinde olmayan (başka amaçla saklanan) kurallar bu sayfada gösterilmez
     const gorunurKurallar = kurallar.filter(k => platformlar.some(p => p.value === k.platform))
     const filteredKurallar = filterPlatform ? gorunurKurallar.filter(k => k.platform === filterPlatform) : gorunurKurallar
     return (

@@ -1,11 +1,9 @@
-// Temel marka bilgisi (ProductCard için)
 export interface Brand {
     name: string;
     logo: string | null;
     logoAlt?: string;
 }
 
-// Anasayfa marka listesi için
 export interface HomepageBrand {
     _id: string;
     name: string;
@@ -16,7 +14,6 @@ export interface HomepageBrand {
     productCount: number;
 }
 
-// Marka detay sayfası için
 export interface BrandDetail {
     _id: string;
     name: string;
@@ -51,7 +48,6 @@ export interface BrandDetail {
     } | null;
 }
 
-// Response tipleri
 export interface BrandResponse {
     success: boolean;
     data: Brand | null;

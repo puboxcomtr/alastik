@@ -1,4 +1,3 @@
-// apps/api/src/services/plugins/wheelsize/WheelSizeTireService.js
 const axios = require('axios');
 const cheerio = require('cheerio');
 const WebProduct = require('../../../../models/web/catalog/WebProduct');
@@ -6,18 +5,6 @@ const WebWheelSize = require('../../../../models/web/catalog/WebWheelSize');
 const Blog = require('../../../../models/admin/content/Blog');
 const TranslateService = require('../../translate/TranslateService');
 
-/**
- * WheelSize TiresVote Entegrasyon Servisi
- * matchPatterns() → WebProduct'ları WheelSize desenleriyle eşleştirir
- * syncMatchedPatterns() → Eşleşen pattern'leri WebWheelSize collection'a kaydeder
- * syncAllPatternRatings() → Tüm pending pattern'ların rating verilerini sırayla çeker
- * syncPatternRatings() → Tek pattern için rating verisini DB'ye kaydeder
- * fetchPatternRatings() → WheelSize API'den pattern detaylarını çeker
- * fetchPatternBuyNotBuy() → Pattern buy/not buy verilerini API'den getirir
- * fetchPatternMaterials() → Pattern materials (videolar ve article'lar) API'den getirir
- * saveMaterialsToBlogs() → Article/benchmark içeriklerini scrape edip blogs collection'a kaydeder
- * fetchArticleContent() → Article sayfasından içeriği web scraping ile çeker ve temizler
- */
 class WheelSizeTireService {
     constructor() {
         this.apiKey = process.env.WHEEL_SIZE_API_KEY;
@@ -27,9 +14,6 @@ class WheelSizeTireService {
             throw new Error('WHEEL_SIZE_API_KEY bulunamadi!');
         }
     }
-    /**
-     * Desen adını normalize eder (küçük harf, boşluk temizleme, özel karakter silme)
-    */
     normalizePattern(pattern) {
         if (!pattern) return '';
         return pattern
@@ -38,9 +22,6 @@ class WheelSizeTireService {
             .replace(/\s+/g, ' ')
             .replace(/[^\w\s]/g, '');
     }
-    /**
-     * WheelSize API'den tüm marka ve desenlerini çeker
-    */
     async getTiresVotePatterns() {
         try {
             const brandsResponse = await axios.get(`${this.baseURL}/tires/catalog/`, {
@@ -76,9 +57,6 @@ class WheelSizeTireService {
             throw error;
         }
     }
-    /**
-     * WebProduct'ları WheelSize desenleriyle eşleştirir ve WebWheelSize collection'a kaydeder
-     */
     async matchPatterns() {
         try {
             const wheelsizePatterns = await this.getTiresVotePatterns();
@@ -146,9 +124,6 @@ class WheelSizeTireService {
             throw error;
         }
     }
-    /**
-     * Eşleşen ürünleri pattern bazlı gruplara ayırıp WebWheelSize collection'a kaydeder
-     */
     async syncMatchedPatterns(matchedResults) {
         try {
             const patternMap = new Map();
@@ -197,9 +172,6 @@ class WheelSizeTireService {
             throw error;
         }
     }
-    /**
-     * Tüm pending pattern'ların rating verilerini sırayla çeker ve kaydeder
-     */
     async syncAllPatternRatings() {
         const patterns = await WebWheelSize.find({ syncStatus: 'pending' });
 
@@ -210,9 +182,6 @@ class WheelSizeTireService {
             } catch (error) { }
         }
     }
-    /**
-    * Pattern yorum detaylarını API'den getirir
-    */
     async fetchPatternRatings(brandSlug, patternSlug) {
         const response = await axios.get(
             `${this.baseURL}/tires/catalog/${brandSlug}/${patternSlug}/`,
@@ -224,9 +193,6 @@ class WheelSizeTireService {
 
         return response.data;
     }
-    /**
-     * Pattern rating verilerini DB'ye kaydeder
-     */
     async syncPatternRatings(patternSlug, brandSlug) {
         const data = await this.fetchPatternRatings(brandSlug, patternSlug);
         const rating = data.data.rating;
@@ -316,9 +282,6 @@ class WheelSizeTireService {
             }
         );
     }
-    /**
-     * Pattern buy/not buy verilerini API'den getirir
-     */
     async fetchPatternBuyNotBuy(brandSlug, patternSlug) {
         const response = await axios.get(
             `${this.baseURL}/tires/catalog/${brandSlug}/${patternSlug}/bnb/`,
@@ -329,9 +292,6 @@ class WheelSizeTireService {
         );
         return response.data;
     }
-    /**
-     * Pattern materials (videolar) API'den getirir
-     */
     async fetchPatternMaterials(brandSlug, patternSlug) {
         const response = await axios.get(
             `${this.baseURL}/tires/catalog/${brandSlug}/${patternSlug}/materials/`,
@@ -342,9 +302,6 @@ class WheelSizeTireService {
         );
         return response.data;
     }
-    /**
-     * Wheelsize Lastik Test Sonuçları Blogs'a kaydeder
-     */
     async saveMaterialsToBlogs(materialsData, patternSlug) {
         if (!materialsData || !materialsData.length) return;
         const articles = materialsData.filter(item => item.type === 'article');

@@ -174,7 +174,6 @@ export default function Settings() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 8 }} container spacing={3}>
 
-                        {/* Genel Ayarlar */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -230,7 +229,6 @@ export default function Settings() {
                             </Card>
                         </Grid>
 
-                        {/* Fiyat Ayarları */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -279,7 +277,6 @@ export default function Settings() {
                             </Card>
                         </Grid>
 
-                        {/* Ürün Filtresi */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -348,7 +345,6 @@ export default function Settings() {
                             </Card>
                         </Grid>
 
-                        {/* Alan Eşleştirmeleri */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -409,7 +405,6 @@ export default function Settings() {
                             </Card>
                         </Grid>
 
-                        {/* Kargo Ayarları */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardHeader
@@ -459,7 +454,6 @@ export default function Settings() {
 
                     </Grid>
 
-                    {/* Sağ Kolon */}
                     <Grid size={{ xs: 4 }} container spacing={5}>
                         <Grid size={{ xs: 12 }}>
                             <Card className="mb-5">

@@ -1,14 +1,11 @@
 'use client'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import IconButton from '@mui/material/IconButton'
 
-// Type Imports
 import type { PricingPlanType } from '@/types/pages/pricingTypes'
 
-// Component Imports
 import Pricing from '@components/pricing'
 
 type PricingProps = {

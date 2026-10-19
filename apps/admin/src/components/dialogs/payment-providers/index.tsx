@@ -1,6 +1,5 @@
 'use client'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -9,7 +8,6 @@ import Typography from '@mui/material/Typography'
 import Avatar from '@mui/material/Avatar'
 import { useColorScheme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
 type PaymentProvidersProps = {
@@ -29,7 +27,6 @@ type CardList = {
   providerName: string
 }
 
-// Vars
 const cardList: CardList[] = [
   {
     images: [
@@ -194,7 +191,6 @@ const cardList: CardList[] = [
 ]
 
 const PaymentProviders = ({ open, setOpen }: PaymentProvidersProps) => {
-  // Hooks
   const { mode } = useColorScheme()
 
   return (

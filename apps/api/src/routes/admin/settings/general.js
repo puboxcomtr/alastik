@@ -3,11 +3,9 @@ const router = express.Router();
 const WebSettings = require('../../../models/web/settings/WebSettings');
 const MediaService = require('../../../services/web/MediaService');
 
-// Görsel alanları (Tanımlar > Görseller) — yalnızca bu anahtarlar yüklenebilir
 const IMAGE_FIELDS = ['mailLogo', 'favicon'];
 const uploadGeneralImage = MediaService.createUploader('general', 'image');
 
-// GET /api/admin/settings/general - Ayarları getir
 router.get('/', async (req, res) => {
     try {
         const settings = await WebSettings.getSettings(req.site);
@@ -27,15 +25,12 @@ router.get('/', async (req, res) => {
     }
 });
 
-// PUT /api/admin/settings/general - Ayarları güncelle
 router.put('/', async (req, res) => {
     try {
         const updateData = req.body;
 
-        // Mevcut settings'i al veya oluştur
         let settings = await WebSettings.getSettings(req.site);
 
-        // Her kategoriyi güncelle
         if (updateData.companyInfo) {
             settings.companyInfo = {
                 ...settings.companyInfo,
@@ -50,7 +45,6 @@ router.put('/', async (req, res) => {
             };
         }
 
-        // Servis noktaları liste olduğu için birleştirilmez, doğrudan değiştirilir
         if (updateData.serviceInfo) {
             settings.serviceInfo = {
                 ...(settings.serviceInfo ? settings.serviceInfo.toObject?.() || settings.serviceInfo : {}),
@@ -72,7 +66,6 @@ router.put('/', async (req, res) => {
             };
         }
 
-        // Görseller: yalnızca tanımlı alanlar, dosya yükleme ayrı uçta (/upload)
         if (updateData.images) {
             const current = settings.images?.toObject?.() || settings.images || {};
             const incoming = {};
@@ -100,7 +93,6 @@ router.put('/', async (req, res) => {
     }
 });
 
-// POST /api/admin/settings/general/upload - Görsel yükle (body.type: mailLogo | favicon)
 router.post('/upload', uploadGeneralImage, async (req, res) => {
     try {
         const { type } = req.body;
@@ -120,7 +112,6 @@ router.post('/upload', uploadGeneralImage, async (req, res) => {
         settings.images = { ...(settings.images?.toObject?.() || settings.images || {}), [type]: newUrl };
         await settings.save();
 
-        // Eski dosyayı temizle (başka kayıt kullanmıyorsa — site başına ayrı dosya yüklenir)
         if (oldUrl && oldUrl !== newUrl && oldUrl.startsWith('/general/')) {
             MediaService.deleteFile(oldUrl);
         }
@@ -132,7 +123,6 @@ router.post('/upload', uploadGeneralImage, async (req, res) => {
     }
 });
 
-// DELETE /api/admin/settings/general/image/:type - Görseli kaldır
 router.delete('/image/:type', async (req, res) => {
     try {
         const { type } = req.params;

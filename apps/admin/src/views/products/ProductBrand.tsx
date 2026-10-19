@@ -1,15 +1,11 @@
 'use client'
 
-// React Imports
 import { useState, useEffect } from 'react'
 
-// Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
 
-// Context
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -26,17 +22,14 @@ export interface ProductBrandProps {
 }
 
 const ProductBrand = ({ product }: ProductBrandProps) => {
-  // Context hook
   const { updateField } = useProductUpdate()
 
-  // States
   const [webVisible, setWebVisible] = useState(true)
   const [hideBrand, setHideBrand] = useState(false)
   const [hideProductionDate, setHideProductionDate] = useState(false)
   const [hideStock, setHideStock] = useState(false)
   const [hideDelivery, setHideDelivery] = useState(false)
 
-  // Initialize values
   useEffect(() => {
     setWebVisible(product.webVisible ?? true)
     setHideBrand(product.hideBrand ?? false)
@@ -45,32 +38,27 @@ const ProductBrand = ({ product }: ProductBrandProps) => {
     setHideDelivery(product.hideDelivery ?? false)
   }, [product])
 
-  // Ürün durumu değişiklik handler
   const handleStatusChange = (value: string) => {
     const isVisible = value === 'Aktif'
     setWebVisible(isVisible)
     updateField('webVisible', isVisible)
   }
 
-  // Marka gizleme değişiklik handler
   const handleHideBrandChange = (checked: boolean) => {
     setHideBrand(checked)
     updateField('hideBrand', checked)
   }
 
-  // Üretim tarihi gizleme değişiklik handler
   const handleHideProductionDateChange = (checked: boolean) => {
     setHideProductionDate(checked)
     updateField('hideProductionDate', checked)
   }
 
-  // Stok gizleme değişiklik handler
   const handleHideStockChange = (checked: boolean) => {
     setHideStock(checked)
     updateField('hideStock', checked)
   }
 
-  // Kargo bilgisi gizleme değişiklik handler
   const handleHideDeliveryChange = (checked: boolean) => {
     setHideDelivery(checked)
     updateField('hideDelivery', checked)

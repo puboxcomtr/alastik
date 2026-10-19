@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -18,10 +17,8 @@ import MenuItem from '@mui/material/MenuItem'
 import InputLabel from '@mui/material/InputLabel'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Toast
 import { toast } from 'react-toastify'
 
-// API
 import { getSettings, updateSettings } from '@/utils/api/settings'
 
 const Order = () => {
@@ -210,7 +207,6 @@ const Order = () => {
                 </div>
               </FormControl>
             </Grid>
-
 
             <Grid size={{ xs: 12 }} className='flex gap-4 flex-wrap' container justifyContent='flex-end'>
               <Button

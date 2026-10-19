@@ -4,14 +4,12 @@ const { SITE_SLUGS } = require('../../../config/sites');
 const webReviewSchema = new mongoose.Schema({
     site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
 
-    // Ürün
     productKey: {
         type: String,
         required: true,
         index: true
     },
 
-    // Kullanıcı
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'WebMember',
@@ -19,13 +17,11 @@ const webReviewSchema = new mongoose.Schema({
         index: true
     },
 
-    // Sipariş Bilgisi
     orderDate: {
         type: Date,
         default: null
     },
 
-    // Değerlendirmeler
     overallRating: {
         type: Number,
         required: true,
@@ -68,7 +64,6 @@ const webReviewSchema = new mongoose.Schema({
         min: 1,
         max: 5
     },
-    // Kar Paleti Değerlendirmeleri
     snowGrip: {
         type: Number,
         min: 1,
@@ -100,14 +95,12 @@ const webReviewSchema = new mongoose.Schema({
         max: 5
     },
 
-    // İçerik
     comment: {
         type: String,
         required: true,
         minlength: 10,
         maxlength: 2000
     },
-    // Fake Yorum için
     displayName: {
         type: String,
         default: null
@@ -128,7 +121,6 @@ const webReviewSchema = new mongoose.Schema({
         min: 0
     },
 
-    // Durum
     status: {
         type: String,
         enum: ['active', 'pending', 'rejected'],
@@ -140,11 +132,9 @@ const webReviewSchema = new mongoose.Schema({
     collection: 'webreviews'
 });
 
-// Compound Index
 webReviewSchema.index({ productKey: 1, status: 1 });
 webReviewSchema.index({ userId: 1, productKey: 1 });
 
-// Virtual - Kullanıcı bilgisi populate için
 webReviewSchema.virtual('user', {
     ref: 'WebMember',
     localField: 'userId',
@@ -152,7 +142,6 @@ webReviewSchema.virtual('user', {
     justOne: true
 });
 
-// JSON çıktısında virtuals'ı dahil et
 webReviewSchema.set('toJSON', { virtuals: true });
 webReviewSchema.set('toObject', { virtuals: true });
 

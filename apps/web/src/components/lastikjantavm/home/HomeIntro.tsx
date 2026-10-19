@@ -1,8 +1,3 @@
-// LJA ana sayfası — sunucu tarafında basılan H1 + kısa tanıtım metni (server component, yalnızca lastikjantavm.com).
-// Ana sayfanın geri kalanı istemci tarafında çizildiği için arama motorlarının gördüğü HTML'de başlık ve
-// açıklayıcı metin yoktu. Burada: tek H1, iki kısa paragraf açık; devamı ve bağlantı çipleri "Devamını oku"
-// altında kapalı durur — ziyaretçi kalabalık görmez, metnin tamamı sunucu HTML'inde bulunur.
-// Bağlantılar sabittir ve yalnızca yayında olduğu doğrulanmış adreslere gider (kategori, etiket, marka, araç).
 import React from 'react';
 import Link from 'next/link';
 

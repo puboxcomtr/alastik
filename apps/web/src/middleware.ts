@@ -1,10 +1,7 @@
-// apps/web/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { resolveSiteFromHost } from './config/siteConfig';
 
-// Link yönlendirme haritası: admin panelden yönetilir, API'den 60 sn önbellekle okunur.
-// API'ye erişilemezse yönlendirme atlanır, site normal çalışmaya devam eder.
 type RedirectMap = Record<string, { t: string; c: number }>;
 const redirectCache: Record<string, { map: RedirectMap; at: number }> = {};
 const REDIRECT_TTL = 60 * 1000;
@@ -34,11 +31,9 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get('authToken')?.value;
     const url = request.nextUrl.clone();
 
-    // Host'tan aktif siteyi çöz (alastik / lastikjantavm)
     const host = request.headers.get('host');
     const site = resolveSiteFromHost(host);
 
-    // Link yönlendirmeleri (admin > Link Yönlendirme)
     if (url.pathname !== '/') {
         const normalized = url.pathname.replace(/\/+$/, '').toLowerCase() || '/';
         const map = await getRedirectMap(site);
@@ -51,7 +46,6 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Auth redirect mantığı (mevcut davranış korunur)
     if (url.pathname === '/giris-yap' && token) {
         url.pathname = '/hesabim';
         return NextResponse.redirect(url);
@@ -61,15 +55,9 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // Site bilgisini response'a ekle:
-    //  - request header (x-site): server component'ler headers() ile okur
-    //  - cookie (site): client tarafı tema için okur
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-site', site);
 
-    // B2B: bayi paneli teması kendi route ağacında yaşar (app/b2b-app) —
-    // b2b alan adından gelen sayfa istekleri görünmez şekilde oraya yönlenir.
-    // Böylece temanın global CSS'i diğer sitelere sızmaz, B2C route'ları değişmez.
     if (site === 'b2b' && !url.pathname.startsWith('/b2b-app')) {
         const rewriteUrl = request.nextUrl.clone();
         rewriteUrl.pathname = `/b2b-app${url.pathname === '/' ? '' : url.pathname}`;
@@ -88,9 +76,6 @@ export async function middleware(request: NextRequest) {
     });
     response.cookies.set('site', site, { path: '/', sameSite: 'lax' });
 
-    // Oturum kimliği (sid): API oturumu, cross-origin cookie yerine x-session-id başlığıyla sürdürülür
-    // (lastikjantavm.com -> api.alastik.com üçüncü-taraf cookie engeline takılır). Tarayıcı oturumu
-    // boyunca yaşar (maxAge yok); httpOnly değildir çünkü istemci fetch'i okuyup başlığa koyar.
     if (!request.cookies.get('sid')?.value) {
         response.cookies.set('sid', crypto.randomUUID(), { path: '/', sameSite: 'lax' });
     }
@@ -99,6 +84,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Tüm sayfalarda çalışır; statik dosyalar ve API rotaları hariç tutulur.
     matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };

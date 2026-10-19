@@ -1,23 +1,18 @@
 'use client'
 
-// MUI Imports
 import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 
-// Type Imports
 import type { Funnel } from './types'
 
-// Util Imports
 import { formatNumber, formatPercent, toNumber } from './format'
 
-// Component Imports
 import EmptyState from './EmptyState'
 
 type FunnelStepsProps = {
     funnel?: Funnel | null
 }
 
-// Dönüşüm dökümü: 4 adım, yüzde + adet + ince ilerleme çubuğu
 const FunnelSteps = ({ funnel }: FunnelStepsProps) => {
     const sessions = toNumber(funnel?.sessions)
 

@@ -57,7 +57,6 @@ const FOLDERS: Record<string, string> = {
 
 const PER_PAGE = 30
 
-// Ürün Görselleri klasöründe kategori filtresi (görsel → ürün eşlemesi API'de yapılır)
 const PRODUCT_CATEGORIES: Record<string, string> = {
     '': 'Tüm Kategoriler',
     'sifir-lastik': 'Sıfır Lastik',
@@ -69,10 +68,8 @@ const PRODUCT_CATEGORIES: Record<string, string> = {
     'hizmet': 'Hizmet',
     'eslesmeyen': 'Ürünle Eşleşmeyen'
 }
-// Arka plan temizleme: istek başına parça boyutu (model bir kez yüklenir, görsel başına ~10-20 sn)
 const BG_REMOVAL_CHUNK = 4
 
-/** Bayt değerini okunabilir biçime çevirir */
 const formatSize = (bytes: number) => {
     if (!bytes) return '-'
     if (bytes < 1024) return `${bytes} B`
@@ -103,20 +100,16 @@ const MediaGallery = () => {
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
 
-    // Detay paneli ve çoklu seçim
     const [detail, setDetail] = useState<MediaFile | null>(null)
     const [selected, setSelected] = useState<string[]>([])
     const [deleteTarget, setDeleteTarget] = useState<MediaFile[] | null>(null)
-    // Düzenlenebilir bilgiler ve tam ekran önizleme
     const [meta, setMeta] = useState({ alt: '', title: '', caption: '' })
     const [savingMeta, setSavingMeta] = useState(false)
     const [zoom, setZoom] = useState(false)
     const [dragActive, setDragActive] = useState(false)
-    // Arka plan temizleme (yapay zekâ) durumu
     const [bgConfirmOpen, setBgConfirmOpen] = useState(false)
     const [bgProgress, setBgProgress] = useState<{ done: number; total: number } | null>(null)
     const [restoring, setRestoring] = useState(false)
-    // Üzerine yazılan görsellerin tarayıcı önbelleğini kırmak için dosya bazlı sürüm damgası
     const [cacheBust, setCacheBust] = useState<Record<string, number>>({})
 
     const imageSrc = (file: MediaFile) => {
@@ -162,7 +155,6 @@ const MediaGallery = () => {
         loadFiles()
     }, [loadFiles])
 
-    // Arama kutusu: yazmayı bırakınca aranır
     useEffect(() => {
         const timer = setTimeout(() => {
             setPage(1)
@@ -196,7 +188,6 @@ const MediaGallery = () => {
             toast.success(`${list.length} dosya yüklendi`)
             setPage(1)
             setSearchInput('')
-            // Dosya işlenip diske yazılana kadar kısa bir bekleme
             setTimeout(loadFiles, 800)
         } catch (error: any) {
             toast.error(error.message || 'Dosya yüklenemedi')
@@ -218,7 +209,6 @@ const MediaGallery = () => {
                 const data = await fetchAPI(API_ENDPOINTS.media.delete(file.id), { method: 'DELETE' })
                 if (data.success) ok++
             } catch {
-                // tek dosya hatası tüm işlemi durdurmasın
             }
         }
 
@@ -232,7 +222,6 @@ const MediaGallery = () => {
         }
     }
 
-    // Detay paneli açıldığında kayıtlı bilgileri forma yükle
     useEffect(() => {
         if (detail) setMeta({ alt: detail.alt || '', title: detail.title || '', caption: detail.caption || '' })
     }, [detail])
@@ -250,7 +239,6 @@ const MediaGallery = () => {
             if (!data.success) throw new Error(data.message || 'Kaydedilemedi')
 
             toast.success('Dosya bilgileri kaydedildi')
-            // Listeyi yeniden yüklemeden yerinde güncelle
             setFiles(prev => prev.map(f => (f.id === detail.id ? { ...f, ...meta } : f)))
             setDetail(prev => (prev ? { ...prev, ...meta } : prev))
         } catch (error: any) {
@@ -297,7 +285,6 @@ const MediaGallery = () => {
         if (okCount > 0) toast.success(`${okCount} görselin arka planı temizlendi${failCount ? `, ${failCount} başarısız` : ''}`)
         else toast.error(failures[0] || 'Arka plan temizlenemedi')
         if (failCount > 0 && okCount > 0) console.warn('Arka plan temizleme hataları:', failures)
-        // Sayfa yenilenmez: seri çalışma için liste yerinde güncellenir (rozet + önizleme)
         setFiles(prev => prev.map(f => (doneIds.includes(f.id) ? { ...f, dekupe: true } : f)))
         setSelected(prev => prev.filter(id => !doneIds.includes(id)))
     }
@@ -523,7 +510,6 @@ const MediaGallery = () => {
                         </Grid>
                     </Grid>
 
-                    {/* Sürükle-bırak alanı: dosyalar buraya bırakılarak da yüklenir */}
                     <div
                         onDragOver={e => { e.preventDefault(); setDragActive(true) }}
                         onDragLeave={() => setDragActive(false)}
@@ -622,7 +608,6 @@ const MediaGallery = () => {
                 </CardContent>
             </Card>
 
-            {/* Gizli dosya seçici */}
             <input
                 ref={inputRef}
                 type='file'
@@ -632,7 +617,6 @@ const MediaGallery = () => {
                 onChange={e => e.target.files && uploadFiles(e.target.files)}
             />
 
-            {/* Detay paneli */}
             <Drawer anchor='right' open={Boolean(detail)} onClose={() => setDetail(null)}>
                 {detail && (
                     <div style={{ width: 360, padding: 20 }}>
@@ -643,7 +627,6 @@ const MediaGallery = () => {
                             </IconButton>
                         </div>
 
-                        {/* Önizleme: tıklayınca tam boy açılır */}
                         <Tooltip title='Büyütmek için tıklayın'>
                             <img
                                 src={imageSrc(detail)}
@@ -664,7 +647,6 @@ const MediaGallery = () => {
 
                         <Divider className='mbs-4 mbe-4' />
 
-                        {/* Düzenlenebilir bilgiler */}
                         <TextField
                             fullWidth
                             size='small'
@@ -741,7 +723,6 @@ const MediaGallery = () => {
                 )}
             </Drawer>
 
-            {/* Tam boy önizleme */}
             <Dialog open={zoom} onClose={() => setZoom(false)} maxWidth='lg'>
                 <DialogContent sx={{ p: 1, bgcolor: 'background.default' }}>
                     {detail && (
@@ -755,7 +736,6 @@ const MediaGallery = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Silme onayı */}
             <Dialog open={bgConfirmOpen} onClose={() => setBgConfirmOpen(false)}>
                 <DialogTitle>Arka Planı Temizle</DialogTitle>
                 <DialogContent>

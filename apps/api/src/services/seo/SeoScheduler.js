@@ -1,9 +1,3 @@
-/**
- * SEO zamanlayıcısı — API sürecinde node-cron ile çalışır (XmlSyncScheduler kalıbı).
- *  - 04:30  Search Console: her site için son 7 gün yeniden yazılır (geç kesinleşen günler düzelir)
- *  - 03:30  İçerik taraması: her site için puanlar yenilenir
- * PM2 cluster'da yalnızca 0 numaralı örnek çalıştırır; SEO_SCHEDULER=false ile kapatılır.
- */
 
 const cron = require('node-cron');
 const { SITES } = require('../../config/sites');

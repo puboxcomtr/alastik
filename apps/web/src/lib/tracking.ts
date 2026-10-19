@@ -1,8 +1,5 @@
 'use client';
 
-// dataLayer olay yardımcıları — GTM'deki dönüşüm tetikleyicileri bu olayları dinler.
-// Olaylar: purchase, sign_up, add_to_cart, begin_checkout
-
 import { ADS_CONVERSION_LABELS, type AdsConversionEvent } from '@/src/config/tracking';
 
 type DataLayerEvent = Record<string, unknown> & { event: string };
@@ -26,8 +23,6 @@ export function pushDataLayer(data: DataLayerEvent): void {
     window.dataLayer.push(data);
 }
 
-// Google Ads dönüşümü — aktif sitenin etiket haritasından (config/tracking.ts) send_to bulur.
-// Sitede o olay için etiket tanımlı değilse sessizce atlanır.
 export function fireAdsConversion(
     event: AdsConversionEvent,
     params: { value?: number; currency?: string; transaction_id?: string } = {}

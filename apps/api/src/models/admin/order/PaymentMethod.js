@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const paymentMethodSchema = new mongoose.Schema({
-    // Her site için ayrı ödeme yöntemi / banka hesabı kaydı
     site: {
         type: String,
         enum: Object.keys(SITES),
@@ -73,7 +72,6 @@ const paymentMethodSchema = new mongoose.Schema({
         mode: {
             type: String,
             enum: ['test', 'live', 'sandbox'],
-            // Yeni kayıtlar varsayılan CANLI açılır (kullanıcı kararı, 24 Ağu)
             default: 'live'
         },
         apiUrl: String,
@@ -89,8 +87,6 @@ const paymentMethodSchema = new mongoose.Schema({
             installment: Number,
             rate: Number
         }],
-        // Taksit tablosunda banka gösterimi: sağlayıcının sanal POS'u (vPosId) → görünen ad + logo adresi.
-        // Aynı görünen adı taşıyan POS'lar tabloda tek satırda birleşir. Boşsa POS adı aynen, logosuz gösterilir.
         installmentBanks: [{
             _id: false,
             vPosId: Number,

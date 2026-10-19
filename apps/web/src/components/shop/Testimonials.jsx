@@ -46,7 +46,6 @@ export default function Testimonials() {
                             <ChevronRight />
                         </IconButton>
 
-                        {/* Swiper */}
                         <Swiper
                             modules={[Navigation, Pagination]}
                             navigation={{ prevEl: '#reviewsPrev', nextEl: '#reviewsNext' }}

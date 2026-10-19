@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Components */
 import MailManagementListTable from '@views/mail/management/list/MailManagementListTable'
 
 const MailManagementList = () => {

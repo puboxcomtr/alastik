@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import classnames from 'classnames'
 
-/* MUI */
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -18,24 +17,19 @@ import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import type { TextFieldProps } from '@mui/material/TextField'
 
-/* Dialog */
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-/* Add Payment Method Drawer */
 import AddPaymentMethodDrawer from '../add/AddPaymentMethodDrawer'
 import EditPaymentMethodDrawer from '../edit/EditPaymentMethodDrawer'
 
-
-/* Toast */
 import { toast } from 'react-toastify'
 
 import { fetchAPI } from '@libs/api'
 
-/* Tanstack */
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
   createColumnHelper,
@@ -63,7 +57,6 @@ declare module '@tanstack/table-core' {
   }
 }
 
-/* Types */
 type PaymentMethodType = {
   _id: string
   type: 'credit_card' | 'bank_transfer' | 'cash_on_delivery'
@@ -154,8 +147,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [methodToEdit, setMethodToEdit] = useState<PaymentMethodType | null>(null)
 
-  // Liste, aktif site başlığıyla İSTEMCİ tarafında yüklenir (sunucu fetch'i X-Site gönderemiyordu
-  // ve sayfa hep ALastik yöntemlerini gösteriyordu)
   const loadMethods = async () => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
@@ -183,7 +174,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
       if (result.success) {
         toast.success(result.message)
 
-        // Veriyi güncelle
         setData(prevData =>
           prevData.map(item =>
             item._id === id ? { ...item, isActive: !currentStatus } : item
@@ -215,7 +205,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
         setDeleteConfirmOpen(false)
         setMethodToDelete(null)
 
-        // Veriyi güncelle
         setData(prevData => prevData.filter(item => item._id !== methodToDelete._id))
       } else {
         toast.error(result.message)
@@ -371,7 +360,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
   return (
     <>
       <Card>
-        {/* Filtreler ve Butonlar */}
         <div className='flex flex-col gap-4 p-5'>
           <div className='flex items-start justify-end flex-wrap gap-4'>
             <Button
@@ -386,7 +374,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
           </div>
         </div>
 
-        {/* Tablo */}
         <div className='overflow-x-auto'>
           <table className={tableStyles.table}>
             <thead>
@@ -436,7 +423,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
           </table>
         </div>
 
-        {/* Pagination */}
         <TablePagination
           rowsPerPageOptions={[10, 15, 25]}
           component='div'
@@ -459,7 +445,6 @@ const PaymentMethodListTable = ({ methodData }: PaymentMethodListTableProps) => 
         handleClose={() => setAddDrawerOpen(false)}
         onSuccess={handleAddSuccess}
       />
-      {/* Silme Onay Dialog */}
       <Dialog open={deleteConfirmOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Ödeme Yöntemini Sil</DialogTitle>
         <DialogContent>

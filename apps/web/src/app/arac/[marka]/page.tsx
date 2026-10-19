@@ -1,7 +1,3 @@
-// Araç markası sayfası — /arac/<marka> (yalnızca lastikjantavm.com): markanın modelleri ve lastik ebatları.
-// Model kartlarının altında markaya özel uzun içerik: elle yazılmış profil (data/lja/aracMarkaProfilleri.ts) +
-// canlı veriden hesaplanan ebat / jant / bijon bölümleri ve SSS (lib/vehicleBrandText.ts); lastik marka
-// sayfalarıyla aynı bileşenle (BrandSeoContent) çizilir.
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -28,7 +24,6 @@ async function load(params: Props['params']) {
     return getVehicleMake(marka);
 }
 
-// Ebat bağlantıları yalnızca etiket sayfası gerçekten varsa (ürünlü) verilir; yoksa düz metin kalır
 async function resolveSizeLinks<T extends { href?: string; label: string }>(items: T[]): Promise<T[]> {
     const checked = await Promise.all(items.map(async item => {
         if (!item.href || !item.href.startsWith('/etiket/')) return item;
@@ -63,7 +58,6 @@ export default async function VehicleMakePage({ params }: Props) {
     const others = d.models.filter(m => !m.indexable);
 
     const content = buildVehicleBrandContent(d);
-    // Ebat listesi ve ebat bağlantı kutusu: etiket yoksa bağlantı düşer, metin kalır
     const sizeSection = content.sections.find(s => s.id === 'ebatlar');
     if (sizeSection?.list) sizeSection.list = await resolveSizeLinks(sizeSection.list);
     content.sizeLinks = (await resolveSizeLinks(content.sizeLinks)).filter(l => l.href) as typeof content.sizeLinks;
@@ -114,7 +108,6 @@ export default async function VehicleMakePage({ params }: Props) {
                         </div>
                     </>
                 )}
-                {/* Giriş yukarıda yazıldığı için bileşene boş giriş verilir; bölümler, model/ebat kutuları ve SSS burada */}
                 <BrandSeoContent
                     content={{ ...content, intro: [] }}
                     display={content.display}

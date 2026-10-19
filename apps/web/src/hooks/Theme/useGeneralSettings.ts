@@ -9,9 +9,6 @@ export interface SiteSetting {
     description?: string;
 }
 
-/**
- * Tek bir ayar getir
- */
 export async function getSetting(key: string): Promise<string | null> {
     try {
         const response = await fetch(API_ENDPOINTS.generalSettings.byKey(key), {
@@ -28,10 +25,6 @@ export async function getSetting(key: string): Promise<string | null> {
     }
 }
 
-/**
- * Site durumunu kontrol et
- * @returns true = site aktif, false = yapım aşamasında
- */
 export async function isSiteActive(): Promise<boolean> {
     try {
         const response = await fetch(API_ENDPOINTS.generalSettings.siteStatus(), {
@@ -48,9 +41,6 @@ export async function isSiteActive(): Promise<boolean> {
     }
 }
 
-/**
- * Grup bazlı ayarları getir
- */
 export async function getSettingsByGroup(group: string): Promise<SiteSetting[]> {
     try {
         const response = await fetch(API_ENDPOINTS.generalSettings.byGroup(group), {

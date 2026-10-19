@@ -1,4 +1,3 @@
-// Blog sitemap'i (/blog/<slug>) — yalnızca yayınlanmış yazılar, site kapsamlı
 import { getSiteBase, fetchSitemapData, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 
 export const dynamic = 'force-dynamic';

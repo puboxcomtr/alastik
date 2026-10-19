@@ -1,4 +1,3 @@
-// apps/web/src/components/layout/TireSearchClient.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -12,26 +11,22 @@ export default function TireSearchClient() {
     const [condition, setCondition] = useState<string | undefined>(undefined);
 
     useEffect(() => {
-        // Lastik arama
         const handleOpenTireSearch = (event: Event) => {
             setCondition((event as CustomEvent)?.detail?.condition || undefined);
             setMode('search');
             setOpen(true);
         };
 
-        // Jant arama
         const handleOpenRimSearch = () => {
             setMode('rimSearch');
             setOpen(true);
         };
 
-        // Kar paleti arama
         const handleOpenChainSearch = () => {
             setMode('chainSearch');
             setOpen(true);
         };
 
-        // Araç ekleme
         const handleOpenAddVehicle = () => {
             setMode('addVehicle');
             setOpen(true);

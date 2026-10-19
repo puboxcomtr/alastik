@@ -1,12 +1,9 @@
-// Konum sayfaları için toplu (anonim) sipariş istatistiği — /api/location-stats
-// İl ve ilçe bazında bölgeye gönderilen siparişlerde en çok tercih edilen lastik ebatları.
-// Kişisel veri dönmez; yalnızca yeterli sipariş olan bölgeler için (MIN_ORDERS) ebat listesi verilir.
 const express = require('express');
 const router = express.Router();
 const WebOrder = require('../../../models/web/order/WebOrder');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
-const MIN_ORDERS = 3;       // bu sayının altındaki bölgeler için ebat gösterilmez
+const MIN_ORDERS = 3;
 const TOP = 5;
 const CACHE_MS = 6 * 60 * 60 * 1000;
 const VALID_STATUSES = ['confirmed', 'processing', 'shipped', 'delivered'];
@@ -14,7 +11,6 @@ const VALID_STATUSES = ['confirmed', 'processing', 'shipped', 'delivered'];
 const cache = new Map();
 
 async function buildStats(site) {
-    // Sipariş satırları: bölge (il / ilçe) × ürün
     const rows = await WebOrder.aggregate([
         { $match: { site, status: { $in: VALID_STATUSES }, 'shippingSnapshot.cityId': { $exists: true, $ne: null } } },
         { $project: { cityId: '$shippingSnapshot.cityId', districtId: '$shippingSnapshot.districtId', items: '$items.productKey' } },
@@ -23,7 +19,6 @@ async function buildStats(site) {
         { $project: { _id: 0, c: '$_id.c', d: '$_id.d', p: '$_id.p', n: { $size: '$orders' } } }
     ]);
 
-    // Ürün → lastik ebadı
     const keys = [...new Set(rows.map(r => r.p).filter(Boolean))];
     const products = await WebProduct.find(
         { _key: { $in: keys }, 'diaData.ozelkod7kodu': 'LASTİK' },
@@ -37,8 +32,7 @@ async function buildStats(site) {
         if (w && a && d) sizeOf.set(p._key, `${w}/${a}R${d}`);
     }
 
-    // Bölge başına sipariş sayısı (tüm ürünler) ve ebat sayıları
-    const region = new Map(); // key → { orders:Set, sizes:Map }
+    const region = new Map();
     const orderSets = await WebOrder.aggregate([
         { $match: { site, status: { $in: VALID_STATUSES }, 'shippingSnapshot.cityId': { $exists: true, $ne: null } } },
         { $group: { _id: { c: '$shippingSnapshot.cityId', d: '$shippingSnapshot.districtId' }, n: { $sum: 1 } } }
@@ -74,7 +68,6 @@ async function stats(site) {
     return value;
 }
 
-// GET /api/location-stats — { "c:<cityId>": {...}, "d:<districtId>": {...} }
 router.get('/', async (req, res) => {
     try {
         res.json({ success: true, data: await stats(req.site), minOrders: MIN_ORDERS });

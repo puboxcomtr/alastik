@@ -4,13 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useWheelSize } from '@/src/hooks/WheelSize/useWheelSize';
 import type { WheelSizeModification } from '@/src/types/vehicle';
 
-/* MUI */
 import { Typography, Divider, Box, Alert } from '@mui/material';
 
-/* Internal Imports */
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { translateFuelType, translateBodyType } from '@/src/utils/vehicleTranslations';
-
 
 interface ModificationSelectionProps {
     make: string;
@@ -41,7 +38,6 @@ export default function ModificationSelection({
     const [modifications, setModifications] = useState<WheelSizeModification[]>([]);
     const { t } = useTranslations('general');
 
-    // Filtreler
     const [filterFuel, setFilterFuel] = useState<string>('');
     const [filterPower, setFilterPower] = useState<string>('');
     const [filterBody, setFilterBody] = useState<string>('');
@@ -55,7 +51,6 @@ export default function ModificationSelection({
         setModifications(data);
     };
 
-    // Filtre seçeneklerini çıkar
     const allFuelTypes = useMemo(() => {
         const fuels = new Set<string>();
         modifications.forEach(mod => {
@@ -145,14 +140,12 @@ export default function ModificationSelection({
     return (
         <div className="modification-selection">
             <div className="row">
-                {/* Sol: Araç Bilgisi + Filtreler */}
                 <div className="d-none d-md-block col-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         {t('garage_car')}
                     </Typography>
                     <Divider />
 
-                    {/* Araç Görseli */}
                     <div className="text-center py-3">
                         {vehicleImage ? (
                             <img
@@ -170,7 +163,6 @@ export default function ModificationSelection({
                         {makeName} {modelName} {year}
                     </Typography>
 
-                    {/* Filtreler */}
                     <Box sx={{ mt: 2 }} />
                     <Divider />
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
@@ -187,7 +179,6 @@ export default function ModificationSelection({
                     </Typography>
                     <Divider />
                     <div className="py-2">
-                        {/* Yakıt Filtresi */}
                         {allFuelTypes.length > 1 && (
                             <div className="mb-3">
                                 <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Yakıt</label>
@@ -208,7 +199,6 @@ export default function ModificationSelection({
                                 </select>
                             </div>
                         )}
-                        {/* Motor Gücü Filtresi */}
                         {allPowerOptions.length > 1 && (
                             <div className="mb-3">
                                 <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Motor Gücü</label>
@@ -231,12 +221,9 @@ export default function ModificationSelection({
                         )}
                     </div>
                 </div>
-                {/* Sağ: Motor Listesi */}
                 <div className="col-md-9">
-                    {/* Motor Tablosu */}
                     {filteredModifications.length > 0 ? (
                         <>
-                            {/* Masaüstü: Tablo */}
                             <div className="table-responsive d-none d-md-block">
                                 <table className="table table-hover align-middle" style={{ fontSize: '14px' }}>
                                     <thead>
@@ -289,7 +276,6 @@ export default function ModificationSelection({
                                 </table>
                             </div>
 
-                            {/* Mobil: Kart Listesi */}
                             <div className="d-block d-md-none">
                                 {filteredModifications.map((mod) => {
                                     const isSelected = selectedModification === mod.slug;

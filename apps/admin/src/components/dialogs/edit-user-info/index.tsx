@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Dialog from '@mui/material/Dialog'
 import Button from '@mui/material/Button'
@@ -40,7 +38,6 @@ type EditUserInfoProps = {
   data?: EditUserInfoData
 }
 
-// Vars
 const initialData: EditUserInfoProps['data'] = {
   firstName: 'Oliver',
   lastName: 'Queen',
@@ -61,7 +58,6 @@ const languages = ['English', 'Spanish', 'French', 'German', 'Hindi']
 const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
 
 const EditUserInfo = ({ open, setOpen, data }: EditUserInfoProps) => {
-  // States
   const [userData, setUserData] = useState<EditUserInfoProps['data']>(data || initialData)
 
   const handleClose = () => {

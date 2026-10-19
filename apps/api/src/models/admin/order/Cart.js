@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
   productId: {
-    type: String, // DIA product key
+    type: String,
     required: true
   },
   productName: String,
@@ -25,10 +25,10 @@ const cartSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null // null = guest
+    default: null
   },
   sessionId: {
-    type: String, // Guest için session ID
+    type: String,
     sparse: true
   },
   items: [cartItemSchema],
@@ -39,18 +39,16 @@ const cartSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 gün
+    default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   }
 }, {
   timestamps: true
 });
 
-// Index'ler
 cartSchema.index({ userId: 1, status: 1 });
 cartSchema.index({ sessionId: 1, status: 1 });
-cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Toplam hesapla
 cartSchema.virtual('totalAmount').get(function () {
   return this.items.reduce((sum, item) => sum + item.totalPrice, 0);
 });

@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { locationService, City, District, Neighborhood } from '@/src/services/locationService';
 import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
 
-// Zod Schema
 const shippingSchema = z.object({
   recipientName: z.string().min(1, 'Teslim edilecek kişi zorunludur'),
   phone: z.string().regex(/^\+90\d{10}$/, 'Geçerli bir telefon numarası giriniz'),

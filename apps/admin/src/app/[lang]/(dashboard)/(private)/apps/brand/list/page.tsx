@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-// Component Imports
 import BrandListTable from '@/views/brand/BrandListTable'
 
 const eCommerceProductsBrand = () => {

@@ -1,9 +1,7 @@
-// MUI Imports
 import type { Theme } from '@mui/material/styles'
 
 const tablePagination: Theme['components'] = {
   MuiTablePagination: {
-    // Tüm tablolarda ortak metinler (sayfalar ayrıca etiket vermez)
     defaultProps: {
       labelRowsPerPage: 'Gösterilen Kayıt Sayısı',
       labelDisplayedRows: ({ from, to, count }) => `${from}-${to} / ${count}`

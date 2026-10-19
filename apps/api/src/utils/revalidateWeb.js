@@ -1,10 +1,5 @@
 const axios = require('axios');
 
-/**
- * Next.js web tarafında belirli bir tag'in cache'ini temizler
- * @param {string} tag - Cache tag (örn: 'tag-205-55-r16-pirelli-kis-lastikleri-fiyatlari')
- * @returns {Promise<boolean>}
- */
 async function revalidateWebTag(tag) {
     try {
         const webUrl = process.env.FRONTEND_URL;

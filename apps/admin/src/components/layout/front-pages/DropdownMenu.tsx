@@ -1,15 +1,11 @@
-// React Imports
 import { Fragment, useEffect, useState } from 'react'
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 
-// Next Imports
 import { usePathname } from 'next/navigation'
 
-// MUI Imports
 import Typography from '@mui/material/Typography'
 import Collapse from '@mui/material/Collapse'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
   useFloating,
@@ -26,14 +22,11 @@ import {
   useTransitionStyles
 } from '@floating-ui/react'
 
-// Type Imports
 import type { Mode } from '@core/types'
 
-// Component Imports
 import Link from '@components/Link'
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Hook Imports
 import { useImageVariant } from '@core/hooks/useImageVariant'
 
 type Props = {
@@ -55,7 +48,6 @@ type MenuWrapperProps = {
   styles: CSSProperties
 }
 
-// Constants
 const pageData = [
   {
     title: 'Pricing',
@@ -146,7 +138,6 @@ const othersData = [
 ]
 
 const MenuWrapper = (props: MenuWrapperProps) => {
-  // Props
   const { children, refs, isBelowLgScreen, isOpen, getFloatingProps, top, floatingStyles, isMounted, styles } = props
 
   if (!isBelowLgScreen) {
@@ -183,17 +174,13 @@ const MenuWrapper = (props: MenuWrapperProps) => {
 }
 
 const DropdownMenu = (props: Props) => {
-  // Props
   const { isBelowLgScreen, isDrawerOpen, setIsDrawerOpen, mode } = props
 
-  // states
   const [isOpen, setIsOpen] = useState(false)
 
-  // Vars
   const dropdownImageLight = '/images/front-pages/dropdown-image-light.png'
   const dropdownImageDark = '/images/front-pages/dropdown-image-dark.png'
 
-  // hooks
   const pathname = usePathname()
   const dropdownImage = useImageVariant(mode, dropdownImageLight, dropdownImageDark)
 
@@ -217,9 +204,7 @@ const DropdownMenu = (props: Props) => {
     ]
   })
 
-  // Floating UI Transition Styles
   const { isMounted, styles } = useTransitionStyles(context, {
-    // Configure both open and close durations:
     duration: 300,
 
     initial: {

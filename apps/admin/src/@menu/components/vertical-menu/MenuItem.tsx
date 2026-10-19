@@ -1,32 +1,24 @@
 'use client'
 
-// React Imports
 import { forwardRef, useEffect, useState } from 'react'
 import type { AnchorHTMLAttributes, ForwardRefRenderFunction, ReactElement, ReactNode } from 'react'
 
-// Next Imports
 import { usePathname } from 'next/navigation'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { useUpdateEffect } from 'react-use'
 import type { CSSObject } from '@emotion/styled'
 
-// Type Imports
 import type { ChildrenType, MenuItemElement, MenuItemExactMatchUrlProps, RootStylesType } from '../../types'
 
-// Component Imports
 import MenuButton from './MenuButton'
 
-// Hook Imports
 import useVerticalNav from '../../hooks/useVerticalNav'
 import useVerticalMenu from '../../hooks/useVerticalMenu'
 
-// Util Imports
 import { renderMenuIcon } from '../../utils/menuUtils'
 import { menuClasses } from '../../utils/menuClasses'
 
-// Styled Component Imports
 import StyledMenuLabel from '../../styles/StyledMenuLabel'
 import StyledMenuPrefix from '../../styles/StyledMenuPrefix'
 import StyledMenuSuffix from '../../styles/StyledMenuSuffix'
@@ -45,14 +37,10 @@ export type MenuItemProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'prefi
     component?: string | ReactElement
     onActiveChange?: (active: boolean) => void
 
-    /**
-     * @ignore
-     */
     level?: number
   }
 
 const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props, ref) => {
-  // Props
   const {
     children,
     icon,
@@ -69,47 +57,36 @@ const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props,
     ...rest
   } = props
 
-  // States
   const [active, setActive] = useState(false)
 
-  // Hooks
   const pathname = usePathname()
   const { menuItemStyles, renderExpandedMenuItemIcon, textTruncate } = useVerticalMenu()
 
   const { isCollapsed, isHovered, isPopoutWhenCollapsed, toggleVerticalNav, isToggled, isBreakpointReached } =
     useVerticalNav()
 
-  // Get the styles for the specified element.
   const getMenuItemStyles = (element: MenuItemElement): CSSObject | undefined => {
-    // If the menuItemStyles prop is provided, get the styles for the specified element.
     if (menuItemStyles) {
-      // Define the parameters that are passed to the style functions.
       const params = { level, disabled, active, isSubmenu: false }
 
-      // Get the style function for the specified element.
       const styleFunction = menuItemStyles[element]
 
       if (styleFunction) {
-        // If the style function is a function, call it and return the result.
-        // Otherwise, return the style function itself.
         return typeof styleFunction === 'function' ? styleFunction(params) : styleFunction
       }
     }
   }
 
-  // Handle the click event.
   const handleClick = () => {
     if (isToggled) {
       toggleVerticalNav()
     }
   }
 
-  // Change active state when the url changes
   useEffect(() => {
     const href = rest.href || (component && typeof component !== 'string' && component.props.href)
 
     if (href) {
-      // Check if the current url matches any of the children urls
       if (exactMatch ? pathname === href : activeUrl && pathname.includes(activeUrl)) {
         setActive(true)
       } else {
@@ -119,7 +96,6 @@ const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
-  // Call the onActiveChange callback when the active state changes.
   useUpdateEffect(() => {
     onActiveChange?.(active)
   }, [active])
@@ -151,7 +127,6 @@ const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props,
           rest.onClick && rest.onClick(e)
         }}
       >
-        {/* Menu Item Icon */}
         {renderMenuIcon({
           icon,
           level,
@@ -162,7 +137,6 @@ const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props,
           isBreakpointReached
         })}
 
-        {/* Menu Item Prefix */}
         {prefix && (
           <StyledMenuPrefix
             isHovered={isHovered}
@@ -175,7 +149,6 @@ const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props,
           </StyledMenuPrefix>
         )}
 
-        {/* Menu Item Label */}
         <StyledMenuLabel
           className={menuClasses.label}
           rootStyles={getMenuItemStyles('label')}
@@ -184,7 +157,6 @@ const MenuItem: ForwardRefRenderFunction<HTMLLIElement, MenuItemProps> = (props,
           {children}
         </StyledMenuLabel>
 
-        {/* Menu Item Suffix */}
         {suffix && (
           <StyledMenuSuffix
             isHovered={isHovered}

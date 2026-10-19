@@ -1,4 +1,3 @@
-// apps/web/src/types/tire-search.ts
 
 export type SearchStep = 'make' | 'model' | 'year' | 'modification' | 'size' | 'rim' | 'chain' | 'details';
 

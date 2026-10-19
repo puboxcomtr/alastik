@@ -15,7 +15,6 @@ export default function PaymentFailedPage() {
     const [isValidAccess, setIsValidAccess] = useState(false);
 
     useEffect(() => {
-        // No-index meta tag
         let metaRobots = document.querySelector('meta[name="robots"]') as HTMLMetaElement;
         if (!metaRobots) {
             metaRobots = document.createElement('meta');
@@ -24,7 +23,6 @@ export default function PaymentFailedPage() {
         }
         metaRobots.setAttribute('content', 'noindex, nofollow');
 
-        // Referrer kontrolü
         const referrer = document.referrer;
         const isFromOurSite = referrer.includes('alastik.com') || referrer.includes('localhost');
 

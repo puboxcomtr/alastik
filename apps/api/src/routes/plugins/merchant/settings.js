@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebMerchantSettings = require('../../../models/plugins/merchant/WebMerchantSettings');
 
-// Ayarları Getir (seçili sitenin ayarları)
 router.get('/', async (req, res) => {
     try {
         let settings = await WebMerchantSettings.findOne({ site: req.site });
@@ -15,10 +14,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Ayarları Güncelle (seçili sitenin ayarları)
 router.put('/', async (req, res) => {
     try {
-        // Salt okunur / sistem alanları istekten ayıklanır (site de dışarıdan değiştirilemez)
         const { _id, createdAt, updatedAt, __v, lastGenerated, productCount, site, ...payload } = req.body || {};
 
         let settings = await WebMerchantSettings.findOne({ site: req.site });
@@ -34,7 +31,6 @@ router.put('/', async (req, res) => {
     }
 });
 
-// Sitedeki DIA üst kategori adlarını getir (hariç tutma seçenekleri için)
 router.get('/dia-categories', async (req, res) => {
     try {
         const db = require('mongoose').connection.db;
@@ -46,7 +42,6 @@ router.get('/dia-categories', async (req, res) => {
     }
 });
 
-// Mevcut fiyat alanlarını getir
 router.get('/price-fields', async (req, res) => {
     try {
         const db = require('mongoose').connection.db;
@@ -70,7 +65,6 @@ router.get('/price-fields', async (req, res) => {
     }
 });
 
-// Mevcut metin alanlarını getir
 router.get('/text-fields', async (req, res) => {
     try {
         const db = require('mongoose').connection.db;

@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useRef, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 
-// MUI Imports
 import IconButton from '@mui/material/IconButton'
 import Popper from '@mui/material/Popper'
 import Fade from '@mui/material/Fade'
@@ -16,10 +13,8 @@ import ClickAwayListener from '@mui/material/ClickAwayListener'
 import MenuList from '@mui/material/MenuList'
 import MenuItem from '@mui/material/MenuItem'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
 type LanguageDataType = {
@@ -36,7 +31,6 @@ const getLocalePath = (pathName: string, locale: string) => {
   return segments.join('/')
 }
 
-// Vars
 const languageData: LanguageDataType[] = [
   {
     langCode: 'en',
@@ -53,13 +47,10 @@ const languageData: LanguageDataType[] = [
 ]
 
 const LanguageDropdown = () => {
-  // States
   const [open, setOpen] = useState(false)
 
-  // Refs
   const anchorRef = useRef<HTMLButtonElement>(null)
 
-  // Hooks
   const pathName = usePathname()
   const { settings } = useSettings()
   const { lang } = useParams()

@@ -15,7 +15,6 @@ async function test() {
 
         const service = new WheelSizeTireService();
 
-        // ADIM 1: Ürünleri WheelSize desenleriyle eşleştir
         console.log('2. WebProduct\'lar WheelSize desenleriyle eslestiriliyor...');
         const matchResults = await service.matchPatterns();
         console.log(`✓ Toplam Ürün: ${matchResults.stats.totalProducts}`);
@@ -26,7 +25,6 @@ async function test() {
         console.log(`  - Yeni Kayıt: ${matchResults.syncResult.saved}`);
         console.log(`  - Güncellenen: ${matchResults.syncResult.updated}\n`);
 
-        // ADIM 2: Tüm pattern'ların rating/buyNotBuy/materials verilerini çek
         console.log('3. Pattern rating\'leri, buy/not buy verileri ve materials çekiliyor...');
         console.log('   (Bu işlem uzun sürebilir - her pattern için API çağrısı yapılıyor)\n');
         await service.syncAllPatternRatings();

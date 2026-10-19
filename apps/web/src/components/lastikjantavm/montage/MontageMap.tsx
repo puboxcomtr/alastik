@@ -1,7 +1,5 @@
 'use client';
 
-// Montaj Noktaları: tam ekran harita + sol koyu panel (referans: bayi/satış noktası haritaları).
-// Harita anahtarsız çalışır: Leaflet + Carto/OSM altlığı. Pinler LJA sarısı.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Container } from 'react-bootstrap';
 import 'leaflet/dist/leaflet.css';
@@ -16,19 +14,16 @@ const PIN_SVG = `<svg width="34" height="44" viewBox="0 0 24 32" xmlns="http://w
 <path d="M12 1C6 1 1.2 5.8 1.2 11.8c0 8.2 10.8 19 10.8 19s10.8-10.8 10.8-19C22.8 5.8 18 1 12 1z" fill="${BRAND_YELLOW}" stroke="${BRAND_DARK}" stroke-width="1.6"/>
 <circle cx="12" cy="11.8" r="4.6" fill="${BRAND_DARK}"/></svg>`;
 
-
 export default function MontageMap({ points }: { points: MontagePoint[] }) {
     const mapRef = useRef<LeafletMap | null>(null);
     const markersRef = useRef<Record<string, Marker>>({});
     const containerRef = useRef<HTMLDivElement | null>(null);
-    // İl/ilçe seçimi: önce il seçilir, sonra o ildeki ilçeler gelir (kullanıcı kararı)
     const defaultPoint = useMemo(() => points.find(p => p.isPublicInfo) || null, [points]);
     const [secilenIl, setSecilenIl] = useState<string>('');
     const [secilenIlce, setSecilenIlce] = useState<string>('');
     const [activeId, setActiveId] = useState<string>(defaultPoint?._id || '');
     const [selected, setSelected] = useState<MontagePoint | null>(defaultPoint);
 
-    // İl listesi (noktalardan türetilir, İstanbul/Ankara/İzmir üstte)
     const iller = useMemo(() => {
         const set = new Set<string>();
         for (const p of points) if (p.city) set.add(p.city);
@@ -36,7 +31,6 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
         return [...set].sort((a, b) => (PRIORITY[a] || 99) - (PRIORITY[b] || 99) || a.localeCompare(b, 'tr'));
     }, [points]);
 
-    // Seçili ildeki ilçeler
     const ilceler = useMemo(() => {
         if (!secilenIl) return [];
         const set = new Set<string>();
@@ -44,8 +38,6 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
         return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
     }, [points, secilenIl]);
 
-    // Sol listede gösterilecek noktalar: il seçilmeden boş; il seçilince o il,
-    // ilçe de seçilince o ilçe filtrelenir
     const listeNoktalari = useMemo(() => {
         if (!secilenIl) return [];
         return points
@@ -58,7 +50,6 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
         setSecilenIlce('');
     };
 
-    // Harita kurulumu
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -66,10 +57,7 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
             if (cancelled || !containerRef.current || mapRef.current) return;
 
             const map = L.map(containerRef.current, { center: TURKEY_CENTER, zoom: 6, minZoom: 5, scrollWheelZoom: true });
-            // Açılışta Türkiye'nin tamamı görünür şekilde sığdır
             map.fitBounds([[35.8, 25.6], [42.2, 44.9]], { padding: [8, 8] });
-            // Esri World Street Map — API anahtarı gerektirmez, şehir/il isimleri net
-            // (CARTO ücretsiz basemap'i anahtar zorunlu kılıp "API KEY REQUIRED" filigranı basıyordu)
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap katkıda bulunanları',
                 maxZoom: 19
@@ -79,7 +67,6 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
             const located = points.filter(p => p.location?.lat && p.location?.lng);
             for (const p of located) {
                 const marker = L.marker([p.location!.lat!, p.location!.lng!], { icon }).addTo(map);
-                // Pin tıklaması yan detay kartını açar (balon yok — nokta anonim)
                 marker.on('click', () => { setActiveId(p._id); setSelected(p); });
                 markersRef.current[p._id] = marker;
             }
@@ -97,7 +84,6 @@ export default function MontageMap({ points }: { points: MontagePoint[] }) {
     const focusPoint = (p: MontagePoint) => {
         setActiveId(p._id);
         if (mapRef.current && p.location?.lat && p.location?.lng) {
-            // Yakınlaştırma sınırlı: nokta anonim, harita yalnız bölgeye ilerler
             mapRef.current.flyTo([p.location.lat, p.location.lng], 11, { duration: 0.8 });
         }
     };

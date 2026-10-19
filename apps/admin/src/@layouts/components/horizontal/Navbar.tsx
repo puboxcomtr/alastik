@@ -1,10 +1,7 @@
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { ChildrenType } from '@core/types'
 
-// Util Imports
 import { horizontalLayoutClasses } from '@layouts/utils/layoutClasses'
 
 const Navbar = ({ children }: ChildrenType) => {

@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { toast } from 'react-toastify'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -21,10 +20,8 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import IconButton from '@mui/material/IconButton'
 
-/* API */
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-/* Monaco Editor - SSR uyumsuz, dynamic import */
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
     ssr: false,
     loading: () => (
@@ -74,12 +71,10 @@ const MailTemplatesEditor = () => {
     const [saving, setSaving] = useState(false)
     const [resetting, setResetting] = useState(false)
 
-    // Preview state
     const [previewOpen, setPreviewOpen] = useState(false)
     const [previewLoading, setPreviewLoading] = useState(false)
     const [previewHtml, setPreviewHtml] = useState<string>('')
 
-    // İlk yüklemede kategorileri çek
     useEffect(() => {
         const loadCategories = async () => {
             try {
@@ -88,7 +83,6 @@ const MailTemplatesEditor = () => {
                 if (res.success && Array.isArray(res.data)) {
                     setCategories(res.data)
 
-                    // Tüm kategorileri açık başlat
                     const opens: Record<string, boolean> = {}
 
                     res.data.forEach((cat: TemplateCategory) => {
@@ -97,7 +91,6 @@ const MailTemplatesEditor = () => {
 
                     setOpenCategories(opens)
 
-                    // İlk şablonu otomatik seç
                     const firstCategory = res.data[0]
 
                     if (firstCategory && firstCategory.templates.length > 0) {
@@ -114,7 +107,6 @@ const MailTemplatesEditor = () => {
         loadCategories()
     }, [])
 
-    // Seçilen şablonun detayını çek
     useEffect(() => {
         if (!selectedTemplateId) return
 
@@ -179,7 +171,6 @@ const MailTemplatesEditor = () => {
                 setSelectedTemplate({ ...selectedTemplate, content: editorContent })
                 setHasUnsavedChanges(false)
 
-                // Liste'deki hasCustomContent'i güncelle
                 setCategories(prev =>
                     prev.map(cat => ({
                         ...cat,
@@ -218,7 +209,6 @@ const MailTemplatesEditor = () => {
                 setSelectedTemplate({ ...selectedTemplate, content: res.data.content })
                 setHasUnsavedChanges(false)
 
-                // Liste'deki hasCustomContent'i güncelle
                 setCategories(prev =>
                     prev.map(cat => ({
                         ...cat,
@@ -292,7 +282,6 @@ const MailTemplatesEditor = () => {
                 <Typography variant='h4'>Mail Şablonları</Typography>
             </Grid>
 
-            {/* Sol Taraf: Kategori ve Şablon Listesi */}
             <Grid size={{ xs: 12, md: 3 }}>
                 <Card>
                     <CardContent sx={{ p: 0 }}>
@@ -383,7 +372,6 @@ const MailTemplatesEditor = () => {
                 </Card>
             </Grid>
 
-            {/* Sağ Taraf: Editör */}
             <Grid size={{ xs: 12, md: 9 }}>
                 <Card>
                     <CardHeader
@@ -461,7 +449,6 @@ const MailTemplatesEditor = () => {
                 </Card>
             </Grid>
 
-            {/* Preview Dialog */}
             <Dialog
                 open={previewOpen}
                 onClose={handleClosePreview}

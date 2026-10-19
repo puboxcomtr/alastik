@@ -1,20 +1,12 @@
-// Paynet Özelleştirilmiş Form'u (paynet-custom.js) kurar ve tokenizasyonu tetikler — taksit destekli.
-// Kart bilgisi bu gizli form üzerinden DOĞRUDAN Paynet'e gider; sunucumuza gelmez. Kütüphane kartı token'lar,
-// 3D yönlendirmesini yapar ve formu session_id / token_id ile `action` adresine POST eder.
-// Taksitli ödemede kütüphane, kartın BIN'i için taksit anahtarlarını kendisi verir; seçilen taksit sayısının
-// anahtarı forma yazılıp gönderilir.
-// Kütüphanenin hata olayları (validationError, onCreateToken, onAuthentication) dinlenir: hata formda gösterilir
-// ve bekleyen kayda yazılır. Belli sürede 3D'ye geçilemezse de hata verilir (kütüphane sessiz kalırsa takılmasın).
 import { API_ENDPOINTS } from "@src/config/api";
 
-// Sunucunun taksit seçenekleriyle bildirdiği sağlayıcı anahtarı (routes/web/b2b/payment.js INSTALLMENT_PROVIDERS.PAYNET)
 export const PAYNET_PROVIDER = "paynet";
 
 export interface PaynetCard {
   holder: string;
-  number: string;   // yalnız rakam
-  expMonth: string; // "1".."12"
-  expYear: string;  // "2028"
+  number: string;
+  expMonth: string;
+  expYear: string;
   cvv: string;
 }
 
@@ -32,58 +24,46 @@ interface PaynetGlobal {
   };
 }
 
-/** Hatanın yazılacağı bekleyen kayıt: Ödeme Yap (payment) ya da kartlı sipariş (order) */
 export interface PaynetErrorTarget { kind: "payment" | "order"; id: string; pt: string }
 
 const HOST_ID = "paynet-host";
 const FORM_ID = "paynet-form";
-// Kütüphane forma bağlandıktan sonra tetikleme gecikmesi
 const TRIGGER_DELAY_MS = 400;
-// Taksit anahtarı bu sürede gelmezse hata gösterilir
 const INSTALLMENT_KEY_TIMEOUT_MS = 15000;
-// Bu sayıdan az taksit = tek çekim
 const MIN_INSTALLMENT_COUNT = 2;
 
 const DECLINED_MESSAGE = "Ödemeniz bankanız tarafından reddedildi. Lütfen kart bilgilerinizi kontrol edip tekrar deneyiniz.";
 const INSTALLMENT_UNAVAILABLE_MESSAGE = "Seçilen taksit seçeneği bu kart için kullanılamıyor. Lütfen başka bir seçenek deneyiniz.";
 const LOAD_FAILED_MESSAGE = "Ödeme altyapısı yüklenemedi, tekrar deneyin.";
 const STALLED_MESSAGE = "Ödeme ekranına geçilemedi. Lütfen kart bilgilerinizi kontrol edip tekrar deneyiniz.";
-// Kütüphane yüklendikten sonra bu sürede kart token'lanıp 3D'ye geçilmezse hata gösterilir
 const STALL_TIMEOUT_MS = 30000;
-// Paynet'in 3D ekranını açtığı iframe adresindeki yol
 const PAYNET_TDS_PATH = "paynetjgate/tds";
 
-/** Tarayıcıdaki Paynet hatasını bekleyen kayda yazdırır (panelde Ödemeler / sipariş detayında görünür) */
 function reportPaynetError(target: PaynetErrorTarget | undefined, message: string, code?: string | number): void {
   if (!target) return;
   let token = "";
-  try { token = localStorage.getItem("authToken") || ""; } catch { /* depolama kapalı */ }
+  try { token = localStorage.getItem("authToken") || ""; } catch {  }
   fetch(API_ENDPOINTS.b2b.paynetClientError(), {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Site": "b2b" },
     body: JSON.stringify({ ...target, message, code: code === undefined ? "" : String(code) }),
     keepalive: true,
-  }).catch(() => { /* kayıt yazılamazsa kullanıcıya etkisi yok */ });
+  }).catch(() => {  });
 }
 
 export function launchPaynetForm(opts: {
-  /** Kütüphanenin 3D sonrası POST edeceği adres */
   action: string;
-  /** Formla birlikte gönderilecek gizli alanlar (ödeme / sipariş kimliği, doğrulama anahtarı…) */
   fields: Record<string, string>;
   card: PaynetCard;
   config: { publishableKey: string; jsUrl: string };
   amountTL: number;
   reference: string;
-  /** 2 ve üzeri: taksitli; boş / 1: tek çekim */
   installment?: number;
-  /** Hata olursa yazılacak bekleyen kayıt */
   errorTarget?: PaynetErrorTarget;
   onError: (message: string) => void;
 }): void {
   const installment = Number(opts.installment) >= MIN_INSTALLMENT_COUNT ? Number(opts.installment) : 0;
 
-  // Hata yalnız bir kez gösterilir ve kayda yazılır; 3D'ye geçildiyse (ya da token oluştuysa) zaman aşımı durur
   let finished = false;
   let stallTimer = 0;
   const stopStallTimer = () => { if (stallTimer) window.clearTimeout(stallTimer); stallTimer = 0; };
@@ -138,20 +118,16 @@ export function launchPaynetForm(opts: {
   s.src = opts.config.jsUrl;
   s.setAttribute("data-form", `#${FORM_ID}`);
   s.setAttribute("data-key", opts.config.publishableKey);
-  // data-amount = TR biçimli TL (virgül ondalık); kütüphane ×100 ile kuruşa çevirir
   s.setAttribute("data-amount", opts.amountTL.toFixed(2).replace(".", ","));
   s.setAttribute("data-reference_no", opts.reference);
   s.setAttribute("data-tds_required", "true");
-  // Sunucudaki tahsilat isteğiyle birebir aynı olmalı (tek çekim: true, taksitli: false)
   s.setAttribute("data-no_instalment", installment ? "false" : "true");
   s.setAttribute("data-transaction_type", "1");
-  // Paynet'in kendi 3D hata penceresi kapalı — hata formda gösterilir
   s.setAttribute("data-show_tds_error", "false");
 
   s.onload = () => {
     const paynet = (window as unknown as { Paynet?: PaynetGlobal }).Paynet;
     stallTimer = window.setTimeout(() => {
-      // 3D ekranı (Paynet iframe) açıksa bayi şifre giriyordur — hata verilmez
       if (document.querySelector(`iframe[src*="${PAYNET_TDS_PATH}"]`)) { stallTimer = 0; return; }
       fail(STALLED_MESSAGE, "STALLED");
     }, STALL_TIMEOUT_MS);
@@ -161,24 +137,21 @@ export function launchPaynetForm(opts: {
           fail(String(res.message || res.error_message || res.md_error_message || res.errorMessage || DECLINED_MESSAGE));
         }
       });
-      // Kart bilgisi hatası (ör. "Yıl bilgisi yanlış") — kütüphane bunu yalnız bu olayla bildirir
       paynet?.events?.validationError?.((res) => {
         if (res && res.ok === false) fail(String(res.message || DECLINED_MESSAGE), res.code);
       });
-      // Kart token'lanamadı (kart / tutar reddi vb.); token oluştuysa 3D'ye geçilir, zaman aşımı durur
       paynet?.events?.onCreateToken?.((res) => {
         if (res && res.ok === false) fail(String(res.message || DECLINED_MESSAGE), res.code);
         else stopStallTimer();
       });
       paynet?.events?.onTdsRedirect?.(() => stopStallTimer());
-    } catch { /* kanca kurulamazsa zaman aşımı hatayı gösterir */ }
+    } catch {  }
 
     if (!installment || !keyInput) {
       window.setTimeout(() => submitBtn.click(), TRIGGER_DELAY_MS);
       return;
     }
 
-    // Taksitli: kartın BIN'i için taksit anahtarlarını iste, seçilen taksitin anahtarını forma yaz, sonra gönder
     let settled = false;
     const timeout = window.setTimeout(() => {
       if (settled) return;
@@ -198,7 +171,7 @@ export function launchPaynetForm(opts: {
         keyInput.value = match.instalment_key;
         submitBtn.click();
       });
-    } catch { /* kanca kurulamazsa zaman aşımı hatayı gösterir */ }
+    } catch {  }
     window.setTimeout(() => numberInput.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true })), TRIGGER_DELAY_MS);
   };
   s.onerror = () => fail(LOAD_FAILED_MESSAGE, "LOAD_FAILED");

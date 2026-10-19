@@ -1,4 +1,3 @@
-// apps/api/src/routes/web/catalog/products.js
 const express = require('express');
 const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -10,14 +9,8 @@ const WebOrder = require('../../../models/web/order/WebOrder');
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
 const { getProductListFilters, getSiteVisibilityFilter, MAIN_DIA_FILTERS } = require('../../../config/diaFilters');
 const Setting = require('../../../models/admin/settings/Setting');
-/**
- * GET /api/products/similar-by-order/:orderNumber
- * Sipariş edilen lastiklerin: Aynı ebat + Farklı mevsim + Stokta olan benzer ürünleri
- */
 
-// Kategori fiyat gösterim ayarı (KDV dahil/hariç) — ortak yardımcı, sepet de aynısını kullanır
 const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
-// Depo bazlı stok filtresi (b2b) — canlı DIA depo stoğuyla süzer
 const { filterCodesByDepot, getDepotList } = require('../../../services/plugins/dia/depotStockFilter');
 
 router.get('/similar-by-order/:orderNumber', async (req, res) => {
@@ -25,22 +18,18 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
         const { orderNumber } = req.params;
         const limit = parseInt(req.query.limit) || 8;
 
-        // Siparişi bul
         const order = await WebOrder.findOne({ orderNumber }).lean();
         if (!order || !order.items || order.items.length === 0) {
             return res.json({ success: true, data: [] });
         }
 
-        // Sipariş edilen ürünlerin keylerini al
         const orderedKeys = order.items.map(i => String(i.productKey)).filter(Boolean);
 
-        // Sipariş ürünlerinin DIA verilerini çek (ebat + mevsim bilgisi için)
         const orderedProducts = await WebProduct.find(
             { _key: { $in: orderedKeys } },
             { _key: 1, 'diaData.m_urunOzellikleri': 1, 'diaData.ozelkod1kodu': 1 }
         ).lean();
 
-        // Her ürün için ebat + mevsim çıkar
         const orConditions = [];
         for (const p of orderedProducts) {
             const ozellikler = p.diaData?.m_urunOzellikleri || [];
@@ -56,7 +45,6 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
                     { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Genişlik', detayaciklama: genislik } } },
                     { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Yanak', detayaciklama: yanak } } },
                     { 'diaData.m_urunOzellikleri': { $elemMatch: { ozellikadi: 'Jant Çapı', detayaciklama: jant } } },
-                    // Farklı mevsim: sipariş mevsimi hariç (case-insensitive)
                     ...(mevsim ? [{ 'diaData.ozelkod1kodu': { $not: new RegExp(`^${mevsim}$`, 'i') } }] : [])
                 ]
             });
@@ -66,18 +54,15 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
             return res.json({ success: true, data: [] });
         }
 
-        // Base filter
         const filter = {
             'syncInfo.diaStatus': 'synced',
             'diaData.durum': 'A',
             'diaData.gercek_stok': { $gt: 0 },
             _key: { $nin: orderedKeys },
             $or: orConditions,
-            // Görünürlük: site ayarı > ortak değer
             $and: [getSiteVisibilityFilter(req.site)]
         };
 
-        // Merkezi DIA filtrelerini uygula
         MAIN_DIA_FILTERS.forEach(f => {
             if (f.operator === '=') {
                 filter[`diaData.${f.field}`] = f.value;
@@ -98,13 +83,10 @@ router.get('/similar-by-order/:orderNumber', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-// Katalog "vitrin" filtresi: tema ayarındaki (Tema > Vitrin 1) vitrinin ürünleri listede ayrı bir seçenek olarak süzülebilir.
-// Seçeneğin adı Vitrin 1 Üst Başlık'tan, ürünleri Vitrin 1 Ürün Seçimi'nden gelir (ör. b2b "Kampanyalı Ürünler").
 const CATALOG_SHOWCASE_SLOT = 'First';
 const CATALOG_SHOWCASE_TTL_MS = 60 * 1000;
-const catalogShowcaseCache = new Map(); // site -> { at, data }
+const catalogShowcaseCache = new Map();
 
-/** @returns {Promise<{ key: string, title: string, productKeys: string[] } | null>} */
 async function getCatalogShowcase(site) {
     const cached = catalogShowcaseCache.get(site);
     if (cached && Date.now() - cached.at < CATALOG_SHOWCASE_TTL_MS) return cached.data;
@@ -123,9 +105,8 @@ async function getCatalogShowcase(site) {
     return data;
 }
 
-// Kategorideki ürün türleri (ozelkod7kodu) — site + kategori başına kısa süreli önbellek (her listeleme isteğinde sorulur)
 const CATEGORY_TYPES_TTL_MS = 60 * 1000;
-const categoryTypesCache = new Map(); // `${site}:${categoryId}` -> { at, types }
+const categoryTypesCache = new Map();
 
 async function getCategoryProductTypes(site, webCategory) {
     const cacheKey = `${site}:${webCategory._id}`;
@@ -144,7 +125,6 @@ router.get('/filter', async (req, res) => {
     try {
         const {
             category,
-            // Lastik parametreleri
             genislik,
             yukseklik,
             yanak,
@@ -157,7 +137,6 @@ router.get('/filter', async (req, res) => {
             hizEndeksi,
             uretim,
             ozelkod5,
-            // Jant parametreleri
             jantCap,
             jantGenisligi,
             bijon,
@@ -165,21 +144,17 @@ router.get('/filter', async (req, res) => {
             gobekCapi,
             et,
             renk,
-            // Ortak parametreler
             arac,
             marka,
             depo,
             fiyatMin,
             fiyatMax,
-            // Özellik çipleri (ürün adından türetilir): RFT / C Serisi / XL / EV
             rft,
             cserisi,
             xl,
             ev,
-            // Vitrin filtresi (tema Vitrin 1 ürünleri) — değer: getCatalogShowcase().key
             vitrin,
             limit,
-            // Sıralama parametreleri
             sortBy,
             sortOrder
         } = req.query;
@@ -187,10 +162,6 @@ router.get('/filter', async (req, res) => {
         const pageNum = parseInt(req.query.page) || 1;
         const limitNum = parseInt(limit) || 25;
         const filter = getProductListFilters(req.site);
-        // Belirli ürünleri (ör. montaj hizmetleri) bu sitenin vitrin listelemesinden
-        // gizle. Montaj noktaları/sepet _key ile çektiği için etkilenmez. Bu bayrak
-        // customData.siteData altında olduğundan DIA güncellemesinde de korunur.
-        // (Not: kategori koşulları $and'i ezdiği için doğrudan alan olarak eklenir.)
         filter[`customData.siteData.${req.site}.hideFromListing`] = { $ne: true };
 
         console.log('=== SORTING DEBUG ===');
@@ -198,22 +169,17 @@ router.get('/filter', async (req, res) => {
         console.log('sortOrder:', sortOrder);
         console.log('====================');
 
-        // ==========================================
-        // ÜRÜN TİPİ TESPİTİ (kategorideki ürünlerden ozelkod7kodu)
-        // ==========================================
         let productType = null;
         let webCategory = null;
         let webCategories = [];
         let isMultiCategory = false;
-        let virtualSeasonFilter = null; // yaz-lastikleri / kis-lastikleri / 4-mevsim-lastikler için
+        let virtualSeasonFilter = null;
 
-        // Mevsim slug → ozelkod1kodu eşlemesi (virtual kategoriler)
         const seasonSlugMap = {
             'yaz-lastikleri': 'Yaz',
             'kis-lastikleri': 'Kış',
             '4-mevsim-lastikler': '4 Mevsim'
         };
-        // 5 araç tipi ana kategorisi (virtual multi-category için)
         const vehicleCategorySlugs = [
             'otomobil-lastikleri',
             'elektrikli-arac-lastikleri',
@@ -225,7 +191,6 @@ router.get('/filter', async (req, res) => {
         if (category) {
             const categorySlugs = category.split(',').map(s => s.trim()).filter(Boolean);
 
-            // Tek slug mevsim kategorisi ise → 5 araç tipini multi-category olarak aç + mevsim filtresi uygula
             if (categorySlugs.length === 1 && seasonSlugMap[categorySlugs[0]]) {
                 virtualSeasonFilter = seasonSlugMap[categorySlugs[0]];
                 isMultiCategory = true;
@@ -239,7 +204,6 @@ router.get('/filter', async (req, res) => {
                     slug: { $in: categorySlugs },
                     [`siteSettings.${req.site}.webVisible`]: true
                 }).lean();
-                // Multi-category: productType tespiti yapılmaz, her kategorinin ozelkod7kodu farklı olabilir
             } else {
                 webCategory = await WebCategory.findOne({
                     slug: categorySlugs[0],
@@ -247,25 +211,17 @@ router.get('/filter', async (req, res) => {
                 }).lean();
 
                 if (webCategory && webCategory.diaCategory) {
-                    // Kategoride (bu sitede listelenen ürünlerde) TEK ürün türü varsa jant / lastik listeleme davranışı
-                    // o türe göre seçilir. Birden fazla tür varsa (ör. "İkinci El": lastik + jant) varsayılan davranış kullanılır.
                     const typesInCategory = await getCategoryProductTypes(req.site, webCategory);
                     if (typesInCategory.length === 1) productType = typesInCategory[0];
                 }
             }
         }
 
-        // Jant parametresi geldiğinde tip janta zorlanır; ancak kategori zaten
-        // jant türevindeyse ("2.El Jant" gibi) kendi tipi korunur
         if ((jantCap || bijon) && !isMultiCategory && !/jant/i.test(productType || '')) {
             productType = 'JANT';
-            // Jant araması (kategori jant değilken): liste jant türüyle sınırlanır
             filter['diaData.ozelkod7kodu'] = productType;
         }
-        // Kategori listesinde tür kısıtı YOK: ürünler yalnız kategori eşleşmesine göre gelir (türü boş ürünler de dahil).
-        // productType burada yalnız listeleme davranışını (jant / lastik filtreleri) belirler.
 
-        // "JANT" ve "2.El Jant" gibi jant türevleri jant listeleme davranışını kullanır
         const isJantCategory = /jant/i.test(productType || '');
 
         const hidePricelessSetting = await Setting.findOne({ key: 'hidePricelessProducts', group: 'showcase', site: req.site }).lean();
@@ -274,12 +230,8 @@ router.get('/filter', async (req, res) => {
         }
 
         const andConditions = [];
-        // Kategori düzeyi koşullar (kategori eşleşmesi + hariç tutulanlar). Kullanıcı
-        // filtrelerinden (marka/mevsim/DOT…) ayrı tutulur ki facet listesi (tüm
-        // markalar/mevsimler/DOT'lar) seçili filtreden bağımsız, eksiksiz üretilebilsin.
         const categoryConditions = [];
 
-        // Hariç tutulacak kategori (örn. marka sayfasında Sıfır sekmesi için ikinci-el dışlanır)
         if (req.query.haricKategori) {
             const excludeSlugs = String(req.query.haricKategori).split(',').map(s => s.trim()).filter(Boolean);
             const excludeCategories = await WebCategory.find({ slug: { $in: excludeSlugs } }).lean();
@@ -320,11 +272,7 @@ router.get('/filter', async (req, res) => {
                 categoryConditions.push({ $or: orClauses });
             }
         }
-        // ==========================================
-        // LASTİK FİLTRELERİ
-        // ==========================================
         if (!isJantCategory) {
-            // Genişlik filtresi
             if (genislik) {
                 andConditions.push({
                     'diaData.m_urunOzellikleri': {
@@ -336,7 +284,6 @@ router.get('/filter', async (req, res) => {
                 });
             }
 
-            // Yanak filtresi
             const yanakValue = yanak || yukseklik;
             if (yanakValue) {
                 andConditions.push({
@@ -349,7 +296,6 @@ router.get('/filter', async (req, res) => {
                 });
             }
 
-            // Jant çapı filtresi
             const jantValue = jant || cap;
             if (jantValue) {
                 andConditions.push({
@@ -377,7 +323,6 @@ router.get('/filter', async (req, res) => {
                     });
                 }
             }
-            // Mevsim filtresi (kullanıcı seçimi virtualSeasonFilter'ı override eder)
             if (mevsim) {
                 const mevsimList = mevsim.split(',').map(m => m.trim()).filter(Boolean);
                 if (mevsimList.length > 0) {
@@ -406,7 +351,6 @@ router.get('/filter', async (req, res) => {
                 });
             }
 
-            // Yük Endeksi filtresi
             if (yukEndeksi) {
                 andConditions.push({
                     'diaData.m_urunOzellikleri': {
@@ -418,7 +362,6 @@ router.get('/filter', async (req, res) => {
                 });
             }
 
-            // Hız Endeksi filtresi
             if (hizEndeksi) {
                 andConditions.push({
                     'diaData.m_urunOzellikleri': {
@@ -430,7 +373,6 @@ router.get('/filter', async (req, res) => {
                 });
             }
 
-            // Üretim tarihi filtresi
             if (uretim) {
                 const uretimList = uretim.split(',').map(u => u.trim()).filter(Boolean);
                 if (uretimList.length > 0) {
@@ -439,9 +381,6 @@ router.get('/filter', async (req, res) => {
             }
         }
 
-        // ==========================================
-        // JANT FİLTRELERİ (m_urunOzellikleri üzerinden)
-        // ==========================================
         if (isJantCategory) {
             const pushRimFilter = (ozellikadi, value) => {
                 if (!value) return;
@@ -476,17 +415,12 @@ router.get('/filter', async (req, res) => {
             pushRimFilter('Renk', renk);
         }
 
-        // ==========================================
-        // ORTAK FİLTRELER
-        // ==========================================
-        // Araç tipi filtresi
         if (arac && arac !== 'all') {
             andConditions.push({
                 'diaData.ozelkod2kodu': arac
             });
         }
 
-        // Marka filtresi
         if (marka) {
             const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
             if (markaList.length > 0) {
@@ -496,10 +430,6 @@ router.get('/filter', async (req, res) => {
             }
         }
 
-        // Özellik çipleri (RFT / C Serisi / XL / EV): ürün adından (diaData.aciklama)
-        // türetilir. Regexler ön yüzdeki matches() ile birebir aynıdır; kategorinin
-        // TÜM ürünlerinde arar (yalnız görünen sayfada değil). C Serisi büyük "C"
-        // olduğundan yalnız o koşul büyük/küçük harf duyarlıdır.
         const isActive = (v) => v === '1' || v === 'true';
         if (isActive(rft)) {
             andConditions.push({ 'diaData.aciklama': { $regex: '\\bRFT\\b', $options: 'i' } });
@@ -514,23 +444,14 @@ router.get('/filter', async (req, res) => {
             andConditions.push({ 'diaData.aciklama': { $regex: '\\bEV\\b', $options: 'i' } });
         }
 
-        // Vitrin filtresi: yalnız tema Vitrin 1'de seçili vitrinin ürünleri
         const catalogShowcase = await getCatalogShowcase(req.site);
         if (vitrin && catalogShowcase && vitrin === catalogShowcase.key) {
             andConditions.push({ _key: { $in: catalogShowcase.productKeys } });
         }
 
-        // Akıllı serbest metin arama (q): sorgu kelimelere ayrılır.
-        //  - Tüm rakamlar (ebat/ürün kodu) tek esnek eşleşmeye toplanır:
-        //    "2055516", "205 55 16", "205/55R16" hepsi aynı kabul edilir.
-        //  - Saf harf kelimeleri (marka/model, ör. "Pirelli") ayrı ayrı aranır.
-        //  - TÜM parçalar BİRLİKTE (AND) sağlanmalıdır → "205 55 16 Pirelli"
-        //    hem 205/55R16 ebadını hem Pirelli markasını arar, başka marka çıkmaz.
-        // Kategorinin TÜM ürünlerinde arar (yalnız görünen sayfada değil).
         if (req.query.q && String(req.query.q).trim()) {
             const q = String(req.query.q).trim();
             const tokens = q.split(/\s+/).filter(Boolean);
-            // Saf harf kelimeler (rakam içermeyen, en az 2 harf) → marka/model
             const kelimeler = tokens.filter(t => t.length >= 2 && /[a-zşğüöçıİ]/i.test(t) && !/\d/.test(t));
             const rakam = q.replace(/[^0-9]/g, '');
 
@@ -551,8 +472,6 @@ router.get('/filter', async (req, res) => {
                     { 'diaData.ozelkod5kodu': rx }
                 ] });
             }
-            // Ne yeterli rakam ne de harf kelimesi çıktıysa (ör. tek karakter),
-            // ham sorguyu geniş ara — kullanıcı hiç sonuçsuz kalmasın.
             if (rakam.length < 3 && kelimeler.length === 0) {
                 const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const rx = new RegExp(esc, 'i');
@@ -570,13 +489,11 @@ router.get('/filter', async (req, res) => {
             });
         }
 
-        // Fiyat filtresi
         if (fiyatMin || fiyatMax) {
             const priceCondition = priceRangeCondition(req.site, fiyatMin, fiyatMax);
             andConditions.push(priceCondition);
         }
 
-        // Facet için baz (kategori koşulları var, kullanıcı filtreleri YOK)
         const baseFilterForFacets = { ...filter };
         const allConditions = [...categoryConditions, ...andConditions];
         if (allConditions.length > 0) {
@@ -586,11 +503,6 @@ router.get('/filter', async (req, res) => {
             baseFilterForFacets['$and'] = categoryConditions;
         }
 
-        // Depo filtresi (b2b): seçilen depoda stoğu olan ürünlere daralt. Depo stoğu
-        // yalnız kendi stok (DIA) ürünlerinde vardır; XML ürünler dışlanır. Aday
-        // kodlar (kategori + marka/mevsim/DOT + kendi stok) toplanır, canlı depo
-        // stoğuna göre süzülür ve nihai sorgu bu kodlara kilitlenir. Böylece depo
-        // filtresi TÜM sayfalara işler (yalnız görünen sayfaya değil).
         if (depo) {
             try {
                 const adayFilter = {
@@ -604,7 +516,6 @@ router.get('/filter', async (req, res) => {
                     .lean();
                 const kodlar = adaylar.map(p => p.diaData?.stokkartkodu).filter(Boolean);
                 const izinli = await filterCodesByDepot(req.site, depo, kodlar);
-                // izinli null ise depo bulunamadı → filtre yok sayılır
                 if (izinli) {
                     filter['$and'] = [...(filter['$and'] || []), { 'diaData.stokkartkodu': { $in: [...izinli] } }];
                 }
@@ -617,13 +528,8 @@ router.get('/filter', async (req, res) => {
         const totalProducts = await WebProduct.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limitNum);
 
-        // Sıralama mantığı:
-        // - Default (sortBy yok): 4 katmanlı (Bizim Stoklu > XML Stoklu > Bizim Stoksuz > XML Stoksuz)
-        // - sortBy belirtildiyse: 4 katman tamamen iptal, sadece kullanıcı seçimine göre sırala
-        // - Fiyat sıralamasında frontend ile aynı mantık: shippingIncludedPrice > webPrice > fiyat4
         const aggregatePipeline = [{ $match: filter }];
 
-        // b2b tablo sütun başlığı sıralaması (tüm ürünlerde, sayfa bazlı değil)
         const COLUMN_SORT = {
             stokKodu: 'diaData.stokkartkodu',
             ebat: 'diaData.ozelkod3kodu',
@@ -635,11 +541,10 @@ router.get('/filter', async (req, res) => {
         };
 
         if (sortBy === 'price' || sortBy === 'fiyat') {
-            // Fiyata göre — 2 katman: önce stoklular, sonra stoksuzlar
             aggregatePipeline.push({
                 $addFields: {
                     _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
-                    _sortPrice: sortPriceExpr(req.site) // site bazlı: kargo dahil fiyat > satış fiyatı
+                    _sortPrice: sortPriceExpr(req.site)
                 }
             });
             aggregatePipeline.push({
@@ -653,8 +558,6 @@ router.get('/filter', async (req, res) => {
         } else if (COLUMN_SORT[sortBy]) {
             const yon = sortOrder === 'desc' ? -1 : 1;
             if (sortBy === 'stok') {
-                // Stok sıralamasında ÖNCE kendi stoğumuz (dia), SONRA XML ürünleri;
-                // her grup kendi içinde stok adedine göre sıralanır.
                 aggregatePipeline.push({
                     $addFields: { _isXml: { $cond: [{ $eq: ['$syncInfo.syncSource', 'xml_integration'] }, 1, 0] } }
                 });
@@ -671,7 +574,6 @@ router.get('/filter', async (req, res) => {
         } else if (sortBy === 'reviews') {
             aggregatePipeline.push({ $sort: { 'customData.reviewStats.reviewCount': -1, 'customData.reviewStats.averageRating': -1 } });
         } else {
-            // Default 4 katmanlı sıralama
             aggregatePipeline.push({
                 $addFields: {
                     _isXml: { $eq: ['$syncInfo.syncSource', 'xml_integration'] },
@@ -705,12 +607,8 @@ router.get('/filter', async (req, res) => {
 
         const products = await WebProduct.aggregate(aggregatePipeline);
 
-        // Facet listeleri (yalnız ?facets=1 ile) — kategorinin TÜM marka/mevsim/DOT
-        // değerleri, seçili filtreden bağımsız. Filtre panelindeki select'leri eksiksiz
-        // doldurmak için kullanılır (o anki sayfanın ürünlerine bağlı kalmaz).
         let facets = null;
         if (req.query.facets === '1') {
-            // Ürün özelliğinin (m_urunOzellikleri) değerini veren aggregation ifadesi
             const featureValueExpr = (featureName) => ({
                 $let: {
                     vars: {
@@ -733,12 +631,9 @@ router.get('/filter', async (req, res) => {
                         brands: { $addToSet: '$diaData.marka' },
                         seasons: { $addToSet: '$diaData.ozelkod1kodu' },
                         dots: { $addToSet: '$diaData.ekalan5' },
-                        // Kategorideki ürün türleri (ozelkod7kodu) — ön yüz filtre alanlarını türe göre seçer
                         productTypes: { $addToSet: '$diaData.ozelkod7kodu' },
-                        // Jant filtreleri: ürün özelliklerindeki ham değerler ("17 İnç", "114.3")
                         rimDiameterRaw: { $addToSet: featureValueExpr('Jant Çapı') },
                         boltPatternRaw: { $addToSet: featureValueExpr('Bijon Aralığı') },
-                        // OEM özelliğinin ham değeri (ör. "Mercedes (MO)", "Audi(AO),Volkswagen(+)")
                         oemRaw: {
                             $addToSet: {
                                 $let: {
@@ -759,13 +654,10 @@ router.get('/filter', async (req, res) => {
                 }
             ]);
             const g = facetRes[0] || {};
-            // b2b depoları (vitrinDepolari) — depo select'ini doldurmak için
             let depots = [];
             try {
                 depots = (await getDepotList(req.site)).map(d => d.ad).filter(Boolean);
-            } catch { /* depo ayarı yoksa boş */ }
-            // OEM ham değerlerinden marka bazlı liste çıkar: "Mercedes (MO)" → "Mercedes",
-            // "Audi(AO),Volkswagen(+)" → "Audi","Volkswagen". "Yok"/boş dışlanır.
+            } catch {  }
             const oemBrandSet = new Set();
             for (const raw of (g.oemRaw || [])) {
                 if (!raw) continue;
@@ -777,7 +669,6 @@ router.get('/filter', async (req, res) => {
             }
             const oems = [...oemBrandSet].sort((a, b) => String(a).localeCompare(String(b), 'tr'));
 
-            // Sayıyla başlayan değerleri küçükten büyüğe sıralar (boşlar atılır)
             const sortNumeric = (values) => (values || [])
                 .map(v => String(v || '').trim())
                 .filter(Boolean)
@@ -790,22 +681,17 @@ router.get('/filter', async (req, res) => {
                 oems,
                 depots,
                 productTypes: (g.productTypes || []).filter(Boolean),
-                // Vitrin filtresi seçeneği: ad tema ayarından, adet bu kategorideki vitrin ürünü sayısı (0 ise ön yüz göstermez)
                 showcaseFilter: catalogShowcase
                     ? { key: catalogShowcase.key, title: catalogShowcase.title, count: await WebProduct.countDocuments({ ...baseFilterForFacets, _key: { $in: catalogShowcase.productKeys } }) }
                     : null,
-                // Panelde kategori için seçilen "Gizlenecek Filtreler" (siteContent.<site>.hiddenFilters)
                 hiddenFilters: webCategory?.siteContent?.[req.site]?.hiddenFilters || [],
                 rimDiameters: sortNumeric(g.rimDiameterRaw),
                 boltPatterns: sortNumeric(g.boltPatternRaw)
             };
         }
 
-        // Kategori bazlı fiyat gösterim ayarı (tek sorgu, önbellekli)
         const fiyatAyarlari = await getFiyatAyarlari(req.site);
 
-        // Plasiyer karşılaştırması: LJA perakende fiyatını ekle (?perakende=1).
-        // b2b fiyatlaması fiyat4'ü ezebileceği için site fiyatlamasından ÖNCE hesapla.
         if (req.query.perakende === '1') {
             for (const p of products) {
                 const lp = resolveSitePrice(p, 'lastikjantavm');
@@ -816,7 +702,6 @@ router.get('/filter', async (req, res) => {
         applySitePricingMany(products, req.site);
         products.forEach(p => fiyatAyariUygula(p, fiyatAyarlari));
 
-        // Sitenin kendi açıklaması etkin değer olarak yansıtılır (ürün detayındaki çözümün liste karşılığı)
         for (const product of products) {
             const siteDescription = product.customData?.siteDescriptions?.[req.site];
             if (siteDescription) product.customData.customDescription = siteDescription;
@@ -889,7 +774,7 @@ router.get('/:slug/wheelsize', async (req, res) => {
                 tags: wheelSizeDoc.wheelsizeData?.ratings?.tags || []
             },
             buyNotBuy: wheelSizeDoc.wheelsizeData?.buyNotBuy || null,
-            materials: wheelSizeDoc.wheelsizeData?.materials || [] // EKLE
+            materials: wheelSizeDoc.wheelsizeData?.materials || []
         };
 
         res.json({ success: true, data: wheelSize });
@@ -917,7 +802,6 @@ router.get('/:slug', async (req, res) => {
             });
         }
 
-        // Sitenin kendi SEO/açıklama değerleri etkin değer olarak yansıtılır (yoksa ortak alanlar)
         if (product.customData) {
             const siteData = product.customData.siteData?.[req.site] || {};
             if (siteData.seoTitle !== undefined) product.customData.seoTitle = siteData.seoTitle;
@@ -927,11 +811,9 @@ router.get('/:slug', async (req, res) => {
             if (siteDescription) product.customData.customDescription = siteDescription;
         }
 
-        // Kategori bazlı fiyat gösterim ayarı
         applySitePricing(product, req.site);
         fiyatAyariUygula(product, await getFiyatAyarlari(req.site));
 
-        // Marka görünen adı: site bazlı displayName > ortak customName
         const marka = product.diaData?.marka;
         if (marka) {
             const webBrand = await WebBrand.findOne({

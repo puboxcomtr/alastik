@@ -1,5 +1,3 @@
-// LJA şube sayfası — /subeler/<sube> (yalnızca lastikjantavm.com)
-// Adres/telefon/saatler şube kaydından, hizmet fiyatları katalogdan canlı okunur.
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -70,7 +68,6 @@ export default async function BranchPage({ params }: Props) {
                     <Col lg={8}>
                         {branch.intro.map((t, i) => <p key={i}>{t}</p>)}
 
-                        {/* Hizmet grupları: başlık + çapa + fiyat tablosu */}
                         <nav className="my-4" aria-label="Hizmetler">
                             <div className="d-flex flex-wrap gap-2">
                                 {SERVICE_GROUPS.map(g => (

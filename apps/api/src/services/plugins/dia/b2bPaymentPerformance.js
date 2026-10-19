@@ -1,34 +1,15 @@
-/**
- * b2b cari ödeme durumu (admin cari görüntüle) — YALNIZ carinin BİZDEN ALDIKLARI.
- *
- * Cari ekstresinden (B2bCariEkstre) bir "satış defteri" çıkarılır:
- *  - Borç: bizim cariye kestiğimiz satış faturaları (Toptan/Perakende Satış, Verilen Hizmet/Fiyat Farkı).
- *  - Kapatma: carinin ödemeleri (havale, çek, kasa, kredi kartı, virman…) + satış iadeleri.
- *  - Hariç: carinin BİZE kestiği faturalar (Mal Alım, Alınan Hizmet/Fiyat Farkı, Alım İade) ve
- *    bizim cariye yaptığımız ödemeler (borç tarafı virman/havale vb.) — bunlar bizim alımlarımızdır.
- * Borçlar ile kapatmalar tarih sırasıyla FIFO eşleştirilir:
- *  - Açık kalan faturalar → vadesi geçen / vadesi gelecek (fatura bazlı)
- *  - Ödemeler → kapattığı faturanın vadesinden sonra değilse "zamanında" (son `months` ay)
- *
- * Açılış fişleri her dönem başında önceki dönem bakiyesini TEKRARLAR (ekstre son 3 dönemi
- * birleştirir) — hesaba katılmaz. İlk dönemden devreden satış borcu, carinin güncel borç
- * bakiyesinden (yalnız pozitif kısmı) geri hesaplanır.
- */
 
 const toKurus = v => Math.round((Number(v) || 0) * 100);
 const DAY_MS = 24 * 60 * 60 * 1000;
 const daysBetween = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
 const isDate = v => /^\d{4}-\d{2}-\d{2}/.test(String(v || ''));
 
-// Tür metni Türkçe kurallarla küçültülür: /i bayrağı "İade"deki İ'yi i ile eşleştirmez
 const lower = type => String(type || '').toLocaleLowerCase('tr-TR');
 const isOpeningEntry = type => /açılış/.test(lower(type));
-// Carinin bize kestiği / bizim alımımızla ilgili kayıtlar
 const isPurchaseEntry = type => /alım|alınan/.test(lower(type));
 const isSaleInvoice = type => /satış|verilen/.test(lower(type)) && !/iade/.test(lower(type)) && !isPurchaseEntry(type);
 const isSaleReturn = type => /satış\s*iade/.test(lower(type));
 
-/** Bugünün tarihi (İstanbul) YYYY-MM-DD */
 function todayIstanbul(now = new Date()) {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(now);
 }
@@ -51,7 +32,6 @@ function buildSalesLedger(movements) {
         .filter(r => r.date && !isOpeningEntry(r.type) && !isPurchaseEntry(r.type))
         .map(r => ({
             ...r,
-            // Borç tarafında yalnız satış faturaları; alacak tarafında ödemeler + satış iadeleri
             debit: r.debit > 0 && isSaleInvoice(r.type) ? r.debit : 0,
             credit: r.credit,
             isPayment: r.credit > 0 && !isSaleReturn(r.type)
@@ -60,9 +40,6 @@ function buildSalesLedger(movements) {
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.index - b.index));
 }
 
-/**
- * @param {{ movements?: object[], balanceKurus?: number, now?: Date, months?: number }} input
- */
 function computePaymentPerformance({ movements, balanceKurus, now = new Date(), months = 12 }) {
     const today = todayIstanbul(now);
     const since = new Date(now);
@@ -77,8 +54,8 @@ function computePaymentPerformance({ movements, balanceKurus, now = new Date(), 
     const rows = buildSalesLedger(movements);
     if (!rows.length) return { ...empty, onTimeKurus: 0, lateKurus: 0 };
 
-    const debts = [];   // { ref, date, due, total, remaining }
-    const credits = []; // { amount, date, type, isPayment } — eşleşmemiş (peşin) kapatmalar
+    const debts = [];
+    const credits = [];
     let onTimeKurus = 0;
     let lateKurus = 0;
     const onTimePayments = [];
@@ -89,7 +66,6 @@ function computePaymentPerformance({ movements, balanceKurus, now = new Date(), 
         if (credit.date > debt.due) { lateKurus += amount; return; }
         onTimeKurus += amount;
         const last = onTimePayments[onTimePayments.length - 1];
-        // Aynı ödeme aynı faturayı parça parça kapattıysa tek satır
         if (last && last.paymentDate === credit.date && last.paymentType === credit.type && last.invoiceNo === debt.ref) {
             last.amountKurus += amount;
             return;
@@ -104,8 +80,6 @@ function computePaymentPerformance({ movements, balanceKurus, now = new Date(), 
         });
     };
 
-    // İlk dönemden devreden satış borcu: carinin güncel BORÇ bakiyesi − defterin net etkisi.
-    // Alacaklı (negatif) bakiyede veya defter zaten bakiyeyi karşılıyorsa devir yok.
     const net = rows.reduce((s, r) => s + r.debit - r.credit, 0);
     const opening = Math.max(0, Math.max(0, Number(balanceKurus) || 0) - net);
     if (opening > 0) {
@@ -137,7 +111,6 @@ function computePaymentPerformance({ movements, balanceKurus, now = new Date(), 
         }
     }
 
-    // Açık kalan satış faturaları → vadesi geçen / gelecek (vadesi yakın olan önce)
     const overdueItems = [];
     const upcomingItems = [];
     for (const d of debts) {
@@ -158,7 +131,7 @@ function computePaymentPerformance({ movements, balanceKurus, now = new Date(), 
     upcomingItems.sort(byDue);
     const sum = list => list.reduce((s, x) => s + x.remainingKurus, 0);
 
-    onTimePayments.reverse(); // en yeni ödeme önce
+    onTimePayments.reverse();
     const total = onTimeKurus + lateKurus;
     return {
         today,

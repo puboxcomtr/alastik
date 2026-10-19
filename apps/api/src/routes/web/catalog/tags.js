@@ -1,4 +1,3 @@
-// apps/api/src/routes/web/catalog/tags.js
 
 const express = require('express');
 const { applySitePricingMany, salePriceExpr, sortPriceExpr, pricedCondition, priceRangeCondition } = require('../../../utils/sitePricing');
@@ -9,10 +8,6 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { MAIN_DIA_FILTERS, getSiteVisibilityFilter } = require('../../../config/diaFilters');
 const Setting = require('../../../models/admin/settings/Setting');
 
-/**
- * GET /api/tags/tire-size
- * Lastik ebatına göre etiket seoUrl'ini bul
- */
 router.get('/tire-size', async (req, res) => {
     try {
         const { width, aspectRatio, diameter } = req.query;
@@ -68,10 +63,6 @@ router.get('/tire-size', async (req, res) => {
     }
 });
 
-/**
- * GET /api/tags/rim-pcd?pcd=5X112
- * PCD ile jant etiketi getir
- */
 router.get('/rim-pcd', async (req, res) => {
     try {
         const { pcd } = req.query;
@@ -83,7 +74,6 @@ router.get('/rim-pcd', async (req, res) => {
             });
         }
 
-        // URL formatına çevir: 5X114.3 -> 5-1143-jant-fiyatlari
         const urlPcd = pcd.toLowerCase().replace('x', '-').replace('.', '');
         const seoUrl = `${urlPcd}-jant-fiyatlari`;
 
@@ -121,10 +111,6 @@ router.get('/rim-pcd', async (req, res) => {
     }
 });
 
-/**
- * GET /api/tags/:slug
- * Slug ile tag getir
- */
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -156,16 +142,11 @@ router.get('/:slug', async (req, res) => {
     }
 });
 
-/**
- * GET /api/tags/:slug/products
- * Tag'e ait ürünleri getir (filtreleme destekli)
- */
 router.get('/:slug/products', async (req, res) => {
     try {
         const { slug } = req.params;
         const { page = 1, limit = 12, marka, arac, oem, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax, sortBy, sortOrder, durum } = req.query;
 
-        // Tag'i bul (ziyaret edilen sitenin etiketi)
         const tag = await WebTag.findOne({
             site: req.site,
             seoUrl: slug,
@@ -179,7 +160,6 @@ router.get('/:slug/products', async (req, res) => {
             });
         }
 
-        // Ürün key'leri yoksa boş dön
         if (!tag.products || tag.products.length === 0) {
             return res.json({
                 success: true,
@@ -196,17 +176,14 @@ router.get('/:slug/products', async (req, res) => {
             });
         }
 
-        // Base filter
         const filter = {
             _key: { $in: tag.products },
             'diaData.durum': 'A',
             'syncInfo.diaStatus': 'synced',
             ...(req.site ? { sites: req.site } : {}),
-            // Görünürlük: site ayarı > ortak değer
             $and: [getSiteVisibilityFilter(req.site)]
         };
 
-        // Merkezi DIA filtrelerini uygula
         MAIN_DIA_FILTERS.forEach(f => {
             const fieldPath = `diaData.${f.field}`;
             if (f.operator === '=') {
@@ -218,10 +195,8 @@ router.get('/:slug/products', async (req, res) => {
             Object.assign(filter, pricedCondition(req.site));
         }
 
-        // Ek filtreler için $and
         const andConditions = [];
 
-        // Marka filtresi
         if (marka) {
             const markaList = marka.split(',').map(m => m.trim()).filter(Boolean);
             if (markaList.length > 0) {
@@ -306,13 +281,10 @@ router.get('/:slug/products', async (req, res) => {
             });
         }
 
-        // $and koşullarını uygula (görünürlük filtresi ezilmez, üzerine eklenir)
         if (andConditions.length > 0) {
             filter['$and'] = [...filter['$and'], ...andConditions];
         }
 
-        // Sıfır / İkinci El sekmeleri: ikinci el ürünler DIA kategori ağacında
-        // "İkinci El ..." başlığı altında işaretlidir
         const secondHandCondition = {
             'diaData.m_kategoriler': { $elemMatch: { kategori_aciklama_1: { $regex: '^İkinci El' } } }
         };
@@ -320,36 +292,27 @@ router.get('/:slug/products', async (req, res) => {
             'diaData.m_kategoriler': { $not: { $elemMatch: { kategori_aciklama_1: { $regex: '^İkinci El' } } } }
         };
 
-        // Sekme sayaçları (durum filtresi hariç mevcut tüm koşullarla)
         const [sifirCount, ikinciElCount] = await Promise.all([
             WebProduct.countDocuments({ ...filter, $and: [...filter['$and'], brandNewCondition] }),
             WebProduct.countDocuments({ ...filter, $and: [...filter['$and'], secondHandCondition] })
         ]);
 
-        // Aktif sekme: varsayılan sıfır ürünler, durum=ikinci-el ise ikinci el
         filter['$and'] = [...filter['$and'], durum === 'ikinci-el' ? secondHandCondition : brandNewCondition];
 
-        // Pagination hesapla
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
-        // Toplam filtrelenmiş ürün sayısı
         const totalProducts = durum === 'ikinci-el' ? ikinciElCount : sifirCount;
         const totalPages = Math.ceil(totalProducts / limitNum);
 
-        // Sıralama:
-        // - Default: 4 katmanlı (Bizim Stoklu > XML Stoklu > Bizim Stoksuz > XML Stoksuz)
-        // - sortBy belirtildiyse: Sadece o sıralama uygulanır (4 katman devre dışı)
         const aggregatePipeline = [{ $match: filter }];
 
         if (sortBy === 'price') {
-            // Fiyata göre sırala — 2 katman: önce stoklular, sonra stoksuzlar
-            // Frontend ile aynı fiyat mantığı: shippingIncludedPrice > webPrice > fiyat4
             aggregatePipeline.push({
                 $addFields: {
                     _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
-                    _sortPrice: sortPriceExpr(req.site) // site bazlı: kargo dahil fiyat > satış fiyatı
+                    _sortPrice: sortPriceExpr(req.site)
                 }
             });
             aggregatePipeline.push({
@@ -361,7 +324,6 @@ router.get('/:slug/products', async (req, res) => {
                 $sort: { sortPriority: 1, 'diaData.gercek_stok': -1, 'createdAt': -1 }
             });
         } else {
-            // Default 4 katmanlı sıralama
             aggregatePipeline.push({
                 $addFields: {
                     _isXml: { $eq: ['$syncInfo.syncSource', 'xml_integration'] },
@@ -397,7 +359,6 @@ router.get('/:slug/products', async (req, res) => {
 
         applySitePricingMany(products, req.site);
 
-        // Sitenin kendi açıklaması etkin değer olarak yansıtılır (ürün detayındaki çözümün liste karşılığı)
         for (const product of products) {
             const siteDescription = product.customData?.siteDescriptions?.[req.site];
             if (siteDescription) product.customData.customDescription = siteDescription;

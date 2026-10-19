@@ -1,5 +1,3 @@
-// Depo bazlı stok (stok ipucundaki depo dağılımı) — bayi oturumunda bayi ucundan,
-// plasiyer gözünde (bayi seçilmeden) plasiyer ucundan çekilir. Oturum yoksa null döner.
 import { API_ENDPOINTS } from '@src/config/api';
 
 export type DepotStockMap = Record<string, { ad: string; adet: number }[]>;

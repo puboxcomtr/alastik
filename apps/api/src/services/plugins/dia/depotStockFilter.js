@@ -1,24 +1,15 @@
-// Depo bazlı stok filtresi — b2b kategori/vitrin süzmesinde kullanılır.
-// Verilen stok kodlarından, seçilen depoda (vitrinDepolari) stoğu > 0 olanları
-// döner. Depo stoğu canlı DIA'dan (getDepotStockBatch) çekilir; kod bazında kısa
-// süreli önbellekle sayfa geçişlerinde tekrar DIA'ya gidilmez.
 const DiaSettings = require('../../../models/plugins/dia/DiaSettings');
 const { DiaOrderService } = require('./DiaOrderService');
 
-const TTL_MS = 5 * 60 * 1000; // 5 dk — depo-stok endpoint'iyle aynı tazelik
-const CHUNK = 200; // DIA IN filtresi başına kod adedi
-const cache = new Map(); // anahtar: `${depoKey}:${code}` → { at, adet }
+const TTL_MS = 5 * 60 * 1000;
+const CHUNK = 200;
+const cache = new Map();
 
-/** b2b vitrin depoları: [{ ad, key }]. Ayar yoksa boş dizi. */
 async function getDepotList(site) {
     const settings = await DiaSettings.getSettings(site);
     return Array.isArray(settings?.vitrinDepolari) ? settings.vitrinDepolari : [];
 }
 
-/**
- * codes içinden, depoAd (vitrinDepolari.ad) deposunda stoğu > 0 olan kodların
- * Set'ini döner. Depo bulunamazsa null döner (çağıran depo filtresini yok sayar).
- */
 async function filterCodesByDepot(site, depoAd, codes) {
     const list = await getDepotList(site);
     const depo = list.find(d => d.ad === depoAd || d.key === depoAd);
@@ -29,7 +20,7 @@ async function filterCodesByDepot(site, depoAd, codes) {
 
     const simdi = Date.now();
     const eksik = [];
-    const adetMap = new Map(); // code → adet
+    const adetMap = new Map();
 
     for (const kod of benzersiz) {
         const c = cache.get(`${depo.key}:${kod}`);
@@ -45,8 +36,6 @@ async function filterCodesByDepot(site, depoAd, codes) {
         svc.donemKodu = settings.donemKodu || 1;
         await svc.login();
 
-        // Chunk'lar paralel — sıralı çalışınca kod sayısı arttıkça (6+ çağrı) çok
-        // yavaşlıyordu; paralel çağrıda toplam süre tek çağrı gecikmesine yaklaşır.
         const parcalar = [];
         for (let i = 0; i < eksik.length; i += CHUNK) parcalar.push(eksik.slice(i, i + CHUNK));
         const maps = await Promise.all(

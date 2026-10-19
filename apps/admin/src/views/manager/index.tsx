@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -12,10 +11,8 @@ import MenuItem from '@mui/material/MenuItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 
-// Type Imports
 import type { AdminType } from '@/app/[lang]/(dashboard)/(private)/apps/manager/list/page'
 
-// Component Imports
 import ManagerListTable from './list/ManagerListTable'
 
 const ManagerList = ({ managersData }: { managersData: AdminType[] }) => {

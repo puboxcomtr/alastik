@@ -1,4 +1,3 @@
-// Billing Types
 export interface BillingData {
     invoiceType: 'individual' | 'corporate';
     fullName: string;
@@ -45,7 +44,6 @@ export const initialBillingData: BillingData = {
     addressNote: ''
 };
 
-// Shipping Types
 export interface ShippingData {
     recipientName: string;
     phone: string;

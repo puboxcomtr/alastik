@@ -22,7 +22,6 @@ const get = async (endpoint, params = {}) => {
     }
 };
 
-// TEST: sadece ford
 const TEST_MAKE = 'ford';
 
 (async () => {

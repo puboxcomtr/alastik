@@ -19,7 +19,6 @@ export default function ServicePointsSettings() {
         setPoints(settings?.serviceInfo?.points || [])
     }, [settings])
 
-    // Listeyi hem ekranda hem kaydedilecek veride günceller
     const applyChange = (next: ServicePoint[]) => {
         setPoints(next)
         updateField('serviceInfo', 'points', next)

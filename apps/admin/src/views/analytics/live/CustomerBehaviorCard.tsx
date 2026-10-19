@@ -1,16 +1,13 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Grid from '@mui/material/Grid2'
 import Typography from '@mui/material/Typography'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 import type { LiveBehavior } from './types'
 import { formatCount } from './types'
@@ -28,7 +25,6 @@ const BEHAVIOR_ITEMS: BehaviorItem[] = [
     { key: 'ordered', title: 'Sipariş verdi', icon: 'ri-checkbox-circle-line', color: 'success' }
 ]
 
-// Son 15 dakikadaki müşteri davranış hunisi
 const CustomerBehaviorCard = ({ behavior }: { behavior?: Partial<LiveBehavior> | null }) => {
     return (
         <Card>

@@ -1,10 +1,3 @@
-/**
- * Ürün görsellerine filigran uygular.
- *
- * Orijinal dosyalara dokunulmaz: filigranlı kopya ilk istekte üretilir ve
- * public/filigran/<site>/ altına yazılır. Sonraki istekleri nginx doğrudan
- * bu klasörden karşılar. Ayar değişince önbellek temizlenir.
- */
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
@@ -14,12 +7,10 @@ const WebCategory = require('../../models/web/catalog/WebCategory');
 const WebProduct = require('../../models/web/catalog/WebProduct');
 const paths = require('../../config/path');
 
-// Medya kökü: nginx de bu klasörü sunar (apps/api/public)
 const PUBLIC_ROOT = paths.getStaticPath('');
 const CACHE_ROOT = path.join(PUBLIC_ROOT, 'filigran');
 const AYAR_TTL_MS = 60 * 1000;
 
-// Panel seçenekleri -> sharp yerleşim adları
 const KONUMLAR = {
     'sol-ust': 'northwest',
     'sag-ust': 'northeast',
@@ -28,17 +19,12 @@ const KONUMLAR = {
     'orta': 'center'
 };
 
-// Panelde ayar yoksa kullanılan varsayılanlar
-const VARSAYILAN_GENISLIK_YUZDE = 25;   // görsel genişliğinin yüzdesi
-const VARSAYILAN_OPAKLIK_YUZDE = 30;    // 0 = görünmez, 100 = tam opak
-const VARSAYILAN_ACI = 0;               // derece
+const VARSAYILAN_GENISLIK_YUZDE = 25;
+const VARSAYILAN_OPAKLIK_YUZDE = 30;
+const VARSAYILAN_ACI = 0;
 
-// Panelden seçilebilen döndürme açıları
 const ACILAR = [0, 45, -45, 90, -90];
 
-/**
- * Sayısal ayarı verilen aralığa sıkıştırır; geçersizse varsayılana döner
- */
 function sayiAyari(deger, enAz, enCok, varsayilan) {
     const sayi = Number(deger);
 
@@ -47,9 +33,6 @@ function sayiAyari(deger, enAz, enCok, varsayilan) {
     return Math.min(enCok, Math.max(enAz, sayi));
 }
 
-/**
- * Kategori id listesini normalize eder; ayar dizi ya da JSON metni olarak gelebilir
- */
 function kategoriListesi(deger) {
     let ham = deger;
 
@@ -62,7 +45,6 @@ function kategoriListesi(deger) {
     return [...new Set(ham.map(k => String(k || '').trim()).filter(Boolean))];
 }
 
-// Filigranı etkileyen ayar anahtarları (değişince önbellek geçersiz olur)
 const AYAR_ANAHTARLARI = [
     'watermark',
     'watermarkPosition',
@@ -73,15 +55,11 @@ const AYAR_ANAHTARLARI = [
     'watermarkExcludedCategories'
 ];
 
-// Hariç tutulan görsel listesi ayarlardan daha pahalı hesaplanır, ayrı ve uzun TTL
 const HARIC_TTL_MS = 5 * 60 * 1000;
 
 const ayarOnbellek = new Map();
 const haricOnbellek = new Map();
 
-/**
- * Site için filigran ayarlarını döndürür (60 sn önbellekli)
- */
 async function getAyarlar(site) {
     const kayit = ayarOnbellek.get(site);
 
@@ -118,9 +96,6 @@ function ayarOnbelleginiTemizle() {
     haricOnbellek.clear();
 }
 
-/**
- * Bir görsel yolunu karşılaştırmaya uygun hale getirir: /urun/abc.jpg -> urun/abc.jpg
- */
 function yolAnahtari(gorselUrl) {
     let yol = String(gorselUrl || '');
 
@@ -131,11 +106,6 @@ function yolAnahtari(gorselUrl) {
     return yol.split('?')[0].replace(/^\/+/, '').toLowerCase();
 }
 
-/**
- * Seçilen kategorileri alt kategorileriyle birlikte döndürür.
- * Kategori-ürün bağı DIA üzerinden kurulur: kategori.diaCategory <-> ürünün
- * diaData.m_kategoriler[].<diaLevel> alanı.
- */
 async function haricKategoriAgaci(kategoriIdler) {
     if (!kategoriIdler.length) return [];
 
@@ -144,7 +114,6 @@ async function haricKategoriAgaci(kategoriIdler) {
         .lean()
         .catch(() => []);
 
-    // Üst kategori seçilince alt kategorileri de kapsanır
     const altlar = await WebCategory.find({ parentPath: { $in: kategoriIdler } })
         .select('diaCategory diaLevel')
         .lean()
@@ -153,9 +122,6 @@ async function haricKategoriAgaci(kategoriIdler) {
     return [...secilenler, ...altlar].filter(k => k.diaCategory);
 }
 
-/**
- * Filigran uygulanmayacak görsellerin yol kümesini döndürür (5 dk önbellekli)
- */
 async function haricGorseller(site) {
     const kayit = haricOnbellek.get(site);
 
@@ -208,13 +174,9 @@ async function haricGorseller(site) {
     return kume;
 }
 
-/**
- * Filigran görselinin diskteki tam yolunu çözer
- */
 function filigranDosyaYolu(gorselUrl) {
     if (!gorselUrl) return null;
 
-    // Tam adres verilmişse yol kısmı alınır
     let yol = gorselUrl;
 
     if (/^https?:\/\//i.test(yol)) {
@@ -223,7 +185,6 @@ function filigranDosyaYolu(gorselUrl) {
 
     const temiz = yol.replace(/^\/+/, '');
 
-    // /uploads/... ayrı bir kökten servis ediliyor olabilir
     const adaylar = [
         path.join(PUBLIC_ROOT, temiz),
         path.join(PUBLIC_ROOT, temiz.replace(/^uploads\//, ''))
@@ -232,10 +193,6 @@ function filigranDosyaYolu(gorselUrl) {
     return adaylar.find(p => fs.existsSync(p)) || null;
 }
 
-/**
- * Filigranlı kopyayı üretir (yoksa) ve dosya yolunu döndürür.
- * Filigran kapalıysa veya görsel tanımsızsa null döner; çağıran orijinali sunar.
- */
 async function filigranliDosya(site, istekYolu) {
     const ayar = await getAyarlar(site);
 
@@ -245,10 +202,8 @@ async function filigranliDosya(site, istekYolu) {
 
     if (!filigranYolu) return null;
 
-    // Yol geçişini engelle
     const guvenliYol = path.normalize(istekYolu).replace(/^(\.\.[/\\])+/, '').replace(/^\/+/, '');
 
-    // Panelde seçilen kategorilerin görselleri filigransız kalır
     const haric = await haricGorseller(site);
 
     if (haric.has(guvenliYol.toLowerCase())) return null;
@@ -259,7 +214,6 @@ async function filigranliDosya(site, istekYolu) {
 
     const hedef = path.join(CACHE_ROOT, site, guvenliYol);
 
-    // Önbellek güncelse doğrudan kullan
     if (fs.existsSync(hedef)) {
         const kaynakZaman = fs.statSync(kaynak).mtimeMs;
         const hedefZaman = fs.statSync(hedef).mtimeMs;
@@ -275,12 +229,8 @@ async function filigranliDosya(site, istekYolu) {
     const gorselYukseklik = meta.height || 600;
 
     const logoMeta = await sharp(filigranYolu).metadata();
-    const logoOrani = (logoMeta.height || 1) / (logoMeta.width || 1);   // yükseklik / genişlik
+    const logoOrani = (logoMeta.height || 1) / (logoMeta.width || 1);
 
-    // Döndürülmüş filigranın kapladığı kutu, logonun en-boy oranına bağlıdır:
-    //   kutuGenislik = W * (|cos| + oran * |sin|)
-    //   kutuYukseklik = W * (|sin| + oran * |cos|)
-    // Ayarlanan yüzde bu kutunun genişliğini ifade eder.
     const radyan = Math.abs(ayar.aci) * Math.PI / 180;
     const kosinus = Math.abs(Math.cos(radyan));
     const sinus = Math.abs(Math.sin(radyan));
@@ -288,7 +238,6 @@ async function filigranliDosya(site, istekYolu) {
     const hedefKutuGenislik = gorselGenislik * (ayar.genislikYuzde / 100);
     const genislikIcin = hedefKutuGenislik / (kosinus + logoOrani * sinus);
 
-    // Döndürülmüş kutu kaynak görseli aşarsa birleştirme başarısız olur; yükseklik de sınırlanır
     const yukseklikIcin = gorselYukseklik / (sinus + logoOrani * kosinus);
 
     const filigranGenislik = Math.max(20, Math.round(Math.min(genislikIcin, yukseklikIcin)));
@@ -297,12 +246,10 @@ async function filigranliDosya(site, istekYolu) {
         .resize({ width: filigranGenislik })
         .ensureAlpha();
 
-    // Döndürme: boşalan köşeler saydam kalır
     if (ayar.aci !== 0) {
         filigranIslem = filigranIslem.rotate(ayar.aci, { background: { r: 0, g: 0, b: 0, alpha: 0 } });
     }
 
-    // Saydamlaştırma: alfa kanalı opaklık oranıyla çarpılır
     const filigran = await filigranIslem
         .composite([{
             input: Buffer.from([255, 255, 255, Math.round(255 * (ayar.opaklikYuzde / 100))]),
@@ -320,9 +267,6 @@ async function filigranliDosya(site, istekYolu) {
     return hedef;
 }
 
-/**
- * Filigran önbelleğini siler (ayar değişince çağrılır)
- */
 function onbellegiSil(site) {
     ayarOnbelleginiTemizle();
 

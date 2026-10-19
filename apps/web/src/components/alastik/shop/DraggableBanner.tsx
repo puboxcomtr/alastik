@@ -5,20 +5,16 @@ import Image from 'next/image';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 
-// Services
 import { getSliderByKey, getSliderImageUrl } from '@/src/services/sliderService';
 
-// Types
 import type { Slider } from '@/src/types/slider';
 
-// Swiper CSS
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 interface DraggableBannerProps {
     sliderKey: string;
     site?: string;
-    // Override ayarları (opsiyonel)
     slidesPerView?: number;
     slidesPerViewMobile?: number;
     slidesPerViewTablet?: number;
@@ -53,13 +49,10 @@ export default function DraggableBanner({
         }
     }, [sliderKey, site]);
 
-
-    // Slider yoksa veya boşsa gösterme
     if (!slider || !slider.sliders || slider.sliders.length === 0) {
         return null;
     }
 
-    // Props override > DB settings > default (props verilmezse banner grubunun kendi ayarları geçerli)
     const settings = slider.settings || {};
     const finalSlidesPerView = slidesPerView || settings.slidesPerView || 4;
     const finalSlidesPerViewMobile = slidesPerViewMobile || settings.slidesPerViewMobile || 2;

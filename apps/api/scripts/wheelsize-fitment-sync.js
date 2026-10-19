@@ -1,14 +1,3 @@
-// Wheel-Size → vehiclefitments senkronu (Avrupa pazarı, eudm).
-// Her marka + model için nesiller, motor/donanım seçenekleri, fabrika ve alternatif lastik/jant ebatları,
-// bijon (PCD) ve merkez delik bilgisi tek kayıtta toplanır.
-//
-// Kullanım (apps/api klasöründen):
-//   node scripts/wheelsize-fitment-sync.js                      kuru çalıştırma: marka/model sayısı ve tahmini istek; hiçbir şey yazmaz
-//   node scripts/wheelsize-fitment-sync.js --apply              tümünü çeker ve yazar (son 20 günde çekilmiş modeller atlanır)
-//   node scripts/wheelsize-fitment-sync.js --apply --make=fiat,renault   yalnızca bu markalar
-//   ek: --force (yeni çekilmişleri de yenile)  --min-year=2000  --delay=350 (ms, istekler arası)
-//
-// Yalnızca vehiclefitments koleksiyonuna yazar; başka hiçbir veriye dokunmaz.
 const path = require('path');
 const API_DIR = path.resolve(__dirname, '..');
 const envFile = process.env.NODE_ENV === 'production' || require('fs').existsSync(path.join(API_DIR, '.env.production'))
@@ -32,7 +21,6 @@ const DELAY = parseInt(opt('delay', '350'), 10);
 const FRESH_DAYS = 20;
 const REGION = 'eudm';
 
-// Türkiye'de satılmayan / alakasız alt markalar (mevcut WheelSizeService filtresiyle aynı mantık)
 const EXCLUDED = ['samsung', 'korea', 'trucks', 'commercial', 'alpina', 'amg', 'brabus', 'carlsson', 'russia', 'india', 'china'];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -110,7 +98,6 @@ function mapModification(m) {
     };
 }
 
-// Kayıt özetini hesaplar: fabrika ebatları en sık görülenden aza sıralanır
 function summarize(generations) {
     const count = (map, key) => { if (key) map.set(key, (map.get(key) || 0) + 1); };
     const oe = new Map(), opt = new Map(), rims = new Set(), bolts = new Set(), bores = new Set(), fuels = new Set(), bodies = new Set();
@@ -174,7 +161,7 @@ const modelIsRecent = m => (m.year_ranges || []).some(r => {
     }
 
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
-    await WebVehicleFitment.init(); // indeksler
+    await WebVehicleFitment.init();
     const freshSince = new Date(Date.now() - FRESH_DAYS * 864e5);
     let saved = 0, skipped = 0, failed = 0;
 

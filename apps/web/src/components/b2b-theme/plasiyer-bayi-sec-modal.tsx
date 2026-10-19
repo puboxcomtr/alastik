@@ -1,6 +1,4 @@
 'use client';
-// Plasiyer panele girince (henüz bayi seçmemişse) açılan bayi seçim modalı.
-// Kapatılamaz; bayi seçilince o bayinin oturumu açılır (impersonation) ve panel yenilenir.
 import { useCallback, useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { PremiumBadge } from './premium-badge';

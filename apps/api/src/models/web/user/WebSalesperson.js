@@ -2,13 +2,6 @@ const mongoose = require('mongoose');
 const { SITE_SLUGS } = require('../../../config/sites');
 const bcrypt = require('bcrypt');
 
-/**
- * Plasiyer (satış personeli) — DIA sistem kullanıcılarından (sis_kullanici) çekilir.
- * DIA senkronu adayları getirir; admin panelinden grubu (Perakende / Toptan) ve şifresi atanan
- * plasiyer giriş yapabilir. Şifre yalnız admin tarafından belirlenir
- * (bayi/cari akışından farklı). Upsert anahtarı: { site, diaUserKey }.
- */
-// Plasiyer grupları (admin atar): grubu atanmamış plasiyer giriş yapamaz
 const SALES_GROUPS = [
     { id: 'retail', label: 'Perakende' },
     { id: 'wholesale', label: 'Toptan' }
@@ -23,25 +16,19 @@ const webSalespersonSchema = new mongoose.Schema({
         index: true
     },
 
-    // DIA sis_kullanici kaynağı
-    diaUserKey: { type: String, required: true, index: true }, // _key
-    diaUsername: { type: String, trim: true },                 // kullaniciadi
-    name: { type: String, trim: true },                        // gercekadi
-    email: { type: String, lowercase: true, trim: true },      // eposta
-    phone: { type: String, trim: true },                       // ceptel
-    diaGroups: { type: String, trim: true },                   // uye_oldugu_gruplar
-    diaTitle: { type: String, trim: true },                    // unvan
-    diaStatus: { type: String, trim: true },                   // durum (A/P)
+    diaUserKey: { type: String, required: true, index: true },
+    diaUsername: { type: String, trim: true },
+    name: { type: String, trim: true },
+    email: { type: String, lowercase: true, trim: true },
+    phone: { type: String, trim: true },
+    diaGroups: { type: String, trim: true },
+    diaTitle: { type: String, trim: true },
+    diaStatus: { type: String, trim: true },
 
-    // Admin tarafından atanan grup (Perakende / Toptan); boş = atanmamış. DIA senkronu dokunmaz.
     salesGroup: { type: String, enum: ['', ...SALES_GROUP_IDS], default: '' },
 
-    // Admin tarafından belirlenen giriş şifresi (senkron dokunmaz).
-    // Giriş kuralı: GRUBU ve şifresi atanmış plasiyer giriş yapabilir.
     password: { type: String },
-    // Admin sonradan görebilsin diye şifrenin geri-okunur kopyası (yalnız admin-gated uçtan döner).
     plainPassword: { type: String },
-    // Varsayılan şifre (12345) ile giriş yapıldıysa true → zorunlu şifre değiştirme
     mustChangePassword: { type: Boolean, default: false },
 
     lastLoginAt: Date,
@@ -66,7 +53,6 @@ webSalespersonSchema.methods.comparePassword = async function (candidatePassword
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-/** Giriş yapabilir mi: grubu ve şifresi atanmış olmalı */
 webSalespersonSchema.methods.canLogin = function () {
     return !!this.password && SALES_GROUP_IDS.includes(this.salesGroup);
 };

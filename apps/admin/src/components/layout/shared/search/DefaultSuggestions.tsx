@@ -1,14 +1,10 @@
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
 type DefaultSuggestionsType = {
@@ -124,7 +120,6 @@ const defaultSuggestions: DefaultSuggestionsType[] = [
 ]
 
 const DefaultSuggestions = ({ setOpen }: { setOpen: (value: boolean) => void }) => {
-  // Hooks
   const { lang: locale } = useParams()
 
   return (

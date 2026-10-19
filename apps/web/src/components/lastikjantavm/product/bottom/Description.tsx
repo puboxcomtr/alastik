@@ -2,20 +2,11 @@
 
 import { useState, useEffect } from 'react';
 
-/* ========================================
-   MUI Components
-   ======================================== */
 import { Grid, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import { getProductSpecRows, isLastik, isZincir, getLastikEbatDisplay, getProductType } from '@/src/hooks/Products/productHelpers';
 
-/* ========================================
-   Routes Helper
-   ======================================== */
 import { buildBlogUrl } from '@/src/config/routes';
 
-/* ========================================
-   Modals
-   ======================================== */
 import ReviewModal from '@/src/components/layout/Modals/product/ReviewModal';
 
 const getMenuItems = (product: any) => {
@@ -44,9 +35,6 @@ interface DescriptionProps {
     relatedBlogs?: any[];
 }
 
-/* ========================================
-   Section İçerikleri
-   ======================================== */
 function DescriptionContent({ product, wheelSize, relatedBlogs }: { product: any; wheelSize?: any; relatedBlogs?: any[] }) {
     return (
         <>
@@ -69,7 +57,6 @@ function DescriptionContent({ product, wheelSize, relatedBlogs }: { product: any
             {(product?.customData?.siteDescriptions?.lastikjantavm || product?.customData?.customDescription) && (
                 <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: product.customData.siteDescriptions?.lastikjantavm || product.customData.customDescription }} />
             )}
-            {/* Ürüne özel videolar — admin panelinden eklenen YouTube video ve shortları */}
             {product?.customData?.videos?.length > 0 && (
                 <div className="mt-4" id="urun_videolari">
                     <h3 className="fs-6 font-bold text-gray-900 mb-3">Ürün Videoları</h3>
@@ -194,9 +181,6 @@ function ChangeContent({ definition }: { definition: any }) {
     );
 }
 
-/* ========================================
-   Section içeriğini id'ye göre render et
-   ======================================== */
 function SectionContent({ id, product, wheelSize, definition, reviews, compatibleVehicles, relatedBlogs, onOpenModal }: {
     id: string; product: any; wheelSize?: any; definition?: any; reviews?: any; compatibleVehicles?: any; relatedBlogs?: any[]; onOpenModal: () => void;
 }) {
@@ -216,9 +200,6 @@ function SectionContent({ id, product, wheelSize, definition, reviews, compatibl
     }
 }
 
-/* ========================================
-   Ana Bileşen
-   ======================================== */
 export default function ProductDescription({ product, wheelSize, definition, reviews, compatibleVehicles, relatedBlogs }: DescriptionProps) {
     const [activeSection, setActiveSection] = useState('description');
     const menuItems = getMenuItems(product);
@@ -226,8 +207,6 @@ export default function ProductDescription({ product, wheelSize, definition, rev
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-    // Kaydırma takibi: işaret çizgisini (görünür alanın üst %30'u) geçen son bölüm etkin olur;
-    // sayfa sonuna gelindiğinde ise son bölüm etkin kalır (son bölüm kısa olsa bile).
     useEffect(() => {
         if (isMobile) return;
 
@@ -292,9 +271,6 @@ export default function ProductDescription({ product, wheelSize, definition, rev
         setActiveSection(prev => prev === id ? '' : id);
     };
 
-    /* ========================================
-       Mobil Accordion Görünümü
-       ======================================== */
     if (isMobile) {
         return (
             <>
@@ -330,9 +306,6 @@ export default function ProductDescription({ product, wheelSize, definition, rev
         );
     }
 
-    /* ========================================
-       Masaüstü Görünümü (Mevcut)
-       ======================================== */
     return (
         <>
             <Grid container className="row-fluid mt-5">
@@ -388,9 +361,6 @@ export default function ProductDescription({ product, wheelSize, definition, rev
     );
 }
 
-/* ========================================
-   Review List Component
-   ======================================== */
 function ReviewList({ reviews, product }: { reviews: any; product: any }) {
     if (!reviews?.reviews || reviews.reviews.length === 0) {
         return <p className="text-center py-5">Henüz yorum yapılmamış.</p>;

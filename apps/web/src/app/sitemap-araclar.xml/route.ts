@@ -1,5 +1,3 @@
-// Araç sayfaları sitemap'i (yalnızca lastikjantavm.com) — yalnızca dizine açık (stok eşiğini geçen) modeller
-// ve en az bir böyle modeli olan markalar listelenir.
 import { getSiteBase, getSiteSlug, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 import { getVehicleIndex } from '@/src/services/vehicleService';
 

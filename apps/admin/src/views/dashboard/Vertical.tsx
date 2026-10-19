@@ -1,15 +1,12 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 import OptionMenu from '@core/components/option-menu'
 
-// Type Imports
 import type { OptionType } from '@core/components/option-menu/types'
 import type { ThemeColor } from '@core/types'
 
@@ -28,7 +25,6 @@ type Props = {
     avatarColor: ThemeColor
     trendNumber?: string
     trend?: 'positive' | 'negative'
-    // Dönem menüsü: seçim üst bileşene bildirilir; verilmezse menü gösterilmez (anlık sayılar için)
     activeRange?: CardRange
     onRangeChange?: (range: CardRange) => void
 }

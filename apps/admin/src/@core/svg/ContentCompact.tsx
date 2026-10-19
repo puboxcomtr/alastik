@@ -1,4 +1,3 @@
-// React Imports
 import type { SVGAttributes } from 'react'
 
 const ContentCompact = (props: SVGAttributes<SVGElement>) => {

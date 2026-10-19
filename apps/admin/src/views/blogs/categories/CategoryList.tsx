@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 
 import { useRouter } from 'next/navigation'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'

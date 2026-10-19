@@ -1,7 +1,4 @@
 'use client';
-// Anasayfa başlık aksiyonları:
-//  - Bayi (veya bayi adına giriş): Cari Hesap Özeti / Sipariş Ver / Cari Ekstre
-//  - Plasiyer bayisiz devam: sadece "Bayi Seç" (aynı btn-ghost stili)
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 

@@ -19,14 +19,12 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
-    // Dropdown verileri
     const [makes, setMakes] = useState<any[]>([]);
     const [models, setModels] = useState<any[]>([]);
     const [years, setYears] = useState<any[]>([]);
     const [generations, setGenerations] = useState<any[]>([]);
     const [modifications, setModifications] = useState<any[]>([]);
 
-    // Form verileri
     const [formData, setFormData] = useState({
         make: '',
         makeName: '',
@@ -42,7 +40,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
         isPrimary: false
     });
 
-    // Düzenleme modunda mevcut verileri doldur
     useEffect(() => {
         if (vehicle) {
             setFormData({
@@ -59,11 +56,10 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
                 mileage: vehicle.userInputs.mileage?.toString() || '',
                 isPrimary: vehicle.isPrimary
             });
-            setStep(5); // Son adıma git (opsiyonel bilgiler)
+            setStep(5);
         }
     }, [vehicle]);
 
-    // Markaları yükle
     useEffect(() => {
         if (isOpen && !vehicle) {
             loadMakes();
@@ -132,7 +128,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
         setModifications([]);
 
         if (year && formData.make && formData.model) {
-            // Direkt modifikasyonları çek
             const data = await getModifications(formData.make, formData.model, year);
             console.log('🔧 Modifications:', data);
             setModifications(data);
@@ -240,7 +235,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
 
                     <form onSubmit={handleSubmit}>
                         <div className="modal-body">
-                            {/* Progress */}
                             {!vehicle && (
                                 <div className="mb-4">
                                     <div className="d-flex justify-content-between mb-2">
@@ -256,7 +250,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
                                 </div>
                             )}
 
-                            {/* Step 1: Marka */}
                             {step === 1 && (
                                 <div>
                                     <label className="form-label">Araç Markası</label>
@@ -277,7 +270,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
                                 </div>
                             )}
 
-                            {/* Step 2: Model */}
                             {step === 2 && (
                                 <div>
                                     <label className="form-label">Model</label>
@@ -298,7 +290,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
                                 </div>
                             )}
 
-                            {/* Step 3: Yıl */}
                             {step === 3 && (
                                 <div>
                                     <label className="form-label">Yıl</label>
@@ -319,7 +310,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
                                 </div>
                             )}
 
-                            {/* Step 4: Motor Gücü */}
                             {step === 4 && (
                                 <div>
                                     <label className="form-label">
@@ -348,7 +338,6 @@ export default function VehicleFormModal({ isOpen, vehicle, onClose, onSuccess }
                                 </div>
                             )}
 
-                            {/* Step 5: Opsiyonel Bilgiler */}
                             {step === 5 && (
                                 <div>
                                     <div className="mb-3">

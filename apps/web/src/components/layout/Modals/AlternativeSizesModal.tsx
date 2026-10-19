@@ -1,4 +1,3 @@
-// apps/web/src/components/layout/Modals/AlternativeSizesModal.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Typography, Button, Radio, Box } from '@mui/material';
@@ -101,7 +100,6 @@ export default function AlternativeSizesModal({ open, onClose, product }: Altern
                                     const isSelected = selectedProduct === p._key;
                                     const delivery = p.customData?.delivery || 'next_week';
 
-                                    // Özellikler (XL, OEM, vb.)
                                     const features: string[] = [];
                                     if (getProductFeature(p, 'XL') === 'Evet') features.push('XL');
                                     if (getProductFeature(p, 'OEM') !== '-' && getProductFeature(p, 'OEM') !== 'Yok') {

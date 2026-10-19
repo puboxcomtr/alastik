@@ -1,5 +1,3 @@
-// Konum sayfaları (/lastikci) için sunucu verisi: montaj noktaları + bölge sipariş istatistikleri.
-// Montaj noktaları sayfanın ana verisidir (API hatasında sayfa 500 olur); istatistik yardımcıdır (hata → boş).
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 import { BRANCHES, type Branch } from '@/src/data/lja/subeler';
@@ -19,7 +17,6 @@ export interface MontagePointLite {
 
 export interface RegionStats { orderBucket: string; topSizes: string[] }
 
-// Şube konumları (OpenStreetMap, mahalle merkezi düzeyinde) — mesafe hesabı için
 export const BRANCH_GEO: Record<string, GeoPoint> = {
     'sisli-mecidiyekoy': { lat: 41.07205, lng: 29.00007 },
     maslak: { lat: 41.11, lng: 29.02059 }
@@ -27,7 +24,6 @@ export const BRANCH_GEO: Record<string, GeoPoint> = {
 
 const apiRoot = () => API_ENDPOINTS.definition.get().replace(/\/definition$/, '');
 
-// site: x-site header'ı olmayan isteklerde (sitemap route'ları) açıkça verilir
 export async function getMontagePoints(site?: string): Promise<MontagePointLite[]> {
     try {
         const res = await fetch(API_ENDPOINTS.montage.list(), {
@@ -64,7 +60,6 @@ const pointGeo = (p: MontagePointLite): GeoPoint | null =>
     p.location && typeof p.location.lat === 'number' && typeof p.location.lng === 'number'
         ? { lat: p.location.lat, lng: p.location.lng } : null;
 
-// En yakın montaj noktaları (km)
 export function nearestPoints(from: GeoPoint, points: MontagePointLite[], n: number) {
     return points
         .map(p => ({ p, g: pointGeo(p) }))
@@ -74,7 +69,6 @@ export function nearestPoints(from: GeoPoint, points: MontagePointLite[], n: num
         .slice(0, n);
 }
 
-// En yakın şube (yalnızca İstanbul sayfalarında kullanılır)
 export function nearestBranch(from: GeoPoint): { branch: Branch; km: number } {
     return BRANCHES
         .map(b => ({ branch: b, km: distanceKm(from, BRANCH_GEO[b.slug]) }))

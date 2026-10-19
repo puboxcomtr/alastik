@@ -1,19 +1,14 @@
 'use client';
 
-/* * React Core * */
 import { useState, useEffect, useRef } from 'react';
 
-/* * Next.js * */
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-/* * Third Party Libraries */
 import { toast } from 'react-toastify';
 
-/* * Internal Imports  */
 import { api } from '@lib/api';
 
-/* Routes */
 import { ROUTES } from '@/src/config/routes';
 
 type ActivationStatus = 'loading' | 'success' | 'error';
@@ -26,7 +21,6 @@ export default function ActivationView() {
     const [status, setStatus] = useState<ActivationStatus>('loading');
     const [message, setMessage] = useState('Hesabınız aktif ediliyor...');
 
-    /* StrictMode'da useEffect 2 kez çalışmasın diye guard */
     const calledRef = useRef(false);
 
     useEffect(() => {

@@ -1,4 +1,3 @@
-// apps/web/src/services/definitionService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 
 export async function getDefinition() {

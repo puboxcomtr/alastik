@@ -1,14 +1,10 @@
-// Next Imports
 import { cookies } from 'next/headers'
 
-// Third-party Imports
 import 'server-only'
 
-// Type Imports
 import type { Settings } from '@core/contexts/settingsContext'
 import type { SystemMode } from '@core/types'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
 export const getSettingsFromCookie = async (): Promise<Settings> => {
@@ -22,7 +18,6 @@ export const getSettingsFromCookie = async (): Promise<Settings> => {
 export const getMode = async () => {
   const settingsCookie = await getSettingsFromCookie()
 
-  // Get mode from cookie or fallback to theme config
   const _mode = settingsCookie.mode || themeConfig.mode
 
   return _mode

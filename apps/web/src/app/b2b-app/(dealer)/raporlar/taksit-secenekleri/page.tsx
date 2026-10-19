@@ -3,15 +3,7 @@ import { INSTALLMENT_OPTIONS } from "@components/b2b-theme/lib/sample-data";
 
 const TAKSITLER = [2, 3, 4, 5, 6, 9, 12];
 
-/**
- * Taksit Seçenekleri — bilgilendirme tablosu.
- *
- * POS sağlayıcısından canlı oran ÇEKİLMEZ. Komisyon oranı tutulmadığı için
- * gösterilmez; "✓" yalnızca "bu taksit yapılabiliyor" demektir. Tahmini
- * taksit tutarı da hesaplanmaz.
- */
 export default function TaksitSecenekleriPage() {
-  // Yalnızca tabloda gerçekten geçen taksit sayıları kolon olur.
   const kolonlar = TAKSITLER.filter((t) =>
     INSTALLMENT_OPTIONS.some((s) => s.installments.some((k) => k.adet === t)),
   );

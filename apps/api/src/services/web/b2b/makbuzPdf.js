@@ -1,7 +1,3 @@
-/**
- * b2b Ödeme Makbuzu (PDF) — pdfkit ile üretilir. Türkçe karakterler için
- * DejaVuSans fontu gömülür. Tutarlar TL (ondalıklı) gösterilir.
- */
 const path = require('path');
 const PDFDocument = require('pdfkit');
 
@@ -30,9 +26,6 @@ function odemeAdi(p) {
     return p.method || '-';
 }
 
-/**
- * @returns {Promise<Buffer>} makbuz PDF
- */
 function makbuzPdf(order, company = {}) {
     return new Promise((resolve, reject) => {
         try {
@@ -51,7 +44,6 @@ function makbuzPdf(order, company = {}) {
             const DARK = '#1a1a1a';
             const GRAY = '#6b7280';
 
-            // ── Başlık: satıcı + belge adı ──
             doc.font('bold').fontSize(15).fillColor(DARK).text(company.name || 'LastikJantAVM', left, 48);
             let y = doc.y + 2;
             doc.font('regular').fontSize(8.5).fillColor(GRAY);
@@ -63,11 +55,9 @@ function makbuzPdf(order, company = {}) {
             doc.font('bold').fontSize(15).fillColor(DARK).text('ÖDEME MAKBUZU', left, 50, { width, align: 'right' });
             doc.font('regular').fontSize(9).fillColor(GRAY).text('Proforma', left, doc.y, { width, align: 'right' });
 
-            // Ayraç çizgi
             y = 118;
             doc.moveTo(left, y).lineTo(right, y).lineWidth(1.5).strokeColor(DARK).stroke();
 
-            // ── Meta ──
             y += 14;
             const metaRow = (label, value) => {
                 doc.font('regular').fontSize(9).fillColor(GRAY).text(label, left, y);
@@ -79,7 +69,6 @@ function makbuzPdf(order, company = {}) {
             metaRow('Bayi', order.customerName);
             if (order.customerPhone) metaRow('Telefon', order.customerPhone);
 
-            // ── Ürün tablosu ──
             y += 8;
             const cols = { urun: left, adet: left + width * 0.56, birim: left + width * 0.70, tutar: left + width * 0.86 };
             doc.rect(left, y, width, 20).fillColor('#f4f6f8').fill();
@@ -103,7 +92,6 @@ function makbuzPdf(order, company = {}) {
                 doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor('#e1e5e9').stroke();
             });
 
-            // ── Toplamlar ──
             y += 12;
             const tx = left + width * 0.58;
             const tw = width * 0.42;
@@ -119,7 +107,6 @@ function makbuzPdf(order, company = {}) {
             y += 8;
             topRow('Genel Toplam', TL(order.pricing?.total), true);
 
-            // ── Ödeme bilgileri ──
             y += 14;
             doc.rect(left, y, width, 2).fillColor('#e1e5e9').fill();
             y += 12;
@@ -137,7 +124,6 @@ function makbuzPdf(order, company = {}) {
             if (p.cardInfo?.lastFourDigits) odRow('Kart', `**** ${p.cardInfo.lastFourDigits}`);
             if (p.authCode) odRow('Onay Kodu', p.authCode);
 
-            // ── Alt not ──
             doc.font('regular').fontSize(7.5).fillColor(GRAY).text(
                 `Bu belge ${company.name || 'LastikJantAVM'} tarafından elektronik olarak oluşturulmuştur. Resmi fatura ayrıca düzenlenir.`,
                 left, doc.page.height - 70, { width, align: 'center' }
@@ -150,18 +136,11 @@ function makbuzPdf(order, company = {}) {
     });
 }
 
-/** Borç ödemesinin yöntem adı (tek çekim / taksit) */
 function tahsilatOdemeAdi(payment) {
     const n = Number(payment?.installment) || 1;
     return n > 1 ? `Kredi Kartı - ${n} Taksit` : 'Kredi Kartı - Tek Çekim';
 }
 
-/**
- * Cari borç ödemesi (bayi "Ödeme Yap") makbuzu — sipariş makbuzuyla aynı görünüm.
- * @param {object} payment B2bPayment (amountKurus, reference, paidAt, installment, cardInfo, authCode)
- * @param {object} payer   { name, cariKodu }
- * @returns {Promise<Buffer>}
- */
 function tahsilatMakbuzPdf(payment, payer = {}, company = {}) {
     return new Promise((resolve, reject) => {
         try {
@@ -180,7 +159,6 @@ function tahsilatMakbuzPdf(payment, payer = {}, company = {}) {
             const DARK = '#1a1a1a';
             const GRAY = '#6b7280';
 
-            // ── Başlık: satıcı + belge adı ──
             doc.font('bold').fontSize(15).fillColor(DARK).text(company.name || 'LastikJantAVM', left, 48);
             let y = doc.y + 2;
             doc.font('regular').fontSize(8.5).fillColor(GRAY);
@@ -195,7 +173,6 @@ function tahsilatMakbuzPdf(payment, payer = {}, company = {}) {
             y = 118;
             doc.moveTo(left, y).lineTo(right, y).lineWidth(1.5).strokeColor(DARK).stroke();
 
-            // ── Meta ──
             y += 14;
             const row = (label, value, bold = true) => {
                 if (!value) return;
@@ -208,7 +185,6 @@ function tahsilatMakbuzPdf(payment, payer = {}, company = {}) {
             row('Cari', payer.name);
             row('Cari Kodu', payer.cariKodu || payment.cariKodu);
 
-            // ── Tutar kutusu ──
             y += 12;
             doc.rect(left, y, width, 54).fillColor('#f4f6f8').fill();
             doc.font('regular').fontSize(9.5).fillColor(GRAY).text('Ödenen Tutar', left + 14, y + 12);
@@ -216,7 +192,6 @@ function tahsilatMakbuzPdf(payment, payer = {}, company = {}) {
             doc.font('regular').fontSize(8.5).fillColor(GRAY).text('Cari hesap borcunuza karşılık tahsil edilmiştir.', left + 14, y + 32);
             y += 70;
 
-            // ── Ödeme bilgileri ──
             doc.rect(left, y, width, 2).fillColor('#e1e5e9').fill();
             y += 12;
             doc.font('bold').fontSize(10).fillColor(DARK).text('Ödeme Bilgileri', left, y);

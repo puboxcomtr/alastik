@@ -1,6 +1,5 @@
 const nunjucks = require('nunjucks')
 
-// Nunjucks env - autoescape kapalı (HTML render için)
 const env = new nunjucks.Environment(null, {
     autoescape: false,
     throwOnUndefined: false,
@@ -8,7 +7,6 @@ const env = new nunjucks.Environment(null, {
     lstripBlocks: false
 })
 
-// Twig'in `date` filtresi için custom filter
 env.addFilter('date', function (input, format) {
     if (!input) return ''
 
@@ -16,7 +14,6 @@ env.addFilter('date', function (input, format) {
 
     if (isNaN(date.getTime())) return input
 
-    // İstanbul saatine zorla
     const tzParts = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/Istanbul',
         year: 'numeric',
@@ -44,12 +41,10 @@ env.addFilter('date', function (input, format) {
     return format.replace(/d|m|Y|H|i|s/g, (m) => replacements[m] || m)
 })
 
-// `raw` filter - Twig'de raw HTML için, Nunjucks'ta zaten autoescape kapalı ama compatibility için
 env.addFilter('raw', function (input) {
     return input
 })
 
-// Twig `~` concat operatörü için: `{{ data.siteUrl ~ '/iletisim' }}` => Nunjucks'da `+` ile yer değiştirsin
 const twigToNunjucks = (template) => {
     if (!template) return ''
 
@@ -70,7 +65,6 @@ const render = (template, data) => {
     try {
         const cleanTemplate = twigToNunjucks(template)
 
-        // Debug: blok sayısı kontrol
         const ifCount = (cleanTemplate.match(/\{%\s*if\s/g) || []).length
         const endifCount = (cleanTemplate.match(/\{%\s*endif\s*%\}/g) || []).length
         const forCount = (cleanTemplate.match(/\{%\s*for\s/g) || []).length

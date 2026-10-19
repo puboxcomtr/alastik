@@ -18,8 +18,6 @@ import { useDefinition } from '@/src/hooks/Theme/useDefinition';
 import { isLastik, getProductFeature, getProductSeason, isSetLastik } from '@src/hooks/Products/productHelpers';
 import { getRelatedBlogs } from '@/src/services/productService';
 
-
-
 import {
     getProductUrl,
     getProductPrice,
@@ -34,7 +32,6 @@ import { toast } from 'react-toastify';
 
 type ServicePoint = { name: string; phone: string };
 
-// DIA grup kodu — bu koda sahip kartlar hizmet olarak değerlendirilir
 const SERVICE_GROUP_CODE = 'Hizmet';
 
 export default function OneColumn({ product, servicePoints = [] }: ProductCardProps & { servicePoints?: ServicePoint[] }) {
@@ -103,7 +100,6 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
     return (
         <div className="product-card bg-body rounded border mb-2">
             <Row className="g-0 py-3 align-items-stretch">
-                {/* Görsel */}
                 <Col md={2} className="px-2">
                     <Link href={productUrl}>
                         <img
@@ -114,10 +110,8 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
                     </Link>
                 </Col>
                 <Col md={6} className="pr-3">
-                    {/* Marka */}
                     <div className="d-flex align-items-center justify-content-between">
                         <div>
-                            {/* Marka gizle açıksa kartta marka gösterilmez */}
                             {product.customData?.hideBrand !== true && (brandLogo ? (
                                 <Image src={brandLogo} alt={brandName} width={90} height={36} style={{ objectFit: 'contain', marginLeft: '-8px' }} />
                             ) : (
@@ -131,21 +125,16 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
                             </Link>
                         )}
                     </div>
-                    {/* Ürün Adı */}
                     <Link href={productUrl} className="fs-md fw-semibold text-dark text-decoration-none d-block">
                         {product.diaData.aciklama}
                     </Link>
-                    {/* Seçenekler */}
                     <div className="d-flex my-1 gap-4 align-items-center">
-                        {/* Stok kodu — kategori ayarı açıksa gösterilmez */}
                         {(product as any)?.hideStockCode !== true && (
                             <span className="fs-xs text-body-secondary d-block">Stok Kodu {stockCode}</span>
                         )}
-                        {/* Üretim tarihi — değer yoksa satır hiç gösterilmez */}
                         {product.customData?.hideProductionDate !== true && product.diaData?.ekalan5 && (
                             <span className="fs-xs text-body-secondary d-block">Üretim Tarihi {product.diaData.ekalan5}</span>
                         )}
-                        {/* Mevsim — ikon ya da metin yoksa satır hiç gösterilmez */}
                         {(() => {
                             const season = getProductSeason(product);
                             const seasonText = getProductFeature(product, 'Mevsim') || product.diaData?.ozelkod1;
@@ -165,7 +154,6 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
                         })()}
                     </div>
                     <Divider className="my-3" />
-                    {/* Servis noktaları — yalnızca DIA grup kodu "Hizmet" olan kartlarda */}
                     {product.diaData?.ozelkod6kodu === SERVICE_GROUP_CODE && servicePoints.length > 0 && (
                         <div className="mb-2">
                             {servicePoints.map((point, index) => (
@@ -204,13 +192,11 @@ export default function OneColumn({ product, servicePoints = [] }: ProductCardPr
                         </div>
                     )}
                 </Col>
-                {/* Fiyat */}
                 <Col md={4} className="border-start d-flex align-items-center">
                     <div className="d-flex flex-column px-3 gap-2 w-100">
                         <div className="d-flex justify-content-between align-items-end">
                             <div>
                                 <div className="fw-semibold fs-xs text-black">
-                                    {/* Stok gizle açıksa kartta stok adedi gösterilmez */}
                                     {product.customData?.hideStock !== true && (product.diaData?.gercek_stok > 0 ? (
                                         <>Stok Adeti:
                                             <span className="text-success" style={{ paddingLeft: "5px" }}>

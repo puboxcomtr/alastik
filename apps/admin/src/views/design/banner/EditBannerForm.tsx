@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -16,7 +15,6 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
 import FormControl from '@mui/material/FormControl'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
 import { fetchBanner, updateBanner } from '@/utils/api/banners'
@@ -30,7 +28,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
     const [loading, setLoading] = useState(false)
     const [dataLoading, setDataLoading] = useState(true)
 
-    // Form state
     const [description, setDescription] = useState('')
     const [redirectUrl, setRedirectUrl] = useState('')
     const [altTag, setAltTag] = useState('')
@@ -41,7 +38,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
     const [imagePreview, setImagePreview] = useState<string>('')
     const [existingImage, setExistingImage] = useState<string>('')
 
-    // Slug oluşturma fonksiyonu
     const generateSlug = (text: string) => {
         return text
             .toLowerCase()
@@ -57,10 +53,8 @@ const EditBannerForm = ({ bannerId }: Props) => {
             .trim()
     }
 
-    // Computed variableKey
     const variableKey = useMemo(() => generateSlug(description), [description])
 
-    // Banner verilerini yükle
     useEffect(() => {
         const loadBanner = async () => {
             try {
@@ -130,7 +124,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
             formData.append('variableKey', variableKey)
             formData.append('order', order.toString())
 
-            // Yeni görsel seçildiyse ekle, yoksa mevcut görseli kullan
             if (image) {
                 formData.append('image', image)
             }
@@ -195,7 +188,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
                                     <CardContent>
                                         <Typography variant='h6' className='mb-4'>Banner Bilgileri</Typography>
                                         <Grid container spacing={6}>
-                                            {/* Açıklama */}
                                             <Grid size={{ xs: 12 }}>
                                                 <TextField
                                                     fullWidth
@@ -209,7 +201,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
                                                 />
                                             </Grid>
 
-                                            {/* Yönlendirme Linki */}
                                             <Grid size={{ xs: 4 }}>
                                                 <TextField
                                                     fullWidth
@@ -219,7 +210,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
                                                 />
                                             </Grid>
 
-                                            {/* Alt Etiket */}
                                             <Grid size={{ xs: 4 }}>
                                                 <TextField
                                                     fullWidth
@@ -229,7 +219,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
                                                 />
                                             </Grid>
 
-                                            {/* Sıra */}
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <TextField
                                                     fullWidth
@@ -240,7 +229,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
                                                 />
                                             </Grid>
 
-                                            {/* Görsel Upload */}
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant='body2' className='mb-2'>
                                                     Banner Görseli
@@ -277,7 +265,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
 
                             <Grid size={{ xs: 12, md: 4 }}>
                                 <Grid container spacing={6}>
-                                    {/* Durum */}
                                     <Grid size={{ xs: 12 }}>
                                         <Card>
                                             <CardContent>
@@ -305,7 +292,6 @@ const EditBannerForm = ({ bannerId }: Props) => {
                                         </Card>
                                     </Grid>
 
-                                    {/* Yeni Sekmede Aç */}
                                     <Grid size={{ xs: 12 }}>
                                         <Card>
                                             <CardContent>

@@ -1,8 +1,3 @@
-// Marka SEO özetleri — /api/brand-seo
-// Marka sayfalarındaki metin ve bağlantılar için markanın sitedeki SIFIR ürünlerinden özet çıkarır:
-// mevsim / ürün tipi / desen / ebat / jant çapı / menşei / araç tipi / AB etiketi dağılımları ve
-// markaya ait etiket sayfaları. Ürün kümesi /api/products/filter ile aynıdır (marka sayfasında
-// listelenen ürünler): site + senkron + liste gizleme + fiyatsız ürün ayarı, ikinci el hariç.
 const express = require('express');
 const router = express.Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -17,7 +12,7 @@ const CACHE_MS = 6 * 60 * 60 * 1000;
 const SEASONS = { yaz: 'Yaz', kis: 'Kış', dort: '4 Mevsim' };
 const SECOND_HAND_SLUG = 'ikinci-el';
 
-const cache = new Map(); // key → { at, value }
+const cache = new Map();
 async function cached(key, fn) {
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_MS) return hit.value;
@@ -26,7 +21,6 @@ async function cached(key, fn) {
     return value;
 }
 
-// Marka sayfasındaki ürün listesiyle aynı temel filtre
 async function baseFilter(site) {
     const filter = getProductListFilters(site);
     filter[`customData.siteData.${site}.hideFromListing`] = { $ne: true };
@@ -44,7 +38,6 @@ async function baseFilter(site) {
     return { filter, and };
 }
 
-// m_urunOzellikleri içinden tek bir özelliğin değeri
 const attr = (name) => ({
     $let: {
         vars: {
@@ -57,7 +50,6 @@ const attr = (name) => ({
 const pairs = (rows) => rows.filter(r => r._id !== null && r._id !== undefined && r._id !== '').map(r => [String(r._id), r.n]);
 const groupCount = (field) => [{ $group: { _id: field, n: { $sum: 1 } } }, { $sort: { n: -1 } }];
 
-// Aynı desenin farklı yazımları ("p-zero-pz4" / "P Zero PZ4") tek satırda birleşir
 const seriesKey = (s) => String(s || '').toLocaleLowerCase('tr-TR').replace(/ı/g, 'i').replace(/[^a-z0-9]+/g, '');
 function mergeSeries(rows) {
     const map = new Map();
@@ -66,7 +58,6 @@ function mergeSeries(rows) {
         if (!name || /^yok$/i.test(name)) continue;
         const key = `${seriesKey(name)}|${r._id.m || ''}`;
         const prev = map.get(key);
-        // Görünen ad: büyük harf / boşluk içeren yazım tercih edilir (slug yazımı değil)
         const better = !prev || (/[A-Z ]/.test(name) && !/[A-Z ]/.test(prev.name)) ? name : prev.name;
         map.set(key, { name: better, season: r._id.m || null, n: (prev?.n || 0) + r.n });
     }
@@ -147,7 +138,6 @@ async function buildStats(site, brand, seasonKey) {
     };
 }
 
-// Markaya ait etiket sayfaları (desen / ebat / mevsim etiketleri) — yalnızca ürünü olanlar
 async function brandTags(site, slug) {
     const variants = [...new Set([slug, slug.replace(/-/g, '')])].map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     const rx = new RegExp(`(^|-)(${variants.join('|')})-`);
@@ -174,7 +164,6 @@ async function findBrand(site, slug) {
     ).lean();
 }
 
-// GET /api/brand-seo — sitede görünen markalar ve mevsim bazında sıfır ürün sayıları (sitemap için)
 router.get('/', async (req, res) => {
     try {
         const data = await cached(`index:${req.site}`, async () => {
@@ -211,7 +200,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/brand-seo/:slug[?mevsim=yaz|kis|dort]
 router.get('/:slug', async (req, res) => {
     try {
         const slug = String(req.params.slug || '').toLowerCase();

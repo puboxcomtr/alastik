@@ -1,18 +1,15 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 
-// Components
 import Link from "next/link";
 import Image from "next/image";
 
-// MUI
 import Tooltip from '@mui/material/Tooltip';
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 
 import { useThemeSettings } from '@/src/hooks/Theme/useThemeSettings';
 
-// Components
 import { Container, Row, Col } from 'react-bootstrap';
 
 export default function FooterTop() {

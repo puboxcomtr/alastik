@@ -1,14 +1,9 @@
-// LJA marka sayfaları için elle yazılmış marka profilleri (yalnızca lastikjantavm.com).
-// Sayılar ve stok bilgisi burada YOK — onlar /api/brand-seo'dan canlı gelir (bkz. lib/brandText.ts).
-// Burada yalnızca değişmeyen bilgiler durur: marka tanıtımı, güçlü yönler, desen açıklamaları.
-// Desen anahtarı: desen adının küçük harfli, yalnız harf/rakam hâli (ör. "Pilot Sport 5" → "pilotsport5").
 
 export type BrandKind = 'lastik' | 'agir' | 'zincir' | 'palet' | 'corap' | 'jant' | 'aksesuar';
 
 export interface BrandProfile {
     kind: BrandKind;
     display: string;
-    // Markanın konumu, tek cümle (meta açıklama ve giriş için)
     tagline: string;
     about: string[];
     strengths: string[];

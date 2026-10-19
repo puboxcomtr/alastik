@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import type { ReactNode } from 'react'
 
-// MUI Imports
 import Zoom from '@mui/material/Zoom'
 import { styled } from '@mui/material/styles'
 import useScrollTrigger from '@mui/material/useScrollTrigger'
@@ -21,11 +19,8 @@ const ScrollToTopStyled = styled('div')(({ theme }) => ({
 }))
 
 const ScrollToTop = (props: ScrollToTopProps) => {
-  // Props
   const { children, className } = props
 
-  // Hooks
-  // init trigger
   const trigger = useScrollTrigger({
     threshold: 400,
     disableHysteresis: true

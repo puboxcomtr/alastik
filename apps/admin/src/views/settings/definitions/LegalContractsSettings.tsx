@@ -162,7 +162,6 @@ export default function LegalContractsSettings() {
             <CardHeader title='Yasal Sözleşmeler' />
             <CardContent>
                 <Grid container spacing={5}>
-                    {/* İletişim - Normal TextField */}
                     <Grid size={{ xs: 12 }}>
                         <TextField
                             fullWidth
@@ -177,7 +176,6 @@ export default function LegalContractsSettings() {
                         />
                     </Grid>
 
-                    {/* Editörler */}
                     <ContractEditor
                         title='Ön Bilgilendirme Formu'
                         field='preInformation'

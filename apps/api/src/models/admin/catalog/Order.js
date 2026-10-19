@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const OrderSchema = new mongoose.Schema({
-  // Sipariş temel bilgileri
   orderNumber: {
     type: String,
     required: true,
@@ -14,39 +13,36 @@ const OrderSchema = new mongoose.Schema({
     required: false
   },
 
-  // Sipariş durumu
   status: {
     type: String,
     enum: [
-      'pending',        // Beklemede
-      'confirmed',      // Onaylandı
-      'processing',     // Hazırlanıyor
-      'shipped',        // Kargoya verildi
-      'delivered',      // Teslim edildi
-      'cancelled',      // İptal edildi
-      'returned',       // İade edildi
-      'refunded'        // Para iadesi yapıldı
+      'pending',
+      'confirmed',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled',
+      'returned',
+      'refunded'
     ],
     default: 'pending'
   },
 
-  // Ödeme durumu
   paymentStatus: {
     type: String,
     enum: [
-      'pending',        // Beklemede
-      'paid',          // Ödendi
-      'failed',        // Başarısız
-      'refunded',      // İade edildi
-      'partial_refund' // Kısmi iade
+      'pending',
+      'paid',
+      'failed',
+      'refunded',
+      'partial_refund'
     ],
     default: 'pending'
   },
 
-  // Sipariş kalemleri
   items: [{
     productId: {
-      type: String, // Harici/DIA stok ID'leri için string kabul et
+      type: String,
       required: true
     },
     diaStockId: {
@@ -59,7 +55,7 @@ const OrderSchema = new mongoose.Schema({
     },
     brand: String,
     model: String,
-    size: String, // Lastik ebatı
+    size: String,
     specifications: {
       width: Number,
       profile: Number,
@@ -97,7 +93,6 @@ const OrderSchema = new mongoose.Schema({
     }
   }],
 
-  // Fiyat bilgileri
   pricing: {
     subtotal: {
       type: Number,
@@ -127,7 +122,6 @@ const OrderSchema = new mongoose.Schema({
     }
   },
 
-  // Teslimat bilgileri
   shipping: {
     address: {
       title: String,
@@ -145,14 +139,13 @@ const OrderSchema = new mongoose.Schema({
       enum: ['standard', 'express', 'pickup'],
       default: 'standard'
     },
-    company: String, // Kargo şirketi
+    company: String,
     trackingNumber: String,
     estimatedDelivery: Date,
     actualDelivery: Date,
     deliveryInstructions: String
   },
 
-  // Fatura bilgileri
   billing: {
     address: {
       title: String,
@@ -173,14 +166,13 @@ const OrderSchema = new mongoose.Schema({
     }
   },
 
-  // Ödeme bilgileri
   payment: {
     method: {
       type: String,
       enum: ['credit_card', 'credit_card_3d', 'debit_card', 'bank_transfer', 'cash_on_delivery', 'installment'],
       required: false
     },
-    provider: String, // Ödeme sağlayıcısı (Iyzico, PayTR, vs)
+    provider: String,
     transactionId: String,
     installments: {
       count: { type: Number, default: 1 },
@@ -189,12 +181,11 @@ const OrderSchema = new mongoose.Schema({
     },
     cardInfo: {
       lastFourDigits: String,
-      cardType: String, // visa, mastercard, amex
+      cardType: String,
       bankName: String,
       cardAssociation: String,
       cardFamily: String
     },
-    // 3D Güvenli ödeme bilgileri
     threeDSecure: {
       isEnabled: {
         type: Boolean,
@@ -206,16 +197,15 @@ const OrderSchema = new mongoose.Schema({
         default: 'pending'
       },
       authenticationValue: String,
-      eci: String, // Electronic Commerce Indicator
-      cavv: String, // Cardholder Authentication Verification Value
+      eci: String,
+      cavv: String,
       xid: String,
       mdStatus: String,
       conversationId: String,
       returnUrl: String,
       callbackUrl: String,
-      htmlContent: String // 3D form HTML'i
+      htmlContent: String
     },
-    // Ödeme işlem detayları
     transaction: {
       status: {
         type: String,
@@ -249,7 +239,6 @@ const OrderSchema = new mongoose.Schema({
     }]
   },
 
-  // Kupon ve indirimler
   discounts: [{
     type: {
       type: String,
@@ -265,14 +254,12 @@ const OrderSchema = new mongoose.Schema({
     }
   }],
 
-  // Notlar ve özel talepler
   notes: {
-    customer: String, // Müşteri notu
-    internal: String, // İç not
-    delivery: String  // Teslimat notu
+    customer: String,
+    internal: String,
+    delivery: String
   },
 
-  // Sipariş geçmişi
   history: [{
     status: String,
     note: String,
@@ -290,7 +277,6 @@ const OrderSchema = new mongoose.Schema({
     }
   }],
 
-  // İade bilgileri
   return: {
     requested: {
       type: Boolean,
@@ -311,7 +297,6 @@ const OrderSchema = new mongoose.Schema({
     processedAt: Date
   },
 
-  // Müşteri değerlendirmesi
   review: {
     rating: {
       type: Number,
@@ -322,7 +307,6 @@ const OrderSchema = new mongoose.Schema({
     reviewedAt: Date
   },
 
-  // Entegrasyon bilgileri
   integration: {
     diaSync: {
       status: {
@@ -342,7 +326,6 @@ const OrderSchema = new mongoose.Schema({
     }
   },
 
-  // Meta bilgiler
   source: {
     type: String,
     enum: ['web', 'mobile', 'admin', 'api', 'dia_sync'],
@@ -354,7 +337,6 @@ const OrderSchema = new mongoose.Schema({
     ip: String
   },
 
-  // Tarih bilgileri
   createdAt: {
     type: Date,
     default: Date.now
@@ -375,7 +357,6 @@ const OrderSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes for performance
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ orderNumber: 1 });
 OrderSchema.index({ status: 1 });
@@ -388,7 +369,6 @@ OrderSchema.index({ 'integration.diaSync.diaOrderKey': 1 }, { unique: true, spar
 OrderSchema.index({ 'integration.diaSync.status': 1 });
 OrderSchema.index({ source: 1 });
 
-// Virtual fields
 OrderSchema.virtual('totalItems').get(function () {
   return this.items.reduce((total, item) => total + item.quantity, 0);
 });
@@ -405,11 +385,9 @@ OrderSchema.virtual('daysSinceOrder').get(function () {
   return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 });
 
-// Middleware
 OrderSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
 
-  // Sipariş numarası oluştur
   if (!this.orderNumber) {
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
@@ -419,7 +397,6 @@ OrderSchema.pre('save', function (next) {
     this.orderNumber = `ALT${year}${month}${day}${random}`;
   }
 
-  // Fiyat hesaplamaları
   if (this.items && this.items.length > 0) {
     this.pricing.subtotal = this.items.reduce((total, item) => total + item.totalPrice, 0);
     this.pricing.vatAmount = this.items.reduce((total, item) => total + item.vatAmount, 0);
@@ -429,7 +406,6 @@ OrderSchema.pre('save', function (next) {
   next();
 });
 
-// Sipariş durumu değiştiğinde history'ye ekle
 OrderSchema.pre('save', function (next) {
   if (this.isModified('status') && !this.isNew) {
     this.history.push({
@@ -438,7 +414,6 @@ OrderSchema.pre('save', function (next) {
       timestamp: new Date()
     });
 
-    // Durum tarihlerini güncelle
     switch (this.status) {
       case 'confirmed':
         this.confirmedAt = new Date();
@@ -457,7 +432,6 @@ OrderSchema.pre('save', function (next) {
   next();
 });
 
-// Static methods
 OrderSchema.statics.generateOrderNumber = function () {
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
@@ -497,7 +471,6 @@ OrderSchema.statics.getOrderStats = function (userId) {
   ]);
 };
 
-// Instance methods
 OrderSchema.methods.addToHistory = function (status, note, updatedBy = null) {
   this.history.push({
     status,

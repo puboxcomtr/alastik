@@ -1,9 +1,7 @@
-// MUI Imports
 import MuiTabList from '@mui/lab/TabList'
 import { styled } from '@mui/material/styles'
 import type { TabListProps } from '@mui/lab/TabList'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 
 export type CustomTabListProps = TabListProps & {
@@ -60,7 +58,6 @@ const TabList = styled(MuiTabList)<CustomTabListProps>(({ color, pill, theme, or
 }))
 
 const CustomTabList = (props: CustomTabListProps) => {
-  // Props
   const { color = 'primary', ...rest } = props
 
   return <TabList color={color} {...rest} />

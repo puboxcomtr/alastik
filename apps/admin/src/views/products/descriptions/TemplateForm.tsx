@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import Box from '@mui/material/Box'
@@ -20,7 +19,6 @@ import Switch from '@mui/material/Switch'
 import CircularProgress from '@mui/material/CircularProgress'
 import Popover from '@mui/material/Popover'
 
-/* Editor */
 import classnames from 'classnames'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
@@ -38,13 +36,10 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Image } from '@tiptap/extension-image'
 
-/* Components */
 import CustomIconButton from '@/@core/components/mui/IconButton'
 
-/* API */
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-/* Styles */
 import '@/libs/styles/tiptapEditor.css'
 
 type TemplateFormProps = {
@@ -350,7 +345,6 @@ const TemplateForm = ({ mode, templateId }: TemplateFormProps) => {
         parseOptions: { preserveWhitespace: 'full' }
     })
 
-    // Model seçeneklerini çek
     useEffect(() => {
         const loadModels = async () => {
             try {
@@ -365,7 +359,6 @@ const TemplateForm = ({ mode, templateId }: TemplateFormProps) => {
         loadModels()
     }, [])
 
-    // Edit modunda mevcut şablonu çek
     useEffect(() => {
         if (mode === 'edit' && templateId) {
             const loadTemplate = async () => {
@@ -401,7 +394,6 @@ const TemplateForm = ({ mode, templateId }: TemplateFormProps) => {
                 editor.commands.setContent(htmlContent)
             }, 100)
         } else {
-            // Editor'dan HTML'e geç
             const editorHTML = editor.getHTML()
             setHtmlContent(editorHTML)
             setIsHtmlMode(true)
@@ -477,7 +469,6 @@ const TemplateForm = ({ mode, templateId }: TemplateFormProps) => {
             setApplying(false)
         }
     }
-
 
     return (
         <form onSubmit={handleSave}>

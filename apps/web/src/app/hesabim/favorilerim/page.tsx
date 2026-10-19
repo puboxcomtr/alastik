@@ -1,20 +1,15 @@
 'use client';
 
-// React & Next.js
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-// Bootstrap
 import { Col, Container, Row } from 'react-bootstrap';
 
-// Hooks
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 
-// Config
 import { ROUTES } from '@/src/config/routes';
 
-// Components
 import AccountSidebar from '@/src/components/account/Sidebar/Content';
 import FavouritesContent from '@/src/components/account/Content/Favourites';
 
@@ -47,7 +42,6 @@ export default function FavouritesPage() {
             try {
                 const token = getToken();
 
-                // Profil + Favoriler paralel çek
                 const [profileResp, favResp] = await Promise.all([
                     fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }

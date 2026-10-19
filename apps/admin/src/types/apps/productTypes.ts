@@ -1,5 +1,4 @@
 export type ProductType = {
-  // Temel Kimlik Bilgileri
   id: string | number
   _key?: string
   name: string
@@ -7,17 +6,14 @@ export type ProductType = {
   barcode?: string
   brand?: string
 
-  // Kategori Bilgileri
   category: string
   subcategory?: string
 
-  // Stok ve Durum
   qty: number
   stock?: boolean
   status?: string
   webStatus?: string
 
-  // Fiyatlandırma - Tüm Fiyat Seviyeleri
   price: number
   price1: number
   price2: number
@@ -31,7 +27,6 @@ export type ProductType = {
   discount: number
   discountType: 'percentage' | 'fixed'
 
-  // Görseller
   image: string
   images?: string[]
   customImages?: Array<{
@@ -41,37 +36,30 @@ export type ProductType = {
     title?: string
   }>
 
-  // SEO Bilgileri
   seoTitle?: string
   seoDescription?: string
   seoUrl?: string | null
   seoKeywords?: string[]
   focusKeyword?: string
 
-  // İçerik ve Açıklamalar
   delivery?: string
 
-  // İçerik ve Açıklamalar
   description?: string | null
   customDescription?: string | null
   shortDescription?: string | null
   note?: string
 
-  // Web Özel Alanları
   webVisible?: boolean
   webOrder?: number
   webTags?: string[]
   tag?: string
 
-  // Slider 
   sliderId?: string
 
-  // Stok Yönetimi
   minOrderQuantity?: number
   maxOrderQuantity?: number | null
   stockAlert?: number
 
-  // Etiketler ve Durumlar
   isNew?: boolean
   isBestSeller?: boolean
   isFeatured?: boolean
@@ -79,7 +67,6 @@ export type ProductType = {
   hideProductionDate?: boolean
   hideStock?: boolean
 
-  // Ürün Özellikleri ve Kategoriler
   properties?: Record<string, any>
   m_kategoriler?: Array<{
     kategori_aciklama_1?: string
@@ -90,7 +77,6 @@ export type ProductType = {
     kategori_aciklama_6?: string
   }>
 
-  // DIA Ek Alanları (WebProduct'tan gelen)
   ekalan1?: string
   ekalan2?: string
   ekalan3?: string
@@ -98,14 +84,12 @@ export type ProductType = {
   ekalan5?: string
   originCountry?: string
 
-  // Özel Kodlar (gerekirse)
   ozelkod1?: string
   ozelkod2?: string
   ozelkod3?: string
   ozelkod4?: string
   ozelkod5?: string
 
-  // Meta Bilgiler
   actions?: string
   createdAt?: string | Date
   updatedAt?: string | Date
@@ -113,7 +97,6 @@ export type ProductType = {
   syncStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
 }
 
-// Kategori Senkronizasyon Bilgileri
 export interface CategorySyncInfo {
   lastSync?: Date
   syncStatus?: 'synced' | 'pending_sync' | 'not_in_dia' | 'error'
@@ -121,7 +104,6 @@ export interface CategorySyncInfo {
   lastProductSync?: Date
 }
 
-// Kategori Type Definition
 export type CategoryType = {
   id: string
   name: string
@@ -159,25 +141,20 @@ export type WebCategoryType = {
   level: number
   levelName: string
 
-  // Hiyerarşi
   parent: string | null
   parentName: string
   parentPath: string
 
-  // DIA bağlantısı
   diaCategory: string
   diaLevel: string
 
-  // Web yönetimi
   webVisible: boolean
   webOrder: number
   status: string
 
-  // SEO
   seoTitle: string
   seoUrl: string
 
-  // Görsel ve içerik - manuel doldurulabilir
   image: string
   customImage?: {
     url: string
@@ -186,12 +163,10 @@ export type WebCategoryType = {
   } | null
   description?: string | null
 
-  // İstatistikler
   productCount: number
   activeProductCount: number
   totalStock: number
 
-  // Tarihler
   createdAt: string
   updatedAt: string
   lastSync: string | null
@@ -199,7 +174,6 @@ export type WebCategoryType = {
   syncStatus: string
 }
 
-// Product Component Props
 export interface ProductImageProps {
   product?: ProductType
 }

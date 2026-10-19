@@ -1,34 +1,23 @@
-// Site bazlı Google Tag Manager container'ları
 export const GTM_IDS: Record<string, string> = {
     alastik: 'GTM-NVV296LW',
     lastikjantavm: 'GTM-MWVF56WW'
 };
 
-// Tanımlı olmayan sitede (ör. b2b bayi paneli) GTM yüklenmez — başka sitenin hesabına düşülmez
 export const getGtmId = (site?: string | null): string => GTM_IDS[site || ''] || '';
 
-// Site bazlı Google Ads (gtag) hesapları
 export const ADS_IDS: Record<string, string> = {
     alastik: 'AW-18022245202',
     lastikjantavm: 'AW-666191332'
 };
 
-// Tanımlı olmayan sitede Google Ads etiketi yüklenmez
 export const getAdsId = (site?: string | null): string => ADS_IDS[site || ''] || '';
 
-// Site bazlı Google etiketi (Merchant Center izleme vb. — gtag "GT-xxx" kimlikleri).
-// Tanımlı olmayan sitede etiket yüklenmez.
 export const GOOGLE_TAG_IDS: Record<string, string> = {
     alastik: 'GT-T5377LNX'
 };
 
 export const getGoogleTagId = (site?: string | null): string => GOOGLE_TAG_IDS[site || ''] || '';
 
-// Google Ads "web sitesinden telefon araması" dönüşümleri — site bazlı, numara başına bir kayıt.
-// Google, reklamdan gelen ziyaretçiye sitede `phoneNumber` metniyle birebir yazan numaranın
-// yerine kendi yönlendirme numarasını gösterir ve aramaları sayar. `phoneNumber` sitede
-// görünen biçimle AYNI olmalıdır (Ads'in verdiği kod parçasındaki değer).
-// Tanımlı olmayan sitede (ör. LastikJantAVM) hiçbir etiket çalışmaz.
 export const ADS_PHONE_CONVERSIONS: Record<string, { sendTo: string; phoneNumber: string }[]> = {
     alastik: [
         { sendTo: 'AW-18022245202/SzATCI-DipIdENLG1pFD', phoneNumber: '0212 216 01 02' },
@@ -40,8 +29,6 @@ export const getAdsPhoneConversions = (site?: string | null) => ADS_PHONE_CONVER
 
 export type AdsConversionEvent = 'purchase' | 'signUp' | 'addToCart' | 'beginCheckout';
 
-// Google Ads dönüşüm etiketleri (send_to) — site ve olay bazlı.
-// Yeni bir dönüşüm kurulduğunda Ads'in verdiği "AW-xxx/etiket" değeri buraya eklenir.
 export const ADS_CONVERSION_LABELS: Record<string, Partial<Record<AdsConversionEvent, string>>> = {
     alastik: {
         purchase: 'AW-18022245202/qJixCKjJ8LscENLG1pFD',

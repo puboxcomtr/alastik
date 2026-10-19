@@ -1,12 +1,9 @@
 const path = require('path');
 
-// Base paths
 const PUBLIC_DIR = path.join(__dirname, '../../public');
 
-// Statik sunulmayan hassas dosyalar (sözleşme vb.) — yalnızca auth'lu endpoint'lerle erişilir
 const PRIVATE_DIR = path.join(__dirname, '../../private');
 
-// Media kategorileri ve ayarları
 const MEDIA_CONFIG = {
     brand: {
         folder: 'marka',
@@ -14,7 +11,7 @@ const MEDIA_CONFIG = {
         urlPrefix: '/marka',
         allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
         allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
-        maxSize: 5 * 1024 * 1024 // 5MB
+        maxSize: 5 * 1024 * 1024
     },
 
     category: {
@@ -32,7 +29,7 @@ const MEDIA_CONFIG = {
         urlPrefix: '/urun',
         allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
         allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
-        maxSize: 10 * 1024 * 1024 // 10MB
+        maxSize: 10 * 1024 * 1024
     },
 
     slider: {
@@ -80,8 +77,6 @@ const MEDIA_CONFIG = {
         maxSize: 5 * 1024 * 1024
     },
 
-    // Montaj noktası sözleşme ve evrakları (PDF/Office/görsel)
-    // PRIVATE_DIR altındadır: statik sunulmaz, admin auth'lu endpoint ile indirilir
     montageDocument: {
         folder: 'montage-docs',
         basePath: PRIVATE_DIR,
@@ -108,9 +103,6 @@ const MEDIA_CONFIG = {
     }
 };
 
-/**
- * Kategori için upload dizinini al
- */
 function getUploadDir(category) {
     const config = MEDIA_CONFIG[category];
     if (!config) {
@@ -119,9 +111,6 @@ function getUploadDir(category) {
     return path.join(config.basePath, config.folder);
 }
 
-/**
- * Kategori için URL prefix'ini al
- */
 function getUrlPrefix(category) {
     const config = MEDIA_CONFIG[category];
     if (!config) {
@@ -130,9 +119,6 @@ function getUrlPrefix(category) {
     return config.urlPrefix;
 }
 
-/**
- * URL'den tam sistem yolunu al
- */
 function getFullPath(urlPath) {
     if (!urlPath) return null;
 
@@ -148,13 +134,9 @@ function getFullPath(urlPath) {
         return path.join(PUBLIC_DIR, 'uploads', relativePath);
     }
 
-    // Doğrudan public altında
     return path.join(PUBLIC_DIR, urlPath.replace(/^\//, ''));
 }
 
-/**
- * Kategori ayarlarını al
- */
 function getConfig(category) {
     const config = MEDIA_CONFIG[category];
     if (!config) {
@@ -163,16 +145,10 @@ function getConfig(category) {
     return config;
 }
 
-/**
- * Tüm kategorileri al
- */
 function getAllCategories() {
     return Object.keys(MEDIA_CONFIG);
 }
 
-/**
- * URL'den kategori belirle
- */
 function getCategoryFromUrl(url) {
     if (!url) return null;
 

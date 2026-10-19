@@ -1,13 +1,10 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect, notFound } from 'next/navigation'
 
-// Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
-// Component Imports
 import RoleForm from '@/views/manager/roles/AddRole'
 
-// API Imports
 import { fetchAPI } from '@libs/api'
 
 type Props = {
@@ -35,7 +32,6 @@ const RoleEditPage = async ({ params }: Props) => {
     }
 
     try {
-        // Modülleri çek (server tarafında token'ı elle iletiyoruz)
         const modulesData = await fetchAPI(`${process.env.API_URL}/admin/user/roles/modules`, {
             cache: 'no-store',
             headers: {
@@ -43,7 +39,6 @@ const RoleEditPage = async ({ params }: Props) => {
             }
         })
 
-        // Rol verilerini çek
         const roleData = await fetchAPI(`${process.env.API_URL}/admin/user/roles/${params.id}`, {
             cache: 'no-store',
             headers: {

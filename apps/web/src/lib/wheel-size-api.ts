@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Wheel-Size API Service
 
-// Backend API Base URL
 import { API_ENDPOINTS, getBaseUrl } from '@/src/config/api';
 
 const getApiBaseUrl = getBaseUrl;
 
-// API Response Tipleri
 export interface ApiResponse<T> {
   basarili: boolean;
   veri?: T;
@@ -15,7 +12,6 @@ export interface ApiResponse<T> {
   hata?: string;
 }
 
-// Marka Tipi
 export interface Marka {
   slug: string;
   name: string;
@@ -24,7 +20,6 @@ export interface Marka {
   logo?: string;
 }
 
-// Model Tipi
 export interface Model {
   slug: string;
   name: string;
@@ -34,14 +29,12 @@ export interface Model {
   make?: any;
 }
 
-// Lastik Ölçü Tipi
 export interface LastikOlcu {
   kesitGenisligi: number;
   yanakOrani: number;
   jantCapi: number;
 }
 
-// Jant Ölçü Tipi
 export interface JantOlcu {
   cap: number;
   genislik: number;
@@ -50,7 +43,6 @@ export interface JantOlcu {
   vidaSablon?: string;
 }
 
-// Jenerasyon Tipi
 export interface Jenerasyon {
   slug: string;
   name: string;
@@ -63,13 +55,11 @@ export interface Jenerasyon {
   year_ranges?: string[];
 }
 
-// Yıl Tipi
 export interface Yil {
   slug: number;
   name: number;
 }
 
-// Lastik/Jant Değer Tipi
 export interface DegerTipi {
   value: number;
   total: number;
@@ -77,7 +67,6 @@ export interface DegerTipi {
   tire_list?: any;
 }
 
-// Modifikasyon Tipi
 export interface Modifikasyon {
   id: string;
   slug: string;
@@ -86,7 +75,6 @@ export interface Modifikasyon {
   nameEn?: string;
 }
 
-// Arama Sonucu Tipi
 export interface AramaSonucu {
   marka: string;
   model: string;
@@ -96,7 +84,6 @@ export interface AramaSonucu {
   jantlar?: JantOlcu[];
 }
 
-// Genel API Yanıt Tipi
 export interface GenelApiYanit {
   id?: string;
   slug?: string;
@@ -108,7 +95,6 @@ export interface GenelApiYanit {
   [key: string]: unknown;
 }
 
-// Helper function for API calls
 async function apiCall<T>(endpoint: string, params?: Record<string, string | number | string[] | boolean | undefined>): Promise<ApiResponse<T>> {
   try {
     const searchParams = new URLSearchParams();
@@ -133,7 +119,6 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
       headers: {
         'Content-Type': 'application/json',
       },
-      // Timeout ekle
       signal: AbortSignal.timeout(10000)
     });
 
@@ -144,7 +129,6 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
     }
 
     const data = await response.json();
-    // Console spam'i azalt - sadece development'ta detaylı log
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ [WHEEL-SIZE-API] Yanıt alındı:', typeof data, data.length || Object.keys(data).length, 'kayıt');
     }
@@ -153,7 +137,6 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
   } catch (error) {
     console.error('❌ [WHEEL-SIZE-API] API Call Error:', error);
 
-    // Network hatası kontrolü
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
       return {
         basarili: false,
@@ -170,9 +153,7 @@ async function apiCall<T>(endpoint: string, params?: Record<string, string | num
   }
 }
 
-// Araç API'leri
 export const aracApi = {
-  // Tüm markaları getir
   markalar: async (params?: {
     yil?: number;
     bolgeler?: string[];
@@ -184,7 +165,6 @@ export const aracApi = {
     return apiCall<Marka[]>('/arac/markalar', params);
   },
 
-  // Belirli markaya ait modelleri getir
   modeller: async (marka: string, params?: {
     yil?: number;
     bolgeler?: string[];
@@ -192,22 +172,18 @@ export const aracApi = {
     return apiCall<Model[]>('/arac/modeller', { marka, ...params });
   },
 
-  // Üretim yıllarını getir
   yillar: async (marka: string, model?: string) => {
     return apiCall<Yil[]>('/arac/yillar', { marka, model });
   },
 
-  // Araç jenerasyonlarını getir
   jenerasyonlar: async (marka: string, model: string, yil?: number) => {
     return apiCall<Jenerasyon[]>('/arac/jenerasyonlar', { marka, model, yil });
   },
 
-  // Araç modifikasyonlarını getir
   modifikasyonlar: async (marka: string, model: string, yil?: number, jenerasyon?: string) => {
     return apiCall<Modifikasyon[]>('/arac/modifikasyonlar', { marka, model, yil, jenerasyon });
   },
 
-  // Model bazlı lastik/jant araması
   modelArama: async (params: {
     marka: string;
     model: string;
@@ -219,15 +195,12 @@ export const aracApi = {
     return apiCall<AramaSonucu>('/arac/model-arama', params);
   },
 
-  // Mevcut bölgeleri listele
   bolgeler: async () => {
     return apiCall<string[]>('/arac/bolgeler');
   }
 };
 
-// Jant API'leri
 export const jantApi = {
-  // Jant çaplarını getir
   caplar: async (params?: {
     vidasSablon?: string;
     bolgeler?: string[];
@@ -236,7 +209,6 @@ export const jantApi = {
     return apiCall<DegerTipi[]>('/jant/caplar', params);
   },
 
-  // Jant genişliklerini getir
   genislikler: async (params?: {
     cap?: number;
     vidasSablon?: string;
@@ -246,7 +218,6 @@ export const jantApi = {
     return apiCall<DegerTipi[]>('/jant/genislikler', params);
   },
 
-  // Offset değerlerini getir
   offsetler: async (params?: {
     cap?: number;
     genislik?: number;
@@ -257,7 +228,6 @@ export const jantApi = {
     return apiCall<number[]>('/jant/offsetler', params);
   },
 
-  // Merkez delik değerlerini getir
   merkezDelikler: async (params?: {
     cap?: number;
     genislik?: number;
@@ -271,7 +241,6 @@ export const jantApi = {
     return apiCall<number[]>('/jant/merkez-delikler', params);
   },
 
-  // Vida delik şablonlarını getir
   vidaSablonlari: async (params?: {
     cap?: number;
     genislik?: number;
@@ -287,7 +256,6 @@ export const jantApi = {
     return apiCall<string[]>('/jant/vida-sablonlari', params);
   },
 
-  // Jant özelliklerine göre araç ara
   arama: async (params: {
     vidaSablon: string;
     cap?: number;
@@ -312,7 +280,6 @@ export const jantApi = {
     return apiCall<AramaSonucu[]>('/jant/arama', params);
   },
 
-  // Jant özelliklerine göre modifikasyon ara
   modifikasyonArama: async (params: {
     marka: string;
     model: string;
@@ -340,9 +307,7 @@ export const jantApi = {
   }
 };
 
-// Lastik API'leri
 export const lastikApi = {
-  // Kesit genişliklerini getir
   kesitGenislikleri: async (params?: {
     bolgeler?: string[];
     siralama?: string;
@@ -350,7 +315,6 @@ export const lastikApi = {
     return apiCall<DegerTipi[]>('/lastik/kesit-genislikleri', params);
   },
 
-  // Yanak oranlarını getir
   yanakOranlari: async (params?: {
     kesitGenisligi?: number;
     bolgeler?: string[];
@@ -359,7 +323,6 @@ export const lastikApi = {
     return apiCall<DegerTipi[]>('/lastik/yanak-oranlari', params);
   },
 
-  // Jant çaplarını getir
   jantCaplari: async (params?: {
     kesitGenisligi?: number;
     yanakOrani?: number;
@@ -369,7 +332,6 @@ export const lastikApi = {
     return apiCall<DegerTipi[]>('/lastik/jant-caplari', params);
   },
 
-  // Lastik ölçülerine göre araç ara
   arama: async (params: {
     kesitGenisligi: number;
     yanakOrani: number;
@@ -381,7 +343,6 @@ export const lastikApi = {
     return apiCall<AramaSonucu[]>('/lastik/arama', params);
   },
 
-  // Lastik ölçülerine göre modifikasyon ara
   modifikasyonArama: async (params: {
     kesitGenisligi: number;
     yanakOrani: number;
@@ -397,9 +358,7 @@ export const lastikApi = {
     return apiCall<any[]>('/lastik/modifikasyon-arama', params);
   },
 
-  // LT High Flotation API'leri
   ltHf: {
-    // Toplam çap değerlerini getir
     toplamCaplar: async (params?: {
       bolgeler?: string[];
       siralama?: string;
@@ -407,7 +366,6 @@ export const lastikApi = {
       return apiCall<number[]>('/lastik/lt-hf/toplam-caplar', params);
     },
 
-    // Kesit genişliklerini getir
     kesitGenislikleri: async (params?: {
       toplamCap?: number;
       bolgeler?: string[];
@@ -416,7 +374,6 @@ export const lastikApi = {
       return apiCall<number[]>('/lastik/lt-hf/kesit-genislikleri', params);
     },
 
-    // Jant çaplarını getir
     jantCaplari: async (params?: {
       toplamCap?: number;
       kesitGenisligi?: number;
@@ -426,7 +383,6 @@ export const lastikApi = {
       return apiCall<number[]>('/lastik/lt-hf/jant-caplari', params);
     },
 
-    // LT HF lastik araması
     arama: async (params: {
       toplamCap: number;
       kesitGenisligi: number;
@@ -438,7 +394,6 @@ export const lastikApi = {
       return apiCall<any[]>('/lastik/lt-hf/arama', params);
     },
 
-    // LT HF lastik modifikasyon araması
     modifikasyonArama: async (params: {
       toplamCap: number;
       kesitGenisligi: number;
@@ -456,9 +411,7 @@ export const lastikApi = {
   }
 };
 
-// Gelişmiş Arama API'leri
 export const gelismisApi = {
-  // Janta uygun lastikleri listele
   jantaUygunLastikler: async (params: {
     vidasSablon: string;
     jantCapi: number;
@@ -477,7 +430,6 @@ export const gelismisApi = {
     return apiCall<LastikOlcu[]>('/gelismis/janta-uygun-lastikler', params);
   },
 
-  // Jant uyumluluk verilerini getir
   jantUyumluluk: async (params: {
     vidasSablon: string;
     jantCapi: number;
@@ -496,7 +448,6 @@ export const gelismisApi = {
     return apiCall<any[]>('/gelismis/jant-uyumluluk', params);
   },
 
-  // Lastik uyumluluk verilerini getir
   lastikUyumluluk: async (params: {
     kesitGenisligi: number;
     yanakOrani: number;
@@ -508,7 +459,6 @@ export const gelismisApi = {
     return apiCall<any[]>('/gelismis/lastik-uyumluluk', params);
   },
 
-  // Jant+lastik paket uyumluluğu
   paketUyumluluk: async (params: {
     vidasSablon: string;
     jantCapi: number;
@@ -529,7 +479,6 @@ export const gelismisApi = {
     return apiCall<any[]>('/gelismis/paket-uyumluluk', params);
   },
 
-  // Lastik-jant alternatiflerini hesapla
   lastikJantAlternatifleri: async (params: {
     jantCapi: number;
     jantGenisligi: number;
@@ -544,7 +493,6 @@ export const gelismisApi = {
   }
 };
 
-// Ana export
 export const wheelSizeApi = {
   arac: aracApi,
   jant: jantApi,

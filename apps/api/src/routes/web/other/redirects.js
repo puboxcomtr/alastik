@@ -1,9 +1,7 @@
 const router = require('express').Router();
 const WebRedirect = require('../../../models/web/other/WebRedirect');
 
-// Site başına yönlendirme haritası — web middleware her istekte buradan
-// (60 sn önbellekli) okur; admin değişikliğinde önbellek anında düşürülür
-const cache = new Map(); // site → { at, data }
+const cache = new Map();
 const CACHE_TTL = 60 * 1000;
 
 function clearRedirectCache(site) {
@@ -11,7 +9,6 @@ function clearRedirectCache(site) {
     else cache.clear();
 }
 
-// GET /map — { "/eski-yol": { t: "hedef", c: 301 }, ... }
 router.get('/map', async (req, res) => {
     try {
         const site = req.site || 'alastik';

@@ -1,18 +1,12 @@
-/**
- * Netahsilat SOAP API Test Script
- * Kullanım: node src/scripts/payment/netahsilat.js
- */
 
 const soap = require('soap');
 
-// Netahsilat SOAP Ayarları
 const WSDL_URL = 'https://otopirpossv2.netahsilatservice.com/VendorPayment/VendorPaymentService.svc?wsdl';
 const AUTH = {
     UserName: 'servis2@artvinticaret.com.tr',
     Password: 'ByAdmpws1526+'
 };
 
-// SOAP Client oluştur
 async function createClient() {
     try {
         const client = await soap.createClientAsync(WSDL_URL);
@@ -24,7 +18,6 @@ async function createClient() {
     }
 }
 
-// 1. Tum POS Listesi
 async function getVirtualPosList(client) {
     console.log('=== GetVirtualPosList ===');
     try {
@@ -38,7 +31,6 @@ async function getVirtualPosList(client) {
     }
 }
 
-// 2. BIN ile POS Listesi (ornek: 540668 - Mastercard)
 async function getVirtualPosListByBin(client, binNumber = '540668') {
     console.log(`\n=== GetVirtualPosListBinNumber (BIN: ${binNumber}) ===`);
     try {
@@ -53,7 +45,6 @@ async function getVirtualPosListByBin(client, binNumber = '540668') {
     }
 }
 
-// 3. BIN ile POS + Kart Bilgisi
 async function getVirtualPosListWithBinInfo(client, binNumber = '540668') {
     console.log(`\n=== GetVirtualPosListWithBinInfo (BIN: ${binNumber}) ===`);
     try {
@@ -68,7 +59,6 @@ async function getVirtualPosListWithBinInfo(client, binNumber = '540668') {
     }
 }
 
-// 4. Mevcut metodlari listele
 function listMethods(client) {
     console.log('\n=== Mevcut SOAP Metodlari ===');
     const description = client.describe();
@@ -79,7 +69,6 @@ function listMethods(client) {
     console.log('');
 }
 
-// Ana fonksiyon
 async function main() {
     console.log('Netahsilat SOAP API Test\n');
     console.log('WSDL:', WSDL_URL);
@@ -89,15 +78,9 @@ async function main() {
     try {
         const client = await createClient();
 
-        // Metodlari listele
         listMethods(client);
 
-        // POS listesini al
         await getVirtualPosList(client);
-
-        // BIN ile test (opsiyonel)
-        // await getVirtualPosListByBin(client, '540668');
-        // await getVirtualPosListWithBinInfo(client, '540668');
 
     } catch (error) {
         console.error('Genel hata:', error.message);

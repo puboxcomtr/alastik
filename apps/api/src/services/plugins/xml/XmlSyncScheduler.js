@@ -1,7 +1,3 @@
-/**
- * XML Sync Scheduler Kullanılmayacak
- * Dosya: apps/api/src/services/plugins/xml/XmlSyncScheduler.js
- */
 
 const cron = require('node-cron');
 const https = require('https');
@@ -21,21 +17,17 @@ class XmlSyncScheduler {
     }
 
     start() {
-        // XML çekme — her 15dk
         cron.schedule('*/15 * * * *', async () => {
             console.log('[XmlSyncScheduler] Kontrol başlatıldı:', new Date().toISOString());
             await this.checkAndSync();
         });
 
-        // Fiyat/stok hızlı sync — her 15dk (XML çekmeyle aynı anda değil, 7dk kaymalı)
         cron.schedule('7-59/15 * * * *', async () => {
             await this.runQuickSync();
         });
 
         console.log('[XmlSyncScheduler] Scheduler başlatıldı - Her 15 dakikada bir kontrol edilecek');
     }
-
-    // ===================== XML CEK + PENDING DIA AKTAR =====================
 
     async checkAndSync() {
         if (this.isRunning) {
@@ -76,8 +68,6 @@ class XmlSyncScheduler {
         }
     }
 
-    // ===================== YARDIMCI FONKSIYONLAR =====================
-
     async getDueIntegrations() {
         const now = new Date();
 
@@ -109,7 +99,6 @@ class XmlSyncScheduler {
         return crypto.createHash('md5').update(JSON.stringify(relevant)).digest('hex');
     }
 
-    // XML kaynagindan urunleri cek - sadece degisenleri pending yap
     async syncIntegration(integration) {
         const startTime = Date.now();
         const axios = require('axios');
@@ -119,7 +108,6 @@ class XmlSyncScheduler {
         try {
             let products = [];
 
-            // Saatte tek istek hakkı olan kaynaklar (Keskin): tek kayıt istek atar, diğeri onun verisini kullanır
             const tekIstek = saatlikTekIstek.grupOf(integration.code);
             let aynaKaynak = null;
             if (tekIstek) {
@@ -158,16 +146,13 @@ class XmlSyncScheduler {
 
             let response;
 
-            // LSTK-IST header desteği (Lastikistan)
             if (integration.credentials?.apiKey?.startsWith('lstk_')) {
                 headers['LSTK-IST'] = integration.credentials.apiKey;
                 delete headers['API-KEY'];
             }
 
             if (aynaKaynak) {
-                // Veri grubun çekici kaydından alındı; tedarikçiye istek atılmaz
             } else if (['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code)) {
-                // Aslan Kardeşler — GET + query param + latin1
                 const { parseStringPromise: psp } = require('xml2js');
                 const markaKodu = ['aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ? 'JANT' : 'LAST\u00ddK';
                 const qs = new URLSearchParams({
@@ -191,7 +176,6 @@ class XmlSyncScheduler {
                     return converted;
                 });
             } else if (integration.credentials?.apiKey?.startsWith('lstk_')) {
-                // Lastikistan — GET + LSTK-IST header + pagination
                 const allProducts = [];
                 let pageNumber = 1;
                 let totalPages = 1;
@@ -206,7 +190,6 @@ class XmlSyncScheduler {
                 } while (pageNumber <= totalPages);
                 products = allProducts;
             } else if (integration.credentials?.userName) {
-                // POST — Tatko tipi
                 response = await axios.post(url, {
                     UserName: integration.credentials.userName,
                     Password: integration.credentials.password,
@@ -218,7 +201,6 @@ class XmlSyncScheduler {
                     httpsAgent
                 });
             } else {
-                // GET — Mollaoğlu ve diğerleri
                 response = await axios.get(url, {
                     headers,
                     timeout: 120000,
@@ -242,13 +224,11 @@ class XmlSyncScheduler {
                 return null;
             };
 
-            // Aslan Kardeşler ve Lastikistan için products zaten yukarıda dolduruldu, parse atla
             const skipParse = !!aynaKaynak ||
                 ['aslankardesler', 'aslankardesler_jant', 'aslan_kardesler_jant'].includes(integration.code) ||
                 integration.credentials?.apiKey?.startsWith('lstk_');
 
             if (skipParse) {
-                // products zaten dolu, parse bloğu atlanır
             } else if (integration.format === 'xml') {
                 const parsed1 = await parseStringPromise(response.data, { explicitArray: false, mergeAttrs: true });
                 products = findFirstArray(parsed1) || [];
@@ -270,7 +250,6 @@ class XmlSyncScheduler {
                 if (integration.dataPath) {
                     data = integration.dataPath.split('.').reduce((acc, key) => acc?.[key], data) ?? data;
                 }
-                // String JSON olabilir (Tatko Sonuc string döner)
                 if (typeof data === 'string') {
                     try { data = JSON.parse(data); } catch (e) { }
                 }
@@ -281,16 +260,12 @@ class XmlSyncScheduler {
                 throw new Error('Ürün listesi bulunamadı veya boş');
             }
 
-            // Silme koruması (yalnız saatte tek istek grubu, yalnız tedarikçiden gelen yanıt için): sayı aniden
-            // düştüyse hiçbir şeye dokunma. Çekici kaydın verisini kopyalayan kayıtta uygulanmaz — o veri zaten doğrulanmıştır.
             if (tekIstek && !aynaKaynak) {
                 const oncekiSayi = await XmlProduct.countDocuments({ source: integration.code });
                 const suphe = await saatlikTekIstek.supheliYanit(tekIstek, integration.code, products.length, oncekiSayi);
                 if (suphe) throw new Error(suphe);
             }
 
-            // Unver: STOK.DEPO array'inde DEPOID=0 (Tüm Depolar) entry'sini başa al
-            // (site kopyaları da kapsanır: unver, unver_lastikjantavm ...)
             if (/^unver/.test(integration.code)) {
                 products = products.map(p => {
                     const depoList = p?.STOK?.DEPO;
@@ -305,7 +280,6 @@ class XmlSyncScheduler {
                 });
             }
 
-            // stokKodu mapping'inden ID tespiti
             const fieldMappings = integration.rules?.fieldMappings || [];
             const stokKoduMapping = fieldMappings.find(m => m.target === 'stokKodu');
             const getProductId = (p) => {
@@ -355,7 +329,6 @@ class XmlSyncScheduler {
 
             if (bulkOps.length > 0) await XmlProduct.bulkWrite(bulkOps);
 
-            // Ghost cleanup — kaynakta artık olmayan ürünleri sil ve reconsolidate et
             let ghostDeleted = 0;
             let reconsolidateStats = null;
             try {
@@ -387,8 +360,6 @@ class XmlSyncScheduler {
                     }
                 }
 
-                // Bu fetch'te gelen ürünlerden: fiyat=0 veya stok=0 olanların hedefStokKodu'larını topla → reconsolidate
-                // Böylece başka kaynakta varsa o aktifleşir, yoksa webproducts'tan silinir
                 try {
                     const zeroProducts = await XmlProduct.find(
                         {
@@ -435,7 +406,6 @@ class XmlSyncScheduler {
 
             const duration = Date.now() - startTime;
 
-
             await WebXml.findByIdAndUpdate(integration._id, {
                 $set: {
                     'syncInfo.lastSyncAt': new Date(),
@@ -449,7 +419,6 @@ class XmlSyncScheduler {
 
             console.log(`[XmlSyncScheduler] ${integration.name} tamamlandı: ${products.length} ürün, ${duration}ms`);
 
-            // Çekici kayıt başarıyla çekildiyse grubun diğer kayıtları aynı veriyle hemen güncellenir (istek atılmadan)
             if (tekIstek && !aynaKaynak) {
                 const digerleri = (await saatlikTekIstek.aktifUyeler(tekIstek, WebXml)).filter(u => u.code !== integration.code);
                 for (const uye of digerleri) {
@@ -477,7 +446,6 @@ class XmlSyncScheduler {
         }
     }
 
-
     async runQuickSync() {
         if (this.isQuickSyncRunning) {
             console.log('[XmlSyncScheduler] Hızlı sync zaten çalışıyor, atlanıyor...');
@@ -499,7 +467,6 @@ class XmlSyncScheduler {
             throw new Error('Entegrasyon bulunamadı');
         }
         await this.syncIntegration(integration);
-        // DIA aktarımı kaldırıldı — XML→WebProduct sync (kaynağın sitesi kapsamında)
         await XmlWebProductSyncService.fullSync(integration.site || DEFAULT_SITE);
     }
 

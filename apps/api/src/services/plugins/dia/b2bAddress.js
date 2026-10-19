@@ -1,13 +1,6 @@
-/**
- * b2b cari adresleri — DIA'dan Mongo'ya (WebMember.diaCari.addresses).
- * /adresler bu alandan okur (anında); worker günlük tam sync yapar; /adres
- * eklenince ilgili cari tazelenir. Adresler DIA'da cari başına ayrı çağrı
- * gerektirir (IN toplu çekmiyor), bu yüzden tam sync günde bir kez çalışır.
- */
 const { DiaOrderService } = require('./DiaOrderService');
 const WebMember = require('../../../models/web/user/WebMember');
 
-/** DIA adres kaydını arayüz biçimine çevirir (fatura/ana → "Adres"). */
 function mapDiaAddresses(list) {
     return (Array.isArray(list) ? list : []).map((a, i) => {
         const rawBaslik = String(a.adresadi || '').trim();
@@ -25,7 +18,6 @@ function mapDiaAddresses(list) {
     });
 }
 
-/** Tek carinin adreslerini DIA'dan çeker (arayüz biçiminde). */
 async function fetchCariAddresses(svc, F, cariKey) {
     const r = await svc.sendRequest('/api/v3/scf/json', {
         scf_carikart_adresleri_listele: {
@@ -37,11 +29,6 @@ async function fetchCariAddresses(svc, F, cariKey) {
     return mapDiaAddresses(Array.isArray(r?.result) ? r.result : []);
 }
 
-/**
- * DIA carisine yeni TESLİMAT adresi ekler (scf_carikart_adresleri_ekle). Cari kartı
- * güncellenmez; adres `_key_scf_carikart` ile bağlanır ve DIA'da "Diğer Adresler"e düşer.
- * Bayi (/b2b/adres) ve admin (cari görüntüle) aynı fonksiyonu kullanır. DIA yanıtını döner.
- */
 async function addDiaDeliveryAddress(svc, cariKey, { baslik, adSoyad, adres, adresDetay, il, ilce, telefon, postaKodu } = {}) {
     const adresKart = {
         _key_scf_carikart: parseInt(cariKey),
@@ -52,7 +39,7 @@ async function addDiaDeliveryAddress(svc, cariKey, { baslik, adSoyad, adres, adr
         adres1: String(adres || '').trim(),
         adres2: String(adresDetay || '').trim(),
         adresadi: (baslik && String(baslik).trim()) || 'Teslimat Adresi',
-        adrestipi: 'T', // Teslimat → Fatura (F) dışı, "Diğer Adresler"e düşer
+        adrestipi: 'T',
         anaadres: '0',
         bolge: '',
         unvan: String(adSoyad || '').trim(),
@@ -82,7 +69,6 @@ async function addDiaDeliveryAddress(svc, cariKey, { baslik, adSoyad, adres, adr
     });
 }
 
-/** Tek carinin adreslerini çekip Mongo'ya (WebMember.diaCari.addresses) yazar. */
 async function refreshMemberAddresses(site, memberId, cariKey) {
     const svc = new DiaOrderService(site);
     await svc.init().catch(() => {});
@@ -95,14 +81,7 @@ async function refreshMemberAddresses(site, memberId, cariKey) {
     return addresses;
 }
 
-/**
- * Tüm b2b carilerinin adreslerini DIA'dan Mongo'ya senkronlar (cari başına 1
- * çağrı). Günlük çalışır; boş dönen (yetki/çakışma) cariler atlanır (eski
- * adresler korunur). Yeni b2b DIA kullanıcısı (ws_ART_B2B) ile.
- */
 async function syncB2bAddresses(logger = console) {
-    // Adresler DIA'dan YALNIZ İLK KEZ alınır, sonra bizim DB'de tutulur: adresi olan
-    // cariye dokunulmaz. (Bayi panelden adres eklerse refreshMemberAddresses tazeler.)
     const members = await WebMember.find(
         { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null }, 'diaCari.addresses.0': { $exists: false } },
         { diaCustomerKey: 1 }
@@ -127,7 +106,7 @@ async function syncB2bAddresses(logger = console) {
                     'diaCari.addresses': addresses, 'diaCari.addressesSyncedAt': new Date()
                 } } } });
             } else {
-                bos++; // boş — eski adresi koru
+                bos++;
             }
         } catch (e) {
             try { svc.sessionId = null; await svc.login(); F.session_id = svc.sessionId; } catch (_) {}
@@ -137,7 +116,7 @@ async function syncB2bAddresses(logger = console) {
             try { const r = await WebMember.bulkWrite(ops, { ordered: false }); updated += r.modifiedCount; } catch (e) {}
             ops = [];
         }
-        await sleep(60); // DIA'yı boğmayalım
+        await sleep(60);
     }
     if (ops.length) {
         try { const r = await WebMember.bulkWrite(ops, { ordered: false }); updated += r.modifiedCount; } catch (e) {}

@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -16,7 +15,6 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
 import FormControl from '@mui/material/FormControl'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
 import { createBanner } from '@/utils/api/banners'
@@ -25,7 +23,6 @@ const AddBannerForm = () => {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
-    // Form state
     const [description, setDescription] = useState('')
     const [redirectUrl, setRedirectUrl] = useState('')
     const [altTag, setAltTag] = useState('')
@@ -35,7 +32,6 @@ const AddBannerForm = () => {
     const [image, setImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string>('')
 
-    // Slug oluşturma fonksiyonu
     const generateSlug = (text: string) => {
         return text
             .toLowerCase()
@@ -51,7 +47,6 @@ const AddBannerForm = () => {
             .trim()
     }
 
-    // Computed variableKey
     const variableKey = useMemo(() => generateSlug(description), [description])
 
     const handleImageSelect = (file: File) => {
@@ -150,7 +145,6 @@ const AddBannerForm = () => {
                                     <CardContent>
                                         <Typography variant='h6' className='mb-4'>Banner Bilgileri</Typography>
                                         <Grid container spacing={6}>
-                                            {/* Açıklama */}
                                             <Grid size={{ xs: 12 }}>
                                                 <TextField
                                                     fullWidth
@@ -164,7 +158,6 @@ const AddBannerForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Yönlendirme Linki */}
                                             <Grid size={{ xs: 4 }}>
                                                 <TextField
                                                     fullWidth
@@ -174,7 +167,6 @@ const AddBannerForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Alt Etiket */}
                                             <Grid size={{ xs: 4 }}>
                                                 <TextField
                                                     fullWidth
@@ -184,7 +176,6 @@ const AddBannerForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Sıra */}
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <TextField
                                                     fullWidth
@@ -195,7 +186,6 @@ const AddBannerForm = () => {
                                                 />
                                             </Grid>
 
-                                            {/* Görsel Upload */}
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant='body2' className='mb-2'>
                                                     Banner Görseli *
@@ -253,7 +243,6 @@ const AddBannerForm = () => {
 
                             <Grid size={{ xs: 12, md: 4 }}>
                                 <Grid container spacing={6}>
-                                    {/* Durum */}
                                     <Grid size={{ xs: 12 }}>
                                         <Card>
                                             <CardContent>
@@ -281,7 +270,6 @@ const AddBannerForm = () => {
                                         </Card>
                                     </Grid>
 
-                                    {/* Yeni Sekmede Aç */}
                                     <Grid size={{ xs: 12 }}>
                                         <Card>
                                             <CardContent>

@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useRef, useState } from 'react'
 
-// MUI Imports
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
 import Popper from '@mui/material/Popper'
@@ -13,21 +11,16 @@ import ClickAwayListener from '@mui/material/ClickAwayListener'
 import MenuList from '@mui/material/MenuList'
 import MenuItem from '@mui/material/MenuItem'
 
-// Type Imports
 import type { Mode } from '@core/types'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
 const ModeDropdown = () => {
-  // States
   const [open, setOpen] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(false)
 
-  // Refs
   const anchorRef = useRef<HTMLButtonElement>(null)
 
-  // Hooks
   const { settings, updateSettings } = useSettings()
 
   const handleClose = () => {

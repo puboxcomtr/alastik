@@ -9,7 +9,6 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 
-// SeoSettings.analysis ile birebir; boş gelirse motorun varsayılanları
 const DEFAULTS = {
   titleMin: 30,
   titleMax: 60,
@@ -37,7 +36,6 @@ const NumberField = ({ label, value, onChange, helper, step = 1 }) => (
   />
 )
 
-// İçerik analizi kriter eşikleri (SEO > Ayarlar > Analiz Kriterleri)
 const Analysis = ({ formData, setFormData, handleSave, saving }) => {
   const analysis = {
     ...DEFAULTS,

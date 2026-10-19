@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogActions from '@mui/material/DialogActions'
@@ -17,10 +15,8 @@ import TextField from '@mui/material/TextField'
 import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 
-// Type Imports
 import type { CustomInputHorizontalData } from '@core/components/custom-inputs/types'
 
-// Component Imports
 import CustomInputHorizontal from '@core/components/custom-inputs/Horizontal'
 import DirectionalIcon from '@components/DirectionalIcon'
 
@@ -29,7 +25,6 @@ type TwoFactorAuthProps = {
   setOpen: (open: boolean) => void
 }
 
-// Vars
 const data: CustomInputHorizontalData[] = [
   {
     title: (
@@ -139,12 +134,10 @@ const AppDialog = (handleAuthDialogClose: () => void) => {
 }
 
 const TwoFactorAuth = ({ open, setOpen }: TwoFactorAuthProps) => {
-  // Vars
   const initialSelectedOption: string = data.filter(item => item.isSelected)[
     data.filter(item => item.isSelected).length - 1
   ].value
 
-  // States
   const [authType, setAuthType] = useState<string>(initialSelectedOption)
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false)
 

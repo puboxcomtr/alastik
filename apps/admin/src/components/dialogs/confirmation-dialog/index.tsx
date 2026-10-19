@@ -1,16 +1,13 @@
 'use client'
 
-// React Imports
 import { Fragment, useState } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 
-// Third-party Imports
 import classnames from 'classnames'
 
 type ConfirmationType = 'delete-account' | 'unsubscribe' | 'suspend-account' | 'delete-order' | 'delete-customer'
@@ -22,11 +19,9 @@ type ConfirmationDialogProps = {
 }
 
 const ConfirmationDialog = ({ open, setOpen, type }: ConfirmationDialogProps) => {
-  // States
   const [secondDialog, setSecondDialog] = useState(false)
   const [userInput, setUserInput] = useState(false)
 
-  // Vars
   const Wrapper = type === 'suspend-account' ? 'div' : Fragment
 
   const handleSecondDialogClose = () => {
@@ -90,7 +85,6 @@ const ConfirmationDialog = ({ open, setOpen, type }: ConfirmationDialogProps) =>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Account Dialog */}
       <Dialog open={secondDialog} onClose={handleSecondDialogClose} closeAfterTransition={false}>
         <DialogContent className='flex items-center flex-col text-center sm:pbs-16 sm:pbe-6 sm:pli-16'>
           <i

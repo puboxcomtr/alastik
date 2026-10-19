@@ -46,7 +46,6 @@ const pageSchema = new mongoose.Schema({
             type: String,
             default: ''
         },
-        // SEO analizi: odak anahtar kelime
         focusKeyword: {
             type: String,
             default: ''
@@ -78,12 +77,10 @@ const pageSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Indexes
 pageSchema.index({ slug: 1, site: 1 }, { unique: true });
 pageSchema.index({ status: 1 });
 pageSchema.index({ publishedAt: -1 });
 
-// Slug otomatik oluştur (eğer yoksa)
 pageSchema.pre('save', function (next) {
     if (this.isModified('title') && !this.slug) {
         this.slug = this.title

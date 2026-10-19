@@ -6,7 +6,6 @@ const seoSchema = new mongoose.Schema({
     metaDescription: String,
     metaKeywords: [String],
     ogImage: String,
-    // SEO analizi: odak anahtar kelime
     focusKeyword: String
 }, { _id: false });
 
@@ -28,9 +27,7 @@ const webBlogSchema = new mongoose.Schema({
     showOnHomepage: { type: Boolean, default: false },
     author: String,
     tags: [String],
-    // Blog kategorileri (çoklu) — admin Blog modeliyle aynı koleksiyon, BlogCategory referansları
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BlogCategory' }],
-    // Hangi siteye ait olduğu — vitrin sorguları bu alana göre filtreler
     site: {
         type: String,
         required: true,

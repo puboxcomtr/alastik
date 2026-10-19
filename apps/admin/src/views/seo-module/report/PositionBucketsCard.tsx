@@ -1,16 +1,13 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 
-// Type Imports
 import type { ReportData } from '../types'
 
-// Util Imports
 import { formatNumber, formatPercent } from '@/views/analytics/reports/format'
 
 const BUCKETS: { key: keyof ReportData['buckets']; label: string; color: 'primary' }[] = [
@@ -20,7 +17,6 @@ const BUCKETS: { key: keyof ReportData['buckets']; label: string; color: 'primar
     { key: 'beyond', label: '50 ve sonrası', color: 'primary' }
 ]
 
-// Dönemde gösterim alan sorguların ortalama pozisyona göre dağılımı
 const PositionBucketsCard = ({ buckets, totalQueries }: { buckets: ReportData['buckets']; totalQueries: number }) => {
     const total = BUCKETS.reduce((sum, b) => sum + (buckets[b.key] || 0), 0)
 

@@ -1,14 +1,11 @@
-// models/WebBrand.js
 const mongoose = require('mongoose');
 const { SITES } = require('../../../config/sites');
 
-// Site başına görünürlük/sıralama/anasayfa ayarları (siteSettings.<slug>)
 const siteBrandSettingsSchema = new mongoose.Schema({
     webVisible: { type: Boolean, default: true },
     webOrder: { type: Number, default: 0 },
     showOnHomepage: { type: Boolean, default: false },
     homepageOrder: { type: Number, default: 0 },
-    // Sitede yayınlanmış ürün sayısı — sync hesaplar; 0 ise vitrin markayı göstermez
     productCount: { type: Number, default: 0 }
 }, { _id: false });
 
@@ -17,13 +14,8 @@ const siteSettingsShape = Object.keys(SITES).reduce((acc, slug) => {
     return acc;
 }, {});
 
-// Site başına içerik/SEO metinleri (siteContent.<slug>)
-// Alan tanımsızsa kök (ortak) değer geçerlidir
 const siteBrandContentSchema = new mongoose.Schema({
-    // Sitede gösterilen marka adı (örn. AKD markası LJA'da "LJA" görünür);
-    // boşsa customName → diaBrand → name sırası geçerlidir
     displayName: { type: String },
-    // Sitede gösterilen marka logosu; boşsa ortak logo alanı geçerlidir
     logoUrl: { type: String },
     logoAlt: { type: String },
     description: { type: String },
@@ -37,7 +29,6 @@ const siteContentShape = Object.keys(SITES).reduce((acc, slug) => {
     return acc;
 }, {});
 
-// Showcase Ürün Schema (Vitrin için)
 const showcaseProductSchema = new mongoose.Schema({
     productKey: { type: String, required: true },
     order: { type: Number, default: 0 },
@@ -46,9 +37,7 @@ const showcaseProductSchema = new mongoose.Schema({
     addedBy: String
 }, { _id: false });
 
-// Ana WebBrand Schema
 const webBrandSchema = new mongoose.Schema({
-    // Temel Bilgiler
     name: {
         type: String,
         required: true,
@@ -72,11 +61,10 @@ const webBrandSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true
-    }, // DIA'daki "marka" field'ı (örn: "KONAK")
-    diaMarkaAck: String, // DIA'daki "markaack" field'ı (örn: "Konak")
-    diaKey: String, // DIA'dan gelen _key_scf_marka
+    },
+    diaMarkaAck: String,
+    diaKey: String,
 
-    // Eski ortak alanlar — geriye dönük uyumluluk için tutuluyor; okuma/yazma artık siteSettings üzerinden
     webVisible: {
         type: Boolean,
         default: true,
@@ -90,10 +78,8 @@ const webBrandSchema = new mongoose.Schema({
     siteSettings: siteSettingsShape,
     siteContent: siteContentShape,
 
-    // SEO Bilgileri
     seoTitle: String,
     seoDescription: String,
-    // SEO analizi: odak anahtar kelime
     focusKeyword: String,
     seoUrl: {
         type: String,
@@ -102,15 +88,13 @@ const webBrandSchema = new mongoose.Schema({
     },
     seoKeywords: [String],
 
-    // Görsel ve İçerik
     customImage: {
         url: String,
         alt: String,
         title: String
     },
-    description: String, // Marka detay açıklaması
+    description: String,
 
-    // Logo ve Marka Görselleri
     logo: {
         url: String,
         alt: String,
@@ -122,7 +106,6 @@ const webBrandSchema = new mongoose.Schema({
         title: String
     },
 
-    // Marka Bilgileri
     brandInfo: {
         foundedYear: Number,
         country: String,
@@ -130,10 +113,8 @@ const webBrandSchema = new mongoose.Schema({
         about: String
     },
 
-    // Showcase (Vitrin Ürünleri)
     showcase: [showcaseProductSchema],
 
-    // İstatistikler (DiaStock'tan hesaplanacak)
     productCount: {
         type: Number,
         default: 0,
@@ -142,30 +123,27 @@ const webBrandSchema = new mongoose.Schema({
     activeProductCount: {
         type: Number,
         default: 0
-    }, // durum: 'A' olan ürün sayısı
+    },
     totalStock: {
         type: Number,
         default: 0
-    }, // gercek_stok toplamı
+    },
     totalValue: {
         type: Number,
         default: 0
-    }, // Toplam stok değeri
+    },
 
-    // Kategori Dağılımı
     categoryDistribution: [{
         categoryName: String,
         productCount: Number
     }],
 
-    // Fiyat Aralığı
     priceRange: {
         min: { type: Number, default: 0 },
         max: { type: Number, default: 0 },
         average: { type: Number, default: 0 }
     },
 
-    // Senkronizasyon Bilgileri
     syncInfo: {
         lastSync: {
             type: Date,
@@ -177,12 +155,12 @@ const webBrandSchema = new mongoose.Schema({
             default: 'synced'
         },
         errorMessage: String,
-        lastProductSync: Date, // Son ürün sayısı güncellemesi
+        lastProductSync: Date,
         syncSource: {
             type: String,
             default: 'diasync'
         },
-        lastDiaSync: Date // Son DIA senkronizasyonu
+        lastDiaSync: Date
     }
 
 }, {
@@ -190,7 +168,6 @@ const webBrandSchema = new mongoose.Schema({
     collection: 'webbrands'
 });
 
-// Index'ler
 webBrandSchema.index({ 'name': 1 }, { unique: true });
 webBrandSchema.index({ 'slug': 1 }, { unique: true });
 webBrandSchema.index({ 'diaBrand': 1 }, { unique: true });
@@ -203,14 +180,12 @@ Object.keys(SITES).forEach(slug => {
 webBrandSchema.index({ 'createdAt': -1 });
 webBrandSchema.index({ 'updatedAt': -1 });
 
-// Compound index'ler
 webBrandSchema.index({
     'syncInfo.syncStatus': 1,
     'webVisible': 1,
     'productCount': 1
 });
 
-// Text search için
 webBrandSchema.index({
     'name': 'text',
     'diaBrand': 'text',
@@ -219,7 +194,6 @@ webBrandSchema.index({
     'description': 'text'
 });
 
-// Virtual'lar
 webBrandSchema.virtual('isActive').get(function () {
     return this.syncInfo.syncStatus === 'synced' &&
         this.webVisible === true;
@@ -233,14 +207,11 @@ webBrandSchema.virtual('displayName').get(function () {
     return this.diaMarkaAck || this.name || this.diaBrand;
 });
 
-// Middleware
 webBrandSchema.pre('save', function (next) {
-    // Name'i diaBrand'den oluştur (büyük harflerle)
     if (!this.name && this.diaBrand) {
         this.name = this.diaBrand.toUpperCase();
     }
 
-    // SEO URL otomatik oluştur
     if (!this.seoUrl && this.name) {
         this.seoUrl = this.name
             .toLowerCase()
@@ -250,7 +221,6 @@ webBrandSchema.pre('save', function (next) {
             .trim('-');
     }
 
-    // Slug otomatik oluştur
     if (!this.slug && this.name) {
         this.slug = this.name
             .toLowerCase()
@@ -263,7 +233,6 @@ webBrandSchema.pre('save', function (next) {
     next();
 });
 
-// Static metodlar
 webBrandSchema.statics.getWebBrands = function (filter = {}) {
     return this.find({
         'syncInfo.syncStatus': 'synced',

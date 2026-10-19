@@ -1,11 +1,3 @@
-/**
- * Ürün görsel sıralama yardımcıları.
- *
- * DIA'dan gelen görsellerde AB enerji etiketi (source_url içinde "abetiketleri" geçer)
- * çoğu zaman ilk sırada gelir ve vitrinde ürün görseli yerine etiket görünür.
- * Kural: etiket görselleri her zaman gerçek ürün görsellerinin arkasına alınır ve
- * order_id değerleri yeni sıraya göre yeniden numaralanır (web/API bu alana göre sıralar).
- */
 const LABEL_IMAGE_PATTERN = /\/abetiketleri\//i;
 
 function isLabelImage(image) {
@@ -19,9 +11,6 @@ function orderValue(image) {
     return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
 }
 
-/**
- * Etiket görsellerini sona alır; sıralama değişmediyse aynı diziyi (referans) döndürür.
- */
 function moveLabelImagesLast(images) {
     if (!Array.isArray(images) || images.length < 2) return images;
 
@@ -43,12 +32,7 @@ function moveLabelImagesLast(images) {
     return ordered.map((img, index) => ({ ...img, order_id: String(index + 1) }));
 }
 
-/**
- * Tüm ürünlerde etiket görsellerini sona alır (tek seferlik toplu düzeltme).
- * WebProduct siteler arasında ortak olduğundan her iki siteyi de kapsar.
- */
 async function reorderLabelImagesForAllProducts(WebProduct) {
-    // Ham sürücü kullanılır: büyük koleksiyonda model katmanının yükü gereksizdir
     const collection = WebProduct.collection;
     const cursor = collection.find(
         { 'diaData.m_resimler.1': { $exists: true } },

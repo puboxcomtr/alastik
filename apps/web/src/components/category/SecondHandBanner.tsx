@@ -1,14 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
 
-/**
- * Liste sayfalarında (marka/etiket) sayfalamanın altında gösterilen,
- * ikinci el ürün görünümüne geçiş banner'ı. Vurgu rengi site temasına göre
- * accent/accentText ile verilir (LJA: sarı, ALastik: kırmızı).
- */
 interface Props {
     href: string;
-    // Cümlenin "tıklayınız" öncesi bölümü; sonuna altı çizili "tıklayınız." eklenir
     text: string;
     accent?: string;
     accentText?: string;

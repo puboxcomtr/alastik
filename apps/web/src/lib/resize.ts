@@ -1,9 +1,4 @@
-/**
- * Görsel boyutlandırma utility fonksiyonu
- * Herhangi bir görseli belirtilen boyutlara dönüştürür
- */
 
-// Type definitions
 export interface ResizeOptions {
     width?: number;
     height?: number;
@@ -15,15 +10,6 @@ export interface ResizeError extends Error {
     code?: string;
 }
 
-/**
- * Görseli belirtilen boyutlara resize eder
- * @param imageUrl - Resize edilecek görsel URL'i
- * @param width - Hedef genişlik (default: 350)
- * @param height - Hedef yükseklik (default: 350) 
- * @param backgroundColor - Arka plan rengi (default: '#ffffff')
- * @param quality - JPEG kalitesi 0.1-1.0 arası (default: 0.8)
- * @returns Promise<string> - Resize edilmiş görsel data URL'i
- */
 export const resizeImage = (
     imageUrl: string,
     width: number = 350,
@@ -32,7 +18,6 @@ export const resizeImage = (
     quality: number = 0.8
 ): Promise<string> => {
     return new Promise((resolve, reject) => {
-        // Input validation
         if (!imageUrl || typeof imageUrl !== 'string') {
             reject(new Error('Geçersiz görsel URL\'i'));
             return;
@@ -48,15 +33,12 @@ export const resizeImage = (
             return;
         }
 
-        // Yeni image elementi oluştur
         const img: HTMLImageElement = new Image();
 
-        // CORS sorunlarını önlemek için
         img.crossOrigin = 'anonymous';
 
         img.onload = (): void => {
             try {
-                // Canvas oluştur
                 const canvas: HTMLCanvasElement = document.createElement('canvas');
                 const ctx: CanvasRenderingContext2D | null = canvas.getContext('2d');
 
@@ -65,27 +47,21 @@ export const resizeImage = (
                     return;
                 }
 
-                // Canvas boyutlarını ayarla
                 canvas.width = width;
                 canvas.height = height;
 
-                // Görsel oranını koruyarak resize hesapla
                 const scale: number = Math.min(width / img.width, height / img.height);
                 const scaledWidth: number = img.width * scale;
                 const scaledHeight: number = img.height * scale;
 
-                // Ortalama için pozisyon hesapla
                 const x: number = (width - scaledWidth) / 2;
                 const y: number = (height - scaledHeight) / 2;
 
-                // Arka plan boyası
                 ctx.fillStyle = backgroundColor;
                 ctx.fillRect(0, 0, width, height);
 
-                // Görseli çiz
                 ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
 
-                // Data URL olarak dönüştür
                 const resizedDataUrl: string = canvas.toDataURL('image/jpeg', quality);
                 resolve(resizedDataUrl);
 
@@ -102,18 +78,10 @@ export const resizeImage = (
             reject(loadError);
         };
 
-        // Görsel yüklemeyi başlat
         img.src = imageUrl;
     });
 };
 
-/**
- * Çoklu görsel resize etme fonksiyonu
- * @param imageUrls - Resize edilecek görsel URL'leri
- * @param width - Hedef genişlik
- * @param height - Hedef yükseklik
- * @returns Promise<string[]> - Resize edilmiş görsellerin data URL'leri
- */
 export const resizeMultipleImages = async (
     imageUrls: string[],
     width: number = 350,
@@ -131,13 +99,6 @@ export const resizeMultipleImages = async (
     }
 };
 
-/**
- * File objesini resize etme fonksiyonu (file input için)
- * @param file - Resize edilecek file objesi
- * @param width - Hedef genişlik
- * @param height - Hedef yükseklik
- * @returns Promise<string> - Resize edilmiş görsel data URL'i
- */
 export const resizeImageFile = (
     file: File,
     width: number = 350,
@@ -175,12 +136,6 @@ export const resizeImageFile = (
     });
 };
 
-/**
- * Options objesi ile resize fonksiyonu
- * @param imageUrl - Görsel URL'i
- * @param options - Resize seçenekleri
- * @returns Promise<string> - Resize edilmiş görsel data URL'i
- */
 export const resizeImageWithOptions = (
     imageUrl: string,
     options: ResizeOptions = {}

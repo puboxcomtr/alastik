@@ -1,6 +1,3 @@
-// İlçe sayfası — /lastikci/<il>/<ilce> (yalnızca lastikjantavm.com)
-// En yakın montaj noktaları (km), İstanbul'da en yakın şube + hizmetler, ebatlar, komşu ilçeler, mahalleler.
-// Kalite kapısı: İstanbul ilçeleri ve 30 km içinde montaj noktası / sipariş verisi olan ilçeler dizine açık.
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

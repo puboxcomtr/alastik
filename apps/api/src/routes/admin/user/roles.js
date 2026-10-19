@@ -5,14 +5,8 @@ const Admin = require('../../../models/admin/user/Admin');
 const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const { authenticateAdmin, authorize, getClientIP } = require('../../../middleware/auth');
 
-// Tüm route'lar admin authentication gerektirir
 router.use(authenticateAdmin);
 
-/**
- * @route   GET /api/admin/user/roles/modules
- * @desc    Modül tanımlarını getir
- * @access  Private
- */
 router.get('/modules', async (req, res) => {
     try {
         const { getModulesByCategory } = require('../../../config/modules');
@@ -31,11 +25,6 @@ router.get('/modules', async (req, res) => {
     }
 });
 
-/**
- * @route   POST /api/admin/user/roles
- * @desc    Yeni rol oluştur
- * @access  Private
- */
 router.post('/', async (req, res) => {
     try {
         const {
@@ -45,7 +34,6 @@ router.post('/', async (req, res) => {
             status = 'active'
         } = req.body;
 
-        // Validasyon
         if (!name || name.trim() === '') {
             console.log('Validasyon hatası: Rol adı eksik');
             return res.status(400).json({
@@ -62,7 +50,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Aynı isimde rol var mı kontrol et
         const existingRole = await Role.findByName(name.trim());
         if (existingRole) {
             console.log('Rol zaten mevcut:', name);
@@ -72,7 +59,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // İzinleri temizle ve formatla
         const cleanPermissions = permissions
             .filter(p => p.module)
             .map(p => ({
@@ -86,7 +72,6 @@ router.post('/', async (req, res) => {
 
         console.log('Temizlenmiş izinler:', cleanPermissions);
 
-        // Rol oluştur
         const role = new Role({
             name: name.trim(),
             description: description?.trim() || '',
@@ -98,7 +83,6 @@ router.post('/', async (req, res) => {
         await role.save();
         console.log('Rol başarıyla oluşturuldu:', role._id);
 
-        // Activity log
         try {
             await ActivityLog.logActivity({
       site: req.site,
@@ -117,7 +101,6 @@ router.post('/', async (req, res) => {
             });
         } catch (logError) {
             console.error('Activity log hatası:', logError);
-            // Log hatası ana işlemi engellemez
         }
 
         res.status(201).json({
@@ -136,11 +119,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/user/roles
- * @desc    Rol listesi
- * @access  Private
- */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -215,11 +193,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/user/roles/:id
- * @desc    Rol detayı
- * @access  Private
- */
 router.get('/:id', async (req, res) => {
     try {
         const role = await Role.findById(req.params.id);
@@ -255,11 +228,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-/**
- * @route   PUT /api/admin/user/roles/:id
- * @desc    Rol güncelle
- * @access  Private
- */
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -336,11 +304,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-/**
- * @route   DELETE /api/admin/user/roles/:id
- * @desc    Rol sil
- * @access  Private
- */
 router.delete('/:id', async (req, res) => {
     try {
         const role = await Role.findById(req.params.id);

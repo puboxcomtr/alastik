@@ -1,7 +1,5 @@
 'use client'
 
-// Projede her yerde kullanılan TipTap editörünün yeniden kullanılabilir sarmalayıcısı.
-// value/onChange ile kontrol edilir (HTML). Toolbar BlogForm'daki ile aynıdır.
 import { useEffect, useState } from 'react'
 
 import classnames from 'classnames'
@@ -272,8 +270,6 @@ const RichTextEditor = ({ value, onChange, placeholder = 'İçeriği giriniz...'
         onUpdate: ({ editor: ed }) => onChange(ed.getHTML())
     })
 
-    // Dış değer (ör. düzenlemede yüklenen içerik) editöre yansıtılır — yazarken
-    // imleç kaymasın diye yalnız odak yokken ve içerik farklıysa günceller.
     useEffect(() => {
         if (!editor) return
         const current = editor.getHTML()

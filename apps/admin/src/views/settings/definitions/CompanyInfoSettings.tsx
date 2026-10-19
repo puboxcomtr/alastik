@@ -14,7 +14,6 @@ export default function CompanyInfoSettings() {
             <CardHeader title='Firma Bilgileri' />
             <CardContent>
                 <Grid container spacing={5}>
-                    {/* İlk Satır */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             fullWidth
@@ -34,7 +33,6 @@ export default function CompanyInfoSettings() {
                         />
                     </Grid>
 
-                    {/* İkinci Satır */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             fullWidth
@@ -54,7 +52,6 @@ export default function CompanyInfoSettings() {
                         />
                     </Grid>
 
-                    {/* Üçüncü Satır */}
                     <Grid size={{ xs: 12, sm: 4 }}>
                         <TextField
                             fullWidth
@@ -83,7 +80,6 @@ export default function CompanyInfoSettings() {
                         />
                     </Grid>
 
-                    {/* Dördüncü Satır - Adres Bilgileri */}
                     <Grid size={{ xs: 12, sm: 3 }}>
                         <TextField
                             fullWidth
@@ -121,7 +117,6 @@ export default function CompanyInfoSettings() {
                         />
                     </Grid>
 
-                    {/* Beşinci Satır - Açık Adres */}
                     <Grid size={{ xs: 12 }}>
                         <TextField
                             fullWidth

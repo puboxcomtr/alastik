@@ -1,4 +1,3 @@
-// Component Imports
 import ActiveCartsView from '@/views/order/cart/ActiveCartsView'
 
 const ActiveCarts = () => {

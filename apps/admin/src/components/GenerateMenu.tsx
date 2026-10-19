@@ -1,14 +1,10 @@
-// React Imports
 import type { ReactNode } from 'react'
 
-// Next Imports
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Chip from '@mui/material/Chip'
 import type { ChipProps } from '@mui/material/Chip'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 import type {
   VerticalMenuDataType,
@@ -20,31 +16,24 @@ import type {
   HorizontalMenuItemDataType
 } from '@/types/menuTypes'
 
-// Component Imports
 import { SubMenu as HorizontalSubMenu, MenuItem as HorizontalMenuItem } from '@menu/horizontal-menu'
 import { SubMenu as VerticalSubMenu, MenuItem as VerticalMenuItem, MenuSection } from '@menu/vertical-menu'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
-// Generate a menu from the menu data array
 export const GenerateVerticalMenu = ({ menuData }: { menuData: VerticalMenuDataType[] }) => {
-  // Hooks
   const { lang: locale } = useParams()
 
   const renderMenuItems = (data: VerticalMenuDataType[]) => {
-    // Use the map method to iterate through the array of menu data
     return data.map((item: VerticalMenuDataType, index) => {
       const menuSectionItem = item as VerticalSectionDataType
       const subMenuItem = item as VerticalSubMenuDataType
       const menuItem = item as VerticalMenuItemDataType
 
-      // Check if the current item is a section
       if (menuSectionItem.isSection) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { children, isSection, ...rest } = menuSectionItem
 
-        // If it is, return a MenuSection component and call generateMenu with the current menuSectionItem's children
         return (
           <MenuSection key={index} {...rest}>
             {children && renderMenuItems(children)}
@@ -52,7 +41,6 @@ export const GenerateVerticalMenu = ({ menuData }: { menuData: VerticalMenuDataT
         )
       }
 
-      // Check if the current item is a sub menu
       if (subMenuItem.children) {
         const { children, icon, prefix, suffix, ...rest } = subMenuItem
 
@@ -72,7 +60,6 @@ export const GenerateVerticalMenu = ({ menuData }: { menuData: VerticalMenuDataT
             (suffix as ReactNode)
           )
 
-        // If it is, return a SubMenu component and call generateMenu with the current subMenuItem's children
         return (
           <VerticalSubMenu
             key={index}
@@ -86,10 +73,8 @@ export const GenerateVerticalMenu = ({ menuData }: { menuData: VerticalMenuDataT
         )
       }
 
-      // If the current item is neither a section nor a sub menu, return a MenuItem component
       const { label, excludeLang, icon, prefix, suffix, ...rest } = menuItem
 
-      // Localize the href
       const href = rest.href?.startsWith('http')
         ? rest.href
         : rest.href && (excludeLang ? rest.href : getLocalizedUrl(rest.href, locale as Locale))
@@ -120,18 +105,14 @@ export const GenerateVerticalMenu = ({ menuData }: { menuData: VerticalMenuDataT
   return <>{renderMenuItems(menuData)}</>
 }
 
-// Generate a menu from the menu data array
 export const GenerateHorizontalMenu = ({ menuData }: { menuData: HorizontalMenuDataType[] }) => {
-  // Hooks
   const { lang: locale } = useParams()
 
   const renderMenuItems = (data: HorizontalMenuDataType[]) => {
-    // Use the map method to iterate through the array of menu data
     return data.map((item: HorizontalMenuDataType, index) => {
       const subMenuItem = item as HorizontalSubMenuDataType
       const menuItem = item as HorizontalMenuItemDataType
 
-      // Check if the current item is a sub menu
       if (subMenuItem.children) {
         const { children, icon, prefix, suffix, ...rest } = subMenuItem
 
@@ -151,7 +132,6 @@ export const GenerateHorizontalMenu = ({ menuData }: { menuData: HorizontalMenuD
             (suffix as ReactNode)
           )
 
-        // If it is, return a SubMenu component and call generateMenu with the current subMenuItem's children
         return (
           <HorizontalSubMenu
             key={index}
@@ -165,10 +145,8 @@ export const GenerateHorizontalMenu = ({ menuData }: { menuData: HorizontalMenuD
         )
       }
 
-      // If the current item is not a sub menu, return a MenuItem component
       const { label, excludeLang, icon, prefix, suffix, ...rest } = menuItem
 
-      // Localize the href
       const href = rest.href?.startsWith('http')
         ? rest.href
         : rest.href && (excludeLang ? rest.href : getLocalizedUrl(rest.href, locale as Locale))

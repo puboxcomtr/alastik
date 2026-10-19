@@ -1,18 +1,13 @@
-// React Imports
 import { cloneElement, createElement, forwardRef } from 'react'
 import type { ForwardRefRenderFunction } from 'react'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { css } from '@emotion/react'
 
-// Type Imports
 import type { ChildrenType, MenuButtonProps } from '../../types'
 
-// Component Imports
 import { RouterLink } from '../RouterLink'
 
-// Util Imports
 import { menuClasses } from '../../utils/menuClasses'
 
 type MenuButtonStylesProps = Partial<ChildrenType> & {
@@ -24,7 +19,6 @@ type MenuButtonStylesProps = Partial<ChildrenType> & {
 }
 
 export const menuButtonStyles = (props: MenuButtonStylesProps) => {
-  // Props
   const { level, disabled, children, isCollapsed, isPopoutWhenCollapsed } = props
 
   return css({
@@ -53,7 +47,6 @@ export const menuButtonStyles = (props: MenuButtonStylesProps) => {
       color: '#adadad'
     }),
 
-    // All the active styles are applied to the button including menu items or submenu
     [`&.${menuClasses.active}`]: {
       ...(!children && { color: 'white' }),
       backgroundColor: children ? '#f3f3f3' : '#765feb'
@@ -66,7 +59,6 @@ const MenuButton: ForwardRefRenderFunction<HTMLAnchorElement, MenuButtonProps> =
   ref
 ) => {
   if (component) {
-    // If component is a string, create a new element of that type
     if (typeof component === 'string') {
       return createElement(
         component,
@@ -78,7 +70,6 @@ const MenuButton: ForwardRefRenderFunction<HTMLAnchorElement, MenuButtonProps> =
         children
       )
     } else {
-      // Otherwise, clone the element
       const { className: classNameProp, ...props } = component.props
 
       return cloneElement(
@@ -93,7 +84,6 @@ const MenuButton: ForwardRefRenderFunction<HTMLAnchorElement, MenuButtonProps> =
       )
     }
   } else {
-    // If there is no component but href is defined, render RouterLink
     if (rest.href) {
       return (
         <RouterLink ref={ref} className={className} href={rest.href} {...rest}>

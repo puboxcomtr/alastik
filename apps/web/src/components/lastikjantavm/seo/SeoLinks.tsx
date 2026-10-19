@@ -1,7 +1,3 @@
-// LJA footer üstü site içi bağlantılar (server component).
-// Ziyaretçiye yalnızca iki küçük, kapalı başlık görünür (<details>); bağlantılar sunucu HTML'inde
-// gerçek <a href> olarak bulunur ve arama motorları tarafından taranır. Sayfa görünümünü kalabalıklaştırmaz.
-// Araç verisi alınamazsa ilgili bölüm gizlenir; sayfa etkilenmez.
 import React from 'react';
 import Link from 'next/link';
 import { BRANCHES } from '@/src/data/lja/subeler';

@@ -1,4 +1,3 @@
-// apps/web/src/components/search/Header/Breadcrumb.tsx
 'use client';
 import Link from 'next/link';
 import { ROUTES } from '@/src/config/routes';

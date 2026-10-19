@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -14,15 +12,12 @@ import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
 import Avatar from '@mui/material/Avatar'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Component Imports
 import Details from './Details'
 import Seo from './Seo'
 import Submit from './Submit'
 
-// Styled Component Imports
 import StepperWrapper from '@core/styles/stepper'
 
 type CreateAppProps = {
@@ -59,10 +54,8 @@ const renderStepCount = (activeStep: number, isLastStep: boolean, handleNext: ()
 }
 
 const CreateApp = ({ open, setOpen }: CreateAppProps) => {
-  // States
   const [activeStep, setActiveStep] = useState(0)
 
-  // Vars
   const isLastStep = activeStep === steps.length - 1
 
   const handleClose = () => {

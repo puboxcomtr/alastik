@@ -1,7 +1,5 @@
 "use client";
 
-// Ödemeler — carinin hesabına geçen tahsilat/ödeme (saf alacak) hareketleri.
-// Kaynak: cari ekstredeki alacak kalemleri (scf_carikart_hareket_listele, canlı).
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { CsvDownload } from "@components/b2b-theme/csv-download";
@@ -43,7 +41,6 @@ export default function OdemelerPage() {
     return [...s].sort((a, b) => Number(b) - Number(a));
   }, [data]);
 
-  // En yeni üstte + yıl filtresi
   const rows = useMemo(() => {
     const list = (data?.payments || []).filter((p) => !yil || p.tarih.slice(0, 4) === yil);
     return [...list].reverse();

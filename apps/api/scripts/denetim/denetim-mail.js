@@ -1,8 +1,3 @@
-/**
- * Denetim raporunu e-posta ile gönderir (sitenin panelde tanımlı SMTP ayarıyla).
- * Kullanım: node denetim-mail.js <raporDosyasi> <konu> <alici> [site]
- * site verilmezse 'alastik' kabul edilir (SMTP ayarı site bazlıdır).
- */
 require('/var/www/alastik/node_modules/dotenv').config({ path: '/var/www/alastik/apps/api/.env.production' });
 process.chdir('/var/www/alastik/apps/api');
 const fs = require('fs');

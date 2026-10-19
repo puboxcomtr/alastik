@@ -1,7 +1,3 @@
-// Araç markası sayfası (/arac/<marka>, yalnızca lastikjantavm.com) metinleri.
-// Elle yazılmış marka profili (data/lja/aracMarkaProfilleri.ts) + canlı araç verisinden (modeller, fabrika ebatları,
-// jant çapları, bijon ölçüleri, yıllar, stok) hesaplanan bölümler. Çıktı, lastik marka sayfalarıyla aynı
-// BrandContent biçimindedir; BrandSeoContent bileşeniyle aynı görünümde çizilir.
 import type { VehicleModelSummary } from '@/src/services/vehicleService';
 import type { BrandContent, Section, TextLink } from '@/src/lib/brandText';
 import { VEHICLE_BRAND_PROFILES, type VehicleBrandProfile } from '@/src/data/lja/aracMarkaProfilleri';
@@ -17,14 +13,12 @@ const list = (items: string[], max = 5) => {
 const years = (from?: number, to?: number) =>
     from && to ? (from === to ? `${from}` : `${from}–${to}`) : from ? `${from} sonrası` : '';
 
-/** [değer, kaç model] çiftleri, en yaygından aza */
 function countBy<T extends string | number>(models: VehicleModelSummary[], pick: (m: VehicleModelSummary) => T[]): [T, number][] {
     const map = new Map<T, number>();
     for (const m of models) for (const v of new Set(pick(m))) map.set(v, (map.get(v) || 0) + 1);
     return [...map.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'tr'));
 }
 
-/** Ebat → o ebatı fabrika çıkışı kullanan modeller (stoklu olanlar önce) */
 function modelsForSize(models: VehicleModelSummary[], size: string): VehicleModelSummary[] {
     return models.filter(m => m.oeTireSizes.includes(size)).sort((a, b) => Number(b.indexable) - Number(a.indexable) || a.modelName.localeCompare(b.modelName, 'tr'));
 }
@@ -43,7 +37,6 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
     const maxRim = rims.length ? Math.max(...rims.map(([r]) => r)) : 0;
     const modelHref = (m: VehicleModelSummary) => `/arac/${m.makeSlug}/${m.modelSlug}`;
 
-    // Giriş: profil cümlesi + veriden gelen özet
     const intro: string[] = [];
     if (p) intro.push(`${display}, ${p.tagline}.`);
     intro.push(
@@ -56,12 +49,10 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
 
     const sections: Section[] = [];
 
-    // 1) Marka hakkında (elle yazılmış)
     if (p) {
         sections.push({ id: 'hakkinda', title: `${display} Hakkında`, paragraphs: p.about });
     }
 
-    // 2) En yaygın fabrika ebatları (veriden)
     if (sizes.length) {
         const top = sizes.slice(0, 8);
         sections.push({
@@ -85,7 +76,6 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
         });
     }
 
-    // 3) Jant çapı ve bijon (veriden)
     if (rims.length || bolts.length) {
         const paragraphs: string[] = [];
         if (rims.length) {
@@ -103,7 +93,6 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
         sections.push({ id: 'jant', title: `${display} Jant Ölçüleri: Çap ve Bijon`, paragraphs });
     }
 
-    // 4) Lastik seçimi notları (elle yazılmış, markaya özel)
     if (p?.tireNotes?.length) {
         sections.push({
             id: 'secim',
@@ -113,7 +102,6 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
         });
     }
 
-    // 5) Stoklu modeller (veriden)
     if (stocked.length) {
         sections.push({
             id: 'stok',
@@ -125,7 +113,6 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
         });
     }
 
-    // SSS: profil + veriden
     const faqs: { q: string; a: string }[] = [];
     if (sizes.length) {
         const [top, n] = sizes[0];
@@ -137,7 +124,6 @@ export function buildVehicleBrandContent(d: VehicleMakeData): BrandContent {
     if (p?.faqs) faqs.push(...p.faqs);
     faqs.push({ q: `${display} aracıma lastik alırken montaj da yaptırabilir miyim?`, a: `Evet. Lastiği sepete ekledikten sonra Türkiye'nin 81 ilindeki anlaşmalı montaj noktalarından birini seçebilir, montaj ve balans hizmetini online satın alabilirsiniz; lastikler doğrudan seçtiğiniz noktaya gönderilir.` });
 
-    // Model bağlantıları (BrandSeoContent'te "Desenleri" kutusu yerine modeller)
     const modelLinks: TextLink[] = [...models]
         .sort((a, b) => Number(b.indexable) - Number(a.indexable) || a.modelName.localeCompare(b.modelName, 'tr'))
         .map(m => ({ href: modelHref(m), label: m.modelName }));

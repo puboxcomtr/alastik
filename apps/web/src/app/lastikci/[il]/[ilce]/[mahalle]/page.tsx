@@ -1,6 +1,3 @@
-// İstanbul mahalle sayfası — /lastikci/istanbul/<ilce>/<mahalle> (yalnızca lastikjantavm.com)
-// En yakın şube (km) + şube hizmetleri, komşu mahalleler. Kalite kapısı: şubeye 7 km'den yakın mahalleler
-// dizine açık; diğerleri noindex,follow (sayfa kullanıcıya açık, sitemap dışı).
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

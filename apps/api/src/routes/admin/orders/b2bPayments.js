@@ -1,18 +1,12 @@
-/**
- * Ödemeler (admin) — bayi sitesindeki "Ödeme Yap" sayfasından başlatılan cari borç ödemelerinin kaydı.
- * Sipariş ödemesi değildir; her deneme (bekleyen / ödenen / başarısız) ayrı satırdır. Site bazlıdır (req.site).
- */
 const router = require('express').Router();
 const B2bPayment = require('../../../models/web/user/B2bPayment');
 const WebMember = require('../../../models/web/user/WebMember');
 
 const PAYMENT_STATUSES = B2bPayment.schema.path('status').enumValues;
 const KURUS_PER_TL = 100;
-// Arama ile eşleşecek en fazla cari sayısı
 const MEMBER_SEARCH_LIMIT = 500;
 const escapeRegex = (v) => String(v).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// GET /api/admin/b2b-payments — liste (durum sekmesi + ödeme türü + arama + sayfalama) ve durum sayaçları
 router.get('/', async (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -23,7 +17,6 @@ router.get('/', async (req, res) => {
 
         if (req.query.search && String(req.query.search).trim()) {
             const regex = new RegExp(escapeRegex(req.query.search), 'i');
-            // Cari adı / e-posta / telefon eşleşenlerin ödemeleri + cari kodu ya da referansı eşleşen ödemeler
             const members = await WebMember.find(
                 { site: req.site, $or: [{ firstName: regex }, { lastName: regex }, { email: regex }, { phone: regex }] },
                 { _id: 1 }
@@ -36,7 +29,6 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Sekme sayaçları: tür + arama uygulanmış, durum filtresi uygulanmamış kümede
         const statusFilter = PAYMENT_STATUSES.includes(req.query.status) ? req.query.status : '';
         const listMatch = statusFilter ? { ...match, status: statusFilter } : match;
 

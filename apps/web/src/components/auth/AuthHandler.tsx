@@ -23,28 +23,24 @@ export default function AuthHandler() {
       setAuthMessage(event.detail.message);
       setShowAuthModal(true);
       
-      // Toast mesajı göster
       toast.warning(event.detail.message, {
         autoClose: 4000,
-        toastId: 'auth-required' // Duplicate toast'ları engelle
+        toastId: 'auth-required'
       });
     };
 
     const handleSessionInvalidated = () => {
       console.log('🔐 [AUTH HANDLER] Session invalidated event received');
       
-      // Session geçersiz olduğunda kullanıcıyı bilgilendir
       toast.info('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.', {
         autoClose: 5000,
         toastId: 'session-expired'
       });
     };
 
-    // Event listener'ları ekle
     window.addEventListener('authRequired', handleAuthRequired as EventListener);
     window.addEventListener('sessionInvalidated', handleSessionInvalidated);
 
-    // Cleanup
     return () => {
       window.removeEventListener('authRequired', handleAuthRequired as EventListener);
       window.removeEventListener('sessionInvalidated', handleSessionInvalidated);
@@ -55,12 +51,10 @@ export default function AuthHandler() {
     console.log('🟩 [AUTH HANDLER] Authentication successful:', user?.email || user?.id);
     setShowAuthModal(false);
     
-    // Başarılı giriş mesajı
     toast.success(`Hoş geldin ${user?.firstName || user?.email || 'kullanıcı'}!`, {
       autoClose: 3000
     });
 
-    // Sayfayı yenile ki auth state güncellensin
     setTimeout(() => {
       window.location.reload();
     }, 500);

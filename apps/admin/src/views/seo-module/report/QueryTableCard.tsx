@@ -1,20 +1,15 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Typography from '@mui/material/Typography'
 
-// Type Imports
 import type { QueryRow } from '../types'
 
-// Util Imports
 import { formatDecimal, formatNumber, formatPercent } from '@/views/analytics/reports/format'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Component Imports
 import EmptyState from '@/views/analytics/reports/EmptyState'
 
 type QueryTableCardProps = {
@@ -26,7 +21,6 @@ type QueryTableCardProps = {
     href?: (key: string) => string | null
 }
 
-// Sorgu / sayfa tablosu: tıklama, gösterim, CTR ve ortalama pozisyon
 const QueryTableCard = ({ title, subheader, keyLabel, rows, formatKey, href }: QueryTableCardProps) => {
     return (
         <Card className='bs-full'>

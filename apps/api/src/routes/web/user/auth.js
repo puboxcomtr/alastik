@@ -9,7 +9,6 @@ const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchest
 
 const jwt = require('jsonwebtoken');
 
-// Üye Ol
 router.post('/register', async (req, res) => {
     try {
         const {
@@ -23,7 +22,6 @@ router.post('/register', async (req, res) => {
             termsAccepted
         } = req.body;
 
-        // Üyelik ayarlarını kontrol et
         const settings = await SettingsHelper.checkMemberSettings(req.site);
 
         if (!settings.newMember) {
@@ -33,7 +31,6 @@ router.post('/register', async (req, res) => {
             });
         }
 
-        // Validasyon
         if (!firstName || !lastName || !email || !phone || !password || !passwordConfirm) {
             return res.status(400).json({
                 success: false,
@@ -62,7 +59,6 @@ router.post('/register', async (req, res) => {
             });
         }
 
-        // Email kontrolü
         const existingMember = await WebMember.findOne({ email: email.toLowerCase(), site: req.site });
         if (existingMember) {
             return res.status(400).json({
@@ -71,9 +67,6 @@ router.post('/register', async (req, res) => {
             });
         }
 
-        // Aktivasyon durumuna göre status belirle
-        // Aktivasyon durumuna göre status belirle
-        // memberActivation enum: 'kapali' | 'bireysel' (email) | 'yonetici' (admin)
         let status = 'active';
         let activationToken = null;
         let activationTokenExpire = null;
@@ -83,9 +76,8 @@ router.post('/register', async (req, res) => {
         } else if (settings.memberActivation === 'personal') {
             status = 'pending';
             activationToken = crypto.randomBytes(32).toString('hex');
-            activationTokenExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 saat
+            activationTokenExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
         }
-        // Üye oluştur
         const member = new WebMember({
             site: req.site,
             firstName,
@@ -102,7 +94,6 @@ router.post('/register', async (req, res) => {
 
         await member.save();
 
-        // E-posta aktivasyonu ise mail gönder (fire-and-forget)
         if (settings.memberActivation === 'personal' && activationToken) {
             sendTemplateMail({
                 templateKey: 'uye_hesap_aktivasyonu',
@@ -124,7 +115,6 @@ router.post('/register', async (req, res) => {
             });
         }
 
-        // Aktivasyon mesajı
         let message = 'Üyeliğiniz başarıyla oluşturuldu.';
         if (settings.memberActivation === 'admin') {
             message = 'Üyeliğiniz oluşturuldu. Yönetici onayından sonra giriş yapabileceksiniz.';
@@ -150,7 +140,6 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Giriş Yap
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -162,7 +151,6 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Üyeyi bul
         const member = await WebMember.findOne({ email: email.toLowerCase(), site: req.site });
         if (!member) {
             return res.status(401).json({
@@ -171,10 +159,7 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Durum kontrolü
-        // Durum kontrolü
         if (member.status === 'pending') {
-            // Aktivasyon moduna göre mesaj
             const settings = await SettingsHelper.checkMemberSettings(req.site);
             let message = 'Hesabınız henüz aktif değil.';
 
@@ -196,7 +181,6 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Şifre kontrolü
         const isPasswordValid = await member.comparePassword(password);
         if (!isPasswordValid) {
             return res.status(401).json({
@@ -205,7 +189,6 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Token oluştur
         const token = jwt.sign(
             {
                 id: member._id,
@@ -216,7 +199,6 @@ router.post('/login', async (req, res) => {
             { expiresIn: '30d' }
         );
 
-        // Son giriş güncelle
         member.lastLoginAt = new Date();
         member.loginAttempts = 0;
         await member.save();
@@ -245,7 +227,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Profil Getir
 router.get('/profile', authMiddleware, async (req, res) => {
     try {
         const member = await WebMember.findById(req.user._id).select('-password');
@@ -280,7 +261,6 @@ router.get('/profile', authMiddleware, async (req, res) => {
     }
 });
 
-// Profil Güncelle
 router.put('/profile', authMiddleware, async (req, res) => {
     try {
         const member = await WebMember.findById(req.user._id);
@@ -319,7 +299,6 @@ router.put('/profile', authMiddleware, async (req, res) => {
     }
 });
 
-// Şifre Değiştir
 router.put('/change-password', authMiddleware, async (req, res) => {
     try {
         const member = await WebMember.findById(req.user._id);
@@ -356,9 +335,7 @@ router.put('/change-password', authMiddleware, async (req, res) => {
     }
 });
 
-// Şifremi Unuttum - Token üret ve mail gönder
 router.post('/forgot-password', async (req, res) => {
-    // Güvenlik için her durumda aynı genel mesaj döner (user enumeration koruması)
     const genericMessage = 'Eğer bu e-posta adresi sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderilmiştir.';
 
     try {
@@ -377,17 +354,13 @@ router.post('/forgot-password', async (req, res) => {
             status: { $ne: 'deleted' }
         });
 
-        // Üye varsa token üret ve mail gönder
         if (member) {
-            // 64 karakter hex token üret
             const resetToken = crypto.randomBytes(32).toString('hex');
 
-            // 1 saat geçerli
             member.resetPasswordToken = resetToken;
             member.resetPasswordExpire = new Date(Date.now() + 60 * 60 * 1000);
             await member.save();
 
-            // Mail gönder (fire-and-forget)
             sendTemplateMail({
                 templateKey: 'uye_sifremi_unuttum',
                 context: {
@@ -408,7 +381,6 @@ router.post('/forgot-password', async (req, res) => {
             });
         }
 
-        // Her durumda aynı mesaj
         res.json({
             success: true,
             message: genericMessage
@@ -416,7 +388,6 @@ router.post('/forgot-password', async (req, res) => {
 
     } catch (error) {
         console.error('Forgot password error:', error);
-        // Hata durumunda da aynı mesaj (information leak engellenir)
         res.json({
             success: true,
             message: genericMessage
@@ -424,7 +395,6 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
-// Şifre Sıfırla - Token doğrula ve yeni şifreyi kaydet
 router.post('/reset-password', async (req, res) => {
     try {
         const { token, newPassword, newPasswordConfirm } = req.body;
@@ -450,7 +420,6 @@ router.post('/reset-password', async (req, res) => {
             });
         }
 
-        // Token doğrula (geçerlilik süresi de kontrol edilir)
         const member = await WebMember.findOne({
             resetPasswordToken: token,
             resetPasswordExpire: { $gt: new Date() },
@@ -464,10 +433,8 @@ router.post('/reset-password', async (req, res) => {
             });
         }
 
-        // Şifreyi güncelle (model pre-save hook'u hashleyecek)
         member.password = newPassword;
 
-        // Token temizle (tek kullanımlık)
         member.resetPasswordToken = undefined;
         member.resetPasswordExpire = undefined;
 
@@ -487,7 +454,6 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-// Hesap Aktivasyonu - Token doğrula ve hesabı aktif et
 router.post('/activate', async (req, res) => {
     try {
         const { token } = req.body;
@@ -499,16 +465,12 @@ router.post('/activate', async (req, res) => {
             });
         }
 
-        // Token + süre kontrolü
-        // Önce token ile dene
         let member = await WebMember.findOne({
             activationToken: token,
             activationTokenExpire: { $gt: new Date() },
             status: { $ne: 'deleted' }
         });
 
-        // Token bulunamadıysa: Bu token kısa süre önce kullanılmış olabilir
-        // (StrictMode/double-call senaryosu). Bu durumda success döndür.
         if (!member) {
             return res.json({
                 success: true,
@@ -517,7 +479,6 @@ router.post('/activate', async (req, res) => {
             });
         }
 
-        // Zaten aktifse (token süresi dolmadan tekrar çağrılmış)
         if (member.status === 'active') {
             return res.json({
                 success: true,
@@ -526,7 +487,6 @@ router.post('/activate', async (req, res) => {
             });
         }
 
-        // Aktif et
         member.status = 'active';
         member.activatedAt = new Date();
         member.activationToken = undefined;

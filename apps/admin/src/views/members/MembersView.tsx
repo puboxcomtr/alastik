@@ -1,14 +1,11 @@
 'use client'
 
-// Üyeler listesi — ürün listesiyle aynı tablo deseni (filtre kartı + TanStack tablo + sayfalama)
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 
-// MUI Imports
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -27,14 +24,12 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 // eslint-disable-next-line import/no-duplicates
 import type { ColumnDef, SortingState, Updater } from '@tanstack/react-table'
 import { toast } from 'react-toastify'
 
-// Components Imports
 import MemberTableFilters from './MemberTableFilters'
 import MemberAnnotateDialog from './MemberAnnotateDialog'
 import MemberDeleteDialog from './MemberDeleteDialog'
@@ -43,16 +38,13 @@ import type { MemberFilters } from './MemberTableFilters'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 import { getActiveSite, getMemberMenuLabels } from '@/utils/activeSite'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 import type { MemberRow } from './types'
-import { fullName, formatTRY, formatDate } from './types'
+import { fullName, formatTRY, formatDate, formatShortDate } from './types'
 
 const columnHelper = createColumnHelper<MemberRow>()
 
-// Türkçe kurallarıyla her kelimenin yalnız baş harfi büyük (TELAT COŞKUN → Telat Coşkun)
-// Rakam içeren kelimeler (B2B) olduğu gibi büyük kalır
 const basHarfBuyuk = (s: string) =>
     s.split(/\s+/).filter(Boolean)
         .map(k => (/\d/.test(k) ? k.toLocaleUpperCase('tr-TR') : k.charAt(0).toLocaleUpperCase('tr-TR') + k.slice(1).toLocaleLowerCase('tr-TR')))
@@ -64,8 +56,6 @@ const MembersView = () => {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // Sayfa ve sütun sıralaması adreste tutulur (?page=2&sort=invoiceCount12m&order=desc);
-    // sıralama sunucuda TÜM kayıtlar üzerinden yapılır.
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
     const sort = searchParams.get('sort') || ''
     const order: 'asc' | 'desc' = searchParams.get('order') === 'asc' ? 'asc' : 'desc'
@@ -95,7 +85,6 @@ const MembersView = () => {
         updateQuery({ sort: first ? first.id : null, order: first ? (first.desc ? 'desc' : 'asc') : null, page: 1 })
     }
 
-    // Adreste sayfa yoksa ?page=1 yazılır (geçmişe kayıt eklemeden)
     useEffect(() => {
         if (!searchParams.get('page')) {
             const query = new URLSearchParams(searchParams.toString())
@@ -110,18 +99,14 @@ const MembersView = () => {
     const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState<MemberFilters & { email?: string; phone?: string; salesperson?: string; tier?: string }>({ search: '', status: '', hasOrders: '', from: '', to: '' })
 
-    // Cari modu (b2b): filtre kartı gizlenir; Filtreler + arama çubuğu + DIA senkron butonu gösterilir.
-    // Cari ekleme YOKTUR — cariler yalnız DIA'dan gelir (8 Eyl kararı).
     const [cariMode, setCariMode] = useState(false)
     const [syncing, setSyncing] = useState(false)
     const [cariSearch, setCariSearch] = useState('')
 
-    // Filtre paneli (toggle) — taslak değerler Ara'ya basınca listeye uygulanır
     const EMPTY_CARI_FILTERS = { email: '', phone: '', status: '', salesperson: '', tier: '', hasOrders: '', from: '', to: '' }
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [draft, setDraft] = useState({ ...EMPTY_CARI_FILTERS })
 
-    // Ürün listesindeki Filtreler paneliyle aynı davranış: Filtrele uygular ve paneli kapatır, Temizle her şeyi sıfırlar
     const applyCariFilters = () => {
         setFilters(f => ({ ...f, ...draft }))
         setPage(1)
@@ -139,14 +124,12 @@ const MembersView = () => {
     const updateDraft = (field: keyof typeof EMPTY_CARI_FILTERS) => (e: ChangeEvent<HTMLInputElement>) =>
         setDraft(d => ({ ...d, [field]: e.target.value }))
 
-    // Rozet: listeye uygulanmış (arama kutusu hariç) filtre sayısı
     const activeCariFilterCount = (Object.keys(EMPTY_CARI_FILTERS) as (keyof typeof EMPTY_CARI_FILTERS)[]).filter(key => String(filters[key] || '').trim() !== '').length
 
     useEffect(() => {
         setCariMode(!!getMemberMenuLabels(getActiveSite()))
     }, [])
 
-    // Plasiyer seçenekleri: sitedeki carilere atanmış DIA satış elemanları
     const [salespersonOptions, setSalespersonOptions] = useState<{ name: string; count: number }[]>([])
     const [unassignedSalesperson, setUnassignedSalesperson] = useState<{ value: string; count: number } | null>(null)
 
@@ -160,11 +143,9 @@ const MembersView = () => {
             .catch(error => console.error('Salesperson options fetch error:', error))
     }, [cariMode])
 
-    // Arama: yazarken 400ms bekleyip listeye uygular
     useEffect(() => {
         if (!cariMode) return
 
-        // Arama metni değişmediyse (ilk açılış) dokunma — adresteki sayfa korunur
         if (cariSearch === (filters.search || '')) return
 
         const timer = setTimeout(() => {
@@ -183,7 +164,7 @@ return () => clearTimeout(timer)
 
             if (res?.success) {
                 toast.success(res.message || 'Cari senkronu tamamlandı')
-                setFilters(f => ({ ...f })) // listeyi tazele
+                setFilters(f => ({ ...f }))
             } else {
                 toast.error(res?.message || 'Cari senkronu başarısız')
             }
@@ -279,14 +260,12 @@ return () => clearTimeout(timer)
                 }
             }),
 
-            // Telefon: b2b cari listesinde gösterilmez
             ...(cariMode ? [] : [columnHelper.accessor('phone', {
                 header: 'Telefon',
                 cell: ({ row }) => <Typography variant='body2'>{row.original.phone || '—'}</Typography>
             })]),
             ...(cariMode
                 ? [
-                      // b2b cari: DIA kartının açılış tarihi, son 12 ay fatura sayısı, plasiyer
                       columnHelper.accessor('diaCreatedAt', {
                           header: 'DIA Kayıt Tarihi',
                           cell: ({ row }) => (
@@ -336,6 +315,14 @@ return () => clearTimeout(timer)
                           )
                       })
                   ]),
+            columnHelper.accessor('lastLoginAt', {
+                header: 'Son Giriş',
+                cell: ({ row }) => (
+                    <Typography variant='body2' color={row.original.lastLoginAt ? 'text.primary' : 'text.disabled'} noWrap>
+                        {formatShortDate(row.original.lastLoginAt)}
+                    </Typography>
+                )
+            }),
             ...(cariMode ? [] : [columnHelper.display({
                 id: 'cart',
                 header: 'Sepeti',

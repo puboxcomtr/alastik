@@ -1,9 +1,7 @@
 'use client'
 
-// Next Imports
 import { redirect, usePathname } from 'next/navigation'
 
-// Config Imports
 import { i18n } from '@configs/i18n'
 
 const LangRedirect = () => {

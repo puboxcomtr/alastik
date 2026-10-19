@@ -1,14 +1,11 @@
 'use client'
 
-// React Imports
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 import { siteHasCargoEdit } from '@/utils/activeSite'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -26,13 +23,11 @@ import Avatar from '@mui/material/Avatar'
 
 import type { TextFieldProps } from '@mui/material/TextField'
 
-// Component Imports
 import AddCargoModal from './AddCargoModal'
 import type { CargoProductType } from './cargoOptions'
 import EditCargoModal from './EditCargoModal'
 import ConfirmDialog from '@components/dialogs/ConfirmDialog'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { toast } from 'react-toastify'
 import { rankItem } from '@tanstack/match-sorter-utils'
@@ -51,7 +46,6 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -65,7 +59,6 @@ declare module '@tanstack/table-core' {
 
 type CargoType = {
     id: string
-    // Site bazlı sıra numarası — kurallar sayfasının adresinde kullanılır
     cargoNo?: number
     name: string
     code: string
@@ -141,7 +134,6 @@ const CargoListTable = () => {
     const [globalFilter, setGlobalFilter] = useState('')
     const [loading, setLoading] = useState(true)
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)
@@ -506,7 +498,6 @@ const CargoListTable = () => {
                     if (page !== 1) {
                         setPage(1)
                     } else {
-                        // Tetiklemek için manuel refetch
                         setLoading(true)
                         fetchAPI(`${API_ENDPOINTS.cargo.list()}?page=1&limit=${limit}`, { cache: 'no-store' })
                             .then(response => {

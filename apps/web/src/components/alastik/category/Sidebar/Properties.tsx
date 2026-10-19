@@ -25,7 +25,6 @@ export default function Properties({ propertyOptions = [], categorySlug, tagSlug
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // URL'den mevcut seçimleri al
     const currentProperties = searchParams.get('ozellik')?.split(',').filter(Boolean) || [];
 
     const handleToggle = async (value: string) => {
@@ -47,7 +46,6 @@ export default function Properties({ propertyOptions = [], categorySlug, tagSlug
         const queryString = cleaned.toString();
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
-    // Seçenekler yoksa gösterme
     if (!propertyOptions || propertyOptions.length === 0) {
         return null;
     }

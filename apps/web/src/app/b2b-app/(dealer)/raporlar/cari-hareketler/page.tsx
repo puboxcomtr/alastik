@@ -1,7 +1,5 @@
 "use client";
 
-// Cari Hesap Ekstresi — DIA hesap hareketleri (borç/alacak + yürüyen bakiye).
-// Kaynak: /cari-ekstre (DB-öncelikli, gecelik senkron). Yıl filtresi + arama + Excel.
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { openInvoicePdf, isInvoiceMovement, invoiceMovementKey } from "@components/b2b-theme/lib/invoice-pdf";
@@ -37,7 +35,6 @@ function gun(iso: string): string {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
-// Fatura hareketleri (DIA türü "... (Fatura)") — resmi e-Fatura/e-Arşiv PDF'i görüntülenebilir
 const isInvoice = (m: Movement) => isInvoiceMovement(m);
 const movementKey = (m: Movement) => invoiceMovementKey(m);
 
@@ -51,11 +48,8 @@ export default function CariEkstrePage() {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "tarih", dir: "desc" });
   const [page, setPage] = useState(1);
-  // Detayı açılan hareket (Görüntüle)
   const [secili, setSecili] = useState<Movement | null>(null);
-  // İndirilmekte olan faturanın anahtarı (buton spinner'ı)
   const [indirilen, setIndirilen] = useState<string | null>(null);
-  // Excel (renkli .xlsx) hazırlanıyor mu
   const [excelHazirlaniyor, setExcelHazirlaniyor] = useState(false);
 
   async function excelIndir() {
@@ -87,7 +81,6 @@ export default function CariEkstrePage() {
     }
   }
 
-  // Fatura PDF'i yeni sekmede açılır (tarayıcının PDF görüntüleyicisinde; indirme oradan yapılabilir)
   async function faturaGoruntule(m: Movement) {
     if (indirilen) return;
     setIndirilen(movementKey(m));
@@ -113,7 +106,6 @@ export default function CariEkstrePage() {
     return [...s].sort((a, b) => Number(b) - Number(a));
   }, [data]);
 
-  // Varsayılan: en yeni yıl (2026); "Tüm Yıllar" seçeneği yok
   useEffect(() => { if (!yil && years.length) setYil(years[0]); }, [years]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = useMemo(() => {
@@ -126,7 +118,6 @@ export default function CariEkstrePage() {
       (m.aciklama || "").toLocaleLowerCase("tr").includes(qq) ||
       (m.tur || "").toLocaleLowerCase("tr").includes(qq));
     const { key, dir } = sort;
-    // Bakiye yürüyen olduğu için varsayılan tarih-desc dışında da satır bakiyesi doğru kalır
     return [...list].reverse().sort((a, b) => {
       const av = a[key] as string | number; const bv = b[key] as string | number;
       if (av < bv) return dir === "asc" ? -1 : 1;

@@ -1,11 +1,7 @@
 import { getTireFilterOptions } from '@/src/services/filterService';
 
-/**
- * URL'den aktif filtreleri toparla
- */
 function extractActiveFilters(params: URLSearchParams): Record<string, string | undefined> {
     return {
-        // Lastik
         genislik: params.get('genislik') || undefined,
         yanak: params.get('yanak') || undefined,
         jant: params.get('jant') || undefined,
@@ -17,7 +13,6 @@ function extractActiveFilters(params: URLSearchParams): Record<string, string | 
         hizEndeksi: params.get('hizEndeksi') || undefined,
         ozellik: params.get('ozellik') || undefined,
         uretim: params.get('uretim') || undefined,
-        // Jant
         jantGenisligi: params.get('jantGenisligi') || undefined,
         jantCap: params.get('jantCap') || undefined,
         bijonSayisi: params.get('bijonSayisi') || undefined,
@@ -28,13 +23,6 @@ function extractActiveFilters(params: URLSearchParams): Record<string, string | 
     };
 }
 
-/**
- * Bir filtre değiştirildiğinde:
- * - URL'ye yeni filtreyi ekler/siler
- * - Backend'den cascading datası çeker
- * - Yeni seçim (justChanged) hariç, diğer filtrelerden listede olmayanları siler
- * - Temizlenmiş URLSearchParams döner
- */
 export async function applyFilterWithCascade(
     currentParams: URLSearchParams,
     justChangedKey: string,
@@ -62,7 +50,6 @@ export async function applyFilterWithCascade(
 
         if (data) {
             const checks: Array<{ k: string; list?: { value: string }[] }> = [
-                // Lastik
                 { k: 'genislik', list: data.widths },
                 { k: 'yanak', list: data.aspects },
                 { k: 'jant', list: data.rims },
@@ -72,7 +59,6 @@ export async function applyFilterWithCascade(
                 { k: 'yukEndeksi', list: data.loadIndex },
                 { k: 'hizEndeksi', list: data.speedIndex },
                 { k: 'uretim', list: data.productionYears },
-                // Jant
                 { k: 'jantGenisligi', list: data.jantGenislikleri },
                 { k: 'jantCap', list: data.jantCaplari },
                 { k: 'bijonSayisi', list: data.bijonSayilari },
@@ -83,14 +69,13 @@ export async function applyFilterWithCascade(
             ];
 
             checks.forEach(({ k, list }) => {
-                if (k === justChangedKey) return; // Kullanıcının az önceki seçimine dokunma
+                if (k === justChangedKey) return;
                 const v = params.get(k);
                 if (v && list && !list.some(o => String(o.value) === String(v))) {
                     params.delete(k);
                 }
             });
 
-            // Çoklu (virgüllü) filtreler için ayrı kontrol
             const checkMulti = (k: string, list?: { value: string }[]) => {
                 if (k === justChangedKey) return;
                 const v = params.get(k);

@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState, useEffect } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -13,15 +11,10 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
 
-// ============================================
-// TYPES
-// ============================================
 interface ProductOrganizeProps {
   product?: ProductType
   readOnly?: boolean
@@ -32,16 +25,11 @@ interface CategoryVariant {
   value: string
 }
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
 const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => {
-  // States
   const [variants, setVariants] = useState<CategoryVariant[]>([])
   const [categories, setCategories] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
 
-  // Kategorileri yükle
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -83,12 +71,10 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
     fetchCategories()
   }, [])
 
-  // Product kategorilerini variant'lara dönüştür
   useEffect(() => {
     if (product && !loading && Object.keys(categories).length > 0) {
       let newVariants: CategoryVariant[] = []
 
-      // m_kategoriler varsa oradan al
       if (product.properties?.m_kategoriler && Array.isArray(product.properties.m_kategoriler)) {
         product.properties.m_kategoriler.forEach((kategori: any) => {
           if (kategori.kategori_aciklama_1) {
@@ -115,7 +101,6 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
           }
         })
       }
-      // product.category varsa
       else if (product.category) {
         const existingCategory = product.category
         const mainCategories = Object.keys(categories)
@@ -157,16 +142,13 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
     }
   }, [product, categories, loading])
 
-  // ============================================
-  // HANDLERS
-  // ============================================
   const handleGroupChange = (index: number, value: string) => {
     if (readOnly) return
 
     const newVariants = [...variants]
     newVariants[index] = {
       group: value,
-      value: '' // Ana kategori değişince alt kategoriyi sıfırla
+      value: ''
     }
     setVariants(newVariants)
   }
@@ -179,9 +161,6 @@ const ProductOrganize = ({ product, readOnly = true }: ProductOrganizeProps) => 
     setVariants(newVariants)
   }
 
-  // ============================================
-  // RENDER
-  // ============================================
   return (
     <Card>
       <CardHeader title='Ürün Kategori Bilgileri' />

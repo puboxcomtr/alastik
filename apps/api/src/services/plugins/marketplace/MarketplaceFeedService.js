@@ -1,16 +1,3 @@
-/**
- * Pazar yeri ürün feed'i (docs/PAZAR-YERI-FEED.md sözleşmesi) — "Lastiğini Sat" bayi entegrasyonu.
- *
- * Yalnız SIFIR lastik ve jantlar çıkar (ozelkod7kodu LASTİK / JANT; "Durumu" özelliği Sıfır).
- * XML tedarikçi ürünleri dahildir. Fiyat, sitenin vitrinde gösterdiği kargo dahil satış fiyatıdır.
- * Salt okunur: hiçbir kaydı değiştirmez, mevcut vitrin/feed akışlarına dokunmaz.
- * Yanıt site başına 5 dk önbelleklenir; ?refresh=1 ile zorla yenilenir.
- * aciklama: ürün sayfasında o site için görünen açıklama (siteDescriptions[site] || customDescription), düz metin, en çok 6.000 karakter; yoksa boş.
- *
- * Yetki (X-Feed-Key başlığı) site başına ayrı anahtarla: MARKETPLACE_FEED_KEY_<SİTE> (ör. MARKETPLACE_FEED_KEY_ALASTIK).
- * lastikjantavm için eski MARKETPLACE_FEED_KEY de geçerlidir. Sitenin anahtarı tanımlı değilse o sitenin feed'i kapalıdır (503);
- * bir sitenin anahtarı başka sitenin feed'ini açmaz.
- */
 
 const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
@@ -19,14 +6,12 @@ const { applySitePricingMany } = require('../../../utils/sitePricing');
 const FEED_VERSION = 1;
 const CACHE_MS = 5 * 60 * 1000;
 const DEFAULT_CITY = 'İstanbul';
-const cache = new Map(); // site:tip -> { at, payload }
+const cache = new Map();
 
 const TIRE_TYPE = 'LASTİK';
 const RIM_TYPE = 'JANT';
 const SEASON_MAP = { 'yaz': 'yaz', 'kış': 'kis', 'kis': 'kis', '4 mevsim': 'dort_mevsim', 'dört mevsim': 'dort_mevsim' };
-// Araç sınıfı DIA özel kodundan (ozelkod2kodu) — ürün özellikleri XML ürünlerde güvenilir değil
 const VEHICLE_MAP = { 'otolastik': 'oto', 'otomobil': 'oto', '4x4lastik': 'suv_4x4', '4x4': 'suv_4x4', 'ticarilastik': 'ticari_c', 'hafif ticari': 'ticari_c', 'elektrikliaraclastigi': 'oto', 'setlastikler': 'oto' };
-// Ebat / yük / hız / XL / runflat ürün adından okunur: "195/50R16 88V XL", "205/55 R16 91V", "225/45ZR17 94Y RFT"
 const TIRE_SIZE_RE = /(\d{3})(?:\s*\/\s*(\d{2,3}))?\s*Z?R\s*(\d{2}(?:[.,]5)?)C?(?:\s+(\d{2,3}(?:\/\d{2,3})?)\s*([A-Z]{1,2})\b)?/i;
 const RUNFLAT_RE = /\b(RFT|ROF|ZP|SSR|RUN\s*FLAT|RUNFLAT|DSST|HRS|MOE|EMT)\b/i;
 const RIM_SIZE_RE = /(\d{1,2}(?:[.,]\d)?)\s*[xX]\s*(\d{2})\b/;
@@ -48,7 +33,6 @@ function absoluteUrl(path, siteUrl) {
     return `${siteUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
-/** Ürün özelliklerini { ad: değer } haritasına çevirir (boş değerler atlanır) */
 function attrMap(product) {
     const map = {};
     for (const a of product.diaData?.m_urunOzellikleri || []) {
@@ -64,7 +48,6 @@ const num = (value) => {
     return Number.isFinite(n) ? n : null;
 };
 const round2 = (n) => Math.round(n * 100) / 100;
-/** Ürün sayfasındaki açıklamanın (HTML) düz metni; satır yapısı korunur, 6.000 karakteri geçerse kelime sınırında kısaltılır */
 function aciklama(product, site) {
     const html = product.customData?.siteDescriptions?.[site] || product.customData?.customDescription || '';
     let t = String(html)
@@ -90,7 +73,6 @@ function aciklama(product, site) {
 
 const yesNo = (value) => /^(evet|var|yes|true)$/i.test(String(value || '').trim());
 
-/** Yalnız açıkça ikinci el olanlar dışarıda kalır; "Durumu" özelliği yoksa sıfır sayılır */
 function isNew(attrs) {
     const durum = lower(attrs['durumu'] || attrs['durum']);
     return !durum || durum === 'sıfır' || durum === 'sifir';
@@ -106,11 +88,6 @@ function images(product, siteUrl) {
     return [...new Set([...custom, ...dia])].map(u => absoluteUrl(u, siteUrl));
 }
 
-/**
- * Vitrindeki satış fiyatı. applySitePricingMany çalıştıktan sonra:
- *  - XML ürün: customData.shippingIncludedPrice (sitenin kargo dahil fiyatı) > webPrice > fiyat4
- *  - Stoklu ürün: fiyat4 (kargo payı kural tabanlı gömülmüş haliyle)
- */
 function price(product) {
     const cd = product.customData || {};
     const shipped = num(cd.shippingIncludedPrice);
@@ -191,7 +168,7 @@ function mapProduct(product, siteUrl, site = null) {
 
     const bolt = num(attrs['bijon aralığı']);
     const boltCount = num(attrs['bijon sayısı']);
-    const rimMatch = (dia.aciklama || '').match(RIM_SIZE_RE); // "6,5x16" → genişlik 6.5, çap 16
+    const rimMatch = (dia.aciklama || '').match(RIM_SIZE_RE);
     const rimCap = num(attrs['jant çapı']) || (rimMatch ? num(rimMatch[2]) : null);
     return {
         ...base,
@@ -219,7 +196,6 @@ function buildQuery(site, tip) {
     };
 }
 
-/** @returns {{ payload: object, cached: boolean }} */
 async function generateFeed({ site, tip = null, force = false }) {
     if (!feedKey(site)) {
         const err = new Error('Feed kapalı');
@@ -237,7 +213,6 @@ async function generateFeed({ site, tip = null, force = false }) {
             _key: 1, updatedAt: 1, syncInfo: 1,
             'diaData.stokkartkodu': 1, 'diaData.aciklama': 1, 'diaData.marka': 1, 'diaData.gercek_stok': 1,
             'diaData.ozelkod1kodu': 1, 'diaData.ozelkod2kodu': 1, 'diaData.ozelkod7kodu': 1, 'diaData.ekalan5': 1, 'diaData.fiyat4': 1,
-            // Site fiyat kuralı (liste fiyatı + B2C iskonto) ve kargo kuralı bu alanları okur
             'diaData.birimindirimorani': 1, 'diaData.b2c_indirimorani': 1, 'diaData.ozelkod10kodu': 1,
             'diaData.durum': 1, 'diaData.kdv': 1, 'diaData.agirlik': 1, 'diaData.desi': 1,
             'diaData.m_birimler': 1, 'diaData.m_urunOzellikleri': 1, 'diaData.m_resimler': 1, 'diaData.m_kategoriler': 1,
@@ -247,14 +222,13 @@ async function generateFeed({ site, tip = null, force = false }) {
         }
     }).toArray();
 
-    // Vitrinle aynı fiyat: site bazlı fiyat kuralları ve kargo payı (yalnız bellekteki kopyalarda)
     applySitePricingMany(products, site);
 
     const items = [];
     for (const product of products) {
         if (!isNew(attrMap(product))) continue;
         const mapped = mapProduct(product, siteUrl, site);
-        if (!mapped || mapped.gorseller.length === 0) continue; // fiyatsız / görselsiz ilan gönderilmez
+        if (!mapped || mapped.gorseller.length === 0) continue;
         items.push(mapped);
     }
 

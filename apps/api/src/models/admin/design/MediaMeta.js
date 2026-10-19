@@ -1,9 +1,5 @@
 const mongoose = require('mongoose');
 
-/**
- * Medya dosyalarının açıklama bilgileri (dosyanın kendisi diskte durur).
- * Anahtar: klasör + dosya adı — dosya taşınmadığı sürece sabittir.
- */
 const mediaMetaSchema = new mongoose.Schema({
     folder: { type: String, required: true },
     filename: { type: String, required: true },

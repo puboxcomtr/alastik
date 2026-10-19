@@ -23,7 +23,6 @@ class DiaStockScheduler {
       ]
     });
 
-    // Scheduler durumu
     this.schedulerStatus = {
       fullSyncRunning: false,
       incrementalSyncRunning: false,
@@ -33,18 +32,13 @@ class DiaStockScheduler {
       nextIncrementalSync: null
     };
 
-    // Cron job'ları
     this.cronJobs = {};
   }
 
-  /**
-   * Scheduler'ı başlat
-   */
   start() {
     try {
       this.logger.info('DIA Stock Scheduler başlatılıyor...');
 
-      // Günlük tam senkronizasyon - Her gün saat 05:00
       this.cronJobs.fullSync = cron.schedule('0 5 * * *', async () => {
         await this.runFullSync();
       }, {
@@ -52,15 +46,6 @@ class DiaStockScheduler {
         timezone: 'Europe/Istanbul'
       });
 
-      // Artımlı senkronizasyon devre dışı bırakıldı - sadece günlük sync
-      // this.cronJobs.incrementalSync = cron.schedule('0 8-18 * * 1-6', async () => {
-      //   await this.runIncrementalSync();
-      // }, {
-      //   scheduled: true,
-      //   timezone: 'Europe/Istanbul'
-      // });
-
-      // 15 dakikada bir cache temizleme
       this.cronJobs.cacheCleanup = cron.schedule('*/15 * * * *', async () => {
         await this.cleanupCache();
       }, {
@@ -68,7 +53,6 @@ class DiaStockScheduler {
         timezone: 'Europe/Istanbul'
       });
 
-      // Haftalık performans raporu - Her pazar 20:00
       this.cronJobs.weeklyReport = cron.schedule('0 20 * * 0', async () => {
         await this.generateWeeklyReport();
       }, {
@@ -83,9 +67,6 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Scheduler'ı durdur
-   */
   stop() {
     try {
       this.logger.info('Scheduler durduruluyor...');
@@ -93,7 +74,6 @@ class DiaStockScheduler {
       Object.keys(this.cronJobs).forEach(jobName => {
         if (this.cronJobs[jobName]) {
           this.cronJobs[jobName].stop();
-          // node-cron'da destroy() metodu yok, sadece stop() kullanıyoruz
         }
       });
 
@@ -104,9 +84,6 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Tam senkronizasyon çalıştır
-   */
   async runFullSync() {
     if (this.schedulerStatus.fullSyncRunning) {
       this.logger.warn('Tam senkronizasyon zaten çalışıyor, atlanıyor');
@@ -143,21 +120,18 @@ class DiaStockScheduler {
         }
       });
 
-      // Cache'i temizle
       await this.cache.invalidateSearchCache();
 
-      // Başarı bildirimini cache'e kaydet
       await this.cache.set('dia-sync:last-full-sync', JSON.stringify({
         timestamp: new Date(),
         result: result,
         duration: duration
-      }), 86400); // 24 saat
+      }), 86400);
 
     } catch (error) {
       this.schedulerStatus.fullSyncRunning = false;
       this.logger.error('Zamanlanmış tam senkronizasyon hatası:', error);
 
-      // Hata bildirimini cache'e kaydet
       await this.cache.set('dia-sync:last-full-sync-error', JSON.stringify({
         timestamp: new Date(),
         error: error.message
@@ -165,9 +139,6 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Artımlı senkronizasyon çalıştır
-   */
   async runIncrementalSync() {
     if (this.schedulerStatus.incrementalSyncRunning) {
       this.logger.warn('Artımlı senkronizasyon zaten çalışıyor, atlanıyor');
@@ -179,7 +150,7 @@ class DiaStockScheduler {
       this.logger.info('Zamanlanmış artımlı senkronizasyon başlatılıyor');
 
       const startTime = Date.now();
-      const lastSyncDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // Son 2 saat
+      const lastSyncDate = new Date(Date.now() - 2 * 60 * 60 * 1000);
       const result = await this.diaStockService.incrementalSync(lastSyncDate);
       const duration = Date.now() - startTime;
 
@@ -194,15 +165,13 @@ class DiaStockScheduler {
         errors: result.errors.length
       });
 
-      // Cache'i kısmi temizle
       await this.invalidateRecentCache();
 
-      // Başarı bildirimini cache'e kaydet
       await this.cache.set('dia-sync:last-incremental-sync', JSON.stringify({
         timestamp: new Date(),
         result: result,
         duration: duration
-      }), 3600); // 1 saat
+      }), 3600);
 
     } catch (error) {
       this.schedulerStatus.incrementalSyncRunning = false;
@@ -210,20 +179,16 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Cache temizleme
-   */
   async cleanupCache() {
     try {
       this.logger.info('Cache temizleme başlatılıyor');
 
-      // Eski cache'leri temizle
       const keys = await this.cache.redis.keys('dia-stock:*');
       const expiredKeys = [];
 
       for (const key of keys) {
         const ttl = await this.cache.redis.ttl(key);
-        if (ttl === -1) { // TTL yok, süresi dolmuş
+        if (ttl === -1) {
           expiredKeys.push(key);
         }
       }
@@ -233,7 +198,6 @@ class DiaStockScheduler {
         this.logger.info(`${expiredKeys.length} eski cache temizlendi`);
       }
 
-      // Memory kullanımını optimize et
       const memoryInfo = await this.cache.redis.info('memory');
       this.logger.info('Redis memory bilgisi:', memoryInfo.split('\r\n').slice(0, 5).join(', '));
 
@@ -242,20 +206,16 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Haftalık performans raporu oluştur
-   */
   async generateWeeklyReport() {
     try {
       this.logger.info('Haftalık performans raporu oluşturuluyor...');
 
       const performanceReport = this.diaStockService.generatePerformanceReport();
 
-      // Cache'e kaydet
       await this.cache.set('dia-sync:weekly-performance-report', JSON.stringify({
         timestamp: new Date(),
         report: performanceReport
-      }), 7 * 24 * 3600); // 7 gün
+      }), 7 * 24 * 3600);
 
       this.logger.info('Haftalık performans raporu oluşturuldu', {
         summary: performanceReport.summary,
@@ -263,7 +223,6 @@ class DiaStockScheduler {
         recommendationCount: performanceReport.performance.recommendations.length
       });
 
-      // Performans metriklerini sıfırla
       this.diaStockService.resetPerformanceMetrics();
 
     } catch (error) {
@@ -271,27 +230,20 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Scheduler durumunu güncelle
-   */
   updateSchedulerStatus() {
     try {
-      // Sonraki çalışma zamanlarını hesapla
       const now = new Date();
 
-      // Sonraki tam senkronizasyon (yarın saat 02:00)
       const nextFullSync = new Date(now);
       nextFullSync.setDate(now.getDate() + 1);
       nextFullSync.setHours(2, 0, 0, 0);
 
-      // Sonraki artımlı senkronizasyon (sonraki saat başı)
       const nextIncrementalSync = new Date(now);
       nextIncrementalSync.setHours(now.getHours() + 1, 0, 0, 0);
 
       this.schedulerStatus.nextFullSync = nextFullSync;
       this.schedulerStatus.nextIncrementalSync = nextIncrementalSync;
 
-      // Durumu cache'e kaydet
       this.cache.set('dia-sync:scheduler-status', JSON.stringify(this.schedulerStatus), 300);
 
     } catch (error) {
@@ -299,9 +251,6 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Güncel cache'leri invalidate et
-   */
   async invalidateRecentCache() {
     try {
       const patterns = [
@@ -323,9 +272,6 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Manuel senkronizasyon tetikle
-   */
   async triggerManualSync(type = 'incremental') {
     try {
       this.logger.info(`Manuel ${type} senkronizasyon tetikleniyor`);
@@ -348,9 +294,6 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Scheduler durumunu getir
-   */
   getSchedulerStatus() {
     return {
       ...this.schedulerStatus,
@@ -361,9 +304,6 @@ class DiaStockScheduler {
     };
   }
 
-  /**
-   * Belirli saatlerde çalışacak custom cron job ekle
-   */
   addCustomSchedule(name, cronExpression, callback) {
     try {
       if (this.cronJobs[name]) {
@@ -385,14 +325,10 @@ class DiaStockScheduler {
     }
   }
 
-  /**
-   * Custom cron job'ı kaldır
-   */
   removeCustomSchedule(name) {
     try {
       if (this.cronJobs[name]) {
         this.cronJobs[name].stop();
-        // node-cron'da destroy() metodu yok, sadece stop() kullanıyoruz
         delete this.cronJobs[name];
         this.logger.info(`Custom cron job kaldırıldı: ${name}`);
         return true;

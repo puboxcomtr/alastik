@@ -1,7 +1,3 @@
-/**
- * Frontend Cache Sistemi
- * React Query benzeri basit cache mekanizması
- */
 
 interface CacheEntry<T> {
   data: T;
@@ -10,25 +6,21 @@ interface CacheEntry<T> {
 }
 
 interface CacheOptions {
-  ttl?: number; // Time to live in milliseconds (default: 5 minutes)
-  staleTime?: number; // Stale time in milliseconds (default: 1 minute)
+  ttl?: number;
+  staleTime?: number;
 }
 
 class CacheManager {
   private cache = new Map<string, CacheEntry<any>>();
-  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 dakika
-  private readonly DEFAULT_STALE_TIME = 1 * 60 * 1000; // 1 dakika
+  private readonly DEFAULT_TTL = 5 * 60 * 1000;
+  private readonly DEFAULT_STALE_TIME = 1 * 60 * 1000;
 
   constructor() {
-    // Cleanup expired entries every 5 minutes
     setInterval(() => {
       this.cleanup();
     }, 5 * 60 * 1000);
   }
 
-  /**
-   * Cache'den veri al
-   */
   get<T>(key: string): T | null {
     const entry = this.cache.get(key);
     
@@ -36,7 +28,6 @@ class CacheManager {
       return null;
     }
 
-    // Expired kontrolü
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
       return null;
@@ -45,9 +36,6 @@ class CacheManager {
     return entry.data as T;
   }
 
-  /**
-   * Cache'e veri ekle
-   */
   set<T>(key: string, data: T, options: CacheOptions = {}): void {
     const ttl = options.ttl || this.DEFAULT_TTL;
     const now = Date.now();
@@ -61,9 +49,6 @@ class CacheManager {
     this.cache.set(key, entry);
   }
 
-  /**
-   * Veri stale mi kontrol et
-   */
   isStale(key: string, staleTime?: number): boolean {
     const entry = this.cache.get(key);
     
@@ -75,16 +60,10 @@ class CacheManager {
     return Date.now() - entry.timestamp > staleThreshold;
   }
 
-  /**
-   * Cache'den veri sil
-   */
   delete(key: string): boolean {
     return this.cache.delete(key);
   }
 
-  /**
-   * Pattern'e göre cache'leri sil
-   */
   deletePattern(pattern: string): number {
     let deletedCount = 0;
     const regex = new RegExp(pattern);
@@ -99,16 +78,10 @@ class CacheManager {
     return deletedCount;
   }
 
-  /**
-   * Tüm cache'i temizle
-   */
   clear(): void {
     this.cache.clear();
   }
 
-  /**
-   * Expired entry'leri temizle
-   */
   private cleanup(): void {
     const now = Date.now();
     let cleanedCount = 0;
@@ -125,9 +98,6 @@ class CacheManager {
     }
   }
 
-  /**
-   * Cache istatistikleri
-   */
   getStats() {
     const now = Date.now();
     let validEntries = 0;
@@ -153,39 +123,27 @@ class CacheManager {
   }
 }
 
-// Singleton instance
 export const cacheManager = new CacheManager();
 
-/**
- * Cache key generator utility
- */
 export const cacheKeys = {
-  // Araç bilgileri cache keys
   vehicleInfo: (marka: string, model: string, yil: string, modifikasyon?: string) => 
     `vehicle:${marka}:${model}:${yil}:${modifikasyon || 'default'}`,
   
-  // Lastik arama cache keys
   tireSearch: (genislik: number, yanak: number, cap: number, mevsim: string, page: number) =>
     `tires:${genislik}x${yanak}R${cap}:${mevsim}:page${page}`,
   
-  // Dia stok cache keys
   diaStock: (wheelsizeProductIds: string[]) =>
     `dia:stock:${wheelsizeProductIds.sort().join(',')}`,
   
-  // Jant arama cache keys
   jantSearch: (genislik: string, yanak: string, cap: string, mevsim: string, page: number) =>
     `jant:${genislik}x${yanak}R${cap}:${mevsim}:page${page}`,
   
-  // Marka listesi cache key
   brands: () => 'brands:list',
   
-  // Model listesi cache key
   models: (marka: string) => `models:${marka}`,
   
-  // Yıl listesi cache key
   years: (marka: string, model: string) => `years:${marka}:${model}`,
   
-  // Kategori lastikleri cache key
   kategoriLastikleri: (kategori: string, filters?: { marka?: string; ebat?: string; teknoloji?: string; desen?: string }) => {
     const filterStr = filters ? Object.entries(filters)
       .filter(([_, value]) => value)
@@ -195,15 +153,11 @@ export const cacheKeys = {
   }
 };
 
-/**
- * Cache'li API çağrısı wrapper'ı
- */
 export async function cachedApiCall<T>(
   cacheKey: string,
   apiCall: () => Promise<T>,
   options: CacheOptions = {}
 ): Promise<T> {
-  // Cache'den kontrol et
   const cached = cacheManager.get<T>(cacheKey);
   
   if (cached && !cacheManager.isStale(cacheKey, options.staleTime)) {
@@ -211,18 +165,15 @@ export async function cachedApiCall<T>(
     return cached;
   }
 
-  // Cache miss veya stale - API'ye git
   console.log(`🌐 [CACHE MISS] ${cacheKey}`);
   
   try {
     const data = await apiCall();
     
-    // Başarılı sonucu cache'le
     cacheManager.set(cacheKey, data, options);
     
     return data;
   } catch (error) {
-    // Hata durumunda stale data varsa onu döndür
     if (cached) {
       console.log(`⚠️ [CACHE STALE FALLBACK] ${cacheKey}`);
       return cached;
@@ -232,9 +183,6 @@ export async function cachedApiCall<T>(
   }
 }
 
-/**
- * Cache'li hook benzeri kullanım
- */
 export function useCachedData<T>(
   cacheKey: string,
   fetcher: () => Promise<T>,
@@ -278,5 +226,4 @@ export function useCachedData<T>(
   return { data, loading, error };
 }
 
-// React import for hook
 import React from 'react';

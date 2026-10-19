@@ -1,15 +1,8 @@
-/**
- * Mollaoğlu B2B API Test Script v4
- * Dosya: apps/api/src/scripts/xml/mollaoglu.js
- * 
- * Çalıştırma: node apps/api/src/scripts/xml/mollaoglu.js
- */
 
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-// API Konfigürasyonu
 const config = {
     baseUrl: 'https://b2bstore.com.tr:14611/api/productservice/get',
     token: '73b43ec3-5574-4245-a5e0-fbdb187c778a',
@@ -91,18 +84,15 @@ async function testMollaogluApi() {
             if (result.status === 200 && result.data) {
                 const response = result.data;
 
-                // Tam yanıtı kaydet
                 const fullPath = path.join(outputDir, 'full_response.json');
                 fs.writeFileSync(fullPath, JSON.stringify(response, null, 2), 'utf8');
                 console.log(`\n[KAYDEDILDI] ${fullPath}`);
 
-                // API yanıt bilgileri
                 console.log('\n[API RESPONSE]');
                 console.log(`  StatusCode: ${response.StatusCode}`);
                 console.log(`  WebUrl: ${response.WebUrl}`);
                 console.log(`  Error: ${response.Error ? JSON.stringify(response.Error) : 'Yok'}`);
 
-                // Data analizi
                 if (response.Data !== null) {
                     console.log('\n[DATA ANALİZİ]');
                     console.log(`  Tip: ${typeof response.Data}`);
@@ -112,7 +102,6 @@ async function testMollaogluApi() {
                         console.log(`  Anahtar Sayısı: ${keys.length}`);
                         console.log(`  Anahtarlar: ${keys.join(', ')}`);
 
-                        // Her anahtarı kontrol et
                         keys.forEach(key => {
                             const val = response.Data[key];
 
@@ -120,12 +109,10 @@ async function testMollaogluApi() {
                                 console.log(`\n  [${key}] Array - ${val.length} öğe`);
 
                                 if (val.length > 0) {
-                                    // Kaydet
                                     const arrPath = path.join(outputDir, `${key.toLowerCase()}.json`);
                                     fs.writeFileSync(arrPath, JSON.stringify(val, null, 2), 'utf8');
                                     console.log(`    Kaydedildi: ${arrPath}`);
 
-                                    // İlk öğe analizi
                                     if (typeof val[0] === 'object' && val[0] !== null) {
                                         const fields = Object.keys(val[0]);
                                         console.log(`    İlk öğe alanları (${fields.length}):`);
@@ -139,7 +126,6 @@ async function testMollaogluApi() {
                                             console.log(`      ... ve ${fields.length - 20} alan daha`);
                                         }
 
-                                        // İlk ürünü ayrı kaydet
                                         const samplePath = path.join(outputDir, `${key.toLowerCase()}_sample.json`);
                                         fs.writeFileSync(samplePath, JSON.stringify(val[0], null, 2), 'utf8');
                                         console.log(`    Örnek kaydedildi: ${samplePath}`);

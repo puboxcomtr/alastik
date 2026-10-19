@@ -5,7 +5,6 @@ const { render } = require('./templateRenderer')
 const { buildData } = require('./templateDataBuilder')
 const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
-// Admin mail adresi: orderEmail > email > null (site bazlı ayarlardan)
 const getAdminMailAddress = async (purpose = 'order', site = DEFAULT_SITE) => {
     try {
         const settings = await WebSettings.getSettings(site)
@@ -27,7 +26,6 @@ const getAdminMailAddress = async (purpose = 'order', site = DEFAULT_SITE) => {
     }
 }
 
-// Şablonu DB'den çek (sitenin kendi şablonu)
 const getTemplate = async (templateKey, site = DEFAULT_SITE) => {
     const template = await WebMailTemplate.findOne({ templateKey, isActive: true, site }).lean()
 
@@ -35,7 +33,6 @@ const getTemplate = async (templateKey, site = DEFAULT_SITE) => {
         throw new Error(`Mail şablonu bulunamadı veya pasif: ${templateKey} (site: ${site})`)
     }
 
-    // Kullanıcı düzenlediyse content, yoksa defaultContent
     const content = template.content || template.defaultContent || ''
     const subject = template.subject || template.defaultSubject || template.name || SITES[site]?.name || SITES[DEFAULT_SITE].name
 
@@ -46,12 +43,6 @@ const getTemplate = async (templateKey, site = DEFAULT_SITE) => {
     return { content, subject }
 }
 
-// Ana fonksiyon: Şablon ile mail gönder
-// params: { templateKey, context, to, alsoSendToAdmin, adminPurpose, site, subjectOverride, adminCopyPrefix }
-// site: gönderimde hangi sitenin SMTP ayarları ve gönderen adı kullanılacak
-// subjectOverride: şablon konusu yerine kullanılacak konu (örn. geri arama talebi)
-// adminCopyPrefix: yönetici mailine eklenen önek ("[Yönetici Kopyası] "); '' verilirse önek eklenmez
-// attachments: nodemailer ekleri ([{ filename, content, contentType }]) — müşteriye ve yöneticiye aynen gider
 const sendTemplateMail = async ({
     templateKey,
     context = {},
@@ -71,19 +62,14 @@ const sendTemplateMail = async ({
     }
 
     try {
-        // 1. Şablonu çek
         const { content, subject } = await getTemplate(templateKey, site)
 
-        // 2. Veriyi hazırla (gerçek mail için context ile; site şirket bilgisi/logo seçiminde kullanılır)
         const { data } = await buildData(templateKey, { mode: 'real', site, ...context })
 
-        // 3. HTML render
         const html = render(content, { data })
 
-        // 4. Subject render (subject de dinamik olabilir)
         const renderedSubject = subjectOverride || render(subject, { data })
 
-        // 5. Müşteriye gönder
         if (to) {
             const recipients = Array.isArray(to) ? to : [to]
             const validRecipients = recipients.filter(Boolean)
@@ -105,7 +91,6 @@ const sendTemplateMail = async ({
             }
         }
 
-        // 6. Admine kopya gönder
         if (alsoSendToAdmin) {
             const adminEmail = await getAdminMailAddress(adminPurpose, site)
 

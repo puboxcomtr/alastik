@@ -1,24 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-/* Library */
 import "/public/lastikjantavm/assets/css/modules/ProductGallery.css";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import Lightbox from "yet-another-react-lightbox";
 
-/* Resize Image */
 import { resizeMultipleImages } from "@lib/resize";
 
-/* MUI */
 import { Typography } from '@mui/material';
 
-/* Swiper */
 import "swiper/css";
 import "swiper/css/navigation";
 import "yet-another-react-lightbox/styles.css";
 
-/* Helpers */
 import { getProductImages } from '@src/hooks/Products/productHelpers';
 import type { Product } from '@src/types/products';
 
@@ -28,7 +23,6 @@ interface GalleryProps {
 
 type ProductVideo = { url: string; videoId: string; title?: string };
 
-// Galeride gösterilen her öğe: ya görsel ya video
 type MedyaOgesi =
     | { tip: 'gorsel'; gorselIndex: number }
     | { tip: 'video'; video: ProductVideo };
@@ -40,7 +34,6 @@ export default function ProductGallery({ product }: GalleryProps) {
 
     const videos: ProductVideo[] = (product as any)?.customData?.videos || [];
 
-    // Video daima ikinci sırada: ilk görsel, sonra videolar, ardından kalan görseller
     const medya: MedyaOgesi[] = [
         ...(originalImages.length > 0 ? [{ tip: 'gorsel', gorselIndex: 0 } as MedyaOgesi] : []),
         ...videos.map(video => ({ tip: 'video', video } as MedyaOgesi)),
@@ -77,13 +70,11 @@ export default function ProductGallery({ product }: GalleryProps) {
     const ilkVideoIndex = medya.findIndex(m => m.tip === 'video');
     const videoThumb = (videoId: string) => `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
 
-    // Işık kutusu yalnızca görselleri içerir; aktif görselin oradaki sırası
     const aktifGorselIndex = aktif?.tip === 'gorsel' ? aktif.gorselIndex : 0;
 
     return (
         <div>
             <div className="mainProductGallery position-relative">
-                {/* Videolu ürün rozeti — tıklanınca galeride videoya geçer */}
                 {videos.length > 0 && (
                     <button
                         type="button"
@@ -95,7 +86,6 @@ export default function ProductGallery({ product }: GalleryProps) {
                 )}
 
                 {aktif?.tip === 'video' ? (
-                    // Görsellerle aynı kare alan
                     <div className="main__image" style={{ aspectRatio: '1 / 1', width: '100%' }}>
                         <iframe
                             src={`https://www.youtube.com/embed/${aktif.video.videoId}`}
@@ -179,7 +169,6 @@ export default function ProductGallery({ product }: GalleryProps) {
                     index={aktifGorselIndex}
                     carousel={{ finite: originalImages.length <= 3 }}
                     on={{
-                        // Işık kutusundaki görsel, galerideki karşılığına eşlenir
                         view: ({ index }: { index: number }) => {
                             const hedef = medya.findIndex(m => m.tip === 'gorsel' && m.gorselIndex === index);
 

@@ -1,6 +1,4 @@
 'use client';
-// Plasiyer bir bayi adına giriş yaptığında panelin en üstünde uyarı şeridi gösterir.
-// Bilgi authToken JWT'sindeki impersonatedBy/impersonatedByName claim'lerinden okunur.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { clearStoredCart } from './cart-status';
@@ -33,7 +31,6 @@ export function ImpersonationBanner() {
         const spName = String(payload.impersonatedByName || 'Plasiyer');
         setInfo({ spName, dealerName: '' });
 
-        // Bayi adını /me ile tamamla (görsel; hata olursa şerit yine görünür)
         fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.json())
             .then(d => { if (d?.success) setInfo(prev => prev ? { ...prev, dealerName: d.data?.name || '' } : prev); })
@@ -42,14 +39,12 @@ export function ImpersonationBanner() {
 
     if (!info) return null;
 
-    // Bayi Değiştir: bayi oturumunu bırak (plasiyer oturumu kalır) → panelde bayi seçim modalı açılır
     const bayiDegistir = () => {
         localStorage.removeItem('authToken');
         document.cookie = 'authToken=; path=/; max-age=0';
         try { sessionStorage.removeItem('plasiyerDevam'); } catch { }
         window.location.href = '/';
     };
-    // Plasiyer çıkışı: oturumlar kapanır ve plasiyerin sepeti temizlenir (bayi çıkışında sepet korunur)
     const cikis = () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('plasiyerToken');

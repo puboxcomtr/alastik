@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const bannerSchema = new mongoose.Schema({
-    // Her site için ayrı banner seti (site + variableKey benzersiz)
     site: {
         type: String,
         enum: Object.keys(SITES),

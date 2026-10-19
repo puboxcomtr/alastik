@@ -1,10 +1,5 @@
 'use client'
 
-// b2b CARİ görüntüle ekranı. Veri detay ucundan (members.detail) okunur.
-// Ünvan / e-posta / telefon / fatura bilgileri DIA kaynaklıdır, değiştirilemez.
-// Kaydet: şifre (carinin KENDİ şifresi sayılır) + durum (pasif → giriş engellenir).
-// Adres Ekle: teslimat adresi anında DIA carisine yazılır (members.addAddress).
-
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useParams, useRouter } from 'next/navigation'
@@ -58,7 +53,6 @@ type DiaAdres = {
 }
 
 type DiaCari = {
-    // Premium cari (DIA özel kodundan senkronlanır)
     premium?: boolean
     bakiyeKurus?: number
     riskLimitiKurus?: number
@@ -75,7 +69,6 @@ type DiaCari = {
     tcKimlikNo?: string
 }
 
-// Sunucuda hesaplanan ödeme durumu (finans senkronu + cari ekstresi)
 type DueItem = {
     invoiceNo: string
     issueDate: string
@@ -122,7 +115,6 @@ type CariMember = {
     diaCari?: DiaCari
 }
 
-// Şifre gücü: uzunluk + karakter çeşitliliği (0-4)
 function sifreGucu(sifre: string): { puan: number; etiket: string; renk: 'error' | 'warning' | 'info' | 'success' } {
     if (!sifre) return { puan: 0, etiket: '', renk: 'error' }
     let p = 0
@@ -152,7 +144,6 @@ function sifreUret(uzunluk = 10): string {
 
 const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
 
-// Son 12 ay (bu ay dahil) ciro serisi — finans senkronunun yıl/ay ciro tablosundan
 function son12AyCiro(revenue?: Record<string, number[]>): { etiketler: string[]; degerler: number[] } {
     const simdi = new Date()
     const etiketler: string[] = []
@@ -170,7 +161,6 @@ function son12AyCiro(revenue?: Record<string, number[]>): { etiketler: string[];
     return { etiketler, degerler }
 }
 
-// Çubuk üstü kısa TL (b2b anasayfa grafiğindeki gibi): 173.177 → "173B ₺", 1.240.000 → "1,2M ₺"; 0 gizli
 const ciroKisa = (v: number) => {
     if (!v) return ''
     if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.', ',')}M ₺`
@@ -181,19 +171,15 @@ const ciroKisa = (v: number) => {
 
 const tl = (kurus?: number | null) => (typeof kurus === 'number' ? `${formatTRY(kurus / 100)} TL` : '—')
 
-// Bakiye muhasebe gösterimi: (B) borçlu, (A) alacaklı — DIA işaretli bakiyesi (alacaklı negatif)
 const bakiyeMetni = (kurus?: number) =>
     typeof kurus === 'number' ? `${formatTRY(Math.abs(kurus) / 100)} TL${kurus > 0 ? ' (B)' : kurus < 0 ? ' (A)' : ''}` : '—'
 
-// YYYY-MM-DD → GG.AA.YYYY
 const gun = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '—')
 
-// DIA hareket türünden kısa ödeme türü: "Gelen Havale (Banka)" → "Gelen Havale"
 const odemeTuru = (t: string) => t.replace(/\s*\(.*\)\s*$/, '') || '—'
 
 const SAYFA_BOYUTU = 10
 
-// Sayfalı basit tablo (ödeme durumu sekmeleri)
 function OdemeTablosu<T>({ basliklar, satirlar, hucreler, bos }: {
     basliklar: { etiket: string; sag?: boolean }[]
     satirlar: T[]
@@ -269,24 +255,21 @@ const CariEditView = () => {
     const [odeme, setOdeme] = useState<PaymentSummary | null>(null)
     const [odemeSekme, setOdemeSekme] = useState<'gecen' | 'gelecek' | 'zamaninda'>('gecen')
 
-    // Form durumu (yerel)
-    const [unvan, setUnvan] = useState('') // salt okunur (DIA)
-    const [eposta, setEposta] = useState('') // salt okunur (DIA)
-    const [telefon, setTelefon] = useState('') // salt okunur (DIA)
+    const [unvan, setUnvan] = useState('')
+    const [eposta, setEposta] = useState('')
+    const [telefon, setTelefon] = useState('')
     const [sifre, setSifre] = useState('')
     const [sifreTekrar, setSifreTekrar] = useState('')
     const [sifreGoster, setSifreGoster] = useState(false)
     const [aktif, setAktif] = useState(true)
     const [adresler, setAdresler] = useState<DiaAdres[]>([])
 
-    // Adres ekleme penceresi
     const [adresAcik, setAdresAcik] = useState(false)
     const [yeniAdres, setYeniAdres] = useState<DiaAdres>(BOS_ADRES)
     const [adresKaydediliyor, setAdresKaydediliyor] = useState(false)
     const [kaydediliyor, setKaydediliyor] = useState(false)
     const [syncing, setSyncing] = useState(false)
 
-    // silent: sayfa yükleme göstergesi olmadan veriyi tazeler (DIA güncellemesi sonrası)
     const yukle = useCallback(async (silent = false) => {
         if (!id) return
         if (!silent) setYukleniyor(true)
@@ -321,8 +304,6 @@ const CariEditView = () => {
     const guc = useMemo(() => sifreGucu(sifre), [sifre])
     const sifreUyusmuyor = sifreTekrar.length > 0 && sifre !== sifreTekrar
 
-
-    // Yalnız bu cariyi DIA'dan günceller (bakiye, fatura/vade, ekstre) ve sayfadaki veriyi tazeler
     const syncFromDia = async () => {
         if (!cari || syncing) return
         setSyncing(true)
@@ -449,12 +430,10 @@ const CariEditView = () => {
 
     const dc = cari.diaCari || {}
     const ciro12 = son12AyCiro(dc.purchaseStats?.revenue)
-    // Fatura adresi = DIA'daki ana adres (anaadres=1); değiştirilemez
     const faturaAdresi = (dc.addresses || []).find(a => a.ana) || (dc.addresses || [])[0] || null
 
     return (
         <Grid container spacing={8}>
-            {/* Başlık + aksiyonlar */}
             <Grid size={{ xs: 12 }}>
                 <div className='flex flex-wrap items-center justify-between gap-4'>
                     <div>
@@ -496,7 +475,6 @@ const CariEditView = () => {
                 </div>
             </Grid>
 
-            {/* Son 12 ay sipariş cirosu (tam genişlik) */}
             <Grid size={{ xs: 12 }}>
                 <Card>
                     <CardContent>
@@ -525,7 +503,6 @@ const CariEditView = () => {
                 </Card>
             </Grid>
 
-            {/* SOL: Cari bilgileri + teslimat adresleri */}
             <Grid size={{ xs: 12, md: 8 }}>
                 <div className='flex flex-col' style={{ gap: 32 }}>
                     <Card>
@@ -706,7 +683,6 @@ const CariEditView = () => {
                                     {[
                                         ['Firma Ünvanı', unvan || '—'],
                                         ['Firma Türü', dc.firmaTuru === 'bireysel' ? 'Bireysel' : 'Kurumsal'],
-                                        // Bireysel: TC (+ şahıs firmasıysa vergi dairesi); kurumsal: vergi dairesi + no
                                         ...(dc.firmaTuru === 'bireysel'
                                             ? [['TC Kimlik No', dc.tcKimlikNo || '—'], ...(dc.vergiDairesi ? [['Vergi Dairesi', dc.vergiDairesi]] : [])]
                                             : [['Vergi Dairesi', dc.vergiDairesi || '—'], ['Vergi No', dc.vergiNo || '—']])
@@ -795,7 +771,6 @@ const CariEditView = () => {
                 </div>
             </Grid>
 
-            {/* SAĞ: durum + cari özeti */}
             <Grid size={{ xs: 12, md: 4 }}>
                 <div className='flex flex-col' style={{ gap: 32 }}>
                     <Card>
@@ -807,7 +782,6 @@ const CariEditView = () => {
                             />
                         </CardContent>
                     </Card>
-
 
                     <Card>
                         <CardContent>
@@ -826,7 +800,6 @@ const CariEditView = () => {
                 </div>
             </Grid>
 
-            {/* Adres ekleme penceresi — teslimat adresi olarak DIA'ya yazılır */}
             <Dialog open={adresAcik} onClose={() => !adresKaydediliyor && setAdresAcik(false)} maxWidth='sm' fullWidth>
                 <DialogTitle>Adres Ekle</DialogTitle>
                 <DialogContent>

@@ -2,35 +2,30 @@ const mongoose = require('mongoose');
 const { SITE_SLUGS } = require('../../../config/sites');
 
 const seoSettingsSchema = new mongoose.Schema({
-    // Anasayfa SEO
     homepage: {
         title: { type: String, default: '' },
         description: { type: String, default: '' },
         keywords: { type: String, default: '' }
     },
 
-    // Kategori SEO Şablonları
     category: {
         titleTemplate: { type: String, default: '{kategori-adi}' },
         descriptionTemplate: { type: String, default: '{kategori-aciklamasi}' },
         keywordsTemplate: { type: String, default: '{kategori-adi}' }
     },
 
-    // Marka SEO Şablonları
     brand: {
         titleTemplate: { type: String, default: '{marka-adi}' },
         descriptionTemplate: { type: String, default: '{marka-aciklamasi}' },
         keywordsTemplate: { type: String, default: '{marka-adi}' }
     },
 
-    // Ürün SEO Şablonları
     product: {
         titleTemplate: { type: String, default: '{urun-adi}' },
         descriptionTemplate: { type: String, default: '{urun-aciklamasi}' },
         keywordsTemplate: { type: String, default: '{urun-adi}, {marka-adi}' }
     },
 
-    // Diğer Sayfalar SEO
     other: {
         newProducts: {
             title: { type: String, default: '' },
@@ -106,7 +101,6 @@ const seoSettingsSchema = new mongoose.Schema({
         }
     },
 
-    // İçerik SEO analizi eşikleri (SEO > Ayarlar) — kriter motoru bunları okur
     analysis: {
         titleMin: { type: Number, default: 30 },
         titleMax: { type: Number, default: 60 },

@@ -1,19 +1,15 @@
-// apps/web/src/types/products.ts
 
-// Birim bilgileri
 export interface ProductBirim {
     fiyat1?: number;
     fiyat4?: number;
     birimadi?: string;
 }
 
-// Ürün özellikleri
 export interface ProductOzellik {
     ozellikadi: string;
     detayaciklama: string;
 }
 
-// Ürün görselleri (DIA)
 export interface ProductResim {
     _key: string;
     aws_url: string;
@@ -21,14 +17,12 @@ export interface ProductResim {
     content_type?: string;
 }
 
-// Kategori bilgileri (DIA)
 export interface ProductKategori {
     kategori_aciklama_1?: string;
     kategori_aciklama_2?: string;
     kategori_aciklama_3?: string;
 }
 
-// Custom Data
 export interface CustomData {
     seoUrl?: string;
     seoTitle?: string;
@@ -42,7 +36,6 @@ export interface CustomData {
     featuredImage?: string;
     webVisible?: boolean;
     hideBrand?: boolean;
-    // Üründe açık Ürün Butonları (panel: Ürünler > Ürün Butonları) — API yanıtına site bazlı eklenir
     buttons?: ProductButton[];
     hideProductionDate?: boolean;
     hideStock?: boolean;
@@ -76,7 +69,6 @@ export interface CustomData {
     };
 }
 
-// DIA Data
 export interface DiaData {
     aciklama?: string;
     marka?: string;
@@ -87,7 +79,6 @@ export interface DiaData {
     gercek_stok?: number;
     menseiulkeadi?: string;
 
-    // Özel Kodlar
     ozelkod1?: string;
     ozelkod1kodu?: string;
     ozelkod2?: string;
@@ -111,7 +102,6 @@ export interface DiaData {
     ozelkod11?: string;
     ozelkod11kodu?: string;
 
-    // Ek alanlar
     ekalan1?: string;
     ekalan2?: string;
     ekalan3?: string;
@@ -129,14 +119,12 @@ export interface DiaData {
     m_kategoriler?: ProductKategori[];
 }
 
-// Sync Info
 export interface SyncInfo {
     diaStatus?: string;
     webStatus?: string;
     lastDiaSync?: string;
 }
 
-// Ana Product Interface
 export interface Product {
     _id?: string;
     _key: string;
@@ -147,7 +135,6 @@ export interface Product {
     updatedAt?: string;
 }
 
-// Üründe açık bir Ürün Butonu: görünüş (geçişli zemin renkleri, yazı rengi, ikon) tanımından gelir
 export interface ProductButton {
     key: string;
     label: string;
@@ -157,10 +144,8 @@ export interface ProductButton {
     icon?: string;
 }
 
-// Component props
 export interface ProductCardProps {
     product: Product;
-    // Kartta favori (kalp) butonu gösterilsin mi. Varsayılan gizli; Favorilerim sayfası açar.
     showFavourite?: boolean;
     brandInfo?: {
         name: string;
@@ -168,10 +153,8 @@ export interface ProductCardProps {
     } | null;
 }
 
-// Filter parametreleri
 export interface ProductFilterParams {
     category?: string;
-    // Hariç tutulacak kategori slug'ları (virgülle) — örn. marka sayfası Sıfır sekmesinde 'ikinci-el'
     haricKategori?: string;
     genislik?: string;
     yukseklik?: string;
@@ -193,7 +176,6 @@ export interface ProductFilterParams {
     page?: number;
     limit?: number;
 }
-// Pagination bilgileri
 export interface PaginationInfo {
     currentPage: number;
     totalPages: number;
@@ -202,7 +184,6 @@ export interface PaginationInfo {
     hasNextPage: boolean;
     hasPrevPage: boolean;
 }
-// API Response
 export interface ProductFilterResponse {
     products: Product[];
     pagination: PaginationInfo;

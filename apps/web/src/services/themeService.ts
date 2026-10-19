@@ -1,5 +1,3 @@
-// apps/web/src/services/themeService.ts
-// apps/web/src/services/themeService.ts
 import { API_ENDPOINTS, getImageUrl as baseGetImageUrl } from '@/src/config/api';
 import type { ThemeSettings } from '@/src/types/theme';
 

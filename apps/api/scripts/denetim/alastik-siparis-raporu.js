@@ -1,8 +1,3 @@
-/**
- * ALastik haftalık sipariş raporu — son 7 günün siparişleri.
- * Toplam adet/ciro, durum ve ödeme yöntemi kırılımı, günlük dağılım, en çok satan ürünler.
- * Çıktı: stdout'a markdown (haftalık denetim raporunun başına eklenir).
- */
 require('/var/www/alastik/node_modules/dotenv').config({ path: '/var/www/alastik/apps/api/.env.production' });
 const mongoose = require('/var/www/alastik/apps/api/node_modules/mongoose');
 

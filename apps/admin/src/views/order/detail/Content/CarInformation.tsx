@@ -23,7 +23,6 @@ interface CarInformationProps {
 }
 
 const CarInformation = ({ isGuest, vehicleInfo }: CarInformationProps) => {
-    // Misafir veya araç bilgisi yoksa gösterme
     if (isGuest || !vehicleInfo) {
         return null
     }

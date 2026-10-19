@@ -8,11 +8,9 @@ const MEDIA_FOLDERS = paths.mediaFolders;
 const getUploadPath = paths.getUploadPath;
 const generateFileUrl = paths.generateFileUrl;
 
-// Sharp.js import
 const SimpleImageProcessor = require('../../../utils/SimpleImageProcessor');
 const imageProcessor = new SimpleImageProcessor(paths.public);
 
-// Yapay zekâ ile arka plan temizleme (ürün görselleri, toplu)
 const backgroundRemoval = require('../../../services/media/BackgroundRemovalService');
 
 const upload = multer({
@@ -22,8 +20,6 @@ const upload = multer({
             if (!MEDIA_FOLDERS[folder]) {
                 return cb(new Error(`Geçersiz klasör: ${folder}`));
             }
-            // Ürün görselleri ORTAK havuzdur; diğer klasörlerde yeni yüklemeler
-            // seçili sitenin alt klasörüne gider (8 Eyl kararı: site bazlı medya)
             const uploadPath = folder === 'urun'
                 ? getUploadPath(folder)
                 : getUploadPath(folder, req.site);
@@ -37,7 +33,6 @@ const upload = multer({
             }
         },
         filename: (req, file, cb) => {
-            // Yeni temiz filename sistemi
             const folder = req.query.folder || req.body?.folder || 'general';
             const uploadPath = getUploadPath();
             const cleanFilename = imageProcessor.generateCleanFilename(file.originalname, uploadPath, folder);
@@ -78,14 +73,12 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
         }
         const uploadedFiles = [];
         for (const file of req.files) {
-            // Site bölmeli klasörlerde adres site alt klasörünü içerir
             const relName = folder === 'urun' ? file.filename : path.join(req.site, file.filename);
             const fileInfo = {
                 id: Date.now() + Math.random().toString(36).substring(2, 11),
                 filename: relName,
                 originalname: file.originalname,
                 url: generateFileUrl(relName, folder),
-                // WebP URL'leri de ekle
                 urls: SimpleImageProcessor.generateImageUrls(relName, folder, generateFileUrl),
                 size: file.size,
                 mimetype: file.mimetype,
@@ -96,7 +89,6 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
 
             uploadedFiles.push(fileInfo);
 
-            // Background'da WebP oluştur (kullanıcı beklemez)
             imageProcessor.processInBackground(file.path, file.filename, folder);
         }
 
@@ -114,14 +106,9 @@ router.post('/upload', upload.array('files', paths.config.maxFileCount), async (
     }
 });
 
-// Galeride gösterilecek görsel türleri
 const GALLERY_IMAGE_EXTENSIONS = ['.webp', '.jpg', '.jpeg', '.png', '.gif', '.avif', '.svg'];
 
-// Klasör taraması 6 binden fazla dosya içerebildiği için kısa süreli önbelleğe alınır
 const FOLDER_CACHE_TTL_MS = 5 * 60 * 1000;
-/* ---------- Ürün Görselleri kategori filtresi ----------
- * Görseller ürün kayıtlarından (diaData.m_resimler + customImages) kategoriye eşlenir.
- * Setler 10 dk önbelleklenir; 'eslesmeyen' = hiçbir ürünün referans etmediği dosyalar. */
 const WebProductForMedia = require('../../../models/web/catalog/WebProduct');
 
 const IKINCI_EL_OR = [
@@ -171,9 +158,6 @@ async function getCategoryFileSet(key) {
     return set;
 }
 
-/* ---------- Dekupe (arka plan temizleme) durumu ----------
- * _orijinal yedeği olan VE içeriği yedekten farklı olan dosya "işlenmiş" kabul edilir.
- * Küme 10 dk önbelleklenir; toplu geri yükleme / temizleme sonrası düşürülür. */
 const BACKUP_ROOT = path.join(paths.public, '_orijinal');
 let dekupeCache = null;
 
@@ -197,7 +181,7 @@ async function getProcessedSet(folder) {
                 if (bs.size !== cs.size) { set.add(r); continue; }
                 const [bb, cb] = await Promise.all([fs.readFile(bakPath), fs.readFile(curPath)]);
                 if (!bb.equals(cb)) set.add(r);
-            } catch { /* mevcut dosya yoksa islenmis sayilmaz */ }
+            } catch {  }
         }
     };
     await walk(backupDir);
@@ -209,10 +193,6 @@ function clearDekupeCache() { dekupeCache = null; }
 
 const folderCache = new Map();
 
-/**
- * Klasörü (alt klasörleriyle birlikte) tarar; her dosya için göreli yol, boyut ve tarih döndürür.
- * Aynalanan ürün görselleri urun/<önek>/<dosya> düzeninde durduğu için 2 seviye taranır.
- */
 async function scanFolder(uploadPath, depth = 2) {
     const entries = await fs.readdir(uploadPath, { withFileTypes: true });
     const results = [];
@@ -233,7 +213,6 @@ async function scanFolder(uploadPath, depth = 2) {
             const stats = await fs.stat(full);
             results.push({ relPath: entry.name, size: stats.size, mtime: stats.mtime });
         } catch {
-            // okunamayan dosya atlanır
         }
     }
 
@@ -249,7 +228,6 @@ async function getFolderFiles(folder, uploadPath) {
     return files;
 }
 
-/** Yükleme/silme sonrası listenin tazelenmesi için önbelleği düşürür */
 function clearFolderCache(folder) {
     if (folder) folderCache.delete(folder); else folderCache.clear();
 }
@@ -277,8 +255,6 @@ router.get('/list', async (req, res) => {
         try {
             let scanned = await getFolderFiles(folder, uploadPath);
 
-            // Site bölmesi (ürün görselleri hariç): site alt klasöründeki dosyalar
-            // yalnız o sitede görünür; kök/eski dosyalar LJA'nın sayılır (8 Eyl kararı)
             if (folder !== 'urun') {
                 const { SITE_SLUGS } = require('../../../config/sites');
                 const site = req.site;
@@ -289,7 +265,6 @@ router.get('/list', async (req, res) => {
                 });
             }
 
-            // Ürün Görselleri: dekupe (arka plan temizleme) durumu filtresi + rozet bilgisi
             let processedSet = null;
             if (folder === 'urun' && (dekupe || true)) {
                 processedSet = await getProcessedSet(folder);
@@ -297,7 +272,6 @@ router.get('/list', async (req, res) => {
                 else if (dekupe === 'islenmemis') scanned = scanned.filter(f => !processedSet.has(f.relPath));
             }
 
-            // Ürün Görselleri: kategori filtresi (görsel → ürün eşlemesinden)
             if (folder === 'urun' && productCategory) {
                 if (productCategory === 'eslesmeyen') {
                     const all = await getCategoryFileSet('tum-urunler');
@@ -309,7 +283,6 @@ router.get('/list', async (req, res) => {
             }
             const term = String(search).toLowerCase();
 
-            // Aynı görselin farklı türleri tek satır gösterilir; webp tercih edilir
             const byBaseName = new Map();
             for (const item of scanned) {
                 if (term && !item.relPath.toLowerCase().includes(term)) continue;
@@ -333,7 +306,6 @@ router.get('/list', async (req, res) => {
                 folder: folder
             }));
 
-            // Kayıtlı açıklama bilgilerini ekle (alt, başlık vb.)
             try {
                 const MediaMeta = require('../../../models/admin/design/MediaMeta');
                 const metas = await MediaMeta.find({ folder, filename: { $in: validFiles.map(f => f.id) } }).lean();
@@ -392,10 +364,6 @@ router.get('/list', async (req, res) => {
     }
 });
 
-/**
- * Dosya bilgilerini güncelle (alt metin, başlık, açıklama).
- * Dosyanın kendisi değişmez; yalnızca açıklama bilgileri kaydedilir.
- */
 router.patch('/meta', async (req, res) => {
     try {
         const { folder, filename, alt, title, caption, description } = req.body;
@@ -427,10 +395,6 @@ router.patch('/meta', async (req, res) => {
     }
 });
 
-/**
- * POST /remove-background — seçili görsellerin arka planını yapay zekâ ile temizler (beyaz),
- * dosyanın üzerine yazar; orijinal _orijinal/ altına yedeklenir. body: { folder, files: [relPath] }
- */
 router.post('/remove-background', async (req, res) => {
     try {
         const { folder = 'urun', files } = req.body || {};
@@ -445,7 +409,6 @@ router.post('/remove-background', async (req, res) => {
     }
 });
 
-/** POST /restore-original-bulk — seçili görsellerin orijinallerini topluca geri yükler */
 router.post('/restore-original-bulk', async (req, res) => {
     try {
         const { folder = 'urun', files } = req.body || {};
@@ -471,7 +434,6 @@ router.post('/restore-original-bulk', async (req, res) => {
     }
 });
 
-/** POST /restore-original — arka planı temizlenmiş görselin yedekteki orijinalini geri yükler */
 router.post('/restore-original', async (req, res) => {
     try {
         const { folder = 'urun', file } = req.body || {};
@@ -500,7 +462,6 @@ router.delete('/:fileId(*)', async (req, res) => {
             const uploadPath = getUploadPath(folder);
             const filePath = path.join(uploadPath, filename);
 
-            // Güvenlik: hedef dosya klasörün dışına çıkamaz (../ denemeleri)
             if (!path.resolve(filePath).startsWith(path.resolve(uploadPath) + path.sep)) {
                 continue;
             }

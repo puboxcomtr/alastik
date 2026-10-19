@@ -31,7 +31,6 @@ class XmlDiaMatchService {
         if (this.sessionId && this.sessionExpireTime && new Date() < this.sessionExpireTime) {
             return this.sessionId;
         }
-        // Eşzamanlı çağrılar tek login isteğini paylaşır (thundering herd önlemi)
         if (this.loginPromise) return this.loginPromise;
         this.loginPromise = this.doLogin().finally(() => { this.loginPromise = null; });
         return this.loginPromise;
@@ -82,8 +81,6 @@ class XmlDiaMatchService {
             return response.data.result?.[0] || null;
         }
 
-        // Oturum düşmüş olabilir (başka süreç disconnect_same_user ile bağlandıysa):
-        // bir kez yeniden login olup tekrar dene — yoksa geçersiz oturum yanlış "bulunamadı" sayılır
         if (!retried) {
             this.sessionId = null;
             return this.fetchByAnabarkod(anabarkod, true);
@@ -153,7 +150,6 @@ class XmlDiaMatchService {
         console.log(`[XmlDiaMatchService] Eşleştirme başladı: ${operationId} (kaynak: ${useLiveDia ? 'canlı DIA' : 'diastocks + canlı DIA yedeği'})`);
 
         try {
-            // Tüm entegrasyon kurallarını çek
             const WebXml = require('../../../models/plugins/xml/WebXml');
             const integrations = await WebXml.find({ isActive: true }).lean();
             const integrationMap = {};
@@ -176,8 +172,6 @@ class XmlDiaMatchService {
 
             console.log(`[XmlDiaMatchService] ${mappedProducts.length} ürün bulundu`);
 
-            // Kart verisi kaynağı: canlı DIA (manuel sync) veya diastocks aynası (zamanlanmış sync).
-            // diastocks'ta bulunamayan kart için her zaman canlı DIA'ya düşülür.
             let diaStockMap = null;
             if (useLiveDia) {
                 await this.login();
@@ -206,12 +200,10 @@ class XmlDiaMatchService {
             for (let i = 0; i < mappedProducts.length; i += CONCURRENCY) {
                 const batch = mappedProducts.slice(i, i + CONCURRENCY);
 
-                // Kural filtresi uygula
                 const filteredBatch = batch.filter(xmlProduct => {
                     const intg = integrationMap[xmlProduct.source];
                     if (!intg) return true;
 
-                    // excludeFromWebSync kaynakları DIA match'e tabi tutma
                     if (intg.excludeFromWebSync === true) { filtered++; return false; }
 
                     const rules = intg.rules || {};
@@ -268,7 +260,6 @@ class XmlDiaMatchService {
 
                     const newHash = this.generateDiaHash(diaData);
                     if (xmlProduct.diaDataHash && xmlProduct.diaDataHash === newHash) {
-                        // Hash aynı ama status dia_matched değilse düzelt
                         if (xmlProduct.status !== 'dia_matched') {
                             await XmlProduct.updateOne(
                                 { _id: xmlProduct._id },
@@ -304,8 +295,6 @@ class XmlDiaMatchService {
 
                 if (i > 0 && i % 100 === 0) {
                     console.log(`[XmlDiaMatchService] ${i}/${mappedProducts.length} işlendi`);
-                    // Not: zorla yeniden login kaldırıldı — geçersiz oturum artık
-                    // fetchByAnabarkod içinde kendiliğinden yenileniyor
                 }
             }
 

@@ -1,8 +1,4 @@
 'use client';
-// B2B giriş ekranı — b2b.lastikjantavm.com/b2b düzeni referans alınmıştır.
-// İki sekme: Giriş Yap / Yeni Başvuru Formu. Arka plan SLIDER'dır (8 Eyl kararı):
-// public/b2b/ altındaki görseller sırayla yumuşak geçişle döner; görselleri
-// değiştirmek için dosyaları güncelleyin / listeye ekleyin.
 import { useEffect, useState } from 'react';
 import { SITES } from '@src/config/siteConfig';
 import { API_ENDPOINTS, getImageUrl } from '@src/config/api';
@@ -39,8 +35,6 @@ const B2BLogin = () => {
     const [tab, setTab] = useState<TabKey>('login');
     const [submitting, setSubmitting] = useState(false);
 
-    // Başvuru formu alanları — başvuru yalnız FORMDUR (hesap/şifre oluşturmaz;
-    // bayilik DIA tarafında açılır — 8 Eyl kararı). Bildirimler toast ile verilir.
     const [apply, setApply] = useState({
         contactName: '', email: '', phone: '',
         cityId: '', city: '', district: '', address: '',
@@ -50,7 +44,6 @@ const B2BLogin = () => {
     });
     const setApplyField = (field: string, value: string | boolean | string[]) => setApply(a => ({ ...a, [field]: value }));
 
-    // Calistiginiz markalar — coklu secim (autocomplete); liste marka veritabanindan gelir
     const [brandOptions, setBrandOptions] = useState<string[]>([]);
     const [brandQuery, setBrandQuery] = useState('');
     const [brandOpen, setBrandOpen] = useState(false);
@@ -78,7 +71,6 @@ const B2BLogin = () => {
         setApply(a => ({ ...a, brands: a.brands.filter(b => b !== brand) }));
     };
 
-    // Telefon maskesi: +90 5xx xxx xx xx
     const formatPhone = (value: string) => {
         let digits = value.replace(/\D/g, '');
         if (digits.startsWith('90')) digits = digits.slice(2);
@@ -92,7 +84,6 @@ const B2BLogin = () => {
         return out;
     };
 
-    // İl/ilçe listeleri adres veritabanından gelir (address_cities / address_districts)
     const [cities, setCities] = useState<{ cityId: string; cityName: string }[]>([]);
     const [districts, setDistricts] = useState<{ districtId: string; districtName: string }[]>([]);
 
@@ -116,20 +107,15 @@ const B2BLogin = () => {
         setApply(a => ({ ...a, cityId, city: secilen?.cityName || '', district: '' }));
     };
 
-
-    // Giriş: cari kodu VEYA e-posta + şifre
     const [loginId, setLoginId] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
 
-    // Giriş modu: bayi (varsayılan) veya plasiyer (kullanıcı adı + şifre)
     const [loginMode, setLoginMode] = useState<'bayi' | 'plasiyer'>('bayi');
     const [spKod, setSpKod] = useState('');
     const [spPassword, setSpPassword] = useState('');
     const [spLoggingIn, setSpLoggingIn] = useState(false);
 
-    // Logo: panelden yüklenen b2b logosu (ayarlar); yoksa statik config logosu
     const [logo, setLogo] = useState<string>(site.theme.logo);
-    // Giriş ekranı duyuru popup'ı: panelde (Tema Ayarları) açıksa ve görsel yüklüyse
     const [loginPopupImage, setLoginPopupImage] = useState('');
     useEffect(() => {
         fetch(API_ENDPOINTS.b2b.themeSettings())
@@ -142,7 +128,6 @@ const B2BLogin = () => {
             .catch(() => { });
     }, []);
 
-    // Sayfa ?giris=plasiyer ile açılırsa doğrudan plasiyer modunda gelsin
     useEffect(() => {
         if (typeof window === 'undefined') return;
         if (new URLSearchParams(window.location.search).get('giris') === 'plasiyer') {
@@ -150,7 +135,6 @@ const B2BLogin = () => {
         }
     }, []);
 
-    // Mod değişince sayfa TAM yenilensin (URL değişir, form in-place değişmez → kafa karışmaz)
     const goToLoginMode = (mode: 'bayi' | 'plasiyer') => {
         window.location.href = mode === 'plasiyer' ? '/giris?giris=plasiyer' : '/giris';
     };
@@ -209,7 +193,6 @@ const B2BLogin = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            // Yetkili Ad Soyad tek alandan gonderilir; son kelime soyad kabul edilir
             const words = apply.contactName.trim().split(/\s+/);
             const payload = {
                 ...apply,
@@ -245,19 +228,15 @@ const B2BLogin = () => {
         setTab(next);
     };
 
-
     return (
         <div className="b2b-giris-root" style={{ minHeight: '100vh', display: 'flex', background: '#ffffff' }}>
             {loginPopupImage ? <LoginPopup image={loginPopupImage} /> : null}
-            {/* SOL PANEL — tanıtım */}
             <div className="b2b-giris-sol" style={{
                 flex: '0 0 56%', position: 'relative', overflow: 'hidden', color: '#fff',
                 background: 'radial-gradient(45% 40% at 48% 70%, rgba(224,205,0,0.10) 0%, transparent 70%), linear-gradient(90deg, #0d1014 0%, #161a20 50%, #1f232a 82%, #8d9198 93%, #ffffff 100%)',
                 padding: '72px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
             }}>
-                {/* WebGL "dünya" + lastik (artlastik hero sahnesi) — dekoratif arka plan */}
                 <B2BLoginGlobe />
-                {/* Dünya çevresindeki yörünge etiketleri (artlastik hero) — giriş + yüzme animasyonu, hover vurgusu */}
                 <div className="b2b-orbit-katman">
                     {[
                         ['1972’den beri', '40%', '14%'],
@@ -283,7 +262,6 @@ const B2BLogin = () => {
                 </div>
             </div>
 
-            {/* SAĞ PANEL — giriş/başvuru kartı */}
             <div className="b2b-giris-sag" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', overflowY: 'auto' }}>
                 <div style={{ width: '100%', maxWidth: tab === 'apply' ? 620 : 420, textAlign: 'center', marginBottom: 20 }}>
                     <img src={logo} alt={site.name} style={{ maxWidth: 190, width: '100%', marginBottom: 18 }} />
@@ -422,7 +400,6 @@ const B2BLogin = () => {
                                 <textarea id='b2b-address' rows={3} style={{ ...inputStyle, resize: 'vertical' }} value={apply.address} onChange={e => setApplyField('address', e.target.value)} />
                             </div>
 
-                            {/* Bayilik bilgilerine gecis */}
                             <div style={{ borderTop: '1px solid #eee', margin: '4px 0' }} />
 
                             <div style={{ color: site.theme.primary, fontWeight: 700, fontSize: 12, letterSpacing: 0.5, marginTop: 6 }}>BAYİLİK BİLGİLERİ</div>

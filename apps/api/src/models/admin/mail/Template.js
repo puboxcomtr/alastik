@@ -2,7 +2,6 @@ const mongoose = require('mongoose')
 const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const templateSchema = new mongoose.Schema({
-    // Her site için ayrı şablon seti (site + templateKey benzersiz)
     site: {
         type: String,
         enum: Object.keys(SITES),

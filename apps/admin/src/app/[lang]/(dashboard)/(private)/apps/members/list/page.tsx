@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Components */
 import MemberListTable from '@views/members/MemberListTable'
 
 const MembersListPage = () => {

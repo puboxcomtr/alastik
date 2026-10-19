@@ -1,13 +1,10 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 
-// Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
-// Component Imports
 import RoleForm from '@/views/manager/roles/AddRole'
 
-// API Imports
 import { fetchAPI } from '@libs/api'
 
 const RoleCreatePage = async () => {

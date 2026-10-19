@@ -22,14 +22,9 @@ function buildBaseMatch(site) {
     return baseMatch;
 }
 
-/**
- * Aktif filtrelerden match objesi oluştur (cascading için)
- * exclude: bu alana ait filtreyi atla (kendi seçeneğini daraltmamak için)
- */
 function buildActiveFilters(query, exclude = null) {
     const filters = {};
 
-    // m_urunOzellikleri bazlı filtreler (her biri ayrı $elemMatch gerekir)
     const ozellikFilters = [];
 
     if (query.genislik && exclude !== 'genislik') {
@@ -61,7 +56,6 @@ function buildActiveFilters(query, exclude = null) {
         filters['diaData.m_urunOzellikleri'] = { $all: ozellikFilters.map(f => ({ $elemMatch: f })) };
     }
 
-    // Doğrudan diaData alanları
     if (query.arac && exclude !== 'arac') {
         filters['diaData.ozelkod2kodu'] = query.arac;
     }
@@ -95,8 +89,6 @@ router.get('/tire-options', async (req, res) => {
         const baseMatch = buildBaseMatch(req.site);
         let productType = 'LASTİK';
 
-        // Arama (q) filtresi — /search/results ile AYNI akıllı mantık (ortak util).
-        // Böylece facet'ler (marka/ebat vb.) arama sonuçlarıyla birebir örtüşür.
         if (q && String(q).length >= 2) {
             const searchConditions = buildSearchQueryConditions(req.site, q);
             if (searchConditions.length > 0) {
@@ -104,8 +96,6 @@ router.get('/tire-options', async (req, res) => {
             }
         }
 
-        // Kategori filtresi
-        // Virtual mevsim kategori map'i (products.js ile uyumlu)
         const seasonSlugMap = {
             'yaz-lastikleri': 'Yaz',
             'kis-lastikleri': 'Kış',
@@ -120,9 +110,7 @@ router.get('/tire-options', async (req, res) => {
         ];
         let virtualSeasonFilter = null;
 
-        // Kategori filtresi
         if (category) {
-            // Virtual mevsim kategorisi mi?
             if (seasonSlugMap[category]) {
                 virtualSeasonFilter = seasonSlugMap[category];
                 const webCategories = await WebCategory.find({
@@ -143,7 +131,6 @@ router.get('/tire-options', async (req, res) => {
                 baseMatch['diaData.ozelkod1kodu'] = virtualSeasonFilter;
                 productType = 'LASTİK';
             } else {
-                // Normal kategori
                 const webCategory = await WebCategory.findOne({
                     slug: category,
                     [`siteSettings.${req.site}.webVisible`]: true
@@ -151,9 +138,6 @@ router.get('/tire-options', async (req, res) => {
 
                 if (webCategory && webCategory.diaCategory) {
                     const diaLevel = webCategory.diaLevel || 'kategori_aciklama_2';
-                    // Etiket sayfalarında ürün kümesini etiket belirler; kategori
-                    // koşulu eklenirse etiket ürünleri kategori ağacına bağlı
-                    // olmadığında kesişim boş kalır ve filtreler boş döner.
                     if (!tag) {
                         baseMatch['diaData.m_kategoriler'] = {
                             $elemMatch: { [diaLevel]: webCategory.diaCategory }
@@ -174,7 +158,6 @@ router.get('/tire-options', async (req, res) => {
             }
         }
 
-        // Etiket filtresi
         if (tag) {
             const webTag = await WebTag.findOne({
                 site: req.site,
@@ -187,7 +170,6 @@ router.get('/tire-options', async (req, res) => {
             }
         }
 
-        // Marka filtresi
         if (brand) {
             const webBrand = await WebBrand.findOne({
                 $or: [
@@ -207,10 +189,8 @@ router.get('/tire-options', async (req, res) => {
 
         baseMatch['diaData.ozelkod7kodu'] = productType;
 
-        // "JANT" ve "2.El Jant" gibi jant türevleri jant filtre setini kullanır
         const isJantType = /jant/i.test(productType);
 
-        // Her filtre için kendi alanı hariç diğer filtreleri uygulayan match builder
         const matchFor = (excludeField) => ({
             ...baseMatch,
             ...buildActiveFilters(req.query, excludeField)
@@ -223,7 +203,6 @@ router.get('/tire-options', async (req, res) => {
             { $sort: { count: -1, _id: 1 } }
         ];
 
-        // Özel fiyat kuralı olan sitede aralık hesaplanan satış fiyatından türetilir; varsayılanda eski davranış
         const pricePipeline = usesCustomPricing(req.site)
             ? [
                 { $match: matchFor(null) },
@@ -245,9 +224,7 @@ router.get('/tire-options', async (req, res) => {
             { $sort: { count: -1 } }
         ];
 
-        // JANT
         if (isJantType) {
-            // Jant özellikleri m_urunOzellikleri üzerinden dinamik olarak çekilir
             const buildRimFeaturePipeline = (featureName) => ([
                 { $match: baseMatch },
                 { $unwind: '$diaData.m_urunOzellikleri' },
@@ -291,7 +268,6 @@ router.get('/tire-options', async (req, res) => {
                         const displayName = webBrand?.siteContent?.[req.site]?.displayName || webBrand?.customName || webBrand?.name || b._id;
                         return { value: b._id, label: displayName, count: b.count };
                     })),
-                    // Hesaplanamıyorsa uydurma aralık döndürülmez; vitrin filtreyi gizler
                     priceRange: priceRange[0] ? {
                         min: Math.floor(priceRange[0].minPrice),
                         max: Math.ceil(priceRange[0].maxPrice)
@@ -309,8 +285,6 @@ router.get('/tire-options', async (req, res) => {
             });
         }
 
-        // LASTİK
-        // LASTİK
         const widthPipeline = [
             { $match: matchFor('genislik') },
             { $unwind: '$diaData.m_urunOzellikleri' },
@@ -435,7 +409,6 @@ router.get('/tire-options', async (req, res) => {
                     const slug = o._id.split('(')[0].trim().toLowerCase().replace(/\s+/g, '-');
                     return { value: slug, label: o._id, count: o.count };
                 }),
-                // Hesaplanamıyorsa uydurma aralık döndürülmez; vitrin filtreyi gizler
                 priceRange: priceRange[0] ? {
                     min: Math.floor(priceRange[0].minPrice),
                     max: Math.ceil(priceRange[0].maxPrice)
@@ -474,7 +447,6 @@ router.get('/chain-options', async (req, res) => {
             'diaData.durum': 'A',
             'diaData.ozelkod7kodu': 'ZİNCİR',
             ...(req.site ? { sites: req.site } : {}),
-            // Görünürlük: site ayarı > ortak değer
             $and: [getSiteVisibilityFilter(req.site)]
         };
 

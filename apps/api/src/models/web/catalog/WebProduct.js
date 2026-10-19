@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
-// DIA Birim Schema
 const diaUnitSchema = new mongoose.Schema({
     _key: String,
     _key_scf_stokkart: String,
@@ -17,8 +16,8 @@ const diaUnitSchema = new mongoose.Schema({
     fiyat2: Number,
     fiyat3: Number,
     fiyat4: Number,
-    fiyat4Ham: Number, // b2b/toptan: DIA ham F4 fiyatı (__dinamik__16 ile ezilmemiş)
-    fiyatDinamik: Number, // DIA __dinamik__16 (B2C dinamik fiyat); 0 = kartta dinamik fiyat yok
+    fiyat4Ham: Number,
+    fiyatDinamik: Number,
     fiyat10: Number,
     kdvdurumu1: String,
     kdvdurumu2: String,
@@ -29,7 +28,6 @@ const diaUnitSchema = new mongoose.Schema({
     oranlama: String
 }, { _id: false });
 
-// DIA Kategori Schema
 const diaCategorySchema = new mongoose.Schema({
     _key: String,
     _key_scf_stokkart: String,
@@ -53,13 +51,10 @@ const diaCategorySchema = new mongoose.Schema({
     kategori_durum_6: String
 }, { _id: false });
 
-// DIA Resim Schema
 const diaImageSchema = new mongoose.Schema({
     _key: String,
     _key_kayit: String,
-    // aws_url: vitrinin kullandığı adres (kendi sunucumuza indirildiyse /urun/... olur)
     aws_url: String,
-    // source_url: görselin geldiği özgün adres — kaynağa dönebilmek için saklanır
     source_url: String,
     content_type: String,
     is_aws: String,
@@ -70,7 +65,6 @@ const diaImageSchema = new mongoose.Schema({
     yukleyen: String
 }, { _id: false });
 
-// DIA Ürün Özellik Schema
 const diaProductFeatureSchema = new mongoose.Schema({
     _key: String,
     _key_scf_stokkart: String,
@@ -82,9 +76,7 @@ const diaProductFeatureSchema = new mongoose.Schema({
     ozellisirano: String
 }, { _id: false });
 
-// DIA Veri Schema
 const diaDataSchema = new mongoose.Schema({
-    // Key alanları
     _key_scf_karebarkod: String,
     _key_scf_marka: String,
     _key_scf_odeme_plani: String,
@@ -102,13 +94,11 @@ const diaDataSchema = new mongoose.Schema({
     _key_sis_ozelkod11: String,
     _key_sis_resim: String,
 
-    // Temel bilgiler
     aciklama: String,
     anabarkod: String,
     barkodu: String,
     durum: { type: String, default: 'A' },
 
-    // Ek alanlar
     ekalan1: String,
     ekalan2: String,
     ekalan3: String,
@@ -120,15 +110,12 @@ const diaDataSchema = new mongoose.Schema({
     ekalan9: String,
     ekalan10: String,
 
-    // Stok bilgileri
     gercek_stok: { type: Number, default: 0 },
 
     anabirimdesi: { type: Number, default: 0 },
-    // Marka ve menşei
     marka: String,
     menseiulkeadi: String,
 
-    // Özel kodlar
     ozelkod1: String,
     ozelkod1kodu: String,
     ozelkod2: String,
@@ -152,73 +139,54 @@ const diaDataSchema = new mongoose.Schema({
     ozelkod11: String,
     ozelkod11kodu: String,
 
-    // B2C indirim oranları (site fiyatlaması) — şemada tanımsızken strict mod senkronda düşürüyordu
     b2c_indirimorani: Number,
     birimindirimorani: String,
 
-    // Stok kart kodu
     stokkartkodu: { type: String, required: true },
 
-    // Senkronizasyon durumu
     synced: { type: String, default: 'synced' },
 
-    // Alt veriler
     m_birimler: [diaUnitSchema],
     m_kategoriler: [diaCategorySchema],
     m_resimler: [diaImageSchema],
     m_urunOzellikleri: [diaProductFeatureSchema]
 }, { _id: false });
 
-// Özel Görsel Schema
 const customImageSchema = new mongoose.Schema({
     order: { type: Number, required: true },
     url: { type: String, required: true },
-    // Dış adresten indirildiyse özgün adres burada saklanır
     sourceUrl: String,
     alt: String,
     title: String
 }, { _id: false });
 
-// Ürün Videosu Schema — YouTube video veya short
 const productVideoSchema = new mongoose.Schema({
     order: { type: Number, default: 0 },
-    // Kullanıcının girdiği özgün adres
     url: { type: String, required: true },
-    // Adresten çıkarılan YouTube kimliği (gömme için kullanılır)
     videoId: { type: String, required: true },
     title: { type: String, default: '' }
 }, { _id: false });
 
-// Özel Veri Schema
 const customDataSchema = new mongoose.Schema({
-    // SEO Bilgileri
     seoTitle: String,
     seoDescription: String,
     seoUrl: { type: String, sparse: true },
     seoKeywords: [String],
-    // SEO analizi: bu içeriğin hedeflediği odak anahtar kelime
     focusKeyword: String,
 
-    // Web Görünüm
     webOrder: { type: Number, default: 0 },
     webVisible: { type: Boolean, default: true },
-    // Marka gizleme — açıkken vitrin/kategori kartlarında marka gösterilmez
     hideBrand: { type: Boolean, default: false },
-    // Üretim tarihi gizleme — açıkken kartlarda üretim tarihi gösterilmez
     hideProductionDate: { type: Boolean, default: false },
-    // Stok gizleme — açıkken kartlarda stok adedi gösterilmez
     hideStock: { type: Boolean, default: false },
-    // Kargo bilgisi gizleme — açıkken ürün detayında kargoya teslim tarihi gösterilmez
     hideDelivery: { type: Boolean, default: false },
 
-    // Kargo Süresi
     delivery: {
         type: String,
         enum: ['same_day', 'next_day', 'next_week'],
         default: 'same_day'
     },
 
-    // İçerik
     customDescription: String,
     siteDescriptions: Object.keys(SITES).reduce((acc, slug) => {
         acc[slug] = { type: String, default: '' };
@@ -226,56 +194,42 @@ const customDataSchema = new mongoose.Schema({
     }, {}),
     shortDescription: String,
 
-    // Site başına SEO/görünürlük ayarları — alan tanımsızsa ortak (kök) değer geçerlidir
     siteData: Object.keys(SITES).reduce((acc, slug) => {
         acc[slug] = {
             seoTitle: { type: String },
             seoDescription: { type: String },
             shortDescription: { type: String },
             webVisible: { type: Boolean },
-            // Bu sitenin vitrin listelemesinden (kategori/arama) gizle. Montaj
-            // hizmetleri gibi yalnız montaj noktaları/sepet üzerinden kullanılan
-            // ürünler için. Montaj noktaları _key ile çektiğinden etkilenmez.
             hideFromListing: { type: Boolean },
             webOrder: { type: Number },
-            // XML kaynaklı üründe bu sitenin satış fiyatı (sahip site fiyat4'ü kullanır)
             xmlPrice: { type: Number },
-            // XML kaynaklı üründe bu sitenin kargo dahil fiyatı (varsayılan site global
-            // customData.shippingIncludedPrice/shippingPerUnit alanlarını kullanır)
             shippingIncludedPrice: { type: Number },
             shippingPerUnit: { type: Number },
-            // Bu sitede üründe AÇIK olan Ürün Butonları (WebProductButton.key listesi)
             buttons: { type: [String], default: undefined }
         };
         return acc;
     }, {}),
 
-    // Etiketler ve kategoriler
     webTags: [String],
     webCategory: String,
     webSubCategory: String,
 
-    // Görseller
     customImages: [customImageSchema],
     videos: [productVideoSchema],
     featuredImage: String,
 
-    // Fiyatlandırma
     webPrice: Number,
     originalPrice: Number,
     webDiscount: { type: Number, default: 0 },
     discountType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
 
-    // Kargo Dahil Fiyat (Sadece XML ürünleri için)
     shippingIncludedPrice: { type: Number, default: 0 },
     shippingPerUnit: { type: Number, default: 0 },
 
-    // Stok ve satış bilgileri
     minOrderQuantity: { type: Number, default: 1 },
     maxOrderQuantity: Number,
     stockAlert: { type: Number, default: 5 },
 
-    // Meta bilgiler
     isNew: { type: Boolean, default: false },
     isBestSeller: { type: Boolean, default: false },
     reviewStats: {
@@ -283,7 +237,6 @@ const customDataSchema = new mongoose.Schema({
         reviewCount: { type: Number, default: 0 }
     }
 }, { _id: false });
-// Pricing Data Schema (XML kaynaklı Ürünler )
 const pricingDataSchema = new mongoose.Schema({
     hamFiyat: Number,
     alastikPrice: Number,
@@ -291,7 +244,6 @@ const pricingDataSchema = new mongoose.Schema({
     b2cPrice: Number,
     lastPricingAt: Date
 }, { _id: false });
-// Senkronizasyon Bilgi Schema
 const syncInfoSchema = new mongoose.Schema({
     lastDiaSync: { type: Date, default: Date.now },
     diaStatus: {
@@ -309,10 +261,9 @@ const syncInfoSchema = new mongoose.Schema({
     syncSource: { type: String, default: 'dia_api' },
     xmlSource: { type: String, default: null },
     lastXmlSync: { type: Date, default: null },
-    diaDataHash: { type: String, default: null } // diastocks.dataHash kopyası — DB kaynaklı web aktarımında değişiklik atlama
+    diaDataHash: { type: String, default: null }
 }, { _id: false });
 
-// Ana WebProduct Schema
 const webProductSchema = new mongoose.Schema({
     _key: {
         type: String,
@@ -321,31 +272,25 @@ const webProductSchema = new mongoose.Schema({
         index: true
     },
 
-    // Ürünün yayınlandığı siteler (site bazlı aktarım filtreleri sync'te doldurur)
     sites: {
         type: [String],
         default: [DEFAULT_SITE],
         index: true
     },
 
-    // DIA Verileri
     diaData: diaDataSchema,
 
-    // Özel Veriler
     customData: customDataSchema,
 
-    // Senkronizasyon Bilgileri
     syncInfo: syncInfoSchema,
 
-    // Pricing Data (XML kaynaklı ürünler için hesaplanmış fiyatlar)
     pricingData: pricingDataSchema
 
 }, {
-    timestamps: true, // createdAt ve updatedAt otomatik ekler
+    timestamps: true,
     collection: 'webproducts'
 });
 
-// Index'ler
 webProductSchema.index({ '_key': 1 }, { unique: true });
 webProductSchema.index({ 'customData.seoUrl': 1 }, { unique: true, sparse: true });
 webProductSchema.index({ 'diaData.stokkartkodu': 1 });
@@ -359,7 +304,6 @@ webProductSchema.index({ 'syncInfo.webStatus': 1 });
 webProductSchema.index({ 'createdAt': -1 });
 webProductSchema.index({ 'updatedAt': -1 });
 
-// Compound index'ler
 webProductSchema.index({
     'syncInfo.diaStatus': 1,
     'customData.webVisible': 1,
@@ -367,7 +311,6 @@ webProductSchema.index({
     'diaData.gercek_stok': 1
 });
 
-// Text search için
 webProductSchema.index({
     'diaData.aciklama': 'text',
     'diaData.stokkartkodu': 'text',
@@ -376,7 +319,6 @@ webProductSchema.index({
     'customData.customDescription': 'text'
 });
 
-// Virtual'lar
 webProductSchema.virtual('isActive').get(function () {
     return this.syncInfo.diaStatus === 'synced' &&
         this.customData.webVisible === true &&
@@ -393,9 +335,7 @@ webProductSchema.virtual('displayPrice').get(function () {
         0;
 });
 
-// Middleware
 webProductSchema.pre('save', function (next) {
-    // SEO URL otomatik oluştur
     if (!this.customData.seoUrl && this.diaData.aciklama) {
         this.customData.seoUrl = this.diaData.aciklama
             .toLowerCase()
@@ -407,7 +347,6 @@ webProductSchema.pre('save', function (next) {
     next();
 });
 
-// Static metodlar
 webProductSchema.statics.getWebProducts = function (filter = {}) {
     return this.find({
         'syncInfo.diaStatus': 'synced',

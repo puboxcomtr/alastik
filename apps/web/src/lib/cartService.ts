@@ -53,7 +53,6 @@ class CartService {
   constructor() {
     this.baseUrl = getBaseUrl();
 
-    // Client-side'da local cart'ı yükle
     if (typeof window !== 'undefined') {
       const localCartData = localStorage.getItem('local_cart');
       if (localCartData) {
@@ -67,18 +66,13 @@ class CartService {
     }
   }
 
-  /**
-   * Sepeti getir (authenticated user için backend'den, guest için localStorage'dan)
-   */
   async getCart(): Promise<CartResponse> {
     try {
       if (authService.isAuthenticated()) {
-        // Authenticated user - backend'den getir
         const response = await authService.authenticatedRequest('/cart');
         const data = await response.json();
 
         if (data.success) {
-          // Local sepeti backend'e merge et; merge olduysa sepeti tekrar çek
           const mergedCount = await this.syncLocalCartToBackend();
           if (mergedCount > 0) {
             const response2 = await authService.authenticatedRequest('/cart');
@@ -94,7 +88,6 @@ class CartService {
           error: data.error
         };
       } else {
-        // Guest user - localStorage'dan getir
         return {
           success: true,
           data: this.getLocalCart()
@@ -110,13 +103,9 @@ class CartService {
     }
   }
 
-  /**
-   * Sepete ürün ekle
-   */
   async addToCart(item: Omit<CartItem, 'addedAt' | 'updatedAt'>): Promise<CartResponse> {
     try {
       if (authService.isAuthenticated()) {
-        // Authenticated user - backend'e ekle
         const response = await authService.authenticatedRequest('/cart/add', {
           method: 'POST',
           body: JSON.stringify(item),
@@ -135,18 +124,15 @@ class CartService {
           error: data.error
         };
       } else {
-        // Guest user - localStorage'a ekle
         const cart = this.getLocalCart();
         const existingItemIndex = cart.items.findIndex(
           cartItem => cartItem.productId === item.productId
         );
 
         if (existingItemIndex > -1) {
-          // Ürün zaten sepette, miktarını artır
           cart.items[existingItemIndex].quantity += item.quantity;
           cart.items[existingItemIndex].updatedAt = new Date().toISOString();
         } else {
-          // Yeni ürün ekle
           cart.items.push({
             ...item,
             addedAt: new Date().toISOString(),
@@ -154,7 +140,6 @@ class CartService {
           });
         }
 
-        // Toplamları güncelle
         this.updateCartTotals(cart);
         this.saveLocalCart(cart);
         this.notifyCartUpdate();
@@ -175,13 +160,9 @@ class CartService {
     }
   }
 
-  /**
-   * Sepetten ürün çıkar
-   */
   async removeFromCart(productId: string): Promise<CartResponse> {
     try {
       if (authService.isAuthenticated()) {
-        // Authenticated user - backend'den çıkar
         const response = await authService.authenticatedRequest(`/cart/remove/${productId}`, {
           method: 'DELETE',
         });
@@ -199,7 +180,6 @@ class CartService {
           error: data.error
         };
       } else {
-        // Guest user - localStorage'dan çıkar
         const cart = this.getLocalCart();
         cart.items = cart.items.filter(item => item.productId !== productId);
 
@@ -223,9 +203,6 @@ class CartService {
     }
   }
 
-  /**
-   * Sepetteki ürün miktarını güncelle
-   */
   async updateQuantity(productId: string, quantity: number): Promise<CartResponse> {
     try {
       if (quantity < 1) {
@@ -233,7 +210,6 @@ class CartService {
       }
 
       if (authService.isAuthenticated()) {
-        // Authenticated user - backend'de güncelle
         const response = await authService.authenticatedRequest(`/cart/update/${productId}`, {
           method: 'PUT',
           body: JSON.stringify({ quantity }),
@@ -252,7 +228,6 @@ class CartService {
           error: data.error
         };
       } else {
-        // Guest user - localStorage'da güncelle
         const cart = this.getLocalCart();
         const itemIndex = cart.items.findIndex(item => item.productId === productId);
 
@@ -287,13 +262,9 @@ class CartService {
     }
   }
 
-  /**
-   * Sepeti temizle
-   */
   async clearCart(): Promise<CartResponse> {
     try {
       if (authService.isAuthenticated()) {
-        // Authenticated user - backend'de temizle
         const response = await authService.authenticatedRequest('/cart/clear', {
           method: 'DELETE',
         });
@@ -311,7 +282,6 @@ class CartService {
           error: data.error
         };
       } else {
-        // Guest user - localStorage'ı temizle
         const cart = this.createEmptyCart();
         this.saveLocalCart(cart);
         this.notifyCartUpdate();
@@ -332,13 +302,9 @@ class CartService {
     }
   }
 
-  /**
-   * Sepet özetini getir
-   */
   async getCartSummary(): Promise<{ itemCount: number; totalPrice: number; currency: string }> {
     try {
       if (authService.isAuthenticated()) {
-        // Login sonrası misafir sepetini backend'e birleştir
         await this.syncLocalCartToBackend();
         const response = await authService.authenticatedRequest('/cart/summary');
         const data = await response.json();
@@ -352,14 +318,11 @@ class CartService {
         }
       }
 
-      // Fallback to local carts (prefer modern 'local_cart'; if empty, use legacy 'shopping_cart')
       if (typeof window !== 'undefined') {
-        // Modern local cart
         const modern = this.getLocalCart();
         if (modern.totalItems > 0) {
           return { itemCount: modern.totalItems, totalPrice: modern.totalPrice, currency: modern.currency };
         }
-        // Legacy cart
         const legacyJson = localStorage.getItem(this.legacyKey);
         if (legacyJson) {
           try {
@@ -373,7 +336,6 @@ class CartService {
       return { itemCount: 0, totalPrice: 0, currency: 'TRY' };
     } catch (error) {
       console.error('Get cart summary error:', error);
-      // Safe fallback
       try {
         if (typeof window !== 'undefined') {
           const modern = this.getLocalCart();
@@ -391,9 +353,6 @@ class CartService {
     }
   }
 
-  /**
-   * Local cart'ı backend ile senkronize et (login sonrası)
-   */
   async syncLocalCartToBackend(): Promise<number> {
     try {
       if (!authService.isAuthenticated()) {
@@ -402,7 +361,6 @@ class CartService {
 
       let merged = 0;
 
-      // 1) Legacy cart (shopping_cart) aktarımı
       if (typeof window !== 'undefined') {
         const legacyJson = localStorage.getItem(this.legacyKey);
         if (legacyJson) {
@@ -435,12 +393,10 @@ class CartService {
             }
             localStorage.removeItem(this.legacyKey);
           } catch (e) {
-            // ignore parse errors
           }
         }
       }
 
-      // 2) Modern local cart (local_cart) aktarımı
       if (this.localCart && this.localCart.items.length > 0) {
         for (const item of this.localCart.items) {
           await authService.authenticatedRequest('/cart/add', {
@@ -461,7 +417,6 @@ class CartService {
         }
       }
 
-      // Local kopyaları temizle
       this.clearLocalCart();
       return merged;
     } catch (error) {
@@ -470,9 +425,6 @@ class CartService {
     }
   }
 
-  /**
-   * Local cart helper methods
-   */
   private getLocalCart(): Cart {
     if (!this.localCart) {
       this.localCart = this.createEmptyCart();
@@ -491,7 +443,6 @@ class CartService {
     this.localCart = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('local_cart');
-      // Eski alışveriş sepeti anahtarını da temizle
       localStorage.removeItem(this.legacyKey);
     }
   }
@@ -526,7 +477,6 @@ class CartService {
 
   private notifyCartUpdate(): void {
     if (typeof window !== 'undefined') {
-      // Detayları ekleyebilirsek ekleyelim; edemezsek bare event gönderelim
       const dispatchBare = () => window.dispatchEvent(new CustomEvent('cartUpdated'));
       if (authService.isAuthenticated()) {
         this.safeBackendSummary()
@@ -540,13 +490,11 @@ class CartService {
           .catch(dispatchBare);
       } else {
         try {
-          // Önce modern cart
           const modern = this.getLocalCart();
           if (modern.totalItems > 0) {
             window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { itemCount: modern.totalItems, totalPrice: modern.totalPrice } }));
             return;
           }
-          // Legacy cart
           const legacyJson = localStorage.getItem(this.legacyKey);
           if (legacyJson) {
             const legacyItems: Array<any> = JSON.parse(legacyJson);
@@ -564,9 +512,7 @@ class CartService {
   }
 }
 
-// Singleton instance
 const cartService = new CartService();
 export default cartService;
 
-// Export types
 export type { CartItem, Cart, CartResponse };

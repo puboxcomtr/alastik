@@ -28,18 +28,15 @@ const blockedIPSchema = new mongoose.Schema({
     collection: 'blockedips'
 });
 
-// Index'ler
 blockedIPSchema.index({ ipAddress: 1 });
 blockedIPSchema.index({ status: 1, expiresAt: 1 });
 
-// Virtual - Aktif mi?
 blockedIPSchema.virtual('isActive').get(function () {
     if (this.status === 'expired') return false;
     if (!this.expiresAt) return true;
     return this.expiresAt > Date.now();
 });
 
-// Otomatik expire kontrolü
 blockedIPSchema.pre('save', function (next) {
     if (this.expiresAt && this.expiresAt <= Date.now()) {
         this.status = 'expired';
@@ -47,7 +44,6 @@ blockedIPSchema.pre('save', function (next) {
     next();
 });
 
-// Static metodlar
 blockedIPSchema.statics.isBlocked = async function (ipAddress) {
     const blocked = await this.findOne({
         ipAddress,

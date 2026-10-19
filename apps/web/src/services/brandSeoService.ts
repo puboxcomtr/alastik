@@ -1,6 +1,3 @@
-// Marka SEO özeti (/api/brand-seo) — marka ve marka × mevsim sayfaları ile sitemap için.
-// Marka sayfası yardımcı veridir: hata durumunda null döner, sayfa ürün listesiyle açılmaya devam eder.
-// Marka × mevsim sayfası ise bu veriye dayanır (getBrandSeoStrict: API hatası → sayfa 500, bkz. lib/apiError).
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 
@@ -80,7 +77,6 @@ export async function getBrandSeoStrict(slug: string, season?: SeasonKey): Promi
     }
 }
 
-// site: x-site header'ı olmayan isteklerde (sitemap route'ları) açıkça verilir
 export async function getBrandSeoIndex(site: string): Promise<BrandSeoIndexRow[]> {
     try {
         const res = await fetch(`${apiRoot()}/brand-seo`, {

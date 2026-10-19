@@ -1,14 +1,12 @@
 const mongoose = require('mongoose');
 
 const formSchema = new mongoose.Schema({
-    // Form Bilgileri
     formType: {
         type: String,
         enum: ['contact', 'quote', 'support', 'newsletter', 'custom'],
         default: 'contact'
     },
 
-    // Kişisel Bilgiler
     name: {
         type: String,
         required: true,
@@ -31,7 +29,6 @@ const formSchema = new mongoose.Schema({
         default: ''
     },
 
-    // Mesaj
     subject: {
         type: String,
         trim: true,
@@ -42,7 +39,6 @@ const formSchema = new mongoose.Schema({
         required: true
     },
 
-    // İstek Bilgileri
     sourceUrl: {
         type: String,
         required: true
@@ -60,27 +56,23 @@ const formSchema = new mongoose.Schema({
         default: ''
     },
 
-    // Extra Data (özel form alanları için)
     extraData: {
         type: Map,
         of: String,
         default: {}
     },
 
-    // Durum
     status: {
         type: String,
         enum: ['new', 'read', 'replied', 'archived'],
         default: 'new'
     },
 
-    // Notlar (admin için)
     adminNotes: {
         type: String,
         default: ''
     },
 
-    // Okunma tarihi
     readAt: {
         type: Date,
         default: null
@@ -89,7 +81,6 @@ const formSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Indexes
 formSchema.index({ email: 1 });
 formSchema.index({ status: 1 });
 formSchema.index({ formType: 1 });

@@ -13,14 +13,12 @@ export default function TirePreview({ originalSize, targetSize, result }: Props)
     const origDiameter = calcTireDiameter(originalSize);
     const targetDiameter = calcTireDiameter(targetSize);
 
-    // SVG için ölçek: en büyük lastik 180px olacak şekilde orantı
     const maxDiameter = Math.max(origDiameter, targetDiameter);
     const scale = 180 / maxDiameter;
 
     const origRadius = (origDiameter / 2) * scale;
     const targetRadius = (targetDiameter / 2) * scale;
 
-    // Jant yarıçapı (inch × 25.4 / 2 × scale)
     const origRimRadius = (originalSize.rimDiameter * 25.4 / 2) * scale;
     const targetRimRadius = (targetSize.rimDiameter * 25.4 / 2) * scale;
 
@@ -31,27 +29,23 @@ export default function TirePreview({ originalSize, targetSize, result }: Props)
             </h6>
 
             <div className="d-flex justify-content-around align-items-center flex-wrap gap-3">
-                {/* Mevcut Lastik */}
                 <div className="text-center">
                     <div className="fw-semibold mb-2" style={{ color: '#000' }}>
                         Mevcut Lastik
                     </div>
                     <svg width="200" height="200" viewBox="-100 -100 200 200">
-                        {/* Lastik (siyah halka) */}
                         <circle
                             cx="0"
                             cy="0"
                             r={origRadius}
                             fill="#1a1a1a"
                         />
-                        {/* Jant (gri iç daire) */}
                         <circle
                             cx="0"
                             cy="0"
                             r={origRimRadius}
                             fill="#a0a0a0"
                         />
-                        {/* Jant göbeği */}
                         <circle
                             cx="0"
                             cy="0"
@@ -63,7 +57,6 @@ export default function TirePreview({ originalSize, targetSize, result }: Props)
                     <div className="text-body-tertiary fs-sm">Ø {origDiameter.toFixed(0)} mm</div>
                 </div>
 
-                {/* Sonuç Kartı (Ortada) */}
                 {result && (
                     <div
                         className="text-center p-3 rounded"
@@ -89,7 +82,6 @@ export default function TirePreview({ originalSize, targetSize, result }: Props)
                     </div>
                 )}
 
-                {/* Yeni Lastik */}
                 <div className="text-center">
                     <div className="fw-semibold mb-2" style={{ color: '#000' }}>
                         Yeni Lastik

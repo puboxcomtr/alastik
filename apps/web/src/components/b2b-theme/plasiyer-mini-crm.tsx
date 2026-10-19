@@ -1,8 +1,4 @@
 'use client';
-// Mini CRM — plasiyerin bayi takip alanı (saha satışı için).
-//  - Hatırlatma tarihine göre filtre: Bugün / Bu Hafta / Tümü
-//  - MUI (Materio benzeri tema): Card + Table + Chip + inline not düzenleme
-//  ŞİMDİLİK SADECE FRONTEND (demo, local state) — sonra canlıya bağlanacak.
 import { useMemo, useState } from 'react';
 import {
     Card, CardContent, Typography, Box, Stack, Avatar, Chip, TextField, Button,
@@ -27,7 +23,6 @@ const DURUM_ETIKET: Record<Durum, { label: string; renk: ChipRenk }> = {
     takip: { label: 'Takipte', renk: 'warning' },
 };
 
-// Bugüne göre demo tarih üretimi
 function gun(offset: number): Date {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -47,7 +42,6 @@ const DEMO: Kayit[] = [
 
 const fmt = (d: Date) => d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
 
-// Hatırlatma tarihine göre okunur ifade
 function hatirlatmaMetni(d: Date): { metin: string; gecikmis: boolean } {
     const bugun = gun(0).getTime();
     const fark = Math.round((d.getTime() - bugun) / 86400000);
@@ -74,8 +68,8 @@ export function PlasiyerMiniCrm() {
             .map((k, i) => ({ k, i }))
             .filter(({ k }) => {
                 if (tab === 'tumu') return true;
-                if (tab === 'bugun') return k.hatirlatma.getTime() <= bugun; // bugün + gecikmiş
-                return k.hatirlatma.getTime() <= haftaSonu; // bu hafta
+                if (tab === 'bugun') return k.hatirlatma.getTime() <= bugun;
+                return k.hatirlatma.getTime() <= haftaSonu;
             });
         liste.sort((a, b) => a.k.hatirlatma.getTime() - b.k.hatirlatma.getTime());
         return liste;

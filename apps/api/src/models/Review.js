@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const ReviewSchema = new mongoose.Schema({
-  // Temel bilgiler
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -19,7 +18,6 @@ const ReviewSchema = new mongoose.Schema({
     ref: 'Order'
   },
   
-  // Değerlendirme detayları
   rating: {
     overall: {
       type: Number,
@@ -49,7 +47,6 @@ const ReviewSchema = new mongoose.Schema({
     }
   },
   
-  // Yorum
   title: {
     type: String,
     required: true,
@@ -65,7 +62,6 @@ const ReviewSchema = new mongoose.Schema({
     maxlength: [1000, 'Yorum 1000 karakterden uzun olamaz']
   },
   
-  // Kullanım bilgileri
   usage: {
     vehicleType: {
       type: String,
@@ -82,10 +78,9 @@ const ReviewSchema = new mongoose.Schema({
       type: String,
       enum: ['less_than_month', '1-3_months', '3-6_months', '6-12_months', 'more_than_year']
     },
-    mileage: Number // Kaç km kullandı
+    mileage: Number
   },
   
-  // Avantaj/Dezavantajlar
   pros: [{
     type: String,
     trim: true,
@@ -98,7 +93,6 @@ const ReviewSchema = new mongoose.Schema({
     maxlength: [100, 'Dezavantaj 100 karakterden uzun olamaz']
   }],
   
-  // Fotoğraflar
   images: [{
     url: {
       type: String,
@@ -111,7 +105,6 @@ const ReviewSchema = new mongoose.Schema({
     }
   }],
   
-  // Durum ve moderasyon
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'hidden'],
@@ -140,7 +133,6 @@ const ReviewSchema = new mongoose.Schema({
     }]
   },
   
-  // Etkileşim
   helpfulness: {
     helpful: {
       type: Number,
@@ -166,7 +158,6 @@ const ReviewSchema = new mongoose.Schema({
     }]
   },
   
-  // Yanıtlar (mağaza yanıtı)
   response: {
     comment: String,
     respondedBy: {
@@ -176,7 +167,6 @@ const ReviewSchema = new mongoose.Schema({
     respondedAt: Date
   },
   
-  // Meta bilgiler
   source: {
     type: String,
     enum: ['web', 'mobile', 'email_invite'],
@@ -188,7 +178,6 @@ const ReviewSchema = new mongoose.Schema({
     default: 'tr'
   },
   
-  // Ürün snapshot (ürün silinse bile görünsün)
   productSnapshot: {
     name: String,
     brand: String,
@@ -198,7 +187,6 @@ const ReviewSchema = new mongoose.Schema({
     image: String
   },
   
-  // Tarih bilgileri
   createdAt: {
     type: Date,
     default: Date.now
@@ -216,17 +204,14 @@ const ReviewSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
 ReviewSchema.index({ productId: 1, status: 1, createdAt: -1 });
 ReviewSchema.index({ userId: 1, createdAt: -1 });
 ReviewSchema.index({ 'rating.overall': 1 });
 ReviewSchema.index({ status: 1, publishedAt: -1 });
 ReviewSchema.index({ isVerifiedPurchase: 1 });
 
-// Bir kullanıcı bir ürün için sadece bir değerlendirme yapabilir
 ReviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
 
-// Virtual fields
 ReviewSchema.virtual('averageRating').get(function() {
   const ratings = [
     this.rating.overall,
@@ -254,11 +239,9 @@ ReviewSchema.virtual('daysSinceReview').get(function() {
   return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 });
 
-// Middleware
 ReviewSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   
-  // Onaylandığında publish date'i set et
   if (this.status === 'approved' && !this.publishedAt) {
     this.publishedAt = Date.now();
   }
@@ -266,7 +249,6 @@ ReviewSchema.pre('save', function(next) {
   next();
 });
 
-// Ürün snapshot'ını kaydet
 ReviewSchema.pre('save', async function(next) {
   if (this.isNew && this.productId) {
     try {
@@ -290,7 +272,6 @@ ReviewSchema.pre('save', async function(next) {
   next();
 });
 
-// Static methods
 ReviewSchema.statics.getProductReviews = function(productId, options = {}) {
   const { 
     page = 1, 
@@ -418,21 +399,17 @@ ReviewSchema.statics.getUserReviews = function(userId, options = {}) {
     .skip((page - 1) * limit);
 };
 
-// Instance methods
 ReviewSchema.methods.addHelpfulVote = function(userId, vote) {
-  // Önceki oyunu kaldır
   this.helpfulness.votes = this.helpfulness.votes.filter(
     v => v.userId.toString() !== userId.toString()
   );
   
-  // Yeni oyunu ekle
   this.helpfulness.votes.push({
     userId,
     vote,
     votedAt: new Date()
   });
   
-  // Sayıları güncelle
   const helpfulVotes = this.helpfulness.votes.filter(v => v.vote === 'helpful').length;
   const notHelpfulVotes = this.helpfulness.votes.filter(v => v.vote === 'not_helpful').length;
   

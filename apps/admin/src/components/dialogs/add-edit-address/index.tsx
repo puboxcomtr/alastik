@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -23,10 +21,8 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import { styled } from '@mui/material/styles'
 import type { TypographyProps } from '@mui/material/Typography'
 
-// Type Imports
 import type { CustomInputHorizontalData } from '@core/components/custom-inputs/types'
 
-// Component Imports
 import CustomInputHorizontal from '@core/components/custom-inputs/Horizontal'
 
 type AddEditAddressData = {
@@ -47,7 +43,6 @@ type AddEditAddressProps = {
   data?: AddEditAddressData
 }
 
-// Vars
 const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
 
 const initialAddressData: AddEditAddressProps['data'] = {
@@ -62,7 +57,6 @@ const initialAddressData: AddEditAddressProps['data'] = {
   zipCode: ''
 }
 
-// Styled Components
 const Title = styled(Typography, {
   name: 'MuiCustomInputVertical',
   slot: 'title'
@@ -100,10 +94,8 @@ const customInputData: CustomInputHorizontalData[] = [
 ]
 
 const AddEditAddress = ({ open, setOpen, data }: AddEditAddressProps) => {
-  // Vars
   const initialSelected: string = customInputData?.find(item => item.isSelected)?.value || ''
 
-  // States
   const [selected, setSelected] = useState<string>(initialSelected)
   const [addressData, setAddressData] = useState<AddEditAddressProps['data']>(initialAddressData)
 

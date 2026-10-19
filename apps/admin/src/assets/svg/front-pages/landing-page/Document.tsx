@@ -1,4 +1,3 @@
-// React Imports
 import type { SVGAttributes } from 'react'
 
 const Document = (props: SVGAttributes<SVGElement>) => {

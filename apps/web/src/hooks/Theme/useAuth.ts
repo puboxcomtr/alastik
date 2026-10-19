@@ -1,4 +1,3 @@
-// apps/web/src/hooks/Theme/useAuth.ts
 import { useState, useEffect } from 'react';
 import type { User } from '@/src/types/user';
 
@@ -46,11 +45,9 @@ export const useAuth = () => {
     const clearAuth = () => {
         if (typeof window === 'undefined') return;
 
-        // LocalStorage temizle
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
 
-        // Cookie'yi sil
         deleteCookie('authToken');
 
         setUser(null);
@@ -63,7 +60,6 @@ export const useAuth = () => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(userData));
 
-        // Cookie'ye kaydet (30 gün)
         setCookie('authToken', token, 30);
 
         setUser(userData);

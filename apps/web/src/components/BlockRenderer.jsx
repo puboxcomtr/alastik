@@ -1,4 +1,3 @@
-// apps/web/src/components/BlockRenderer.jsx
 'use client';
 
 import { useEffect, useState } from 'react';

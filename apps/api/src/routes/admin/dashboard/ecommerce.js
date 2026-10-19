@@ -12,10 +12,8 @@ const PAYMENT_METHOD_LABELS = {
     netahsilat_installment: 'Kredi Kartı (Taksitli)'
 };
 
-// Ciroya dahil edilen ödeme yöntemleri (kapıda ödeme hariç)
 const REVENUE_METHODS = ['credit_card', 'credit_card_3d', 'netahsilat_installment', 'bank_transfer'];
 
-// Ciro koşulu: ödemesi alınmış + onay bekleyen olmayan + geçerli ödeme yöntemli siparişler
 const revenueMatch = {
     'payment.status': 'paid',
     'payment.method': { $in: REVENUE_METHODS },
@@ -28,7 +26,6 @@ const DEVICE_LABELS = {
     tablet: { title: 'Tablet', color: 'warning' }
 };
 
-// Yüzde değişim (önceki dönem 0 ise artışı %100 kabul eder)
 const pctChange = (current, previous) => {
     if (!previous) return current > 0 ? 100 : 0;
     return Math.round(((current - previous) / previous) * 100);
@@ -36,14 +33,13 @@ const pctChange = (current, previous) => {
 
 const daysAgo = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 
-// GET /api/admin/dashboard/ecommerce — seçili sitenin pano verileri
 router.get('/ecommerce', async (req, res) => {
     try {
         const site = req.site;
         const now = new Date();
         const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const d14 = daysAgo(13); // bugün dahil 14 gün
+        const d14 = daysAgo(13);
         const d28 = daysAgo(28);
         const d30 = daysAgo(30);
         const d60 = daysAgo(60);
@@ -60,8 +56,6 @@ router.get('/ecommerce', async (req, res) => {
                         { $match: { ...revenueMatch, createdAt: { $gte: d60, $lt: d30 } } },
                         { $group: { _id: null, total: { $sum: '$pricing.total' }, count: { $sum: 1 } } }
                     ],
-                    // Onay bekleyenler: ödemesi alınmış ama henüz onaylanmamış siparişler
-                    // (ödeme durumu "bekliyor" olanlar sayılmaz)
                     pendingCount: [
                         { $match: { status: 'pending', 'payment.status': 'paid' } },
                         { $count: 'count' }
@@ -98,7 +92,6 @@ router.get('/ecommerce', async (req, res) => {
                         },
                         { $sort: { total: -1 } }
                     ],
-                    // Son siparişler: sipariş listesiyle tutarlı — yalnızca ödemesi alınmış olanlar
                     recentOrders: [
                         { $match: { 'payment.status': 'paid' } },
                         { $sort: { createdAt: -1 } },
@@ -125,13 +118,11 @@ router.get('/ecommerce', async (req, res) => {
         const salesPrev30 = orderStats.salesPrev30[0] || { total: 0, count: 0 };
         const monthPaid = orderStats.monthPaid[0] || { total: 0, count: 0 };
 
-        // Üye istatistikleri (son 30 gün vs önceki 30 gün)
         const [newMembers, prevMembers] = await Promise.all([
             WebMember.countDocuments({ site, createdAt: { $gte: d30 } }),
             WebMember.countDocuments({ site, createdAt: { $gte: d60, $lt: d30 } })
         ]);
 
-        // Ziyaret istatistikleri (son 28 gün, oturum kayıtlarından; site alanı yeni oturumlarla dolar)
         const [visitStats] = await Session.aggregate([
             { $match: { site, createdAt: { $gte: d28 } } },
             {
@@ -166,7 +157,6 @@ router.get('/ecommerce', async (req, res) => {
             };
         });
 
-        // Son 14 günün eksiksiz serisi (siparişsiz günler 0)
         const dailyMap = Object.fromEntries(orderStats.daily14.map(d => [d._id, d.total]));
         const dailySeries = [];
         for (let i = 13; i >= 0; i--) {

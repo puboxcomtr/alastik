@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Components */
 import ProductListTable from '@views/apps/ecommerce/products/list/ProductListTable'
 import SyncDropdown from '@views/apps/ecommerce/products/components/SyncDropdown'
 

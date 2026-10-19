@@ -39,7 +39,6 @@ import {
     type BrandOptionType
 } from '@/utils/api/menus'
 
-// Ana başlığa verilebilecek bağlantı tipleri
 const TITLE_LINK_TYPES: { value: MenuType['menuType']; label: string }[] = [
     { value: 'heading', label: 'Bağlantı yok (sadece başlık)' },
     { value: 'link', label: 'Bağlantı (URL)' },
@@ -64,19 +63,15 @@ const MenuTable = () => {
     const menuParam = searchParams.get('menu')
     const [data, setData] = useState<MenuType[]>([])
     const [loading, setLoading] = useState(true)
-    // Seçili menü (ana kayıt) — null ise menü listesi gösterilir
     const [selectedMenu, setSelectedMenu] = useState<MenuType | null>(null)
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [menuToDelete, setMenuToDelete] = useState<MenuType | null>(null)
-    // Sürükle-bırak sıralama
     const [suruklenen, setSuruklenen] = useState<string | null>(null)
     const [uzerinde, setUzerinde] = useState<string | null>(null)
     const [siraKaydediliyor, setSiraKaydediliyor] = useState(false)
 
-    // Yeni menü oluşturma dialogu
     const [addDialogOpen, setAddDialogOpen] = useState(false)
 
-    // Ana başlık düzenleme penceresi
     const [titleMenu, setTitleMenu] = useState<MenuType | null>(null)
     const [titleName, setTitleName] = useState('')
     const [titleArea, setTitleArea] = useState<MenuType['displayArea']>('header')
@@ -92,8 +87,6 @@ const MenuTable = () => {
     const [newMenuArea, setNewMenuArea] = useState<MenuType['displayArea']>('header')
     const [saving, setSaving] = useState(false)
 
-    // silent: yenilemede "Yükleniyor" ekranına geçilmez — açık dialog aniden
-    // kaldırılırsa MUI'nin sayfa kilidi çözülmez ve ekran donar
     const loadMenus = async (silent = false) => {
         try {
             if (!silent) setLoading(true)
@@ -112,8 +105,6 @@ const MenuTable = () => {
         loadMenus()
     }, [])
 
-    // ?menu=<id> ile gelindiğinde ilgili menünün detayını doğrudan aç
-    // (öğe id'si verildiyse kök menüsüne kadar çıkılır)
     useEffect(() => {
         if (loading || !menuParam || data.length === 0) return
         let node = data.find(m => m._id === menuParam)
@@ -126,7 +117,6 @@ const MenuTable = () => {
         if (node) setSelectedMenu(node)
     }, [loading, data, menuParam])
 
-    // Menüler: ana seviye kayıtlar (alan + sıra ile)
     const parentMenus = useMemo(
         () => data
             .filter(m => m.rowLevel === 1)
@@ -158,7 +148,6 @@ const MenuTable = () => {
     const handleDeleteConfirm = async () => {
         if (!menuToDelete) return
 
-        // Dialog istekten ÖNCE kapatılır; açıkken ağaç yeniden çizilirse sayfa kilitli kalır
         const target = menuToDelete
         setDeleteConfirmOpen(false)
         setMenuToDelete(null)
@@ -167,12 +156,10 @@ const MenuTable = () => {
             const result = await deleteMenu(target._id)
             if (result.success) {
                 toast.success('Menü başarıyla silindi')
-                // Liste yerinde güncellenir: yeniden yükleme/yönlendirme yok
                 setData(prev => prev.filter(m => m._id !== target._id))
                 if (selectedMenu && target._id === selectedMenu._id) setSelectedMenu(null)
             }
         } catch (error: any) {
-            // Kullanımdaysa backend mesajı gösterilir (örn. "Bu menüye bağlı alt menüler var")
             toast.error(error.message || 'Menü silinemedi')
         }
     }
@@ -212,7 +199,6 @@ const MenuTable = () => {
         }
     }
 
-    // Üst bar öğeleri + hemen altında girintili açılır menü öğeleri
     const detailData = useMemo(
         () => selectedMenu
             ? childrenOf(selectedMenu._id).flatMap(item => [
@@ -223,10 +209,6 @@ const MenuTable = () => {
         [selectedMenu, childrenOf]
     )
 
-    /**
-     * Sürükle-bırak: yalnızca AYNI üst menü altındaki öğeler kendi arasında sıralanır.
-     * Üst bar öğesi taşınırsa altındaki açılır öğeler onunla birlikte hareket eder.
-     */
     const birakildi = async (hedefId: string) => {
         const kaynakId = suruklenen
         setSuruklenen(null)
@@ -248,7 +230,6 @@ const MenuTable = () => {
 
         const guncel = yeni.map((m, i) => ({ id: m._id, order: i + 1 }))
 
-        // Ekranda hemen uygula
         setData(prev => prev.map(m => {
             const bulunan = guncel.find(g => g.id === m._id)
             return bulunan ? { ...m, order: bulunan.order } : m
@@ -266,7 +247,6 @@ const MenuTable = () => {
         }
     }
 
-    // Ana başlık penceresini mevcut değerlerle açar
     const openTitleDialog = (menu: MenuType) => {
         setTitleMenu(menu)
         setTitleName(menu.name)
@@ -278,7 +258,6 @@ const MenuTable = () => {
         )
         setTitleQuery('')
 
-        // Seçili hedef arama sonuçlarında olmayabilir; listeye doğrudan konur
         const link = menu.linkData as any
 
         if (menu.menuType === 'category' && link?.categoryId) {
@@ -294,7 +273,6 @@ const MenuTable = () => {
         }
     }
 
-    // Pencere açıkken tip değişince ilgili seçenekler yüklenir
     useEffect(() => {
         if (!titleMenu) return
 
@@ -321,7 +299,6 @@ const MenuTable = () => {
         return () => clearTimeout(timer)
     }, [titleMenu, titleType, titleQuery])
 
-    // Ana başlığı kaydeder
     const handleTitleSave = async () => {
         if (!titleMenu) return
 
@@ -368,7 +345,6 @@ const MenuTable = () => {
         }
     }
 
-    // Öğenin nereye yönlendirdiğini metne çevirir
     const linkTargetOf = (menu: MenuType) => {
         if (menu.menuType === 'link') return { label: 'Bağlantı', text: menu.linkData?.url || '-' }
         if (menu.menuType === 'category') {
@@ -396,7 +372,6 @@ const MenuTable = () => {
         return { label: 'Başlık', text: 'Sadece Başlık (Link Yok)' }
     }
 
-    // Yalnızca ilk yüklemede tam ekran bekleme gösterilir
     if (loading && data.length === 0) {
         return (
             <Card>
@@ -408,7 +383,6 @@ const MenuTable = () => {
         )
     }
 
-    // ÖN SAYFA: menü listesi
     if (!selectedMenu) {
         return (
             <>
@@ -513,7 +487,6 @@ const MenuTable = () => {
                     </div>
                 </Card>
 
-                {/* Ana başlık: ad, görüntülenme alanı ve başlığın kendi bağlantısı */}
                 <Dialog open={Boolean(titleMenu)} onClose={() => setTitleMenu(null)} fullWidth maxWidth='sm'>
                     <DialogTitle>Ana Başlığı Düzenle</DialogTitle>
                     <DialogContent>
@@ -619,7 +592,6 @@ const MenuTable = () => {
                     </DialogActions>
                 </Dialog>
 
-                {/* Yeni menü: sadece ad + alan; öğeler detaydan eklenir */}
                 <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} fullWidth maxWidth='xs'>
                     <DialogTitle>Yeni Menü Ekle</DialogTitle>
                     <DialogContent>
@@ -675,7 +647,6 @@ const MenuTable = () => {
         )
     }
 
-    // DETAY: seçili menünün öğeleri
     return (
         <>
             <Card>
@@ -741,7 +712,6 @@ const MenuTable = () => {
                                             onDrop={() => birakildi(item._id)}
                                             onDragEnd={() => { setSuruklenen(null); setUzerinde(null) }}
                                             style={{
-                                                // Taşınan satır soluklaşır, bırakılacak yer çizgiyle işaretlenir
                                                 opacity: suruklenen === item._id ? 0.35 : 1,
                                                 cursor: suruklenen ? 'grabbing' : 'grab',
                                                 backgroundColor: uzerinde === item._id && suruklenen && suruklenen !== item._id

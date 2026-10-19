@@ -3,37 +3,28 @@ const crypto = require('crypto');
 
 class UserSyncService {
     
-    /**
-     * DIA müşteri bilgisinden User oluştur/güncelle
-     * @param {Object} diaCustomerData - DIA'dan gelen müşteri bilgisi
-     * @returns {Promise<Object>} - User document ve adres/garaj ID'leri
-     */
     async createOrUpdateUserFromDia(diaCustomerData) {
         try {
             const {
-                _key_scf_carikart, // DIA müşteri key
-                __cariunvan,       // Ad soyad
-                __cariceptel,      // Telefon
-                __cariverginumarasi, // Vergi no
-                sevkadresi1,       // Adres satır 1
-                sevkadresi2,       // Adres satır 2 (ilçe)
-                sevkadresi3        // Adres satır 3 (şehir)
+                _key_scf_carikart,
+                __cariunvan,
+                __cariceptel,
+                __cariverginumarasi,
+                sevkadresi1,
+                sevkadresi2,
+                sevkadresi3
             } = diaCustomerData;
 
-            // İsim parse et
             const nameParts = (__cariunvan || '').trim().split(' ');
             const firstName = nameParts[0] || 'Müşteri';
             const lastName = nameParts.slice(1).join(' ') || '';
 
-            // Email oluştur (DIA'da email yok, dummy oluştur)
             const emailDomain = '@dia-customer.alastik.com';
             const emailPrefix = `customer-${_key_scf_carikart}`;
             const email = `${emailPrefix}${emailDomain}`;
 
-            // Telefonu temizle
             const cleanPhone = (__cariceptel || '').replace(/\D/g, '');
 
-            // Var mı kontrol et
             let user = await User.findOne({ diaKey: _key_scf_carikart });
 
             if (user) {
@@ -44,12 +35,11 @@ class UserSyncService {
                 };
             }
 
-            // Yeni user oluştur
             const randomPassword = crypto.randomBytes(16).toString('hex');
 
             user = new User({
                 email,
-                password: randomPassword, // Middleware hash'leyecek
+                password: randomPassword,
                 authProvider: 'local',
                 username: `dia_${_key_scf_carikart}`,
                 firstName,
@@ -65,11 +55,10 @@ class UserSyncService {
                 isEmailVerified: false,
                 isPhoneVerified: false,
                 
-                diaKey: _key_scf_carikart, // DIA key'i kaydet
+                diaKey: _key_scf_carikart,
                 
                 customerSegment: 'new',
                 
-                // Adres ekle
                 addresses: [],
                 garage: [],
                 
@@ -78,7 +67,6 @@ class UserSyncService {
                 }
             });
 
-            // Adresi ekle (eğer varsa)
             if (sevkadresi1) {
                 const addressData = this.parseDiaAddress(
                     sevkadresi1, 
@@ -107,11 +95,7 @@ class UserSyncService {
         }
     }
 
-    /**
-     * DIA adres verisini parse et
-     */
     parseDiaAddress(sevkadresi1, sevkadresi2, sevkadresi3, firstName, lastName, phone) {
-        // Şehir/İlçe parse et
         const cityDistrict = (sevkadresi3 || '').split('/');
         const district = cityDistrict[0]?.trim() || '';
         const city = cityDistrict[1]?.trim() || cityDistrict[0]?.trim() || '';
@@ -125,7 +109,7 @@ class UserSyncService {
             address: sevkadresi1 || '',
             city: city || 'Belirtilmemiş',
             district: district || 'Belirtilmemiş',
-            postalCode: '00000', // DIA'da posta kodu yok
+            postalCode: '00000',
             country: 'Turkey',
             isDefault: true,
             createdAt: new Date()

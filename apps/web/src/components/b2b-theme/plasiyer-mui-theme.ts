@@ -1,6 +1,4 @@
 'use client';
-// Plasiyer paneline özel Materio benzeri MUI teması.
-// Yalnız plasiyer alanını sarar (ThemeProvider ile), b2b vitrin temasını etkilemez.
 import { createTheme } from '@mui/material/styles';
 
 const textPrimary = 'rgba(76, 78, 100, 0.87)';

@@ -50,10 +50,6 @@ ul:not([class]) {
 }
 
 /*! Do not remove the following styles */
-/*
-  Fix the popout / submenu closing issue when using hover trigger to open the menu and using
-  perfectscrollbar where the bridge create with safe polygon by floating ui was not working
-*/
 [data-floating-ui-safe-polygon] .scrollbar-container {
   pointer-events: auto;
 }
@@ -115,7 +111,6 @@ ul:not([class]) {
   font-size: 1.5rem;
 }
 
-/* Fix width issue for the input-otp component */
 input[autocomplete='one-time-code'][data-input-otp='true'] {
   inline-size: 100% !important;
 }

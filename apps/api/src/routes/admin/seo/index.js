@@ -1,19 +1,3 @@
-/**
- * SEO modülü — /api/admin/seo/*
- *
- *  GET  /report?period=            Genel rapor (Search Console anlık görüntüsünden)
- *  POST /report/sync {days}        Arka planda Google'dan çekim başlat; GET /report/sync durum
- *  GET  /keywords?period=          Takip edilen kelimeler ve dönem istatistikleri
- *  POST /keywords {keyword}        Kelime ekle; DELETE /keywords/:id sil
- *  GET  /keywords/suggestions      Eklenebilecek kelime önerileri
- *  GET  /content?type&status&q     İçerik puan listesi; POST /content/scan tarama başlat
- *  GET  /content/:type/:id         Tek içerik: güncel analiz
- *  PUT  /content/:type/:id/focus-keyword {focusKeyword}
- *  POST /analyze                   Form içi canlı analiz (kaydetmeden)
- *  GET  /settings                  Analiz eşikleri (SeoSettings.analysis + varsayılanlar)
- *
- * Tüm uçlar req.site ile sınırlıdır (X-Site header).
- */
 
 const express = require('express');
 const router = express.Router();
@@ -37,10 +21,6 @@ const LIST_LIMIT = 10;
 const QUERY_POOL_LIMIT = 3000;
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const round1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
-
-// ---------------------------------------------------------------------------
-// Search Console tablo sorguları
-// ---------------------------------------------------------------------------
 
 const rangeMatch = (site, dimension, start, end) => ({ site, dimension, date: { $gte: start, $lte: end } });
 
@@ -113,7 +93,7 @@ function movers(current, previous) {
             continue;
         }
         if (row.impressions < MIN_IMPRESSIONS_FOR_MOVERS || prev.impressions < MIN_IMPRESSIONS_FOR_MOVERS) continue;
-        const delta = round1(prev.position - row.position); // pozitif = yukarı çıktı
+        const delta = round1(prev.position - row.position);
         const entry = { ...row, prevPosition: prev.position, delta, clicksDelta: row.clicks - prev.clicks };
         if (delta >= MOVER_MIN_DELTA) winners.push(entry);
         else if (delta <= -MOVER_MIN_DELTA) losers.push(entry);
@@ -167,10 +147,6 @@ async function trackedStats(site, current, previous) {
         };
     });
 }
-
-// ---------------------------------------------------------------------------
-// Rapor
-// ---------------------------------------------------------------------------
 
 router.get('/report', async (req, res) => {
     try {
@@ -239,10 +215,6 @@ router.post('/report/sync', async (req, res) => {
 router.get('/report/sync', (req, res) => {
     res.json({ success: true, data: searchConsole.getSyncState(req.site) });
 });
-
-// ---------------------------------------------------------------------------
-// Anahtar kelimeler
-// ---------------------------------------------------------------------------
 
 router.get('/keywords', async (req, res) => {
     try {
@@ -338,10 +310,6 @@ router.delete('/keywords/:id', async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// İçerik analizi
-// ---------------------------------------------------------------------------
-
 router.get('/content', async (req, res) => {
     try {
         const site = req.site;
@@ -428,7 +396,6 @@ router.post('/analyze', async (req, res) => {
         const body = req.body || {};
         const type = scanner.isValidType(body.type) ? body.type : 'page';
         const S = await scanner.loadSettings(req.site);
-        // Aynı odak kelime başka içerikte var mı (kendisi hariç)
         const usedElsewhere = await scanner.keywordUsage(req.site, body.focusKeyword, { type, refId: body.refId });
         const analysis = analyzeContent({
             type,

@@ -1,4 +1,3 @@
-// createAdmin.js
 
 const mongoose = require('mongoose');
 const AdminUser = require('../../models/admin/user/AdminUser');
@@ -6,11 +5,9 @@ require('dotenv').config({ path: __dirname + '/../../../.env' });
 
 async function createNewAdmin() {
     try {
-        // MongoDB bağlantısı
         console.log("Mongo URI:", process.env.MONGODB_URI);
         await mongoose.connect(process.env.MONGODB_URI);
 
-        // Email kontrolü
         const existingUser = await AdminUser.findOne({ email: 'emir@alastik.com' });
         if (existingUser) {
             console.log('❌ Bu email ile kullanıcı zaten mevcut.');
@@ -18,7 +15,6 @@ async function createNewAdmin() {
             process.exit(1);
         }
 
-        // Yeni admin oluştur
         const newAdmin = new AdminUser({
             email: 'emir@alastik.com',
             name: 'Emir',

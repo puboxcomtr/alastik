@@ -1,6 +1,5 @@
 'use client'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -10,10 +9,8 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Component Imports
 import CustomAvatar from '@/@core/components/mui/Avatar'
 
 type DataType = {
@@ -24,7 +21,6 @@ type DataType = {
   change?: number
 }
 
-// Vars
 const data: DataType[] = [
   {
     title: 'In-Store Sales',
@@ -56,7 +52,6 @@ const data: DataType[] = [
 ]
 
 const ProductCard = () => {
-  // Hooks
   const isBelowMdScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
   const isSmallScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
 

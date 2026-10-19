@@ -17,17 +17,14 @@ const Showcase = () => {
   const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
-    // Payment
     saleAgree: false,
     paymentSystem: false,
 
-    // Product Management
     hidePricelessProducts: false,
     recommendedProducts: false,
     autoCommentApproval: '1',
     commentFieldRequirement: '1',
 
-    // Showcase Management
     productsPerPage: 20,
     showcaseProductSize: '1024x1024',
     notPicture: false,
@@ -91,7 +88,6 @@ const Showcase = () => {
       setSaving(true)
       let watermarkImageUrl = formData.watermarkImagePreview
 
-      // Yeni dosya seçildiyse medya kütüphanesine yüklenir ve adresi kaydedilir
       if (formData.watermarkImage instanceof File) {
         const uploadFormData = new FormData()
 

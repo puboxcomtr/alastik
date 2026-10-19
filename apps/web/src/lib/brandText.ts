@@ -1,6 +1,3 @@
-// LJA marka ve marka × mevsim sayfalarının metinleri.
-// Elle yazılmış marka profili (data/lja/markaProfilleri.ts) + /api/brand-seo'dan gelen canlı stok özeti
-// birleştirilir; sayılar, desenler ve ebatlar her markada farklı olduğundan metinler de markaya özgüdür.
 import type { BrandSeo, BrandSeoStats, SeasonKey, Pair } from '@/src/services/brandSeoService';
 import { getBrandProfile, type BrandProfile, type BrandKind } from '@/src/data/lja/markaProfilleri';
 
@@ -10,7 +7,6 @@ const SEASON_LABEL: Record<SeasonKey, string> = { yaz: 'Yaz', kis: 'Kış', dort
 const SEASON_DIA: Record<SeasonKey, string> = { yaz: 'Yaz', kis: 'Kış', dort: '4 Mevsim' };
 const SEASON_LOWER: Record<SeasonKey, string> = { yaz: 'yaz', kis: 'kış', dort: 'dört mevsim' };
 
-// Marka × mevsim sayfası bu kadar üründen azsa açılmaz (404); dizine açılma eşiği ayrıca
 export const SEASON_PAGE_MIN = 3;
 export const SEASON_INDEX_MIN = 6;
 
@@ -40,11 +36,9 @@ const slugify = (s: string) => String(s || '').toLocaleLowerCase('tr-TR')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const seriesKey = (s: string) => String(s || '').toLocaleLowerCase('tr-TR').replace(/ı/g, 'i').replace(/[^a-z0-9]+/g, '');
 
-// Basit, kararlı seçim: aynı marka her zaman aynı kalıbı alır, markalar arasında kalıp değişir
 function seedOf(s: string) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
 const pick = <T,>(seed: string, arr: T[]): T => arr[seedOf(seed) % arr.length];
 
-// Ad cümlesine Türkçe ek-fiil: "üreticisi" → "üreticisidir", "marka" → "markadır", "solüsyon" → "solüsyondur"
 function copula(phrase: string): string {
     const w = phrase.trim();
     const vowels = w.match(/[aeıioöuü]/gi) || [];
@@ -162,7 +156,6 @@ function techList(display: string, stats: BrandSeoStats): ListItem[] {
     return items;
 }
 
-// ---------------------------------------------------------------- lastik (marka sayfası)
 function tireBrandContent(slug: string, p: BrandProfile, data: BrandSeo): BrandContent {
     const d = p.display;
     const st = data.stats;
@@ -307,7 +300,6 @@ function tireBrandContent(slug: string, p: BrandProfile, data: BrandSeo): BrandC
     };
 }
 
-// ---------------------------------------------------------------- lastik × mevsim
 const SEASON_TEXT: Record<SeasonKey, { why: string[]; tips: string[]; faq: { q: (d: string) => string; a: (d: string) => string }[] }> = {
     yaz: {
         why: [
@@ -426,7 +418,6 @@ function tireSeasonContent(slug: string, p: BrandProfile, data: BrandSeo, season
     };
 }
 
-// ---------------------------------------------------------------- diğer ürün tipleri
 const KIND_NOUN: Record<Exclude<BrandKind, 'lastik'>, string> = {
     agir: 'Ağır Vasıta Lastikleri',
     zincir: 'Kar Zinciri',
@@ -515,7 +506,6 @@ function otherBrandContent(slug: string, p: BrandProfile, data: BrandSeo): Brand
 
 function trimDesc(s: string, max = 158): string {
     let clean = s.replace(/\s+/g, ' ').trim();
-    // Uzunsa önce sondaki cümleler atılır; tek cümle kalırsa kelime sınırında kesilir
     while (clean.length > max && /\. [^.]+\.$/.test(clean)) clean = clean.replace(/ [^.]+\.$/, '');
     if (clean.length <= max) return clean;
     const cut = clean.slice(0, max - 1);
@@ -526,7 +516,6 @@ export function brandDisplayName(slug: string, fallback: string): string {
     return getBrandProfile(slug)?.display || titleCase(fallback);
 }
 
-// Marka sayfası metni; profil veya veri yoksa null (sayfa yalnız ürün listesiyle açılır)
 export function buildBrandContent(slug: string, data: BrandSeo | null): BrandContent | null {
     const p = getBrandProfile(slug);
     if (!p || !data || data.stats.total === 0) return null;

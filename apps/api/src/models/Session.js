@@ -2,34 +2,29 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const SessionSchema = new mongoose.Schema({
-  // Session ID
   sessionId: {
     type: String,
     required: true
   },
   
-  // Kullanıcı referansı
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     sparse: true
   },
   
-  // Session durumu
   status: {
     type: String,
     enum: ['active', 'expired', 'terminated', 'merged'],
     default: 'active'
   },
   
-  // Session tipi
   type: {
     type: String,
     enum: ['guest', 'authenticated', 'admin'],
     default: 'guest'
   },
   
-  // Session metadata
   metadata: {
     ipAddress: {
       type: String,
@@ -68,7 +63,6 @@ const SessionSchema = new mongoose.Schema({
     }
   },
   
-  // Session aktivitesi
   activity: {
     pageViews: {
       type: Number,
@@ -80,7 +74,7 @@ const SessionSchema = new mongoose.Schema({
     },
     totalDuration: {
       type: Number,
-      default: 0 // milliseconds
+      default: 0
     },
     lastActivity: {
       type: Date,
@@ -89,7 +83,6 @@ const SessionSchema = new mongoose.Schema({
     actions: [{
       type: {
         type: String,
-        // 'conversion': markConversion() bu tipi yazar; enum'da olmadığı için kayıt sessizce başarısız oluyordu
         enum: ['page_view', 'product_view', 'cart_add', 'cart_remove', 'search', 'login', 'logout', 'checkout', 'conversion'],
         required: true
       },
@@ -101,15 +94,12 @@ const SessionSchema = new mongoose.Schema({
     }]
   },
   
-  // Session verileri
   data: {
-    // Shopping cart ID
     cartId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Cart'
     },
     
-    // Wishlist items
     wishlist: [{
       productId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -121,7 +111,6 @@ const SessionSchema = new mongoose.Schema({
       }
     }],
     
-    // Recently viewed products
     recentlyViewed: [{
       productId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -133,7 +122,6 @@ const SessionSchema = new mongoose.Schema({
       }
     }],
     
-    // Search history
     searchHistory: [{
       query: String,
       results: Number,
@@ -143,11 +131,9 @@ const SessionSchema = new mongoose.Schema({
       }
     }],
     
-    // Custom data
     custom: mongoose.Schema.Types.Mixed
   },
   
-  // Session preferences
   preferences: {
     language: {
       type: String,
@@ -176,7 +162,6 @@ const SessionSchema = new mongoose.Schema({
     }
   },
   
-  // Session security
   security: {
     fingerprint: String,
     isSecure: {
@@ -203,16 +188,13 @@ const SessionSchema = new mongoose.Schema({
     }]
   },
   
-  // Session expiration
   expiresAt: {
     type: Date,
     default: function() {
-      // Guest sessions expire after 24 hours
       return new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
   },
   
-  // Merge information
   mergedTo: {
     sessionId: String,
     userId: {
@@ -222,7 +204,6 @@ const SessionSchema = new mongoose.Schema({
     mergedAt: Date
   },
   
-  // Conversion tracking
   conversion: {
     hasConverted: {
       type: Boolean,
@@ -243,7 +224,6 @@ const SessionSchema = new mongoose.Schema({
     }]
   },
   
-  // Session analytics
   analytics: {
     bounceRate: Number,
     sessionDepth: Number,
@@ -252,13 +232,11 @@ const SessionSchema = new mongoose.Schema({
     customerLifetimeValue: Number
   },
   
-  // Oturumun açıldığı site (ziyaret istatistikleri site bazlı tutulur)
   site: {
     type: String,
     index: true
   },
 
-  // Tarih bilgileri
   createdAt: {
     type: Date,
     default: Date.now
@@ -276,7 +254,6 @@ const SessionSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes for performance
 SessionSchema.index({ sessionId: 1 }, { unique: true });
 SessionSchema.index({ userId: 1 });
 SessionSchema.index({ status: 1 });
@@ -284,11 +261,9 @@ SessionSchema.index({ type: 1 });
 SessionSchema.index({ expiresAt: 1 });
 SessionSchema.index({ 'activity.lastActivity': -1 });
 SessionSchema.index({ 'metadata.ipAddress': 1 });
-// Oturum kayıtları 90 gün tutulur; daha eskiler MongoDB TTL ile kendiliğinden silinir
 const SESSION_RETENTION_SECONDS = 90 * 24 * 60 * 60;
 SessionSchema.index({ createdAt: -1 }, { expireAfterSeconds: SESSION_RETENTION_SECONDS });
 
-// Virtual fields
 SessionSchema.virtual('isExpired').get(function() {
   return this.expiresAt && this.expiresAt < new Date();
 });
@@ -312,30 +287,23 @@ SessionSchema.virtual('recentActivity').get(function() {
   return this.activity.actions.slice(-10);
 });
 
-// Middleware
 SessionSchema.pre('save', function(next) {
-  // Update timestamp
   this.updatedAt = Date.now();
   
-  // Update last activity
   this.activity.lastActivity = new Date();
   
-  // Calculate session duration
   if (this.terminatedAt) {
     this.activity.totalDuration = this.terminatedAt - this.createdAt;
   }
   
-  // Limit activity history
   if (this.activity.actions.length > 100) {
     this.activity.actions = this.activity.actions.slice(-100);
   }
   
-  // Limit recently viewed
   if (this.data.recentlyViewed.length > 20) {
     this.data.recentlyViewed = this.data.recentlyViewed.slice(-20);
   }
   
-  // Limit search history
   if (this.data.searchHistory.length > 50) {
     this.data.searchHistory = this.data.searchHistory.slice(-50);
   }
@@ -343,22 +311,18 @@ SessionSchema.pre('save', function(next) {
   next();
 });
 
-// Instance methods
 SessionSchema.methods.generateSessionId = function() {
   this.sessionId = crypto.randomBytes(32).toString('hex');
   return this.sessionId;
 };
 
-// Oturumda saklanan son eylem sayısı (belge sınırsız büyümesin)
 const MAX_ACTIVITY_ACTIONS = 50;
 
 SessionSchema.methods.updateActivity = function(actionType, details = {}) {
   const now = new Date();
   const isPageView = actionType === 'page_view';
-  // Bellekteki belge de güncel kalsın (aynı istekte okunursa)
   this.activity.lastActivity = now;
   if (isPageView) this.activity.pageViews += 1;
-  // Atomik güncelleme: aynı oturuma eşzamanlı istekler sürüm çakışması (VersionError) yaratmaz
   return this.constructor.updateOne({ _id: this._id }, {
     $push: { 'activity.actions': { $each: [{ type: actionType, details, timestamp: now }], $slice: -MAX_ACTIVITY_ACTIONS } },
     $set: { 'activity.lastActivity': now },
@@ -388,15 +352,12 @@ SessionSchema.methods.removeFromWishlist = function(productId) {
 };
 
 SessionSchema.methods.addToRecentlyViewed = function(productId) {
-  // Remove if already exists
   this.data.recentlyViewed = this.data.recentlyViewed.filter(item => 
     item.productId.toString() !== productId.toString()
   );
   
-  // Add to beginning
   this.data.recentlyViewed.unshift({ productId });
   
-  // Keep only last 20
   if (this.data.recentlyViewed.length > 20) {
     this.data.recentlyViewed = this.data.recentlyViewed.slice(0, 20);
   }
@@ -411,7 +372,6 @@ SessionSchema.methods.addToSearchHistory = function(query, results) {
     timestamp: new Date()
   });
   
-  // Keep only last 50
   if (this.data.searchHistory.length > 50) {
     this.data.searchHistory = this.data.searchHistory.slice(-50);
   }
@@ -423,10 +383,8 @@ SessionSchema.methods.authenticate = function(userId) {
   this.userId = userId;
   this.type = 'authenticated';
   
-  // Extend session for authenticated users
-  this.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  this.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   
-  // Tek save: updateActivity zaten save çağırır
   return this.updateActivity('login', { userId });
 };
 
@@ -434,7 +392,6 @@ SessionSchema.methods.terminate = function() {
   this.status = 'terminated';
   this.terminatedAt = new Date();
   
-  // Tek save: updateActivity zaten save çağırır
   return this.updateActivity('logout');
 };
 
@@ -446,14 +403,11 @@ SessionSchema.methods.expire = function() {
 };
 
 SessionSchema.methods.merge = function(targetSession) {
-  // Merge cart
   if (this.data.cartId && targetSession.data.cartId) {
-    // Cart merge logic will be handled by Cart model
   } else if (this.data.cartId) {
     targetSession.data.cartId = this.data.cartId;
   }
   
-  // Merge wishlist
   this.data.wishlist.forEach(item => {
     const exists = targetSession.data.wishlist.find(w => 
       w.productId.toString() === item.productId.toString()
@@ -463,15 +417,12 @@ SessionSchema.methods.merge = function(targetSession) {
     }
   });
   
-  // Merge recently viewed
   this.data.recentlyViewed.forEach(item => {
     targetSession.addToRecentlyViewed(item.productId);
   });
   
-  // Merge search history
   targetSession.data.searchHistory.push(...this.data.searchHistory);
   
-  // Mark this session as merged
   this.status = 'merged';
   this.mergedTo = {
     sessionId: targetSession.sessionId,
@@ -485,22 +436,18 @@ SessionSchema.methods.merge = function(targetSession) {
 SessionSchema.methods.calculateRiskScore = function() {
   let riskScore = 0;
   
-  // Multiple locations
   if (this.security.flags.includes('multiple_locations')) {
     riskScore += 30;
   }
   
-  // Bot detection
   if (this.security.flags.includes('bot_detected')) {
     riskScore += 50;
   }
   
-  // Suspicious activity
   if (this.security.flags.includes('suspicious_activity')) {
     riskScore += 40;
   }
   
-  // High activity in short time
   if (this.activity.pageViews > 100 && this.duration < 60000) {
     riskScore += 20;
   }
@@ -516,7 +463,6 @@ SessionSchema.methods.markConversion = function(type, value = 0) {
   this.conversion.conversionValue = value;
   this.conversion.conversionDate = new Date();
   
-  // Tek save: updateActivity zaten save çağırır
   return this.updateActivity('conversion', { type, value });
 };
 
@@ -537,7 +483,6 @@ SessionSchema.methods.extendSession = function(hours = 24) {
   return this.save();
 };
 
-// Static methods
 SessionSchema.statics.findBySessionId = function(sessionId) {
   return this.findOne({ sessionId: sessionId, status: 'active' });
 };
@@ -593,7 +538,6 @@ SessionSchema.statics.getSessionAnalytics = function(startDate, endDate) {
 
 SessionSchema.statics.createGuestSession = function(sessionData) {
   const session = new this({
-    // Middleware'in cookie'ye yazdığı id kullanılmalı; aksi halde cookie ile DB kaydı asla eşleşmez
     sessionId: sessionData.sessionId || crypto.randomBytes(32).toString('hex'),
     type: 'guest',
     site: sessionData.site,

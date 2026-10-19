@@ -1,26 +1,21 @@
 'use client';
 
-// React & Next
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// UI Libraries
 import { Container, Row, Col } from 'react-bootstrap'
 import { toast } from 'react-toastify';
 
-// Config & Context
 import { ROUTES } from '@/src/config/routes';
 import { useCart } from '@/src/context/CartContext';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 
-// Components
 import DeliveryTitle from '@/src/components/checkout/Content/DeliveryTitle';
 import BillingForm from '@/src/components/checkout/Guest/BillingForm';
 import ShippingForm from '@/src/components/checkout/Guest/ShippingForm';
 import CheckoutSummary from '@/src/components/checkout/Guest/CheckoutSummary';
 import MemberCheckout from '@/src/components/checkout/Member/MemberCheckout';
 
-// Types
 import { BillingData, ShippingData, initialBillingData, initialShippingData } from '@/src/types/checkout';
 
 export default function CheckoutPage() {

@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useEffect, useMemo, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Tooltip from '@mui/material/Tooltip'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -19,7 +16,6 @@ import TablePagination from '@mui/material/TablePagination'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
     createColumnHelper,
@@ -33,10 +29,8 @@ import {
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 type MailAccountType = {
@@ -51,12 +45,10 @@ const MailAccountListTable = () => {
     const [data, setData] = useState<MailAccountType[]>([])
     const [loading, setLoading] = useState(true)
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)
 
-    // Hooks
     const { lang: locale } = useParams()
 
     useEffect(() => {

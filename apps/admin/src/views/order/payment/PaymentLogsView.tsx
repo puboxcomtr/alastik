@@ -1,8 +1,5 @@
 'use client'
 
-// Ödemeler — bayi sitesindeki "Ödeme Yap" sayfasından başlatılan cari borç ödemelerinin kaydı (site bazlı).
-// Her deneme ayrı satırdır: Bekliyor (başlatıldı, tamamlanmadı), Ödendi, Başarısız.
-// Düzen Aktif Sepetler / Siparişler listesiyle aynıdır: başlık, durum sekmeleri, arama çubuğu, aynı sayfalama.
 import { Suspense, useCallback, useEffect, useState } from 'react'
 
 import Link from 'next/link'
@@ -86,7 +83,6 @@ const PaymentLogsList = () => {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // Sayfa adreste tutulur (?page=2)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
 
     const [rows, setRows] = useState<PaymentRow[]>([])
@@ -94,7 +90,6 @@ const PaymentLogsList = () => {
     const [loading, setLoading] = useState(true)
     const [limit, setLimit] = useState(DEFAULT_ROWS_PER_PAGE)
 
-    // Arama Enter ile uygulanır; ödeme türü seçilince hemen uygulanır
     const [searchInput, setSearchInput] = useState('')
     const [active, setActive] = useState({ search: '', type: '' })
     const [statusTab, setStatusTab] = useState<StatusTab>(ALL_STATUSES)
@@ -324,7 +319,6 @@ const PaymentLogsList = () => {
     )
 }
 
-// useSearchParams kullanan liste Suspense içinde olmalıdır
 const PaymentLogsView = () => (
     <Suspense>
         <PaymentLogsList />

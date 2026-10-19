@@ -1,4 +1,3 @@
-// SEO modülü veri tipleri — GET /admin/seo/* yanıtları ile birebir
 
 export type SeoPeriodKey = 'yesterday' | '7d' | '30d' | '6m' | '1y' | 'custom'
 

@@ -1,18 +1,9 @@
-/**
- * Ürün Butonları — vitrin ürün yanıtlarına ürünün AÇIK butonlarını ekler.
- *
- * Panelden (Ürünler > Ürün Butonları) üründe açılan butonlar customData.siteData.<site>.buttons
- * alanında anahtar listesi olarak durur; liste uçlarının projeksiyonları bu alanı taşımaz.
- * Buton açık ürün sayısı azdır, bu yüzden site başına "ürün anahtarı → [{ key, label }]" haritası
- * bellekte tutulur (60 sn'de bir tazelenir) ve yanıt gönderilmeden önce ürün belgelerine
- * `customData.buttons` ([{ key, label, colorFrom, colorTo, textColor, icon }]) olarak yazılır. Tanımı pasif/silinmiş butonlar gönderilmez.
- */
 const { SITE_SLUGS, isValidSite } = require('../config/sites');
 
 const CACHE_TTL_MS = 60 * 1000;
 const MAX_DEPTH = 6;
 
-let bySite = {};      // { [site]: Map(productKey → [{ key, label }]) }
+let bySite = {};
 let loadedAt = 0;
 let loading = null;
 
@@ -34,7 +25,6 @@ async function loadProductButtons() {
                 const products = await WebProduct.find({ sites: site, [`${field}.0`]: { $exists: true } }, { _key: 1, [field]: 1 }).lean();
                 for (const p of products) {
                     const active = new Set(p.customData?.siteData?.[site]?.buttons || []);
-                    // Tanım sırasıyla
                     const buttons = siteDefs.filter(d => active.has(d.key))
                         .map(d => ({
                             key: d.key,
@@ -57,7 +47,6 @@ async function loadProductButtons() {
     return loading;
 }
 
-/** Panelde buton açılıp kapatıldığında çağrılır: bir sonraki istekte harita tazelenir. */
 function invalidateProductButtons() {
     loadedAt = 0;
 }
@@ -67,7 +56,6 @@ function getButtonMap(site) {
     return bySite[site] || null;
 }
 
-// Yanıt içindeki ürün belgelerini (_key + diaData/customData taşıyan nesneler) bulup butonları ekler
 function attachDeep(node, map, depth) {
     if (!node || typeof node !== 'object' || depth > MAX_DEPTH) return;
     if (Array.isArray(node)) { for (const item of node) attachDeep(item, map, depth + 1); return; }
@@ -85,8 +73,6 @@ function attachDeep(node, map, depth) {
     }
 }
 
-// Express ara katmanı: vitrin ürün rotalarının res.json yanıtına butonları ekler.
-// Hata verirse yanıt olduğu gibi gönderilir (vitrin akışı etkilenmez).
 function productButtonsMiddleware(req, res, next) {
     const send = res.json.bind(res);
     res.json = (body) => {

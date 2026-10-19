@@ -1,8 +1,3 @@
-/**
- * b2b cari ekstre — gecelik senkronla DIA'dan çekilen hesap hareketleri.
- * WebMember'dan AYRI koleksiyon: ekstre büyük olabilir, her auth sorgusuna
- * yüklenmemeli. Uçlar (/cari-ekstre, /odemeler) önce buradan okur.
- */
 const mongoose = require('mongoose');
 
 const movementSchema = new mongoose.Schema({

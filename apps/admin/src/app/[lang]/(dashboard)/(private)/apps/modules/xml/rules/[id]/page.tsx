@@ -2,10 +2,8 @@ import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
-// Component Imports
 import XmlRulesForm from '@/views/modules/xml/xmlRules/XmlRulesForm'
 
 type Props = {
@@ -31,7 +29,6 @@ const XmlRulesPage = async ({ params }: Props) => {
     }
 
     try {
-        // XML entegrasyon bilgisini çek (server tarafında token'ı elle iletiyoruz)
         const xmlData = await fetchAPI(API_ENDPOINTS.webxml.detail(params.id), {
             cache: 'no-store',
             headers: {

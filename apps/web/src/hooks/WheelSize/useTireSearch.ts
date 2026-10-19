@@ -1,9 +1,7 @@
-// apps/web/src/hooks/WheelSize/useTireSearch.ts
 'use client';
 import { useState, useCallback, useEffect } from "react";
 import { buildTireSearchUrl, getSeasonSlugFromValue } from '@/src/config/routes';
 import { API_ENDPOINTS } from '@/src/config/api';
-
 
 export function useTireSearch() {
     const [mevsim, setMevsim] = useState("1");
@@ -15,21 +13,17 @@ export function useTireSearch() {
     const [selectedYukseklik, setSelectedYukseklikRaw] = useState("55");
     const [selectedCap, setSelectedCap] = useState("16");
 
-    // Genişlik değişince yanak ve çapı sıfırla
     const setSelectedGenislik = useCallback((val: string) => {
         setSelectedGenislikRaw(val);
         setSelectedYukseklikRaw('');
         setSelectedCap('');
     }, []);
 
-    // Yanak değişince çapı sıfırla
     const setSelectedYukseklik = useCallback((val: string) => {
         setSelectedYukseklikRaw(val);
         setSelectedCap('');
     }, []);
 
-
-    // İlk yüklemede sadece genişlikleri çek
     useEffect(() => {
         const fetchGenislikler = async () => {
             setLoading(true);
@@ -55,7 +49,6 @@ export function useTireSearch() {
         fetchGenislikler();
     }, []);
 
-    // Genişlik değişince yanak oranlarını çek + alt seçimleri sıfırla
     useEffect(() => {
         if (!selectedGenislik) {
             setYanakOranlari([]);
@@ -73,7 +66,6 @@ export function useTireSearch() {
                     const list = data.veri.map((item: any) => ({ value: item.value || item }));
                     setYanakOranlari(list);
 
-                    // Mevcut seçim listede yoksa sıfırla
                     if (selectedYukseklik && !list.find((y: any) => String(y.value) === String(selectedYukseklik))) {
                         setSelectedYukseklik('');
                     }
@@ -85,7 +77,6 @@ export function useTireSearch() {
         fetchYanaklar();
     }, [selectedGenislik]);
 
-    // Genişlik + yanak değişince çapları çek + alt seçimi sıfırla
     useEffect(() => {
         if (!selectedGenislik || !selectedYukseklik) {
             setJantCaplari([]);
@@ -113,7 +104,6 @@ export function useTireSearch() {
         fetchCaplar();
     }, [selectedGenislik, selectedYukseklik]);
 
-    // Janta göre arama
     const handleJantaGoreArama = useCallback(
         (e: React.FormEvent) => {
             e.preventDefault();
@@ -123,10 +113,8 @@ export function useTireSearch() {
                 return;
             }
 
-            // Mevsim → Kategori slug
             const categorySlug = getSeasonSlugFromValue(mevsim);
 
-            // URL oluştur
             const url = buildTireSearchUrl(
                 categorySlug,
                 selectedGenislik,

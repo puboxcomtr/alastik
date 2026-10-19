@@ -1,6 +1,5 @@
 'use client'
 
-// React Imports
 import { createContext, useState } from 'react'
 import type { ReactNode } from 'react'
 
@@ -19,7 +18,6 @@ type IntersectionContextProps = {
 export const IntersectionContext = createContext<IntersectionContextProps | null>(null)
 
 export const IntersectionProvider = ({ children }: { children: ReactNode }) => {
-  // States
   const [intersections, setIntersections] = useState(initialIntersections)
 
   const updateIntersections = (data: Record<string, boolean>) => {

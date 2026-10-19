@@ -1,16 +1,12 @@
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Type Imports
 import type { CardStatsHorizontalWithAvatarProps } from '@/types/pages/widgetTypes'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
 const HorizontalWithAvatar = (props: CardStatsHorizontalWithAvatarProps) => {
-  // Props
   const { stats, title, avatarIcon, avatarColor, avatarVariant, avatarSkin, avatarSize } = props
 
   return (

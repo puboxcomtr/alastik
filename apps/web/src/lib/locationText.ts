@@ -1,16 +1,12 @@
-// Konum sayfası metinleri (LastikJantAVM) — her il/ilçe/mahalle için gerçek veriden üretilir
-// (montaj noktası sayısı, en yakın nokta/şube mesafesi, bölgede tercih edilen ebatlar).
-// Türkçe ek uyumu hatası olmaması için yer adlarına ek getirilmez ("bölgesinde" gibi kalıplar kullanılır).
-// Cümle kalıpları konum adına göre sabit ama konumdan konuma farklı seçilir. alastik.com için ayrı kalıplar yazılacak.
 import { fmtKm, pick } from '@/src/lib/geo';
 
 interface Ctx {
     seed: string;
-    place: string;            // "Ankara", "Kartal", "Cevizli"
-    parent?: string;          // "İstanbul", "Kartal / İstanbul"
-    pointCount: number;       // bölgedeki (il/ilçe) montaj noktası sayısı
-    nearestKm?: number;       // en yakın montaj noktası
-    nearestPlace?: string;    // en yakın noktanın il/ilçesi
+    place: string;
+    parent?: string;
+    pointCount: number;
+    nearestKm?: number;
+    nearestPlace?: string;
     branch?: { name: string; km: number };
     topSize?: string;
 }
@@ -51,7 +47,6 @@ export function locationIntro(c: Ctx): string[] {
     return [p1, p2, p3].filter(Boolean);
 }
 
-// Kış lastiği bilgisi (Karayolları Trafik Yönetmeliği genel kuralı; il valilikleri farklı tarih belirleyebilir)
 export function winterNote(seed: string, place: string): string {
     return pick(seed, 'kis', [
         `Ticari araçlarda kış lastiği 1 Aralık – 1 Nisan arasında zorunludur; ${place} için valilik farklı bir tarih belirlemişse o tarih geçerlidir. Binek araçlarda zorunluluk olmasa da hava 7°C’nin altına indiğinde kış lastiği önerilir.`,

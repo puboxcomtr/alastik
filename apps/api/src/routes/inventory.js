@@ -6,7 +6,6 @@ const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-// Stok durumunu getir
 router.get('/stock', authenticateAdmin, async (req, res) => {
   try {
     const { productId, category, lowStock } = req.query;
@@ -15,7 +14,7 @@ router.get('/stock', authenticateAdmin, async (req, res) => {
     if (productId) filter.product = productId;
     if (category) filter.category = category;
     if (lowStock === 'true') {
-      filter.quantity = { $lte: 10 }; // 10'dan az stok
+      filter.quantity = { $lte: 10 };
     }
 
     const inventory = await Inventory.find(filter)
@@ -36,7 +35,6 @@ router.get('/stock', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Belirli ürünün stok durumunu getir
 router.get('/stock/:productId', authenticateAdmin, async (req, res) => {
   try {
     const inventory = await Inventory.findOne({ product: req.params.productId })
@@ -63,7 +61,6 @@ router.get('/stock/:productId', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Stok güncelle
 router.put('/stock/:productId', authenticateAdmin, [
   body('quantity').isNumeric().withMessage('Geçerli miktar gerekli'),
   body('minStock').optional().isNumeric().withMessage('Geçerli minimum stok gerekli')
@@ -82,7 +79,6 @@ router.put('/stock/:productId', authenticateAdmin, [
     let inventory = await Inventory.findOne({ product: req.params.productId });
 
     if (!inventory) {
-      // Yeni stok kaydı oluştur
       const product = await Product.findById(req.params.productId);
       if (!product) {
         return res.status(404).json({
@@ -98,7 +94,6 @@ router.put('/stock/:productId', authenticateAdmin, [
         category: product.category
       });
     } else {
-      // Mevcut stok kaydını güncelle
       inventory.quantity = quantity;
       if (minStock !== undefined) {
         inventory.minStock = minStock;
@@ -107,7 +102,6 @@ router.put('/stock/:productId', authenticateAdmin, [
 
     await inventory.save();
 
-    // Ürün bilgilerini populate et
     await inventory.populate('product', 'name sku price');
     await inventory.populate('category', 'name');
 
@@ -125,7 +119,6 @@ router.put('/stock/:productId', authenticateAdmin, [
   }
 });
 
-// Stok hareketi ekle
 router.post('/stock/:productId/movement', authenticateAdmin, [
   body('type').isIn(['in', 'out']).withMessage('Geçerli hareket tipi gerekli'),
   body('quantity').isNumeric().withMessage('Geçerli miktar gerekli'),
@@ -152,7 +145,6 @@ router.post('/stock/:productId/movement', authenticateAdmin, [
       });
     }
 
-    // Stok hareketi ekle
     const movement = {
       type,
       quantity: parseInt(quantity),
@@ -163,7 +155,6 @@ router.post('/stock/:productId/movement', authenticateAdmin, [
 
     inventory.movements.push(movement);
 
-    // Stok miktarını güncelle
     if (type === 'in') {
       inventory.quantity += parseInt(quantity);
     } else {
@@ -178,7 +169,6 @@ router.post('/stock/:productId/movement', authenticateAdmin, [
 
     await inventory.save();
 
-    // Ürün bilgilerini populate et
     await inventory.populate('product', 'name sku price');
     await inventory.populate('category', 'name');
 
@@ -196,7 +186,6 @@ router.post('/stock/:productId/movement', authenticateAdmin, [
   }
 });
 
-// Düşük stok uyarıları
 router.get('/low-stock-alerts', authenticateAdmin, async (req, res) => {
   try {
     const lowStockItems = await Inventory.find({

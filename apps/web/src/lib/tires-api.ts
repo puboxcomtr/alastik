@@ -1,10 +1,5 @@
 import { backendApi } from './backend-api';
 
-/**
- * Tires Catalog API entegrasyonu
- * Backend üzerinden lastik katalog verilerini çeker
- */
-
 export interface TireBrand {
   slug: string;
   display: string;
@@ -192,9 +187,6 @@ export interface TireDataResult {
 }
 
 class TiresApi {
-  /**
-   * Lastik markalarını getirir
-   */
   async getBrands(priceSegment?: string | string[]): Promise<TireApiResponse<TireBrand[]>> {
     try {
       const params = new URLSearchParams();
@@ -212,9 +204,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Marka ürünlerini getirir
-   */
   async getBrandProducts(
     brandSlug: string,
     options: {
@@ -262,9 +251,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Ürün detaylarını getirir
-   */
   async getProductDetails(brandSlug: string, productSlug: string): Promise<TireApiResponse<TireProductDetails>> {
     try {
       const response = await backendApi.get(`/tires/products/${brandSlug}/${productSlug}`);
@@ -275,9 +261,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Ürün BNB nedenlerini getirir
-   */
   async getProductBNB(brandSlug: string, productSlug: string): Promise<TireApiResponse<TireBNBReason[]>> {
     try {
       const response = await backendApi.get(`/tires/products/${brandSlug}/${productSlug}/bnb`);
@@ -288,9 +271,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Ürün modifikasyonlarını getirir
-   */
   async getProductModes(brandSlug: string, productSlug: string): Promise<TireApiResponse<TireMode[]>> {
     try {
       const response = await backendApi.get(`/tires/products/${brandSlug}/${productSlug}/modes`);
@@ -301,9 +281,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Ürün materyallerini getirir
-   */
   async getProductMaterials(
     brandSlug: string, 
     productSlug: string, 
@@ -319,9 +296,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Ürün adından tüm lastik verilerini getirir
-   */
   async getTireDataByProductName(productName: string): Promise<TireApiResponse<TireDataResult>> {
     try {
       const response = await backendApi.post('/tires/product-data', { productName });
@@ -332,9 +306,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Bölgeleri getirir
-   */
   async getRegions(): Promise<TireApiResponse<TireRegion[]>> {
     try {
       const response = await backendApi.get('/tires/regions');
@@ -345,9 +316,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Performans kategorilerini getirir
-   */
   async getPerformanceCategories(): Promise<TireApiResponse<TirePerformanceCategory[]>> {
     try {
       const response = await backendApi.get('/tires/performance-categories');
@@ -358,9 +326,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Testleri getirir
-   */
   async getTests(options: {
     year?: string | string[];
     season?: string | string[];
@@ -397,9 +362,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Lastik arama yapar
-   */
   async searchTires(query: Record<string, any>): Promise<TireApiResponse<TireSearchResult>> {
     try {
       const params = new URLSearchParams();
@@ -420,9 +382,6 @@ class TiresApi {
     }
   }
 
-  /**
-   * Gelişmiş lastik arama yapar
-   */
   async advancedSearchTires(query: Record<string, any>): Promise<TireApiResponse<TireSearchResult>> {
     try {
       const params = new URLSearchParams();

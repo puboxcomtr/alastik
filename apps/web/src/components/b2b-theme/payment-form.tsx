@@ -1,9 +1,5 @@
 "use client";
 
-// Tek Çekim (Peşin) kart formu — sayfada varsayılan açık blok (başlık/önizleme/vazgeç yok).
-// Tutar üstteki "Ödeme Tutarı" alanından canlı gelir. Kart bilgisi TARAYICIDA
-// paynet-custom.js ile token'lanır; sunucuya gitmez.
-// Akış: /tekcekim/baslat → Paynet Özelleştirilmiş Form → 3D → /tekcekim/return → /odeme-sonuc.
 import { useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { launchPaynetForm } from "@components/b2b-theme/lib/paynet-form";
@@ -15,7 +11,6 @@ const moneyTL = (kurus: number) => `${nf.format((kurus || 0) / 100)} TL`;
 function onlyDigits(s: string): string { return (s || "").replace(/\D/g, ""); }
 function groupCard(digits: string): string { return digits.replace(/(.{4})/g, "$1 ").trim(); }
 
-// Luhn algoritması — kart numarası bütünlük kontrolü.
 function luhnOk(digits: string): boolean {
   if (digits.length < 15) return false;
   let sum = 0, alt = false;
@@ -48,7 +43,6 @@ interface StartData {
   config: { publishableKey: string; jsUrl: string };
 }
 
-
 export function PaymentForm({ amountKurus }: { amountKurus: number }) {
   const [num, setNum] = useState("");
   const [holder, setHolder] = useState("");
@@ -64,8 +58,6 @@ export function PaymentForm({ amountKurus }: { amountKurus: number }) {
   };
   const setName = (v: string) => setHolder(v.replace(/[^a-zA-ZÀ-ſ\s]/g, ""));
 
-  // Paynet Özelleştirilmiş Form'u kur ve tokenizasyonu tetikle (kart → doğrudan Paynet; ortak yardımcı,
-  // hata olayları ve zaman aşımı orada ele alınır, hata ödeme kaydına yazılır).
   function startPaynet(d: StartData) {
     const [mm, yy] = exp.split("/");
     launchPaynetForm({
@@ -107,7 +99,6 @@ export function PaymentForm({ amountKurus }: { amountKurus: number }) {
         setBusy(false);
         return;
       }
-      // SDK tokenizasyon + 3D yönlendirmesini yapar; sayfa /odeme-sonuc'a döner.
       startPaynet(data.data as StartData);
     } catch {
       setErr("Ödeme başlatılamadı, lütfen tekrar deneyin.");

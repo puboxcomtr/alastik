@@ -50,7 +50,6 @@ export default function PaymentContent({ onReady, onCardData, totalAmount }: Pay
         <div className="card border-0">
             <div className="card-body p-3 pt-0">
                 <div className="payment-accordion">
-                    {/* Kredi Kartı Accordion */}
                     <div
                         className={`payment-option ${paymentMethod === 'credit_card' ? 'active' : ''}`}
                         style={{
@@ -105,7 +104,6 @@ export default function PaymentContent({ onReady, onCardData, totalAmount }: Pay
                         )}
                     </div>
 
-                    {/* Havale/EFT Accordion */}
                     <div
                         className={`payment-option ${paymentMethod === 'bank_transfer' ? 'active' : ''}`}
                         style={{

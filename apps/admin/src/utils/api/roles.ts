@@ -32,7 +32,6 @@ export type ModulesByCategory = {
     [category: string]: ModuleDefinition[]
 }
 
-// Ortak fetch fonksiyonu (fetchAPI Bearer token ve X-Site header'larını ekler)
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     try {
         return await fetchAPI(url, options)

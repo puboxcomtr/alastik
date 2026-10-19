@@ -1,25 +1,8 @@
-/**
- * Stoklu (DIA) ürünler için kural tabanlı birim kargo payı.
- *
- * Kurallar admin Kargo Tanımları'ndan gelir (Cargo: productRules / brandRules / categoryRules / sizeRules,
- * dia_api tipinde ise genel desiPricing + fixedPrice). Kargo payı XML ürünlerdeki gibi ürün fiyatına GÖMÜLÜR:
- * müşteri tek fiyat + "ücretsiz kargo" görür, siparişte birim kargo ayrı kaydedilir (admin panelde görünür).
- *
- * Öncelik (ilk eşleşen kazanır): Ürün > Marka > Kategori > Ebat (genel) > Genel: stok desi tablosu (stockDesiPricing);
- * o yoksa dia_api tipli tanımın genel desi/sabit ücreti. XML ürünleri ayrı tabloyu (desiPricing) kullanır.
- * Kural içinde: ebat bazlıysa ebat ücreti > desi tablosu > sabit ücret (>0) > bir sonraki seviye.
- * Ücretsiz kargo eşikleri (tutar / desi) stoklu ürünlerin KENDİ alanlarından (stockFreeShipping*) okunur; birim bazlı uygulanır.
- *
- * Ayarlar 60 sn önbelleklenir; admin kargo kaydedince invalidateShippingRules() ile düşürülür.
- */
 const Cargo = require('../../../models/admin/settings/Cargo');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const CargoCalculatorService = require('./CargoCalculatorService');
 
 const CACHE_TTL_MS = 60 * 1000;
-// Genel ebat kuralları (Cargo.sizeRules) yalnız bu ürün türlerine uygulanır (DIA ozelkod7kodu): lastik ve jant.
-// Aksesuarlar da lastik ebatı taşır (ör. kar çorabı "215/65R16") ama ebat ücreti onlar için değildir;
-// aksesuara ebat ücreti gerekiyorsa kategori / marka kuralı ile tanımlanır.
 const TIRE_TYPE_CODE = 'LASTİK';
 const RIM_TYPE_CODE = 'JANT';
 const SIZE_RULE_PRODUCT_TYPES = [TIRE_TYPE_CODE, RIM_TYPE_CODE];
@@ -34,7 +17,6 @@ function round2(v) {
     return Math.round(v * 100) / 100;
 }
 
-/** Ürün ebatı — admin kural sayfasındaki extractProductSize ile aynı kural */
 function productSize(dia) {
     const props = {};
     for (const o of dia.m_urunOzellikleri || []) {
@@ -79,7 +61,6 @@ async function loadShippingRules() {
             categoryMap = catMap;
             loadedAt = Date.now();
         } catch (e) {
-            // DB hazır değilse mevcut önbellekle devam
         } finally {
             loading = null;
         }
@@ -96,7 +77,6 @@ function getCargos(site) {
     return cacheBySite[site] || [];
 }
 
-/** Kural içi çözüm: ebat > desi tablosu > sabit ücret; yoksa null */
 function priceFromRule(rule, size, desi) {
     if (rule.pricingMode === 'size' && size) {
         const hit = (rule.sizeRules || []).find(s => s.size === size);
@@ -110,27 +90,20 @@ function priceFromRule(rule, size, desi) {
     return null;
 }
 
-/** Tanımda stoktaki ürünler için genel ücret (desi tablosu ya da sabit ücret) tanımlı mı? */
 function hasStockGeneral(cargo) {
     return (cargo.stockDesiPricing?.ranges || []).length > 0 || (cargo.stockFixedPrice || 0) > 0;
 }
 
-/** Eski yapı: stoklu ürün ayarları tanımın genel alanlarında tutulan (dia_api tipli, stok alanları boş) tanım */
 function isLegacyStockDefinition(cargo) {
     return cargo.productType === 'dia_api' && !hasStockGeneral(cargo);
 }
 
-/**
- * Genel (kuralsız) kargo ücreti — stoktaki ürünlerin kendi ayarlarından: desi tablosu, yoksa sabit ücret.
- * Desisi olmayan ürüne (hizmetler vb.) ücret yazılmaz.
- */
 function generalPrice(cargo, desi) {
     if (isLegacyStockDefinition(cargo)) return CargoCalculatorService.calculateShippingPrice(desi, cargo);
     if (!(desi > 0)) return null;
     return CargoCalculatorService.calculateShippingPrice(desi, { desiPricing: cargo.stockDesiPricing, fixedPrice: cargo.stockFixedPrice || 0 });
 }
 
-/** Stoklu ürünün ücretsiz kargo eşikleri (XML eşiklerinden ayrı) */
 function stockFreeShippingSettings(cargo) {
     if (isLegacyStockDefinition(cargo)) return cargo;
     return { freeShippingThreshold: cargo.stockFreeShippingThreshold || 0, freeShippingDesiLimit: cargo.stockFreeShippingDesiLimit || 0 };
@@ -142,10 +115,6 @@ function productMatchesCategory(dia, rule) {
     return (dia.m_kategoriler || []).some(k => k && k[cat.diaLevel] === cat.diaCategory);
 }
 
-/**
- * Ürün için birim kargo payı. XML ürünler kendi statik alanlarını taşır (bu servis karışmaz).
- * Dönüş: { shippingPerUnit, cargoId, cargoName, source } | null
- */
 function resolveUnitShipping(product, site, unitPrice = 0) {
     if (!product || product.syncInfo?.syncSource === 'xml_integration') return null;
     const cargos = getCargos(site);
@@ -179,7 +148,6 @@ function resolveUnitShipping(product, site, unitPrice = 0) {
                 cargoName: cargo.name,
                 source,
                 isFreeShipping: free.isFree,
-                // Kargo ürün fiyatına dahil mi, yoksa sepette ayrı satır mı (tanımın stok ayarı)
                 excluded: cargo.stockShippingPriceMode === 'excluded'
             };
         }
@@ -187,11 +155,6 @@ function resolveUnitShipping(product, site, unitPrice = 0) {
     return null;
 }
 
-/**
- * Yanıt dokümanına kargo payını işler: customData.shippingPerUnit ve (gösterim "fiyata dahil" ise)
- * customData.shippingIncludedPrice (= satış fiyatı + kargo). Vitrin shippingIncludedPrice'ı öncelikli
- * gösterdiğinden müşteri kargo dahil tek fiyat görür. "Fiyattan hariç" ise shippingExcluded işaretlenir.
- */
 function applyShippingToProduct(doc, site) {
     if (!doc || doc.syncInfo?.syncSource === 'xml_integration') return doc;
     const birim = (doc.diaData?.m_birimler || [])[0];
@@ -203,7 +166,6 @@ function applyShippingToProduct(doc, site) {
     doc.customData.shippingPerUnit = result.shippingPerUnit;
     doc.customData.shippingCargoName = result.cargoName;
     if (result.excluded) {
-        // Fiyata dahil edilmez: vitrin ürün fiyatını kargosuz gösterir, kargo sepette ayrı satırdır
         doc.customData.shippingExcluded = true;
     } else {
         doc.customData.shippingIncludedPrice = round2(salePrice + result.shippingPerUnit);

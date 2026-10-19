@@ -1,4 +1,3 @@
-// apps/admin/src/utils/api/blogs.ts
 import { apiClient } from './apiClient'
 
 export type BlogType = {

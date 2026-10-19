@@ -5,14 +5,6 @@ const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 class XmlShippingPriceUpdaterService {
 
-    /**
-     * Sitenin XML kaynaklı ürünlerinin kargo dahil fiyatlarını günceller
-     * - Sitenin aktif XML kargosunu çeker
-     * - Her ürün için 1 adetlik kargo hesaplar (temel fiyat: varsayılan sitede webPrice,
-     *   diğer sitelerde customData.siteData.<site>.xmlPrice)
-     * - Varsayılan site global customData alanlarına, diğer siteler siteData.<site>
-     *   altına yazar (ortak üründe sahibin değerleri ezilmez)
-     */
     async updateAll(site = DEFAULT_SITE) {
         const startTime = Date.now();
         const slug = SITES[site] ? site : DEFAULT_SITE;
@@ -20,7 +12,6 @@ class XmlShippingPriceUpdaterService {
         console.log(`[XmlShippingPriceUpdater] Başlıyor... (site: ${slug})`);
 
         try {
-            // 1. Sitenin aktif XML kargosunu çek
             const xmlCargo = await Cargo.findOne({
                 isActive: true,
                 productType: 'xml_integration',
@@ -32,7 +23,6 @@ class XmlShippingPriceUpdaterService {
                 return { success: false, message: 'Aktif XML kargosu yok', updated: 0 };
             }
 
-            // 2. Sitenin XML ürünlerini çek
             const xmlProducts = await WebProduct.find(
                 { 'syncInfo.syncSource': 'xml_integration', sites: slug },
                 {
@@ -56,22 +46,18 @@ class XmlShippingPriceUpdaterService {
                 ? 'customData.shippingPerUnit'
                 : `customData.siteData.${slug}.shippingPerUnit`;
 
-            // 3. Her ürün için 1 adetlik kargo hesapla
             const bulkOps = [];
             let updated = 0;
 
             for (const product of xmlProducts) {
                 const desi = product.diaData?.anabirimdesi || 0;
-                // Temel satış fiyatı: sitenin kendi XML fiyatı; sahip sitede webPrice
                 const siteXmlPrice = parseFloat(product.customData?.siteData?.[slug]?.xmlPrice) || 0;
                 const webPrice = isDefaultSite
                     ? (product.customData?.webPrice || 0)
                     : (siteXmlPrice > 0 ? siteXmlPrice : (product.customData?.webPrice || 0));
 
-                // 1 adetlik kargo hesapla
                 const shippingPerUnit = CargoCalculatorService.calculateShippingPrice(desi, xmlCargo);
 
-                // Ücretsiz kargo kontrolü (1 adet bazında)
                 const freeCheck = CargoCalculatorService.checkFreeShipping(webPrice, desi, xmlCargo);
                 const finalShippingPerUnit = freeCheck.isFree ? 0 : shippingPerUnit;
 

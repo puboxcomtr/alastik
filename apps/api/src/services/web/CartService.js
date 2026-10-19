@@ -23,16 +23,11 @@ class CartService {
     });
   }
 
-  /**
-   * Aktif sepeti getir veya oluştur
-   */
   async getOrCreateCart(userId, sessionId, metadata = {}) {
     try {
-      // Önce aktif sepeti bul
       let cart = await Cart.findActiveCart(userId, sessionId);
       
       if (!cart) {
-        // Yeni sepet oluştur
         cart = new Cart({
           userId: userId || null,
           sessionId: sessionId || null,
@@ -63,29 +58,22 @@ class CartService {
     }
   }
 
-  /**
-   * Sepete ürün ekle
-   */
   async addToCart(userId, sessionId, productId, quantity = 1, options = {}) {
     try {
-      // Ürün bilgilerini getir
       const product = await Product.findById(productId);
       if (!product) {
         throw new Error('Product not found');
       }
 
-      // Ürün aktif mi kontrol et
       if (!product.isActive) {
         throw new Error('Product is not active');
       }
 
-      // Stok kontrolü
       const stockCheck = await this.checkProductStock(productId, quantity);
       if (!stockCheck.available) {
         throw new Error(`Insufficient stock. Available: ${stockCheck.availableQuantity}`);
       }
 
-      // DIA Stock bilgilerini getir
       let diaStock = null;
       if (product.sku) {
         diaStock = await DiaStock.findOne({ 
@@ -95,10 +83,8 @@ class CartService {
         });
       }
 
-      // Sepeti getir veya oluştur
       const cart = await this.getOrCreateCart(userId, sessionId, options.metadata);
 
-      // Ürün snapshot'ı oluştur
       const productSnapshot = {
         name: product.name,
         brand: product.brand,
@@ -112,23 +98,19 @@ class CartService {
         }
       };
 
-      // Fiyat hesaplama
       let unitPrice = product.price;
       let discountAmount = 0;
       let discountPercentage = 0;
 
-      // DIA Stock'tan fiyat al
       if (diaStock && diaStock.fiyat1) {
         unitPrice = diaStock.fiyat1;
       }
 
-      // İndirim hesaplama
       if (product.originalPrice && product.originalPrice > unitPrice) {
         discountAmount = (product.originalPrice - unitPrice) * quantity;
         discountPercentage = ((product.originalPrice - unitPrice) / product.originalPrice) * 100;
       }
 
-      // Sepete ürün ekle
       await cart.addItem({
         productId: productId,
         diaStockId: diaStock?._id,
@@ -138,12 +120,10 @@ class CartService {
         discountPercentage: discountPercentage
       }, quantity);
 
-      // Stok rezervasyonu
       if (options.reserveStock) {
         await this.reserveStock(productId, quantity);
       }
 
-      // Session'ı güncelle
       if (sessionId) {
         const session = await Session.findBySessionId(sessionId);
         if (session) {
@@ -152,7 +132,6 @@ class CartService {
         }
       }
 
-      // Kullanıcı istatistiklerini güncelle
       if (userId) {
         const user = await User.findById(userId);
         if (user) {
@@ -185,27 +164,20 @@ class CartService {
     }
   }
 
-  /**
-   * Sepetten ürün çıkar
-   */
   async removeFromCart(userId, sessionId, productId) {
     try {
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Ürünü sepetten çıkar
       await cart.removeItem(productId);
 
-      // Stok rezervasyonunu serbest bırak
       const item = cart.items.find(item => item.productId.toString() === productId.toString());
       if (item && item.isReserved) {
         await this.releaseStock(productId, item.quantity);
       }
 
-      // Session'ı güncelle
       if (sessionId) {
         const session = await Session.findBySessionId(sessionId);
         if (session) {
@@ -232,28 +204,22 @@ class CartService {
     }
   }
 
-  /**
-   * Sepetteki ürün miktarını güncelle
-   */
   async updateCartItemQuantity(userId, sessionId, productId, quantity) {
     try {
       if (quantity <= 0) {
         return await this.removeFromCart(userId, sessionId, productId);
       }
 
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Stok kontrolü
       const stockCheck = await this.checkProductStock(productId, quantity);
       if (!stockCheck.available) {
         throw new Error(`Insufficient stock. Available: ${stockCheck.availableQuantity}`);
       }
 
-      // Miktar güncelle
       await cart.updateItemQuantity(productId, quantity);
 
       this.logger.info('Cart item quantity updated', {
@@ -277,21 +243,15 @@ class CartService {
     }
   }
 
-  /**
-   * Sepete kupon uygula
-   */
   async applyCoupon(userId, sessionId, couponCode) {
     try {
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Kupon doğrulama (basit implementasyon)
       const couponData = await this.validateCoupon(couponCode, cart);
       
-      // Kuponu uygula
       await cart.applyCoupon(couponData);
 
       this.logger.info('Coupon applied to cart', {
@@ -314,18 +274,13 @@ class CartService {
     }
   }
 
-  /**
-   * Sepetten kupon kaldır
-   */
   async removeCoupon(userId, sessionId, couponCode) {
     try {
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Kuponu kaldır
       await cart.removeCoupon(couponCode);
 
       this.logger.info('Coupon removed from cart', {
@@ -347,25 +302,19 @@ class CartService {
     }
   }
 
-  /**
-   * Sepeti temizle
-   */
   async clearCart(userId, sessionId) {
     try {
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Stok rezervasyonlarını serbest bırak
       for (const item of cart.items) {
         if (item.isReserved) {
           await this.releaseStock(item.productId, item.quantity);
         }
       }
 
-      // Sepeti temizle
       cart.items = [];
       cart.coupons = [];
       cart.pricing = {
@@ -396,15 +345,10 @@ class CartService {
     }
   }
 
-  /**
-   * Sepetleri birleştir (guest -> user)
-   */
   async mergeCarts(userId, sessionId) {
     try {
-      // Kullanıcının mevcut sepetini bul
       const userCart = await Cart.findActiveCart(userId, null);
       
-      // Session sepetini bul
       const sessionCart = await Cart.findActiveCart(null, sessionId);
 
       if (!sessionCart) {
@@ -412,7 +356,6 @@ class CartService {
       }
 
       if (!userCart) {
-        // Kullanıcı sepeti yoksa session sepetini kullanıcıya ata
         sessionCart.userId = userId;
         sessionCart.sessionId = null;
         await sessionCart.save();
@@ -426,7 +369,6 @@ class CartService {
         return await this.getCartWithDetails(sessionCart._id);
       }
 
-      // İki sepeti birleştir
       await userCart.merge(sessionCart);
 
       this.logger.info('Carts merged', {
@@ -447,18 +389,13 @@ class CartService {
     }
   }
 
-  /**
-   * Sepeti tamamla
-   */
   async completeCart(userId, sessionId, orderData) {
     try {
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Son stok kontrolü
       for (const item of cart.items) {
         const stockCheck = await this.checkProductStock(item.productId, item.quantity);
         if (!stockCheck.available) {
@@ -466,15 +403,12 @@ class CartService {
         }
       }
 
-      // Sepeti tamamla
       await cart.complete();
 
-      // Stok güncelle
       for (const item of cart.items) {
         await this.updateProductStock(item.productId, -item.quantity);
       }
 
-      // Kullanıcı istatistiklerini güncelle
       if (userId) {
         const user = await User.findById(userId);
         if (user) {
@@ -486,7 +420,6 @@ class CartService {
         }
       }
 
-      // Session'ı güncelle
       if (sessionId) {
         const session = await Session.findBySessionId(sessionId);
         if (session) {
@@ -513,28 +446,21 @@ class CartService {
     }
   }
 
-  /**
-   * Sepeti terk et
-   */
   async abandonCart(userId, sessionId) {
     try {
-      // Sepeti bul
       const cart = await Cart.findActiveCart(userId, sessionId);
       if (!cart) {
         throw new Error('Cart not found');
       }
 
-      // Sepeti terk et
       await cart.abandon();
 
-      // Stok rezervasyonlarını serbest bırak
       for (const item of cart.items) {
         if (item.isReserved) {
           await this.releaseStock(item.productId, item.quantity);
         }
       }
 
-      // Kullanıcı istatistiklerini güncelle
       if (userId) {
         const user = await User.findById(userId);
         if (user) {
@@ -562,9 +488,6 @@ class CartService {
     }
   }
 
-  /**
-   * Sepet detaylarını getir
-   */
   async getCartWithDetails(cartId) {
     try {
       const cart = await Cart.findById(cartId)
@@ -586,9 +509,6 @@ class CartService {
     }
   }
 
-  /**
-   * Kullanıcının sepet geçmişini getir
-   */
   async getUserCartHistory(userId, options = {}) {
     try {
       const {
@@ -637,9 +557,6 @@ class CartService {
     }
   }
 
-  /**
-   * Stok kontrolü
-   */
   async checkProductStock(productId, quantity) {
     try {
       const product = await Product.findById(productId);
@@ -647,7 +564,6 @@ class CartService {
         return { available: false, availableQuantity: 0 };
       }
 
-      // DIA Stock kontrolü
       let availableQuantity = product.stock;
       
       if (product.sku) {
@@ -662,7 +578,6 @@ class CartService {
         }
       }
 
-      // Inventory kontrolü
       const inventory = await Inventory.findOne({ productId });
       if (inventory) {
         availableQuantity = Math.min(availableQuantity, inventory.availableQuantity);
@@ -683,9 +598,6 @@ class CartService {
     }
   }
 
-  /**
-   * Stok rezervasyonu
-   */
   async reserveStock(productId, quantity) {
     try {
       const inventory = await Inventory.findOne({ productId });
@@ -703,9 +615,6 @@ class CartService {
     }
   }
 
-  /**
-   * Stok rezervasyonunu serbest bırak
-   */
   async releaseStock(productId, quantity) {
     try {
       const inventory = await Inventory.findOne({ productId });
@@ -723,9 +632,6 @@ class CartService {
     }
   }
 
-  /**
-   * Stok güncelle
-   */
   async updateProductStock(productId, quantityChange) {
     try {
       const product = await Product.findById(productId);
@@ -752,12 +658,8 @@ class CartService {
     }
   }
 
-  /**
-   * Kupon doğrulama
-   */
   async validateCoupon(couponCode, cart) {
     try {
-      // Basit kupon sistemi - gerçek implementasyonda veritabanından kontrol edilir
       const coupons = {
         'WELCOME10': {
           code: 'WELCOME10',
@@ -785,12 +687,10 @@ class CartService {
         throw new Error('Invalid coupon code');
       }
 
-      // Minimum tutar kontrolü
       if (cart.pricing.subtotal < coupon.minAmount) {
         throw new Error(`Minimum order amount is ${coupon.minAmount} TL`);
       }
 
-      // İndirim miktarını hesapla
       let discountAmount = 0;
       
       if (coupon.type === 'percentage') {
@@ -807,7 +707,7 @@ class CartService {
         type: coupon.type,
         value: coupon.value,
         discountAmount: discountAmount,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 gün
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       };
     } catch (error) {
       this.logger.error('Error validating coupon', { 
@@ -818,9 +718,6 @@ class CartService {
     }
   }
 
-  /**
-   * Terk edilmiş sepetleri bul
-   */
   async findAbandonedCarts(daysSince = 1) {
     try {
       const carts = await Cart.findAbandonedCarts(daysSince);
@@ -840,22 +737,17 @@ class CartService {
     }
   }
 
-  /**
-   * Süresi dolmuş sepetleri bul ve temizle
-   */
   async cleanupExpiredCarts() {
     try {
       const expiredCarts = await Cart.findExpiredCarts();
       
       for (const cart of expiredCarts) {
-        // Stok rezervasyonlarını serbest bırak
         for (const item of cart.items) {
           if (item.isReserved) {
             await this.releaseStock(item.productId, item.quantity);
           }
         }
         
-        // Sepeti expire et
         await cart.expire();
       }
       
@@ -872,9 +764,6 @@ class CartService {
     }
   }
 
-  /**
-   * Sepet analitiği
-   */
   async getCartAnalytics(startDate, endDate) {
     try {
       const analytics = await Cart.getCartAnalytics(startDate, endDate);

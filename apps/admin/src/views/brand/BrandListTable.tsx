@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { BrandType } from '@/types/apps/brandTypes'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -22,7 +20,6 @@ import Tooltip from '@mui/material/Tooltip'
 import type { TextFieldProps } from '@mui/material/TextField'
 import { toast } from 'react-toastify'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
@@ -40,10 +37,8 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Component Imports
 import EditbrandDrawer from './EditBrandDrawer'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -103,7 +98,6 @@ const BrandListTable = () => {
   const [globalFilter, setGlobalFilter] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // Pagination state
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(50)
   const [totalCount, setTotalCount] = useState(0)
@@ -150,7 +144,6 @@ const BrandListTable = () => {
     fetchBrands()
   }, [page, limit])
 
-  // Anasayfa gösterim durumunu güncelle
   const handleHomepageToggle = async (brandId: string, currentValue: boolean) => {
     try {
       const result = await fetchAPI(API_ENDPOINTS.brands.detail(brandId), {

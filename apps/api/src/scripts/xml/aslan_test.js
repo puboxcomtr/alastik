@@ -1,8 +1,3 @@
-/**
- * Aslan Kardeşler Stock API Test Script
- * Dosya: apps/api/src/scripts/xml/aslan_test.js
- * Çalıştırma: node apps/api/src/scripts/xml/aslan_test.js
- */
 
 const https = require('https');
 const fs = require('fs');
@@ -75,7 +70,6 @@ async function run() {
 
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-  // 1. Marka listesi
   console.log('\n[1] Marka listesi çekiliyor...');
   try {
     const brands = await request('GetBrandJson');
@@ -92,7 +86,6 @@ async function run() {
     console.log('  Hata:', e.message);
   }
 
-  // 2. Stok - marka boş (tüm stok)
   console.log('\n[2] Stok listesi çekiliyor (marka="")...');
   try {
     const stocks = await request('GetStockJson', { marka: '' });

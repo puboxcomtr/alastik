@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -13,7 +11,6 @@ import TextField from '@mui/material/TextField'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
@@ -27,7 +24,6 @@ type Props = {
     onSaved: (id: string, adminTags: string[], adminNote: string) => void
 }
 
-// Üyeye panel etiketi / not ekleme
 const MemberAnnotateDialog = ({ member, onClose, onSaved }: Props) => {
     const [tags, setTags] = useState<string[]>([])
     const [tagInput, setTagInput] = useState('')

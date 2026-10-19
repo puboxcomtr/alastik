@@ -5,7 +5,6 @@ export type PrimaryColorConfig = {
   dark?: string
 }
 
-// Primary color config object
 const primaryColorConfig: PrimaryColorConfig[] = [
   {
     name: 'primary-1',

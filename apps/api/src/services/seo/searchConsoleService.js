@@ -1,13 +1,3 @@
-/**
- * Google Search Console bağlantısı ve günlük anlık görüntü.
- *
- * Kimlik: apps/api/src/config/alastik-service-account.json (Indexing API ile aynı hesap).
- * Servis hesabının ilgili mülke Search Console'dan eklenmiş olması gerekir; eklenmemişse
- * resolveProperty() nedenini döner ve arayüz kurulum adımlarını gösterir.
- *
- * Veri, SeoSearchDaily koleksiyonuna (site, gün, boyut, anahtar) olarak yazılır. Rapor
- * sekmesi her zaman bu tablodan okur; Google'a yalnızca gece işi ve "Şimdi güncelle" gider.
- */
 
 const { google } = require('googleapis');
 const path = require('path');
@@ -24,8 +14,8 @@ const PROPERTY_CACHE_MS = 10 * 60 * 1000;
 const CHUNK_DAYS = 31;
 const DIMENSIONS = ['query', 'page'];
 
-const propertyCache = new Map(); // site -> { at, value }
-const syncState = new Map();     // site -> ilerleme durumu
+const propertyCache = new Map();
+const syncState = new Map();
 
 function siteDomain(site) {
     return (SITES[site]?.domains || []).find(d => !d.startsWith('www.') && !d.startsWith('dev.') && !d.startsWith('demo.')) || '';
@@ -58,7 +48,6 @@ function client() {
     return google.searchconsole({ version: 'v1', auth });
 }
 
-/** Servis hesabının erişebildiği mülkü bulur (10 dk önbellek) */
 async function resolveProperty(site, { force = false } = {}) {
     const cached = propertyCache.get(site);
     if (!force && cached && Date.now() - cached.at < PROPERTY_CACHE_MS) return cached.value;
@@ -97,7 +86,6 @@ async function fetchDimension(sc, property, dimension, startDate, endDate) {
     return rows;
 }
 
-/** Verilen tarih aralığını (dahil) Google'dan çekip tabloya yazar */
 async function snapshotRange(site, startDate, endDate) {
     const prop = await resolveProperty(site);
     if (!prop.ok) return { ok: false, reason: prop.reason, rows: 0 };
@@ -121,16 +109,11 @@ async function snapshotRange(site, startDate, endDate) {
     return { ok: true, rows: total, property: prop.property };
 }
 
-/** Gece işi: son N günü yeniden yazar (Google geç kesinleşen günleri düzeltir) */
 async function snapshotRecent(site, days = 7) {
     const endDate = addDays(toDateString(new Date()), -GSC_LAG_DAYS);
     return snapshotRange(site, addDays(endDate, -(days - 1)), endDate);
 }
 
-/**
- * Arka planda uzun aralık çekimi ("Şimdi güncelle" / ilk yükleme). Aylık dilimlerle ilerler;
- * durum getSyncState(site) ile izlenir. Aynı site için tek iş çalışır.
- */
 function syncDays(site, days) {
     const current = syncState.get(site);
     if (current?.running) return current;
@@ -169,7 +152,6 @@ function syncDays(site, days) {
 
 const getSyncState = (site) => syncState.get(site) || null;
 
-/** Tabloda o site için en son veri günü */
 async function latestDate(site) {
     const row = await SeoSearchDaily.findOne({ site, dimension: 'page' }).sort({ date: -1 }).select('date').lean();
     return row?.date || null;

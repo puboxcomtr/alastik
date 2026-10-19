@@ -1,13 +1,6 @@
-// Vitrin akıllı arama — TEK KAYNAK.
-// Hem /search/results (arama sonuçları) hem /tire-options (sol filtre facet'leri)
-// AYNI koşulları kullanmalı, yoksa sonuçlar ile filtreler uyuşmaz (ör. sonuçta
-// Michelin/Pettas çıkar ama marka filtresinde görünmez). Bu yüzden q → koşul
-// dönüşümü buraya toplandı.
 
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Mevsim kelimesi ürün adında metin olarak aranmaz; ozelkod1kodu (Yaz/Kış/4 Mevsim)
-// filtresine çevrilir. Yalnız alastik'te aktif.
 const SMART_SEASON_SITES = new Set(['alastik']);
 const SEASON_WORD_RE = /(?:4|d[öo]rt)\s*mevsim|all\s*season|yazl[ıi]k|k[ıi][şs]l[ıi]k|(?<![\p{L}\d])yaz(?![\p{L}\d])|(?<![\p{L}\d])k[ıi][şs](?![\p{L}\d])/iu;
 
@@ -22,16 +15,6 @@ const detectSeasonWord = (site, text) => {
     return { code, word: w, rest };
 };
 
-/**
- * q metnini arama koşullarına ($and öğeleri) çevirir. Base filtre (site/kategori)
- * ve sidebar ebat paramları çağıran tarafta uygulanır; burada YALNIZ serbest metin.
- *
- * Mantık:
- *  - Gerçek stok kodu (>=5 hane, ebat değil) → stok/barkod tam(regex) eşleşme.
- *  - Aksi halde: mevsim → filtre; rakamlar (ebat/kod) esnek eşleşme (kısa rakam
- *    yalnız ozelkod3kodu, >=7 hane stok+açıklama da); harf kelimeleri marka/model.
- *  - Ne rakam ne kelime çıkmadıysa ham metni geniş ara.
- */
 function buildSearchQueryConditions(site, q) {
     const conditions = [];
     const text = String(q || '').trim();
@@ -54,12 +37,10 @@ function buildSearchQueryConditions(site, q) {
         return conditions;
     }
 
-    // Mevsim kelimesi → filtre
     const season = detectSeasonWord(site, text);
     const freeText = season ? season.rest : text;
     if (season) conditions.push({ 'diaData.ozelkod1kodu': season.code });
 
-    // Rakamlar → ebat/ürün kodu esnek eşleşmesi
     const rakam = freeText.replace(/[^0-9]/g, '');
     if (rakam.length >= 3) {
         const esnek = new RegExp(rakam.split('').join('\\D*'), 'i');
@@ -71,14 +52,12 @@ function buildSearchQueryConditions(site, q) {
         conditions.push({ $or: rakamOr });
     }
 
-    // Harf kelimeleri (rakam içermeyen, en az 2 harf) → marka/model
     const kelimeler = freeText.split(/\s+/).filter(wd => wd.length >= 2 && /[a-zçğıiöşü]/i.test(wd) && !/\d/.test(wd));
     for (const word of kelimeler) {
         const rgx = new RegExp(escapeRegex(word), 'i');
         conditions.push({ $or: [{ 'diaData.aciklama': rgx }, { 'diaData.marka': rgx }] });
     }
 
-    // Ne yeterli rakam ne harf kelimesi çıktıysa ham metni geniş ara
     if (rakam.length < 3 && kelimeler.length === 0) {
         const rgx = new RegExp(escapeRegex(freeText), 'i');
         conditions.push({ $or: [

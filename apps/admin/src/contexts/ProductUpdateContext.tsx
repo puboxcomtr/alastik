@@ -4,7 +4,6 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 import type { ProductType } from '@/types/apps/productTypes'
 import { API_ENDPOINTS, fetchAPI } from '@/libs/api'
 
-// Update edilecek alanları tanımla
 interface ProductUpdateData {
     seoTitle?: string
     seoDescription?: string
@@ -30,19 +29,16 @@ interface ToastMessage {
 }
 
 interface ProductUpdateContextType {
-    // State
     originalProduct: ProductType | null
     updateData: ProductUpdateData
     isLoading: boolean
     hasChanges: boolean
 
-    // Actions
     setOriginalProduct: (product: ProductType) => void
     updateField: (field: keyof ProductUpdateData, value: any) => void
     resetChanges: () => void
     saveChanges: () => Promise<boolean>
 
-    // Toast
     showToast: (toast: ToastMessage) => void
 }
 
@@ -160,7 +156,6 @@ export function ProductUpdateProvider({ children, productId }: ProductUpdateProv
     return (
         <ProductUpdateContext.Provider value={contextValue}>
             {children}
-            {/* Toast Component */}
             {toast && (
                 <div
                     style={{

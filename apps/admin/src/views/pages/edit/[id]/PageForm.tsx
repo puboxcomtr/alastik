@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 import { getSiteUrl } from '@/utils/activeSite'
 import { useRouter } from 'next/navigation'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -23,7 +22,6 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Popover from '@mui/material/Popover'
 
-/* Editor */
 import classnames from 'classnames'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
@@ -41,16 +39,12 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Image } from '@tiptap/extension-image'
 
-/* Toast */
 import { toast } from 'react-toastify'
 
-/* API */
 import { createPage, updatePage, type PageType } from '@/utils/api/pages'
 
-/* Components */
 import CustomIconButton from '@/@core/components/mui/IconButton'
 
-/* Styles */
 import '@/libs/styles/tiptapEditor.css'
 
 interface PageFormProps {
@@ -82,7 +76,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
 
     return (
         <div className='flex flex-wrap gap-x-3 gap-y-1 pbs-5 pbe-4 pli-5'>
-            {/* Başlıklar */}
             <CustomIconButton
                 {...(editor.isActive('heading', { level: 2 }) && { color: 'primary' })}
                 variant='outlined'
@@ -101,7 +94,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className={classnames('ri-h-3', { 'text-textSecondary': !editor.isActive('heading', { level: 3 }) })} />
             </CustomIconButton>
 
-            {/* Metin stilleri */}
             <CustomIconButton
                 {...(editor.isActive('bold') && { color: 'primary' })}
                 variant='outlined'
@@ -138,7 +130,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className={classnames('ri-strikethrough', { 'text-textSecondary': !editor.isActive('strike') })} />
             </CustomIconButton>
 
-            {/* Renk */}
             <CustomIconButton
                 variant='outlined'
                 size='small'
@@ -188,7 +179,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 </div>
             </Popover>
 
-            {/* Highlight */}
             <CustomIconButton
                 variant='outlined'
                 size='small'
@@ -227,7 +217,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 </div>
             </Popover>
 
-            {/* Listeler */}
             <CustomIconButton
                 {...(editor.isActive('bulletList') && { color: 'primary' })}
                 variant='outlined'
@@ -246,7 +235,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className={classnames('ri-list-ordered', { 'text-textSecondary': !editor.isActive('orderedList') })} />
             </CustomIconButton>
 
-            {/* Hizalama */}
             <CustomIconButton
                 {...(editor.isActive({ textAlign: 'left' }) && { color: 'primary' })}
                 variant='outlined'
@@ -274,7 +262,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className={classnames('ri-align-right', { 'text-textSecondary': !editor.isActive({ textAlign: 'right' }) })} />
             </CustomIconButton>
 
-            {/* Link */}
             <CustomIconButton
                 {...(editor.isActive('link') && { color: 'primary' })}
                 variant='outlined'
@@ -293,7 +280,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className='ri-link-unlink' />
             </CustomIconButton>
 
-            {/* Blockquote */}
             <CustomIconButton
                 {...(editor.isActive('blockquote') && { color: 'primary' })}
                 variant='outlined'
@@ -303,7 +289,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className={classnames('ri-double-quotes-l', { 'text-textSecondary': !editor.isActive('blockquote') })} />
             </CustomIconButton>
 
-            {/* Horizontal Rule */}
             <CustomIconButton
                 variant='outlined'
                 size='small'
@@ -312,7 +297,6 @@ const EditorToolbar = ({ editor }: { editor: Editor | null }) => {
                 <i className='ri-separator' />
             </CustomIconButton>
 
-            {/* Table */}
             <CustomIconButton
                 variant='outlined'
                 size='small'
@@ -496,7 +480,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                 editor.commands.setContent(htmlContent);
             }, 100);
         } else {
-            // Editor'dan HTML'e geç
             const editorHTML = editor.getHTML()
             setHtmlContent(editorHTML);
             setIsHtmlMode(true);
@@ -588,7 +571,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                 toast.success('Sayfa oluşturuldu')
             }
 
-            // MODE'U KAYDET (HTML veya Editor)
             if (savedPageId) {
                 localStorage.setItem(`page-editor-mode-${savedPageId}`, isHtmlMode ? 'html' : 'editor')
             }
@@ -605,7 +587,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
     return (
         <form onSubmit={handleSubmit}>
             <Grid container spacing={6}>
-                {/* Header */}
                 <Grid size={{ xs: 12 }}>
                     <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col gap-y-4'>
                         <Typography variant='h4'>
@@ -631,10 +612,8 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                     </div>
                 </Grid>
 
-                {/* Sol Kolon */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={6}>
-                        {/* Temel Bilgiler */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -668,7 +647,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                             </Card>
                         </Grid>
 
-                        {/* İçerik Editörü */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -716,7 +694,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                     </Grid>
                 </Grid>
 
-                {/* Sağ Kolon - SEO vb. aynı kalacak */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Grid container spacing={6}>
                         <Grid size={{ xs: 12 }}>
@@ -853,7 +830,6 @@ const PageForm = ({ page, isEdit = false }: PageFormProps) => {
                                             />
                                         </Grid>
 
-                                        {/* SEO analizi: odak kelime + canlı kriter kontrolü */}
                                         <Grid size={{ xs: 12 }}>
                                             <SeoLivePanel
                                                 type='page'

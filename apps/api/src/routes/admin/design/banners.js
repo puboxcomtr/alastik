@@ -5,7 +5,6 @@ const path = require('path');
 const fs = require('fs').promises;
 const Banner = require('../../../models/admin/design/Banner');
 
-// Multer config
 const uploadsDir = path.join(__dirname, '../../../../public/banners');
 
 const storage = multer.diskStorage({
@@ -39,7 +38,6 @@ const upload = multer({
     }
 });
 
-// Tek banner getir
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -65,7 +63,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Banner listele
 router.get('/', async (req, res) => {
     try {
         const { status } = req.query;
@@ -90,7 +87,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Yeni banner oluştur
 router.post('/', upload.single('image'), async (req, res) => {
     try {
         const { description, redirectUrl, altTag, status, openNewTab, variableKey, order } = req.body;
@@ -153,7 +149,6 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 });
 
-// Banner güncelle
 router.put('/:id', upload.single('image'), async (req, res) => {
     try {
         const { id } = req.params;
@@ -232,7 +227,6 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     }
 });
 
-// Banner sil
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;

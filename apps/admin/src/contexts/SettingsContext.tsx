@@ -4,7 +4,6 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 import { toast } from 'react-toastify'
 import { fetchAPI } from '@libs/api'
 
-// Settings veri tipi
 interface SettingsData {
     companyInfo?: {
         name?: string

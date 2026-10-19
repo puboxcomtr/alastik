@@ -22,7 +22,6 @@ import { toast } from 'react-toastify'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Manuel tahsilat kanalları
 const MANUAL_CHANNELS = [
     { value: 'paynet', label: 'Paynet' },
     { value: 'otopirpos', label: 'Otopirpos' },
@@ -74,7 +73,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                 syncedAt: new Date().toISOString()
             })
         } else if (result.skipped || result.data?.skipped) {
-            // Entegrasyon kapalı — sessiz geç
         } else {
             toast.error(`DIA aktarımı başarısız: ${result.message || 'bilinmeyen hata'}`)
             setDia({ ...dia, status: 'failed', syncErrors: [...(dia.syncErrors || []), result.message] })
@@ -91,7 +89,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
             onStatusChange?.(newStatus)
 
             if (newStatus === 'cancelled' && res?.dia) {
-                // DIA iptal sonucu
                 if (res.dia.success) {
                     toast.success(res.dia.message || 'DIA kayıtları iptal edildi')
                     if (!res.dia.skipped) setDia({ ...dia, status: 'cancelled' })
@@ -100,7 +97,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                     setDia({ ...dia, status: 'failed', syncErrors: [...(dia.syncErrors || []), res.dia.message] })
                 }
             } else if (res?.dia) {
-                // Onaylandı seçildiyse API DIA aktarımını da denedi — sonucu göster
                 applyDiaResult(res.dia)
             }
         } catch (error) {
@@ -109,7 +105,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
     }
 
     const handleStatusChange = (newStatus: string) => {
-        // İptalde DIA kaydı varsa önce onay iste
         if (newStatus === 'cancelled' && hasDiaRecords && !diaCancelled) {
             setCancelDialogOpen(true)
             return
@@ -155,7 +150,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
     const handleModeChange = (mode: 'auto' | 'manual') => {
         setCollectionMode(mode)
 
-        // Otomatiğe dönülürse kayıtlı manuel kanal temizlenir
         if (mode === 'auto' && channel) {
             setChannel('')
             saveChannel(null)
@@ -268,7 +262,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                     )}
                 </div>
 
-                {/* Sipariş iptali onayı — DIA kayıtları da iptal edilir */}
                 <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
                     <DialogTitle>Siparişi İptal Et</DialogTitle>
                     <DialogContent>
@@ -292,7 +285,6 @@ const OrderStatus = ({ orderId, status, manualCollection, diaIntegration, onStat
                     </DialogActions>
                 </Dialog>
 
-                {/* Manuel DIA gönderimi onayı (banka havalesi vb.) */}
                 <Dialog open={sendDialogOpen} onClose={() => setSendDialogOpen(false)}>
                     <DialogTitle>{diaSynced ? 'DIA Eksiklerini Tamamla' : 'DIA\'ya Gönder'}</DialogTitle>
                     <DialogContent>

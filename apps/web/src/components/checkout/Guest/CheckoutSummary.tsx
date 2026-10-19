@@ -21,7 +21,6 @@ export default function CheckoutSummary({ onSubmit, loading, showButton = true }
 
     return (
         <>
-            {/* Masaüstü Sidebar */}
             <div className="d-none d-lg-block">
                 <div className="card bg-white rounded">
                     <div className="card-body">
@@ -66,7 +65,6 @@ export default function CheckoutSummary({ onSubmit, loading, showButton = true }
                 </div>
             </div>
 
-            {/* Mobil Bottom Bar */}
             <div className="d-lg-none">
                 {mobileExpanded && (
                     <div

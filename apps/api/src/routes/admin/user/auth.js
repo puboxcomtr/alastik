@@ -5,16 +5,10 @@ const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const BlockedIP = require('../../../models/admin/user/BlockedIP');
 const { loginAdmin, logoutAdmin, authenticateAdmin, getClientIP } = require('../../../middleware/auth');
 
-/**
- * @route   POST /api/admin/user/auth/login
- * @desc    Admin girişi
- * @access  Public
- */
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validasyon
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -22,7 +16,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // IP kontrolü
     const clientIP = getClientIP(req);
     const isBlocked = await BlockedIP.isBlocked(clientIP);
 
@@ -43,7 +36,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Admin bul
     const admin = await Admin.findByEmail(email);
 
     if (!admin) {
@@ -63,7 +55,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Hesap kilitli mi?
     if (admin.isLocked) {
       await ActivityLog.logActivity({
       site: req.site,
@@ -82,7 +73,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Şifre kontrolü
     const isPasswordValid = await admin.comparePassword(password);
 
     if (!isPasswordValid) {
@@ -105,7 +95,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Hesap aktif mi?
     if (!admin.isActive) {
       await ActivityLog.logActivity({
       site: req.site,
@@ -124,10 +113,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Login işlemi
     const loginData = await loginAdmin(admin, req, res);
 
-    // Activity log
     await ActivityLog.logActivity({
       site: req.site,
       user: admin._id,
@@ -157,16 +144,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/admin/user/auth/logout
- * @desc    Admin çıkışı
- * @access  Private
- */
 router.post('/logout', authenticateAdmin, async (req, res) => {
   try {
     await logoutAdmin(req, res);
 
-    // Activity log
     await ActivityLog.logActivity({
       site: req.site,
       user: req.adminId,
@@ -191,11 +172,6 @@ router.post('/logout', authenticateAdmin, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/admin/user/auth/me
- * @desc    Oturum bilgilerini getir
- * @access  Private
- */
 router.get('/me', authenticateAdmin, async (req, res) => {
   try {
     res.json({

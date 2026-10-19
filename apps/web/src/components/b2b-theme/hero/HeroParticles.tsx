@@ -6,20 +6,7 @@ import * as THREE from 'three';
 import { HERO_COLORS, HERO_CONFIG } from './hero-config';
 import { clamp01, introAlpha } from './hero-easing';
 
-/**
- * Atmosphere behind the tire.
- *
- * A single `Points` object — one draw call — with per-point size, colour and
- * phase supplied as attributes. That needs a small shader (PointsMaterial has
- * one size for the whole cloud), which is also what makes the slow drift and
- * the faint twinkle free: both are computed on the GPU from a time uniform
- * rather than by rewriting the position buffer every frame.
- *
- * Counts are deliberately modest and drop further on small screens. This is
- * meant to read as depth in the background, not as a starfield.
- */
-
-const VERTEX_SHADER = /* glsl */ `
+const VERTEX_SHADER =  `
   attribute float aSize;
   attribute float aPhase;
   attribute vec3 aColor;
@@ -48,7 +35,7 @@ const VERTEX_SHADER = /* glsl */ `
   }
 `;
 
-const FRAGMENT_SHADER = /* glsl */ `
+const FRAGMENT_SHADER =  `
   varying float vAlpha;
   varying vec3 vColor;
 
@@ -88,11 +75,8 @@ function HeroParticles({ count, prefersReducedMotion, startedAt }: HeroParticles
     for (let index = 0; index < count; index += 1) {
       positions[index * 3] = (Math.random() - 0.5) * particles.spread.x;
       positions[index * 3 + 1] = (Math.random() - 0.5) * particles.spread.y;
-      // Biased behind the tire so particles do not wash over the tread.
       positions[index * 3 + 2] = -Math.random() * particles.spread.z;
 
-      // A minority of gold motes; the rest stay a cool near-white so the
-      // background never turns into a colour wash.
       scratch.copy(Math.random() < 0.22 ? gold : white);
       colors[index * 3] = scratch.r;
       colors[index * 3 + 1] = scratch.g;
@@ -124,8 +108,6 @@ function HeroParticles({ count, prefersReducedMotion, startedAt }: HeroParticles
         },
         transparent: true,
         depthWrite: false,
-        // Additive on a near-black background gives the faint glow the brief
-        // asks for without needing a bloom pass.
         blending: THREE.AdditiveBlending,
       }),
     [pixelRatio],

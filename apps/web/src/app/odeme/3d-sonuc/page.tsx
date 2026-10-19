@@ -28,7 +28,6 @@ export default function ThreeDResultPage() {
                 bankMessage
             });
 
-            // 3D başarısız
             if (transactionStatusId !== '1' && transactionStatusId !== '4') {
                 setStatus('error');
                 setMessage(bankMessage || 'Ödeme başarısız oldu');
@@ -38,7 +37,6 @@ export default function ThreeDResultPage() {
                 return;
             }
 
-            // PaymentGuid yoksa hata
             if (!paymentGuid) {
                 setStatus('error');
                 setMessage('Ödeme bilgisi alınamadı');
@@ -49,7 +47,6 @@ export default function ThreeDResultPage() {
             }
 
             try {
-                // CommitPayment çağır
                 const response = await fetch(API_ENDPOINTS.payment.threeDCommit(), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -65,7 +62,6 @@ export default function ThreeDResultPage() {
                     setStatus('success');
                     setMessage('Ödeme başarılı! Yönlendiriliyorsunuz...');
 
-                    // Sepeti temizle
                     await clearCart(true);
 
                     setTimeout(() => {

@@ -2,14 +2,11 @@ const mongoose = require('mongoose');
 const WebAkakceSettings = require('../../../models/plugins/akakce/WebAkakceSettings');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
-// Site başına ürün URL tabanı (config/sites.js'teki ilk domain)
 function getSiteUrl(site) {
     const domain = SITES[site]?.domains?.[0] || SITES[DEFAULT_SITE].domains[0];
     return `https://${domain}`;
 }
 
-// 30 dakikalık XML önbelleği (worker başına, site başına ayrı)
-// settingsVersion: ayarlar değişince önbelleğin anında düşmesi için updatedAt damgası
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const cacheBySite = {};
 
@@ -56,7 +53,6 @@ function getPrice(product, priceField, includeTax, taxRate) {
 
 function getCategoryPath(product) {
     const kategoriler = product.diaData?.m_kategoriler || [];
-    // Aktif ve en derin kategori zincirini seç
     let best = '';
     for (const k of kategoriler) {
         if (k.kategori_durum_1 !== 'A') continue;
@@ -76,7 +72,6 @@ function resolveField(product, mappingPath, autoResolver) {
     return getNestedValue(product, mappingPath) || '';
 }
 
-// Kaynak filtresi (stock/xml) için mongo koşulu üretir
 function buildSourceCondition(sourceKey, filter) {
     const base = sourceKey === 'stock'
         ? { 'syncInfo.xmlSource': null }
@@ -96,9 +91,8 @@ function buildSourceCondition(sourceKey, filter) {
         };
     }
 
-    // product ve custom modları: seçili stok kodları
     const codes = (filter.products || []).map(p => p.id).filter(Boolean);
-    if (!codes.length) return { _id: null }; // seçim boşsa hiçbir ürün gelmesin
+    if (!codes.length) return { _id: null };
     return { ...base, 'diaData.stokkartkodu': { $in: codes } };
 }
 
@@ -121,13 +115,12 @@ function buildQuery(settings, site) {
         sources.push(buildSourceCondition('xml', settings.productSources.xml));
     }
 
-    if (!sources.length) return null; // hiçbir kaynak aktif değil
+    if (!sources.length) return null;
     query.$or = sources;
 
     return query;
 }
 
-// Excel'den içe aktarılan özel XML adları: stok kodu -> xmlName
 function buildNameOverrides(settings) {
     const map = new Map();
     for (const src of ['stock', 'xml']) {
@@ -161,14 +154,11 @@ function generateXml(settings, products, nameOverrides, siteUrl, site) {
         const sku = resolveField(product, mapping.sku, p => p.diaData?.stokkartkodu) || product.diaData?.stokkartkodu;
         if (!sku) continue;
 
-        // Ad: Excel'den içe aktarılan özel ad öncelikli, yoksa eşleştirilen alan
         const name = nameOverrides.get(String(sku))
             || resolveField(product, mapping.name, p => p.diaData?.aciklama)
             || product.diaData?.aciklama;
         if (!name) continue;
 
-        // CDATA içinde HTML korunur; kapatma dizisi ']]>' etkisizleştirilir
-        // Açıklama: sitenin kendi açıklaması > eşleştirilen alan > ortak açıklama
         const description = String(
             product.customData?.siteDescriptions?.[site]
             || resolveField(product, mapping.description, p => p.customData?.customDescription || p.diaData?.aciklama)
@@ -234,8 +224,6 @@ async function generateFeed({ force = false, site = DEFAULT_SITE } = {}) {
         throw new Error('Akakçe XML bu site için aktif değil');
     }
 
-    // Önbellek yalnızca taze VE ayarlar değişmemişse kullanılır;
-    // ayar kaydı updatedAt'i değiştirdiği için değişiklikler anında yansır
     const settingsVersion = settings.updatedAt ? settings.updatedAt.toISOString() : '';
     const cache = cacheBySite[feedSite] || { xml: null, generatedAt: 0, count: 0, settingsVersion: '' };
     const cacheFresh = cache.xml
@@ -264,7 +252,6 @@ async function generateFeed({ force = false, site = DEFAULT_SITE } = {}) {
 
     cacheBySite[feedSite] = { xml, generatedAt: Date.now(), count, settingsVersion };
 
-    // timestamps kapalı: durum alanları updatedAt'i değiştirip önbelleği bozmasın
     await WebAkakceSettings.updateOne({ site: feedSite }, {
         $set: { lastGenerated: new Date(), productCount: count }
     }, { timestamps: false });

@@ -6,17 +6,11 @@ const TagMatchingService = require('../../../services/web/products/TagMatching')
 const { revalidateWebTag } = require('../../../utils/revalidateWeb');
 const { authenticateAdmin } = require('../../../middleware/auth');
 
-// Admin kimlik doğrulaması (DISABLE_AUTH=true ise dev ortamında atlanır)
 const maybeAuth = process.env.DISABLE_AUTH === 'true'
     ? (req, res, next) => next()
     : authenticateAdmin;
 
 router.use(maybeAuth);
-
-/**
- * Etiket Listeleme -
- * GET /api/tags
- */
 
 router.get('/', async (req, res) => {
     try {
@@ -40,7 +34,6 @@ router.get('/', async (req, res) => {
 
         const filter = { site: req.site };
 
-        // Arama filtresi
         if (search) {
             filter.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -48,22 +41,18 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Durum filtresi
         if (isActive !== undefined && isActive !== 'all') {
             filter.isActive = isActive === 'true';
         }
 
-        // Tip filtresi
         if (type && type !== 'all') {
             filter.type = type;
         }
 
-        // Ürün var/yok filtresi
         if (hasProducts === 'true') {
             filter.productCount = { $gt: 0 };
         } else if (hasProducts === 'false') {
             filter.$or = filter.$or || [];
-            // $or zaten search'den varsa and ile birleştir
             if (search) {
                 filter.$and = [
                     { $or: filter.$or },
@@ -75,7 +64,6 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Genişlik filtresi (seoUrl'den: 205-xx-xx)
         if (width) {
             const widthFilter = { seoUrl: { $regex: `^${width}-`, $options: 'i' } };
             if (filter.$and) {
@@ -88,7 +76,6 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Yanak filtresi (seoUrl'den: xxx-55-xxx)
         if (profile) {
             const profileRegex = `^\\d{3}-${profile}-`;
             if (filter.seoUrl) {
@@ -101,7 +88,6 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Jant çapı filtresi (seoUrl'den: xxx-xx-r16 veya xxx-xx-16)
         if (rim) {
             const rimRegex = `^\\d{3}-\\d{2}-r?${rim}[-$]`;
             if (filter.$and) {
@@ -117,7 +103,6 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Mevsim filtresi (seoUrl'den)
         if (season && season !== 'all') {
             let seasonRegex;
             if (season === 'yaz') seasonRegex = 'yaz';
@@ -175,10 +160,6 @@ router.get('/', async (req, res) => {
         });
     }
 });
-/**
- * Etiket Filtreleme -
- * GET /api/filter-options
- */
 router.get('/filter-options', async (req, res) => {
     try {
         const tags = await WebTag.find(
@@ -217,7 +198,6 @@ router.get('/filter-options', async (req, res) => {
     }
 });
 
-// Yeni Etiket Oluşturma
 router.post('/', async (req, res) => {
     try {
         const { title, description, seoTitle, seoDescription, seoUrl, isActive, order, products } = req.body;
@@ -229,10 +209,8 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // SEO URL boş mu kontrol et
         let finalSeoUrl = seoUrl && seoUrl.trim() !== '' ? seoUrl.trim() : null;
 
-        // Eğer SEO URL yoksa, title'dan otomatik oluştur
         if (!finalSeoUrl && title) {
             finalSeoUrl = title
                 .toLowerCase()
@@ -248,7 +226,6 @@ router.post('/', async (req, res) => {
                 .trim('-');
         }
 
-        // SEO URL benzersizlik kontrolü (site içinde)
         if (finalSeoUrl) {
             const existing = await WebTag.findOne({ site: req.site, seoUrl: finalSeoUrl });
             if (existing) {
@@ -259,7 +236,6 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Products array'ini düzenle - string ise parse et
         let productArray = [];
         if (products) {
             if (Array.isArray(products)) {
@@ -304,7 +280,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Tüm etiketler için otomatik ürün eşleştirme
 router.post('/matching/run', async (req, res) => {
     try {
         const { dryRun = false, tagType = null } = req.body;
@@ -335,7 +310,6 @@ router.post('/matching/run', async (req, res) => {
     }
 });
 
-// Tek etiket için otomatik ürün eşleştirme
 router.post('/:id/matching', async (req, res) => {
     try {
         const result = await TagMatchingService.matchSingleTag(req.params.id);
@@ -357,7 +331,6 @@ router.post('/:id/matching', async (req, res) => {
     }
 });
 
-// Etiket Detayı
 router.get('/:id', async (req, res) => {
     try {
         const tag = await WebTag.findOne({ _id: req.params.id, site: req.site });
@@ -369,16 +342,14 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Ürünleri _key ile çek (ObjectId validasyonu yapma)
         let populatedProducts = [];
         if (tag.products && tag.products.length > 0) {
             const products = await WebProduct.find({
-                _key: { $in: tag.products }  // Tüm products array'ini kullan
+                _key: { $in: tag.products }
             })
                 .select('_key diaData.aciklama diaData.stokkartkodu diaData.marka diaData.gercek_stok customData.webPrice')
                 .lean();
 
-            // Frontend için formatla
             populatedProducts = products.map(p => ({
                 id: p._key,
                 name: p.diaData?.aciklama || 'N/A',
@@ -407,7 +378,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Etiket Güncelleme
 router.put('/:id', async (req, res) => {
     try {
         const { title, description, seoTitle, seoDescription, seoUrl, isActive, order, products } = req.body;
@@ -421,7 +391,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // SEO URL kontrolü (değiştiriliyorsa — etiketin kendi sitesi içinde)
         if (seoUrl && seoUrl !== tag.seoUrl) {
             const existing = await WebTag.findOne({ site: tag.site, seoUrl, _id: { $ne: req.params.id } });
             if (existing) {
@@ -432,7 +401,6 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        // Eski slug'ı sakla (cache invalidate için)
         const oldSeoUrl = tag.seoUrl;
 
         if (title) tag.title = title;
@@ -443,7 +411,6 @@ router.put('/:id', async (req, res) => {
         if (isActive !== undefined) tag.isActive = isActive;
         if (order !== undefined) tag.order = order;
 
-        // Products array'i güncelle
         if (products !== undefined && Array.isArray(products)) {
             tag.products = products;
             tag.productCount = products.length;
@@ -451,7 +418,6 @@ router.put('/:id', async (req, res) => {
 
         await tag.save();
 
-        // Web cache'ini temizle (fire-and-forget)
         if (oldSeoUrl) {
             revalidateWebTag(`tag-${oldSeoUrl}`).catch(() => { });
         }
@@ -475,7 +441,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Etiket Silme
 router.delete('/:id', async (req, res) => {
     try {
         const tag = await WebTag.findOneAndDelete({ _id: req.params.id, site: req.site });
@@ -487,7 +452,6 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
-        // Web cache'ini temizle (fire-and-forget)
         if (tag.seoUrl) {
             revalidateWebTag(`tag-${tag.seoUrl}`).catch(() => { });
         }
@@ -507,11 +471,9 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-
-// Etikete Ürün Ekleme/Çıkarma
 router.post('/:id/products', async (req, res) => {
     try {
-        const { productIds, action } = req.body; // action: 'add' veya 'remove'
+        const { productIds, action } = req.body;
 
         if (!productIds || !Array.isArray(productIds)) {
             return res.status(400).json({
@@ -530,14 +492,12 @@ router.post('/:id/products', async (req, res) => {
         }
 
         if (action === 'add') {
-            // Ürünleri ekle (duplicate kontrolü ile)
             productIds.forEach(productId => {
                 if (!tag.products.includes(productId)) {
                     tag.products.push(productId);
                 }
             });
         } else if (action === 'remove') {
-            // Ürünleri çıkar
             tag.products = tag.products.filter(
                 productId => !productIds.includes(productId.toString())
             );
@@ -566,7 +526,6 @@ router.post('/:id/products', async (req, res) => {
     }
 });
 
-// Etiket için uygun ürünleri arama
 router.get('/:id/available-products', async (req, res) => {
     try {
         const { search, page = 1, limit = 20 } = req.query;
@@ -580,7 +539,7 @@ router.get('/:id/available-products', async (req, res) => {
         }
 
         const filter = {
-            _id: { $nin: tag.products }, // Zaten eklenmiş ürünleri hariç tut
+            _id: { $nin: tag.products },
             'syncInfo.diaStatus': 'synced',
             'diaData.durum': 'A',
             sites: req.site
@@ -621,7 +580,6 @@ router.get('/:id/available-products', async (req, res) => {
     }
 });
 
-// GEÇİCİ: Geçersiz ID'leri temizle
 router.get('/:id/clean', async (req, res) => {
     try {
         const mongoose = require('mongoose');
@@ -633,7 +591,6 @@ router.get('/:id/clean', async (req, res) => {
 
         const before = tag.products.length;
 
-        // Sadece geçerli ObjectId'leri tut
         tag.products = tag.products.filter(id => mongoose.Types.ObjectId.isValid(id));
         tag.productCount = tag.products.length;
 

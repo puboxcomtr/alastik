@@ -83,7 +83,6 @@ export default function OrderDetail({ order, show, onHide, loading }: OrderDetai
                 </div>
             ) : (
                 <>
-                    {/* Header */}
                     <Offcanvas.Header closeButton className="align-items-start py-3 pt-lg-4">
                         <div>
                             <Offcanvas.Title className="mb-1">
@@ -96,10 +95,8 @@ export default function OrderDetail({ order, show, onHide, loading }: OrderDetai
                         </div>
                     </Offcanvas.Header>
 
-                    {/* Body */}
                     <Offcanvas.Body className="d-flex flex-column gap-4 pt-2 pb-3">
 
-                        {/* Urunler */}
                         <div className="d-flex flex-column gap-3">
                             {order.items?.map((item: any, idx: number) => (
                                 <div className="d-flex align-items-center" key={idx}>
@@ -236,7 +233,6 @@ export default function OrderDetail({ order, show, onHide, loading }: OrderDetai
                             </ul>
                         </div>
 
-                        {/* Toplam */}
                         <div className="d-flex align-items-center justify-content-between fs-sm border-top pt-4">
                             Toplam:
                             <span className="h5 text-end ms-2 mb-0">

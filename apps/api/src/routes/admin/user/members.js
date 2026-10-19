@@ -6,13 +6,8 @@ const { revenueMatch, round2 } = require('../../../utils/dashboardMetrics');
 const { assignMissingMemberNos } = require('../../../utils/memberNo');
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
-// Şifre/token alanları hiçbir uçtan dönmez
 const HIDDEN_FIELDS = '-password -resetPasswordToken -resetPasswordExpire -activationToken -activationTokenExpire -activationCode -loginAttempts -lockedUntil';
 
-/**
- * GET / — site üyeleri listesi (arama + durum filtresi + sayfalama)
- * Sipariş sayısı weborders üzerinden hesaplanır; şifre/token alanları asla dönmez.
- */
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -34,24 +29,19 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Ek filtreler (Üyeler sayfası): kayıt tarihi aralığı ve sipariş vermiş/vermemiş
         const dateRe = /^\d{4}-\d{2}-\d{2}$/;
         if (dateRe.test(req.query.from || '') || dateRe.test(req.query.to || '')) {
             match.createdAt = {};
             if (dateRe.test(req.query.from || '')) match.createdAt.$gte = new Date(`${req.query.from}T00:00:00+03:00`);
             if (dateRe.test(req.query.to || '')) match.createdAt.$lt = new Date(new Date(`${req.query.to}T00:00:00+03:00`).getTime() + 24 * 60 * 60 * 1000);
         }
-        // Cari filtre paneli: alan bazlı aramalar
         const fieldRegex = v => new RegExp(String(v).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         if (req.query.code?.trim()) match.diaCustomerCode = fieldRegex(req.query.code);
         if (req.query.email?.trim()) match.email = fieldRegex(req.query.email);
         if (req.query.phone?.trim()) match.phone = fieldRegex(req.query.phone);
-        // Cari tipi: Premium (DIA özel kodundan) / Normal
         if (req.query.tier === 'premium') match['diaCari.premium'] = true;
         else if (req.query.tier === 'normal') match['diaCari.premium'] = { $ne: true };
 
-        // Plasiyer: DIA satış elemanı adı (seçenekler /salespersons ucundan gelir). DIA'da aynı kişi farklı
-        // yazımlarla kayıtlı olabildiği için (büyük/küçük harf, boşluk) tüm yazımlar birlikte eşlenir.
         if (req.query.salesperson === UNASSIGNED_SALESPERSON) {
             match['diaCari.salespersonName'] = { $in: [null, ''] };
         } else if (req.query.salesperson?.trim()) {
@@ -65,8 +55,6 @@ router.get('/', async (req, res) => {
             match._id = req.query.hasOrders === 'yes' ? { $in: memberIds } : { $nin: memberIds };
         }
 
-        // view=table: Üyeler sayfası için ek alanlar (harcama, son sipariş, sepet, etiket/not).
-        // Varsayılan görünüm (Site Üyeleri) değişmez.
         const tableView = req.query.view === 'table';
 
         const tableStages = tableView ? [
@@ -83,7 +71,7 @@ router.get('/', async (req, res) => {
             },
             {
                 $lookup: {
-                    from: 'carts', // WebCart koleksiyon adı 'carts'
+                    from: 'carts',
                     let: { memberId: '$_id' },
                     pipeline: [
                         { $match: { $expr: { $eq: ['$userId', '$$memberId'] } } },
@@ -114,17 +102,12 @@ router.get('/', async (req, res) => {
             }
         } : {};
 
-        // Varsayılan sıralama: son güncellenme (yeni → eski).
-        // b2b carileri: DIA kartının son değişiklik tarihi — Mongo updatedAt her cari
-        // senkronunda (30 dk) yenilendiği için anlamsız. Diğer siteler: üyenin updatedAt'i.
         const defaultSort = req.site === 'b2b'
             ? { 'diaCari.diaUpdatedAt': -1, createdAt: -1 }
             : { updatedAt: -1, createdAt: -1 };
 
-        // Sütun sıralaması TÜM kayıtlar üzerinden (?sort=<sütun>&order=asc|desc); yalnız izinli alanlar.
-        // Hesaplanan alanlar (sipariş sayısı, harcama) için hesaplama sayfalamadan ÖNCE yapılır.
         const SORT_FIELDS = {
-            firstName: 'firstName', phone: 'phone', createdAt: 'createdAt',
+            firstName: 'firstName', phone: 'phone', createdAt: 'createdAt', lastLoginAt: 'lastLoginAt',
             diaCreatedAt: 'diaCari.diaCreatedAt', invoiceCount12m: 'diaCari.invoiceCount12m',
             salespersonName: 'diaCari.salespersonName'
         };
@@ -138,7 +121,6 @@ router.get('/', async (req, res) => {
         const fieldSort = SORT_FIELDS[sortParam];
         const textSort = ['firstName', 'salespersonName'].includes(sortParam);
 
-        // Numarası olmayanlara (toplu içe aktarılanlar dahil) sıra numarası ver — eksik yoksa tek sorgu
         try { await assignMissingMemberNos(req.site); } catch (e) { console.error('Üye numarası atama hatası:', e.message); }
 
         const orderLookup = {
@@ -170,7 +152,7 @@ router.get('/', async (req, res) => {
                 ...tableStages
             ];
         const aggregate = WebMember.aggregate(pipeline);
-        if (textSort) aggregate.collation({ locale: 'tr' }); // Türkçe alfabe sırası
+        if (textSort) aggregate.collation({ locale: 'tr' });
 
         const [rows, total] = await Promise.all([
             aggregate.append(
@@ -182,7 +164,6 @@ router.get('/', async (req, res) => {
                         diaCustomerCode: 1, diaCustomerKey: 1,
                         createdAt: 1, lastLoginAt: 1,
                         orderCount: { $ifNull: [{ $arrayElemAt: ['$orderStats.n', 0] }, 0] },
-                        // b2b cari: DIA kayıt tarihi, plasiyer, son 12 ay fatura sayısı (senkrondan)
                         diaCreatedAt: '$diaCari.diaCreatedAt',
                         salespersonName: '$diaCari.salespersonName',
                         premium: { $eq: ['$diaCari.premium', true] },
@@ -200,27 +181,14 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * GET /:id — üye detay sayfası: profil, sipariş istatistikleri, siparişler, adresler, favoriler, zaman çizelgesi
- */
-// Tek cari güncelleme: kilit için en fazla bekleme ve kilidin en uzun tutulma süresi
 const SINGLE_SYNC_LOCK_WAIT_MS = 15000;
 const SINGLE_SYNC_LOCK_TTL_MS = 180000;
-// Toplu cari senkronu (liste + bakiye / limit / Premium) kilidi — tam senkron birkaç dakika sürebilir
 const BULK_SYNC_LOCK_TTL_MS = 300000;
-// Bayi sitesi teması (config/sites.js) — toplu senkronda cari kartı bilgileri de güncellenir
 const B2B_THEME = 'b2b';
-// Worker'ın b2b cari kuyruğu ve elle tetiklenen işleri (DiaWorker.js ile aynı adlar)
 const B2B_CARI_QUEUE = 'b2b-cari-sync';
 const MANUAL_B2B_JOBS = ['manual-b2b-address-sync', 'manual-b2b-finance-sync'];
-// Elle tetiklenen finans / adres senkronunun zaman aşımı (zamanlanmış işlerle aynı)
 const BACKGROUND_SYNC_TIMEOUT_MS = 3600000;
 
-/**
- * Fatura / vade / ciro / ekstre (finans) ve eksik adres senkronlarını worker kuyruğuna ekler — tüm carilerde
- * ~20 dk sürdüğü için istek içinde beklenmez. Aynı iş zaten bekliyor ya da çalışıyorsa tekrar eklenmez.
- * @returns {Promise<string[]>} kuyruğa eklenen iş adları
- */
 async function queueB2bBackgroundSyncs() {
     const Queue = require('bull');
     const workerConfig = require('../../../config/worker.config');
@@ -230,7 +198,7 @@ async function queueB2bBackgroundSyncs() {
         const added = [];
         for (const name of MANUAL_B2B_JOBS) {
             if (pending.some(job => job.name === name)) continue;
-            await queue.add(name, { type: 'manual', triggeredBy: 'admin-member-sync', triggeredAt: new Date().toISOString() }, { timeout: BACKGROUND_SYNC_TIMEOUT_MS });
+            await queue.add(name, { type: 'manual', triggeredBy: 'admin-member-sync', triggeredAt: new Date().toISOString(), onlyMissing: true }, { timeout: BACKGROUND_SYNC_TIMEOUT_MS });
             added.push(name);
         }
         return added;
@@ -239,16 +207,10 @@ async function queueB2bBackgroundSyncs() {
     }
 }
 
-// Plasiyer filtresinde "atanmamış" seçeneğinin değeri (gerçek bir plasiyer adıyla çakışmaz)
 const UNASSIGNED_SALESPERSON = '__unassigned__';
 
-/** Plasiyer adını karşılaştırma için sadeleştirir (Türkçe küçük harf, tek boşluk) */
 const normalizeSalespersonName = name => String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
 
-/**
- * GET /api/admin/members/salespersons
- * Cari filtre paneli: sitedeki carilere atanmış plasiyerler (DIA satış elemanı) ve cari sayıları
- */
 router.get('/salespersons', async (req, res) => {
     try {
         const [rows, unassignedCount] = await Promise.all([
@@ -258,7 +220,6 @@ router.get('/salespersons', async (req, res) => {
             ]),
             WebMember.countDocuments({ site: req.site, 'diaCari.salespersonName': { $in: [null, ''] } })
         ]);
-        // Aynı kişinin farklı yazımları tek seçenekte birleşir; en çok cariye sahip yazım gösterilir
         const merged = new Map();
         for (const r of rows.sort((x, y) => y.count - x.count)) {
             const key = normalizeSalespersonName(r._id);
@@ -267,7 +228,6 @@ router.get('/salespersons', async (req, res) => {
             else merged.set(key, { name: String(r._id).trim(), count: r.count });
         }
         const data = [...merged.values()].sort((x, y) => x.name.localeCompare(y.name, 'tr'));
-        // Plasiyeri atanmamış cariler: filtre değeri buradan döner (panel sabit değer taşımaz)
         res.json({ success: true, data, unassigned: { value: UNASSIGNED_SALESPERSON, count: unassignedCount } });
     } catch (error) {
         console.error('Member salespersons error:', error);
@@ -277,7 +237,6 @@ router.get('/salespersons', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     try {
-        // Adres sıra numarası (view/12) veya eski bağlantılar için Mongo kimliği kabul edilir
         const idParam = String(req.params.id);
         let filter;
         if (/^\d{1,9}$/.test(idParam)) filter = { memberNo: Number(idParam), site: req.site };
@@ -322,7 +281,6 @@ router.get('/:id', async (req, res) => {
 
         const stats = orderStats || { total: 0, paid: 0, paidTotal: 0, cancelled: 0, units: 0, firstAt: null, lastAt: null };
 
-        // b2b cari: vadesi geçen / gelecek / zamanında ödenen — yalnız carinin bizden aldıkları (cari ekstresi)
         let paymentSummary = null;
         if (member.diaCari?.financeSyncedAt || member.diaCari?.agingItems) {
             try {
@@ -338,7 +296,6 @@ router.get('/:id', async (req, res) => {
             }
         }
 
-        // Sepet özeti: kalemler + toplam (liste görünümündeki hesapla aynı: adet x birim fiyat)
         const cartItems = (cartDoc?.items || []).map(i => ({
             productName: i.productName || i.productKey,
             brandName: i.brandName || '',
@@ -353,7 +310,6 @@ router.get('/:id', async (req, res) => {
             items: cartItems
         } : null;
 
-        // Zaman çizelgesi: kayıt, aktivasyon, son giriş ve siparişler (en yeni önce)
         const timeline = [
             { type: 'register', title: 'Üye oldu', at: member.createdAt },
             member.activatedAt ? { type: 'activate', title: 'Hesabını aktifleştirdi', at: member.activatedAt } : null,
@@ -402,9 +358,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-/**
- * PUT /:id/status — askıya al / aktifleştir (yalnızca active|suspended; silme ayrı uçtan)
- */
 router.put('/:id/status', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) return res.status(400).json({ success: false, message: 'Geçersiz üye kimliği' });
@@ -420,9 +373,6 @@ router.put('/:id/status', async (req, res) => {
     }
 });
 
-/**
- * PUT /:id/annotations — panel etiketleri ve notu
- */
 router.put('/:id/annotations', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) return res.status(400).json({ success: false, message: 'Geçersiz üye kimliği' });
@@ -442,11 +392,6 @@ router.put('/:id/annotations', async (req, res) => {
     }
 });
 
-/**
- * PUT /:id/password — adminden şifre belirleme (b2b cari görüntüle).
- * Verilen şifre carinin KENDİ şifresi sayılır: bundan sonra cari kodu tek başına
- * girişe yetmez (customPasswordSet=true). Kurallar bayinin /sifre-degistir ucuyla aynı.
- */
 router.put('/:id/password', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) return res.status(400).json({ success: false, message: 'Geçersiz üye kimliği' });
@@ -456,7 +401,7 @@ router.put('/:id/password', async (req, res) => {
 
         const member = await WebMember.findOne({ _id: req.params.id, site: req.site });
         if (!member) return res.status(404).json({ success: false, message: 'Üye bulunamadı' });
-        member.password = password; // pre-save hook bcrypt ile hashler
+        member.password = password;
         member.customPasswordSet = true;
         member.mustChangePassword = false;
         member.loginAttempts = 0;
@@ -469,11 +414,6 @@ router.put('/:id/password', async (req, res) => {
     }
 });
 
-/**
- * POST /:id/addresses — DIA carisine yeni TESLİMAT adresi ekler (b2b cari görüntüle).
- * Bayinin /b2b/adres ucuyla aynı DIA metodu; ardından adresler DIA'dan tazelenip
- * WebMember.diaCari.addresses'e yazılır ve döner. { baslik, il, ilce, adres, telefon }
- */
 router.post('/:id/addresses', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) return res.status(400).json({ success: false, message: 'Geçersiz üye kimliği' });
@@ -490,7 +430,6 @@ router.post('/:id/addresses', async (req, res) => {
         const { addDiaDeliveryAddress, fetchCariAddresses } = require('../../../services/plugins/dia/b2bAddress');
         const { withDiaLock, B2B_LOCK_KEY } = require('../../../services/plugins/dia/diaLock');
 
-        // DIA aynı WS kullanıcısında tek oturum: b2b senkronlarıyla aynı kilitte sıraya gir
         const sonuc = await withDiaLock(async () => {
             const svc = new DiaOrderService(req.site);
             await svc.init().catch(() => {});
@@ -517,9 +456,6 @@ router.post('/:id/addresses', async (req, res) => {
     }
 });
 
-/**
- * DELETE /:id — yumuşak silme: kayıt korunur, durum "deleted" olur (siparişler ve geçmiş kaybolmaz)
- */
 router.delete('/:id', async (req, res) => {
     try {
         if (!isValidId(req.params.id)) return res.status(400).json({ success: false, message: 'Geçersiz üye kimliği' });
@@ -532,12 +468,6 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-/**
- * POST /api/admin/members/:id/sync-dia
- * Tek cariyi DIA'dan günceller: bakiye/risk limiti/segment (b2bCariSync) + fatura, vade,
- * ciro ve ekstre (b2bFinanceSync). Toplu senkronlarla aynı kurallar geçerlidir; yalnız kapsam tek caridir.
- * DIA tek oturum verdiği için b2b kilidi alınır; kilit meşgulse (toplu senkron çalışıyor) işlem yapılmaz.
- */
 router.post('/:id/sync-dia', async (req, res) => {
     const { acquire, release, B2B_LOCK_KEY } = require('../../../services/plugins/dia/diaLock');
     let token = null;
@@ -555,7 +485,6 @@ router.post('/:id/sync-dia', async (req, res) => {
         const { syncB2bFinance } = require('../../../services/plugins/dia/b2bFinanceSync');
         const quiet = { warn: (...args) => console.warn(...args) };
 
-        // Önce bakiye (finans hesabı güncel bakiyeyi kullanır), sonra fatura/vade/ekstre
         const cari = await syncB2bCari(quiet, { memberId: member._id });
         if (!cari.total) return res.status(400).json({ success: false, message: 'Bu cari için DIA senkronu tanımlı değil.' });
         if (!cari.eslesen) return res.status(502).json({ success: false, message: 'Cari DIA’dan okunamadı. Lütfen tekrar deneyin.' });
@@ -580,14 +509,6 @@ router.post('/:id/sync-dia', async (req, res) => {
     }
 });
 
-/**
- * POST /sync-dia — DIA carilerini üye listesine senkronlar (B2B cari yönetimi).
- * Sitenin DIA bağlantısı kullanılır; sync.cariOzelKod2Filtre doluysa (ör. F4)
- * yalnız o segmentteki cariler alınır. Mevcutlar diaCustomerCode ile güncellenir,
- * yeniler kullanılamaz rastgele şifreyle açılır (gerçek şifre bayi akışıyla kurulur).
- * Bayi sitesinde ardından cari kartı bilgileri (bakiye, risk limiti, segment, Premium) de hemen güncellenir —
- * aksi halde bunlar ancak 30 dakikalık otomatik senkronda gelirdi. DIA tek oturum verdiği için b2b kilidi alınır.
- */
 router.post('/sync-dia', async (req, res) => {
     const { SITES } = require('../../../config/sites');
     const { acquire, release, B2B_LOCK_KEY } = require('../../../services/plugins/dia/diaLock');
@@ -616,8 +537,6 @@ router.post('/sync-dia', async (req, res) => {
         svc.donemKodu = settings.donemKodu || 1;
         await svc.login();
 
-        // Tüm cariler sayfalanarak taranır (DIA listele filtreleri güvenilir değil —
-        // segment süzgeci istemci tarafında uygulanır); oturum düşerse yeniden girilir
         const fetchPage = async (offset) => {
             for (let attempt = 0; attempt < 3; attempt++) {
                 const resp = await svc.sendRequest('/api/v3/scf/json', {
@@ -652,13 +571,12 @@ router.post('/sync-dia', async (req, res) => {
                 const kod = String(r.ozelkod2kod || '').trim().toUpperCase();
                 if (segmentKodu && kod !== segmentKodu) continue;
                 const unvan = String(r.unvan || '').trim();
-                if (new RegExp(`^${segmentKodu || 'F\\d+'} CARİLER$`, 'i').test(unvan)) continue; // tanım kartları
+                if (new RegExp(`^${segmentKodu || 'F\\d+'} CARİLER$`, 'i').test(unvan)) continue;
                 cariler.push(r);
             }
             if (rows.length < 500) break;
         }
 
-        // Aynı e-postayı paylaşanlarda ilki gerçek adresi alır, sonrakiler cari koduyla benzersizleşir
         const seen = new Set();
         const ops = cariler.map(c => {
             let email = String(c.eposta || '').trim().toLowerCase();
@@ -679,8 +597,6 @@ router.post('/sync-dia', async (req, res) => {
                 updateOne: {
                     filter: { site: req.site, diaCustomerCode: c.carikartkodu },
                     update: {
-                        // Yalnız DIA eşleme anahtarı her aktarımda güncellenir; profil verileri
-                        // (ünvan, e-posta, telefon, durum, fatura) ilk kayıtta DIA'dan alınır, sonra DB'de tutulur
                         $set: {
                             diaCustomerKey: String(c._key),
                             diaCustomerCode: c.carikartkodu
@@ -688,11 +604,9 @@ router.post('/sync-dia', async (req, res) => {
                         $setOnInsert: {
                             site: req.site,
                             firstName, lastName, email,
-                            // Cep telefonu öncelikli; yoksa sabit telefon
                             phone: String(c.ceptel || '').trim() || String(c.telefon1 || '').trim() || '-',
                             status: 'active',
                             updatedAt: new Date(),
-                            // Fatura bilgileri yalnız ilk kayıtta DIA'dan alınır, sonra DB'de tutulur
                             'diaCari.firmaTuru': String(c.carikayitturu || '').trim().toUpperCase() === 'SHS' ? 'bireysel' : 'kurumsal',
                             'diaCari.vergiNo': String(c.verginumarasi || '').trim(),
                             'diaCari.vergiDairesi': String(c.vergidairesi || '').trim(),
@@ -721,14 +635,12 @@ router.post('/sync-dia', async (req, res) => {
             }
         }
 
-        // Bayi sitesi: cari kartı bilgileri (bakiye, limit, segment, Premium) de hemen güncellenir
         let cariSync = null;
         if (isB2bSite) {
             const { syncB2bCari } = require('../../../services/plugins/dia/b2bCariSync');
             cariSync = await syncB2bCari({ warn: (...args) => console.warn(...args) });
         }
         const premiumCount = isB2bSite ? await WebMember.countDocuments({ site: req.site, 'diaCari.premium': true }) : null;
-        // Fatura / vade / ciro / ekstre ve eksik adresler arka planda (worker) güncellenir
         let backgroundQueued = false;
         if (isB2bSite) {
             try {
@@ -743,7 +655,7 @@ router.post('/sync-dia', async (req, res) => {
             success: true,
             message: `Cari senkronu tamamlandı: ${yeni} yeni, ${guncellenen} güncellendi${hata ? `, ${hata} hata` : ''}`
                 + (cariSync ? `. ${cariSync.updated} carinin bakiye, limit ve Premium bilgisi güncellendi (Premium cari: ${premiumCount})` : '')
-                + (backgroundQueued ? '. Fatura, vade, ciro, ekstre ve adres bilgileri arka planda güncelleniyor (yaklaşık 20-25 dakika)' : ''),
+                + (backgroundQueued ? '. Yeni carilerin fatura, vade, ciro, ekstre ve adres bilgileri arka planda alınıyor (cari başına birkaç saniye)' : ''),
             data: { taranan, eslesen: cariler.length, yeni, guncellenen, hata, segment: segmentKodu || 'tümü', cariSync, premiumCount, backgroundQueued }
         });
     } catch (error) {

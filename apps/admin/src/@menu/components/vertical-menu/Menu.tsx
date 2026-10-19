@@ -1,18 +1,14 @@
 'use client'
 
-// React Imports
 import { createContext, forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ForwardRefRenderFunction, MenuHTMLAttributes, MutableRefObject, ReactElement, ReactNode } from 'react'
 
-// Next Imports
 import { usePathname } from 'next/navigation'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { FloatingTree } from '@floating-ui/react'
 import type { CSSObject } from '@emotion/styled'
 
-// Type Imports
 import type {
   ChildrenType,
   MenuItemStyles,
@@ -21,19 +17,14 @@ import type {
   RenderExpandedMenuItemIcon
 } from '../../types'
 
-// Hook Imports
 import useVerticalNav from '../../hooks/useVerticalNav'
 
-// Util Imports
 import { menuClasses } from '../../utils/menuClasses'
 
-// Styled Component Imports
 import StyledVerticalMenu from '../../styles/vertical/StyledVerticalMenu'
 
-// Style Imports
 import styles from '../../styles/styles.module.css'
 
-// Default Config Imports
 import { verticalSubMenuToggleDuration } from '../../defaultConfigs'
 
 export type MenuSectionStyles = {
@@ -67,19 +58,10 @@ export type VerticalMenuContextProps = {
   }
   textTruncate?: boolean
 
-  /**
-   * @ignore
-   */
   openSubmenu?: OpenSubmenu[]
 
-  /**
-   * @ignore
-   */
   openSubmenusRef?: MutableRefObject<OpenSubmenu[]>
 
-  /**
-   * @ignore
-   */
   toggleOpenSubmenu?: (...submenus: { level: number; label: ReactNode; active?: boolean; id: string }[]) => void
 }
 
@@ -93,7 +75,6 @@ export type MenuProps = VerticalMenuContextProps &
 export const VerticalMenuContext = createContext({} as VerticalMenuContextProps)
 
 const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) => {
-  // Props
   const {
     children,
     className,
@@ -105,7 +86,7 @@ const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) 
     browserScroll = false,
     triggerPopout = 'hover',
     popoutWhenCollapsed = false,
-    subMenuOpenBehavior = 'accordion', // accordion, collapse
+    subMenuOpenBehavior = 'accordion',
     transitionDuration = verticalSubMenuToggleDuration,
     collapsedMenuSectionLabel = '-',
     popoutMenuOffset = { mainAxis: 0 },
@@ -113,13 +94,10 @@ const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) 
     ...rest
   } = props
 
-  // States
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu[]>([])
 
-  // Refs
   const openSubmenusRef = useRef<OpenSubmenu[]>([])
 
-  // Hooks
   const pathname = usePathname()
   const { updateVerticalNavState } = useVerticalNav()
 
@@ -136,13 +114,11 @@ const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) 
 
         const inactiveSubmenuIndex = openSubmenuCopy.findIndex(submenu => !submenu.active && submenu.level === 0)
 
-        // Delete submenu if it exists
         if (submenuExists) {
           openSubmenuCopy.splice(submenuIndex, 1)
         }
 
         if (isAccordion) {
-          // Add submenu if it doesn't exist
           if (!submenuExists) {
             if (inactiveSubmenuIndex >= 0 && !active && level === 0) {
               openSubmenuCopy.splice(inactiveSubmenuIndex, 1, { level, label, active, id })
@@ -151,7 +127,6 @@ const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) 
             }
           }
         } else {
-          // Add submenu if it doesn't exist
           if (!submenuExists) {
             openSubmenuCopy.push({ level, label, active, id })
           }
@@ -168,7 +143,6 @@ const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) 
     openSubmenusRef.current = []
   }, [pathname])
 
-  // UseEffect, update verticalNav state to set initial values and update values on change
   useEffect(() => {
     updateVerticalNavState({
       isPopoutWhenCollapsed: popoutWhenCollapsed

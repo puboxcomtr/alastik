@@ -19,11 +19,9 @@ export default function CategoryTop({
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
 
-    // URL'den mevcut sortBy ve sortOrder değerlerini al
     const currentSortBy = searchParams.get('sortBy') || '';
     const currentSortOrder = searchParams.get('sortOrder') || '';
 
-    // Mevcut filter değerini belirle
     const getCurrentFilter = () => {
         if (currentSortBy === 'price' && currentSortOrder === 'asc') return 'price-asc';
         if (currentSortBy === 'price' && currentSortOrder === 'desc') return 'price-desc';
@@ -36,10 +34,8 @@ export default function CategoryTop({
     const handleFilterChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
 
-        // Sayfa numarasını sıfırla
         params.delete('page');
 
-        // Sıralama parametrelerini ayarla
         if (value === 'price-asc') {
             params.set('sortBy', 'price');
             params.set('sortOrder', 'asc');
@@ -62,7 +58,6 @@ export default function CategoryTop({
 
         const newURL = `${pathname}?${params.toString()}`;
 
-        // StartTransition ile router.replace kullan
         startTransition(() => {
             router.replace(newURL, { scroll: false });
             router.refresh();
@@ -85,7 +80,6 @@ export default function CategoryTop({
                 <Grid container className="border-bottom pb-4 mb-4">
                     
                     <Grid size={6} className="d-flex align-items-center">
-                        {/* Sayfanın tek H1'i: kategori / etiket / marka adı (görünüm h6 olarak kalır) */}
                         <Typography component="h1" variant="h6" className="fw-bold mb-0">
                             {categoryName}
                         </Typography>

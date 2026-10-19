@@ -1,15 +1,11 @@
 'use client'
 
-// React Imports
 import { useRouter } from 'next/navigation'
 
-// MUI Imports
 import { Typography, Button } from '@mui/material'
 
-// Context Imports
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
-// Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
 
 interface ProductHeaderProps {
@@ -17,7 +13,6 @@ interface ProductHeaderProps {
 }
 
 const ProductHeader = ({ product }: ProductHeaderProps) => {
-  // Hooks
   const router = useRouter()
   const {
     hasChanges,
@@ -26,12 +21,10 @@ const ProductHeader = ({ product }: ProductHeaderProps) => {
     updateData
   } = useProductUpdate()
 
-  // Handlers
   const handleSave = async () => {
     const success = await saveChanges()
   }
 
-  // Değişen alan sayısı
   const changedFieldsCount = Object.keys(updateData).length
 
   return (

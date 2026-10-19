@@ -1,7 +1,3 @@
-// LastikJantAVM şubeleri — /subeler/<slug> sayfalarının içerik kaynağı.
-// Adres, telefon, çalışma saatleri ve olanaklar canlı veriden (montaj noktası kaydı) okunur;
-// burada yalnızca şubeye özgü tanıtım metinleri ve konum bilgisi tutulur.
-// Metinler her şube için ayrı yazılmıştır (kopya içerik olmaması için).
 
 export type BranchSlug = 'sisli-mecidiyekoy' | 'maslak';
 
@@ -12,15 +8,11 @@ export interface BranchFaq {
 
 export interface Branch {
     slug: BranchSlug;
-    // Montaj noktası kaydı (WebMontagePoint._id) — adres/telefon/saatler buradan gelir
     montagePointId: string;
-    // Başlıklarda kullanılan kısa ad (ör. "Şişli Mecidiyeköy")
     shortName: string;
-    // Sayfa H1'i
     title: string;
     district: string;
     neighborhood: string;
-    // Arama/harita bağlantısı için adres sorgusu (koordinat kaydı düzelene kadar adresle yönlendirilir)
     mapQuery: string;
     intro: string[];
     location: string[];

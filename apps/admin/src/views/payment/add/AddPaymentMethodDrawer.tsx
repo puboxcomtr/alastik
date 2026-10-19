@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -16,13 +15,10 @@ import Select from '@mui/material/Select'
 import FormHelperText from '@mui/material/FormHelperText'
 import Chip from '@mui/material/Chip'
 
-// Toast
 import { toast } from 'react-toastify'
 
-// API
 import { fetchAPI } from '@libs/api'
 
-// Types
 import type {
     ProviderTemplate,
     ProvidersData,
@@ -31,7 +27,6 @@ import type {
     PaymentMethodResponse
 } from '@/types/apps/paymentTypes'
 
-// Constants
 import {
     PAYMENT_TYPES,
     PAYMENT_MODES,
@@ -50,13 +45,11 @@ const AddPaymentMethodDrawer = ({ open, handleClose, onSuccess }: Props) => {
     const [isLoading, setIsLoading] = useState(false)
     const [providers, setProviders] = useState<ProvidersData | null>(null)
 
-    // Form State
     const [selectedType, setSelectedType] = useState<PaymentType | ''>('')
     const [selectedProvider, setSelectedProvider] = useState<string>('')
     const [providerTemplate, setProviderTemplate] = useState<ProviderTemplate | null>(null)
     const [formData, setFormData] = useState<PaymentMethodFormData>(DEFAULT_FORM_DATA)
 
-    // Provider'ları yükle
     useEffect(() => {
         if (open && !providers) {
             loadProviders()

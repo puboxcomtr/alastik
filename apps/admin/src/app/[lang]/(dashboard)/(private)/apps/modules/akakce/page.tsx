@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Page */
 import Settings from '@/views/modules/akakce/Settings'
 
 const akakceModules = () => {

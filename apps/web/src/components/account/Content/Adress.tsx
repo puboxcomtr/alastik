@@ -55,7 +55,6 @@ export default function AddressContent({ userId }: AddressContentProps) {
             return { billing, shipping };
         });
 
-        // Bağımsız teslimat adresleri (faturaya bağlı olmayanlar)
         shippingAddresses
             .filter(s => !usedShippingIds.has(s._id))
             .forEach(s => {
@@ -138,7 +137,6 @@ export default function AddressContent({ userId }: AddressContentProps) {
                                                 Düzenle
                                             </button>
                                         </div>
-                                        {/* Teslimat Adresi */}
                                         {group.shipping && (
                                             <div className="pt-3 border-top">
                                                 <span className="text-black d-flex gap-1 align-items-center mb-2">
@@ -151,7 +149,6 @@ export default function AddressContent({ userId }: AddressContentProps) {
                                                 </ul>
                                             </div>
                                         )}
-                                        {/* Fatura + Teslimat aynı adresse */}
                                         {!group.shipping && group.billing.isShipping && group.billing.isBilling && (
                                             <div className="pt-3 border-top">
                                                 <span className="text-black d-flex gap-1 align-items-center mb-2">
@@ -164,7 +161,6 @@ export default function AddressContent({ userId }: AddressContentProps) {
                                                 </ul>
                                             </div>
                                         )}
-                                        {/* Fatura Adresi */}
                                         {group.billing.isBilling && (
                                             <div className="mb-3">
                                                 <span className="text-black d-flex gap-1 align-items-center my-2">

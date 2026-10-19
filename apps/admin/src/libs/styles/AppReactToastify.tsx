@@ -1,21 +1,17 @@
 'use client'
 
-// MUI Imports
 import Box from '@mui/material/Box'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { styled } from '@mui/material/styles'
 import type { BoxProps } from '@mui/material/Box'
 import type { Theme } from '@mui/material/styles'
 
-// Third-party Imports
 import 'react-toastify/dist/ReactToastify.css'
 import { ToastContainer } from 'react-toastify'
 import type { ToastContainerProps, ToastPosition } from 'react-toastify'
 
-// Type Imports
 import type { Direction } from '@core/types'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
 type Props = ToastContainerProps & {
@@ -23,9 +19,7 @@ type Props = ToastContainerProps & {
   direction?: Direction
 }
 
-// Styled Components
 const ToastifyWrapper = styled(Box)<BoxProps>(({ theme }) => {
-  // Hooks
   const isSmallScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down(480))
 
   return {

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebBlog = require('../../../models/web/content/WebBlog');
 
-// Pattern'e göre blogları getir (ürün detay için)
 router.get('/by-pattern/:pattern', async (req, res) => {
     try {
         const { pattern } = req.params;
@@ -19,7 +18,6 @@ router.get('/by-pattern/:pattern', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-// Anasayfa blogları
 router.get('/homepage', async (req, res) => {
     try {
         const HOMEPAGE_BLOG_COUNT = 5;
@@ -30,7 +28,6 @@ router.get('/homepage', async (req, res) => {
             .limit(HOMEPAGE_BLOG_COUNT)
             .lean();
 
-        // Anasayfa için işaretli yazı sayısı yetersizse en güncel yayınlanmış yazılarla tamamlanır
         if (blogs.length < HOMEPAGE_BLOG_COUNT) {
             const fillers = await WebBlog.find({
                 site: req.site,
@@ -50,7 +47,6 @@ router.get('/homepage', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-// Tüm blogları listele
 router.get('/', async (req, res) => {
     try {
         const { page = 1, limit = 10, status = 'published', tag } = req.query;
@@ -84,7 +80,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Blog kategorisine göre bloglar — kategori bilgisi + yayınlanmış bloglar (grid için)
 router.get('/by-category/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -116,7 +111,6 @@ router.get('/by-category/:slug', async (req, res) => {
     }
 });
 
-// Slug'a göre blog detay
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;

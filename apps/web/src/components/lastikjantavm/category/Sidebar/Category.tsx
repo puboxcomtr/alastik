@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-/* Library */
 import { Offcanvas, Button, Nav } from "react-bootstrap";
 
 const categories = [

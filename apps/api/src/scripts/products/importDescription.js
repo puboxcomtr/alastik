@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const path = require('path');
 const XLSX = require('xlsx');
 
-
 async function importDescriptions() {
     try {
         const mongoUri = 'mongodb://alastik:34gm4191M.@217.195.202.170:27017/alastik_db?authSource=admin';
@@ -10,7 +9,6 @@ async function importDescriptions() {
         console.log('MongoDB bağlantısı başarılı\n');
         const WebProduct = require('../../models/web/catalog/WebProduct');
 
-        // Excel oku
         const wb = XLSX.readFile(path.join(__dirname, '../../../public/urun/aciklama.xls'));
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws);
@@ -32,7 +30,6 @@ async function importDescriptions() {
             }
 
             try {
-                // ozelkod5kodu ile eşleşen ve customDescription null olan ürünleri bul
                 const result = await WebProduct.updateMany(
                     {
                         'diaData.ozelkod5kodu': model,
@@ -53,7 +50,6 @@ async function importDescriptions() {
                     updated += result.modifiedCount;
                     console.log(`✓ ${model}: ${result.modifiedCount} ürün güncellendi`);
                 } else {
-                    // Zaten dolu mu kontrol et
                     const filledCount = await WebProduct.countDocuments({
                         'diaData.ozelkod5kodu': model,
                         'customData.customDescription': { $ne: null, $exists: true }

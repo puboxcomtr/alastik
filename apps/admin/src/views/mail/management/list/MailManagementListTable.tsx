@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useEffect, useMemo, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Tooltip from '@mui/material/Tooltip'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -23,7 +20,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-// Third-party Imports
 import classnames from 'classnames'
 import {
     createColumnHelper,
@@ -37,10 +33,8 @@ import {
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 type MailTemplateType = {
@@ -55,17 +49,14 @@ const MailManagementListTable = () => {
     const [data, setData] = useState<MailTemplateType[]>([])
     const [loading, setLoading] = useState(true)
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)
 
-    // Delete confirm state
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<MailTemplateType | null>(null)
     const [deleting, setDeleting] = useState(false)
 
-    // Hooks
     const { lang: locale } = useParams()
 
     useEffect(() => {

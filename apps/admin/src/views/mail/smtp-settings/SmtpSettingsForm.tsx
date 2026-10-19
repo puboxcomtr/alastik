@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -23,7 +22,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContentText from '@mui/material/DialogContentText'
 
-/* API */
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 const MAIL_PROVIDERS = [

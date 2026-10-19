@@ -1,16 +1,9 @@
 'use client';
-// Şifre belirleme/değiştirme modalı. ZORUNLU DEĞİLDİR — "Daha Sonra Hatırlat" ile kapatılabilir
-// (onSkip verilirse). Bayi kendi şifresini belirlerse artık yalnız o şifre kabul edilir.
 import { useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
 const VARSAYILAN = '12345';
 
-/**
- * Şifre belirleme modalı. Bayi (authToken + b2b.sifreDegistir) ve
- * plasiyer (plasiyerToken + b2b.plasiyerSifreDegistir) için tek bileşen.
- * onSkip verilirse zorunsuz (kapatılabilir + "Daha Sonra Hatırlat").
- */
 export function MandatoryPasswordChange({
     onDone,
     onSkip,

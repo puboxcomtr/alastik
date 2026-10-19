@@ -1,16 +1,12 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 
-// Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
-// Component Imports
 import RoleListTable from '@/views/manager/roles/RoleListTable'
 
-// API Imports
 import { fetchAPI } from '@libs/api'
 
-// Type Imports
 export type RoleType = {
     _id: string
     name: string

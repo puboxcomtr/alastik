@@ -53,22 +53,18 @@ const XmlProductListTable = () => {
     const [rowSelection, setRowSelection] = useState({})
     const [sorting, setSorting] = useState<SortingState>([])
 
-    // Pagination
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(50)
     const [totalCount, setTotalCount] = useState(0)
 
-    // Filtreler
     const [filters, setFilters] = useState({ search: '', status: '', brand: '', season: '' })
     const [brands, setBrands] = useState<string[]>([])
 
-    // Meta istatistikler
     const [stats, setStats] = useState({ total: 0, diaAktarilan: 0, filtered: 0, pending: 0, error: 0 })
 
     const { lang: locale } = useParams()
     const router = useRouter()
 
-    // URL'den source parametresini al
     const [source, setSource] = useState('')
 
     useEffect(() => {
@@ -76,7 +72,6 @@ const XmlProductListTable = () => {
         setSource(urlParams.get('source') || '')
     }, [])
 
-    // Debounce için search
     const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
 
     const fetchProducts = useCallback(async () => {

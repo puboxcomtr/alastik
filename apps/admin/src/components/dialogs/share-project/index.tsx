@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -22,10 +20,8 @@ import ListItemText from '@mui/material/ListItemText'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
 type ShareProjectProps = {
@@ -45,7 +41,6 @@ type DataType = {
   email: string
 }
 
-// Vars
 const data: DataType[] = [
   {
     avatar: '1.png',
@@ -125,7 +120,6 @@ const autocompleteOptions: OptionsType[] = [
 ]
 
 const ShareProject = ({ open, setOpen }: ShareProjectProps) => {
-  // States
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {

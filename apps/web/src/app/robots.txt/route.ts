@@ -1,5 +1,3 @@
-// robots.txt — site bazlı Sitemap satırı için dinamik üretilir
-// (eski public/robots.txt içeriği korunarak taşındı)
 import { getSiteBase } from '@/src/lib/sitemap';
 
 export const dynamic = 'force-dynamic';

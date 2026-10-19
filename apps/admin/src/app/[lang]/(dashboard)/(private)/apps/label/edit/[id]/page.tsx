@@ -4,10 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -30,7 +28,6 @@ const EditLabelPage = () => {
     const tagId = params.id as string
     const locale = params.lang as string
 
-    // Liste sayfasına dönüş parametreleri
     const getListUrl = () => {
         const params = new URLSearchParams()
         params.set('page', searchParams.get('returnPage') || '1')
@@ -273,7 +270,6 @@ const EditLabelPage = () => {
     return (
         <form onSubmit={handleSubmit}>
             <Grid container spacing={6}>
-                {/* Header */}
                 <Grid size={{ xs: 12 }}>
                     <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col' style={{ gap: '10px' }}>
                         <div className='flex items-center gap-3'>
@@ -302,10 +298,8 @@ const EditLabelPage = () => {
                     </div>
                 </Grid>
 
-                {/* Sol Kolon */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={6}>
-                        {/* Genel Bilgiler */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -339,7 +333,6 @@ const EditLabelPage = () => {
                             </Card>
                         </Grid>
 
-                        {/* Ürün Seçimi */}
                         <Grid size={{ xs: 12 }}>
                             <Card>
                                 <CardContent>
@@ -347,7 +340,6 @@ const EditLabelPage = () => {
                                         Ürün Seçimi ({selectedProducts.length} ürün seçili)
                                     </Typography>
 
-                                    {/* Mevcut Seçili Ürünler */}
                                     {currentProducts.length > 0 && (
                                         <div style={{ marginBottom: '24px' }}>
                                             <Typography variant='subtitle2' className='mb-2' color='text.secondary'>
@@ -400,7 +392,6 @@ const EditLabelPage = () => {
                                         </div>
                                     )}
 
-                                    {/* Yeni Ürün Ekleme Alanı */}
                                     <Typography variant='subtitle2' className='mb-2' color='text.secondary'>
                                         Yeni Ürün Ekle
                                     </Typography>
@@ -513,7 +504,6 @@ const EditLabelPage = () => {
                                             </Button>
                                         </Grid>
                                     </Grid>
-                                    {/* Arama Sonuçları Tablosu */}
                                     <div className='overflow-x-auto mt-4' style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 1 }}>
@@ -596,7 +586,6 @@ const EditLabelPage = () => {
                     </Grid>
                 </Grid>
 
-                {/* Sağ Kolon */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Grid container spacing={6}>
                         <Grid size={{ xs: 12 }}>

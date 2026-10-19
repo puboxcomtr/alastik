@@ -3,7 +3,6 @@ import fs from 'fs-extra'
 
 import { globby } from 'globby'
 
-// Pattern to find `getLocalizedUrl('/any-url', locale as Locale)` and capture the URL
 const getUrlPattern = /getLocalizedUrl\((['"`]\/)(.*)(['"`]), locale as Locale\)/g
 const getUrlPattern2 = /getLocalizedUrl\((.*), locale as Locale\)/g
 const getUrlPattern3 = /getLocalizedUrl\((.*), lang\)/g
@@ -21,7 +20,6 @@ const replaceDirectionPattern = /const direction\s*=\s*i18n.langDirection\[param
 
 const removeDictionaryDestructuringPattern = /dictionary(,| )/g
 
-// Pattern to match Props type definitions including `params`
 const removeParamsFromPropsPattern = /&\s*{\s*params:\s*Promise<{\slang:\s*Locale\s*}>\s*}/g
 
 const removeParamsFromFunctionPattern = /(?<={ .*)params,?(?=.* }: [A-Z][A-Za-z]+)/g
@@ -31,7 +29,6 @@ const excludeLangPattern = /excludeLang\??:\s.*,?/g
 async function replacePatternInFile(filePath: string) {
   const data = await fs.readFile(filePath, 'utf8')
 
-  // Initial check to see if any pattern exists in the data, to avoid unnecessary operations
   if (
     getUrlPattern.test(data) ||
     getUrlPattern2.test(data) ||
@@ -46,7 +43,6 @@ async function replacePatternInFile(filePath: string) {
     removeParamsFromFunctionPattern.test(data) ||
     excludeLangPattern.test(data)
   ) {
-    // Perform replacements
     const newData = data
       .replace(getUrlPattern, '$1$2$3')
       .replace(getUrlPattern2, '$1')
@@ -68,7 +64,6 @@ async function replacePatternInFile(filePath: string) {
       .replace(/excludeLang\??:\s.*,?/g, '')
       .replace(/item\.excludeLang.*?:/, '')
 
-    // Only write back if changes were made
     if (data !== newData) {
       await fs.writeFile(filePath, newData, 'utf8')
     } else {
@@ -82,7 +77,6 @@ async function updateNextConfig() {
 
   const content = await fs.readFile(filePath, 'utf8')
 
-  // Define a pattern that matches the redirects configuration and remove it
   const redirectsPattern = /(return \[[\s\S]*?\]\s*)/
 
   const redirect = `return [{

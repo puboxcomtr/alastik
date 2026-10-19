@@ -17,7 +17,6 @@ const webFavouriteSchema = new mongoose.Schema({
     collection: 'webfavourites'
 });
 
-// Aynı üye aynı ürünü iki kez eklemesin
 webFavouriteSchema.index({ memberId: 1, productKey: 1 }, { unique: true });
 
 module.exports = mongoose.model('WebFavourite', webFavouriteSchema);

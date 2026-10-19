@@ -21,7 +21,6 @@ export default async function MetaHead() {
         />
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 
-        {/* Preload fonts */}
         <link
           rel="preload"
           href="/alastik/assets/fonts/inter-variable-latin.woff2"
@@ -36,14 +35,12 @@ export default async function MetaHead() {
           type="font/woff2"
           crossOrigin="anonymous"
         />
-        {/* Google Search Console doğrulaması — site başına ayrı kod */}
         {siteSlug === "lastikjantavm" ? (
           <meta name="google-site-verification" content="G4wbqvmKtztasq6HYX4WX_d0fLS7GHGdnhApayTSVtE" />
         ) : (
           <meta name="google-site-verification" content="yubc1j2taIzdyUWWFlVWkSAYzwU8L_q-aEKtX1zdGh4" />
         )}
 
-        {/* CSS Files — themeCss tanımsız sitelerde (b2b) tema dosyası yüklenmez */}
         <link rel="stylesheet" href="/alastik/assets/icons/cartzilla-icons.min.css" />
         {themeCss ? (
           <>
@@ -52,7 +49,6 @@ export default async function MetaHead() {
           </>
         ) : null}
       </head>
-      {/* Google Ads (gtag.js) — site bazlı hesap (config/tracking.ts); tanımsız sitede yüklenmez */}
       {adsId ? (
       <>
       <Script
@@ -72,7 +68,6 @@ export default async function MetaHead() {
       </>
       ) : null}
 
-      {/* Google Tag Manager — site bazlı container (config/tracking.ts); tanımsız sitede yüklenmez */}
       {gtmId ? (
       <Script id="gtm-init" strategy="afterInteractive">
         {`

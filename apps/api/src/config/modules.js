@@ -1,24 +1,19 @@
-/**
- * Sistem Modül Tanımları
- * Her modül için hangi yetkilerin olabileceğini tanımlar
- */
 
 const MODULE_DEFINITIONS = {
-    // KATALOG
     'catalog.products': {
         name: 'Ürünler',
         category: 'Katalog',
-        actions: ['view', 'edit', 'sync'] // Ekleme ve Silme yok
+        actions: ['view', 'edit', 'sync']
     },
     'catalog.categories': {
         name: 'Kategoriler',
         category: 'Katalog',
-        actions: ['view', 'edit', 'sync'] // Ekleme ve Silme yok
+        actions: ['view', 'edit', 'sync']
     },
     'catalog.brands': {
         name: 'Markalar',
         category: 'Katalog',
-        actions: ['view', 'edit', 'sync'] // Ekleme ve Silme yok
+        actions: ['view', 'edit', 'sync']
     },
     'catalog.tags': {
         name: 'Etiketler',
@@ -28,17 +23,15 @@ const MODULE_DEFINITIONS = {
     'catalog.features': {
         name: 'Özellikler',
         category: 'Katalog',
-        actions: ['view', 'edit'] // Ekleme ve Silme yok
+        actions: ['view', 'edit']
     },
 
-    // SİPARİŞLER
     'orders': {
         name: 'Siparişler',
         category: 'Siparişler',
-        actions: ['view', 'edit'] // Sadece görüntüleme ve güncelleme
+        actions: ['view', 'edit']
     },
 
-    // İÇERİK
     'content.pages': {
         name: 'Sayfalar',
         category: 'İçerik',
@@ -55,7 +48,6 @@ const MODULE_DEFINITIONS = {
         actions: ['view', 'create', 'edit', 'delete']
     },
 
-    // ÜYELER
     'members.users': {
         name: 'Üyeler',
         category: 'Üyeler',
@@ -67,21 +59,18 @@ const MODULE_DEFINITIONS = {
         actions: ['view', 'create', 'edit', 'delete']
     },
 
-    // KAMPANYA YÖNETİMİ
     'campaigns': {
         name: 'Kampanya Yönetimi',
         category: 'Kampanya Yönetimi',
         actions: ['view', 'create', 'edit', 'delete']
     },
 
-    // EKLENTİLER
     'plugins': {
         name: 'Eklentiler',
         category: 'Eklentiler',
         actions: ['view', 'create', 'edit', 'delete']
     },
 
-    // AYARLAR
     'settings.general': {
         name: 'Genel Ayarlar',
         category: 'Ayarlar',
@@ -110,13 +99,10 @@ const MODULE_DEFINITIONS = {
     'settings.queue': {
         name: 'İşlem Kuyruğu',
         category: 'Ayarlar',
-        actions: ['view'] // Sadece görüntüleme
+        actions: ['view']
     }
 };
 
-/**
- * Tüm modülleri kategorilere göre grupla
- */
 const getModulesByCategory = () => {
     const grouped = {};
 
@@ -133,16 +119,10 @@ const getModulesByCategory = () => {
     return grouped;
 };
 
-/**
- * Modül anahtarına göre tanımı getir
- */
 const getModuleDefinition = (moduleKey) => {
     return MODULE_DEFINITIONS[moduleKey] || null;
 };
 
-/**
- * Tüm modül anahtarlarını listele
- */
 const getAllModuleKeys = () => {
     return Object.keys(MODULE_DEFINITIONS);
 };

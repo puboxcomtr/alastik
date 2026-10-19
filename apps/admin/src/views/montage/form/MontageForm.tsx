@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -24,10 +22,8 @@ import Tooltip from '@mui/material/Tooltip'
 import Rating from '@mui/material/Rating'
 import CircularProgress from '@mui/material/CircularProgress'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
 type City = { cityId: string; cityName: string }
@@ -43,7 +39,6 @@ type ServiceProduct = { productKey: string; sku: string; name: string; defaultPr
 type ServiceItem = ServiceProduct & { price: number | null; priceText: string }
 type MontageDocument = { name: string; url: string; originalName: string; uploadedAt?: string }
 
-// Fiyat girişini xxx.xxx,xx biçimine maskeler (binlik nokta, ondalık virgül)
 const formatPriceInput = (value: string) => {
     const cleaned = value.replace(/[^\d,]/g, '')
     const parts = cleaned.split(',')
@@ -64,12 +59,9 @@ const parsePrice = (formatted: string): number | null => {
     return Number.isNaN(value) ? null : value
 }
 
-// Komisyon grupları (API utils/montagePricing.js ile aynı): değişim = lastik montajı, yazlık-kışlık / mobil değişim
 const DEGISIM_SKU = /^(600\.(10[6-9]|11[0-2]|20[1-3])|YMH-\d+)$/i
 type KomisyonOranlari = { degisim: number; diger: number; kdvOrani: number; kdvEkle: boolean }
 
-// Müşterinin vitrinde gördüğü fiyat: bayi fiyatı × (1 + komisyon), tam TL; kendi şubelerimize komisyon yok.
-// KDV eklenen sitede (lastikjantavm) "+ KDV" yazılır ve müşteri KDV'siyle öder; diğerinde fiyat KDV dahildir.
 const musteriNet = (bayi: number | null, sku: string, oranlar: KomisyonOranlari | null, sube: boolean) => {
     if (bayi === null || bayi === 0) return bayi
     const oran = oranlar && !sube ? (DEGISIM_SKU.test(String(sku || '').trim()) ? oranlar.degisim : oranlar.diger) : 0
@@ -84,7 +76,6 @@ const priceToText = (price: number | null) =>
 type DaySchedule = { open: string; close: string }
 type WeekSchedule = Record<string, DaySchedule>
 
-// Günler: anahtarlar İngilizce saklanır, etiketler Türkçe gösterilir
 const WEEK_DAYS: { value: string; label: string }[] = [
     { value: 'monday', label: 'Pazartesi' },
     { value: 'tuesday', label: 'Salı' },
@@ -98,11 +89,9 @@ const WEEK_DAYS: { value: string; label: string }[] = [
 const emptySchedule = (): WeekSchedule =>
     WEEK_DAYS.reduce((acc, d) => ({ ...acc, [d.value]: { open: '', close: '' } }), {})
 
-// Telefon maskesi: +90 xxx xxx xx xx
 const formatPhone = (value: string) => {
     let digits = value.replace(/\D/g, '')
 
-    // Başta 90 ve/veya 0'lar varsa ulusal numaradan ayıkla
     digits = digits.replace(/^0+/, '')
     if (digits.startsWith('90')) digits = digits.slice(2)
     digits = digits.replace(/^0+/, '')
@@ -119,7 +108,6 @@ const formatPhone = (value: string) => {
     return formatted
 }
 
-// Standart çalışma saatleri: Pazartesi-Cumartesi 09:00-20:00, Pazar kapalı
 const DEFAULT_OPEN = '09:00'
 const DEFAULT_CLOSE = '20:00'
 
@@ -132,7 +120,6 @@ const standardSchedule = (): WeekSchedule =>
         {}
     )
 
-// Olanaklar: anahtarlar İngilizce saklanır, etiketler Türkçe gösterilir
 const AMENITY_OPTIONS = [
     { value: 'wc', label: 'WC (Kadın/Erkek)' },
     { value: 'waiting_room', label: 'Bekleme Salonu' },
@@ -155,11 +142,9 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
 
-    // İl / ilçe listeleri (adres veritabanından)
     const [cities, setCities] = useState<City[]>([])
     const [districts, setDistricts] = useState<District[]>([])
 
-    // Form alanları
     const [name, setName] = useState('')
     const [cityId, setCityId] = useState('')
     const [districtId, setDistrictId] = useState('')
@@ -168,11 +153,9 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
     const [workingSchedule, setWorkingSchedule] = useState<WeekSchedule>(emptySchedule())
     const [order, setOrder] = useState(0)
     const [isActive, setIsActive] = useState(true)
-    // Vitrinde ad/adres/telefon gösterilsin mi (kapalıysa anonim "Anlaşmalı Nokta")
     const [showPublicInfo, setShowPublicInfo] = useState(false)
     const [oranlar, setOranlar] = useState<KomisyonOranlari | null>(null)
 
-    // Komisyon oranları (seçili site): hizmet satırında müşteri fiyatını göstermek için
     useEffect(() => {
         fetchAPI(`${API_ENDPOINTS.montage.list()}/commission`, { cache: 'no-store' })
             .then(res => res?.success && setOranlar(res.data))
@@ -200,7 +183,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
         loadCities()
     }, [])
 
-    // Hizmetlerimiz kategorisindeki ürünler (hizmet seçimi için)
     useEffect(() => {
         const loadServiceProducts = async () => {
             try {
@@ -283,7 +265,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
             return
         }
 
-        // price null: ürünün varsayılan fiyatı geçerli; manuel girilirse o geçerli olur
         setServices([...services, { ...product, price: null, priceText: '' }])
     }
 
@@ -317,7 +298,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
         }
     }
 
-    // Sözleşme/evrak dosyası yükler; ad alanı dosya adıyla başlar, sonradan düzenlenebilir
     const handleDocumentUpload = async (file: File) => {
         setUploadingDocument(true)
 
@@ -349,7 +329,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
         }
     }
 
-    // Evrak private dizinde tutulur; auth'lu endpoint'ten alınıp tarayıcıda açılır/indirilir
     const handleDocumentOpen = async (doc: MontageDocument) => {
         try {
             const res = await fetchAPI(API_ENDPOINTS.montage.documentFile(doc.url))
@@ -368,7 +347,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
             const blob = new Blob([bytes], { type: res.data.mime })
             const url = URL.createObjectURL(blob)
 
-            // PDF ve görseller tarayıcıda açılır, diğerleri indirilir
             if (/^(application\/pdf|image\/)/.test(res.data.mime)) {
                 window.open(url, '_blank')
             } else {
@@ -508,7 +486,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
 
                         <Divider />
 
-                        {/* Çalışma Saatleri */}
                         <div className='flex items-center justify-between'>
                             <Typography variant='h6'>Çalışma Saatleri</Typography>
                             <Button size='small' variant='outlined' onClick={() => setWorkingSchedule(standardSchedule())}>
@@ -581,7 +558,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
 
                         <Divider />
 
-                        {/* Alınabilecek Hizmetler — Hizmetlerimiz kategorisindeki ürünlerden */}
                         <Typography variant='h6'>Alınabilecek Hizmetler</Typography>
                         <Autocomplete
                             fullWidth
@@ -670,7 +646,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
 
                         <Divider />
 
-                        {/* Olanaklar */}
                         <Typography variant='h6'>Olanaklar</Typography>
                         <FormGroup row>
                             {AMENITY_OPTIONS.map(opt => (
@@ -689,7 +664,6 @@ const MontageForm = ({ montageId }: MontageFormProps) => {
 
                         <Divider />
 
-                        {/* Yorumlar — panelden eklenenlerde üye "sistem" olarak geçer */}
                         <div className='flex items-center justify-between'>
                             <Typography variant='h6'>Yorumlar</Typography>
                             <Button

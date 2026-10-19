@@ -20,37 +20,23 @@ import {
 import { API_ENDPOINTS } from "@src/config/api";
 import { CartBlockedModal } from "./cart-blocked-modal";
 
-/**
- * SEPET — yalnızca tarayıcıda yaşar.
- *
- * Bu şablonda sunucu yoktur; sepet `localStorage`'da tutulur ki tasarım
- * gezilirken ekranlar boş kalmasın. Gerçek uygulamada bu sağlayıcının içi
- * kendi sepet API'nizle değiştirilir — bileşenlerin arayüzü (`useSepet`)
- * aynı kalabilir.
- */
-
 const CART_STORAGE_KEY = "ornek-sepet-v1";
-// Sepet değişikliklerinin sunucuya yazılmadan önce toplandığı süre
 const CART_SYNC_DELAY_MS = 1500;
 
-// Ürün sepete eklenirken GERÇEK verisinin (DB'den gelen ad/fiyat/depo) anlık
-// kopyası — sepet widget'ı bu değerleri örnek veriden değil bundan gösterir.
-// (Nihai fiyat/stok siparişte sunucuda yeniden doğrulanır.)
 export type CartSnapshot = {
   marka: string;
   brandLogoUrl?: string | null;
   size: string;
   pattern: string;
   stockCode: string;
-  /** DIA'daki gerçek stok kodu (XML üründe "-XML" ekli) — siparişe bu gönderilir */
   diaStockCode?: string;
   imageUrl?: string | null;
   dotYear?: number | null;
   mevsim?: Season;
-  birimNetKurus: number; // KDV hariç birim fiyat
+  birimNetKurus: number;
   kdvDahilBirimKurus: number;
   warehouseName?: string;
-  xml?: boolean; // XML (tedarikçi) ürün — ödeme yöntemi iskontosu uygulanmaz
+  xml?: boolean;
 };
 
 export type CartRecord = {
@@ -60,8 +46,6 @@ export type CartRecord = {
   snapshot?: CartSnapshot;
 };
 
-// Sepet satırındaki ürünün gösterim alt kümesi (hem gerçek snapshot hem örnek
-// veri bu şekle indirgenir; UI yalnız bu alanları kullanır).
 export type CartLineProduct = {
   id: string;
   stockCode: string;
@@ -80,7 +64,7 @@ export type CartLine = CartRecord & {
   urun: CartLineProduct;
   warehouseName: string;
   birimNetKurus: number;
-  kdvDahilBirimKurus: number; // KDV dahil birim fiyat (b2b'de gösterilen)
+  kdvDahilBirimKurus: number;
   matrahKurus: number;
   kdvKurus: number;
   satirToplamKurus: number;
@@ -94,20 +78,15 @@ type CartState = {
   matrahToplamKurus: number;
   kdvToplamKurus: number;
   totalKurus: number;
-  /** Sepet kapalıysa (vadesi geçen borç) eklemez, uyarıyı açar ve false döner. */
   addItem: (record: CartRecord) => boolean;
-  /** Adet artışı sepet kapalıyken yapılmaz (uyarı açılır, false döner); azaltma ve silme serbesttir. */
   setQty: (productId: string, warehouseId: string, adet: number) => boolean;
   removeItem: (productId: string, warehouseId: string) => void;
   clear: () => void;
   find: (productId: string) => CartRecord | null;
-  /** Vadesi geçen borç nedeniyle sepete ekleme ve sipariş kapalı mı? */
   blocked: boolean;
-  /** Kapalıyken ortadaki uyarıyı açar. */
   notifyBlocked: () => void;
 };
 
-// Sepeti kapatan cari durumu (/me → cartClosed)
 type CartBlock = { message: string; overdueKurus: number };
 
 const CartContext = createContext<CartState | null>(null);
@@ -136,34 +115,24 @@ function readRecords(): CartRecord[] {
   }
 }
 
-/** Tarayıcıdaki sepeti siler (plasiyer çıkışında: plasiyerin bayiler adına doldurduğu sepet sonraki oturuma kalmasın). */
 export function clearStoredCart(): void {
   try {
     window.localStorage.removeItem(CART_STORAGE_KEY);
   } catch {
-    /* depolama kapalıysa silinecek sepet de yoktur */
   }
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [records, setRecords] = useState<CartRecord[]>([]);
-  // localStorage'dan ilk okuma yapıldı mı? (boş-sepet yönlendirmesi bunu bekler;
-  // yoksa dolu sepette bile ilk çizimde yanlışlıkla yönlendirme olur.)
   const [hydrated, setHydrated] = useState(false);
-  // Vadesi geçen borç: sepete ekleme ve sipariş kapalı (kuralı sunucu da uygular)
   const [block, setBlock] = useState<CartBlock | null>(null);
   const [blockNoticeOpen, setBlockNoticeOpen] = useState(false);
 
-  // Sunucuda ve ilk çizimde boş başlanır; kayıtlar bağlanmadan sonra okunur ki
-  // sunucu çıktısı ile istemci çıktısı ayrışmasın (hydration uyuşmazlığı).
   useEffect(() => {
     setRecords(readRecords());
     setHydrated(true);
   }, []);
 
-  // Sepetteki fiyat, ürünün eklendiği andaki kopyadır. Sayfa açılışında bir kez katalogdaki güncel fiyatla yenilenir;
-  // fiyat değişince ya da düzeltilince bayi sepette eski fiyatı görmez. Nihai fiyat siparişte sunucuda hesaplanır.
-  // Cari oranı alınamazsa fiyat hesaplanmaz, sepet olduğu gibi kalır.
   const repriced = useRef(false);
   useEffect(() => {
     if (!hydrated || repriced.current) return;
@@ -210,20 +179,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           try {
             window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
           } catch {
-            // Depolama kapalıysa güncel fiyat yalnızca bu sekmede geçerli olur.
           }
           return next;
         });
       } catch {
-        // Fiyat yenilenemezse sepet eklendiği andaki fiyatla kalır; sipariş tutarı sunucuda hesaplanır.
       }
     })();
-    // Yalnız ilk okumadan sonra bir kez çalışır
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
 
-  // Sepet sunucuya da yazılır (admin Aktif Sepetler bayi sepetlerini görür). Değişiklikler kısa süre toplanıp
-  // tek istekle gider; aynı içerik tekrar gönderilmez. Bayi oturumu yoksa (plasiyer bayi seçmeden) gönderilmez.
   const lastSyncedCart = useRef<string | null>(null);
   useEffect(() => {
     if (!hydrated) return;
@@ -256,12 +220,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         keepalive: true,
       })
         .then((r) => { if (r.ok) lastSyncedCart.current = body; })
-        .catch(() => { /* kayıt gitmezse bir sonraki değişiklikte yeniden denenir */ });
+        .catch(() => {  });
     }, CART_SYNC_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [records, hydrated]);
 
-  // Cari durumu sayfa açılışında ve sekmeye dönüldüğünde okunur (borç ödenince kilit kalksın)
   useEffect(() => {
     let cancelled = false;
     const load = () => {
@@ -297,13 +260,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextRecords));
     } catch {
-      // Depolama kapalıysa sepet yalnızca bu sekmede yaşar; hata gösterilmez.
     }
   }, []);
 
   const value = useMemo<CartState>(() => {
     const lines: CartLine[] = records.flatMap((k) => {
-      // Gerçek ürün: eklenirken kaydedilen snapshot'tan (DB değerleri)
       if (k.snapshot) {
         const s = k.snapshot;
         const matrah = s.birimNetKurus * k.adet;
@@ -333,7 +294,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         ];
       }
-      // Snapshot yoksa (örnek veri / eski kayıt) örnek veriden çöz
       const urun = findProduct(k.productId);
       if (!urun?.fiyat) return [];
       const depo = urun.stocks.find((s) => s.warehouseId === k.warehouseId);
@@ -371,7 +331,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       records,
       lines,
-      // Badge/sayaç: yalnız GÖRÜNEN satırlardan (çözülemeyen eski kayıtlar sayılmaz)
       totalQty: lines.reduce((t, s) => t + s.adet, 0),
       matrahToplamKurus: matrahToplam,
       kdvToplamKurus: kdvToplam,

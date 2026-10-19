@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 
-/* Library */
 import Link from "next/link";
 import { Button, CloseButton } from "react-bootstrap";
-/* MUI */
 import { Grid, Typography } from "@mui/material";
 
 export default function CategoryTireSearch() {
@@ -60,7 +58,6 @@ export default function CategoryTireSearch() {
                                 <i className="ri-arrow-right-s-line"></i>
                             </Link>
                         </Typography>
-
 
                     </Grid>
                 </Grid>

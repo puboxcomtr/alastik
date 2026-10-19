@@ -1,10 +1,3 @@
-/**
- * Mail şablonu DB'ye ekleme/güncelleme scripti (tüm siteler için)
- * Kullanım: node seed-template.js
- *
- * Bu dosyayı her şablon için kopyalayıp template verisini değiştir,
- * sonra çalıştır. Şablon her site için ayrı ayrı upsert edilir.
- */
 
 const path = require('path')
 
@@ -15,9 +8,6 @@ const fs = require('fs')
 
 const { SITES } = require('../../config/sites')
 
-// =============================================
-// ŞABLON BİLGİLERİ - HER YENİ ŞABLON İÇİN BURAYI DÜZENLE
-// =============================================
 const TEMPLATE = {
     templateKey: 'havale_bildirim_formu',
     name: 'Havale Bildirim Formu',
@@ -27,7 +17,6 @@ const TEMPLATE = {
     order: 4,
     isActive: true
 }
-// =============================================
 
 const WebMailTemplate = require('../../models/admin/mail/Template')
 
@@ -37,7 +26,6 @@ const run = async () => {
         await mongoose.connect(process.env.MONGODB_URI)
         console.log('MongoDB bağlandı')
 
-        // HTML dosyasını oku
         const htmlPath = path.join(__dirname, TEMPLATE.contentFile)
 
         if (!fs.existsSync(htmlPath)) {
@@ -48,7 +36,6 @@ const run = async () => {
 
         console.log(`HTML dosyası okundu: ${htmlContent.length} karakter`)
 
-        // Her site için ayrı kayıt (site + templateKey benzersiz)
         for (const site of Object.keys(SITES)) {
             const existing = await WebMailTemplate.findOne({ site, templateKey: TEMPLATE.templateKey })
 
@@ -58,7 +45,6 @@ const run = async () => {
 
                 existing.defaultContent = htmlContent
 
-                // Eğer content boşsa veya defaultContent ile aynıysa content'i de güncelle
                 if (!existing.content || existing.content === existing.defaultContent) {
                     existing.content = htmlContent
                 }

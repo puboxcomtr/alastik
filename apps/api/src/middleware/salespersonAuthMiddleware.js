@@ -1,11 +1,6 @@
 const jwt = require('jsonwebtoken');
 const WebSalesperson = require('../models/web/user/WebSalesperson');
 
-/**
- * Plasiyer (satış personeli) oturum doğrulaması.
- * Token'da type:'salesperson' olmalı; GRUBU (Perakende / Toptan) ve şifresi atanmış plasiyer geçerlidir.
- * req.salesperson = WebSalesperson dokümanı olarak set edilir.
- */
 const salespersonAuth = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.replace('Bearer ', '');
@@ -31,11 +26,6 @@ const salespersonAuth = async (req, res, next) => {
     }
 };
 
-/**
- * Plasiyer ya da plasiyerin bayi adına açtığı oturum (bayi token'ında sunucunun imzaladığı impersonatedBy claim'i).
- * Bayinin KENDİ oturumu kabul edilmez — plasiyere özel bilgiler (ör. XML tedarikçisi) bayiye hiçbir durumda gitmez.
- * req.salesperson = oturumu açan plasiyer.
- */
 const salespersonOrImpersonationAuth = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.replace('Bearer ', '');

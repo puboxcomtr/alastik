@@ -1,16 +1,12 @@
-// Montaj Noktası (Bayi) Bilgi ve Fiyat Formu — alan ve seçenek tanımları (TEK KAYNAK).
-// Form sayfası bu tanımı API'den okur (/api/bayi-formu/tanim), sunucu doğrulaması ve admin Excel çıktısı
-// aynı tanımı kullanır. Bir aralığı değiştirmek için yalnızca bu dosya düzenlenir.
 const aralik = (bas, son, adim) => { const o = []; for (let v = bas; v <= son; v += adim) o.push(v); return o; };
 
-const SITE = 'lastikjantavm';                 // formun ana sitesi (admin Bayi Formları listesi paneldeki seçili siteye göre ayrılır)
-// Formun açıldığı siteler. girisGerekli: yalnız giriş yapmış bayi doldurabilir (kayıt bayiye bağlanır)
+const SITE = 'lastikjantavm';
 const SITELER = {
     lastikjantavm: { girisGerekli: false },
     b2b: { girisGerekli: true }
 };
 const KAPALI = 'Kapalı';
-const VERMIYORUM = 'vermiyorum';              // fiyat satırında "Bu hizmeti vermiyorum"
+const VERMIYORUM = 'vermiyorum';
 const VERMIYORUM_ETIKET = 'Bu hizmeti vermiyorum';
 const EVET_HAYIR = ['Evet', 'Hayır'];
 const SAATLER = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}.00`);
@@ -24,7 +20,6 @@ const SAAT_ALANLARI = [
     { key: 'pazarKapanis', etiket: 'Pazar Kapanış', kapaliOlabilir: true, es: 'pazarAcilis' }
 ];
 
-// Hizmet fiyatları — KDV dahil TL. Her satırda ayrıca "Bu hizmeti vermiyorum" seçeneği vardır.
 const FIYAT_GRUPLARI = [
     { ad: 'Sibop Fiyatları ve Hizmetler', satirlar: [
         { kod: 'SBP-1', ad: 'Normal Sibop (montaj hariç fiyat)', birim: 'Adet', secenekler: aralik(50, 250, 25) },
@@ -62,9 +57,6 @@ const FIYAT_GRUPLARI = [
     ] }
 ];
 const FIYAT_SATIRLARI = FIYAT_GRUPLARI.flatMap(g => g.satirlar);
-// Aktarım ve saklama anahtarı: koddaki nokta alt çizgiye çevrilir ("600.94" → "600_94"). API gelen istekte
-// noktalı anahtarları güvenlik gereği sildiği için (mongo-sanitize) cevaplar bu anahtarla taşınır; ekranda ve
-// Excel'de her zaman asıl kod gösterilir.
 for (const r of FIYAT_SATIRLARI) r.anahtar = r.kod.replace(/\./g, '_');
 
 const TESIS_EVET_HAYIR = [
@@ -77,7 +69,7 @@ const TESIS_EVET_HAYIR = [
 ];
 const CALISAN_SAYISI = aralik(1, 150, 1);
 const METREKARE = [...aralik(15, 100, 5), ...aralik(150, 1500, 50)];
-const LASTIK_OTELI_YOK = 'yok';                 // "Lastik otelim yok"
+const LASTIK_OTELI_YOK = 'yok';
 const LASTIK_OTELI_YOK_ETIKET = 'Lastik otelim yok';
 const LASTIK_OTELI_KAPASITE = aralik(50, 1500, 50);
 
@@ -87,8 +79,6 @@ const MARKA_DIGER = 'Diğer';
 const MARKALAR = ['Accelera', 'Achilles', 'Anlas', 'Aplus', 'Apollo', 'Arivo', 'Atlas', 'Austone', 'Barum', 'BFGoodrich', 'Bridgestone', 'Continental', 'Cooper', 'Dayton', 'Debica', 'Delinte', 'Diplomat', 'Doublestar', 'Dunlop', 'Falken', 'Firestone', 'Fulda', 'General Tire', 'Gislaved', 'Giti', 'Goodride', 'Goodyear', 'GT Radial', 'Hankook', 'Hifly', 'Imperial', 'Kelly', 'Kenda', 'Kleber', 'Kormoran', 'Kumho', 'Landsail', 'Lassa', 'Laufenn', 'Leao', 'Linglong', 'Marshal', 'Matador', 'Maxxis', 'Michelin', 'Milestone', 'Minerva', 'Mirage', 'Nankang', 'Nexen', 'Nokian', 'Orium', 'Otani', 'Petlas', 'Pirelli', 'Powertrac', 'Riken', 'Roadstone', 'RoadX', 'Rotalla', 'Sailun', 'Sava', 'Semperit', 'Starmaxx', 'Strial', 'Sumitomo', 'Sunny', 'Taurus', 'Tigar', 'Toyo', 'Tracmax', 'Triangle', 'Uniroyal', 'Viking', 'Vredestein', 'Waterfall', 'Westlake', 'Windforce', 'Yokohama', 'Zeetex']
     .sort((a, b) => a.localeCompare(b, 'tr'));
 
-// Görseller ve ek hizmetler (12 Ekim 2026) — HEPSİ İSTEĞE BAĞLI. Başlık başına en çok GORSEL_ADET dosya.
-// Fotoğraf: JPG/PNG/WebP; yalnız vergi levhasında PDF de kabul edilir. Dosyalar sitede yayınlanmaz, yalnız admin panelinden açılır.
 const GORSEL_ADET = 4;
 const GORSEL_BOYUT_MB = 10;
 const GORSEL_ALANLARI = [
@@ -99,20 +89,17 @@ const GORSEL_ALANLARI = [
     { key: 'rotLift', etiket: 'Varsa Rot Ayarı Yapılan Lift Görseli', kisa: 'Rot ayarı lifti' },
     { key: 'vergiLevhasi', etiket: 'Vergi Levhası Görseli', kisa: 'Vergi levhası', pdf: true }
 ];
-const DOSYA_KIMLIK = /^[a-f0-9]{32}\.(jpg|png|webp|pdf)$/;   // sunucunun yükleme sırasında verdiği dosya adı
-// Dosyalar web'den erişilen "public" klasörünün ve kod deposunun DIŞINDA tutulur (canlı ve dev aynı dizini kullanır)
+const DOSYA_KIMLIK = /^[a-f0-9]{32}\.(jpg|png|webp|pdf)$/;
 const GORSEL_DIZIN = process.env.BAYI_FORMU_DIZIN || '/var/www/alastik-ozel/bayi-formu';
 const EK_HIZMET_SORU = 'Varsa ek hizmetleriniz nelerdir?';
 const EK_HIZMET_UZUNLUK = 1000;
 
-// Telefon: 0 ile başlayan 11 hane (cep 05xx ya da sabit 0[2-4]xx). Dönüş: "0511 111 11 11" ya da null
 function telefonBicimle(deger) {
     const d = String(deger || '').replace(/\D/g, '');
     if (!/^0[2-5]\d{9}$/.test(d)) return null;
     return `${d.slice(0, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
 }
 
-// Form sayfasına verilen tanım
 function tanim() {
     return {
         saatler: SAATLER, kapali: KAPALI, saatAlanlari: SAAT_ALANLARI,
@@ -126,11 +113,6 @@ function tanim() {
     };
 }
 
-/**
- * Gönderilen cevapları doğrular. Listede olmayan hiçbir değer kabul edilmez.
- * il/ilçe doğrulaması çağıran tarafından yapılır (veritabanı gerekir) ve sonuç ilSonucu ile verilir.
- * Dönüş: { hatalar: { alan: mesaj }, temiz: {...} }
- */
 function dogrula(b, ilSonucu) {
     const hatalar = {}; const temiz = { saatler: {}, fiyatlar: {}, tesis: {} };
     const metin = (v, max) => String(v ?? '').trim().replace(/\s+/g, ' ').slice(0, max);
@@ -178,7 +160,6 @@ function dogrula(b, ilSonucu) {
     if (m.includes(MARKA_YOK)) m = [MARKA_YOK]; else if (m.includes(MARKA_HEPSI)) m = [MARKA_HEPSI];
     if (m.length) temiz.tesis.markalar = m; else hatalar['tesis.markalar'] = 'En az bir seçenek işaretleyin';
 
-    // İsteğe bağlı alanlar: boş bırakılabilir, hata üretmez. Tanınmayan dosya adı sessizce atılır.
     temiz.ekHizmetler = String(g.ekHizmetler ?? '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, EK_HIZMET_UZUNLUK);
     temiz.gorseller = {};
     const gr = g.gorseller || {};

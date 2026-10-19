@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useRef, useState, useEffect } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 
-// MUI Imports
 import IconButton from '@mui/material/IconButton'
 import Badge from '@mui/material/Badge'
 import Popper from '@mui/material/Popper'
@@ -20,24 +18,18 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import Button from '@mui/material/Button'
 import type { Theme } from '@mui/material/styles'
 
-// Third Party Components
 import classnames from 'classnames'
 import PerfectScrollbar from 'react-perfect-scrollbar'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 import type { CustomAvatarProps } from '@core/components/mui/Avatar'
 
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
-// Util Imports
 import { getInitials } from '@/utils/getInitials'
 
 export type NotificationsType = {
@@ -104,19 +96,15 @@ const getAvatar = (
 }
 
 const NotificationDropdown = ({ notifications }: { notifications: NotificationsType[] }) => {
-  // States
   const [open, setOpen] = useState(false)
   const [notificationsState, setNotificationsState] = useState(notifications)
 
-  // Vars
   const notificationCount = notificationsState.filter(notification => !notification.read).length
   const readAll = notificationsState.every(notification => notification.read)
 
-  // Refs
   const anchorRef = useRef<HTMLButtonElement>(null)
   const ref = useRef<HTMLDivElement | null>(null)
 
-  // Hooks
   const hidden = useMediaQuery((theme: Theme) => theme.breakpoints.down('lg'))
   const isSmallScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const { settings } = useSettings()
@@ -129,7 +117,6 @@ const NotificationDropdown = ({ notifications }: { notifications: NotificationsT
     setOpen(prevOpen => !prevOpen)
   }
 
-  // Read notification when notification is clicked
   const handleReadNotification = (event: MouseEvent<HTMLElement>, value: boolean, index: number) => {
     event.stopPropagation()
     const newNotifications = [...notificationsState]
@@ -138,7 +125,6 @@ const NotificationDropdown = ({ notifications }: { notifications: NotificationsT
     setNotificationsState(newNotifications)
   }
 
-  // Remove notification when close icon is clicked
   const handleRemoveNotification = (event: MouseEvent<HTMLElement>, index: number) => {
     event.stopPropagation()
     const newNotifications = [...notificationsState]
@@ -147,7 +133,6 @@ const NotificationDropdown = ({ notifications }: { notifications: NotificationsT
     setNotificationsState(newNotifications)
   }
 
-  // Read or unread all notifications when read all icon is clicked
   const readAllNotifications = () => {
     const newNotifications = [...notificationsState]
 
@@ -160,7 +145,6 @@ const NotificationDropdown = ({ notifications }: { notifications: NotificationsT
   useEffect(() => {
     const adjustPopoverHeight = () => {
       if (ref.current) {
-        // Calculate available height, subtracting any fixed UI elements' height as necessary
         const availableHeight = window.innerHeight - 100
 
         ref.current.style.height = `${Math.min(availableHeight, 550)}px`

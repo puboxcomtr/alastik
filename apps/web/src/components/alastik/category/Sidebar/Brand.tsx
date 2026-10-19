@@ -1,4 +1,3 @@
-// apps/web/src/components/category/Sidebar/Brand.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -67,7 +66,6 @@ export default function Brand({ categorySlug, brands = [] }: BrandProps) {
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    // Arama filtresi
     const filteredBrands = brands.filter((brand) =>
         normalizeForSearch(brand.label).includes(normalizeForSearch(search))
     );

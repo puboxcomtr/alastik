@@ -9,7 +9,6 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Ayarları Getir (seçili sitenin ayarları)
 router.get('/', async (req, res) => {
     try {
         let settings = await WebAkakceSettings.findOne({ site: req.site });
@@ -22,10 +21,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Ayarları Güncelle (seçili sitenin ayarları)
 router.put('/', async (req, res) => {
     try {
-        // Salt okunur / sistem alanları istekten ayıklanır (site de dışarıdan değiştirilemez)
         const { _id, createdAt, updatedAt, __v, lastGenerated, productCount, site, ...payload } = req.body || {};
 
         let settings = await WebAkakceSettings.findOne({ site: req.site });
@@ -41,7 +38,6 @@ router.put('/', async (req, res) => {
     }
 });
 
-// Excel'den stok kodu içe aktar: kodları webproducts ile eşleştirip seçim listesi döner
 router.post('/import-products', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -54,9 +50,8 @@ router.post('/import-products', upload.single('file'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'Excel dosyasında sayfa bulunamadı' });
         }
 
-        // Tüm hücreleri satır/sütun bazında oku (kolon konumu önemli değil)
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
-        const cells = []; // { value, row, col }
+        const cells = [];
         rows.forEach((row, r) => {
             (row || []).forEach((cell, c) => {
                 const value = String(cell ?? '').trim();
@@ -68,8 +63,6 @@ router.post('/import-products', upload.single('file'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'Dosyada okunabilir veri bulunamadı' });
         }
 
-        // Büyük/küçük harf farkını tolere etmek için orijinal + upper varyantlarıyla sorgula
-        // (kod adayı olarak yalnızca kısa değerler kullanılır)
         const candidates = [...new Set(cells.filter(c => c.value.length <= 64).flatMap(c => [c.value, c.value.toUpperCase()]))];
         const db = require('mongoose').connection.db;
         const docs = await db.collection('webproducts')
@@ -85,7 +78,6 @@ router.post('/import-products', upload.single('file'), async (req, res) => {
             if (code) byUpperCode.set(String(code).toUpperCase(), d);
         });
 
-        // Stok kodu kolonunu tespit et: en çok eşleşme barındıran sütun
         const matchCountByCol = new Map();
         cells.forEach(c => {
             if (byUpperCode.has(c.value.toUpperCase())) {
@@ -103,7 +95,6 @@ router.post('/import-products', upload.single('file'), async (req, res) => {
         const bestCol = [...matchCountByCol.entries()].sort((a, b) => b[1] - a[1])[0][0];
         const colCells = cells.filter(c => c.col === bestCol);
 
-        // Kod kolonunun sağındaki dolu kolon varsa özel XML adı olarak al
         const nameByRow = new Map();
         cells.forEach(c => {
             if (c.col === bestCol + 1) nameByRow.set(c.row, c.value);
@@ -127,7 +118,6 @@ router.post('/import-products', upload.single('file'), async (req, res) => {
                     xmlName: nameColUsable ? (nameByRow.get(c.row) || '') : ''
                 });
             } else if (c.row > 0) {
-                // İlk satır muhtemelen başlık; eşleşmeyenlere dahil etme
                 notFound.push(c.value);
             }
         });
@@ -138,7 +128,6 @@ router.post('/import-products', upload.single('file'), async (req, res) => {
     }
 });
 
-// Mevcut fiyat alanlarını getir
 router.get('/price-fields', async (req, res) => {
     try {
         const db = require('mongoose').connection.db;
@@ -162,7 +151,6 @@ router.get('/price-fields', async (req, res) => {
     }
 });
 
-// Mevcut metin alanlarını getir
 router.get('/text-fields', async (req, res) => {
     try {
         const db = require('mongoose').connection.db;

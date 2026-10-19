@@ -1,4 +1,3 @@
-// apps/web/src/hooks/Products/brandHelpers.ts
 import type { Brand } from '@/src/types/brand';
 import { getBrandImageUrl } from '@/src/services/brandService';
 
@@ -9,9 +8,6 @@ export interface BrandDisplayResult {
     name: string;
 }
 
-/**
- * Marka adını formatla - ilk harf büyük, diğerleri küçük
- */
 export const formatBrandName = (name: string): string => {
     if (!name) return '';
     return name
@@ -21,9 +17,6 @@ export const formatBrandName = (name: string): string => {
         .join(' ');
 };
 
-/**
- * Türkçe karakterleri normalize et (arama için)
- */
 export const normalizeForSearch = (text: string): string => {
     if (!text) return '';
     return text
@@ -38,9 +31,6 @@ export const normalizeForSearch = (text: string): string => {
         .replace(/ç/gi, 'c');
 };
 
-/**
- * Marka logosunu veya ismini döndür
- */
 export const getBrandDisplay = (
     brand: Brand | null,
     fallbackName?: string

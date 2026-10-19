@@ -1,29 +1,21 @@
-// React Imports
 import { useRef } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import { styled } from '@mui/material/styles'
 
-// Third-party Imports
 import PerfectScrollbar from 'react-perfect-scrollbar'
 
-// Type Imports
 import type { ChildrenType } from '@core/types'
 import type { Locale } from '@configs/i18n'
 
-// Component Imports
 import NavHeader from '@menu/components/vertical-menu/NavHeader'
 import Logo from '@components/layout/shared/Logo'
 import NavCollapseIcons from '@menu/components/vertical-menu/NavCollapseIcons'
 
-// Hook Imports
 import useHorizontalNav from '@menu/hooks/useHorizontalNav'
 
-// Util Imports
 import { mapHorizontalToVerticalMenu } from '@menu/utils/menuUtils'
 import { getLocalizedUrl } from '@/utils/i18n'
 
@@ -46,14 +38,11 @@ const StyledBoxForShadow = styled('div')(({ theme }) => ({
 }))
 
 const VerticalNavContent = ({ children }: ChildrenType) => {
-  // Hooks
   const { isBreakpointReached } = useHorizontalNav()
   const { lang: locale } = useParams()
 
-  // Refs
   const shadowRef = useRef(null)
 
-  // Vars
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
 
   const scrollMenu = (container: any, isPerfectScrollbar: boolean) => {

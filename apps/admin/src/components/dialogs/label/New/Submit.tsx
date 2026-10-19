@@ -1,10 +1,8 @@
 import React, { useState } from 'react'
-// MUI Imports
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import { FormControl, InputLabel, Select, MenuItem, OutlinedInput, Chip } from '@mui/material'
 
-// Component Imports
 import DirectionalIcon from '@components/DirectionalIcon'
 
 type Props = {
@@ -52,7 +50,6 @@ const Submit = ({ activeStep, isLastStep, handleNext, handlePrev }: Props) => {
         </Select>
       </FormControl>
 
-      {/* BUTTONS */}
       <div className='flex items-center justify-between'>
         <Button
           variant='outlined'

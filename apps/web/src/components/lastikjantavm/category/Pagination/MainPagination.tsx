@@ -1,4 +1,3 @@
-// apps/web/src/components/category/Pagination/MainPagination.tsx
 'use client';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -18,8 +17,6 @@ export default function Pagination({ currentPage: propCurrentPage, totalPages, t
         setCurrentPage(propCurrentPage);
     }, [propCurrentPage]);
 
-    // Sayfa linkleri gerçek <a href> olarak basılır ki arama motorları 2. sayfa ve sonrasını da tarayabilsin.
-    // 1. sayfa ?page=1 olmadan üretilir; aynı içerik için iki ayrı adres oluşmaz.
     const createPageUrl = (page: number) => {
         const params = new URLSearchParams(searchParams);
         if (page <= 1) {

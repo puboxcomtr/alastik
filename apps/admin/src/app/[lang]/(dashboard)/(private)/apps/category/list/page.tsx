@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Page */
 import ProductCategoryTable from '@views/category/ProductCategoryTable'
 
 const eCommerceProductsCategory = () => {

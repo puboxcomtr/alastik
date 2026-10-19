@@ -79,7 +79,6 @@ export default function ChainSizeSelection({
             const grouped = wheelSizeService.parseGroupedTires(vehicleData);
             const chainOptions: ChainOption[] = [];
 
-            // Tüm lastik ebatlarından kar paleti ebatı çıkar
             [...grouped.both, ...grouped.front, ...grouped.rear].forEach(tire => {
                 const id = `${tire.width}-${tire.aspectRatio}-${tire.diameter}`;
                 if (!chainOptions.find(c => c.id === id)) {
@@ -150,7 +149,6 @@ export default function ChainSizeSelection({
     return (
         <div className="chain-size-selection">
             <div className="row">
-                {/* Sol Panel - Araç Bilgisi */}
                 <div className="col-md-3">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Araç Bilgisi
@@ -204,7 +202,6 @@ export default function ChainSizeSelection({
                     </div>
                 </div>
 
-                {/* Sağ Panel - Kar Paleti Ebatları */}
                 <div className="col-md-9">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Uyumlu Kar Paleti Ebatları

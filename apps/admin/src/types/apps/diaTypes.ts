@@ -1,35 +1,21 @@
-// DİA Sipariş Entegrasyonu Ayarları
 export interface DiaSiparisSettings {
-    // Vitrin siparişinin DİA'ya gönderilmesi açık mı
     aktif: boolean
-    // Siparişin yazılacağı firma/dönem — 0 ise bağlantı ayarındakiler kullanılır
     firmaKodu: number
     donemKodu: number
-    // DİA iç kayıt anahtarları (_key); kod alanlarından farklıdır
     subeKey: number
     depoKey: number
-    // Her müşteri için ayrı cari mi, tek genel cari mi
     cariModu: 'musteri' | 'tekCari'
     genelCariKodu: string
-    // Cari hesap kodu öneki (örn. 'LJA-120.01.'); doluysa kod '<önek><ay>.<rastgele>' üretilir
     cariKodOnek: string
-    // Yeni cari kartına yazılacak Özel Kod 1 (_key) — firma ayarında zorunlu olabilir
     cariOzelKod1Key: number
-    // Yeni cari kartına yazılacak Yetki/Seviye Kodu (_key) — firma ayarında zorunlu olabilir
     cariSeviyeKodKey: number
-    // Sipariş başlığına yazılacak Satış Elemanı (_key)
     satisElemaniKey: number
-    // Siparişe yazılacak kargo firması (krg_firma _key)
     kargoFirmaKey: number
-    // Kargo bedeli hizmet kartı (_key): doluysa kargo ücreti siparişe ayrı satır olarak yazılır
     kargoHizmetKartKey: number
-    // Sipariş başlığına yazılacak Yetki/Seviye Kodu (_key) — cari yetki kodundan ayrıdır
     siparisSeviyeKodKey: number
-    // Ödeme şekline göre DIA Ödeme Planı anahtarları (_key)
     odemePlaniTekCekimKey: number
     odemePlaniTaksitliKey: number
     odemePlaniHavaleKey: number
-    // Şirketler arası akış (fiziki stok kaynak firmada olan siteler için)
     sirketlerArasiAktif: boolean
     kaynakFirmaKodu: number
     kaynakDonemKodu: number
@@ -43,19 +29,13 @@ export interface DiaSiparisSettings {
     tedarikciCariKodu: string
     tedarikciOdemePlaniKey: number
     sirketlerArasiFiyatNo: number
-    // Sipariş aktarımından sonra otomatik satış faturası kes (stok çıkışı faturayla oluşur)
     faturaOtomatik: boolean
-    // Faturanın stok düşeceği depolar (_key, virgülle, öncelik sırasına göre)
     faturaDepoKeys: string
-    // Fatura başlığına yazılacak Yetki/Seviye Kodu (_key)
     faturaSeviyeKodKey: number
-    // Fatura kalemleri siparişi kapatsın mı (Tamamı Sevk Edilmiş)
     faturaSiparisiKapatsin: boolean
-    // Aktarımın tetikleneceği an
     tetikleme: 'odemeAlininca' | 'siparisOlusunca'
 }
 
-// DİA Senkronizasyon Ayarları
 export interface DiaSyncSettings {
     urunAdlariniGuncelle: boolean
     fiyatGuncellemeKapat: boolean
@@ -70,7 +50,6 @@ export interface DiaSyncSettings {
     hashKontrol: boolean
 }
 
-// Aktarım Ayarları (ürün gösterim filtresi)
 export type DiaAktarimMode = 'tumu' | 'dahil' | 'haric'
 export type DiaAktarimFilterType = 'urun' | 'kategori' | 'marka'
 
@@ -94,9 +73,6 @@ export interface DiaAktarimSettings {
     brands: DiaAktarimNamedItem[]
 }
 
-// Her Zaman Dahil — durum dışındaki kurallara ve "Hariç Bırak" listesine bakılmaksızın
-// aktarılacak kalemler. Aktarım Ayarları'ndan farkı: mode yoktur (her zaman dahil eder) ve
-// ürün / kategori / marka listelerinin hepsi birlikte değerlendirilir.
 export interface DiaZorunluDahilSettings {
     filterType: DiaAktarimFilterType
     products: DiaAktarimProduct[]
@@ -104,7 +80,6 @@ export interface DiaZorunluDahilSettings {
     brands: DiaAktarimNamedItem[]
 }
 
-// DİA Ana Ayarlar
 export interface DiaSettings {
     baseURL: string
     apiKey: string
@@ -118,17 +93,14 @@ export interface DiaSettings {
     sync: DiaSyncSettings
 }
 
-// Bağlantı Durumu
 export type DiaConnectionStatus = 'idle' | 'success' | 'error'
 
-// API Yanıt Tipi
 export interface DiaSettingsResponse {
     success: boolean
     data?: DiaSettings
     message?: string
 }
 
-// Bağlantı Test İsteği
 export interface DiaTestConnectionPayload {
     baseURL: string
     apiKey: string
@@ -138,7 +110,6 @@ export interface DiaTestConnectionPayload {
     donemKodu: number
 }
 
-// Varsayılan Ayarlar
 export const defaultDiaSettings: DiaSettings = {
     baseURL: '',
     apiKey: '',

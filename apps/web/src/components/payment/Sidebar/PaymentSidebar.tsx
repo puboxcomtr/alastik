@@ -41,7 +41,6 @@ export default function PaymentSidebar({ onSubmit, loading, disabled }: PaymentS
 
     return (
         <>
-            {/* Masaüstü Sidebar */}
             <div className="d-none d-lg-block">
                 <div className="card bg-white rounded sticky-top" style={{ top: '20px' }}>
                     <div className="card-body">
@@ -101,7 +100,6 @@ export default function PaymentSidebar({ onSubmit, loading, disabled }: PaymentS
                 </div>
             </div>
 
-            {/* Mobil Bottom Bar */}
             <div className="d-lg-none">
                 <div className="cart-mobile-bar">
                     <button

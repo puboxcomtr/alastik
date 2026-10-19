@@ -1,11 +1,8 @@
-// Montaj Noktası (Bayi) Bilgi ve Fiyat Formu cevapları.
-// Bayi başına TEK kayıt: aynı (site + birinci telefon) ile yeniden gönderilirse üzerine yazılır; fiyat geçmişi tutulmaz.
-// Mevcut montaj noktası kayıtlarından (webmontagepoints) bağımsızdır; sitedeki fiyatlara yansımaz.
 const mongoose = require('mongoose');
 
 const webDealerFormSchema = new mongoose.Schema({
     site: { type: String, required: true, index: true },
-    telefonAnahtar: { type: String, required: true },          // birinci telefonun yalnız rakamları
+    telefonAnahtar: { type: String, required: true },
     bayiAdi: { type: String, required: true, trim: true },
     cityId: { type: String, default: '' },
     cityName: { type: String, default: '' },
@@ -15,15 +12,14 @@ const webDealerFormSchema = new mongoose.Schema({
     telefon1: { type: String, default: '' },
     telefon2: { type: String, default: '' },
     saatler: { type: mongoose.Schema.Types.Mixed, default: {} },
-    fiyatlar: { type: mongoose.Schema.Types.Mixed, default: {} },   // { anahtar (kod, nokta yerine _): sayı | 'vermiyorum' }
+    fiyatlar: { type: mongoose.Schema.Types.Mixed, default: {} },
     tesis: { type: mongoose.Schema.Types.Mixed, default: {} },
-    ekHizmetler: { type: String, default: '' },                     // serbest yazı (isteğe bağlı)
-    gorseller: { type: mongoose.Schema.Types.Mixed, default: {} },  // { alan: [dosya adı, …] } — dosyalar özel dizinde, sitede yayınlanmaz
+    ekHizmetler: { type: String, default: '' },
+    gorseller: { type: mongoose.Schema.Types.Mixed, default: {} },
     gonderimSayisi: { type: Number, default: 1 },
     ilkGonderim: { type: Date, default: Date.now },
     sonGuncelleme: { type: Date, default: Date.now, index: true },
     ip: { type: String, default: '' },
-    // Giriş gerektiren sitede (b2b) formu dolduran bayi
     memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'WebMember', index: true },
     cariKodu: { type: String, default: '' }
 }, { timestamps: true, collection: 'webdealerforms', minimize: false });

@@ -54,7 +54,6 @@ const WishlistSchema = new mongoose.Schema({
       type: String,
       maxlength: [200, 'Not 200 karakterden uzun olamaz']
     },
-    // Ürün bilgilerinin snapshot'ı (ürün silinse bile görünsün)
     snapshot: {
       name: String,
       brand: String,
@@ -65,7 +64,6 @@ const WishlistSchema = new mongoose.Schema({
     }
   }],
   
-  // Paylaşım bilgileri
   sharing: {
     shareCode: {
       type: String,
@@ -82,7 +80,6 @@ const WishlistSchema = new mongoose.Schema({
     }
   },
   
-  // İstatistikler
   stats: {
     totalItems: {
       type: Number,
@@ -113,19 +110,16 @@ const WishlistSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
 WishlistSchema.index({ userId: 1, createdAt: -1 });
 WishlistSchema.index({ 'items.productId': 1 });
 WishlistSchema.index({ 'sharing.shareCode': 1 }, { unique: true, sparse: true });
 WishlistSchema.index({ isPublic: 1, createdAt: -1 });
 
-// Compound index for unique default wishlist per user
 WishlistSchema.index({ userId: 1, isDefault: 1 }, { 
   unique: true, 
   partialFilterExpression: { isDefault: true } 
 });
 
-// Virtual fields
 WishlistSchema.virtual('itemCount').get(function() {
   return this.items.length;
 });
@@ -136,18 +130,15 @@ WishlistSchema.virtual('totalValue').get(function() {
   }, 0);
 });
 
-// Middleware
 WishlistSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   
-  // İstatistikleri güncelle
   this.stats.totalItems = this.items.length;
   this.stats.totalValue = this.items.reduce((total, item) => {
     return total + (item.snapshot?.price || 0);
   }, 0);
   this.stats.lastUpdated = Date.now();
   
-  // Paylaşım kodu oluştur
   if (this.isPublic && !this.sharing.shareCode) {
     this.sharing.shareCode = this.generateShareCode();
   }
@@ -155,10 +146,8 @@ WishlistSchema.pre('save', function(next) {
   next();
 });
 
-// Her kullanıcının bir default wishlist'i olmalı
 WishlistSchema.pre('save', function(next) {
   if (this.isDefault) {
-    // Diğer default wishlist'leri false yap
     this.constructor.updateMany(
       { userId: this.userId, _id: { $ne: this._id } },
       { isDefault: false }
@@ -167,7 +156,6 @@ WishlistSchema.pre('save', function(next) {
   next();
 });
 
-// Static methods
 WishlistSchema.statics.getOrCreateDefault = async function(userId) {
   let wishlist = await this.findOne({ userId, isDefault: true });
   
@@ -213,11 +201,9 @@ WishlistSchema.statics.findByShareCode = function(shareCode) {
     .populate('items.productId', 'name brand model images price specifications');
 };
 
-// Instance methods
 WishlistSchema.methods.addItem = async function(productId, options = {}) {
   const { diaStockId, priority = 'medium', note } = options;
   
-  // Zaten var mı kontrol et
   const existingItem = this.items.find(item => 
     item.productId.toString() === productId.toString()
   );
@@ -226,7 +212,6 @@ WishlistSchema.methods.addItem = async function(productId, options = {}) {
     throw new Error('Bu ürün zaten listede mevcut');
   }
   
-  // Ürün bilgilerini al
   const Product = mongoose.model('Product');
   const product = await Product.findById(productId);
   
@@ -234,7 +219,6 @@ WishlistSchema.methods.addItem = async function(productId, options = {}) {
     throw new Error('Ürün bulunamadı');
   }
   
-  // Yeni item ekle
   this.items.push({
     productId,
     diaStockId,
@@ -270,11 +254,9 @@ WishlistSchema.methods.moveToCart = async function(productId, quantity = 1) {
     throw new Error('Ürün listede bulunamadı');
   }
   
-  // Sepete ekle
   const cart = await Cart.getOrCreateForUser(this.userId);
   await cart.addItem(productId, quantity);
   
-  // Listeden kaldır
   await this.removeItem(productId);
   
   return cart;

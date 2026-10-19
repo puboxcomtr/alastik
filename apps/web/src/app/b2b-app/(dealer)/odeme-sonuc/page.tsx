@@ -1,7 +1,5 @@
 "use client";
 
-// Tek çekim ödeme sonucu — /tekcekim/return buraya yönlendirir.
-// Query: durum=basarili|basarisiz, tutar (TL), ref, mesaj, banka, paynet, kod.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckIcon, AlertIcon, WalletIcon, CardIcon } from "@components/b2b-theme/icons";

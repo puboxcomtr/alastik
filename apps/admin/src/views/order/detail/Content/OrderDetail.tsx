@@ -13,8 +13,6 @@ interface OrderItem {
     quantity: number
     unitPrice: number
     totalPrice: number
-    // Kargo ürün fiyatına GÖMÜLÜ (kargo dahil). Panelde ürün kargo-dahil fiyatla
-    // gösterilir; kargo payı ayrı bir bilgi satırında belirtilir (toplama eklenmez).
     shippingPerUnit?: number
     shippingTotal?: number
     image?: string

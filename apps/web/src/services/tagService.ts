@@ -1,4 +1,3 @@
-// apps/web/src/services/tagService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 

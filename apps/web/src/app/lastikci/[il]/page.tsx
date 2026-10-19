@@ -1,5 +1,3 @@
-// İl sayfası — /lastikci/<il> (yalnızca lastikjantavm.com)
-// İldeki montaj noktaları (yoksa en yakınları), bölgede tercih edilen ebatlar, ilçeler, komşu iller.
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

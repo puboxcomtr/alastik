@@ -1,4 +1,3 @@
-// "Biz Sizi Arayalım" formu seçenekleri — vitrin ve doğrulama aynı kaynağı kullanır
 const CALLBACK_TOPICS = [
     { key: 'lastik', label: 'Lastik' },
     { key: 'jant', label: 'Jant' },

@@ -1,11 +1,3 @@
-/**
- * Ürün Butonları (admin) — site bazlı.
- *  GET  /                → buton tanımları
- *  GET  /products        → ürünler + her üründe açık butonlar (arama, marka/mevsim/kategori/stok filtreleri, sayfalama)
- *  PUT  /products/:key   → tek üründe bir butonu aç/kapat   { button, active }
- *  PUT  /products        → seçili ürünlerde toplu aç/kapat   { keys: [], button, active }
- * Açık butonlar ürünün customData.siteData.<site>.buttons alanında tutulur (DIA senkronunda korunur).
- */
 const router = require('express').Router();
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebProductButton = require('../../../models/web/catalog/WebProductButton');
@@ -15,7 +7,6 @@ const MAX_BULK_PRODUCTS = 500;
 const escapeRegex = (v) => String(v).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const buttonsPath = (site) => `customData.siteData.${site}.buttons`;
 
-// Sitede tanımlı (aktif) buton anahtarları
 const loadButtonKeys = async (site) => {
     const defs = await WebProductButton.find({ site, isActive: true }, { key: 1 }).lean();
     return new Set(defs.map(d => d.key));
@@ -41,22 +32,18 @@ router.get('/products', async (req, res) => {
         const match = { sites: req.site };
         const text = (name) => String(req.query[name] || '').trim();
 
-        // Ürün adı: her kelime ad / stok kodu / markadan birinde geçmeli (Ürünler listesiyle aynı mantık)
         if (text('search')) {
             match.$and = text('search').split(/\s+/).filter(Boolean).map(word => {
                 const regex = new RegExp(escapeRegex(word), 'i');
                 return { $or: [{ 'diaData.aciklama': regex }, { 'diaData.stokkartkodu': regex }, { 'diaData.marka': regex }] };
             });
         }
-        // Filtreler — alanlar Ürünler listesindeki filtrelerle aynıdır
         if (text('brand')) match['diaData.marka'] = text('brand');
         if (text('season')) match['diaData.ozelkod1kodu'] = text('season');
         if (text('main_category')) match['diaData.m_kategoriler.kategori_aciklama_1'] = text('main_category');
         if (text('sub_category')) match['diaData.m_kategoriler.kategori_aciklama_2'] = text('sub_category');
-        // Stok kaynağı: kendi stoğumuz (DIA) / tedarikçi XML ürünleri
         if (text('stock_source') === 'xml') match['syncInfo.syncSource'] = 'xml_integration';
         else if (text('stock_source') === 'own') match['syncInfo.syncSource'] = { $ne: 'xml_integration' };
-        // Stok adedi aralığı (en az / en çok)
         const stockMin = parseFloat(req.query.stock_min);
         const stockMax = parseFloat(req.query.stock_max);
         if (Number.isFinite(stockMin) || Number.isFinite(stockMax)) {
@@ -93,7 +80,6 @@ router.get('/products', async (req, res) => {
             brand: p.diaData?.marka || '',
             stock: Number(p.diaData?.gercek_stok) || 0,
             image: p.customData?.featuredImage || p.diaData?.m_resimler?.[0]?.aws_url || '',
-            // Tanımı silinmiş/pasif butonlar listede gösterilmez
             buttons: (p.customData?.siteData?.[req.site]?.buttons || []).filter(k => validKeys.has(k))
         }));
 
@@ -104,7 +90,6 @@ router.get('/products', async (req, res) => {
     }
 });
 
-// Butonu aç ($addToSet) / kapat ($pull) güncellemesi
 const toggleUpdate = (site, button, active) => (
     active ? { $addToSet: { [buttonsPath(site)]: button } } : { $pull: { [buttonsPath(site)]: button } }
 );
@@ -119,7 +104,7 @@ router.put('/products/:key', async (req, res) => {
 
         const result = await WebProduct.updateOne({ _key: String(req.params.key), sites: req.site }, toggleUpdate(req.site, button, active));
         if (!result.matchedCount) return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
-        invalidateProductButtons(); // vitrin haritası bir sonraki istekte tazelensin
+        invalidateProductButtons();
 
         res.json({ success: true, data: { key: String(req.params.key), button, active } });
     } catch (error) {

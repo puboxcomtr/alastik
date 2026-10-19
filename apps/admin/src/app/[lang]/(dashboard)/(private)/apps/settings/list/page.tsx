@@ -11,7 +11,6 @@ import { siteHasSeo } from '@/utils/activeSite'
 const SettingsList = () => {
     const router = useRouter()
 
-    // Aktif sitede SEO modülü yoksa (b2b) "SEO Ayarları" kartı gösterilmez
     const [showSeo, setShowSeo] = useState(true)
     useEffect(() => { setShowSeo(siteHasSeo()) }, [])
 
@@ -112,8 +111,5 @@ const SettingsList = () => {
         </div>
     )
 }
-
-
-
 
 export default SettingsList

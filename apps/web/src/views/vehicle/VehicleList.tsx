@@ -1,11 +1,9 @@
-// apps/web/src/components/user/Vehicle/VehicleList.tsx
 'use client';
 
 import { useState } from 'react';
 import type { Vehicle } from '@/src/types/vehicle';
 import VehicleCard from './vehicleCard';
 import VehicleFormModal from '@/src/components/layout/Modals/VehicleForm';
-
 
 interface VehicleListProps {
     vehicles: Vehicle[];

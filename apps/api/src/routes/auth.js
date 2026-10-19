@@ -6,19 +6,16 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Admin Login
 router.post('/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         message: ['Email and password are required']
       });
     }
 
-    // Find admin user (include password for verification)
     const admin = await AdminUser.findOne({ email: email.toLowerCase() }).select('+password');
     if (!admin) {
       return res.status(401).json({
@@ -26,7 +23,6 @@ router.post('/admin/login', async (req, res) => {
       });
     }
 
-    // Check password
     const isValidPassword = await admin.comparePassword(password);
     if (!isValidPassword) {
       return res.status(401).json({
@@ -34,14 +30,12 @@ router.post('/admin/login', async (req, res) => {
       });
     }
 
-    // Check if admin is active
     if (!admin.isActive) {
       return res.status(401).json({
         message: ['Account is deactivated. Please contact administrator.']
       });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { 
         userId: admin._id, 
@@ -53,11 +47,9 @@ router.post('/admin/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
-    // Update last login
     admin.lastLogin = new Date();
     await admin.save();
 
-    // Return admin data (without password)
     const adminData = {
       id: admin._id,
       name: admin.name,
@@ -69,7 +61,6 @@ router.post('/admin/login', async (req, res) => {
       token
     };
 
-    // Set HttpOnly cookie for admin auth
     res.cookie('adminToken', token, {
       httpOnly: true,
       sameSite: 'lax',
@@ -85,10 +76,8 @@ router.post('/admin/login', async (req, res) => {
   }
 });
 
-// Admin Profile
 router.get('/admin/profile', authenticate, async (req, res) => {
   try {
-    // Check if user is admin
     if (req.user.type !== 'admin') {
       return res.status(403).json({
         message: ['Access denied. Admin privileges required.']
@@ -119,11 +108,8 @@ router.get('/admin/profile', authenticate, async (req, res) => {
   }
 });
 
-// Admin Logout
 router.post('/admin/logout', authenticate, async (req, res) => {
   try {
-    // In a real implementation, you might want to blacklist the token
-    // For now, we'll just return success
     res.json({
       message: 'Logged out successfully'
     });
@@ -135,19 +121,16 @@ router.post('/admin/logout', authenticate, async (req, res) => {
   }
 });
 
-// Change Password
 router.post('/admin/change-password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    // Check if user is admin
     if (req.user.type !== 'admin') {
       return res.status(403).json({
         message: ['Access denied. Admin privileges required.']
       });
     }
 
-    // Validate input
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         message: ['Current password and new password are required']
@@ -167,7 +150,6 @@ router.post('/admin/change-password', authenticate, async (req, res) => {
       });
     }
 
-    // Verify current password
     const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
     if (!isValidPassword) {
       return res.status(400).json({
@@ -175,7 +157,6 @@ router.post('/admin/change-password', authenticate, async (req, res) => {
       });
     }
 
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     admin.password = hashedPassword;
     await admin.save();

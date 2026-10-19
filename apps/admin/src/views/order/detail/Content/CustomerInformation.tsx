@@ -59,7 +59,6 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote, si
     return (
         <>
             <Card className='mt-5' style={{ backgroundColor: '#f6f7fb' }}>
-                {/* Teslimat Bilgileri */}
                 <CardHeader title='Teslimat Bilgileri' />
                 <CardContent>
                     <List component='nav'>
@@ -159,7 +158,6 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote, si
                 </CardContent>
             </Card>
             <Card className='mt-5' style={{ backgroundColor: '#f6f7fb' }}>
-                {/* Fatura Bilgileri */}
                 <CardHeader title='Fatura Bilgileri' />
                 <CardContent>
                     <List component='nav'>
@@ -173,7 +171,6 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote, si
 
                         {billingAddress?.invoiceType === 'individual' ? (
                             <>
-                                {/* Bireysel Fatura */}
                                 <Divider />
                                 <ListItem>
                                     <ListItemText
@@ -197,7 +194,6 @@ const CustomerInformation = ({ shippingAddress, billingAddress, customerNote, si
                             </>
                         ) : (
                             <>
-                                {/* Kurumsal Fatura */}
                                 <Divider />
                                 <ListItem>
                                     <ListItemText

@@ -1,8 +1,6 @@
-// React Imports
 import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import FormControl from '@mui/material/FormControl'
@@ -15,10 +13,8 @@ import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import InputAdornment from '@mui/material/InputAdornment'
 
-// Third-party Imports
 import { useForm, Controller } from 'react-hook-form'
 
-// Type Imports
 import type { categoryType } from './ProductCategoryTable'
 
 type Props = {
@@ -43,7 +39,6 @@ const EditLabelDrawer = ({ open, handleClose, categoryData, selectedCategory, se
   const [fileName, setFileName] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // React Hook Form kullanıyoruz
   const {
     control,
     reset,
@@ -72,7 +67,6 @@ const EditLabelDrawer = ({ open, handleClose, categoryData, selectedCategory, se
         order: selectedCategory.order,
         image: selectedCategory.image
       })
-      // Dosya adı görüntüleme için:
       const imgParts = selectedCategory.image.split('/')
       setFileName(imgParts[imgParts.length - 1] || '')
     } else {
@@ -89,7 +83,6 @@ const EditLabelDrawer = ({ open, handleClose, categoryData, selectedCategory, se
     }
   }, [selectedCategory, reset])
 
-  // Form submit handler - düzenleme işlemi
   const onSubmit = (data: FormValues) => {
     if (!selectedCategory) return
 
@@ -101,19 +94,16 @@ const EditLabelDrawer = ({ open, handleClose, categoryData, selectedCategory, se
       image: data.image || selectedCategory.image
     }
 
-    // Kategori listesini güncelle
     const newCategoryData = categoryData.map(cat => (cat.id === selectedCategory.id ? updatedCategory : cat))
 
     setData(newCategoryData)
     handleClose()
   }
 
-  // Dosya seçildiğinde, sadece ismini gösteriyoruz (örnek amaçlı)
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const { files } = event.target
     if (files && files.length > 0) {
       setFileName(files[0].name)
-      // Eğer gerçek dosya yükleme işlemi yapılacaksa burada ekleyebilirsin
     }
   }
 

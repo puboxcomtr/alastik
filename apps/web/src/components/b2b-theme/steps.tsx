@@ -9,7 +9,6 @@ const SIRA: OrderStatus[] = [
   "DELIVERED",
 ];
 
-/** 5 adımlı sipariş ilerleme göstergesi (tamamlananlar sarı). */
 export function OrderSteps({ durum }: { durum: OrderStatus }) {
   if (durum === "CANCELLED") {
     return (

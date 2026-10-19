@@ -5,17 +5,6 @@ import { showToast } from "./toast";
 import { CartIcon } from "./icons";
 import type { StockRow } from "@components/b2b-theme/lib/sample-data";
 
-/**
- * Ürün satırındaki sepet kontrolü.
- *
- *  - Ürün sepette DEĞİLSE: yalnızca sepet düğmesi. Basılınca eklenir ve
- *    "Sepete eklendi" toast'ı gösterilir; adet kutusu açılır.
- *  - Sepetteyken satırda  [− adet +]  ve altında "Vazgeç" durur; Vazgeç
- *    "Sepetten çıkarıldı" toast'ı gösterir.
- *
- * Depo adı satırda yazılmaz: filtrede depo seçiliyse o, değilse stoğu en çok
- * olan depo kullanılır. Adet, deponun kullanılabilir stoğunu aşamaz.
- */
 export function AddToCart({
   productId,
   warehouses,
@@ -26,16 +15,12 @@ export function AddToCart({
   productId: string;
   warehouses: StockRow[];
   defaultWarehouseId?: string | undefined;
-  /** Eklenirken önerilen adet — jantta en az sipariş miktarı. */
   initialQty?: number;
-  /** Gerçek ürün verisi (ad/fiyat/görsel) — sepet widget'ı bundan gösterir. */
   product?: Omit<CartSnapshot, "warehouseName">;
 }) {
   const sepet = useCart();
     const cartItem = sepet.find(productId);
 
-  // Sepetteki satırın deposu esastır; değilse filter deposu, o da yoksa
-  // stoğu en çok olan depo.
   const depo =
     (cartItem
       ? warehouses.find((d) => d.warehouseId === cartItem.warehouseId)
@@ -43,8 +28,6 @@ export function AddToCart({
     warehouses.find((d) => d.warehouseId === defaultWarehouseId) ??
     [...warehouses].sort((a, b) => b.available - a.available)[0];
 
-  // Depo bulunursa stoğuyla sınırlı; depo eşleşmezse (stok tooltip'i çekilince
-  // warehouseId değişebilir) adet kilitlenmesin diye makul bir tavan uygulanır.
   const maks = depo ? Math.min(depo.available, 500) : 500;
 
   if (!cartItem) {
@@ -82,7 +65,6 @@ export function AddToCart({
   return (
     <div className="row-cart">
       <span className="stepper acikta">
-        {/* Adet 1'in ALTINA inmez; satırı silmek için "Vazgeç" kullanılır. */}
         <button
           type="button"
           onClick={() => {

@@ -1,5 +1,3 @@
-// Web Uygulaması Logging Sistemi
-// Bu dosya tüm frontend isteklerini ve yanıtlarını loglar
 
 export interface LogEntry {
   id: string;
@@ -19,14 +17,12 @@ export interface LogEntry {
 
 class Logger {
   private logs: LogEntry[] = [];
-  private maxLogs = 1000; // Maksimum log sayısı
+  private maxLogs = 1000;
   private isEnabled = true;
 
   constructor() {
-    // LocalStorage'dan logları yükle
     this.loadLogs();
     
-    // Sayfa değişikliklerini dinle
     if (typeof window !== 'undefined') {
       this.setupNavigationListener();
       this.setupErrorListener();
@@ -53,7 +49,6 @@ class Logger {
   private saveLogs(): void {
     if (typeof window !== 'undefined') {
       try {
-        // Maksimum log sayısını aşarsa eski logları sil
         if (this.logs.length > this.maxLogs) {
           this.logs = this.logs.slice(-this.maxLogs);
         }
@@ -65,7 +60,6 @@ class Logger {
   }
 
   private setupNavigationListener(): void {
-    // History API değişikliklerini dinle
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
 
@@ -79,14 +73,12 @@ class Logger {
       this.logNavigation('REPLACE_STATE', window.location.pathname + window.location.search);
     };
 
-    // Popstate event'ini dinle
     window.addEventListener('popstate', () => {
       this.logNavigation('POP_STATE', window.location.pathname + window.location.search);
     });
   }
 
   private setupErrorListener(): void {
-    // Global error handler
     window.addEventListener('error', (event) => {
       try {
         const errorData = {
@@ -102,7 +94,6 @@ class Logger {
       }
     });
 
-    // Unhandled promise rejection
     window.addEventListener('unhandledrejection', (event) => {
       try {
         const errorData = {
@@ -132,8 +123,6 @@ class Logger {
     console.log('🧭 [NAVIGATION]', entry);
   }
 
-
-
   private addLog(entry: LogEntry): void {
     if (!this.isEnabled) return;
 
@@ -141,7 +130,6 @@ class Logger {
     this.saveLogs();
   }
 
-  // Public methods
   logRequest(endpoint: string, params?: any, method: string = 'GET'): string {
     const requestId = this.generateId();
     const entry: LogEntry = {
@@ -185,7 +173,6 @@ class Logger {
   }
 
   logApiError(requestId: string, error: any, duration: number, status?: number): void {
-    // Boş error objesi kontrolü
     if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
       error = 'API çağrısı başarısız oldu';
     }
@@ -207,7 +194,6 @@ class Logger {
     };
 
     this.addLog(entry);
-    // Console spam'i azalt - sadece önemli bilgileri logla
     console.warn('⚠️ [API_ERROR]', {
       action: entry.action,
       error: entry.error,
@@ -233,7 +219,6 @@ class Logger {
   }
 
   public logError(action: string, error: any): void {
-    // Boş error objesi kontrolü
     if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
       error = 'Bilinmeyen hata';
     }
@@ -255,38 +240,31 @@ class Logger {
     console.error('💥 [ERROR]', entry);
   }
 
-  // Logları getir
   getLogs(): LogEntry[] {
     return [...this.logs];
   }
 
-  // Belirli bir sayfa için logları getir
   getLogsByPage(page: string): LogEntry[] {
     return this.logs.filter(log => log.page === page);
   }
 
-  // Belirli bir tip için logları getir
   getLogsByType(type: LogEntry['type']): LogEntry[] {
     return this.logs.filter(log => log.type === type);
   }
 
-  // Son N logu getir
   getRecentLogs(count: number = 50): LogEntry[] {
     return this.logs.slice(-count);
   }
 
-  // Logları temizle
   clearLogs(): void {
     this.logs = [];
     this.saveLogs();
   }
 
-  // Logging'i aç/kapat
   setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
   }
 
-  // Logları dışa aktar
   exportLogs(): string {
     return JSON.stringify({
       exportedAt: new Date().toISOString(),
@@ -295,7 +273,6 @@ class Logger {
     }, null, 2);
   }
 
-  // Logları analiz et
   getAnalytics(): {
     totalRequests: number;
     totalErrors: number;
@@ -307,13 +284,11 @@ class Logger {
     const errors = this.logs.filter(log => log.type === 'ERROR');
     const responses = this.logs.filter(log => log.type === 'RESPONSE');
 
-    // Sayfa ziyaretleri
     const pageCounts: Record<string, number> = {};
     this.logs.forEach(log => {
       pageCounts[log.page] = (pageCounts[log.page] || 0) + 1;
     });
 
-    // Hata tipleri
     const errorTypes: Record<string, number> = {};
     errors.forEach(log => {
       const errorType = log.action;
@@ -337,10 +312,8 @@ class Logger {
   }
 }
 
-// Singleton instance
 export const logger = new Logger();
 
-// Global window objesine ekle (development için)
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).logger = logger;
 } 

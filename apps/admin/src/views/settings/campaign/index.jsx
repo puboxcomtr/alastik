@@ -1,4 +1,3 @@
-// apps/admin/src/views/pages/settings/notifications/index.jsx
 'use client'
 
 import { useState, useEffect } from 'react'

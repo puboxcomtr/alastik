@@ -1,36 +1,27 @@
-// apps/web/src/types/theme.ts
 export interface ThemeSettings {
-    // Görsel Ayarları
     logo?: string;
     defaultCatalogImage?: string;
 
-    // Marka ve Vitrin Ayarları
     brandDisplayType?: 'image' | 'text';
-    // Havale ve Peşin Ödeme indirim oranları (%) — panel: Tasarım > Tema > Genel. Boş/0 → kutu gösterilmez
     pickupCashDiscountNewTire?: string | number;
     pickupCashDiscountSecondHand?: string | number;
     showcaseDisplayCount?: string;
     blogDisplayCount?: string;
 
-    // Genel Ayarlar
     isActive?: boolean;
     isBrand?: boolean;
     isTax?: boolean;
     isFacebook?: boolean;
     isGoogle?: boolean;
     isLazyLoad?: boolean;
-    // Hafif kar yağışı efekti (components/layout/SnowEffect) — panel: Tasarım > Tema > Genel
     snowEffect?: boolean;
 
-    // Footer Ayarları
     footerMobile?: 'list' | 'grid';
 
-    // SEO & Newsletter
     seoTitle?: string;
     newsletterTitle?: string;
     newsletterContent?: string;
 
-    // Sosyal Medya
     facebook?: string;
     instagram?: string;
     twitter?: string;
@@ -38,7 +29,6 @@ export interface ThemeSettings {
     linkedin?: string;
     whatsapp?: string;
 
-    // E-ticaret Platformları
     trendyol?: string;
     hepsiburada?: string;
     pttavm?: string;
@@ -46,38 +36,31 @@ export interface ThemeSettings {
     n11?: string;
     idefix?: string;
 
-    // Anasayfa Ayarları
     homepage?: boolean;
     sliderSelect?: string;
     mobileSelect?: string;
     autostart?: boolean;
 
-    // Vitrin 1
     showcaseFirst?: string;
     showcasenameFirst?: string;
     showcasesubFirst?: string;
 
-    // Vitrin 2
     showcaseSecond?: string;
     showcasenameSecond?: string;
     showcasesubSecond?: string;
 
-    // Vitrin 3
     showcaseThird?: string;
     showcasenameThird?: string;
     showcasesubThird?: string;
 
-    // Vitrin 4
     showcaseFourth?: string;
     showcasenameFourth?: string;
     showcasesubFourth?: string;
 
-    // Vitrin 5
     showcaseFifth?: string;
     showcasenameFifth?: string;
     showcasesubFifth?: string;
 
-    // Vitrin altı banner grupları (slider key) — tema ayarlarından seçilir
     showcasebannerFirst?: string;
     showcasebannerSecond?: string;
     showcasebannerThird?: string;

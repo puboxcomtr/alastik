@@ -1,7 +1,5 @@
 "use client";
 
-// Teslimat Adresi — DIA carisinden çekilir; yeni eklenen adres de DIA cariye
-// yazılır. Adres seçimi burada yapılır (ödeme sayfasında kullanılmak üzere).
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { showToast } from "@components/b2b-theme/toast";
@@ -34,7 +32,6 @@ const BOS_FORM = {
 export function DeliveryAddress({
   onSelectedChange,
 }: {
-  // Seçili teslimat adresi değişince üst bileşene bildirir.
   onSelectedChange?: (address: Address | null) => void;
 } = {}) {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
@@ -51,7 +48,6 @@ export function DeliveryAddress({
   }
 
   function listeyiIsle(list: Address[]) {
-    // Açık adresi boş olanlar gösterilmez
     const gecerli = list.filter((a) => a.adres.trim());
     setAddresses(gecerli);
     setSelectedId((prev) => {
@@ -74,14 +70,12 @@ export function DeliveryAddress({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Seçili adresi (şehri dahil) üst bileşene bildir.
   useEffect(() => {
     const sec = addresses?.find((a) => a.id === selectedId) || null;
     onSelectedChange?.(sec);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, addresses]);
 
-  // İl listesi form ilk açıldığında bir kez çekilir
   useEffect(() => {
     if (!formAcik || cities.length > 0) return;
     fetch(API_ENDPOINTS.location.cities(), { headers: { "X-Site": "b2b" } })
@@ -119,7 +113,6 @@ export function DeliveryAddress({
         if (res?.success) {
           const list: Address[] = res.data || [];
           listeyiIsle(list);
-          // Yeni ekleneni seç (sonuncu teslimat adresi)
           const yeni = [...list].reverse().find((a) => a.teslimat);
           if (yeni) setSelectedId(yeni.id);
           setForm(BOS_FORM);

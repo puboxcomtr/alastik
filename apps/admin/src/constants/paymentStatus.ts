@@ -1,6 +1,5 @@
 import type { PaymentTypeConfig } from '@/types/apps/paymentTypes'
 
-// Ödeme Tipleri
 export const PAYMENT_TYPES: PaymentTypeConfig[] = [
   {
     value: 'credit_card',
@@ -16,13 +15,11 @@ export const PAYMENT_TYPES: PaymentTypeConfig[] = [
   }
 ]
 
-// Ödeme Modu
 export const PAYMENT_MODES = {
   TEST: 'test' as const,
   LIVE: 'live' as const
 }
 
-// Form Varsayılanları
 export const DEFAULT_FORM_DATA = {
   name: '',
   description: '',
@@ -31,7 +28,6 @@ export const DEFAULT_FORM_DATA = {
   mode: PAYMENT_MODES.TEST
 }
 
-// API Endpoints
 export const API_ENDPOINTS = {
   BASE: '/admin/settings/payment',
   PROVIDERS: '/admin/settings/payment/providers',
@@ -39,7 +35,6 @@ export const API_ENDPOINTS = {
   DELETE: (id: string) => `/admin/settings/payment/${id}`
 }
 
-// Toast Messages
 export const TOAST_MESSAGES = {
   LOADING_PROVIDERS_ERROR: 'Provider listesi yüklenemedi',
   SELECT_TYPE: 'Lütfen ödeme tipini seçin',

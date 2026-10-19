@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 
 import { useRouter } from 'next/navigation'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -40,7 +39,6 @@ type FormState = {
 
 type CardImageRatio = 'square' | 'portrait' | 'landscape'
 
-// Kategori sayfasındaki kart görseli oranı seçenekleri (API'deki CARD_IMAGE_RATIOS ile aynı)
 const CARD_IMAGE_RATIO_OPTIONS: { value: CardImageRatio; label: string }[] = [
     { value: 'square', label: 'Kare (1:1)' },
     { value: 'portrait', label: 'Dikey afiş (2:3)' },
@@ -53,7 +51,6 @@ const EMPTY: FormState = {
 
 const LIST_URL = '/tr/apps/blogs/categories'
 
-/** Türkçe karakterleri sadeleştirip slug üretir (API ile aynı kural). */
 function slugify(text: string): string {
     return String(text || '')
         .toLowerCase()
@@ -76,7 +73,6 @@ const CategoryForm = ({ id }: { id?: string }) => {
     const [form, setForm] = useState<FormState>(EMPTY)
     const [loading, setLoading] = useState(isEdit)
     const [saving, setSaving] = useState(false)
-    // Slug elle değiştirildiyse addan otomatik üretmeyi bırak
     const [slugTouched, setSlugTouched] = useState(isEdit)
 
     useEffect(() => {
@@ -182,11 +178,9 @@ const CategoryForm = ({ id }: { id?: string }) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            {/* Tüm içerik ortalı col-md-8; header de bu genişliğin içinde */}
             <Grid container justifyContent='center'>
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={6}>
-                        {/* Başlık + aksiyonlar (col-md-8 içinde) */}
                         <Grid size={{ xs: 12 }}>
                             <div className='flex flex-wrap sm:items-center justify-between max-sm:flex-col' style={{ gap: '10px' }}>
                                 <Typography variant='h4' className='mbe-1'>
@@ -203,7 +197,6 @@ const CategoryForm = ({ id }: { id?: string }) => {
                             </div>
                         </Grid>
 
-                        {/* Sol: Genel Bilgiler */}
                         <Grid size={{ xs: 12, md: 7 }}>
                             <Card>
                                 <CardContent>
@@ -231,10 +224,8 @@ const CategoryForm = ({ id }: { id?: string }) => {
                             </Card>
                         </Grid>
 
-                        {/* Sağ sidebar: Durum + Sıralama + SEO Bilgileri */}
                         <Grid size={{ xs: 12, md: 5 }}>
                             <Grid container spacing={6}>
-                                {/* Durum */}
                                 <Grid size={{ xs: 12 }}>
                                     <Card>
                                         <CardContent>
@@ -255,7 +246,6 @@ const CategoryForm = ({ id }: { id?: string }) => {
                                     </Card>
                                 </Grid>
 
-                                {/* Sıralama */}
                                 <Grid size={{ xs: 12 }}>
                                     <Card>
                                         <CardContent>
@@ -271,7 +261,6 @@ const CategoryForm = ({ id }: { id?: string }) => {
                                     </Card>
                                 </Grid>
 
-                                {/* SEO Bilgileri */}
                                 <Grid size={{ xs: 12 }}>
                                     <Card>
                                         <CardContent>

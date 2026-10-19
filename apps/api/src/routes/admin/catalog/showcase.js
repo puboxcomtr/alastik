@@ -3,7 +3,6 @@ const router = express.Router();
 const WebShowcase = require('../../../models/web/settings/WebShowcase');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 
-// Yardımcı fonksiyon - ürünleri _key ile bul (site verilirse o sitede yayınlananlar)
 const getProductsByKeys = async (keys, site = null) => {
     if (!keys || keys.length === 0) return [];
 
@@ -37,7 +36,6 @@ router.get('/', async (req, res) => {
 
         const showcases = await WebShowcase.find(filter).sort(sortOptions);
 
-        // Tüm ürün key'lerini topla
         const allProductKeys = [];
         showcases.forEach(s => {
             s.products.forEach(p => {
@@ -47,7 +45,6 @@ router.get('/', async (req, res) => {
             });
         });
 
-        // Ürünleri getir
         const productMap = await getProductsByKeys(allProductKeys, req.site);
 
         const formattedShowcases = showcases.map(showcase => ({
@@ -90,7 +87,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Tek vitrin detayı
 router.get('/:id', async (req, res) => {
     try {
         const showcase = await WebShowcase.findOne({ _id: req.params.id, site: req.site });
@@ -102,7 +98,6 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Ürün key'lerini topla
         const productKeys = showcase.products.map(p => p.productId);
         const productMap = await getProductsByKeys(productKeys, req.site);
 
@@ -141,7 +136,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Yeni vitrin oluştur
 router.post('/', async (req, res) => {
     try {
         const { title, order, itemsPerRow, isActive, products } = req.body;
@@ -153,7 +147,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Ürünleri formatla
         let formattedProducts = [];
 
         if (products && Array.isArray(products) && products.length > 0) {
@@ -192,7 +185,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Vitrin güncelle
 router.put('/:id', async (req, res) => {
     try {
         const { title, order, itemsPerRow, isActive, products } = req.body;
@@ -245,7 +237,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Vitrin sil
 router.delete('/:id', async (req, res) => {
     try {
         const showcase = await WebShowcase.findOneAndDelete({ _id: req.params.id, site: req.site });
@@ -272,7 +263,6 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// Vitrin durumunu değiştir (hızlı toggle)
 router.patch('/:id/toggle', async (req, res) => {
     try {
         const showcase = await WebShowcase.findOne({ _id: req.params.id, site: req.site });
@@ -306,11 +296,9 @@ router.patch('/:id/toggle', async (req, res) => {
     }
 });
 
-// Frontend için aktif vitrinleri getir (public)
 router.get('/public/active', async (req, res) => {
     try {
         const showcases = await WebShowcase.find({ site: req.site, isActive: true }).sort({ order: 1 });
-        // Tüm ürün key'lerini topla
         const allProductKeys = [];
         showcases.forEach(s => {
             s.products.forEach(p => {
@@ -320,7 +308,6 @@ router.get('/public/active', async (req, res) => {
             });
         });
 
-        // Ürünleri getir
         const productMap = await getProductsByKeys(allProductKeys, req.site);
 
         const formattedShowcases = showcases.map(showcase => ({
@@ -358,7 +345,6 @@ router.get('/public/active', async (req, res) => {
     }
 });
 
-// Anasayfa vitrinleri - sitesettings'den seçilen vitrinleri getir
 router.get('/public/homepage', async (req, res) => {
     try {
         const SiteSetting = require('../../../models/admin/settings/SiteSetting');
@@ -366,7 +352,6 @@ router.get('/public/homepage', async (req, res) => {
         const themeSetting = await SiteSetting.findOne({ key: 'theme', site: req.site });
         const themeValue = themeSetting?.value || {};
 
-        // 5 vitrin konfigürasyonu
         const showcaseConfigs = [
             {
                 key: 'first',

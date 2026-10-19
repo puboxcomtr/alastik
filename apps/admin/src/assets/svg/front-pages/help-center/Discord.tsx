@@ -1,4 +1,3 @@
-// React Imports
 import type { SVGAttributes } from 'react'
 
 const Discord = (props: SVGAttributes<SVGElement>) => {

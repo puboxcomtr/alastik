@@ -1,10 +1,9 @@
 const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
-// Vitrin Ürün Schema
 const showcaseProductSchema = new mongoose.Schema({
   productId: {
-    type: String,  // ObjectId yerine String
+    type: String,
     required: true
   },
   order: {
@@ -13,7 +12,6 @@ const showcaseProductSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
-// Ana WebShowcase Schema
 const webShowcaseSchema = new mongoose.Schema({
   site: { type: String, enum: Object.keys(SITES), default: DEFAULT_SITE, index: true },
   title: {
@@ -40,7 +38,6 @@ const webShowcaseSchema = new mongoose.Schema({
   collection: 'webshowcases'
 });
 
-// Index'ler
 webShowcaseSchema.index({ order: 1 });
 webShowcaseSchema.index({ isActive: 1 });
 webShowcaseSchema.index({ createdAt: -1 });

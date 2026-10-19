@@ -5,14 +5,6 @@ import { ChevronDownIcon } from "./icons";
 
 export type DropdownOption = { value: string; label: string };
 
-/**
- * Siteye ait açılır kutu — tarayıcının/işletim sisteminin kendi seçim menüsü
- * yerine kullanılır (macOS'un gri listesi tasarımla uyuşmuyor).
- *
- * Seçim `onSelect` ile yukarı bildirilir; filter durumunu kataloğun kendisi
- * tutar. Seçenek sayısı eşiği aşınca panelin içine query kutusu gelir —
- * 280 ebat elle taranamaz.
- */
 export function Dropdown({
   title,
   options,
@@ -20,7 +12,6 @@ export function Dropdown({
   onSelect,
   searchThreshold = 12,
 }: {
-  /** Boş seçimde görünen label: "Mevsim", "Marka" … */
   title: string;
   options: DropdownOption[];
   value?: string | undefined;
@@ -55,7 +46,6 @@ export function Dropdown({
     onSelect(newValue);
   }
 
-  // Panel içi query da ayraca takılmasın: "2055" → "205/55R16" bulunmalı.
   const normalizeText = (m: string) =>
     m.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
   const normalizedQuery = normalizeText(query);

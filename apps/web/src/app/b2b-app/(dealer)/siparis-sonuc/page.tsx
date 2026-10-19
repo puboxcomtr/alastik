@@ -7,7 +7,6 @@ import { useCart } from "@components/b2b-theme/cart-status";
 import { CheckIcon, AlertIcon, CartIcon, OrdersIcon } from "@components/b2b-theme/icons";
 import { API_ENDPOINTS } from "@src/config/api";
 
-// Ödeme makbuzunu PDF olarak indirir (authed uç → blob → indirme).
 async function makbuzIndir(siparisNo: string) {
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
   if (!token || !siparisNo) return;
@@ -26,16 +25,9 @@ async function makbuzIndir(siparisNo: string) {
     a.remove();
     URL.revokeObjectURL(url);
   } catch {
-    /* indirme başarısızsa sessizce geç */
   }
 }
 
-/**
- * Ödeme sonuç sayfası — Paynet 3D dönüşünden sonra /paynet/return buraya yönlendirir.
- * Query: durum=basarili|basarisiz, siparis, tutar (TL), kod, mesaj, banka, paynet.
- * Başarısızda bankadan/Paynet'ten gelen hata detaylı gösterilir; sipariş tahsil
- * EDİLMEMİŞTİR, müşteri sepetinden tekrar deneyebilir.
- */
 type Sonuc = {
   durum: "basarili" | "basarisiz";
   siparis: string;
@@ -56,11 +48,6 @@ export default function SiparisSonucPage() {
     const q = new URLSearchParams(window.location.search);
     const durumParam = q.get("durum");
 
-    // ── Koruma: bu sayfaya yalnız ödeme/sipariş akışından (durum parametresiyle)
-    // gelinir. Sunucu (paynet/netahsilat dönüşü) her zaman durum ekler; çıplak/
-    // doğrudan erişimde durum olmaz → sepete gönder.
-    // (Not: eskiden sessionStorage bayrağı da aranıyordu; 3D dönüşünde kaybolup
-    //  başarılı ödemeyi yanlışlıkla engellediği için kaldırıldı.)
     if (!durumParam) {
       router.replace("/sepet");
       return;
@@ -77,15 +64,10 @@ export default function SiparisSonucPage() {
       paynet: q.get("paynet") || "",
     });
 
-    // Bu aşamaya gelindiyse sipariş oluşmuştur → sepeti sıfırla (başarılı da başarısız da).
-    // Aynı sepetin yeniden gönderilip mükerrer sipariş açmasını engeller.
     try {
       sepet.clear();
     } catch {
-      /* sepet zaten boş olabilir */
     }
-    // Akış işaretini tüket: yenilemede/geri gelişte sonuç görünmeye devam etsin diye
-    // bırakılır; sekme kapanınca sessionStorage kendiliğinden silinir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,7 +79,6 @@ export default function SiparisSonucPage() {
       ? `${Number(s.tutar).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺`
       : "";
 
-  // Başarısızda gösterilecek detay satırları (yalnız dolu olanlar)
   const detaylar: { etiket: string; deger: string }[] = [];
   if (s.siparis) detaylar.push({ etiket: "Sipariş No", deger: s.siparis });
   if (tutarText) detaylar.push({ etiket: "Tutar", deger: tutarText });

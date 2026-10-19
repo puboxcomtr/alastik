@@ -3,17 +3,6 @@
 import { useEffect, useState } from 'react';
 import type { HeroLayout } from './hero-config';
 
-/**
- * Which of the three hero compositions to render.
- *
- * The breakpoints mirror Tailwind's `md` (768px) and `xl` (1280px) so the 3D
- * placement changes on the same lines the CSS layout does.
- *
- * SSR-safe in the same way as `useReducedMotion`: it starts on the desktop
- * composition so server and first client render agree, then reads the real
- * viewport in an effect. The canvas only mounts on the client anyway, so this
- * never produces a hydration mismatch in markup.
- */
 const TABLET_QUERY = '(min-width: 768px)';
 const DESKTOP_QUERY = '(min-width: 1280px)';
 

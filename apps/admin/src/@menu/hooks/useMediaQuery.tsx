@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 
 const useMediaQuery = (breakpoint?: string): boolean => {
-  // States
   const [matches, setMatches] = useState(breakpoint === 'always')
 
   useEffect(() => {

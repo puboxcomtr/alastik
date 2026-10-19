@@ -1,16 +1,12 @@
 'use client'
 
-// React Imports
 import { useEffect, useRef, useState } from 'react'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { ShortcutsType } from '@components/layout/shared/ShortcutsDropdown'
 import type { NotificationsType } from '@components/layout/shared/NotificationsDropdown'
 
-// Component Imports
 import NavToggle from './NavToggle'
 import NavSearch from '@components/layout/shared/search'
 import ShortcutsDropdown from '@components/layout/shared/ShortcutsDropdown'
@@ -18,13 +14,10 @@ import NotificationsDropdown from '@components/layout/shared/NotificationsDropdo
 import UserDropdown from '@components/layout/shared/UserDropdown'
 import SiteSelector from '@components/layout/shared/SiteSelector'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Util Imports
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
 
-// Vars
 const shortcuts: ShortcutsType[] = [
   {
     url: '/apps/invoice/list',
@@ -63,7 +56,6 @@ const shortcuts: ShortcutsType[] = [
   }
 ]
 
-// Zil bildirimleri: aranan ürün / geri arama talebi / iletişim mesajı (API: /admin/analytics/notifications)
 type NotificationItem = {
   type: 'search' | 'callback' | 'contact'
   title: string

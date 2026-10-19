@@ -21,27 +21,22 @@ import { toast } from 'react-toastify'
 import type { DiaAktarimSettings, DiaZorunluDahilSettings, DiaAktarimMode, DiaAktarimFilterType, DiaAktarimProduct, DiaAktarimNamedItem } from '@/types/apps/diaTypes'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Aktarım (ürün filtreleme) ayarları — değerler parent'ın settings state'inde tutulur,
-// "Ayarları Kaydet" ile site bazlı kaydedilir.
 type SearchResult = DiaAktarimProduct & { qty: number }
 
 interface Props {
   value: DiaAktarimSettings | DiaZorunluDahilSettings
   onChange: (value: any) => void
-  // "Her Zaman Dahil" kartında mod seçici gizlenir; liste her zaman dahil etme anlamındadır
   hideMode?: boolean
   title?: string
   selectionHint?: string
 }
 
 export default function TransferSettingsCard({ value, onChange, hideMode = false, title, selectionHint }: Props) {
-  // Ürün arama (yalnızca görüntüleme amaçlı yerel state)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchPerformed, setSearchPerformed] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
 
-  // Kategori / marka listeleri
   const [categories, setCategories] = useState<DiaAktarimNamedItem[]>([])
   const [brands, setBrands] = useState<DiaAktarimNamedItem[]>([])
   const [listLoading, setListLoading] = useState(false)
@@ -211,7 +206,6 @@ export default function TransferSettingsCard({ value, onChange, hideMode = false
 
               {filterType === 'urun' ? (
                 <>
-                  {/* Seçili ürünler */}
                   {selectedProducts.length > 0 && (
                     <Grid size={{ xs: 12 }}>
                       <Typography variant="subtitle2" className="mb-2" color="text.secondary">
@@ -254,7 +248,6 @@ export default function TransferSettingsCard({ value, onChange, hideMode = false
                     </Grid>
                   )}
 
-                  {/* Ürün arama */}
                   <Grid size={{ xs: 12, md: 9 }}>
                     <TextField
                       fullWidth
@@ -285,7 +278,6 @@ export default function TransferSettingsCard({ value, onChange, hideMode = false
                     </Button>
                   </Grid>
 
-                  {/* Arama sonuçları */}
                   <Grid size={{ xs: 12 }}>
                     <div className="overflow-x-auto" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -360,7 +352,6 @@ export default function TransferSettingsCard({ value, onChange, hideMode = false
                 </>
               ) : (
                 <>
-                  {/* Kategori / Marka seçimi */}
                   {namedSelected.length > 0 && (
                     <Grid size={{ xs: 12 }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

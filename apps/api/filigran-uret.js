@@ -1,10 +1,3 @@
-/**
- * Tüm ürün görselleri için filigranlı kopyaları önden üretir.
- * Sunucudaki üretim mantığının aynısını kullanır (WatermarkService).
- *
- * Not: .env yüklenmez — UPLOAD_BASE_PATH tanımlanırsa medya kökü değişir
- * ve pm2 sürecinden farklı bir klasöre yazılırdı.
- */
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');

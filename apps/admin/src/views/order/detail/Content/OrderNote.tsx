@@ -25,7 +25,6 @@ interface OrderNoteProps {
     adminNote?: string
 }
 
-// Sipariş açıklaması: şablon seçilebilir, düzenlenip kaydedilir (dahili not)
 const OrderNote = ({ orderId, adminNote = '' }: OrderNoteProps) => {
     const [templates, setTemplates] = useState<NoteTemplate[]>([])
     const [selectedTemplate, setSelectedTemplate] = useState('')

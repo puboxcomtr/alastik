@@ -1,6 +1,5 @@
 'use client'
 
-// MUI Imports
 import MuiBadge from '@mui/material/Badge'
 import type { BadgeProps } from '@mui/material/Badge'
 import { styled } from '@mui/material/styles'

@@ -3,7 +3,6 @@ const router = express.Router()
 const PurchaseLimit = require('../../../models/admin/campaign/PurchaseLimit')
 const WebCategory = require('../../../models/web/catalog/WebCategory')
 
-// Limit Kontrol (Web sepet/ürün ekleme için)
 router.post('/check', async (req, res) => {
   try {
     const { items = [], memberType = null } = req.body
@@ -12,7 +11,6 @@ router.post('/check', async (req, res) => {
       return res.json({ success: true, valid: true, violations: [] })
     }
 
-    // Aktif limitleri çek (ziyaret edilen sitenin limitleri)
     const filter = { site: req.site, isActive: true }
     if (memberType) {
       filter.memberGroups = memberType
@@ -24,7 +22,6 @@ router.post('/check', async (req, res) => {
       return res.json({ success: true, valid: true, violations: [] })
     }
 
-    // Tüm kategori isimlerini topla (kategori adı → _id eşleştirme için)
     const allCategoryNames = new Set()
     items.forEach(item => {
       (item.categoryNames || []).forEach(n => n && allCategoryNames.add(n))
@@ -71,7 +68,6 @@ router.post('/check', async (req, res) => {
 
       if (matchedLimits.length === 0) continue
 
-      // En katı (en düşük max, en yüksek min) limit'i hesapla
       let strictestMax = null
       let strictestMin = null
       let strictestLimit = null
@@ -91,7 +87,6 @@ router.post('/check', async (req, res) => {
         }
       }
 
-      // Kontrol
       if (strictestMax != null && quantity > strictestMax) {
         violations.push({
           sku,

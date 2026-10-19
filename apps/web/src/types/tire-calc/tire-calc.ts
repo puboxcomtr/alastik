@@ -1,13 +1,13 @@
 export interface TireSize {
-    width: number;       // Lastik tabanı (mm) - örn: 205
-    aspectRatio: number; // Yanak oranı (%) - örn: 55
-    rimDiameter: number; // Jant çapı (inch) - örn: 16
+    width: number;
+    aspectRatio: number;
+    rimDiameter: number;
 }
 
 export interface TireMetrics {
-    diameter: number;        // Dış çap (mm)
-    circumference: number;   // Çevre (mm)
-    sidewallHeight: number;  // Yanak yüksekliği (mm)
+    diameter: number;
+    circumference: number;
+    sidewallHeight: number;
 }
 
 export interface FitmentResult {
@@ -16,9 +16,9 @@ export interface FitmentResult {
     description: string;
     color: string;
     icon: string;
-    diameterDiffPercent: number;  // Çap farkı (%)
-    speedoDiffKmh: number;         // Hız sapması (km/h, 100 km/h referans)
-    diameterDiffMm: number;        // Çap farkı (mm)
+    diameterDiffPercent: number;
+    speedoDiffKmh: number;
+    diameterDiffMm: number;
 }
 
 export interface TireSizeOptions {

@@ -1,4 +1,3 @@
-// apps/web/src/hooks/Vehicle/useVehicles.ts
 import { useState, useEffect } from 'react';
 import { api } from '@/src/lib/api';
 import type { Vehicle } from '@/src/types/vehicle';

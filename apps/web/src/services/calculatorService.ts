@@ -1,10 +1,6 @@
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import type { TireSizeOptions } from '@/src/types/tire-calc/tire-calc';
 
-/**
- * WheelSize'dan lastik ebat listelerini çeker
- * (widths, aspectRatios, rimDiameters)
- */
 export async function getTireSizeOptions(): Promise<TireSizeOptions | null> {
     try {
         const res = await fetch(API_ENDPOINTS.wheelsize.calculatorSizes(), {

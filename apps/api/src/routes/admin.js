@@ -7,13 +7,11 @@ const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-// Admin Login
 router.post('/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
   try {
-    // Validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -23,7 +21,6 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Find admin user
     const admin = await AdminUser.findOne({ email }).select('+password');
     if (!admin) {
       return res.status(401).json({
@@ -31,37 +28,30 @@ router.post('/login', [
       });
     }
 
-    // Check if admin is active
     if (!admin.isActive) {
       return res.status(401).json({
         message: ['Account is not active']
       });
     }
 
-    // Check if account is locked
     if (admin.lockUntil && admin.lockUntil > Date.now()) {
       return res.status(401).json({
         message: ['Account is temporarily locked. Please try again later.']
       });
     }
 
-    // Compare password
     const isMatch = await admin.comparePassword(password);
     if (!isMatch) {
-      // Increment login attempts
       await admin.incLoginAttempts();
       return res.status(401).json({
         message: ['Email or Password is invalid']
       });
     }
 
-    // Reset login attempts on successful login
     await admin.resetLoginAttempts();
 
-    // Update last login
     await admin.updateLastLogin();
 
-    // Generate JWT token
     const token = jwt.sign(
       { 
         id: admin._id,
@@ -73,7 +63,6 @@ router.post('/login', [
       { expiresIn: '8h' }
     );
 
-    // Return success response
     res.json({
       id: admin._id,
       name: admin.name,
@@ -93,7 +82,6 @@ router.post('/login', [
   }
 });
 
-// Admin Profile
 router.get('/profile', authenticateAdmin, async (req, res) => {
   try {
     const admin = await AdminUser.findById(req.user.id).select('-password');
@@ -121,10 +109,8 @@ router.get('/profile', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Admin Logout
 router.post('/logout', authenticateAdmin, async (req, res) => {
   try {
-    // Clear any server-side sessions if needed
     res.json({
       message: 'Logged out successfully'
     });
@@ -136,7 +122,6 @@ router.post('/logout', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Update Admin Profile
 router.put('/profile', authenticateAdmin, [
   body('name').optional().trim().isLength({ min: 2 }),
   body('preferences.theme').optional().isIn(['light', 'dark', 'auto']),
@@ -157,7 +142,6 @@ router.put('/profile', authenticateAdmin, [
       });
     }
 
-    // Update allowed fields
     const { name, preferences } = req.body;
     if (name) admin.name = name;
     if (preferences) {
@@ -184,7 +168,6 @@ router.put('/profile', authenticateAdmin, [
   }
 });
 
-// Change Password
 router.put('/change-password', authenticateAdmin, [
   body('currentPassword').notEmpty().withMessage('Current password is required'),
   body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
@@ -206,7 +189,6 @@ router.put('/change-password', authenticateAdmin, [
       });
     }
 
-    // Verify current password
     const isMatch = await admin.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(400).json({
@@ -214,7 +196,6 @@ router.put('/change-password', authenticateAdmin, [
       });
     }
 
-    // Update password
     admin.password = newPassword;
     await admin.save();
 

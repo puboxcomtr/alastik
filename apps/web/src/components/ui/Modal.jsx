@@ -1,13 +1,11 @@
 'use client';
 import React from 'react';
 
-/* Library */
 import TireSearchModal from "@components/layout/Modals/TireSearch";
 
 export default function Modal() {
     return (
         <>
-            {/* Tire Size Information Modal */}
             <div className="modal fade" id="tireSize" tabIndex={-1} aria-labelledby="tireSizeLabel" aria-hidden="true">
                 <div className="modal-dialog modal-lg modal-dialog-scrollable">
                     <div className="modal-content">
@@ -32,7 +30,6 @@ export default function Modal() {
                     </div>
                 </div>
             </div>
-            {/* Tire Search Modal */}
 
         </>
     );

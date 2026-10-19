@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -21,7 +20,6 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 
-// API
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 import { ADMIN_SITES, getSiteLabel } from '@/utils/activeSite'
 import Checkbox from '@mui/material/Checkbox'
@@ -65,7 +63,6 @@ const AdminForm = ({ roles }: AdminFormProps) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Validasyonlar
         if (!formData.firstName.trim()) {
             toast.error('Lütfen ad alanını doldurun')
             return
@@ -86,7 +83,6 @@ const AdminForm = ({ roles }: AdminFormProps) => {
             return
         }
 
-        // Email formatı kontrolü
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(formData.email)) {
             toast.error('Geçerli bir email adresi girin')

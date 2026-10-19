@@ -1,6 +1,4 @@
 'use client';
-// B2B anasayfa vitrini — panelden yönetilen "1. Vitrin" (theme.showcaseFirst).
-// Ürünler public/homepage ucundan gelir; fiyatlar KDV hariç gösterilir.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
@@ -27,7 +25,6 @@ function gorsel(u: ShowcaseProduct): string {
 }
 
 function priceExclVat(u: ShowcaseProduct): string {
-    // Vitrin fiyatı KDV hariç (bayi fiyatı) — webPrice / 1.20
     const webPrice = Number(u.customData?.webPrice || 0);
     const haric = webPrice > 0 ? webPrice / 1.2 : 0;
     return haric > 0 ? haric.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL' : '';

@@ -43,7 +43,6 @@ export default function SpeedIndex({ loadIndexOptions = [], speedIndexOptions = 
 
     return (
         <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
-            {/* Yük Endeksi */}
             {!hideLoadIndex && loadIndexOptions.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
@@ -95,7 +94,6 @@ export default function SpeedIndex({ loadIndexOptions = [], speedIndexOptions = 
                 </Grid>
             )}
 
-            {/* Hız Endeksi */}
             {!hideSpeedIndex && speedIndexOptions.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">

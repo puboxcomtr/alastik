@@ -1,10 +1,8 @@
-// apps/web/src/components/product/top/Breadcrumb.tsx
 "use client";
 
 import Link from "next/link";
 import { ROUTES } from '@/src/config/routes';
 
-/* Internal Imports */
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 interface ProductBreadcrumbProps {
   productName: string;

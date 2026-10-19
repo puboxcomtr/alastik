@@ -1,11 +1,9 @@
 'use client'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
@@ -14,10 +12,8 @@ import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import { useTheme } from '@mui/material/styles'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
 export type ProfitStats = {
@@ -31,7 +27,6 @@ export type ProfitStats = {
 const formatTRY = (value: number) =>
     value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// Seçili sitenin son 14 gün sipariş kazancı ve bu ay özeti
 const TotalProfitStackedBar = ({ profit }: { profit?: ProfitStats }) => {
     const theme = useTheme()
     const { lang: locale } = useParams()

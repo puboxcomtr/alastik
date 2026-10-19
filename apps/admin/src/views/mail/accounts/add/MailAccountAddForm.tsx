@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 
-/* MUI */
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -18,7 +17,6 @@ import Switch from '@mui/material/Switch'
 import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 
-/* API */
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
 const MailAccountAddForm = () => {

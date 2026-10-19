@@ -1,13 +1,9 @@
-// React Imports
 import { useMemo } from 'react'
 
-// Third-party imports
 import { useColorScheme } from '@mui/material'
 
-// Type imports
 import type { Mode } from '@core/types'
 
-// Hook Imports
 import { useSettings } from './useSettings'
 
 export const useImageVariant = (
@@ -17,7 +13,6 @@ export const useImageVariant = (
   imgLightBordered?: string,
   imgDarkBordered?: string
 ): string => {
-  // Hooks
   const { settings } = useSettings()
   const { mode: muiMode, systemMode: muiSystemMode } = useColorScheme()
 

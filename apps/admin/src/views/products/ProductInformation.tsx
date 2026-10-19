@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import React, { useEffect, useState } from 'react'
 
-// MUI Imports
 import Divider from '@mui/material/Divider'
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
@@ -12,7 +10,6 @@ import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
@@ -21,21 +18,14 @@ import { Underline } from '@tiptap/extension-underline'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
 
-// Context Imports
 import { useProductUpdate } from '@/contexts/ProductUpdateContext'
 
-// Component Imports
 import CustomIconButton from '@/@core/components/mui/IconButton'
 
-// Style Imports
 import '@/libs/styles/tiptapEditor.css'
 
-// Type Imports
 import type { ProductType } from '@/types/apps/productTypes'
 
-// ============================================
-// TYPES
-// ============================================
 interface ProductInformationProps {
   product: ProductType
 }
@@ -46,9 +36,6 @@ interface EditorToolbarProps {
   onToggleHtml: () => void
 }
 
-// ============================================
-// EDITOR TOOLBAR COMPONENT
-// ============================================
 const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) => {
   if (!editor) {
     return null
@@ -58,7 +45,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
     <div className='flex flex-wrap gap-x-3 gap-y-1 pbs-5 pbe-4 pli-5'>
       {!htmlMode && (
         <>
-      {/* Başlık H2 */}
       <CustomIconButton
         {...(editor.isActive('heading', { level: 2 }) && { color: 'primary' })}
         variant='outlined'
@@ -68,7 +54,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-h-2', { 'text-textSecondary': !editor.isActive('heading', { level: 2 }) })} />
       </CustomIconButton>
 
-      {/* Başlık H3 */}
       <CustomIconButton
         {...(editor.isActive('heading', { level: 3 }) && { color: 'primary' })}
         variant='outlined'
@@ -78,7 +63,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-h-3', { 'text-textSecondary': !editor.isActive('heading', { level: 3 }) })} />
       </CustomIconButton>
 
-      {/* Bold */}
       <CustomIconButton
         {...(editor.isActive('bold') && { color: 'primary' })}
         variant='outlined'
@@ -88,7 +72,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-bold', { 'text-textSecondary': !editor.isActive('bold') })} />
       </CustomIconButton>
 
-      {/* Underline */}
       <CustomIconButton
         {...(editor.isActive('underline') && { color: 'primary' })}
         variant='outlined'
@@ -98,7 +81,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-underline', { 'text-textSecondary': !editor.isActive('underline') })} />
       </CustomIconButton>
 
-      {/* Italic */}
       <CustomIconButton
         {...(editor.isActive('italic') && { color: 'primary' })}
         variant='outlined'
@@ -108,7 +90,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-italic', { 'text-textSecondary': !editor.isActive('italic') })} />
       </CustomIconButton>
 
-      {/* Strike */}
       <CustomIconButton
         {...(editor.isActive('strike') && { color: 'primary' })}
         variant='outlined'
@@ -118,7 +99,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-strikethrough', { 'text-textSecondary': !editor.isActive('strike') })} />
       </CustomIconButton>
 
-      {/* Bullet List */}
       <CustomIconButton
         {...(editor.isActive('bulletList') && { color: 'primary' })}
         variant='outlined'
@@ -128,7 +108,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-list-unordered', { 'text-textSecondary': !editor.isActive('bulletList') })} />
       </CustomIconButton>
 
-      {/* Numbered List */}
       <CustomIconButton
         {...(editor.isActive('orderedList') && { color: 'primary' })}
         variant='outlined'
@@ -138,7 +117,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-list-ordered', { 'text-textSecondary': !editor.isActive('orderedList') })} />
       </CustomIconButton>
 
-      {/* Code */}
       <CustomIconButton
         {...(editor.isActive('code') && { color: 'primary' })}
         variant='outlined'
@@ -148,7 +126,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-code-line', { 'text-textSecondary': !editor.isActive('code') })} />
       </CustomIconButton>
 
-      {/* Blockquote */}
       <CustomIconButton
         {...(editor.isActive('blockquote') && { color: 'primary' })}
         variant='outlined'
@@ -158,7 +135,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-double-quotes-l', { 'text-textSecondary': !editor.isActive('blockquote') })} />
       </CustomIconButton>
 
-      {/* Align Left */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'left' }) && { color: 'primary' })}
         variant='outlined'
@@ -168,7 +144,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-align-left', { 'text-textSecondary': !editor.isActive({ textAlign: 'left' }) })} />
       </CustomIconButton>
 
-      {/* Align Center */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'center' }) && { color: 'primary' })}
         variant='outlined'
@@ -182,7 +157,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         />
       </CustomIconButton>
 
-      {/* Align Right */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'right' }) && { color: 'primary' })}
         variant='outlined'
@@ -196,7 +170,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         />
       </CustomIconButton>
 
-      {/* Align Justify */}
       <CustomIconButton
         {...(editor.isActive({ textAlign: 'justify' }) && { color: 'primary' })}
         variant='outlined'
@@ -210,7 +183,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         />
       </CustomIconButton>
 
-      {/* Link */}
       <CustomIconButton
         {...(editor.isActive('link') && { color: 'primary' })}
         variant='outlined'
@@ -225,7 +197,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className={classnames('ri-link', { 'text-textSecondary': !editor.isActive('link') })} />
       </CustomIconButton>
 
-      {/* Image */}
       <CustomIconButton
         variant='outlined'
         size='small'
@@ -239,7 +210,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className='ri-image-line' />
       </CustomIconButton>
 
-      {/* Horizontal Rule */}
       <CustomIconButton
         variant='outlined'
         size='small'
@@ -248,7 +218,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         <i className='ri-separator' />
       </CustomIconButton>
 
-      {/* Unlink */}
       <CustomIconButton
         variant='outlined'
         size='small'
@@ -259,7 +228,6 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
         </>
       )}
 
-      {/* HTML kaynak kodu geçişi */}
       <CustomIconButton
         {...(htmlMode && { color: 'primary' })}
         variant='outlined'
@@ -273,18 +241,12 @@ const EditorToolbar = ({ editor, htmlMode, onToggleHtml }: EditorToolbarProps) =
   )
 }
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
 const ProductInformation = ({ product }: ProductInformationProps) => {
-  // Context
   const { updateField } = useProductUpdate()
 
-  // HTML kaynak kodu modu (görsel editör ↔ ham HTML)
   const [htmlMode, setHtmlMode] = useState(false)
   const [htmlValue, setHtmlValue] = useState('')
 
-  // Editor initialization
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -304,7 +266,6 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
     }
   })
 
-  // Product değiştiğinde editor içeriğini güncelle
   useEffect(() => {
     if (editor && product) {
       const currentContent = product.description || product.customDescription || ''
@@ -315,16 +276,13 @@ const ProductInformation = ({ product }: ProductInformationProps) => {
     }
   }, [product, editor])
 
-  // Görsel editör ↔ HTML kaynak kodu geçişi
   const toggleHtml = () => {
     if (!editor) return
 
     if (!htmlMode) {
-      // Görselden HTML'e: mevcut içeriği ham HTML olarak göster
       setHtmlValue(editor.getHTML())
       setHtmlMode(true)
     } else {
-      // HTML'den görsele: düzenlenen HTML'i editöre uygula (ve kaydet)
       editor.commands.setContent(htmlValue, false)
       updateField('customDescription', editor.getHTML())
       setHtmlMode(false)

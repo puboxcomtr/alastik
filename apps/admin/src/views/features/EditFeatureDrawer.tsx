@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -104,7 +102,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
         setIsLoading(true)
 
         try {
-            // 1. Grup ayarlarını güncelle
             const groupResult = await fetchAPI(
                 `${API_ENDPOINTS.features.list()}/${encodeURIComponent(selectedFeature.name)}`,
                 {
@@ -118,7 +115,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
                 throw new Error(groupResult.message || 'Grup güncellenemedi')
             }
 
-            // 2. Her değerin sıralamasını güncelle
             const valueUpdatePromises = featureValues.map(value =>
                 fetchAPI(
                     `${API_ENDPOINTS.features.list()}/${encodeURIComponent(selectedFeature.name)}/value/${value._id}`,
@@ -174,7 +170,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
                     onSubmit()
                 }} className='flex flex-col gap-5'>
 
-                    {/* Özellik Adı + Grup Önceliği */}
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <TextField
                             fullWidth
@@ -194,7 +189,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
 
                     <Divider />
 
-                    {/* Değerler Listesi */}
                     <Typography variant='h6'>Özellik Değerleri</Typography>
 
                     {loadingValues ? (
@@ -238,7 +232,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
 
                     <Divider />
 
-                    {/* Görünüm Yeri */}
                     <FormControl fullWidth disabled={isLoading}>
                         <InputLabel>Görünüm Yeri</InputLabel>
                         <Select
@@ -252,7 +245,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
                         </Select>
                     </FormControl>
 
-                    {/* Aktif/Pasif */}
                     <FormControlLabel
                         control={
                             <Switch
@@ -266,7 +258,6 @@ const EditFeatureDrawer = ({ open, handleClose, selectedFeature, onUpdate }: Pro
 
                     <Divider />
 
-                    {/* Butonlar */}
                     <div className='flex items-center gap-4'>
                         <Button
                             variant='contained'

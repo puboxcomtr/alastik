@@ -1,13 +1,3 @@
-/**
- * b2b bayi mailleri — panelde düzenlenebilen mail şablonlarıyla (site: b2b) gönderilir.
- *
- *  • Sipariş maili (siparis_sablonu): Cari Sipariş / havale siparişi oluşunca; kredi kartı siparişinde
- *    ödeme çekildikten sonra ve Ödeme Makbuzu (PDF) ekiyle.
- *  • Borç ödemesi maili (b2b_odeme_makbuzu): "Ödeme Yap" ile kart tahsilatı başarılı olunca, makbuz PDF ekiyle.
- *
- * Alıcı: ödemeyi / siparişi yapan carinin e-postası; yönetici kopyası site e-posta ayarlarından.
- * Mail hatası sipariş ya da ödeme akışını hiçbir zaman bozmaz; gönderilen kayıt mailSent ile işaretlenir.
- */
 const WebOrder = require('../../../models/web/order/WebOrder');
 const WebMember = require('../../../models/web/user/WebMember');
 const B2bPayment = require('../../../models/web/user/B2bPayment');
@@ -31,10 +21,6 @@ async function memberOf(memberId) {
     return memberId ? WebMember.findById(memberId).select('email firstName lastName diaCustomerCode').lean() : null;
 }
 
-/**
- * Sipariş maili. withReceipt: ödeme çekildi — makbuz PDF eklenir.
- * @param {string} orderId
- */
 async function sendOrderMail(orderId, { withReceipt = false } = {}) {
     const order = await WebOrder.findById(orderId).lean();
     if (!order || order.payment?.mailSent) return;
@@ -55,7 +41,6 @@ async function sendOrderMail(orderId, { withReceipt = false } = {}) {
     console.log('[b2b-mail] Sipariş maili:', order.orderNumber, { bayi: result.customerSent, yonetici: result.adminSent, makbuz: withReceipt, hata: result.errors });
 }
 
-/** "Ödeme Yap" borç ödemesi makbuz maili. */
 async function sendPaymentReceiptMail(paymentId) {
     const payment = await B2bPayment.findById(paymentId).lean();
     if (!payment || payment.status !== 'paid' || payment.mailSent) return;
@@ -78,7 +63,6 @@ async function sendPaymentReceiptMail(paymentId) {
     console.log('[b2b-mail] Ödeme makbuzu maili:', payment.reference, { bayi: result.customerSent, yonetici: result.adminSent, hata: result.errors });
 }
 
-/** Akışı bekletmeden gönderir; hata yalnız loglanır. */
 function fireAndForget(promise, label) {
     Promise.resolve(promise).catch(err => console.error(`[b2b-mail] ${label} hatası:`, err.message));
 }

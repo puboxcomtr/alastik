@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-/* Library */
 import { Offcanvas, Button } from "react-bootstrap";
 import { Col, Container, Row } from 'react-bootstrap';
-/* MUI */
 import { TextField, MenuItem, Tooltip, Typography, FormControl } from "@mui/material";
 
 type CategoryTireSearchProps = {
-    /** Arama sonucunun açılacağı ürün durumu (örn. 'ikinci-el'); boşsa sıfır ürünler */
     condition?: string;
 };
 

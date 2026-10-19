@@ -19,7 +19,6 @@ const blogSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
-    // Blog kategorileri (çoklu) — BlogCategory referansları, site başına
     categories: {
         type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BlogCategory' }],
         default: []
@@ -51,7 +50,6 @@ const blogSchema = new mongoose.Schema({
             type: String,
             default: ''
         },
-        // SEO analizi: odak anahtar kelime
         focusKeyword: {
             type: String,
             default: ''

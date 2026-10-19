@@ -1,15 +1,10 @@
-// apps/web/src/services/categoryService.ts
 import { headers } from 'next/headers';
 
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { Category, ParentCategory } from '@src/types/category';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
 
-/**
- * Slug ile kategori getir
- */
 export async function getCategory(slug: string): Promise<Category | null> {
-    // Özel virtual kategori — 5 gerçek kategoriyi birleştiren görsel bir kategori
     if (slug === 'tum-lastikler') {
         return {
             slug: 'tum-lastikler',
@@ -42,9 +37,6 @@ export async function getCategory(slug: string): Promise<Category | null> {
     }
 }
 
-/**
- * Slug + Ebat ile kategori getir
- */
 export async function getCategoryWithSize(slug: string, ebatSlug: string): Promise<Category | null> {
     if (slug === 'tum-lastikler') {
         return await getCategory(slug);
@@ -67,9 +59,6 @@ export async function getCategoryWithSize(slug: string, ebatSlug: string): Promi
     }
 }
 
-/**
- * ID ile parent kategori getir
- */
 export async function getParentCategory(parentId: string): Promise<ParentCategory | null> {
     try {
         const response = await fetch(API_ENDPOINTS.categories.detail(parentId), {
@@ -86,9 +75,6 @@ export async function getParentCategory(parentId: string): Promise<ParentCategor
     }
 }
 
-/**
- * Isme gore kategori slug'i getir (Breadcrumb icin)
- */
 export async function getCategorySlugByName(name: string | null | undefined): Promise<string | undefined> {
     if (!name) return undefined;
 
@@ -107,10 +93,6 @@ export async function getCategorySlugByName(name: string | null | undefined): Pr
         return undefined;
     }
 }
-/**
- * Kategoriye bağlı menüleri getirir (birden fazla olabilir).
- * Menü seçilmemişse boş dizi döner.
- */
 export async function getCategoryMenus(menuIds?: string[] | null) {
     if (!menuIds || menuIds.length === 0) return [];
 
@@ -118,9 +100,6 @@ export async function getCategoryMenus(menuIds?: string[] | null) {
     return results.filter(Boolean);
 }
 
-/**
- * Kategoriye bağlı tek menü grubunu getirir (grup adı + öğeleri).
- */
 export async function getCategoryMenu(menuId?: string | null) {
     if (!menuId) return null;
 

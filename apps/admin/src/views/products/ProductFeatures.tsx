@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import React, { useState, useEffect } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -12,18 +10,11 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 
-
-// Type Imports
 import type { ProductFeaturesProps } from '@/types/apps/productTypes'
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
 const ProductFeatures = ({ product }: ProductFeaturesProps) => {
-  // State
   const [diaFeatures, setDiaFeatures] = useState<Array<{ name: string, value: string }>>([])
 
-  // Product özelliklerini yükle
   useEffect(() => {
     if (product?.properties) {
       const features = Object.entries(product.properties)

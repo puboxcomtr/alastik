@@ -1,6 +1,3 @@
-// LJA marka / marka × mevsim sayfasının ürün listesi altındaki içerik bölümü (server component).
-// Giriş ve ilk bölüm açık; diğer bölümler "Devamını oku" altında, bağlantı listeleri ve SSS kapalı
-// kutularda durur — sayfa kalabalık görünmez, metnin tamamı sunucu HTML'inde bulunur.
 import React from 'react';
 import Link from 'next/link';
 import { JsonLd } from '@/src/lib/structuredData';
@@ -70,7 +67,6 @@ function LinkBox({ title, links }: { title: string; links: { href: string; label
     );
 }
 
-// seriesTitle / sizesTitle: bağlantı kutusu başlıkları (araç markası sayfasında "Modelleri" / "Lastik Ebatları")
 export default function BrandSeoContent({ content, display, seasonTitle, seriesTitle, sizesTitle }: {
     content: BrandContent; display: string; seasonTitle?: string; seriesTitle?: string; sizesTitle?: string
 }) {

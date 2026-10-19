@@ -8,8 +8,6 @@ const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
 const Cargo = require('../../../models/admin/settings/Cargo');
 const { CREDIT_PAYMENT_METHOD } = require('../../../services/web/b2b/creditLimit');
 
-
-// Sipariş durumları (model'deki enum'a göre)
 const ORDER_STATUSES = {
     pending: 'Onay Bekliyor',
     awaiting_payment: 'Ödeme Bekleniyor',
@@ -22,7 +20,6 @@ const ORDER_STATUSES = {
     payment_failed: 'Ödeme Başarısız'
 };
 
-// Ödeme durumları (model'deki enum'a göre)
 const PAYMENT_STATUSES = {
     pending: 'Bekliyor',
     paid: 'Ödendi',
@@ -31,7 +28,6 @@ const PAYMENT_STATUSES = {
     cancelled: 'İptal Edildi'
 };
 
-// GET /api/admin/orders - Sipariş listesi
 router.get('/', async (req, res) => {
     try {
         const {
@@ -53,10 +49,8 @@ router.get('/', async (req, res) => {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Filtre oluştur
         let filter = { isActive: true, site: req.site };
 
-        // Genel arama
         if (search) {
             filter.$or = [
                 { orderNumber: { $regex: search, $options: 'i' } },
@@ -69,18 +63,15 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Sipariş No (ID)
         if (orderNumber) {
             filter.orderNumber = { $regex: orderNumber, $options: 'i' };
         }
 
-        // Sipariş durumu
         if (status) {
             filter.status = status;
         }
 
         if (paymentStatus === 'all') {
-            // Tümü - payment.status filtresi yok
         } else if (paymentStatus) {
             const statusList = paymentStatus.split(',').map(s => s.trim()).filter(Boolean);
             if (statusList.length > 1) {
@@ -89,34 +80,28 @@ router.get('/', async (req, res) => {
                 filter['payment.status'] = statusList[0];
             }
         } else {
-            // Varsayılan: ödenmiş siparişler VEYA banka havalesi (durumu ne olursa olsun)
             filter.$and = [
                 ...(filter.$and || []),
                 {
                     $or: [
                         { 'payment.status': 'paid' },
                         { 'payment.method': 'bank_transfer' },
-                        // Vadeli Cari Sipariş ödeme beklemez: verildiği anda gerçek sipariştir
                         { 'payment.method': CREDIT_PAYMENT_METHOD }
                     ]
                 }
             ];
         }
 
-        // Ödeme yöntemi
         if (paymentMethod) {
             filter['payment.method'] = paymentMethod;
         } else if (draft === '1') {
-            // Taslak Siparişler: vadeli Cari Sipariş taslak değildir (Siparişler listesinde yer alır)
             filter['payment.method'] = { $ne: CREDIT_PAYMENT_METHOD };
         }
 
-        // Ürün stok kodu (items içinde)
         if (stockCode) {
             filter['items.stockCode'] = { $regex: stockCode, $options: 'i' };
         }
 
-        // Telefon (snapshot alanlarında)
         if (phone) {
             const phoneRegex = phone.replace(/\D/g, '');
             if (phoneRegex) {
@@ -130,7 +115,6 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Tarih aralığı
         if (startDate || endDate) {
             filter.createdAt = {};
             if (startDate) {
@@ -195,7 +179,6 @@ router.get('/', async (req, res) => {
                 currency: order.pricing?.currency || 'TRY',
                 itemCount: order.items?.length || 0,
                 createdAt: order.createdAt,
-                // Otomatik denemelere rağmen DIA'ya aktarılamadı (uyarı maili gitti, hâlâ aktarılmadı) — listede işaretlenir
                 diaTransferFailed: !!order.diaIntegration?.transferAlertSentAt && order.diaIntegration?.status !== 'synced'
             };
         });
@@ -225,7 +208,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/admin/orders/:id - Sipariş detay
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -261,8 +243,6 @@ router.get('/:id', async (req, res) => {
             }));
         }
 
-
-        // Montaj noktalarını çöz (montaj hizmeti kalemlerindeki montagePointId'ler)
         let montagePoints = [];
         const montagePointIds = [...new Set(
             (order.items || []).map(item => item.montagePointId).filter(Boolean)
@@ -319,7 +299,6 @@ router.get('/:id', async (req, res) => {
 
             }
         }
-        // Araç bilgilerini çek
         let vehicleInfo = null;
         if (order.memberId) {
             const vehicle = await WebVehicle.findOne({
@@ -342,7 +321,6 @@ router.get('/:id', async (req, res) => {
                 };
             }
         }
-        // Teslimat yönteminin adı (Kargo Tanımları: site + kod)
         let shippingMethodName = '';
         if (order.shipping?.method) {
             const cargo = await Cargo.findOne({ site: order.site || req.site, code: order.shipping.method }).select('name').lean();
@@ -394,7 +372,6 @@ router.get('/:id', async (req, res) => {
             status: order.status || 'pending',
             statusText: ORDER_STATUSES[order.status] || order.status || 'Onay Bekliyor',
 
-            // methodName: teslimat yönteminin Kargo Tanımları'ndaki adı (kod yerine gösterilir)
             shipping: { ...(order.shipping || {}), methodName: shippingMethodName },
             diaIntegration: order.diaIntegration || {},
             customerNote: order.customerNote || '',
@@ -424,9 +401,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// PUT /api/admin/orders/:id/status - Sipariş durumu güncelle
-// Manuel tahsilat bilgisi - PUT /admin/orders/:id/manual-collection
-// channel: paynet | otopirpos | nkolay | null (temizle)
 router.put('/:id/manual-collection', async (req, res) => {
     try {
         const { channel } = req.body || {};
@@ -464,7 +438,6 @@ router.put('/:id/manual-collection', async (req, res) => {
     }
 });
 
-// Sipariş açıklaması - PUT /admin/orders/:id/admin-note
 router.put('/:id/admin-note', async (req, res) => {
     try {
         const note = String(req.body?.note ?? '').trim();
@@ -486,7 +459,6 @@ router.put('/:id/admin-note', async (req, res) => {
     }
 });
 
-// Sipariş açıklama şablonları - GET /admin/orders/templates/notes (site bazlı, ayarlardan)
 router.get('/templates/notes', async (req, res) => {
     try {
         const Setting = require('../../../models/admin/settings/Setting');
@@ -494,7 +466,6 @@ router.get('/templates/notes', async (req, res) => {
         let setting = await Setting.findOne({ site: req.site, group: 'order', key: 'noteTemplates' });
 
         if (!setting) {
-            // Varsayılan şablonlar (ayarlardan düzenlenebilir kayıt olarak oluşturulur)
             setting = await Setting.create({
                 site: req.site,
                 group: 'order',
@@ -541,10 +512,6 @@ router.put('/:id/status', async (req, res) => {
             });
         }
 
-        // Sipariş onaylandığında DIA'ya aktar (cari + sipariş girişi).
-        // Banka havalesi HARİÇ — havale siparişleri sipariş detayındaki
-        // "DIA'ya Gönder" butonuyla manuel aktarılır.
-        // Entegrasyon kapalıysa servis kendisi atlar; hata durum güncellemesini bozmaz.
         let diaResult = null;
         if (status === 'confirmed' && order.payment?.method !== 'bank_transfer') {
             try {
@@ -556,8 +523,6 @@ router.put('/:id/status', async (req, res) => {
             }
         }
 
-        // Sipariş iptal edildiğinde DIA'daki kayıtlar da iptal edilir
-        // (fatura iptal + stok iadesi + sipariş silme)
         if (status === 'cancelled' && (order.diaIntegration?.diaOrderKey || order.diaIntegration?.diaInvoiceKey)) {
             try {
                 const { cancelOrderInDia } = require('../../../services/plugins/dia/DiaOrderService');
@@ -589,7 +554,6 @@ router.put('/:id/status', async (req, res) => {
     }
 });
 
-// PUT /api/admin/orders/:id/payment-status - Ödeme durumu güncelle
 router.put('/:id/payment-status', async (req, res) => {
     try {
         const { id } = req.params;
@@ -607,7 +571,6 @@ router.put('/:id/payment-status', async (req, res) => {
             updatedAt: new Date()
         };
 
-        // Ödendi ise paidAt ekle
         if (status === 'paid') {
             updateData['payment.paidAt'] = new Date();
         }
@@ -645,7 +608,6 @@ router.put('/:id/payment-status', async (req, res) => {
     }
 });
 
-// POST /api/admin/orders/:id/sync-dia - Siparişi DIA'ya manuel gönder (yeniden deneme)
 router.post('/:id/sync-dia', async (req, res) => {
     try {
         const order = await WebOrder.findOne({ _id: req.params.id, site: req.site });
@@ -671,7 +633,6 @@ router.post('/:id/sync-dia', async (req, res) => {
     }
 });
 
-// POST /api/admin/orders/:id/verify-payment - Nkolay ödeme durumunu sorgula, ödendiyse onayla
 router.post('/:id/verify-payment', async (req, res) => {
     try {
         const { id } = req.params;
@@ -681,7 +642,6 @@ router.post('/:id/verify-payment', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
         }
 
-        // Sadece Nkolay ve henüz ödenmemiş siparişler
         if (order.payment?.gateway !== 'nkolay') {
             return res.json({ success: true, updated: false, reason: 'not_nkolay', paymentStatus: order.payment?.status });
         }
@@ -696,12 +656,10 @@ router.post('/:id/verify-payment', async (req, res) => {
             return res.json({ success: true, updated: false, reason: 'not_found_in_nkolay', paymentStatus: order.payment?.status });
         }
 
-        // Ödenmemiş (NEW/ERROR) ise dokunma
         if (!result.isPaid) {
             return res.json({ success: true, updated: false, reason: 'not_paid', nkolayStatus: result.status, paymentStatus: order.payment?.status });
         }
 
-        // Tutar doğrulama - yanlış onayı engelle
         const nkolayAmount = parseFloat(result.transactionAmount);
         const orderAmount = parseFloat(order.pricing?.total);
         if (isNaN(nkolayAmount) || isNaN(orderAmount) || Math.abs(nkolayAmount - orderAmount) > 0.01) {
@@ -714,7 +672,6 @@ router.post('/:id/verify-payment', async (req, res) => {
             });
         }
 
-        // Ödeme doğrulandı - siparişi onayla
         order.payment.status = 'paid';
         order.status = 'confirmed';
         order.payment.method = 'credit_card_3d';
@@ -727,7 +684,6 @@ router.post('/:id/verify-payment', async (req, res) => {
 
         console.log('[verify-payment] Odeme dogrulandi ve onaylandi:', order.orderNumber);
 
-        // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
         try {
             const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
             syncOrderToDiaBackground(order, 'verify-payment');
@@ -735,7 +691,6 @@ router.post('/:id/verify-payment', async (req, res) => {
             console.error('[verify-payment] DIA tetikleme hatası:', diaErr.message);
         }
 
-        // Ödeme başarılı maili tetikle (fire-and-forget)
         try {
             const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
             const customerMail = order.isGuest

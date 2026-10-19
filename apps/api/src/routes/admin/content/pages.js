@@ -2,10 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Page = require('../../../models/admin/content/Page');
 
-/**
- * GET /api/admin/pages
- * Sayfa listesi
- */
 router.get('/', async (req, res) => {
     try {
         const { search, status } = req.query;
@@ -41,10 +37,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * GET /api/admin/pages/:id
- * Sayfa detayı
- */
 router.get('/:id', async (req, res) => {
     try {
         const page = await Page.findOne({ _id: req.params.id, site: req.site }).lean();
@@ -56,7 +48,6 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Content'i olduğu gibi gönder, encode etme
         res.json({
             success: true,
             data: page
@@ -71,13 +62,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-/**
- * POST /api/admin/pages
- * Yeni sayfa oluştur
- */
 router.post('/', async (req, res) => {
     try {
-        // Slug kontrolü
         const existingPage = await Page.findOne({ slug: req.body.slug, site: req.site });
         if (existingPage) {
             return res.status(400).json({
@@ -98,7 +84,6 @@ router.post('/', async (req, res) => {
     } catch (error) {
         console.error('Sayfa oluşturma hatası:', error);
 
-        // MongoDB duplicate key hatası
         if (error.code === 11000) {
             return res.status(400).json({
                 success: false,
@@ -113,10 +98,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-/**
- * PUT /api/admin/pages/:id
- * Sayfa güncelle
- */
 router.put('/:id', async (req, res) => {
     try {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
@@ -124,7 +105,6 @@ router.put('/:id', async (req, res) => {
         console.log('🔥 BACKEND - Content Length:', req.body.content.length)
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-        // Eğer slug değiştiriliyorsa...
         if (req.body.slug) {
             const existingPage = await Page.findOne({
                 slug: req.body.slug,
@@ -140,7 +120,6 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        // site alanı gövdeden ayıklanır; kayıt başka siteye taşınamaz
         const { site: _ignoredSite, ...pagePayload } = req.body || {};
 
         const page = await Page.findOneAndUpdate(
@@ -181,10 +160,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-/**
- * DELETE /api/admin/pages/:id
- * Sayfa sil
- */
 router.delete('/:id', async (req, res) => {
     try {
         const page = await Page.findOneAndDelete({ _id: req.params.id, site: req.site });

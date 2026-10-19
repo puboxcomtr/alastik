@@ -31,7 +31,6 @@ export function BrandsProvider({ children }: { children: ReactNode }) {
             try {
                 const response = await api.get('/brands?limit=500');
 
-                // Response yapısı: { success: true, data: [...] }
                 const brandsList = response?.data || response?.brands || [];
                 const brandsMap = new Map<string, Brand>();
 

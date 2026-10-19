@@ -1,17 +1,3 @@
-/**
- * b2b invoice PDF — the official e-Fatura / e-Arşiv copy of a dealer's invoice.
- *
- * DIA has no PDF method for invoices; instead `scf_fatura_listele` returns the
- * e-belge viewer link (`efaturalinki`, https://ebelge.dia.com.tr/...). The same
- * link with a `.pdf` suffix serves the official PDF. Only invoices sent as
- * e-belge have this link; paper invoices return nothing.
- *
- * The lookup is always filtered by the dealer's own cari key, so a dealer can
- * never reach another cari's invoice.
- *
- * NOTE: `fisno`, `belgeno`, `tarih`, `efaturalinki`, `_key_scf_carikart` are DIA
- * API field names and must stay as-is.
- */
 const { DiaOrderService } = require('./DiaOrderService');
 const { withDiaLock, B2B_LOCK_KEY } = require('./diaLock');
 
@@ -21,7 +7,6 @@ const EBELGE_HOST = 'ebelge.dia.com.tr';
 const PDF_TIMEOUT_MS = 30000;
 const LOCK_WAIT_MS = 30000;
 
-/** Periods to search: the invoice year's period first, then the rest (newest first). */
 function periodsFor(currentPeriod, invoiceDate) {
     const all = [];
     for (let p = currentPeriod; p > currentPeriod - PERIOD_SCAN_COUNT && p >= 1; p--) all.push(p);
@@ -31,7 +16,6 @@ function periodsFor(currentPeriod, invoiceDate) {
     return all.includes(guess) ? [guess, ...all.filter((p) => p !== guess)] : all;
 }
 
-/** Finds the invoice's e-belge link in DIA (null when it is not an e-belge). */
 async function findInvoiceLink(site, cariKey, { fisno, belgeNo, tarih }) {
     return withDiaLock(async () => {
         const svc = new DiaOrderService(site);
@@ -61,7 +45,6 @@ async function findInvoiceLink(site, cariKey, { fisno, belgeNo, tarih }) {
     }, { label: 'b2b-fatura-pdf', key: B2B_LOCK_KEY, waitMs: LOCK_WAIT_MS });
 }
 
-/** Downloads the official PDF behind an e-belge link. */
 async function fetchInvoicePdf(link) {
     const url = new URL(`${link.replace(/\/+$/, '')}.pdf`);
     if (url.hostname !== EBELGE_HOST) throw new Error(`unexpected e-belge host: ${url.hostname}`);
@@ -71,9 +54,6 @@ async function fetchInvoicePdf(link) {
     return Buffer.from(await res.arrayBuffer());
 }
 
-/**
- * @returns {Promise<{notFound?:true, noEbelge?:true, pdf?:Buffer, fileName?:string}>}
- */
 async function getInvoicePdf(site, cariKey, invoice) {
     const found = await findInvoiceLink(site, cariKey, invoice);
     if (!found) return { notFound: true };

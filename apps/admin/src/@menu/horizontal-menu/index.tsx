@@ -1,4 +1,3 @@
-// Import all Horizontal Nav components and export them
 import Menu from '../components/horizontal-menu/Menu'
 import SubMenu from '../components/horizontal-menu/SubMenu'
 import MenuItem from '../components/horizontal-menu/MenuItem'

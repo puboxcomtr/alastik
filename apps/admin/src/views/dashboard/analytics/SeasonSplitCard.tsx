@@ -1,9 +1,7 @@
 'use client'
 
-// Next Imports
 import dynamic from 'next/dynamic'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -12,10 +10,8 @@ import Typography from '@mui/material/Typography'
 import { formatTRY, formatInt } from './format'
 import type { OverviewData } from './format'
 
-// Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Mevsim başına sabit renk: sıralama değişse de renk aynı kalır
 const SEASON_COLORS: Record<string, string> = {
     yaz: 'var(--mui-palette-warning-main)',
     kis: 'var(--mui-palette-info-main)',
@@ -23,7 +19,6 @@ const SEASON_COLORS: Record<string, string> = {
 }
 const SEASON_ORDER = ['yaz', 'kis', '4mevsim']
 
-// Mevsime göre satış payı (ürün adından türetilir)
 const SeasonSplitCard = ({ split, window }: { split: OverviewData['seasonSplit']; window: string }) => {
     const items = [...split.items].sort((a, b) => SEASON_ORDER.indexOf(a.key) - SEASON_ORDER.indexOf(b.key))
     const hasData = items.length > 0 && split.totalUnits > 0

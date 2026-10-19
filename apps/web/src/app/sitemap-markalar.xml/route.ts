@@ -1,4 +1,3 @@
-// Marka sitemap'i (/marka/<seoUrl>); LJA'da dizine açık marka × mevsim sayfaları da eklenir
 import { getSiteBase, getSiteSlug, fetchSitemapData, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 import { getBrandSeoIndex } from '@/src/services/brandSeoService';
 import { SEASON_PATHS, SEASON_INDEX_MIN, isTireBrand } from '@/src/lib/brandText';

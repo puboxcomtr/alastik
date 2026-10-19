@@ -8,10 +8,6 @@ const { salespersonOrImpersonationAuth } = salespersonAuth;
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/**
- * POST /login — plasiyer girişi: KULLANICI KODU (DIA kullaniciadi) + şifre.
- * Yalnız grubu (Perakende / Toptan) ve şifresi atanmış plasiyer giriş yapabilir. Başarıda type:'salesperson' JWT döner.
- */
 router.post('/login', async (req, res) => {
     try {
         const { kullaniciKodu, password } = req.body || {};
@@ -34,7 +30,6 @@ router.post('/login', async (req, res) => {
         if (!ok) {
             return res.status(401).json({ success: false, message: 'Kullanıcı adı veya şifre hatalı.' });
         }
-        // Grubu atanmamış plasiyer giriş yapamaz (şifre doğrulandıktan sonra söylenir)
         if (!sp.canLogin()) {
             return res.status(403).json({ success: false, code: 'NO_SALES_GROUP', message: 'Plasiyer grubunuz atanmadığı için giriş yapılamıyor. Lütfen yöneticinize başvurun.' });
         }
@@ -45,7 +40,6 @@ router.post('/login', async (req, res) => {
             { expiresIn: '1d' }
         );
 
-        // Varsayılan şifre (12345) ile giriş → zorunlu şifre değiştirme bayrağı
         sp.mustChangePassword = String(password) === '12345';
         sp.lastLoginAt = new Date();
         await sp.save();
@@ -65,26 +59,18 @@ router.post('/login', async (req, res) => {
     }
 });
 
-/**
- * GET /me — oturumdaki plasiyer bilgisi.
- */
 router.get('/me', salespersonAuth, async (req, res) => {
     const sp = req.salesperson;
     res.json({
         success: true,
         data: {
             id: sp._id, kullaniciKodu: sp.diaUsername, name: sp.name || sp.diaUsername,
-            // Plasiyer grubu: 'retail' (Perakende) | 'wholesale' (Toptan)
             salesGroup: sp.salesGroup,
             mustChangePassword: sp.mustChangePassword === true
         }
     });
 });
 
-/**
- * POST /sifre-degistir — plasiyer şifresini değiştirir (zorunlu değiştirme akışı).
- * currentPassword doğrulanır; yeni şifre 12345 olamaz. Başarıda mustChangePassword temizlenir.
- */
 router.post('/sifre-degistir', salespersonAuth, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body || {};
@@ -100,8 +86,8 @@ router.post('/sifre-degistir', salespersonAuth, async (req, res) => {
         const sp = req.salesperson;
         const ok = await sp.comparePassword(currentPassword);
         if (!ok) return res.status(400).json({ success: false, message: 'Mevcut parolanız hatalı.' });
-        sp.password = String(newPassword);       // pre-save hook bcrypt ile hashler
-        sp.plainPassword = String(newPassword);   // admin panelinden görülebilsin
+        sp.password = String(newPassword);
+        sp.plainPassword = String(newPassword);
         sp.mustChangePassword = false;
         await sp.save();
         return res.json({ success: true, message: 'Parolanız güncellendi.' });
@@ -111,9 +97,6 @@ router.post('/sifre-degistir', salespersonAuth, async (req, res) => {
     }
 });
 
-/**
- * GET /depo-stok?codes=kod1,kod2 — plasiyer gözüyle ürün listesinde depo bazlı stok (bayi oturumundaki ile aynı veri).
- */
 router.get('/depo-stok', salespersonAuth, async (req, res) => {
     try {
         const { parseCodes, getDepotStocks } = require('../../../services/web/b2b/depotStock');
@@ -124,12 +107,6 @@ router.get('/depo-stok', salespersonAuth, async (req, res) => {
     }
 });
 
-/**
- * GET /xml-kaynak?codes=kod1,kod2 — XML ürünlerinin hangi tedarikçiden geldiği (yalnız plasiyer ve plasiyerin bayi adına
- * açtığı oturum; bayinin kendi oturumu reddedilir, tedarikçi adı bayiye gösterilmez). Yanıt: { stokKodu: firma adı }. Firma, ürünün XML kayıtlarından (xmlproducts) XML
- * senkronuyla AYNI kuralla seçilir (XmlWebProductSyncService.selectBestSource: stoklu, geçerli, en uygun net
- * maliyet); adı XML kaynak tanımından (webxml.name) gelir. Geçerli aday yoksa ürünün ilk XML kaydının kaynağı kullanılır.
- */
 router.get('/xml-kaynak', salespersonOrImpersonationAuth, async (req, res) => {
     try {
         const { parseCodes } = require('../../../services/web/b2b/depotStock');
@@ -175,10 +152,6 @@ router.get('/xml-kaynak', salespersonOrImpersonationAuth, async (req, res) => {
     }
 });
 
-/**
- * GET /cariler?search= — plasiyerin adına giriş yapabileceği bayiler (tüm b2b carileri).
- * Arama: ünvan/ad, cari kodu, e-posta, telefon. Sayfalama basit (limit).
- */
 router.get('/cariler', salespersonAuth, async (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limit) || 30, 100);
@@ -209,7 +182,6 @@ router.get('/cariler', salespersonAuth, async (req, res) => {
             cariKodu: m.diaCustomerCode || '',
             email: m.email || '',
             phone: m.phone || '',
-            // Premium cari (DIA özel kodundan) — bayi seçim listesinde rozet
             premium: m.diaCari?.premium === true
         }));
 
@@ -220,11 +192,6 @@ router.get('/cariler', salespersonAuth, async (req, res) => {
     }
 });
 
-/**
- * POST /bayi-giris — plasiyer bir bayi (cari) adına oturum açar.
- * O bayinin member token'ı üretilir; impersonatedBy claim'i plasiyer oturumunu işaretler.
- * Bu token tüm mevcut bayi paneli uçlarında normal bayi gibi çalışır.
- */
 router.post('/bayi-giris', salespersonAuth, async (req, res) => {
     try {
         const { memberId } = req.body || {};

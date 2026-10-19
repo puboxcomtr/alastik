@@ -4,10 +4,8 @@ import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 import type { BrandType } from '@/types/apps/brandTypes'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -62,7 +60,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
         webVisible: selectedbrand.webVisible !== false
       })
 
-      // Logo preview ayarla
       if (selectedbrand.logo) {
         const logoUrl = typeof selectedbrand.logo === 'string'
           ? selectedbrand.logo
@@ -88,7 +85,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     }
   }, [selectedbrand])
 
-  // Slug oluşturucu
   const generateSlug = (text: string): string => {
     const turkishMap: Record<string, string> = {
       'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G',
@@ -123,7 +119,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     toast.success('SEO URL otomatik oluşturuldu')
   }
 
-  // Logo yükleme
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const { files } = event.target
     if (!files || files.length === 0 || !selectedbrand) return
@@ -132,14 +127,12 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     setFileName(file.name)
     setIsUploading(true)
 
-    // Önizleme göster
     const reader = new FileReader()
     reader.onload = (e) => {
       setLogoPreview(e.target?.result as string)
     }
     reader.readAsDataURL(file)
 
-    // API'ye yükle
     const formDataUpload = new FormData()
     formDataUpload.append('logo', file)
     try {
@@ -151,7 +144,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
       if (result.success) {
         toast.success('Logo başarıyla yüklendi')
 
-        // Data'yı güncelle
         const updatedBrandData = brandData.map(brand => {
           if (brand.id === selectedbrand.id) {
             return {
@@ -180,7 +172,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
     }
   }
 
-  // Logo silme
   const handleDeleteLogo = async () => {
     if (!selectedbrand) return
 
@@ -300,7 +291,6 @@ const EditBrandDrawer = ({ open, handleClose, brandData, selectedbrand, setData 
             }}
           />
 
-          {/* Logo Önizleme ve Yükleme */}
           <Box>
             <Typography variant='body2' className='mb-2 font-medium'>Marka Logosu</Typography>
             <Box className='flex items-center gap-4'>

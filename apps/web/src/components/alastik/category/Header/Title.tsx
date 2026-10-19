@@ -18,7 +18,6 @@ export default function PageHeader({
     return (
         <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between mb-4 pb-2">
             <div>
-                {/* Başlık */}
                 <h1 className="h2 mb-2">
                     {tip === "genel" && genelArama ? (
                         `"${genelArama}" ARAMA SONUÇLARI`
@@ -46,7 +45,6 @@ export default function PageHeader({
                     )}
                 </h1>
 
-                {/* Alt açıklama */}
                 {(selectedSize || (tip === "genel" && genelArama)) && (
                     <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
                         {tip === "genel" && genelArama ? (
@@ -61,7 +59,6 @@ export default function PageHeader({
                     </p>
                 )}
             </div>
-            {/* Aracı Değiştir Butonu */}
             {vehicleInfo && (
                 <Link href="/" className="btn btn-outline-primary">
                     <i className="ci-arrow-left me-1"></i>ARACI DEĞİŞTİR

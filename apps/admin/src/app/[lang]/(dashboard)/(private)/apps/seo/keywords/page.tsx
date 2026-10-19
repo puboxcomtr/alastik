@@ -1,4 +1,3 @@
-/* @Import Page */
 import SeoKeywordsView from '@/views/seo-module/keywords/SeoKeywordsView'
 
 const SeoKeywordsPage = () => {

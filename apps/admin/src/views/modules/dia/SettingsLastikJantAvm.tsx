@@ -29,8 +29,6 @@ import TransferSettingsCard from '@/views/modules/dia/TransferSettingsCard'
 import { DiaKeySelect, DiaKeyMultiSelect } from '@/views/modules/dia/DiaKeyFields'
 import type { DiaSiparisOptions } from '@/views/modules/dia/DiaKeyFields'
 
-// LastikJantAVM ve B2B DİA ayarları — site bazlı kayıt yapılır (aktif sitenin
-// X-Site başlığıyla); senkronizasyon ortak süreçtir (tüm sitelerin kurallarını uygular).
 import { getSiteHeader } from '@/utils/activeSite'
 
 export default function SettingsLastikJantAvm() {
@@ -73,14 +71,12 @@ export default function SettingsLastikJantAvm() {
     }
   }
 
-  // Key alanları için DIA seçenek listeleri (şube/depo/kargo/plan/yetki kodları)
   const fetchSiparisOptions = async () => {
     try {
       setSiparisOptionsLoading(true)
       const data = await fetchAPI(API_ENDPOINTS.diaSettings.siparisOptions(), { headers: SITE_HEADERS })
       if (data.success) setSiparisOptions(data.data)
     } catch {
-      // Liste yüklenemezse alanlar elle girilebilir kalır
     } finally {
       setSiparisOptionsLoading(false)
     }
@@ -194,7 +190,6 @@ export default function SettingsLastikJantAvm() {
             toast.error(`Senkronizasyon başarısız: ${failedReason || 'Bilinmeyen hata'}`)
           }
         } catch {
-          // Polling hatası sessizce geç
         }
       }, 2000)
     } catch {
@@ -247,7 +242,6 @@ export default function SettingsLastikJantAvm() {
             toast.error(`Güncelleme başarısız: ${failedReason || 'Bilinmeyen hata'}`)
           }
         } catch {
-          // Polling hatası sessizce geç
         }
       }, 3000)
     } catch {
@@ -260,7 +254,6 @@ export default function SettingsLastikJantAvm() {
     setSettings(prev => ({ ...prev, [field]: value }))
   }
 
-  // Sipariş alanları metin, sayı ve anahtar (switch) değerleri taşıyor
   const updateSiparis = (field: string, value: string | number | boolean) => {
     setSettings(prev => ({
       ...prev,
@@ -291,7 +284,6 @@ export default function SettingsLastikJantAvm() {
         </Alert>
         <Grid container spacing={3}>
           <Grid size={{ xs: 8 }} container spacing={3}>
-            {/* Bağlantı Ayarları */}
             <Grid size={{ xs: 12 }}>
               <Card>
                 <CardHeader
@@ -389,7 +381,6 @@ export default function SettingsLastikJantAvm() {
                 </CardContent>
               </Card>
             </Grid>
-            {/* Sipariş Entegrasyonu */}
             <Grid size={{ xs: 12 }}>
               <Card>
                 <CardHeader
@@ -398,7 +389,6 @@ export default function SettingsLastikJantAvm() {
                 />
                 <CardContent>
                   <Grid container spacing={5}>
-                    {/* Aktarımın kendisi ve hedef firma/dönem */}
                     <Grid size={{ xs: 6 }}>
                       <FormControlLabel
                         control={
@@ -628,7 +618,6 @@ export default function SettingsLastikJantAvm() {
                 </CardContent>
               </Card>
             </Grid>
-            {/* Senkronizasyon Ayarları */}
             <Grid size={{ xs: 12 }}>
               <Card>
                 <CardHeader
@@ -768,7 +757,6 @@ export default function SettingsLastikJantAvm() {
                 </CardContent>
               </Card>
             </Grid>
-            {/* Aktarım Ayarları */}
             <Grid size={{ xs: 12 }}>
               <TransferSettingsCard
                 value={settings.aktarim}
@@ -776,7 +764,6 @@ export default function SettingsLastikJantAvm() {
               />
             </Grid>
 
-            {/* Her Zaman Dahil — kural filtrelerini ve Hariç listesini atlayan istisna listesi */}
             <Grid size={{ xs: 12 }}>
               <TransferSettingsCard
                 hideMode
@@ -787,7 +774,6 @@ export default function SettingsLastikJantAvm() {
               />
             </Grid>
           </Grid>
-          {/* Sağ Kolon */}
           <Grid size={{ xs: 4 }} container spacing={5}>
             <Grid size={{ xs: 12 }}>
               <Card className='mb-5'>

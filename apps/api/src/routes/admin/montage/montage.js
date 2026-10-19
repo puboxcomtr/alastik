@@ -17,7 +17,6 @@ const excelUpload = multer({
 const ALLOWED_AMENITIES = ['wc', 'waiting_room', 'wifi', 'air_conditioning', 'refreshments', 'oil_change', 'headlight_check'];
 const WEEK_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-// Gün bazlı çalışma saatlerini normalize et (HH:MM dışındaki değerler boşa çekilir)
 const cleanSchedule = (schedule) => {
     const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || ''));
     return WEEK_DAYS.reduce((acc, day) => {
@@ -30,10 +29,8 @@ const cleanSchedule = (schedule) => {
     }, {});
 };
 
-// Hizmet ürünlerinin geldiği katalog kategorisi
 const SERVICE_CATEGORY = 'Hizmetlerimiz';
 
-// Hizmet listesini normalize et (price null/boş ise varsayılan fiyat geçerli)
 const cleanServices = (services) =>
     Array.isArray(services)
         ? services
@@ -52,7 +49,6 @@ const cleanServices = (services) =>
 const cleanAmenities = (amenities) =>
     Array.isArray(amenities) ? amenities.filter(a => ALLOWED_AMENITIES.includes(a)) : [];
 
-// Sözleşme/evrak listesini normalize et (ad ve url zorunlu)
 const cleanDocuments = (documents) =>
     Array.isArray(documents)
         ? documents
@@ -71,18 +67,15 @@ const cleanReviews = (reviews) =>
     Array.isArray(reviews)
         ? reviews
             .map(r => ({
-                // Panelden eklenen yorumlarda üye "sistem" olarak geçer
                 memberName: String(r?.memberName || '').trim() || 'sistem',
                 comment: String(r?.comment || '').trim(),
                 processRating: cleanRating(r?.processRating),
                 locationRating: cleanRating(r?.locationRating),
-                // Tarih otomatik: mevcut yorumun tarihi korunur, yenisine şimdi atanır
                 createdAt: r?.createdAt ? new Date(r.createdAt) : new Date()
             }))
             .filter(r => r.comment)
         : [];
 
-// Görsel yükleme - POST /admin/montage/upload
 router.post('/upload', MediaService.createUploader('montage', 'image'), async (req, res) => {
     try {
         if (!req.file) {
@@ -98,7 +91,6 @@ router.post('/upload', MediaService.createUploader('montage', 'image'), async (r
     }
 });
 
-// Sözleşme/evrak yükleme - POST /admin/montage/upload-document
 router.post('/upload-document', MediaService.createUploader('montageDocument', 'document'), async (req, res) => {
     try {
         if (!req.file) {
@@ -107,7 +99,6 @@ router.post('/upload-document', MediaService.createUploader('montageDocument', '
 
         const url = MediaService.getFileUrl('montageDocument', req.file.filename);
 
-        // Orijinal dosya adı latin1 gelebilir; Türkçe karakterler için utf8'e çevir
         const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
 
         res.json({ success: true, data: { url, originalName } });
@@ -131,8 +122,6 @@ const DOCUMENT_MIME_TYPES = {
     '.webp': 'image/webp'
 };
 
-// Evraklar private dizindedir; yalnızca bu auth'lu endpoint ile okunur
-// GET /admin/montage/document-file?file=/montage-docs/dosya.pdf
 router.get('/document-file', async (req, res) => {
     try {
         const path = require('path');
@@ -144,7 +133,6 @@ router.get('/document-file', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçersiz evrak adresi' });
         }
 
-        // Path traversal engeli: yalnızca dosya adı kullanılır
         const filename = path.basename(fileUrl);
         const fullPath = path.join(getUploadDir('montageDocument'), filename);
 
@@ -168,7 +156,6 @@ router.get('/document-file', async (req, res) => {
     }
 });
 
-// Kayıttan çıkarılan evrak dosyalarını diskten siler
 const removeDeletedDocumentFiles = (oldDocuments, newDocuments) => {
     const kept = new Set((newDocuments || []).map(d => d.url));
     (oldDocuments || [])
@@ -176,7 +163,6 @@ const removeDeletedDocumentFiles = (oldDocuments, newDocuments) => {
         .forEach(d => MediaService.deleteFile(d.url));
 };
 
-// Liste - GET /admin/montaj (seçili sitenin montaj noktaları)
 router.get('/', async (req, res) => {
     try {
         const { search, city, isActive } = req.query;
@@ -207,10 +193,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Hizmet ürünleri - GET /admin/montage/service-products
-// "Hizmetlerimiz" kategorisindeki ürünleri döner.
-// Hizmet fiyatları siteler arasında ortaktır; sync kuralları (ozelkod11) hizmetleri
-// alastik sites dizisinden düşürebildiği için burada site filtresi uygulanmaz.
 router.get('/service-products', async (req, res) => {
     try {
         const { search } = req.query;
@@ -261,10 +243,6 @@ router.get('/service-products', async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// Excel içe aktarma (bayi/montaj noktası toplu yükleme)
-// ---------------------------------------------------------------------------
-
 const IMPORT_HEADERS = [
     'Bayi Adı', 'İl', 'İlçe', 'Adres', 'Telefon',
     'Hafta İçi Açılış', 'Hafta İçi Kapanış',
@@ -273,7 +251,6 @@ const IMPORT_HEADERS = [
     'Hizmetler', 'Olanaklar', 'Enlem', 'Boylam', 'Sıra', 'Aktif'
 ];
 
-// Başlık → alan eşlemesi (normalize edilmiş halleriyle)
 const HEADER_FIELDS = {
     'bayi adı': 'name', 'il': 'city', 'ilçe': 'district', 'adres': 'address', 'telefon': 'phone',
     'hafta içi açılış': 'weekdayOpen', 'hafta içi kapanış': 'weekdayClose',
@@ -283,7 +260,6 @@ const HEADER_FIELDS = {
     'enlem': 'lat', 'boylam': 'lng', 'sıra': 'order', 'aktif': 'isActive'
 };
 
-// Olanaklar: Türkçe etiket veya anahtar kabul edilir
 const AMENITY_ALIASES = {
     'wc': 'wc', 'wc (kadın/erkek)': 'wc',
     'bekleme salonu': 'waiting_room', 'waiting_room': 'waiting_room',
@@ -294,14 +270,12 @@ const AMENITY_ALIASES = {
     'far kontrol': 'headlight_check', 'far kontrolü': 'headlight_check', 'headlight_check': 'headlight_check'
 };
 
-// Türkçe duyarlı normalize (İ→i, büyük/küçük harf ve boşluk toleransı)
 const trNorm = (v) => String(v ?? '')
     .replace(/İ/g, 'i').replace(/I/g, 'ı')
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
 
-// Telefonu +90 XXX XXX XX XX biçimine çevirir; geçersizse null
 const normalizePhone = (value) => {
     if (!String(value || '').trim()) return '';
     let digits = String(value).replace(/\D/g, '').replace(/^0+/, '');
@@ -311,7 +285,6 @@ const normalizePhone = (value) => {
     return `+90 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
 };
 
-// "9:00" / "09:00" / "09:00:00" → "09:00"; geçersizse null
 const normalizeTime = (value) => {
     const s = String(value || '').trim();
     if (!s) return '';
@@ -323,7 +296,6 @@ const normalizeTime = (value) => {
     return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 };
 
-// Türkçe/İngilizce sayı biçimlerini çözer ("1.500,50", "1.500", "37.0017", "37,0017")
 const parseImportNumber = (value) => {
     const s = String(value ?? '').trim();
     if (!s) return null;
@@ -339,7 +311,6 @@ const parseImportNumber = (value) => {
     return Number.isFinite(num) ? num : null;
 };
 
-// Aktif hizmet ürünlerini SKU ve ada göre eşleme tablosu olarak döner
 const loadServiceCatalog = async () => {
     const db = require('mongoose').connection.db;
     const products = await db.collection('webproducts')
@@ -371,7 +342,6 @@ const loadServiceCatalog = async () => {
     return { catalog, bySku, byName };
 };
 
-// Excel satırlarını doğrulanmış montaj noktası kayıtlarına çevirir
 const parseImportRows = async (buffer, site) => {
     const wb = XLSX.read(buffer, { type: 'buffer' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -380,7 +350,6 @@ const parseImportRows = async (buffer, site) => {
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
     if (rows.length < 2) throw new Error('Dosyada başlık satırı dışında veri bulunamadı');
 
-    // Başlık satırından kolon eşlemesi çıkar
     const colField = {};
     (rows[0] || []).forEach((cell, idx) => {
         const field = HEADER_FIELDS[trNorm(cell)];
@@ -390,7 +359,6 @@ const parseImportRows = async (buffer, site) => {
         throw new Error('Başlık satırında "Bayi Adı" ve "İl" sütunları bulunamadı — şablonu kullanın');
     }
 
-    // Referans veriler
     const [cities, districts, serviceCatalog] = await Promise.all([
         AddressCity.find().lean(),
         AddressDistrict.find().lean(),
@@ -416,14 +384,12 @@ const parseImportRows = async (buffer, site) => {
             if (colField[idx]) raw[colField[idx]] = String(cell ?? '').trim();
         });
 
-        // Tamamen boş satırları atla
         if (!Object.values(raw).some(v => v)) continue;
 
         const errors = [];
         const warnings = [];
         const doc = { site };
 
-        // Bayi adı + mükerrer kontrolü
         doc.name = raw.name || '';
         if (!doc.name) errors.push('Bayi Adı boş olamaz');
         const nameKey = trNorm(doc.name);
@@ -437,7 +403,6 @@ const parseImportRows = async (buffer, site) => {
         }
         if (doc.name) seenInFile.add(nameKey);
 
-        // İl / ilçe (adres veritabanıyla eşleşmeli)
         const cityDoc = cityByName.get(trNorm(raw.city));
         if (!raw.city) {
             errors.push('İl boş olamaz');
@@ -461,7 +426,6 @@ const parseImportRows = async (buffer, site) => {
 
         doc.address = raw.address || '';
 
-        // Telefon
         const phone = normalizePhone(raw.phone);
         if (phone === null) {
             errors.push(`Telefon geçersiz: "${raw.phone}" (10 haneli olmalı)`);
@@ -469,7 +433,6 @@ const parseImportRows = async (buffer, site) => {
             doc.phone = phone;
         }
 
-        // Çalışma saatleri: hafta içi Pzt-Cum'a uygulanır
         doc.workingSchedule = WEEK_DAYS.reduce((acc, day) => {
             acc[day] = { open: '', close: '' };
             return acc;
@@ -491,10 +454,8 @@ const parseImportRows = async (buffer, site) => {
         applySchedule('Cumartesi', raw.saturdayOpen, raw.saturdayClose, ['saturday']);
         applySchedule('Pazar', raw.sundayOpen, raw.sundayClose, ['sunday']);
 
-        // Hizmetler: "SKU" / "Hizmet Adı", istenirse ":fiyat" ile manuel fiyat
         doc.services = [];
         if (raw.services) {
-            // Virgülle böl; "X:1.500,50" gibi Türkçe ondalıklarda ",50" parçasını öncekiyle birleştir
             const tokens = [];
             raw.services.split(',').map(t => t.trim()).filter(Boolean).forEach(part => {
                 const prev = tokens[tokens.length - 1];
@@ -529,7 +490,6 @@ const parseImportRows = async (buffer, site) => {
             });
         }
 
-        // Olanaklar: bilinmeyen değerler uyarıyla atlanır
         doc.amenities = [];
         if (raw.amenities) {
             raw.amenities.split(',').map(t => t.trim()).filter(Boolean).forEach(token => {
@@ -542,7 +502,6 @@ const parseImportRows = async (buffer, site) => {
             });
         }
 
-        // Konum
         doc.location = { lat: null, lng: null };
         if (raw.lat || raw.lng) {
             const lat = parseImportNumber(raw.lat);
@@ -554,7 +513,6 @@ const parseImportRows = async (buffer, site) => {
             }
         }
 
-        // Sıra + aktiflik
         doc.order = raw.order ? (parseImportNumber(raw.order) ?? 0) : 0;
         const activeNorm = trNorm(raw.isActive);
         doc.isActive = !['hayır', 'hayir', 'no', 'false', '0', 'pasif'].includes(activeNorm);
@@ -573,7 +531,6 @@ const parseImportRows = async (buffer, site) => {
     return results;
 };
 
-// Şablon - GET /admin/montage/import/template (base64 xlsx döner)
 router.get('/import/template', async (req, res) => {
     try {
         const { catalog } = await loadServiceCatalog();
@@ -590,14 +547,12 @@ router.get('/import/template', async (req, res) => {
         mainSheet['!cols'] = IMPORT_HEADERS.map(h => ({ wch: Math.max(h.length + 2, 14) }));
         XLSX.utils.book_append_sheet(wb, mainSheet, 'Bayiler');
 
-        // Yardımcı sayfa: geçerli hizmet listesi (SKU ile eşleştirme için)
         const serviceRows = [['SKU', 'Hizmet Adı', 'Varsayılan Fiyat (TL)']]
             .concat(catalog.map(s => [s.sku, s.name, s.defaultPrice]));
         const serviceSheet = XLSX.utils.aoa_to_sheet(serviceRows);
         serviceSheet['!cols'] = [{ wch: 14 }, { wch: 70 }, { wch: 22 }];
         XLSX.utils.book_append_sheet(wb, serviceSheet, 'Hizmet Listesi');
 
-        // Yardımcı sayfa: geçerli olanak değerleri
         const amenityRows = [['Olanak (Excel\'e yazılacak değer)']]
             .concat(['WC', 'Bekleme Salonu', 'WiFi', 'Klima', 'İkram', 'Yağ Değişimi', 'Far Kontrol'].map(a => [a]));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(amenityRows), 'Olanaklar');
@@ -617,7 +572,6 @@ router.get('/import/template', async (req, res) => {
     }
 });
 
-// İçe aktar - POST /admin/montage/import (confirm=1 ile kayıt, yoksa önizleme)
 router.post('/import', excelUpload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -663,8 +617,6 @@ router.post('/import', excelUpload.single('file'), async (req, res) => {
     }
 });
 
-// Komisyon oranları (seçili site) — GET/PUT /admin/montage/commission
-// Anlaşmalı noktanın girdiği fiyatın üstüne eklenir; kendi şubelerimize (showPublicInfo) uygulanmaz.
 router.get('/commission', async (req, res) => {
     try {
         const doc = await WebMontageCommission.findOne({ site: req.site }).lean();
@@ -699,11 +651,8 @@ router.put('/commission', async (req, res) => {
     }
 });
 
-// Bayi bilgi ve fiyat formu kayıtları (herkese açık formdan gelen cevaplar) — /admin/montage/dealer-forms
-// '/:id' rotasından ÖNCE bağlanmalıdır.
 router.use('/dealer-forms', require('./bayiFormlari'));
 
-// Detay - GET /admin/montage/:id
 router.get('/:id', async (req, res) => {
     try {
         const point = await WebMontagePoint.findOne({ _id: req.params.id, site: req.site }).lean();
@@ -718,7 +667,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Oluştur - POST /admin/montaj
 router.post('/', async (req, res) => {
     try {
         const {
@@ -759,7 +707,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Güncelle - PUT /admin/montaj/:id
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -805,7 +752,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Aktif/Pasif - PATCH /admin/montaj/:id/toggle
 router.patch('/:id/toggle', async (req, res) => {
     try {
         const point = await WebMontagePoint.findOne({ _id: req.params.id, site: req.site });
@@ -827,7 +773,6 @@ router.patch('/:id/toggle', async (req, res) => {
     }
 });
 
-// Sil - DELETE /admin/montaj/:id
 router.delete('/:id', async (req, res) => {
     try {
         const point = await WebMontagePoint.findOneAndDelete({ _id: req.params.id, site: req.site });
@@ -836,7 +781,6 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Montaj noktası bulunamadı' });
         }
 
-        // Noktaya ait evrak dosyalarını da diskten temizle
         removeDeletedDocumentFiles(point.documents, []);
 
         res.json({ success: true, message: 'Montaj noktası silindi' });
@@ -847,5 +791,4 @@ router.delete('/:id', async (req, res) => {
 
 module.exports = router;
 
-// Script/test kullanımı için (route dışından satır doğrulama)
 module.exports.parseImportRows = parseImportRows;

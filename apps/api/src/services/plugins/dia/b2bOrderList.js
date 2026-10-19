@@ -1,16 +1,7 @@
-/**
- * b2b bayi sipariş listesi — carinin DIA SİPARİŞLERİ (scf_siparis_listele).
- * Panel dışından girilen siparişler de dahil (WebOrder yalnız panel siparişlerini
- * tutar). Son 3 dönem taranır (her yıl ayrı dönem). Cari _key sabittir.
- *
- * Alanlar: tarih, fisno (sipariş no), net (KDV dahil toplam), toplammiktar (adet),
- * onay (KABUL/RET → durum).
- */
 const { DiaOrderService } = require('./DiaOrderService');
 
 const num = (v) => parseFloat(v) || 0;
 
-/** DIA isteği — hata/oturum düşmesinde re-login ile 3 kez dener. */
 async function sendRetry(svc, body, attempts = 3) {
     const method = Object.keys(body)[0];
     let last;
@@ -22,7 +13,7 @@ async function sendRetry(svc, body, attempts = 3) {
             return r;
         } catch (e) {
             last = e;
-            try { svc.sessionId = null; await svc.login(); } catch (_) { /* yut */ }
+            try { svc.sessionId = null; await svc.login(); } catch (_) {  }
         }
     }
     throw last || new Error('DIA isteği başarısız');
@@ -63,7 +54,7 @@ async function fetchOrders(site, cariKey) {
                     }
                     ok = true;
                 } catch (e) {
-                    try { svc.sessionId = null; await svc.login(); } catch (_) { /* yut */ }
+                    try { svc.sessionId = null; await svc.login(); } catch (_) {  }
                 }
             }
             if (!ok) break;
@@ -74,7 +65,6 @@ async function fetchOrders(site, cariKey) {
         }
     }
 
-    // Normalize + yeniden yeni→eski sırala
     const orders = rows.map((r) => ({
         orderNumber: String(r.fisno || r.belgeno || '').trim(),
         createdAt: `${String(r.tarih || '').slice(0, 10)}T${String(r.saat || '00:00:00').slice(0, 8)}`,
@@ -87,10 +77,6 @@ async function fetchOrders(site, cariKey) {
     return orders;
 }
 
-/**
- * Tek DIA siparişinin detayı (fisno ile) — WebOrder'da yoksa (panel dışı sipariş)
- * detay sayfası için yedek. Başlık + kalemler döner (fatura/WebOrder biçimine yakın).
- */
 async function fetchOrderDetail(site, orderNumber, cariKey) {
     const svc = new DiaOrderService(site);
     await svc.init().catch(() => {});
@@ -99,7 +85,6 @@ async function fetchOrderDetail(site, orderNumber, cariKey) {
     const donemler = [];
     for (let d = currentDonem; d > currentDonem - 3 && d >= 1; d--) donemler.push(d);
 
-    // Cari filtresi ZORUNLU (başka carinin siparişi görülmesin)
     const filters = [{ field: 'fisno', operator: '=', value: String(orderNumber) }];
     if (cariKey) filters.push({ field: '_key_scf_carikart', operator: '=', value: parseInt(cariKey) });
 
@@ -118,9 +103,6 @@ async function fetchOrderDetail(site, orderNumber, cariKey) {
     }
     if (!header) return null;
 
-    // Kalemler — _key_kalemturu genişletilmiş stok kartı nesnesidir:
-    //  ad = ekalan1/aciklama, kod = stokkartkodu; sonbirimfiyati = NET birim (KDV dahil),
-    //  net satır = sonbirimfiyati × miktar (sipariş net toplamıyla tutar). birimfiyati = liste.
     let items = [];
     try {
         const g = await sendRetry(svc, {
@@ -140,7 +122,7 @@ async function fetchOrderDetail(site, orderNumber, cariKey) {
                 totalPrice: Math.round(netUnit * qty * 100) / 100
             };
         });
-    } catch (_) { /* kalem alınamazsa başlıkla devam */ }
+    } catch (_) {  }
 
     return {
         orderNumber: String(header.fisno || orderNumber),

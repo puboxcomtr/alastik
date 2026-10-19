@@ -1,9 +1,5 @@
 import { CrownIcon } from "./icons";
 
-/**
- * Premium cari rozeti (siyah zemin, marka sarısı yazı). Premium bilgisi DIA cari kartından gelir (/me → premium).
- * Hesap menüsü, Cari Özet ve plasiyerin bayi seçim listesinde kullanılır.
- */
 export function PremiumBadge() {
   return (
     <span className="premium-badge" title="Premium Cari">
@@ -13,9 +9,6 @@ export function PremiumBadge() {
   );
 }
 
-/**
- * Karşılama başlığındaki Premium işareti: cari adının yanında taç amblemi + ince "Premium Cari" yazısı.
- */
 export function PremiumCrown() {
   return (
     <span className="premium-crown" title="Premium Cari">

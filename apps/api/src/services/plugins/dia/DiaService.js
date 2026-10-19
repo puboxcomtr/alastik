@@ -1,38 +1,22 @@
 const axios = require('axios');
 const logger = require('../../../utils/logger');
 
-/**
- * DIA Entegrasyon Servisi
- * C# DiaService.cs dosyasından uyarlanmıştır
- * 
- * Ortam değişkenleri:
- * - DIA_BASE_URL: DIA API base URL'i
- * - DIA_USERNAME: DIA kullanıcı adı
- * - DIA_PASSWORD: DIA şifresi
- * - DIA_API_KEY: DIA API anahtarı
- * - DIA_FIRMA_KODU: Firma kodu (default: 1)
- * - DIA_DONEM_KODU: Dönem kodu (default: 2)
- */
-
 class DiaService {
     constructor() {
         this.baseURL = process.env.DIA_BASE_URL;
         this.username = process.env.DIA_USERNAME;
         this.password = process.env.DIA_PASSWORD;
         this.apiKey = process.env.DIA_API_KEY;
-        // Cari ve sipariş kayıtlarını firma 2 / dönem 2'de yap
         this.firmaKodu = 2;
         this.donemKodu = 2;
-        // Sipariş için kullanılacak şube ve depo anahtar/kodları (stok senkronundan farklı olabilir)
         this.siparisSubeKey = parseInt(process.env.DIA_SIPARIS_SUBE_KEY) || 215114;
         this.siparisDepoKey = parseInt(process.env.DIA_SIPARIS_DEPO_KEY) || 215115;
         this.siparisSubeKodu = process.env.DIA_SIPARIS_SUBE_KODU || '00000001';
         this.siparisDepoKodu = process.env.DIA_SIPARIS_DEPO_KODU || '00000001';
-        // Siparişte sabit kullanılacak cari/adres key'leri
         this.siparisCariKey = parseInt(process.env.DIA_SIPARIS_CARI_KEY) || 215689;
         this.siparisAdresKey = parseInt(process.env.DIA_SIPARIS_ADRES_KEY) || 215690;
         this.sessionId = null;
-        this.sessionTimeout = 30 * 60 * 1000; // 30 dakika
+        this.sessionTimeout = 30 * 60 * 1000;
         this.lastSessionCheck = null;
 
         logger.info('DiaService başlatıldı', {
@@ -47,9 +31,6 @@ class DiaService {
         });
     }
 
-    /**
-     * DIA sistemi login işlemi
-     */
     async loginAsync() {
         try {
             logger.info('DIA login başlatılıyor', {
@@ -93,13 +74,9 @@ class DiaService {
         }
     }
 
-    /**
-     * Session geçerliliğini kontrol eder ve gerekirse yeniler
-     */
     async ensureValidSessionAsync() {
         const now = Date.now();
 
-        // Son kontrol üzerinden 5 dakika geçmemişse mevcut session'ı kullan
         if (this.sessionId && this.lastSessionCheck && (now - this.lastSessionCheck) < 5 * 60 * 1000) {
             return this.sessionId;
         }
@@ -111,7 +88,6 @@ class DiaService {
         }
 
         try {
-            // Session test et
             const testRequest = {
                 session_test: {
                     session_id: this.sessionId
@@ -133,9 +109,6 @@ class DiaService {
         }
     }
 
-    /**
-     * DIA'da sipariş var mı kontrol eder
-     */
     async checkOrderExistsInDia(orderCode) {
         try {
             logger.info('DIA\'da sipariş kontrol ediliyor', { orderCode });
@@ -196,14 +169,10 @@ class DiaService {
         }
     }
 
-    /**
-     * Müşteri kodunu formatlar: AL- + id'den türetilmiş 7 haneli numerik
-     */
     formatCustomerCode(order) {
         const base = (order.customerId || order.customerCode || '').toString();
         let numeric = base.replace(/\D/g, '');
         if (!numeric || numeric.length < 7) {
-            // Yeterli numerik yoksa Date.now() üzerinden üret
             numeric = (numeric + Date.now().toString()).replace(/\D/g, '');
         }
         const seven = numeric.slice(0, 7).padEnd(7, '0');
@@ -217,9 +186,6 @@ class DiaService {
         return { prefix: 'AL-', fullCode };
     }
 
-    /**
-     * DIA'da müşteri var mı kontrol eder
-     */
     async checkDiaCustomer(sessionId, customerCode) {
         try {
             logger.info('DIA\'da müşteri kontrol ediliyor', { customerCode });
@@ -275,9 +241,6 @@ class DiaService {
         }
     }
 
-    /**
-     * Şehir plaka kodunu DIA city key'e çevirir
-     */
     getCityKey(plateCode) {
         const cityKeyMap = {
             "1": "1402", "2": "1404", "3": "1405", "4": "1406", "68": "1470",
@@ -299,19 +262,14 @@ class DiaService {
             "67": "1469"
         };
 
-        if (!plateCode) return "1436"; // İstanbul varsayılan
+        if (!plateCode) return "1436";
 
-        // Plaka kodunun başındaki sıfırı kaldır
         const cleanPlateCode = plateCode.toString().replace(/^0+/, '');
         return cityKeyMap[cleanPlateCode] || "1436";
     }
 
-    /**
-     * Müşteri adreslerini oluşturur
-     */
     createCustomerAddresses(order) {
         return [
-            // Fatura Adresi
             {
                 adres1: (order.invoiceAddress || "").trim(),
                 adres2: "",
@@ -326,7 +284,6 @@ class DiaService {
                 vergidairesi: order.invoiceTaxOffice || "",
                 verginumarasi: order.invoiceTaxNumber || ""
             },
-            // Teslimat Adresi
             {
                 adres1: (order.deliveryAddress || "").trim(),
                 adres2: "",
@@ -342,9 +299,6 @@ class DiaService {
         ];
     }
 
-    /**
-     * DIA'da yeni müşteri oluşturur
-     */
     async createCustomerInDia(sessionId, order, customerCode) {
         try {
             logger.info('DIA\'da yeni müşteri oluşturuluyor', {
@@ -353,12 +307,10 @@ class DiaService {
                 platform: order.sourcePlatform
             });
 
-            // Grup kodu belirleme
             const grupKodu = (order.sourcePlatform || 'unknown').toLowerCase() === 'parfumevi' ? 763968 :
                 (order.sourcePlatform || 'unknown').toLowerCase() === 'esans' ? 763966 :
                     (order.sourcePlatform || 'unknown').toLowerCase() === 'trendyol' ? 763964 : 763964;
 
-            // Vergi/TC numarası kontrolü
             let tcKimlikNo = "11111111111";
             let vergiNumarasi = "";
             let kayitTuru = "SHS";
@@ -394,7 +346,6 @@ class DiaService {
                         unvan: order.invoiceCompany && order.invoiceCompany.trim() ?
                             order.invoiceCompany :
                             (order.invoiceName || order.customerName || ""),
-                        // eksayisalalan5 kaldırıldı (DIA hata veriyor)
                         verginumarasi: vergiNumarasi,
                         vergidairesi: order.invoiceTaxOffice || "",
                         tckimlikno: tcKimlikNo,
@@ -413,7 +364,6 @@ class DiaService {
 
             const createResponse = await this.sendRequestAsync('/api/v3/scf/json', createRequest);
 
-            // Müşteri oluşturuldu veya zaten varsa (501 = zaten var, 200 = başarılı)
             if (createResponse?.code === "501" || createResponse?.code === "200") {
                 logger.info('Müşteri oluşturma tamamlandı', {
                     customerCode,
@@ -421,10 +371,8 @@ class DiaService {
                     message: createResponse.msg
                 });
 
-                // Tekrar müşteri bilgisini al
                 let customer = await this.checkDiaCustomer(sessionId, customerCode);
                 if (customer) {
-                    // createResponse.extra.addresskeys varsa ekle
                     try {
                         const addrKeys = createResponse?.extra?.addresskeys || createResponse?.addresskeys;
                         if (Array.isArray(addrKeys) && addrKeys.length > 0) {
@@ -455,9 +403,6 @@ class DiaService {
         }
     }
 
-    /**
-     * DIA customer result'ını local customer objesine çevirir
-     */
     convertToDiaCustomer(result, order, fullCustomerCode) {
         return {
             Key: result._key.toString(),
@@ -482,9 +427,6 @@ class DiaService {
         };
     }
 
-    /**
-     * Müşteri getir veya oluştur
-     */
     async getOrCreateCustomer(order) {
         try {
             logger.info('DIA müşteri işlemi başlatılıyor', {
@@ -500,7 +442,6 @@ class DiaService {
 
             const { fullCode: customerCode } = this.formatCustomerCode(order);
 
-            // Önce müşteriyi sorgula
             let customer = await this.checkDiaCustomer(sessionId, customerCode);
 
             if (customer) {
@@ -512,7 +453,6 @@ class DiaService {
                 logger.info('Müşteri DIA\'da bulunamadı, yeni müşteri oluşturuluyor', {
                     customerCode: customerCode
                 });
-                // Müşteri yoksa oluştur
                 customer = await this.createCustomerInDia(sessionId, order, customerCode);
 
                 if (customer) {
@@ -538,9 +478,6 @@ class DiaService {
         }
     }
 
-    /**
-     * HTTP istek gönderme yardımcı metodu
-     */
     async sendRequestAsync(endpoint, data) {
         try {
             const url = `${this.baseURL}${endpoint}`;
@@ -575,9 +512,6 @@ class DiaService {
         }
     }
 
-    /**
-     * Stok kartı key'ini getirir veya oluşturur
-     */
     async getStockCardKey(stockCode, barcode = null) {
         try {
             logger.info('Stok kartı sorgulanıyor', { stockCode, barcode });
@@ -587,7 +521,6 @@ class DiaService {
                 throw new Error('Session ID alınamadı');
             }
 
-            // Önce barkod ile arama yap
             if (barcode) {
                 const barcodeRequest = {
                     scf_stokkart_listele: {
@@ -624,7 +557,6 @@ class DiaService {
                 }
             }
 
-            // Barkod ile bulunamazsa stok kodu ile ara
             const stockRequest = {
                 scf_stokkart_listele: {
                     session_id: sessionId,
@@ -672,9 +604,6 @@ class DiaService {
         }
     }
 
-    /**
-     * Stok kartı birim key'ini getirir
-     */
     async getStockUnitKey(stockKey) {
         try {
             logger.info('Stok birim key sorgulanıyor', { stockKey });
@@ -721,12 +650,8 @@ class DiaService {
         }
     }
 
-    /**
-     * Sipariş firmasından ürün adına göre stok key'ini sorgular
-     */
     async queryStockKeyByProductName(productName, sessionId) {
         try {
-            // Sipariş KAYIT firması: firma 2 / dönem 2 kullanılacak
             const firmaKoduForOrder = 2;
             const donemKoduForOrder = 2;
 
@@ -766,7 +691,6 @@ class DiaService {
             });
 
             if (response?.code === "200" && response?.result && response.result.length > 0) {
-                // İlk sonucu al (en uygun olan)
                 const firstStock = response.result[0];
 
                 logger.info('Sipariş firmasından stok key bulundu', {
@@ -799,15 +723,11 @@ class DiaService {
         }
     }
 
-    /**
-     * Sipariş kalemlerinin stok bilgilerini hazırlar
-     */
     async prepareStockInfo(items, sessionId = null) {
         const stockInfo = {};
 
         logger.info('Stok bilgileri hazırlanıyor', { itemCount: items.length });
 
-        // MongoDB'den DiaStock koleksiyonunu kullan
         const DiaStock = require('../../../models/plugins/DiaStock');
 
         for (const item of items) {
@@ -828,7 +748,6 @@ class DiaService {
 
             if (productCode && !stockInfo[productCode]) {
                 try {
-                    // 1) ÖNCE: Siparişi kaydedeceğimiz firmadan ürün adına göre stok key sorgula
                     if (productName && sessionId) {
                         const orderFirmStock = await this.queryStockKeyByProductName(productName, sessionId);
 
@@ -847,12 +766,10 @@ class DiaService {
                                 stokkartkodu: orderFirmStock.stokkartkodu
                             });
 
-                            // Sipariş firması sonucu bulunduysa DB fallback'ine gerek yok
                             continue;
                         }
                     }
 
-                    // 2) FALLBACK: DiaStock tablosundan stokkartkodu veya _key ile ara
                     const stockRecord = await DiaStock.findOne({
                         $or: [
                             { stokkartkodu: productCode },
@@ -881,7 +798,6 @@ class DiaService {
                             productName
                         });
 
-                        // Alternatif aramalar (debug için)
                         const anyStock = await DiaStock.findOne({ isActive: true });
                         if (anyStock) {
                             logger.info('Test: DiaStock\'ta aktif kayıt mevcut', {
@@ -915,9 +831,6 @@ class DiaService {
         return stockInfo;
     }
 
-    /**
-     * Decimal değeri formatlar
-     */
     formatDecimal(value) {
         if (!value && value !== 0) return "0.000000";
 
@@ -928,9 +841,6 @@ class DiaService {
         return isNaN(numValue) ? "0.000000" : numValue.toFixed(6);
     }
 
-    /**
-     * Sipariş JSON'unu oluşturur
-     */
     async createOrderJson(order, diaCustomer, sessionId, stockInfo) {
         try {
             logger.info('Sipariş JSON oluşturuluyor', {
@@ -939,7 +849,6 @@ class DiaService {
                 itemCount: order.items.length
             });
 
-            // Sipariş tarihi güvenli hesaplanır (orderDate yoksa createdAt ya da şimdi)
             let orderDateSource = order?.orderDate || order?.createdAt || Date.now();
             let orderDate = new Date(orderDateSource);
             if (isNaN(orderDate.getTime())) {
@@ -948,10 +857,8 @@ class DiaService {
             const orderDateStr = orderDate.toISOString().slice(0, 10);
             const orderTimeStr = orderDate.toTimeString().slice(0, 8);
 
-            // Platform ve ödeme yöntemine göre kodlar
             let finalKod = 0;
             let planId = 0;
-            // DIA gereği 'onay' alanını zorunlu KABUL gönderiyoruz
             const onayDegeri = 'KABUL';
 
             if (order.sourcePlatform === 'parfumevi') finalKod = 578955;
@@ -967,13 +874,10 @@ class DiaService {
                 planId = 579216;
             }
 
-            // Exchange rate
             const exchangeRate = this.formatDecimal(order.exchangeRate || '1');
 
-            // Sipariş kalemleri
             const orderItems = this.createOrderItems(order.items, diaCustomer, order, stockInfo, planId);
 
-            // DIA fisno: AL + 12 haneli zaman damgası (noktalama/kısaltma yok)
             const fisNo = `AL${Date.now().toString().slice(-12)}`;
 
             const diaOrder = {
@@ -987,7 +891,6 @@ class DiaService {
                         _key_scf_odeme_plani: 17522467,
                         _key_scf_satiselemani: 7383794,
                         _key_sis_depo_source: this.siparisDepoKey,
-                        // Döviz keyleri sabit 2026
                         _key_sis_doviz: 2026,
                         _key_sis_doviz_raporlama: 2026,
                         _key_sis_ozelkod1: finalKod,
@@ -1033,7 +936,6 @@ class DiaService {
                 }
             };
 
-            // Alan eşlemesi (mapping) logu - örnek 5 kalem
             try {
                 const mappedItems = orderItems.slice(0, 5).map((kalem, idx) => ({
                     index: idx + 1,
@@ -1101,9 +1003,6 @@ class DiaService {
         }
     }
 
-    /**
-     * Sipariş kalemlerini oluşturur
-     */
     createOrderItems(items, diaCustomer, order, stockInfo, planId) {
         const orderItems = [];
         let siraNo = 1;
@@ -1118,7 +1017,6 @@ class DiaService {
             let orderItem;
 
             if (stockInfo[productCode]) {
-                // Stok bilgisi bulundu, normal kalem oluştur
                 const info = stockInfo[productCode];
                 orderItem = {
                     _key_scf_carikart: diaCustomer.Key,
@@ -1149,7 +1047,6 @@ class DiaService {
 
                 logger.info('Normal kalem oluşturuldu', { productCode, stockKey: info.stockKey, unitKey: info.unitKey });
             } else {
-                // Stok bilgisi bulunamadı, bu kalemi atla
                 logger.warn('Stok bilgisi bulunamadı, kalem atlanıyor', { productCode });
                 continue;
             }
@@ -1165,14 +1062,9 @@ class DiaService {
             });
         }
 
-        // Kargo ücreti eklenmeyecek, sadece stok kalemleri
-
         return orderItems;
     }
 
-    /**
-     * Sipariş gönderme ana metodu
-     */
     async sendOrder(order, diaCustomer) {
         try {
             logger.info('DIA sipariş gönderimi başlatılıyor', {
@@ -1182,7 +1074,6 @@ class DiaService {
                 customerKey: diaCustomer?.Key
             });
 
-            // Yıl kontrolü - 2024 yılı siparişleri gönderilmez
             const orderYear = new Date(order.orderDate).getFullYear();
             if (orderYear === 2024) {
                 logger.info('2024 yılı siparişi DIA\'ya gönderilmeyecek', {
@@ -1196,7 +1087,6 @@ class DiaService {
                 };
             }
 
-            // Önce siparişin DIA'da olup olmadığını kontrol et
             const orderCheck = await this.checkOrderExistsInDia(order.orderNumber);
             if (orderCheck.exists) {
                 logger.info('Sipariş zaten DIA\'da mevcut', {
@@ -1210,20 +1100,17 @@ class DiaService {
                 };
             }
 
-            // Session kontrolü
             const sessionId = await this.ensureValidSessionAsync();
             if (!sessionId) {
                 throw new Error('Session ID alınamadı');
             }
 
-            // Stok bilgilerini hazırla (sessionId ile birlikte)
             const stockInfo = await this.prepareStockInfo(order.items, sessionId);
             logger.info('Stok bilgileri hazırlandı', {
                 orderCode: order.orderNumber,
                 stockCount: Object.keys(stockInfo).length
             });
 
-            // Müşteri kontrolü
             if (!diaCustomer) {
                 logger.error('DIA müşteri bilgisi bulunamadı', {
                     orderId: order._id
@@ -1231,14 +1118,12 @@ class DiaService {
                 throw new Error('Müşteri bilgisi bulunamadı');
             }
 
-            // Sipariş JSON'unu oluştur
             const orderJson = await this.createOrderJson(order, diaCustomer, sessionId, stockInfo);
 
             logger.info('Sipariş JSON\'u oluşturuldu, DIA\'ya gönderiliyor', {
                 orderCode: order.orderNumber
             });
 
-            // DIA'ya gönder
             const response = await this.sendRequestAsync('/api/v3/scf/json', orderJson);
 
             logger.info('DIA sipariş yanıtı alındı', {
@@ -1260,12 +1145,10 @@ class DiaService {
         }
     }
 }
-// Export edilecek ana fonksiyon
 async function syncOrderToDia(order) {
     try {
         const diaService = new DiaService();
 
-        // DIA konfigürasyonu kontrol et
         if (!diaService.baseURL) {
             logger.warn('DIA_BASE_URL ayarlanmamış, DIA senkronizasyonu atlanıyor');
             return { skipped: true, message: 'DIA_BASE_URL not configured' };
@@ -1276,7 +1159,6 @@ async function syncOrderToDia(order) {
             customerId: order.customerId
         });
 
-        // 1) Kullanıcıda diaKey varsa kullan; 2) yoksa oluştur ve kullanıcıya kaydet
         const User = require('../../../models/User');
         let diaCustomer;
         let userDoc = null;
@@ -1326,7 +1208,6 @@ async function syncOrderToDia(order) {
             }
         }
 
-        // Siparişi gönder
         const result = await diaService.sendOrder(order, diaCustomer);
 
         if (result?.code === "200") {

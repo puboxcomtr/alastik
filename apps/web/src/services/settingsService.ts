@@ -1,4 +1,3 @@
-// apps/web/src/services/settingsService.ts
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 
 export interface ShowcaseSettings {
@@ -28,10 +27,6 @@ export interface ServicePoint {
     phone: string;
 }
 
-/**
- * Servis noktaları — hizmet ürünlerinin kartlarında gösterilen iletişim bilgileri.
- * Site ayarlarından (Tanımlar > Servis Noktaları) okunur.
- */
 export async function getServicePoints(): Promise<ServicePoint[]> {
     try {
         const response = await fetch(API_ENDPOINTS.definition.get(), {

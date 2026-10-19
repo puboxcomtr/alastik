@@ -1,16 +1,7 @@
-/**
- * Üye/cari sıra numarası (WebMember.memberNo) — admin detay adresinde
- * /apps/user/view/<memberNo> olarak kullanılır. Numaralar SİTE BAZLIDIR
- * (her site 1'den başlar) ve `counters` koleksiyonundaki atomik sayaçtan alınır.
- */
 const mongoose = require('mongoose');
 
 const counterId = (site) => `memberNo:${site}`;
 
-/**
- * Sayaçtan `count` adet ardışık numara ayırır, ilkini döner.
- * Sayaç ilk kez oluşuyorsa mevcut en büyük memberNo'dan başlar (çakışma olmaz).
- */
 async function reserveMemberNos(site, count = 1) {
     const counters = mongoose.connection.db.collection('counters');
     const exists = await counters.findOne({ _id: counterId(site) }, { projection: { _id: 1 } });
@@ -29,22 +20,15 @@ async function reserveMemberNos(site, count = 1) {
         { $inc: { seq: count } },
         { returnDocument: 'after' }
     );
-    const doc = res && res.value !== undefined ? res.value : res; // sürücü sürümüne göre
+    const doc = res && res.value !== undefined ? res.value : res;
     return doc.seq - count + 1;
 }
 
-/**
- * Numarası olmayan üyelere kayıt sırasıyla (createdAt, _id) numara verir.
- * Toplu içe aktarma (upsert) gibi save hook'u çalışmayan yollarla gelenleri kapsar.
- * Eşzamanlı çağrıda çift numara oluşmaz (yalnız numarasızlar güncellenir; en kötü boşluk kalır).
- */
 async function assignMissingMemberNos(site) {
     const WebMember = mongoose.model('WebMember');
     const exists = await WebMember.exists({ site, memberNo: { $exists: false } });
     if (!exists) return 0;
 
-    // Eşzamanlı istekler (liste sayfası aynı anda birden çok çağrı yapar) aynı üyeler için
-    // ayrı numara blokları ayırıp boşluk bırakmasın: DB kilidi — kilit doluysa bu çağrı atlar.
     const counters = mongoose.connection.db.collection('counters');
     const lockId = `memberNoLock:${site}`;
     const now = Date.now();
@@ -55,7 +39,7 @@ async function assignMissingMemberNos(site) {
             { upsert: true }
         );
     } catch (e) {
-        if (e.code === 11000) return 0; // başka bir istek numaralıyor
+        if (e.code === 11000) return 0;
         throw e;
     }
     try {

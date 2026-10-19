@@ -4,10 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import classnames from 'classnames'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Divider from '@mui/material/Divider'
@@ -20,7 +18,6 @@ import Chip from '@mui/material/Chip'
 
 import { toast } from 'react-toastify'
 
-// Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
     createColumnHelper,
@@ -36,7 +33,6 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -76,21 +72,18 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     return itemRank.passed
 }
 
-// Ödeme durumu rengi (sadece pending/failed için)
 const getPaymentStatusColor = (status: string): 'default' | 'error' | 'warning' => {
     if (status === 'failed') return 'error'
     if (status === 'pending') return 'warning'
     return 'default'
 }
 
-// Ödeme durumu etiketi
 const getPaymentStatusLabel = (status: string): string => {
     if (status === 'failed') return 'Başarısız'
     if (status === 'pending') return 'Bekliyor'
     return status
 }
 
-// Fiyat formatla
 const formatPrice = (price: number) => {
     return new Intl.NumberFormat('tr-TR', {
         minimumFractionDigits: 2,
@@ -98,7 +91,6 @@ const formatPrice = (price: number) => {
     }).format(price) + ' TL'
 }
 
-// Tarih formatla
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('tr-TR', {
         day: '2-digit',
@@ -117,7 +109,6 @@ const DraftOrderListTable = () => {
     const [data, setData] = useState<OrderType[]>([])
     const [loading, setLoading] = useState(true)
 
-    // Pagination state
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(20)
     const [totalCount, setTotalCount] = useState(0)
@@ -128,9 +119,7 @@ const DraftOrderListTable = () => {
             const params = new URLSearchParams()
             params.set('page', String(currentPage))
             params.set('limit', String(currentLimit))
-            // Taslak siparişler: ödemesi başarısız veya bekleyen
             params.set('paymentStatus', 'failed,pending')
-            // Vadeli Cari Sipariş taslak sayılmaz (API bu işaretle listeden çıkarır)
             params.set('draft', '1')
 
             const url = `${API_ENDPOINTS.orders.list()}?${params.toString()}`

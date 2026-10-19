@@ -4,7 +4,6 @@ const Menu = require('../../../models/admin/design/Menu');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const Page = require('../../../models/admin/content/Page');
 
-// Kategorileri getir (dropdown için)
 router.get('/options/categories', async (req, res) => {
     try {
         const { level } = req.query;
@@ -42,7 +41,6 @@ router.get('/options/categories', async (req, res) => {
     }
 });
 
-// Sayfaları getir (dropdown için)
 router.get('/options/pages', async (req, res) => {
     try {
         const pages = await Page.find({ status: 'published', site: req.site })
@@ -63,7 +61,6 @@ router.get('/options/pages', async (req, res) => {
         });
     }
 });
-// Blog yazılarını getir (dropdown için)
 router.get('/options/blogs', async (req, res) => {
     try {
         const WebBlog = require('../../../models/web/content/WebBlog');
@@ -85,7 +82,6 @@ router.get('/options/blogs', async (req, res) => {
         });
     }
 });
-// Ürünleri ara (dropdown için — katalog büyük olduğundan sunucuda aranır)
 router.get('/options/brands', async (req, res) => {
     try {
         const WebBrand = require('../../../models/web/catalog/WebBrand');
@@ -106,8 +102,6 @@ router.get('/options/brands', async (req, res) => {
             .limit(50)
             .lean();
 
-        // DIA'daki düzgün yazımlı ad tercih edilir; yoksa büyük harfli ad başlık biçimine çevrilir
-        // Marka adları çoğunlukla yabancı; Türkçe küçültme kuralı (I -> ı) uygulanmaz
         const baslikBicimi = (metin) => String(metin || '')
             .replace(/İ/g, 'i')
             .toLowerCase()
@@ -201,11 +195,9 @@ router.get('/options/products', async (req, res) => {
         });
     }
 });
-// Ana menüleri getir (alt menü eklerken kullanılacak)
 router.get('/options/parent-menus', async (req, res) => {
     try {
         const { displayArea } = req.query;
-        // Üst menü seçenekleri: menü grupları (1) ve üst bar öğeleri (2) — açılır öğe (3) üst olamaz
         const filter = {
             site: req.site,
             rowLevel: { $in: [1, 2] },
@@ -234,7 +226,6 @@ router.get('/options/parent-menus', async (req, res) => {
         });
     }
 });
-// Menüleri Listele
 router.get('/', async (req, res) => {
     try {
         const { displayArea, rowLevel, isActive } = req.query;
@@ -249,15 +240,12 @@ router.get('/', async (req, res) => {
             .sort({ order: 1, createdAt: 1 })
             .lean();
 
-        // Model import'larını ekleyin (dosyanın en üstünde olmalı)
         const WebCategory = require('../../../models/web/catalog/WebCategory');
         const Page = require('../../../models/admin/content/Page');
 
-        // Her menü için kategori ve sayfa bilgilerini ekle
         const enrichedMenus = await Promise.all(menus.map(async (menu) => {
             const enriched = { ...menu };
 
-            // Kategori menüsü ise
             if (menu.menuType === 'category' && menu.linkData?.categoryId) {
                 try {
                     const category = await WebCategory.findById(menu.linkData.categoryId)
@@ -276,7 +264,6 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            // Blog kategori menüsü ise
             if (menu.menuType === 'blogCategory' && menu.linkData?.blogCategoryId) {
                 try {
                     const BlogCategory = require('../../../models/admin/content/BlogCategory');
@@ -290,7 +277,6 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            // Ürün menüsü ise
             if (menu.menuType === 'product' && menu.linkData?.productId) {
                 try {
                     const WebProduct = require('../../../models/web/catalog/WebProduct');
@@ -310,7 +296,6 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            // Marka menüsü ise
             if (menu.menuType === 'brand' && menu.linkData?.brandId) {
                 try {
                     const WebBrand = require('../../../models/web/catalog/WebBrand');
@@ -324,7 +309,6 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            // Etiket menüsü ise
             if (menu.menuType === 'tag' && menu.linkData?.tagId) {
                 try {
                     const WebTag = require('../../../models/web/catalog/WebTag');
@@ -338,7 +322,6 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            // Blog menüsü ise
             if (menu.menuType === 'blog' && menu.linkData?.blogId) {
                 try {
                     const WebBlog = require('../../../models/web/content/WebBlog');
@@ -358,7 +341,6 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            // Sayfa menüsü ise
             if (menu.menuType === 'page' && menu.linkData?.pageId) {
                 try {
                     const page = await Page.findById(menu.linkData.pageId)
@@ -380,7 +362,6 @@ router.get('/', async (req, res) => {
             return enriched;
         }));
 
-        // Hiyerarşik yapı oluştur (enrichedMenus kullan)
         const menuTree = [];
         const menuMap = {};
 
@@ -413,7 +394,6 @@ router.get('/', async (req, res) => {
         });
     }
 });
-// Tek menü getir
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -428,7 +408,6 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Hedefin adını da döndür: düzenleme formunda seçili öğe görünsün
         try {
             if (menu.menuType === 'category' && menu.linkData?.categoryId) {
                 const c = await WebCategory.findById(menu.linkData.categoryId).select('name seoUrl').lean();
@@ -481,12 +460,10 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Yeni menü oluştur
 router.post('/', async (req, res) => {
     try {
         const { name, menuType, linkData, openNewTab, displayArea, rowLevel, parentId, order, isActive, icon } = req.body;
 
-        // Validasyon
         if (!name || !name.trim()) {
             return res.status(400).json({
                 success: false,
@@ -494,7 +471,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // 'heading' eklendi
         if (!menuType || !['link', 'category', 'blogCategory', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
@@ -516,7 +492,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // linkData validasyonu
         if (menuType === 'link' && (!linkData.url || !linkData.url.trim())) {
             return res.status(400).json({
                 success: false,
@@ -558,7 +533,6 @@ router.post('/', async (req, res) => {
                 message: 'Sayfa seçimi zorunludur'
             });
         }
-        // Seviye üst menüden türetilir: üst öğe seçildiyse onun bir altı olur (en fazla 3)
         let finalRowLevel = rowLevel || 1;
         let finalParentId = null;
         if (parentId) {
@@ -605,7 +579,6 @@ router.post('/', async (req, res) => {
         });
     }
 });
-// Menü güncelle
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -619,7 +592,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // Validasyonlar
         if (!name || !name.trim()) {
             return res.status(400).json({
                 success: false,
@@ -627,7 +599,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // 'heading' eklendi
         if (!menuType || !['link', 'category', 'blogCategory', 'page', 'blog', 'product', 'tag', 'brand', 'heading'].includes(menuType)) {
             return res.status(400).json({
                 success: false,
@@ -642,7 +613,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        // linkData validasyonu
         if (menuType === 'link' && (!linkData.url || !linkData.url.trim())) {
             return res.status(400).json({
                 success: false,
@@ -691,7 +661,6 @@ router.put('/:id', async (req, res) => {
         menu.openNewTab = openNewTab;
         menu.displayArea = displayArea;
         if (icon !== undefined) menu.icon = typeof icon === 'string' ? icon.trim() : '';
-        // Seviye üst menüden türetilir; parentId gönderilmediyse mevcut hiyerarşi korunur
         if (parentId) {
             const parentMenu = await Menu.findOne({ _id: parentId, site: req.site });
             if (!parentMenu) {
@@ -725,11 +694,6 @@ router.put('/:id', async (req, res) => {
         });
     }
 });
-// Menü sil
-/**
- * Sıralamayı toplu günceller (sürükle-bırak sonrası).
- * Gövde: { items: [{ id, order }] }
- */
 router.patch('/order', async (req, res) => {
     try {
         const { items } = req.body;
@@ -760,7 +724,6 @@ router.patch('/order', async (req, res) => {
     }
 });
 
-// Menü grubunu (görüntüleme alanı) topluca sil — sitede kullanılıyorsa engellenir
 router.delete('/area/:area', async (req, res) => {
     try {
         const { area } = req.params;
@@ -780,7 +743,6 @@ router.delete('/area/:area', async (req, res) => {
             });
         }
 
-        // Aktif öğesi olan menü sitede kullanılıyor demektir — silinemez
         const activeCount = await Menu.countDocuments({ site: req.site, displayArea: area, isActive: true });
         if (activeCount > 0) {
             return res.status(400).json({
@@ -817,7 +779,6 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
-        // Eğer ana menü ise, alt menüleri kontrol et
         if (menu.rowLevel === 1) {
             const childCount = await Menu.countDocuments({ parentId: id, site: req.site });
             if (childCount > 0) {

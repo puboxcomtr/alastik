@@ -7,19 +7,6 @@ import { HERO_COLORS, HERO_CONFIG } from './hero-config';
 import { clamp01, introAlpha, lerp } from './hero-easing';
 import type { HeroMotionState } from './useHeroMotion';
 
-/**
- * The thin rings around the tire.
- *
- * Each ring is a real object in the scene rather than a 2D overlay, so the
- * tire genuinely occludes the half that passes behind it — that is what sells
- * the depth. They are drawn as very thin toruses (a line primitive would
- * ignore `linewidth` on most platforms) with depth writing off so they never
- * clip against each other.
- *
- * Every ring gets its own radius, tilt, direction and period from the config;
- * nothing here is uniform.
- */
-
 type OrbitRingsProps = {
   ringCount: number;
   motionRef: RefObject<HeroMotionState>;
@@ -44,7 +31,6 @@ function OrbitRings({ ringCount, motionRef, prefersReducedMotion, startedAt }: O
       const material = materialRefs.current[index];
 
       if (group && !prefersReducedMotion) {
-        // Alternate direction so the set never reads as one rigid cage.
         const direction = index % 2 === 0 ? 1 : -1;
         group.rotation.y = ((elapsed / ring.seconds) * Math.PI * 2 * direction) % (Math.PI * 2);
       }
@@ -58,8 +44,6 @@ function OrbitRings({ ringCount, motionRef, prefersReducedMotion, startedAt }: O
         ? 1
         : clamp01(introAlpha(elapsed, orbitsIn.at + index * orbitsIn.stagger, orbitsIn.duration));
 
-      // Fade back as the hero leaves so the section below is not competing
-      // with a ring cage behind it.
       const scrollFade = lerp(1, HERO_CONFIG.scroll.orbitOpacityTo, scrollProgress);
 
       material.opacity = ring.opacity * revealed * scrollFade;

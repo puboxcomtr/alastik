@@ -50,7 +50,6 @@ const LabelFilters = ({ filters, onChange, totalCount }: Props) => {
         loadFilterOptions()
     }, [])
 
-    // Search debounce
     useEffect(() => {
         const timeout = setTimeout(() => {
             if (searchValue !== filters.search) {
@@ -60,7 +59,6 @@ const LabelFilters = ({ filters, onChange, totalCount }: Props) => {
         return () => clearTimeout(timeout)
     }, [searchValue])
 
-    // Filtre dışından search değişirse (reset gibi)
     useEffect(() => {
         setSearchValue(filters.search)
     }, [filters.search])
@@ -79,7 +77,6 @@ const LabelFilters = ({ filters, onChange, totalCount }: Props) => {
     const handleChange = (key: keyof TagFilters, value: string) => {
         const updated = { ...filters, [key]: value }
 
-        // Tip değişirse lastik filtrelerini sıfırla
         if (key === 'type' && value !== 'tire_size') {
             updated.width = ''
             updated.profile = ''
@@ -107,7 +104,6 @@ const LabelFilters = ({ filters, onChange, totalCount }: Props) => {
 
     return (
         <div className='flex flex-col gap-4 p-5'>
-            {/* Üst satır: Arama + Genel filtreler */}
             <div className='flex flex-wrap items-center gap-4'>
                 <TextField
                     value={searchValue}
@@ -166,7 +162,6 @@ const LabelFilters = ({ filters, onChange, totalCount }: Props) => {
                     </Button>
                 )}
             </div>
-            {/* Lastik filtreleri */}
             <Collapse in={isTireSize}>
                 <Divider className='mb-2' />
                 <div className='flex flex-wrap items-center gap-4 pt-2'>

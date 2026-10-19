@@ -1,4 +1,3 @@
-// apps/web/src/components/tag/Header/Breadcrumb.tsx
 'use client';
 
 import Link from 'next/link';

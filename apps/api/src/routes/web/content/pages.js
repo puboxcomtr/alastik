@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebPage = require('../../../models/web/content/WebPage');
 
-// Slug'a göre sayfa detay
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-// MUI Imports
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -19,20 +18,16 @@ import FormHelperText from '@mui/material/FormHelperText'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
 
-// Toast
 import { toast } from 'react-toastify'
 
-// API
 import { fetchAPI } from '@libs/api'
 
-// Types
 import type {
     PaymentMethod,
     PaymentMethodFormData,
     PaymentMethodResponse
 } from '@/types/apps/paymentTypes'
 
-// Constants
 import {
     PAYMENT_MODES,
     API_ENDPOINTS,
@@ -55,9 +50,7 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
         apiCredentials: {},
         mode: 'test'
     })
-    // Sağlayıcı şablonu (requiredFields) — kayıtta eksik alanlar da düzenlenebilsin diye
     const [providers, setProviders] = useState<Record<string, Record<string, { requiredFields?: { key: string; label: string; type?: string; help?: string }[] }>> | null>(null)
-    // Kredi kartı: bu yöntem Tek Çekim / Taksitli için mi (site başına maks 1)
     const [tekCekim, setTekCekim] = useState(false)
     const [taksit, setTaksit] = useState(false)
 
@@ -157,10 +150,8 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
             }
         } catch (error) {
             console.error('API hatası:', error)
-            // fetchAPI 400'de backend mesajıyla throw eder (ör. "Tek Çekim zaten … aktif").
             const msg = error instanceof Error && error.message ? error.message : TOAST_MESSAGES.CONNECTION_ERROR
             toast.error(msg)
-            // Kaydedilmeyen rol switch'lerini DB değerine geri al.
             if (method) {
                 setTekCekim(method.creditCardSettings?.tekCekimAktif === true)
                 setTaksit(method.creditCardSettings?.taksitAktif === true)
@@ -176,16 +167,13 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
 
     if (!method) return null
 
-    // Tip mapping
     const typeLabels = {
         credit_card: 'Kredi Kartı',
         bank_transfer: 'Banka Havalesi'
     }
     const getProviderFields = () => {
-        // Anahtar → görünen ad (şablon yoksa kullanılır)
         const humanize = (key: string) => key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
 
-        // Sağlayıcı şablonundaki tüm alanlar (kayıtta değeri olmasa da gösterilir)
         const template = providers?.[method!.type]?.[method!.provider]?.requiredFields || []
         const fields = template.map(f => ({
             key: f.key,
@@ -194,7 +182,6 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
             help: f.help
         }))
 
-        // Kayıtta olup şablonda olmayan eski anahtarlar da gizlenmesin
         const known = new Set(fields.map(f => f.key))
         Object.keys(formData.apiCredentials).forEach(key => {
             if (!known.has(key)) {
@@ -239,7 +226,6 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                     }}
                     className='flex flex-col gap-5'
                 >
-                    {/* Ödeme Yöntemi Adı */}
                     <TextField
                         fullWidth
                         label='Ödeme Yöntemi Adı'
@@ -250,7 +236,6 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                         required
                     />
 
-                    {/* Açıklama */}
                     <TextField
                         fullWidth
                         multiline
@@ -262,7 +247,6 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                         disabled={isLoading}
                     />
 
-                    {/* Öncelik */}
                     <TextField
                         fullWidth
                         type='number'
@@ -274,7 +258,6 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                         helperText='Düşük sayı = Önce görünür'
                     />
 
-                    {/* Kredi Kartı Modu */}
                     {method.type === 'credit_card' && (
                         <FormControl fullWidth>
                             <InputLabel>Mod</InputLabel>
@@ -314,7 +297,6 @@ const EditPaymentMethodDrawer = ({ open, handleClose, onSuccess, method }: Props
                         <Chip label='API / Hesap Bilgileri' size='small' />
                     </Divider>
 
-                    {/* Dinamik Field'lar */}
                     {getProviderFields().map(field => (
                         <TextField
                             key={field.key}

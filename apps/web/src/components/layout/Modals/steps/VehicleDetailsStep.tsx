@@ -29,7 +29,6 @@ export default function VehicleDetailsStep({
     const [mileage, setMileage] = useState('');
     const [isPrimary, setIsPrimary] = useState(false);
 
-    // Mevcut varsayılan araç var mı?
     const existingPrimary = vehicles.find(v => v.isPrimary);
 
     const handlePrimaryChange = (checked: boolean) => {
@@ -54,14 +53,12 @@ export default function VehicleDetailsStep({
     return (
         <div className="vehicle-details-step">
             <div className="row">
-                {/* Sol: Araç Bilgisi */}
                 <div className="col-md-4">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Araç Bilgisi
                     </Typography>
                     <Divider />
 
-                    {/* Araç Görseli */}
                     <div className="text-center py-3">
                         {vehicleImage ? (
                             <img
@@ -75,7 +72,6 @@ export default function VehicleDetailsStep({
                         )}
                     </div>
 
-                    {/* Araç Detayları */}
                     <div className="small">
                         <div className="d-flex justify-content-between py-1">
                             <span className="text-muted">Araç:</span>
@@ -92,7 +88,6 @@ export default function VehicleDetailsStep({
                     </div>
                 </div>
 
-                {/* Sağ: Form */}
                 <div className="col-md-8">
                     <Typography variant="h6" sx={{ py: 1.5, color: 'black' }}>
                         Ek Bilgiler

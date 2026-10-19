@@ -1,11 +1,9 @@
-// apps/api/src/routes/web/user/vehicles.js
 const express = require('express');
 const router = express.Router();
 const WebVehicle = require('../../../models/web/user/WebVehicle');
 const WheelSizeService = require('../../../services/plugins/wheelsize/WheelSizeService');
 const authMiddleware = require('../../../middleware/authMiddleware');
 
-// Kullanıcının tüm araçlarını getir
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const vehicles = await WebVehicle.find({
@@ -26,7 +24,6 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-// Tek araç detayı
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const vehicle = await WebVehicle.findOne({
@@ -55,7 +52,6 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// Yeni araç ekle
 router.post('/', authMiddleware, async (req, res) => {
     try {
         console.log('[POST /vehicles] User:', req.user._id);
@@ -63,7 +59,6 @@ router.post('/', authMiddleware, async (req, res) => {
 
         const { wheelSizeData, userInputs, isPrimary } = req.body;
 
-        // Validasyon
         if (!wheelSizeData || !wheelSizeData.make || !wheelSizeData.model || !wheelSizeData.year) {
             return res.status(400).json({
                 success: false,
@@ -71,7 +66,6 @@ router.post('/', authMiddleware, async (req, res) => {
             });
         }
 
-        // Wheel Size API'den araç detaylarını al
         let compatibleSizes = null;
         let vehicleImage = null;
 
@@ -88,7 +82,6 @@ router.post('/', authMiddleware, async (req, res) => {
 
                 console.log('[API Response]:', details);
 
-                // Lastik ve jant ölçülerini formatla
                 if (details && details.length > 0) {
                     const vehicleData = details[0];
 
@@ -111,7 +104,6 @@ router.post('/', authMiddleware, async (req, res) => {
                     };
                 }
 
-                // Araç görseli için generation'dan çek
                 try {
                     const generationImage = await WheelSizeService.getGenerationImage(
                         wheelSizeData.make,
@@ -135,7 +127,6 @@ router.post('/', authMiddleware, async (req, res) => {
             }
         }
 
-        // Varsayılan görsel
         if (!vehicleImage) {
             vehicleImage = {
                 url: 'https://via.placeholder.com/400x200/007bff/ffffff?text=' +
@@ -174,7 +165,6 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 });
 
-// Araç güncelle
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { userInputs, isPrimary } = req.body;
@@ -216,7 +206,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// Araç sil
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const vehicle = await WebVehicle.findOne({
@@ -248,7 +237,6 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// Varsayılan araç yap
 router.patch('/:id/set-primary', authMiddleware, async (req, res) => {
     try {
         const vehicle = await WebVehicle.findOne({

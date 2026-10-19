@@ -1,5 +1,4 @@
 "use client";
-// Bayi sitesinde sağ tık menüsü kapalıdır (giriş ekranı dahil tüm sayfalar).
 import { useEffect } from "react";
 
 export function DisableContextMenu() {

@@ -6,21 +6,16 @@ const { authenticateAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Dashboard istatistikleri
 router.get('/stats', authenticateAdmin, async (req, res) => {
   try {
-    // Toplam ürün sayısı
     const totalProducts = await Product.countDocuments();
 
-    // Toplam kategori sayısı
     const totalCategories = await Category.countDocuments();
 
-    // Düşük stok ürün sayısı
     const lowStockProducts = await Inventory.countDocuments({
       $expr: { $lte: ['$quantity', '$minStock'] }
     });
 
-    // Toplam stok değeri
     const inventoryValue = await Inventory.aggregate([
       {
         $lookup: {
@@ -43,7 +38,6 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
       }
     ]);
 
-    // Son 30 günlük stok hareketleri
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -65,7 +59,6 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
       }
     ]);
 
-    // Kategori bazında ürün dağılımı
     const categoryDistribution = await Product.aggregate([
       {
         $group: {
@@ -117,7 +110,6 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Son satışlar (stok çıkışları)
 router.get('/recent-sales', authenticateAdmin, async (req, res) => {
   try {
     const { limit = 10 } = req.query;
@@ -176,7 +168,6 @@ router.get('/recent-sales', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Düşük stok uyarıları
 router.get('/low-stock-alerts', authenticateAdmin, async (req, res) => {
   try {
     const lowStockAlerts = await Inventory.find({
@@ -200,7 +191,6 @@ router.get('/low-stock-alerts', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Stok hareket grafiği verileri
 router.get('/stock-movements', authenticateAdmin, async (req, res) => {
   try {
     const { days = 30 } = req.query;

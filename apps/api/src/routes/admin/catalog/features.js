@@ -2,10 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebFeature = require('../../../models/web/catalog/WebFeature');
 
-/**
- * Özellik Listeleme
- * GET /api/features
- */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -14,11 +10,9 @@ router.get('/', async (req, res) => {
             displayLocation
         } = req.query;
 
-        // Seçili sitede yayınlanmış ürünü olmayan özellik/değer listelenmez
         const siteCountField = `siteSettings.${req.site}.productCount`;
         const filter = { [siteCountField]: { $gt: 0 } };
 
-        // Arama
         if (search) {
             filter.$or = [
                 { featureName: { $regex: search, $options: 'i' } },
@@ -26,7 +20,6 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Etkin değerler: site ayarı varsa o, yoksa ortak (kök) değer
         const sitePrefix = `$siteSettings.${req.site}`;
         const effectiveFields = {
             effIsActive: { $ifNull: [`${sitePrefix}.isActive`, '$isActive'] },
@@ -42,7 +35,6 @@ router.get('/', async (req, res) => {
             effectiveMatch.effDisplayLocation = displayLocation;
         }
 
-        // Aggregate ile group by featureName
         const features = await WebFeature.aggregate([
             { $match: filter },
             { $addFields: effectiveFields },
@@ -60,8 +52,8 @@ router.get('/', async (req, res) => {
             },
             {
                 $sort: {
-                    featureGroupOrder: 1,  // Önce önceliğe göre
-                    _id: 1                  // Sonra alfabetik
+                    featureGroupOrder: 1,
+                    _id: 1
                 }
             }
         ]);
@@ -94,10 +86,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * Özellik Detayı (tüm değerleri ile)
- * GET /api/features/:name
- */
 router.get('/:name', async (req, res) => {
     try {
         const featureName = decodeURIComponent(req.params.name);
@@ -114,7 +102,6 @@ router.get('/:name', async (req, res) => {
             });
         }
 
-        // Site ayarı varsa etkin değer olarak yansıt, yoksa ortak değer
         const values = features
             .map(f => {
                 const siteConf = f.siteSettings?.[req.site] || {};
@@ -147,22 +134,16 @@ router.get('/:name', async (req, res) => {
     }
 });
 
-/**
- * Özellik Grubu Güncelleme (tüm değerleri için ortak ayarlar)
- * PUT /api/features/:name
- */
 router.put('/:name', async (req, res) => {
     try {
         const featureName = decodeURIComponent(req.params.name);
         const { displayLocation, featureGroupOrder, isActive } = req.body;
 
-        // Ayarlar seçili siteye yazılır; ortak (kök) değerler diğer site için korunur
         const updateData = {};
         if (displayLocation !== undefined) updateData[`siteSettings.${req.site}.displayLocation`] = displayLocation;
         if (featureGroupOrder !== undefined) updateData[`siteSettings.${req.site}.featureGroupOrder`] = featureGroupOrder;
         if (isActive !== undefined) updateData[`siteSettings.${req.site}.isActive`] = isActive;
 
-        // Tüm değerleri güncelle
         const result = await WebFeature.updateMany(
             { featureName },
             { $set: updateData }
@@ -191,10 +172,6 @@ router.put('/:name', async (req, res) => {
     }
 });
 
-/**
- * Tek Değer Güncelleme
- * PUT /api/features/:name/value/:valueId
- */
 router.put('/:name/value/:valueId', async (req, res) => {
     try {
         const { featureValueOrder } = req.body;

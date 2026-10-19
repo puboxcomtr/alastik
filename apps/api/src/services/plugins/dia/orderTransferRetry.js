@@ -1,35 +1,15 @@
-/**
- * DIA sipariş aktarımı otomatik tekrar denemesi — API sürecinde node-cron ile çalışır (interCompanyRetry kalıbı).
- * Sipariş anında DIA geç cevap verir (zaman aşımı) ya da oturum düşerse aktarım "başarısız"/"beklemede" kalır ve
- * sipariş gözden kaçar. Bu zamanlayıcı DIA'da olması gereken siparişleri (kartla ödenmiş; b2b'de ayrıca Cari/Havale) tarar:
- *  - Önce DIA'da fiş numarasıyla aranır (iki kez, ayrı oturumla — DIA zaman zaman boş liste döner). Varsa kayıt
- *    düzeltilir; zaman aşımında DIA siparişi yine de kaydetmiş olabilir, körlemesine göndermek mükerrer açar.
- *  - Yoksa syncOrderToDia ile yeniden gönderilir (o da göndermeden önce ayrıca kontrol eder).
- *  - RETRY_WINDOW_MS içinde aktarılamayan ya da kalıcı hata (ör. kart eşleşmedi) alan sipariş için sitenin
- *    sipariş yönetici adresine (panel: site ayarları → sipariş maili) tek seferlik uyarı maili gider.
- * PM2 cluster'da yalnız 0 numaralı örnek çalıştırır; DIA_TRANSFER_RETRY=false ile kapatılır.
- */
 const cron = require('node-cron');
 const WebOrder = require('../../../models/web/order/WebOrder');
 const { SITES } = require('../../../config/sites');
 
 const TIMEZONE = 'Europe/Istanbul';
-// Her 5 dakikada bir tarama
 const SCAN_CRON = '*/5 * * * *';
-// Sipariş (ödemeli siparişte ödeme) bu süreden yeni ise ilk aktarım sürüyor olabilir — dokunulmaz
 const FIRST_RETRY_DELAY_MS = 3 * 60 * 1000;
-// Bu süre boyunca tekrar denenir; sonra uyarı maili gönderilir
 const RETRY_WINDOW_MS = 60 * 60 * 1000;
-// Bu süreden eski siparişlere bakılmaz (geçmişteki kayıtlar muhasebece elle işlenmiş olabilir)
 const SCAN_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
-// Tekrar denemeyle düzelmeyen hatalar (veri sorunu): denenmez, hemen uyarılır
 const PERMANENT_ERROR_PATTERNS = ['eşleştirilemedi'];
-// Fiş numarası aramasının ikinci denemesinden önceki bekleme
 const EXISTS_RECHECK_DELAY_MS = 2000;
-// Ödeme alınınca bile DIA'ya ELLE aktarılan yöntemler (havale, kapıda ödeme) — sitenin
-// diaTransferUnpaidPaymentMethods listesinde (b2b) değillerse otomatik aktarılmaz
 const MANUAL_TRANSFER_PAYMENT_METHODS = ['bank_transfer', 'cash_on_delivery'];
-// Bekleme durumundaki siparişler (iptal, iade, ödeme yok) — DIA'da olmaları beklenmez
 const EXCLUDED_ORDER_STATUSES = ['cancelled', 'returned', 'payment_failed', 'awaiting_payment'];
 
 const isPrimaryInstance = () => !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
@@ -37,7 +17,6 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 let running = false;
 
-/** DIA'da olması gereken siparişler: ödenmiş ya da sitenin ödeme beklemeden aktardığı yöntemle verilmiş */
 function eligibilityFilter() {
     const unpaidRules = Object.values(SITES)
         .filter(s => Array.isArray(s.diaTransferUnpaidPaymentMethods) && s.diaTransferUnpaidPaymentMethods.length)
@@ -49,7 +28,6 @@ const lastError = order => String((order.diaIntegration?.syncErrors || []).slice
 const isPermanentError = order => PERMANENT_ERROR_PATTERNS.some(p => lastError(order).includes(p));
 const referenceTime = order => new Date(order.payment?.paidAt || order.createdAt).getTime();
 
-/** Fiş numarasıyla DIA'da arar; boş dönerse yeni oturumla bir kez daha bakar. Bulunursa DIA anahtarı döner. */
 async function findInDia(order) {
     const { DiaOrderService } = require('./DiaOrderService');
     const run = async () => {
@@ -77,7 +55,6 @@ async function markSynced(order, diaKey) {
     });
 }
 
-/** Sitenin sipariş yönetici adresine aktarılamayan siparişlerin listesini gönderir */
 async function sendAlert(site, orders) {
     const { getAdminMailAddress } = require('../mail/mailOrchestrator');
     const { sendMail } = require('../../web/mail/MailService');

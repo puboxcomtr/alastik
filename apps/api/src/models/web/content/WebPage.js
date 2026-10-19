@@ -1,9 +1,7 @@
-// apps/api/src/models/web/content/WebPage.js
 const mongoose = require('mongoose');
 const { SITE_SLUGS } = require('../../../config/sites');
 
 const pageSchema = new mongoose.Schema({
-    // Site (tenant) — admin Page modeliyle aynı koleksiyon; slug site başına tekildir
     site: { type: String, enum: SITE_SLUGS, default: 'alastik', index: true },
     title: { type: String, required: true, trim: true },
     slug: { type: String, required: true, lowercase: true, trim: true },
@@ -13,7 +11,6 @@ const pageSchema = new mongoose.Schema({
         metaTitle: { type: String, default: '' },
         metaDescription: { type: String, default: '' },
         metaKeywords: { type: [String], default: [] },
-        // SEO analizi: odak anahtar kelime
         focusKeyword: { type: String, default: '' }
     },
     status: { type: String, enum: ['draft', 'published', 'archived'], default: 'published' },

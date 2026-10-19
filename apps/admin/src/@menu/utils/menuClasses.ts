@@ -1,4 +1,3 @@
-// Common classes for menu components
 export const menuClasses = {
   root: 'ts-menu-root',
   menuSectionRoot: 'ts-menusection-root',
@@ -19,7 +18,6 @@ export const menuClasses = {
   open: 'ts-open'
 }
 
-// Classes for vertical navigation menu
 export const verticalNavClasses = {
   root: 'ts-vertical-nav-root',
   container: 'ts-vertical-nav-container',
@@ -36,7 +34,6 @@ export const verticalNavClasses = {
   expanding: 'ts-expanding'
 }
 
-// Classes for horizontal navigation menu
 export const horizontalNavClasses = {
   root: 'ts-horizontal-nav-root',
   scrollWithContent: 'ts-scroll-with-content',

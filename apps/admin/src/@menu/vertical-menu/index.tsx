@@ -1,4 +1,3 @@
-// Import all Vertical Nav components and export them
 import Menu from '../components/vertical-menu/Menu'
 import SubMenu from '../components/vertical-menu/SubMenu'
 import MenuItem from '../components/vertical-menu/MenuItem'

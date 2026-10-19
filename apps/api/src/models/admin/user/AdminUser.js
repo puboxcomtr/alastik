@@ -19,7 +19,7 @@ const AdminUserSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Şifre gereklidir'],
     minlength: [6, 'Şifre en az 6 karakter olmalıdır'],
-    select: false // Varsayılan olarak password döndürme
+    select: false
   },
   
   role: {
@@ -122,18 +122,15 @@ const AdminUserSchema = new mongoose.Schema({
   }
 });
 
-// Indexes
 AdminUserSchema.index({ email: 1 }, { unique: true });
 AdminUserSchema.index({ role: 1 });
 AdminUserSchema.index({ isActive: 1 });
 AdminUserSchema.index({ createdAt: -1 });
 
-// Virtual for account lock status
 AdminUserSchema.virtual('isLocked').get(function() {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
-// Pre-save middleware to hash password
 AdminUserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
@@ -146,15 +143,12 @@ AdminUserSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare password
 AdminUserSchema.methods.comparePassword = async function(candidatePassword) {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to handle failed login attempts
 AdminUserSchema.methods.incLoginAttempts = function() {
-  // If we have a previous lock that has expired, restart at 1
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
       $unset: {
@@ -168,17 +162,15 @@ AdminUserSchema.methods.incLoginAttempts = function() {
   
   const updates = { $inc: { loginAttempts: 1 } };
   
-  // Lock account after 5 failed attempts for 2 hours
   if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
     updates.$set = {
-      lockUntil: Date.now() + 2 * 60 * 60 * 1000 // 2 hours
+      lockUntil: Date.now() + 2 * 60 * 60 * 1000
     };
   }
   
   return this.updateOne(updates);
 };
 
-// Method to reset login attempts
 AdminUserSchema.methods.resetLoginAttempts = function() {
   return this.updateOne({
     $unset: {
@@ -188,7 +180,6 @@ AdminUserSchema.methods.resetLoginAttempts = function() {
   });
 };
 
-// Method to update last login
 AdminUserSchema.methods.updateLastLogin = function() {
   return this.updateOne({
     $set: {
@@ -197,17 +188,14 @@ AdminUserSchema.methods.updateLastLogin = function() {
   });
 };
 
-// Static method to find by email
 AdminUserSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-// Static method to find active users
 AdminUserSchema.statics.findActive = function() {
   return this.find({ isActive: true });
 };
 
-// Static method to create default admin
 AdminUserSchema.statics.createDefaultAdmin = async function() {
   const adminExists = await this.findOne({ role: 'super_admin' });
   

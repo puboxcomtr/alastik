@@ -16,7 +16,6 @@ export default function ShareProductModal({ open, onClose, product }: ShareProdu
 
     useEffect(() => {
         if (open && typeof window !== 'undefined') {
-            // Tam URL'yi oluştur (origin + ürün yolu)
             const productPath = getProductUrl(product);
             const fullUrl = `${window.location.origin}${productPath}`;
             setShareUrl(fullUrl);
@@ -95,7 +94,6 @@ export default function ShareProductModal({ open, onClose, product }: ShareProdu
                 </Box>
             </DialogTitle>
             <DialogContent dividers sx={{ pt: 3, pb: 4 }}>
-                {/* Bağlantıyı Kopyala */}
                 <Box mb={3}>
                     <Typography
                         variant="body2"
@@ -154,7 +152,6 @@ export default function ShareProductModal({ open, onClose, product }: ShareProdu
                     </Box>
                 </Box>
 
-                {/* Sosyal Medya Butonları */}
                 <Box>
                     <Typography
                         variant="body2"

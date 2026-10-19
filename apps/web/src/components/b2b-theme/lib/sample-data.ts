@@ -1,18 +1,4 @@
-/**
- * ÖRNEK VERİ — tasarım şablonunun tek veri kaynağı.
- *
- * Bu dosyadaki her şey uydurmadır ve yalnızca ekranların dolu görünmesi için
- * vardır. Veritabanı, ERP ya da API bağlantısı YOKTUR.
- *
- * GERÇEK VERİYE BAĞLARKEN
- *   Aşağıdaki tipleri koruyup fonksiyonların gövdesini kendi veri
- *   kaynağınızla değiştirmek yeterlidir; sayfalar yalnızca bu dosyadan
- *   okur, başka hiçbir yerde veri erişimi yoktur.
- *
- * NOT: Tutarlar tam sayı **kuruş**tur (1 TL = 100).
- */
 
-/* ────────────────────────────── Tipler ────────────────────────────── */
 
 export type Season = "yaz" | "kis" | "dortMevsim";
 export type ProductStatus = "sifir" | "ikinciEl";
@@ -33,13 +19,10 @@ export type StockRow = {
 };
 
 export type Price = {
-  /** Üstü çizili gösterilen liste fiyatı (KDV hariç). */
   listeBirimKurus: number;
-  /** Bayiye uygulanan net birim fiyat (KDV hariç). */
   birimNetKurus: number;
   kdvDahilBirimKurus: number;
   priceSource: "liste" | "ozel_fiyat";
-  /** İndirim oranı 0 (2.El vb.): fiyat KDV HARİÇ (net) + "KDV" gösterilir. */
   kdvHaric?: boolean;
 };
 
@@ -50,35 +33,26 @@ export type Tire = {
   brandLogoUrl?: string | null;
   size: string;
   pattern: string;
-  fullName?: string | null; // DIA tam ürün açıklaması (varsa ebat+desen yerine gösterilir)
+  fullName?: string | null;
   loadSpeedIndex: string | null;
   mevsim: Season;
   dotYear: number | null;
   productStatus: ProductStatus;
-  /** Ürün türü (DIA özel kod 7, ör. "LASTİK", "2.El Jant") */
   productType?: string;
-  /** XML ürününün geldiği tedarikçi firma (yalnız plasiyer oturumunda doldurulur) */
   xmlSource?: string;
-  /** DIA'daki gerçek stok kodu (XML üründe "-XML" ekli; ekranda stockCode kısa gösterilir, siparişe bu gider) */
   diaStockCode?: string;
   rft: boolean;
   cTipi: boolean;
   ev: boolean;
   xl: boolean;
   imageUrl: string | null;
-  /** Tüm ürün görselleri (2.El galeri için 2./3. görsel gösterimi). */
   images?: string[];
   stocks: StockRow[];
   fiyat: Price | null;
-  /** Plasiyer karşılaştırması: LJA perakende satış fiyatı (kuruş). API ?perakende=1. */
   perakendeKurus?: number | null;
-  /** XML (tedarikçi) kaynaklı ürün — ödeme yöntemi iskontosu uygulanmaz. */
   xml?: boolean;
-  /** Sevkiyat süresi etiketi: kendi stok "Aynı Gün", XML ürün "1-2 Gün" (veya alanı). */
   sevkiyat?: string;
-  /** Ürün detay sayfası slug'ı (customData.seoUrl); yoksa stok kodu. */
   slug?: string;
-  /** AB Lastik Etiketi (yalnız dolu alanlar). Hepsi boşsa alan tanımsızdır. */
   label?: { yolTutus?: string; yakit?: string; gurultu?: string };
 };
 
@@ -90,12 +64,9 @@ export type Rim = {
   pattern: string;
   vehicleBrand: string | null;
   rimDiameter: number | null;
-  /** 8.5J → 85 (ondalık kaçmasın diye 10 katı saklanır). */
   rimWidthX10: number | null;
   bijonAralikKodu: string | null;
-  /** 66.45 → 6645 */
   gobekCapiX100: number | null;
-  /** ET35 → 350 */
   etOffsetX10: number | null;
   stepne: boolean;
   takimSatis: boolean;
@@ -147,7 +118,6 @@ export type Invoice = {
   paymentPlan: string | null;
   netKurus: number;
   kalanKurus: number;
-  /** Pozitif = gecikmiş gün, negatif = vadeye kalan gün, null = vadesiz. */
   gecikmeGun: number | null;
 };
 
@@ -191,16 +161,13 @@ export type Banner = {
   link: string | null;
 };
 
-/* ─────────────────────── Sabitler / kimlik ─────────────────────── */
-
-/** Şablonda "bugün" sabittir; ekran görüntüleri her açılışta değişmesin. */
 export const TODAY = new Date("2026-08-12T09:30:00Z");
 
 function gunEkle(temel: Date, gun: number): Date {
   return new Date(temel.getTime() + gun * 86_400_000);
 }
 
-export const VAT_BPS = 2000; // %20
+export const VAT_BPS = 2000;
 
 export const WAREHOUSES: Warehouse[] = [
   { id: "d1", ad: "Merkez Depo" },
@@ -217,7 +184,7 @@ export const DEALER = {
   sehir: "İSTANBUL",
   creditLimitKurus: 1_500_000_00,
   paymentTermDays: 60,
-  discountBps: 1200, // %12
+  discountBps: 1200,
   sonSenkronAt: new Date("2026-08-12T08:45:00Z"),
 };
 
@@ -260,12 +227,6 @@ export const BANNERS: Banner[] = [
   },
 ];
 
-/* ─────────────────────── Katalog üretimi ─────────────────────── */
-
-/**
- * Sabit (deterministik) sözde-rastgele üretici. `Math.random` kullanılmaz:
- * liste her derlemede aynı çıksın, ekran görüntüleri oynamasın.
- */
 function tohum(text: string): number {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) {
@@ -314,7 +275,6 @@ const SEASONS: Season[] = ["yaz", "kis", "dortMevsim"];
 function makeStock(anahtar: string): StockRow[] {
   return WAREHOUSES.map((d, i) => {
     const r = tohum(`${anahtar}-stok-${d.id}`);
-    // Her ürün her depoda bulunmaz; bazı depolar bilinçli olarak sıfır.
     const adet = r < 0.28 ? 0 : Math.floor(r * 34) + (i === 0 ? 4 : 0);
     return { warehouseId: d.id, warehouseName: d.ad, available: adet };
   });
@@ -401,7 +361,6 @@ function makeRim(sira: number): Rim {
 export const TIRES: Tire[] = Array.from({ length: 96 }, (_, i) => makeTire(i + 1));
 export const RIMS: Rim[] = Array.from({ length: 42 }, (_, i) => makeRim(i + 1));
 
-/** Filtre açılırlarını besleyen seçenek listeleri. */
 export const TIRE_OPTIONS = {
   brands: [...new Set(TIRES.map((l) => l.marka))].sort(),
   ebatlar: [...new Set(TIRES.map((l) => l.size))].sort(),
@@ -421,8 +380,6 @@ export const RIM_OPTIONS = {
   ].sort(),
   warehouses: WAREHOUSES,
 };
-
-/* ─────────────────────────── Siparişler ─────────────────────────── */
 
 function makeLine(
   no: string,
@@ -499,8 +456,6 @@ export const ORDERS: Order[] = [
   makeOrder(7, "CANCELLED", 55, [16], { cancelReason: "Stok yetersizliği" }),
 ];
 
-/* ───────────────────────── Cari / finans ───────────────────────── */
-
 export const INVOICES: Invoice[] = [
   { fisNo: "SFT2026000412", tarih: gunEkle(TODAY, -78), vadeTarihi: gunEkle(TODAY, -18), paymentPlan: "60 Gün Vadeli", netKurus: 148_500_00, kalanKurus: 148_500_00, gecikmeGun: 18 },
   { fisNo: "SFT2026000455", tarih: gunEkle(TODAY, -66), vadeTarihi: gunEkle(TODAY, -6), paymentPlan: "60 Gün Vadeli", netKurus: 92_300_00, kalanKurus: 92_300_00, gecikmeGun: 6 },
@@ -512,7 +467,6 @@ export const INVOICES: Invoice[] = [
 
 const ACIK_TOPLAM = INVOICES.reduce((t, f) => t + f.kalanKurus, 0);
 
-/** Henüz ERP'ye işlenmemiş siparişlerin toplamı (limit hesabına dahildir). */
 export const PENDING_ORDER_KURUS = ORDERS.filter(
   (s) => s.durum !== "CANCELLED" && s.durum !== "DELIVERED" && !s.erpSiparisNo,
 ).reduce((t, s) => t + s.totalKurus, 0);
@@ -604,11 +558,6 @@ export const INSTALLMENT_OPTIONS: InstallmentOption[] = [
   },
 ];
 
-/**
- * Sepet ödeme yöntemleri (bayiye özel iskontolarla). discountBps = binde
- * (800 = %8.00). indirim tutarı sepet toplamından hesaplanır.
- * NOT: Şablon verisidir; gerçekte panelden/cari koşullarından gelmeli.
- */
 export type PaymentMethod = {
   id: string;
   title: string;
@@ -621,8 +570,6 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
   { id: "kk-taksit", title: "Anında Kredi Kartı Taksit", discountBps: 600 },
   { id: "premium-30", title: "Premium Bayi Özel 30 Gün", subtitle: "30 Gün", discountBps: 700 },
 ];
-
-/* ─────────────────────────── Yardımcılar ─────────────────────────── */
 
 export function findProduct(id: string): Tire | Rim | undefined {
   return TIRES.find((l) => l.id === id) ?? RIMS.find((j) => j.id === id);

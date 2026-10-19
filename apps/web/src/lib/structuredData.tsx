@@ -1,12 +1,7 @@
-// Yapısal veri (JSON-LD) yardımcıları — Google zengin sonuçları için.
-// Breadcrumb verisi, sayfada görünen breadcrumb ile aynı adımlardan üretilir.
-// Not: Ürün yorumları için AggregateRating bilinçli olarak EKLENMEDİ (yorum verisi doğrulanmadan
-// yıldız işaretlemesi Google'ın yorum politikası gereği manuel işlem riski taşır).
 import React from 'react';
 
 export type Crumb = { name: string; path?: string };
 
-// Sayfaya <script type="application/ld+json"> basar; "<" kaçışlanır (HTML içine güvenli gömme)
 export function JsonLd({ data }: { data: object | object[] }) {
     return (
         <script
@@ -16,7 +11,6 @@ export function JsonLd({ data }: { data: object | object[] }) {
     );
 }
 
-// Ana Sayfa > ... > Mevcut sayfa. Son adımın adresi verilmez (Google: son öğe = mevcut sayfa).
 export function breadcrumbJsonLd(origin: string, crumbs: Crumb[]) {
     const items = [{ name: 'Ana Sayfa', path: '/' }, ...crumbs].filter(c => c.name);
     return {
@@ -31,7 +25,6 @@ export function breadcrumbJsonLd(origin: string, crumbs: Crumb[]) {
     };
 }
 
-// Site kimliği (Organization) + site içi arama (WebSite/SearchAction) — yalnızca ana sayfada basılır
 const SITE_IDENTITY: Record<string, { name: string; telephone?: string }> = {
     lastikjantavm: { name: 'LastikJantAVM', telephone: '+90-212-212-08-08' },
     alastik: { name: 'ALastik.com' }

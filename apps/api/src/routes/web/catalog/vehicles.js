@@ -1,7 +1,3 @@
-// Araç uyumluluk rotaları — /api/vehicles
-// Kaynak: vehiclefitments (Wheel-Size senkronu). Stok bilgisi site bazındadır ve sitenin mevcut
-// etiket sayfalarından okunur (lastik ebadı / jant PCD etiketleri); böylece araç sayfasında görünen
-// ürün sayısı ile bağlantı verilen etiket sayfasındaki liste birebir aynıdır.
 const express = require('express');
 const router = express.Router();
 const WebVehicleFitment = require('../../../models/web/catalog/WebVehicleFitment');
@@ -9,13 +5,11 @@ const WebTag = require('../../../models/web/catalog/WebTag');
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { MAIN_DIA_FILTERS, getSiteVisibilityFilter } = require('../../../config/diaFilters');
 
-// Opel'in İngiltere pazarı adı (Opel ile aynı araçlar) — listelenmez
 const HIDDEN_MAKES = new Set(['vauxhall']);
-// Dizine açılma eşiği: fabrika ebatlarından en az birinde bu kadar ürün olmalı
 const MIN_TIRE_STOCK = 3;
 const CACHE_MS = 30 * 60 * 1000;
 
-const cache = new Map(); // key → { at, value }
+const cache = new Map();
 async function cached(key, fn) {
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_MS) return hit.value;
@@ -24,14 +18,12 @@ async function cached(key, fn) {
     return value;
 }
 
-// "205/55R16" | "205/55ZR16" | "215/65R16C" → { key: "205-55-r16", c: true/false }
 function parseTireSize(size) {
     const m = /^(\d{3})\/(\d{2})Z?R(\d{2}(?:\.\d)?)(C?)$/i.exec(String(size || '').trim());
     if (!m) return null;
     return { key: `${m[1]}-${m[2]}-r${m[3]}`.toLowerCase(), width: m[1], aspect: m[2], diameter: m[3], commercial: !!m[4] };
 }
 
-// Site etiketleri: lastik ebadı ve jant PCD → { seoUrl, count }
 function tagMaps(site) {
     return cached(`tags:${site}`, async () => {
         const tags = await WebTag.find(
@@ -45,7 +37,6 @@ function tagMaps(site) {
                 const m = /^(\d{3}-\d{2}-r\d{2}(?:\.\d)?)/.exec(t.seoUrl);
                 if (!m) continue;
                 const prev = tires.get(m[1]);
-                // Aynı ebadın birden fazla etiketi varsa (ör. "-lastik-fiyatlari" ve varyant) ürün sayısı yüksek olan
                 if (!prev || (t.productCount || 0) > prev.count) tires.set(m[1], { seoUrl: t.seoUrl, count: t.productCount || 0 });
             } else {
                 const m = /^(\d+-\d+)-jant/.exec(t.seoUrl);
@@ -56,7 +47,6 @@ function tagMaps(site) {
     });
 }
 
-// Kar zinciri stoğu: sitedeki kar zinciri aramasıyla aynı alanlar (Genişlik / Yanak / Jant Çapı)
 function chainMap(site) {
     return cached(`chains:${site}`, async () => {
         const match = {
@@ -81,10 +71,8 @@ function chainMap(site) {
     });
 }
 
-// "5x114.3" → "5-1143" (jant PCD etiket anahtarı)
 const pcdKey = bp => String(bp || '').toLowerCase().replace('x', '-').replace('.', '');
 
-// Model özeti + site stoğu (liste sayfaları ve sitemap için)
 async function modelIndex(site) {
     return cached(`index:${site}`, async () => {
         const [{ tires }, docs] = await Promise.all([
@@ -114,7 +102,6 @@ async function modelIndex(site) {
     });
 }
 
-// GET /api/vehicles/makes — markalar ve model sayıları
 router.get('/makes', async (req, res) => {
     try {
         const index = await modelIndex(req.site);
@@ -134,7 +121,6 @@ router.get('/makes', async (req, res) => {
     }
 });
 
-// GET /api/vehicles/index — tüm modeller (sitemap / listeler)
 router.get('/index', async (req, res) => {
     try {
         res.json({ success: true, data: await modelIndex(req.site) });
@@ -144,8 +130,6 @@ router.get('/index', async (req, res) => {
     }
 });
 
-// GET /api/vehicles/by-size/:size — bu ebadı fabrika çıkışı kullanan modeller (ör. 205-55-r16)
-// Etiket (ebat) ve lastik ürün sayfalarındaki "Bu ebadı kullanan araçlar" bloğu için
 router.get('/by-size/:size', async (req, res) => {
     try {
         const m = /^(\d{3})-(\d{2})-r(\d{2}(?:\.\d)?)$/i.exec(String(req.params.size || ''));
@@ -174,7 +158,6 @@ router.get('/by-size/:size', async (req, res) => {
     }
 });
 
-// GET /api/vehicles/:make — markanın modelleri
 router.get('/:make', async (req, res) => {
     try {
         const make = String(req.params.make).toLowerCase();
@@ -188,7 +171,6 @@ router.get('/:make', async (req, res) => {
     }
 });
 
-// GET /api/vehicles/:make/:model — model detayı + ebat bazında site stoğu
 router.get('/:make/:model', async (req, res) => {
     try {
         const make = String(req.params.make).toLowerCase();
@@ -208,7 +190,6 @@ router.get('/:make/:model', async (req, res) => {
                 chainCount: chains.get(p.key) || 0
             };
         };
-        // Aynı ebadın yazım varyantları (205/55R16 ↔ 205/55ZR16) tek satır; fabrika ebadı alternatiften önce gelir
         const seen = new Set();
         const tireSizes = [
             ...(doc.summary?.oeTireSizes || []).map(s => sizeInfo(s, true)),

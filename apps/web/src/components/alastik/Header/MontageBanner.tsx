@@ -5,11 +5,8 @@ import Link from 'next/link';
 import { ALASTIK_MONTAGE_BANNER } from '@/src/config/montageMarquee';
 import { SITES } from '@/src/config/siteConfig';
 
-// Kapatma tercihi oturum boyunca hatırlanır (sekme kapanınca sıfırlanır)
 const DISMISS_KEY = 'alastik_montage_banner_closed';
 
-/** Üst bar: kaymayan, parıltı (shine) efektli montaj yazısı; tıklanınca montaj noktası seçimine gider.
- * Sağdaki çarpı ile kapatılabilir. */
 export default function MontageBanner() {
     const { text, href, durationSec } = ALASTIK_MONTAGE_BANNER;
     const brandRed = SITES.alastik.theme.primary;
@@ -23,7 +20,7 @@ export default function MontageBanner() {
         e.preventDefault();
         e.stopPropagation();
         setClosed(true);
-        try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch { /* önemsiz */ }
+        try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch {  }
     };
 
     if (closed) return null;

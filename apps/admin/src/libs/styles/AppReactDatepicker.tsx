@@ -1,24 +1,19 @@
 'use client'
 
-// React Imports
 import type { ComponentProps } from 'react'
 
-// MUI imports
 import Box from '@mui/material/Box'
 import { styled } from '@mui/material/styles'
 import type { BoxProps } from '@mui/material/Box'
 
-// Third-party Imports
 import ReactDatePickerComponent from 'react-datepicker'
 
-// Styles
 import 'react-datepicker/dist/react-datepicker.css'
 
 type Props = ComponentProps<typeof ReactDatePickerComponent> & {
   boxProps?: BoxProps
 }
 
-// Styled Components
 const StyledReactDatePicker = styled(Box)<BoxProps>(({ theme }) => {
   return {
     '& .react-datepicker-popper': {
@@ -320,7 +315,6 @@ const StyledReactDatePicker = styled(Box)<BoxProps>(({ theme }) => {
           }
         },
         '& .react-datepicker__year-option': {
-          // TODO: Remove some of the following styles for arrow in Year dropdown when react-datepicker give arrows in Year dropdown
           '& .react-datepicker__navigation--years-upcoming': {
             width: 9,
             height: 9,
@@ -388,7 +382,6 @@ const StyledReactDatePicker = styled(Box)<BoxProps>(({ theme }) => {
         backgroundColor: 'var(--mui-palette-primary-main)'
       },
 
-      // Time Picker
       '&:not(.react-datepicker--time-only)': {
         '& .react-datepicker__time-container': {
           borderLeftColor: 'var(--mui-palette-divider)',
@@ -457,18 +450,15 @@ const StyledReactDatePicker = styled(Box)<BoxProps>(({ theme }) => {
             width: 8
           },
 
-          /* Track */
           '&::-webkit-scrollbar-track': {
             background: 'var(--mui-palette-background-paper)'
           },
 
-          /* Handle */
           '&::-webkit-scrollbar-thumb': {
             borderRadius: 10,
             background: '#aaa'
           },
 
-          /* Handle on hover */
           '&::-webkit-scrollbar-thumb:hover': {
             background: '#999'
           }
@@ -498,7 +488,6 @@ const StyledReactDatePicker = styled(Box)<BoxProps>(({ theme }) => {
 }) as typeof Box
 
 const AppReactDatepicker = (props: Props) => {
-  // Props
   const { boxProps, ...rest } = props
 
   return (

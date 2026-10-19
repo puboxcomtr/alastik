@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebTranslation = require('../../../models/web/settings/WebTranslation');
 
-// Tüm aktif çevirileri getir
 router.get('/', async (req, res) => {
     try {
         const { category } = req.query;
@@ -16,7 +15,6 @@ router.get('/', async (req, res) => {
             .select('key value category')
             .lean();
 
-        // Key-value formatına çevir
         const translationsMap = translations.reduce((acc, item) => {
             acc[item.key] = item.value;
             return acc;
@@ -35,7 +33,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Kategoriye göre çevirileri getir
 router.get('/category/:category', async (req, res) => {
     try {
         const { category } = req.params;

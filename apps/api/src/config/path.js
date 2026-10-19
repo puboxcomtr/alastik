@@ -45,13 +45,6 @@ const paths = {
         return path.join(PUBLIC_DIR, folder);
     },
 
-    /**
-     * Medya adresi ÜRETİMDE göreli döner (/klasor/dosya):
-     * her site (ve admin) kendi alan adı üzerinden servis eder; böylece adres
-     * bir IP'ye/porta ya da tek bir alan adına sabitlenmez ve HTTPS sayfada
-     * karışık içerik (mixed content) hatası oluşmaz.
-     * STATIC_URL_PREFIX tanımlıysa o kullanılır; geliştirmede tam adres döner.
-     */
     generateFileUrl: (filename, folder) => {
         const staticPrefix = getStaticUrlPrefix();
 
@@ -86,6 +79,5 @@ const paths = {
         cacheTimeout: isProduction ? 3600 : 0
     }
 };
-
 
 module.exports = paths;

@@ -1,4 +1,3 @@
-// Sayfa sitemap'i: sabit rotalar + yayınlanmış içerik sayfaları (/sayfa/<slug>)
 import { getSiteBase, getSiteSlug, fetchSitemapData, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 import { getSiteBySlug } from '@/src/config/siteConfig';
 import { BRANCHES } from '@/src/data/lja/subeler';
@@ -16,7 +15,6 @@ export async function GET() {
     const base = getSiteBase();
     const pages = await fetchSitemapData('pages');
 
-    // LJA şube ve şube × hizmet sayfaları (yalnızca lastikjantavm.com)
     const branchRoutes = getSiteSlug() === 'lastikjantavm'
         ? [
             { path: '/subeler', priority: '0.7', changefreq: 'weekly' },
@@ -25,7 +23,6 @@ export async function GET() {
             ...BRANCHES.flatMap(b => SERVICE_GROUPS.map(g => ({ path: `/subeler/${b.slug}/${g.slug}`, priority: '0.7', changefreq: 'weekly' })))
         ]
         : [];
-    // Kendi lastiğiyle montaj satın alma sayfası — montaj paleti tanımlı sitelerde (alastik, lastikjantavm)
     const alastikRoutes = getSiteBySlug(getSiteSlug())?.theme.montage
         ? [{ path: '/montaj-satin-al', priority: '0.7', changefreq: 'weekly' }]
         : [];

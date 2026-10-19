@@ -1,4 +1,3 @@
-// apps/web/src/services/wheelSizeService.ts
 import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface WheelSizeTireInfo {

@@ -1,11 +1,8 @@
-// src/lib/api.ts
 import { getSession } from 'next-auth/react'
 import { getSiteHeader, getSiteMediaUrl } from '@/utils/activeSite'
 
-// MEDIA
 const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:3082'
 
-// API Base URL
 const getBaseUrl = () => {
     if (typeof window === 'undefined') {
         return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
@@ -47,7 +44,6 @@ export const API_ENDPOINTS = {
         cards: (range: string) => `${getBaseUrl()}/admin/analytics/cards?range=${encodeURIComponent(range)}`,
         seo: (query?: string) => `${getBaseUrl()}/admin/analytics/seo${query ? `?${query}` : ''}`,
     },
-    // SEO modülü: Genel Rapor, Anahtar Kelimeler, İçerik Analizi
     seo: {
         report: (query?: string) => `${getBaseUrl()}/admin/seo/report${query ? `?${query}` : ''}`,
         reportSync: () => `${getBaseUrl()}/admin/seo/report/sync`,
@@ -144,7 +140,6 @@ export const API_ENDPOINTS = {
                 limit: (params.limit || 20).toString()
             })
             if (params.search) query.set('search', params.search)
-            // brand, season, main_category, sub_category, stock_source, stock_min, stock_max
             Object.entries(params.filters || {}).forEach(([key, value]) => {
                 if (value) query.set(key, value)
             })
@@ -166,7 +161,6 @@ export const API_ENDPOINTS = {
         },
         setStatus: (id: string) => `${getBaseUrl()}/admin/carts/${id}/status`,
     },
-    // Ödemeler: bayi sitesindeki "Ödeme Yap" sayfasından başlatılan cari borç ödemeleri
     b2bPayments: {
         list: (params: { page?: number; limit?: number; search?: string; status?: string; type?: string }) => {
             const query = new URLSearchParams({
@@ -431,8 +425,6 @@ export async function fetchAPI(url: string, options?: RequestInit) {
 
     const isFormData = options?.body instanceof FormData
 
-    // options en basta yayilir; headers en sonda birlestirilir ki
-    // cagiran tarafin verdigi ozel header'lar token ve X-Site'i ezmesin
     const response = await fetch(url, {
         ...options,
         headers: {
@@ -444,7 +436,6 @@ export async function fetchAPI(url: string, options?: RequestInit) {
     })
 
     if (!response.ok) {
-        // Backend'in döndürdüğü açıklayıcı mesajı koru (örn. "Bu menü sitede kullanılıyor")
         let message = `API Error: ${response.statusText}`
         try {
             const body = await response.json()
@@ -459,7 +450,6 @@ export async function fetchAPI(url: string, options?: RequestInit) {
 export function getImageUrl(path?: string): string {
     if (!path) return ''
     if (path.startsWith('http')) return path
-    // Panelde secili siteye gore medya alan adi kullanilir
     const base = getSiteMediaUrl() || MEDIA_URL
     return `${base}${path.startsWith('/') ? path : '/' + path}`
 }

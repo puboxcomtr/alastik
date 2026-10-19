@@ -14,13 +14,11 @@ class ApiClient {
         this.baseUrl = getBaseUrl();
     }
 
-    /* Helper - Token Al */
     private getToken(): string | null {
         if (typeof window === 'undefined') return null;
         return localStorage.getItem('authToken');
     }
 
-    /* Helper - Auth Headers */
     private getAuthHeaders(): HeadersInit {
         const token = this.getToken();
         return {
@@ -29,7 +27,6 @@ class ApiClient {
         };
     }
 
-    /* Wheel Size API */
     wheelSize = {
         getMakes: (region?: string) => {
             const params = region ? `?region=${region}` : '';
@@ -182,7 +179,6 @@ class ApiClient {
             };
         }
     }
-    /* Sabit Fonksiyonlar */
     getImageUrl(path?: string): string {
         return configGetImageUrl(path);
     }
@@ -195,7 +191,6 @@ class ApiClient {
         }
     }
 
-    /* Search Box */
     async searchAutocomplete(query: string, limit = 10) {
         return this.post<any>('/search/autocomplete', { query, limit });
     }
@@ -204,7 +199,6 @@ class ApiClient {
         return this.post('/search/track', { term });
     }
 
-    /* Auth Login and Register */
     async register(data: {
         firstName: string;
         lastName: string;
@@ -222,17 +216,14 @@ class ApiClient {
         return this.post<any>('/auth/login', { email, password });
     }
 
-    /* Translate */
     async getTranslations(category?: string) {
         const endpoint = category ? `/translations/category/${category}` : '/translations';
         return this.get<Record<string, string>>(endpoint);
     }
-    /* Header Menu */
     menu = {
         getHeader: async () => {
             return this.get<any>('/menus/header');
         },
-        // Header üstündeki ikonlu hızlı linkler (düz liste)
         getUstLinks: async () => {
             return this.get<any>('/menus/ustlink');
         }

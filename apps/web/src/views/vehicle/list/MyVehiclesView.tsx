@@ -1,13 +1,10 @@
 'use client';
 
-/* React Core */
 import { useState } from 'react';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 
-/* Config */
 import { ROUTES } from '@/src/config/routes';
 
-/* Components */
 import VehicleList from '@/src/views/vehicle/VehicleList';
 import TireSearchModal from '@/src/components/layout/Modals/TireSearch';
 

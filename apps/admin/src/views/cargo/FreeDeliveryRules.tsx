@@ -1,7 +1,5 @@
 'use client'
 
-// Ücretsiz teslimat tanımının (ör. "Standart Sevkiyat") kural sayfası: desi / ürün kuralı yoktur,
-// yalnız hizmet bölgesi (il / ilçe) seçilir. Bölge boşsa teslimat her adreste sunulur.
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -50,7 +48,6 @@ const FreeDeliveryRules = ({ cargo, listUrl, onSaved }: Props) => {
             .catch(() => toast.error('İller yüklenemedi'))
     }, [])
 
-    // İl değişince o ilin ilçeleri yüklenir
     useEffect(() => {
         setDistricts([])
         setPickedDistricts([])
@@ -60,7 +57,6 @@ const FreeDeliveryRules = ({ cargo, listUrl, onSaved }: Props) => {
             .catch(() => toast.error('İlçeler yüklenemedi'))
     }, [city])
 
-    // İlçe seçilmediyse ilin tamamı eklenir; ilin tamamı eklenince o ilin ilçe satırları kalkar
     const addAreas = () => {
         if (!city) return
         const incoming: ServiceArea[] = pickedDistricts.length

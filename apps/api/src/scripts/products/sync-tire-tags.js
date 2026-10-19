@@ -1,11 +1,3 @@
-/**
- * Lastik etiket senkronizasyon scripti (CLI)
- *
- * Kullanım:
- *   node apps/api/src/scripts/products/sync-tire-tags.js --dry-run --limit=5
- *   node apps/api/src/scripts/products/sync-tire-tags.js --limit=100
- *   node apps/api/src/scripts/products/sync-tire-tags.js
- */
 
 const mongoose = require('mongoose');
 const TireTagSyncService = require('../../services/plugins/tag/TireTagSyncService');

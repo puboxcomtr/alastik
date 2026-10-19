@@ -1,4 +1,3 @@
-// React Imports
 import type { SVGAttributes } from 'react'
 
 function Curve(props: SVGAttributes<SVGElement>) {

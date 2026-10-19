@@ -8,7 +8,7 @@ import { AddToCart } from "@components/b2b-theme/add-to-cart";
 import { SeasonIcon, SpinnerIcon } from "@components/b2b-theme/icons";
 import { AbLabel } from "@components/b2b-theme/ab-label";
 import { formatKurus } from "@components/b2b-theme/lib/format";
-import { fetchFinancialDiscounts, financialDiscountPct, productShippingKurus, BASE_PAYMENT_METHOD, PREMIUM_TIER, type FinancialDiscounts } from "@components/b2b-theme/lib/financial-discounts";
+import { fetchFinancialDiscounts, financialDiscountPct, productShippingKurus, catalogShipping, BASE_PAYMENT_METHOD, PREMIUM_TIER, type FinancialDiscounts } from "@components/b2b-theme/lib/financial-discounts";
 import { FinancialDiscountTag } from "@components/b2b-theme/financial-discount-tag";
 import { DEFAULT_CATALOG_FILTERS, isTireProductType, type CatalogFilterKey, type CatalogColumnKey } from "@components/b2b-theme/lib/catalog-filters";
 import { RETAIL_SALES_GROUP } from "@components/b2b-theme/lib/salesperson";
@@ -19,13 +19,11 @@ import {
   type ProductStatus,
 } from "@components/b2b-theme/lib/sample-data";
 
-const PAGE_SIZE = 10; // İlk gösterim ve "Daha Fazla Göster" adımı
-// Sıfır ürün durumu (perakende plasiyer fiyat notu yalnız sıfır üründe gösterilir)
+const PAGE_SIZE = 10;
 const NEW_PRODUCT_STATUS: ProductStatus = "sifir";
 
 const SEASON_LABEL: Record<string, string> = { yaz: "Yaz", kis: "Kış", dortMevsim: "4 Mevsim" };
 
-/** Sayfa numarası dizisi: ilk, son, geçerli ve komşuları; aradaki boşluklar "…". */
 function pageNumbers(cur: number, total: number): (number | "...")[] {
   const set = new Set<number>([1, total, cur, cur - 1, cur + 1]);
   const nums = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
@@ -39,7 +37,6 @@ function pageNumbers(cur: number, total: number): (number | "...")[] {
   return out;
 }
 
-// Sıralanabilir sütunlar ve karşılık gelen değer çıkarıcıları
 type SiralamaAlani = "stokKodu" | "ebat" | "marka" | "mevsim" | "dot" | "stok" | "sevkiyat" | "fiyat";
 type Yon = "asc" | "desc";
 
@@ -73,11 +70,9 @@ const BOS_FILTRE: Filter = {
   xl: false,
 };
 
-// Filtre çubuğunun ilk satırı: arama kutusu + bu alanlar (en çok FIRST_ROW_CAPACITY kutu)
 const FIRST_ROW_FILTERS: CatalogFilterKey[] = ["season", "brand", "dot", "rimDiameter", "boltPattern"];
 const FIRST_ROW_CAPACITY = 4;
 const SERVER_ONLY_FILTERS: CatalogFilterKey[] = ["rimDiameter", "boltPattern"];
-// Tablo: her zaman görünen sütun sayısı (Görsel, Stok Kodu, Ebat / Model, Stok, Sevkiyat, Fiyat, İşlemler) ve isteğe bağlı sütunlar
 const FIXED_COLUMN_COUNT = 7;
 const OPTIONAL_COLUMNS: CatalogColumnKey[] = ["brand", "season", "dot"];
 
@@ -88,36 +83,27 @@ const CIPLER = [
   { anahtar: "ev", label: "EV" },
 ] as const;
 
-/** Arama ayraca takılmasın: "2055" → "205/55 R16" bulunmalı (marka/model metni için). */
 function normalizeText(text: string): string {
   return text.toLocaleLowerCase("tr").replace(/[^a-z0-9şğüöçı]/gi, "");
 }
 
-/** Yalnız rakamlar — ebat aramasında ayraç ve R harfi göz ardı edilir:
- *  "2055516", "205 55 16", "205/55R16", "205 55 R16" hepsi "2055516" olur. */
 function digitsOnly(text: string): string {
   return text.replace(/[^0-9]/g, "");
 }
 
 function matches(urun: Tire, f: Filter, ignoreStatus = false): boolean {
   if (f.q) {
-    // Akıllı arama: rakamlar (ebat/kod) ve harf kelimeleri (marka/model) ayrı ayrı,
-    // hepsi BİRLİKTE (AND) eşleşmeli. "205 55 16 Pirelli" → 205/55R16 + Pirelli.
     const havuz = normalizeText(
       `${urun.size} ${urun.pattern} ${urun.marka} ${urun.stockCode}`,
     );
     const rakamHavuz = digitsOnly(`${urun.size} ${urun.stockCode}`);
     const tokens = f.q.trim().split(/\s+/).filter(Boolean);
-    // Saf harf kelimeler (rakam içermeyen, en az 2 harf) → marka/model
     const kelimeler = tokens.filter((t) => t.length >= 2 && /[a-zşğüöçıİ]/i.test(t) && !/\d/.test(t));
     const rakamQuery = digitsOnly(f.q);
-    // Ebat/kod rakam eşleşmesi (R harfi ve ayraçlardan bağımsız)
     if (rakamQuery.length >= 3 && !rakamHavuz.includes(rakamQuery)) return false;
-    // Her harf kelimesi ürün metninde (ebat/model/marka/kod) geçmeli
     for (const kelime of kelimeler) {
       if (!havuz.includes(normalizeText(kelime))) return false;
     }
-    // Ne yeterli rakam ne harf kelimesi yoksa ham sorgu metni aransın
     if (rakamQuery.length < 3 && kelimeler.length === 0) {
       if (!havuz.includes(normalizeText(f.q))) return false;
     }
@@ -130,11 +116,6 @@ function matches(urun: Tire, f: Filter, ignoreStatus = false): boolean {
     const warehouseStock = urun.stocks.find((s) => s.warehouseId === f.depo);
     if (!warehouseStock || warehouseStock.available === 0) return false;
   }
-  /**
-   * "Sadece 2. El Lastikler" çipi: basılı değilse YALNIZCA sıfır ürün görünür,
-   * basılıysa yalnızca 2. el. İkisini birlikte listeleyen bir durum yok —
-   * toptan alıcı için sıfır ve 2. el ayrı işler.
-   */
   if (!ignoreStatus && urun.productStatus !== (f.ikinciEl ? "ikinciEl" : "sifir")) return false;
   if (f.rft && !urun.rft) return false;
   if (f.cTipi && !urun.cTipi) return false;
@@ -143,37 +124,21 @@ function matches(urun: Tire, f: Filter, ignoreStatus = false): boolean {
   return true;
 }
 
-/**
- * Arama + filter barı + ürün tablosu (anasayfa ve /lastik paylaşır).
- *
- * ŞABLON NOTU: süzme tarayıcıda, `lib/ornek-veri.ts` dizisi üzerinde yapılır.
- * Gerçek uygulamada bu bileşen fiyat ve stoğu sunucudan istemeli; fiyat
- * istemcide hesaplanmamalıdır.
- */
-/** Sunucu tarafı filter seçenekleri (facet). Kategorinin TÜM marka/mevsim/DOT
- *  değerleri; o anki sayfanın ürünlerine bağlı değildir. */
 export type ServerOptions = {
   brands: string[];
-  /** Marka adı → logo URL (dropdown'da marka görseli için) */
   brandLogos?: Record<string, string>;
   seasons: { value: string; label: string }[];
   dots: string[];
   oems: string[];
   warehouses: string[];
-  /** Jant filtreleri: kategorideki jant çapları ("17 İnç") ve bijon aralıkları ("114.3") */
   rimDiameters?: string[];
   boltPatterns?: string[];
-  /** Vitrin seçeneği (panel: Tema > Vitrin 1 Üst Başlık + Ürün Seçimi); count = bu kategorideki vitrin ürünü */
   showcaseFilter?: { key: string; title: string; count: number } | null;
 };
-/** Sunucu tarafı filter değerleri (URL ile senkron, kategori sayfası).
- *  Özellik çipleri (rft/cTipi/xl/ev) de sunucuda tüm ürünlere uygulanır. */
 export type ServerFilters = {
   q: string; marka: string; mevsim: string; dot: string; oem: string; depo: string;
   rft?: boolean; cTipi?: boolean; xl?: boolean; ev?: boolean;
-  /** Jant filtreleri: jant çapı (inç, ör. "17") ve bijon aralığı (ör. "114.3") */
   jantCap?: string; bijon?: string;
-  /** Yalnız vitrin (kampanya) ürünleri */
   showcase?: boolean;
 };
 
@@ -183,51 +148,31 @@ export function Catalog(
     products?: Tire[];
     sabitDurum?: ProductStatus;
     title?: string;
-    /** Sıfır/2.El sekmelerini gizler ve durum filtresini uygulamaz (kategori sayfası
-     *  tek tip ürün içerir; ürünler doğrudan listelenir). */
     tabsGizle?: boolean;
-    /** Kategori sayfası: sunucu tarafı sayfalama. Verilirse istemci "Daha Fazla"
-     *  yerine page numaraları gösterilir ve tüm page ürünleri listelenir. */
     serverPage?: number;
     serverTotalPages?: number;
     onServerPageChange?: (page: number) => void;
     serverLoading?: boolean;
-    /** Kategori sayfası: marka/mevsim/DOT filtreleri SUNUCUDA uygulanır (tüm
-     *  ürünlerde, sadece görünen sayfada değil) ve URL'e yansır. Verilirse bu üç
-     *  select ebeveyn tarafından kontrol edilir; seçenekler facet'ten gelir. */
     serverFilters?: ServerFilters;
     onServerFilterChange?: (parca: Partial<ServerFilters>) => void;
     serverOptions?: ServerOptions;
-    /** Kategori sayfası: sütun sıralaması SUNUCUDA (tüm ürünlerde) yapılır ve
-     *  URL'e yansır. Verilirse başlık tıklaması ebeveyne bildirilir. */
     serverSort?: { field: string; dir: "asc" | "desc" } | null;
     onServerSortChange?: (field: string) => void;
-    /** Plasiyer gözü (bayi seçilmemiş): fiyat plasiyerin grubuna göre gösterilir (Perakende → perakende / LJA fiyatı,
-     *  Toptan → toptan / b2b fiyatı); fiyat kutucuğu açılmaz.
-     *  Bayi gözünde (bayi oturumu ya da plasiyerin bayi adına girişi) ödeme yöntemine göre iskonto oranı ve satış fiyatı kutucukta gösterilir. */
     plasiyer?: boolean;
-    /** Plasiyerin grubu (sunucudaki anahtar: retail / wholesale) */
     plasiyerGroup?: string;
-    /** Perakende plasiyere sıfır üründe fiyatın altında gösterilen not (boşsa gösterilmez) */
     retailPriceNote?: string;
-    /** Gösterilecek üst filtre alanları (verilmezse hepsi). Kategori sayfası ürün türüne göre belirler. */
     visibleFilters?: CatalogFilterKey[];
-    /** Gizlenecek tablo sütunları (verilmezse hepsi görünür). Kategori sayfası ürün türüne göre belirler. */
     hiddenColumns?: CatalogColumnKey[];
   } = {},
 ) {
   const source = products ?? [];
   const shownFilters = visibleFilters ?? DEFAULT_CATALOG_FILTERS;
   const showColumn = (key: CatalogColumnKey): boolean => !(hiddenColumns || []).includes(key);
-  // Boş liste satırının genişliği: sabit sütunlar + görünen isteğe bağlı sütunlar
   const columnCount = FIXED_COLUMN_COUNT + OPTIONAL_COLUMNS.filter(showColumn).length;
-  // Jant alanları yalnız sunucu filtreli listede (kategori sayfası) çalışır
   const showFilter = (key: CatalogFilterKey): boolean =>
     shownFilters.includes(key) && (!SERVER_ONLY_FILTERS.includes(key) || Boolean(serverFilters && onServerFilterChange && serverOptions));
-  // İlk satırdaki seçim kutuları (arama kutusunun yanı); satırda yer kalırsa depo seçimi de bu satıra alınır
   const firstRowFilters = FIRST_ROW_FILTERS.filter(showFilter).length;
   const depotInFirstRow = showFilter("depot") && 1 + firstRowFilters < FIRST_ROW_CAPACITY;
-  // Finansal iskontolar (panel): listedeki ürünler için carinin tipine göre taban (Cari Sipariş) iskonto oranı
   const [financial, setFinancial] = useState<FinancialDiscounts>({ tier: "", discounts: {} });
   const sourceCodes = source.filter((u) => !u.xml).map((u) => u.stockCode).filter(Boolean).sort().join(",");
   useEffect(() => {
@@ -239,16 +184,12 @@ export function Catalog(
       cancelled = true;
     };
   }, [sourceCodes]);
-  // sabitDurum verilirse blok tek türe kilitlenir (sekme gizlenir), filter o
-  // duruma göre başlatılır ve Temizle bu başlangıca döner.
   const emptyFilter: Filter = sabitDurum
     ? { ...BOS_FILTRE, ikinciEl: sabitDurum === "ikinciEl" }
     : BOS_FILTRE;
   const [filter, setFilter] = useState<Filter>(emptyFilter);
   const [page, setPage] = useState(1);
   const [sortState, setSortState] = useState<{ alan: SiralamaAlani; yon: Yon } | null>(null);
-  // Ürün görseline tıklayınca büyük hâli lightbox'ta açılır (tüm lastik satırları)
-  // Büyük görsel galerisi: ürünün tüm görselleri + aktif index (sağa/sola gezinir).
   const [buyukGorsel, setBuyukGorsel] = useState<{ images: string[]; index: number } | null>(null);
   useEffect(() => {
     if (!buyukGorsel) return;
@@ -266,7 +207,6 @@ export function Catalog(
     [filter, source, tabsGizle],
   );
 
-  // Sütun başlığına tıklanınca aktif sıralama uygulanır (yoksa orijinal sıra)
   const sorted = useMemo(() => {
     if (!sortState) return matched;
     const value = (u: Tire): string | number => {
@@ -289,21 +229,16 @@ export function Catalog(
     });
   }, [matched, sortState]);
 
-  // Filtre seçenekleri gerçek ürünlerden türetilir (ne varsa o gelir)
   const options = useMemo(() => {
     const brandSet = new Set<string>();
     const seasonSet = new Set<Season>();
     const dotSet = new Set<number>();
     const warehouseMap = new Map<string, string>();
     for (const u of source) {
-      // Filtre seçenekleri aktif sekmenin (Sıfır/2.El) ürünlerinden türetilir.
-      // Sekmesiz modda (kategori) durum ayrımı yok, tüm ürünlerden türetilir.
       if (!tabsGizle && u.productStatus !== (filter.ikinciEl ? "ikinciEl" : "sifir")) continue;
       if (u.marka) brandSet.add(u.marka);
       if (u.mevsim) seasonSet.add(u.mevsim);
       if (u.dotYear != null) dotSet.add(u.dotYear);
-      // "merkez" = depo verisi gelmeden önceki/kalan fallback; filtreye eklenmez
-      // (tutarsız "Merkez" seçeneğine yol açıyordu). Yalnız gerçek depolar listelenir.
       for (const st of u.stocks) {
         if (st.warehouseId === "merkez") continue;
         warehouseMap.set(st.warehouseId, st.warehouseName);
@@ -317,8 +252,6 @@ export function Catalog(
     };
   }, [source, filter.ikinciEl, tabsGizle]);
 
-  // Sunucu-kontrollü filter modu (kategori sayfası): marka/mevsim/DOT ebeveynden.
-  // Seçenekler facet'ten (kategorinin tümü), aksi halde görünen üründen türer.
   const serverFiltreli = Boolean(serverFilters);
   const vQ = serverFiltreli ? serverFilters!.q : filter.q;
   const setQ = (x: string) => (serverFiltreli ? onServerFilterChange!({ q: x }) : update({ q: x }));
@@ -348,15 +281,12 @@ export function Catalog(
     icon: <SeasonIcon mevsim={m.value === "4mevsim" ? "dortMevsim" : m.value} size={16} />,
   }));
   const dotOpts = (serverFiltreli ? serverOptions!.dots.map(String) : options.dotlar.map(String)).map((d) => ({ value: d, label: d }));
-  // OEM seçenekleri sunucu facet'inden gelir (marka bazlı: "Mercedes" → slug "mercedes").
   const oemOpts = (serverFiltreli ? serverOptions!.oems : []).map((brand) => ({
     value: brand.toLocaleLowerCase("tr").replace(/\s+/g, "-"),
     label: brand,
   }));
-  // Jant çapı: seçenek "17 İnç", gönderilen değer inç sayısı ("17")
   const rimDiameterOpts = (serverOptions?.rimDiameters || []).map((d) => ({ value: d.replace(/[^\d.]/g, ""), label: d }));
   const boltPatternOpts = (serverOptions?.boltPatterns || []).map((b) => ({ value: b, label: b }));
-  // Vitrin seçeneği: yalnız sunucu filtreli listede ve kategoride vitrin ürünü varsa gösterilir
   const showcaseOption = serverOptions?.showcaseFilter && serverOptions.showcaseFilter.count > 0 ? serverOptions.showcaseFilter : null;
   const vShowcase = Boolean(serverFilters?.showcase);
   const vRimDiameter = serverFilters?.jantCap || "";
@@ -365,8 +295,6 @@ export function Catalog(
     ? serverOptions!.warehouses.map((w) => ({ value: w, label: w }))
     : options.warehouses.map((d) => ({ value: d.id, label: d.ad }));
 
-  // Özellik çipleri (RFT / C Serisi / XL / EV): server modunda ebeveyne bildirilir
-  // (tüm ürünlerde süzülür), aksi halde istemcide görünen ürünlerde süzülür.
   type CipKey = (typeof CIPLER)[number]["anahtar"];
   const cipDeger = (anahtar: CipKey): boolean =>
     serverFiltreli ? Boolean(serverFilters![anahtar]) : Boolean(filter[anahtar]);
@@ -376,8 +304,6 @@ export function Catalog(
   };
 
   const toplam = matched.length;
-  // Sunucu sayfalama modunda (kategori sayfası) tüm page ürünleri gösterilir;
-  // aksi halde (anasayfa vitrini) istemcide "Daha Fazla" ile 10'ar açılır.
   const sunucuSayfali = typeof serverPage === "number";
   const visible = sunucuSayfali ? sorted : sorted.slice(0, page * PAGE_SIZE);
   const dahaVar = !sunucuSayfali && toplam > visible.length;
@@ -395,21 +321,17 @@ export function Catalog(
       CIPLER.some((c) => cipDeger(c.anahtar)),
   );
 
-  /** Filtre değişince ilk sayfaya dönülür. */
   function update(parca: Partial<Filter>): void {
     setFilter((onceki) => ({ ...onceki, ...parca }));
     setPage(1);
   }
 
-  /** Tüm filtreleri temizler (istemci + sunucu-kontrollü marka/mevsim/DOT). */
   function temizle(): void {
     setFilter(emptyFilter);
     setPage(1);
     if (serverFiltreli) onServerFilterChange!({ q: "", marka: "", mevsim: "", dot: "", oem: "", depo: "", rft: false, cTipi: false, xl: false, ev: false, jantCap: "", bijon: "", showcase: false });
   }
 
-  /** Sütun başlığına tıklama: sunucu modunda ebeveyne bildirilir (tüm ürünler
-   *  sunucuda sıralanır); aksi halde istemcide görünen sayfa sıralanır. */
   function onSortClick(alan: SiralamaAlani): void {
     if (onServerSortChange) {
       onServerSortChange(alan);
@@ -423,7 +345,6 @@ export function Catalog(
     setPage(1);
   }
 
-  /** Aktif sıralama sütunundaki ok işareti (▲ artan / ▼ azalan). */
   function sortArrow(alan: SiralamaAlani): string {
     if (onServerSortChange) {
       if (!serverSort || serverSort.field !== alan) return "";
@@ -435,7 +356,6 @@ export function Catalog(
 
   return (
     <>
-      {/* sabitDurum'da blok başlığı; aksi halde Sıfır / 2.El sekmeleri */}
       {tabsGizle ? null : sabitDurum ? (
         title ? <h2 className="showcase-title">{title}</h2> : null
       ) : (
@@ -603,18 +523,13 @@ export function Catalog(
               );
               const available = totalStock(urun.stocks);
               const fiyat = urun.fiyat;
-              // Panelde tanımlı finansal iskonto (taban ödeme yöntemi için); XML üründe yok
               const panelPct = urun.xml ? null : financialDiscountPct(financial.discounts, urun.stockCode, BASE_PAYMENT_METHOD);
-              // Bayi gözü: ödeme yöntemi başına iskonto oranı (yalnız oranı tanımlı yöntemler, sunucudaki sırayla)
               const methodPrices = urun.xml ? [] : (financial.methods || [])
                 .map((m) => ({ id: m.id, title: m.title, termDays: m.termDays, pct: financialDiscountPct(financial.discounts, urun.stockCode, m.id) }))
                 .filter((m): m is { id: string; title: string; termDays: number | undefined; pct: number } => typeof m.pct === "number" && m.pct > 0);
-              // Fiyata dahil kargo payı (iskontosuz; gösterim birimi fiyatla aynı: KDV hariç gösterilen üründe net pay)
-              const shipKargo = productShippingKurus(financial.shipping, urun.stockCode);
+              const shipKargo = productShippingKurus(catalogShipping(financial), urun.stockCode);
               const shipIncludedKurus = shipKargo.excluded ? 0 : (urun.fiyat?.kdvHaric ? Math.round(shipKargo.kurus / 1.2) : shipKargo.kurus);
-              // Fiyat kutucuğu yalnız bayi gözünde ve iskonto oranı olan üründe açılır (plasiyer gözünde açılmaz)
               const showPricePop = !plasiyer && methodPrices.length > 0;
-              // Perakende plasiyer: perakende (LJA, KDV dahil) fiyatı görür
               const retailView = plasiyer === true && plasiyerGroup === RETAIL_SALES_GROUP;
               const retailKurus = retailView ? (urun.perakendeKurus ?? null) : null;
               return (
@@ -633,8 +548,6 @@ export function Catalog(
                       ) : (
                         <span className="product-image bos" aria-hidden="true" />
                       )}
-                      {/* Ürün özellik rozetleri (RFT / C Tipi / EV) — logolar public/badges/ altında.
-                          Dosya yoksa onError ile gizlenir (kırık görsel çıkmaz). */}
                       <div className="urun-rozetler">
                         {urun.rft ? <img className="urun-rozet" src="/badges/rft.svg" alt="RFT" title="RFT" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                         {urun.cTipi ? <img className="urun-rozet" src="/badges/ctipi.svg" alt="C Tipi" title="C Tipi" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
@@ -710,7 +623,6 @@ export function Catalog(
                     >
                       {urun.sevkiyat || "1-2 Gün"}
                     </span>
-                    {/* XML ürününün tedarikçisi — yalnız plasiyer oturumunda dolu gelir */}
                     {urun.xmlSource ? <span className="xml-source">{urun.xmlSource}</span> : null}
                   </td>
                   <td className="num">
@@ -721,7 +633,6 @@ export function Catalog(
                             <span className="price-liste">{formatKurus(fiyat.listeBirimKurus)}</span>
                           ) : null}
                           <div className="price-net">{formatKurus(retailKurus)}</div>
-                          {/* Fiyat notu: sıfır ürünlerde ve ikinci el lastiklerde (2. el jantta gösterilmez) */}
                           {retailPriceNote && (urun.productStatus === NEW_PRODUCT_STATUS || isTireProductType(urun.productType)) ? (
                             <span className="price-note">{retailPriceNote}</span>
                           ) : null}
@@ -742,10 +653,8 @@ export function Catalog(
                           {formatKurus(Math.round((fiyat.kdvHaric ? fiyat.birimNetKurus : fiyat.kdvDahilBirimKurus) * (1 - (panelPct ?? 0) / 100)) + shipIncludedKurus)}
                           {fiyat.kdvHaric ? <span className="kdv-not"> + KDV</span> : null}
                         </div>
-                        {/* Fiyat altı etiketi yalnız Premium caride: listede gösterilen (Cari Sipariş) fiyatın iskonto oranı */}
                         {panelPct && financial.tier === PREMIUM_TIER ? <FinancialDiscountTag pct={panelPct} premium personal /> : null}
                         {showPricePop ? (
-                          // Bayi gözü: ödeme yöntemine göre iskonto oranı ve satış fiyatı
                           <div className="fiyat-pop fiyat-pop-methods" role="tooltip">
                             {methodPrices.map((m) => (
                               <div className="fp-row" key={m.id}>
@@ -768,7 +677,6 @@ export function Catalog(
                     )}
                   </td>
                   <td className="actions-col">
-                    {/* Tüm ürünlerde Sepete Ekle popover'ı (sepet ikonu → adet/depo) */}
                     {fiyat && inStockWarehouses.length > 0 ? (
                       <AddToCart
                         productId={urun.id}

@@ -1,16 +1,12 @@
-// MUI Imports
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 
-// Type Imports
 import type { VerticalNavState } from '@menu/contexts/verticalNavContext'
 import type { MenuItemStyles } from '@menu/types'
 
-// Util Imports
 import { menuClasses } from '@menu/utils/menuClasses'
 
 const menuItemStyles = (verticalNavOptions: VerticalNavState, theme: Theme): MenuItemStyles => {
-  // Vars
   const { isCollapsed, isHovered, collapsedWidth, isPopoutWhenCollapsed, transitionDuration } = verticalNavOptions
 
   const popoutCollapsed = isPopoutWhenCollapsed && isCollapsed

@@ -1,4 +1,3 @@
-// apps/api/src/workers/DiaWorker.js
 
 const Queue = require('bull');
 const winston = require('winston');
@@ -11,7 +10,6 @@ const { syncB2bFinance } = require('../services/plugins/dia/b2bFinanceSync');
 
 class DiaWorker {
     constructor() {
-        // Logger
         this.logger = winston.createLogger({
             level: 'info',
             format: winston.format.combine(
@@ -31,21 +29,18 @@ class DiaWorker {
             ]
         });
 
-        // DIA Service
         this.diaService = new DiaStockService();
 
-        // Sync guard (aynı anda birden fazla sync çalışmasın)
         this.syncLock = {
             fullSync: false,
             lightSync: false,
             stockSync: false
         };
 
-        // Bull Queue'ları oluştur
         const queueSettings = {
             stalledInterval: 1800000,
             maxStalledCount: 2,
-            lockDuration: 600000, // uzun CPU bloklarında kilit düşmesin (10 dk)
+            lockDuration: 600000,
             lockRenewTime: 60000
         };
         this.queues = {
@@ -75,7 +70,6 @@ class DiaWorker {
                 defaultJobOptions: workerConfig.queue.defaultJobOptions,
                 settings: queueSettings
             }),
-            // b2b cari bilgileri (bakiye/limit/segment) DIA'dan Mongo'ya sync
             b2bCariSync: new Queue('b2b-cari-sync', {
                 redis: workerConfig.redis,
                 defaultJobOptions: workerConfig.queue.defaultJobOptions,
@@ -83,38 +77,25 @@ class DiaWorker {
             })
         };
 
-        // Process handler'ları ayarla
         this.setupProcessors();
 
-        // Event listener'ları ayarla
         this.setupEventListeners();
     }
 
-    /**
-     * Queue processor'larını ayarla
-     */
     setupProcessors() {
         console.log('setupProcessors() ÇAĞRILDI!');
-        // Tüm DIA işleri tek WS oturumunu paylaştığı için (DIA aynı kullanıcıda
-        // tek oturuma izin verir), süreçler-arası DIA kilidiyle SIRAYA alınırlar
-        // — asla üst üste binmez. Kilit "en iyi çaba"dır (Redis yoksa iş çalışır).
-        // Full Sync - Scheduled job processor
         this.queues.fullSync.process('scheduled-full-sync', (job) => {
             return withDiaLock(() => this.processFullSync(job), { label: 'fullSync' });
         });
-        // Full Sync - Manual job processor
         this.queues.fullSync.process('manual-full-sync', (job) => {
             return withDiaLock(() => this.processFullSync(job), { label: 'fullSync(manual)' });
         });
-        // Light Sync - Scheduled job processor
         this.queues.lightSync.process('scheduled-light-sync', (job) => {
             return withDiaLock(() => this.processLightSync(job), { label: 'lightSync' });
         });
-        // Light Sync - Manual job processor
         this.queues.lightSync.process('manual-light-sync', (job) => {
             return withDiaLock(() => this.processLightSync(job), { label: 'lightSync(manual)' });
         });
-        // Stok Sync - saatlik tam stok taraması
         this.queues.stockSync.process('scheduled-stock-sync', (job) => {
             return withDiaLock(() => this.processStockSync(job), { label: 'stockSync' });
         });
@@ -130,26 +111,18 @@ class DiaWorker {
         this.queues.tagSync.process('manual-tag-sync', (job) => {
             return withDiaLock(() => this.processTagSync(job), { label: 'tagSync(manual)' });
         });
-        // b2b cari sync — b2b farklı DIA kullanıcısı (ws_ART_B2B) kullandığı için
-        // AYRI kilitte (B2B_LOCK_KEY) çalışır; worker'ın Ws_alastik_B2C senkronlarını
-        // beklemez, onları bloklamaz. Kendi içinde (b2b sipariş/adres) sıraya girer.
-        // Zamanlanmış turda kilit 5 dk içinde boşalmazsa (ör. ~30 dk süren finans sync) tur atlanır;
-        // kilitsiz çalışmak aynı DIA kullanıcısıyla oturum düşürme döngüsüne yol açıyordu.
         this.queues.b2bCariSync.process('scheduled-b2b-cari-sync', (job) => {
             return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync', key: B2B_LOCK_KEY, waitMs: 300000, skipIfBusy: true });
         });
         this.queues.b2bCariSync.process('manual-b2b-cari-sync', (job) => {
             return withDiaLock(() => this.processB2bCariSync(job), { label: 'b2bCariSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });
         });
-        // b2b adres sync (günlük, cari başına çağrı — uzun sürer, gece çalışır)
         this.queues.b2bCariSync.process('scheduled-b2b-address-sync', (job) => {
             return withDiaLock(() => this.processB2bAddressSync(job), { label: 'b2bAddressSync', key: B2B_LOCK_KEY, waitMs: 300000 });
         });
         this.queues.b2bCariSync.process('manual-b2b-address-sync', (job) => {
             return withDiaLock(() => this.processB2bAddressSync(job), { label: 'b2bAddressSync(manual)', key: B2B_LOCK_KEY, waitMs: 300000 });
         });
-        // b2b finans sync (günlük) — satış faturalarından ciro/adet + FIFO vade + vadesi
-        // geçen borç → WebMember.diaCari; uçlar canlı DIA yerine bunu okur.
         this.queues.b2bCariSync.process('scheduled-b2b-finance-sync', (job) => {
             return withDiaLock(() => this.processB2bFinanceSync(job), { label: 'b2bFinanceSync', key: B2B_LOCK_KEY, waitMs: 300000 });
         });
@@ -158,11 +131,7 @@ class DiaWorker {
         });
         console.log('Processor kayıtları TAMAMLANDI!');
     }
-    /**
-     * Event listener'ları ayarla
-     */
     setupEventListeners() {
-        // Full Sync Events
         this.queues.fullSync.on('completed', (job, result) => {
             this.logger.info('Full sync tamamlandı', {
                 jobId: job.id,
@@ -178,7 +147,6 @@ class DiaWorker {
             });
         });
 
-        // Light Sync Events
         this.queues.lightSync.on('completed', (job, result) => {
             this.logger.info('Light sync tamamlandı', {
                 jobId: job.id,
@@ -194,7 +162,6 @@ class DiaWorker {
             });
         });
 
-        // Stok Sync Events
         this.queues.stockSync.on('completed', (job, result) => {
             this.logger.info('Stok sync tamamlandı', {
                 jobId: job.id,
@@ -211,9 +178,6 @@ class DiaWorker {
         });
     }
 
-    /**
-     * Full sync işlemini çalıştır
-     */
     async processFullSync(job) {
         const startTime = Date.now();
 
@@ -233,7 +197,6 @@ class DiaWorker {
                 try {
                     job.progress(progressData);
                 } catch (e) {
-                    // Progress güncelleme hatası sessizce geç
                 }
             };
             const result = await this.diaService.fullSync(progressCallback);
@@ -268,10 +231,6 @@ class DiaWorker {
 
     }
 
-
-    /**
-     * Senkron sonrası etiket görsel sıralaması; hata senkronu düşürmez, sadece loglanır.
-     */
     async reorderLabelImagesSafely(syncType) {
         try {
             return await this.diaService.reorderLabelImages();
@@ -281,19 +240,14 @@ class DiaWorker {
         }
     }
 
-    /**
-     * Light sync işlemini çalıştır (Fiyat + Stok)
-     */
     async processLightSync(job) {
         const startTime = Date.now();
 
-        // Full sync çalışıyorsa light sync'i atla
         if (this.syncLock.fullSync) {
             this.logger.info('Full sync çalışıyor, light sync atlanıyor', { jobId: job.id });
             return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
         }
 
-        // Sync guard
         if (this.syncLock.lightSync) {
             this.logger.info('Light sync zaten çalışıyor, atlanıyor', { jobId: job.id });
             return { success: true, skipped: true, reason: 'lightSync zaten çalışıyor' };
@@ -309,8 +263,6 @@ class DiaWorker {
 
             await job.progress(25);
 
-            // Kontör dostu: yalnızca DIA'da değişen kartlar çekilir (fiyat, ad, görsel, kategori).
-            // Stoklar kart tarihini değiştirmediği için ayrı saatlik stok taramasıyla güncellenir.
             const result = await this.diaService.syncChangedCards();
             result.labelImages = await this.reorderLabelImagesSafely('light');
 
@@ -345,10 +297,6 @@ class DiaWorker {
         }
     }
 
-    /**
-     * b2b cari bilgileri sync (bakiye/limit/segment) — DIA'dan Mongo'ya.
-     * b2b DIA kullanıcısı (ws_ART_B2B) ile, ayrı kilitte çalışır.
-     */
     async processB2bCariSync(job) {
         const t0 = Date.now();
         this.logger.info('=== B2B CARİ SYNC BAŞLANGICI ===', { jobId: job.id, timestamp: new Date().toISOString() });
@@ -362,12 +310,11 @@ class DiaWorker {
         }
     }
 
-    /** b2b finans sync (günlük) — faturadan ciro/adet + FIFO vade → WebMember.diaCari */
     async processB2bFinanceSync(job) {
         const t0 = Date.now();
         this.logger.info('=== B2B FİNANS SYNC BAŞLANGICI ===', { jobId: job.id, timestamp: new Date().toISOString() });
         try {
-            const r = await syncB2bFinance(this.logger);
+            const r = await syncB2bFinance(this.logger, { onlyMissing: job.data?.onlyMissing === true });
             this.logger.info('=== B2B FİNANS SYNC TAMAMLANDI ===', { ...r, duration: `${Date.now() - t0}ms` });
             return { success: true, ...r };
         } catch (error) {
@@ -376,7 +323,6 @@ class DiaWorker {
         }
     }
 
-    /** b2b cari adresleri sync (günlük, cari başına çağrı) → WebMember.diaCari.addresses */
     async processB2bAddressSync(job) {
         const t0 = Date.now();
         this.logger.info('=== B2B ADRES SYNC BAŞLANGICI ===', { jobId: job.id, timestamp: new Date().toISOString() });
@@ -390,10 +336,6 @@ class DiaWorker {
         }
     }
 
-    /**
-     * Saatlik stok senkronu (tam tarama — stok hareketleri kart _date'ini
-     * değiştirmediği için tarih filtresiyle yakalanamaz)
-     */
     async processStockSync(job) {
         const startTime = Date.now();
 
@@ -421,8 +363,6 @@ class DiaWorker {
             await job.progress(25);
             const result = await this.diaService.syncOnlyStocks();
             await job.progress(70);
-            // Tam MASLAK+MERKEZ tazelemesi: incremental stok sync'in kaçırdığı
-            // stok-hareketi (kart _date'i değişmeyen) değişikliklerini yakalar.
             const depotResult = await this.diaService.refreshWebDepotStock();
             this.logger.info('Web stok tazeleme (stockSync içinde)', depotResult);
             await job.progress(100);
@@ -456,7 +396,6 @@ class DiaWorker {
             return { success: true, skipped: true, reason: 'fullSync çalışıyor' };
         }
 
-        // MongoDB bağlantı kontrolü — bağlı değilse 30 saniyeye kadar bekle
         const mongoose = require('mongoose');
         const waitForConnection = async () => {
             const maxWaitMs = 30000;
@@ -489,7 +428,6 @@ class DiaWorker {
             const XmlWebProductSyncService = require('../services/plugins/xml/XmlWebProductSyncService');
             const WebXml = require('../models/plugins/xml/WebXml');
 
-            // 1. Aktif XML kaynaklarından ürün çek (job.data.site verilmişse sadece o site)
             const jobSite = job.data?.site || null;
             await job.progress({ percent: 10, message: 'XML kaynakları çekiliyor...' });
             const integrations = await WebXml.find({ isActive: true, ...(jobSite ? { site: jobSite } : {}) });
@@ -501,13 +439,11 @@ class DiaWorker {
                 }
             }
 
-            // 2. DIA match — manuel tetiklemede canlı DIA'dan, zamanlanmışta diastocks aynasından okunur
             const useLiveDia = job.data?.type === 'manual';
             await job.progress({ percent: 40, message: 'DIA eşleştirme yapılıyor...' });
             const matchResult = await XmlDiaMatchService.matchAll({ useLiveDia });
             this.logger.info('XML-DIA eşleştirme tamamlandı', matchResult);
 
-            // 3. WebProducts sync (site verilmişse o sitenin kapsamında)
             await job.progress({ percent: 80, message: 'Fiyatlar webproducts\'a aktarılıyor...' });
             const syncResult = await XmlWebProductSyncService.fullSync(jobSite);
             this.logger.info('XML web sync tamamlandı', syncResult);
@@ -532,9 +468,6 @@ class DiaWorker {
             throw error;
         }
     }
-    /**
-     * Tag sync işlemini çalıştır (Lastik etiketleri)
-     */
     async processTagSync(job) {
         const startTime = Date.now();
 
@@ -587,27 +520,21 @@ class DiaWorker {
             throw error;
         }
     }
-    /**
-     * Zamanlanmış job'ları ayarla
-     */
     async setupScheduledJobs() {
         try {
             const DiaSettings = require('../models/plugins/dia/DiaSettings');
             const settings = await DiaSettings.getSettings();
 
-            // DB'den saat ve aralık al
             const fullSyncSaat = settings?.sync?.fullSyncSaat || '05:00';
             const lightSyncAraligi = settings?.sync?.lightSyncAraligi || 15;
             const [fsSaat, fsDakika] = fullSyncSaat.split(':').map(Number);
             const xmlSaat = (fsSaat + 2) % 24;
             const xmlSyncSaat = `${String(xmlSaat).padStart(2, '0')}:${String(fsDakika).padStart(2, '0')}`;
 
-            // Saat'i cron formatına çevir (ör: "05:00" -> "0 5 * * *")
             const [saat, dakika] = fullSyncSaat.split(':').map(Number);
             const fullSyncCron = `${dakika || 0} ${saat || 5} * * *`;
             const lightSyncCron = `*/${lightSyncAraligi} * * * *`;
 
-            // Eski repeat job'ları temizle
             const existingFullRepeats = await this.queues.fullSync.getRepeatableJobs();
             for (const job of existingFullRepeats) {
                 await this.queues.fullSync.removeRepeatableByKey(job.key);
@@ -621,7 +548,6 @@ class DiaWorker {
                 await this.queues.stockSync.removeRepeatableByKey(job.key);
             }
 
-            // Full Sync
             await this.queues.fullSync.add(
                 'scheduled-full-sync',
                 { type: 'scheduled' },
@@ -631,7 +557,6 @@ class DiaWorker {
                 }
             );
 
-            // Light Sync
             await this.queues.lightSync.add(
                 'scheduled-light-sync',
                 { type: 'scheduled' },
@@ -641,7 +566,6 @@ class DiaWorker {
                 }
             );
 
-            // Stok Sync — saatlik tam stok taraması (:10'da, light sync ile çakışmasın)
             const stockSyncCron = workerConfig.sync.stockSync.schedule;
             await this.queues.stockSync.add(
                 'scheduled-stock-sync',
@@ -652,8 +576,6 @@ class DiaWorker {
                 }
             );
 
-            // b2b Cari Sync — her 30 dk (:05,:35). b2b DIA kullanıcısı (ws_ART_B2B)
-            // ile ayrı kilitte; worker'ın Ws_alastik_B2C senkronlarını beklemez.
             const b2bCariCron = process.env.B2B_CARI_SYNC_CRON || '5,35 * * * *';
             const existingB2bRepeats = await this.queues.b2bCariSync.getRepeatableJobs();
             for (const job of existingB2bRepeats) {
@@ -668,9 +590,6 @@ class DiaWorker {
                 }
             );
 
-            // b2b Adres Sync — günlük (04:00). Cari başına çağrı gerektiği için uzun
-            // sürer (~birkaç dk), gece çalışır. Gün içinde /adres eklenince + ilk
-            // erişimde lazy doldurmayla zaten güncel kalır.
             const b2bAddressCron = process.env.B2B_ADRES_SYNC_CRON || '0 4 * * *';
             await this.queues.b2bCariSync.add(
                 'scheduled-b2b-address-sync',
@@ -681,8 +600,6 @@ class DiaWorker {
                 }
             );
 
-            // b2b Finans Sync — günlük 04:30 (adres sync'ten sonra). Faturadan ciro/adet
-            // + FIFO vade + vadesi geçen borç → WebMember.diaCari.
             const b2bFinanceCron = process.env.B2B_FINANS_SYNC_CRON || '30 4 * * *';
             await this.queues.b2bCariSync.add(
                 'scheduled-b2b-finance-sync',
@@ -709,7 +626,6 @@ class DiaWorker {
                 }
             );
 
-            // Tag Sync - XML sync + 1 saat
             const tagSaat = (xmlS + 1) % 24;
             const tagSyncSaat = `${String(tagSaat).padStart(2, '0')}:${String(xmlD).padStart(2, '0')}`;
             const tagSyncCron = `${xmlD} ${tagSaat} * * *`;
@@ -740,9 +656,6 @@ class DiaWorker {
         }
     }
 
-    /**
-     * Manuel sync tetikle
-     */
     async triggerManualSync(type = 'light') {
         try {
             if (type === 'full') {
@@ -773,9 +686,6 @@ class DiaWorker {
         }
     }
 
-    /**
-     * Queue durumunu getir
-     */
     async getStatus() {
         try {
             const [fullSyncCounts, lightSyncCounts] = await Promise.all([
@@ -799,9 +709,6 @@ class DiaWorker {
         }
     }
 
-    /**
-     * Queue'ları temizle
-     */
     async cleanQueues() {
         try {
             await Promise.all([
@@ -817,18 +724,13 @@ class DiaWorker {
         }
     }
 
-    /**
-      * Graceful shutdown — çalışan job'un bitmesini bekle, sonra kapat
-      */
     async gracefulShutdown(timeoutMs = 60000) {
         try {
             this.logger.info(`Graceful shutdown başladı (timeout: ${timeoutMs}ms)`);
 
-            // 1. Yeni job almayı durdur (tüm queue'lar)
             await Promise.all(Object.values(this.queues).map(q => q.pause(true).catch(() => null)));
             this.logger.info('Tüm queue\'lar pause edildi');
 
-            // 2. Aktif çalışan job var mı kontrol et, bitmesini bekle
             const startedAt = Date.now();
             while (Date.now() - startedAt < timeoutMs) {
                 const activeCounts = await Promise.all(
@@ -845,7 +747,6 @@ class DiaWorker {
                 await new Promise(r => setTimeout(r, 2000));
             }
 
-            // 3. Tüm queue'ları kapat
             await this.close();
 
         } catch (error) {
@@ -853,9 +754,6 @@ class DiaWorker {
         }
     }
 
-    /**
-     * Worker'ı kapat
-     */
     async close() {
         try {
             await Promise.all(Object.values(this.queues).map(q => q.close().catch(() => null)));

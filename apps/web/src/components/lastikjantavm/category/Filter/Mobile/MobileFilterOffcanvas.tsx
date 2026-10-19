@@ -67,7 +67,6 @@ export default function MobileFilterOffcanvas({
                     <button type="button" className="btn-close" onClick={onClose} aria-label="Kapat" />
                 </div>
                 <div className="offcanvas-body">
-                    {/* Marka Sayfası Gizli */}
                     {!brandSlug && !hidden.has('brand') && (
                         <Brand categorySlug={categorySlug} brands={options?.brands || []} />
                     )}

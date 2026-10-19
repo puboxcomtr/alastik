@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import styles from './Login.module.css'
 
-// MUI Imports
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import IconButton from '@mui/material/IconButton'
@@ -12,7 +11,6 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 
-// Third-party Imports
 import { signIn } from 'next-auth/react'
 import { Controller, useForm } from 'react-hook-form'
 import { valibotResolver } from '@hookform/resolvers/valibot'
@@ -20,20 +18,15 @@ import { object, minLength, string, email, pipe, nonEmpty } from 'valibot'
 import type { SubmitHandler } from 'react-hook-form'
 import type { InferInput } from 'valibot'
 
-// Type Imports
 import type { Mode } from '@/@core/types'
 import type { Locale } from '@configs/i18n'
 
-// Component Imports
 import Logo from '@components/layout/shared/Logo'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Hook Imports
 import { useSettings } from '@/@core/hooks/useSettings'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
 type ErrorType = {
@@ -55,7 +48,6 @@ const Login = ({ mode }: { mode: Mode }) => {
   const [isPasswordShown, setIsPasswordShown] = useState(false)
   const [errorState, setErrorState] = useState<ErrorType | null>(null)
 
-  // Hooks
   const router = useRouter()
   const searchParams = useSearchParams()
   const { lang: locale } = useParams()
@@ -89,7 +81,6 @@ const Login = ({ mode }: { mode: Mode }) => {
 
   return (
     <div className={`flex bs-full justify-center ${styles.loginContainer}`}>
-      {/* Sol taraf - Illustration */}
       <div
         className='flex bs-full items-center justify-center flex-1 min-bs-[100dvh] relative max-md:hidden'
         style={{
@@ -99,7 +90,6 @@ const Login = ({ mode }: { mode: Mode }) => {
           backgroundRepeat: 'no-repeat'
         }}
       />
-      {/* Sağ taraf - Login Form */}
       <div className='flex justify-center items-center bs-full bg-backgroundPaper p-6 md:p-12 md:is-[480px]'>
         <div className='absolute block-start-5 sm:block-start-[33px] inline-start-6 sm:inline-start-[38px]'>
           <Logo />

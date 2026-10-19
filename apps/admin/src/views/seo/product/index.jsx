@@ -1,4 +1,3 @@
-// apps/admin/src/views/seo/product/index.jsx
 'use client'
 
 import Card from '@mui/material/Card'
@@ -123,7 +122,6 @@ const Product = ({ formData, setFormData, handleSave, saving }) => {
                                     />
                                 </FormControl>
                             </Grid>
-
 
                             <Grid size={{ xs: 12 }} className='flex gap-4 flex-wrap justify-end'>
                                 <Button

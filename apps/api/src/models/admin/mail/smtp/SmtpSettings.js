@@ -3,7 +3,6 @@ const { SITES, DEFAULT_SITE } = require('../../../../config/sites')
 
 const smtpSettingsSchema = new mongoose.Schema(
     {
-        // Her site için ayrı SMTP yapılandırması
         site: {
             type: String,
             enum: Object.keys(SITES),

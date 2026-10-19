@@ -1,7 +1,5 @@
 "use client";
 
-// Cari Hesap Özeti — bakiye + borç/alacak, vadesi geçen borç, hesap bilgileri ve
-// parola işlemleri (tek sayfa). Kaynak: /cari-ozet + /vade-takvimi + /me (hepsi DB).
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { AlertIcon, SpinnerIcon } from "@components/b2b-theme/icons";
@@ -32,7 +30,6 @@ export default function CariPage() {
   const [today, setToday] = useState("");
   const [error, setError] = useState(false);
 
-  // Parola formu
   const [mevcut, setMevcut] = useState("");
   const [yeni, setYeni] = useState("");
   const [tekrar, setTekrar] = useState("");
@@ -96,13 +93,11 @@ export default function CariPage() {
     <>
       <div className="page-head"><div><h1>Cari Hesap Özeti</h1></div></div>
 
-      {/* ── Üst sıra: Bakiye + Vadesi Geçen ── */}
       <div className="cari-grid">
         <section className="cari-card cari-balance">
           <div className="cari-card-head">
             <span className="cari-card-title">Bakiye</span>
           </div>
-          {/* Bakiye işaretlidir (alacaklı → negatif): (B) borçlu / (A) alacaklı */}
           <div className="cari-big">
             {ozet ? `${money(Math.abs(ozet.balanceKurus))}${ozet.balanceKurus > 0 ? " (B)" : ozet.balanceKurus < 0 ? " (A)" : ""}` : "…"}
           </div>
@@ -128,7 +123,6 @@ export default function CariPage() {
         </section>
       </div>
 
-      {/* ── Alt sıra: Hesap Bilgileri + Şifre İşlemleri ── */}
       <div className="cari-grid" style={{ marginTop: "1.1rem" }}>
         <section className="cari-card">
           <h3 className="cari-block-title">Hesap Bilgileri</h3>

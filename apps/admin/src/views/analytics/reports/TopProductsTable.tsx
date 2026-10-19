@@ -1,21 +1,16 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 
-// Styles Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Type Imports
 import type { TopProduct } from './types'
 
-// Util Imports
 import { formatNumber, formatTRY, toNumber } from './format'
 
-// Component Imports
 import EmptyState from './EmptyState'
 
 type TopProductsTableProps = {
@@ -37,7 +32,6 @@ const StockCell = ({ product }: { product: TopProduct }) => {
     return <Typography color='text.primary'>{formatNumber(toNumber(product.stock))}</Typography>
 }
 
-// En çok satılan ürünler tablosu
 const TopProductsTable = ({ products }: TopProductsTableProps) => {
     const rows = products ?? []
 

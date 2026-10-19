@@ -1,12 +1,9 @@
 "use client";
-// Bankalara göre taksit seçenekleri — Ödeme Yap sayfasında yalnız "Taksitli" seçiliyken, "Taksitli Öde" düğmesinin altında
-// doğrudan gösterilir (düğme / başlık yok). Veri karttan bağımsızdır ve sanal POS sağlayıcısından canlı gelir.
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 
 type InstallmentTable = { installments: number[]; banks: { name: string; logo?: string | null; rates: Record<string, number> }[] };
 
-// Komisyonsuz taksit "Peşin Fiyatına" olarak etiketlenir; komisyon varsa oranı gösterilir
 const termLabel = (rate: number) =>
   rate > 0 ? `%${rate.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} Komisyon` : "Peşin Fiyatına";
 
@@ -29,7 +26,6 @@ export function InstallmentRatesTable() {
       .catch(() => {});
   }, []);
 
-  // Oranlar alınamazsa ya da taksit sunan banka yoksa hiçbir şey gösterilmez
   if (!table || table.banks.length === 0) return null;
 
   return (
@@ -47,7 +43,6 @@ export function InstallmentRatesTable() {
               <tr key={bank.name}>
                 <td>
                   <span className="bank-cell">
-                    {/* Logo panelde tanımlıysa gösterilir; dosya açılamazsa gizlenir (kırık görsel çıkmaz) */}
                     {bank.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img className="bank-logo" src={bank.logo} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />

@@ -1,5 +1,3 @@
-// Vitrin: Montaj Noktaları (site bazlı, yalnız aktif kayıtlar)
-// DİKKAT: documents (bayi sözleşmeleri) İÇ EVRAKTIR, hiçbir uçtan dışarı verilmez.
 const express = require('express');
 const router = express.Router();
 const WebMontagePoint = require('../../../models/web/content/WebMontagePoint');
@@ -8,9 +6,6 @@ const { isMontageServiceName, parseRimRange } = require('../../../services/web/c
 const WebProduct = require('../../../models/web/catalog/WebProduct');
 const { getFiyatAyarlari, fiyatAyariUygula } = require('../../../utils/categoryPriceDisplay');
 
-// Satın alma öncesi noktalar varsayılan olarak ANONİMDİR: ad, adres, telefon, görsel ve hassas konum
-// dışarı verilmez (müşteri hizmeti satın alınca sipariş tarafında açılır). Panelde "Bilgileri Gözüksün"
-// (showPublicInfo) açılan noktalarda bu bilgiler vitrinde gösterilir. documents bayi sözleşmesidir, HER ZAMAN gizli.
 const PUBLIC_FIELDS = {
     documents: 0,
     __v: 0
@@ -18,11 +13,6 @@ const PUBLIC_FIELDS = {
 
 const ANONYMOUS_NAME = 'Anlaşmalı Nokta';
 
-/**
- * Hizmet ürünlerinin KDV gösterim ayarı: productKey → { priceDisplay, vatRate }.
- * Kategori ayarı 'haric' olan hizmetlerde vitrin fiyatı KDV hariç gösterilir; sepette
- * kullanılan kuralın (categoryPriceDisplay) AYNISI uygulanır ki iki ekran aynı tutarı yazsın.
- */
 async function loadServiceVatSettings(points, site) {
     const keys = [...new Set(
         points.flatMap(p => (p.services || []).map(sv => String(sv.productKey || '')).filter(Boolean))
@@ -45,7 +35,6 @@ async function loadServiceVatSettings(points, site) {
     return map;
 }
 
-/** Konumu ~1 km hassasiyete yuvarlar: harita bölgeye yaklaşır ama noktayı ele vermez */
 function fuzzLocation(location) {
     if (!location || location.lat === null || location.lng === null) return { lat: null, lng: null };
     return {
@@ -54,7 +43,6 @@ function fuzzLocation(location) {
     };
 }
 
-/** Yorumlardan özet puanlar: süreç + nokta memnuniyeti ortalaması */
 function ratingSummary(reviews = []) {
     if (!reviews.length) return { average: null, processAverage: null, locationAverage: null, count: 0 };
     const sum = (field) => reviews.reduce((t, r) => t + (Number(r[field]) || 0), 0);
@@ -71,28 +59,21 @@ function ratingSummary(reviews = []) {
 function toPublic(point, vatSettings = new Map(), oranlar = null) {
     const { reviews, services, location, name, address, phone, image, showPublicInfo, ...rest } = point;
     const isPublicInfo = showPublicInfo === true;
-    // Noktaya özel fiyat (0 = ücretsiz) > katalog fiyatı > null (Sorunuz)
     const publicServices = (services || []).map(s => {
         const vat = vatSettings.get(String(s.productKey || '')) || { priceDisplay: 'dahil', vatRate: 20 };
         return {
             productKey: s.productKey || '',
             sku: s.sku || '',
             name: s.name,
-            // Vitrin fiyatı komisyonludur; KDV eklenen sitede (lastikjantavm) "X TL + KDV" yazılır ve sepete
-            // KDV dahil tutar (kdvDahilFiyat) işlenir — hesap utils/montagePricing.js
             price: musteriNetFiyati(s, point, oranlar),
             kdvDahilFiyat: resolveMontageServicePrice(s, point, oranlar),
             priceDisplay: oranlar?.kdvEkle ? 'haric' : 'dahil',
             vatRate: KDV_ORANI,
-            // Sepet kuralları: montaj hizmeti mi, hangi jant çapı aralığını kapsıyor
             isMontage: isMontageServiceName(s.name),
             rimRange: isMontageServiceName(s.name) ? parseRimRange(s.name) : null
         };
     });
     const servicePrices = publicServices.map(s => s.price).filter(v => v !== null && v > 0);
-    // Vitrin kartında gösterilen montaj fiyatı: en düşük jant aralığındaki (13"-16") montaj
-    // hizmetinin 1 ADET fiyatı. Aralık okunamayan noktalarda montaj hizmetleri içindeki en ucuzu
-    // kullanılır. 0 = ücretsiz montaj (vitrinde rozet olarak gösterilir).
     const montageServices = publicServices.filter(s => s.isMontage && s.price !== null);
     const rangedMontage = montageServices.filter(s => s.rimRange).sort((a, b) => a.rimRange.min - b.rimRange.min);
     const montageService = rangedMontage[0]
@@ -107,14 +88,11 @@ function toPublic(point, vatSettings = new Map(), oranlar = null) {
         image: isPublicInfo ? (image || '') : '',
         location: isPublicInfo ? { lat: location?.lat ?? null, lng: location?.lng ?? null } : fuzzLocation(location),
         services: publicServices,
-        // Tüm hizmetlerin en ucuzu (sibop vb. dahil) — kartta KULLANILMAZ, montageStartingPrice kullanılır
         startingPrice: servicePrices.length ? Math.min(...servicePrices) : null,
         montageStartingPrice: montageService ? montageService.price : null,
-        // Başlangıç fiyatının KDV gösterimi (kart üzerindeki "…'den başlayan" metni için)
         montageStartingPriceDisplay: montageService ? montageService.priceDisplay : 'dahil',
         montageStartingVatRate: montageService ? montageService.vatRate : 20,
         rating: ratingSummary(reviews),
-        // Yorumlar en yeniden eskiye; üye adı ve tarih dışında kişisel veri yok
         reviews: (reviews || [])
             .slice()
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -128,7 +106,6 @@ function toPublic(point, vatSettings = new Map(), oranlar = null) {
     };
 }
 
-// GET /api/montage-points — liste (+ il/ilçe filtresi ve filtre seçenekleri)
 router.get('/', async (req, res) => {
     try {
         const { city, district } = req.query;
@@ -141,7 +118,6 @@ router.get('/', async (req, res) => {
             WebMontagePoint.find({ site: req.site, isActive: true }, { city: 1, district: 1 }).lean()
         ]);
 
-        // Filtre seçenekleri: il → ilçeler (aktif noktalardan türetilir)
         const cityMap = new Map();
         for (const p of all) {
             if (!p.city) continue;
@@ -160,8 +136,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/montage-points/branches — kendi şubelerimiz (kimlik bilgisi vitrinde açık noktalar).
-// Ürün sayfasındaki "şubemizde montaj" butonları için hafif liste: yalnız ad + konum.
 router.get('/branches', async (req, res) => {
     try {
         const points = await WebMontagePoint.find(
@@ -175,7 +149,6 @@ router.get('/branches', async (req, res) => {
     }
 });
 
-// GET /api/montage-points/:id — detay
 router.get('/:id', async (req, res) => {
     try {
         if (!String(req.params.id).match(/^[a-f0-9]{24}$/i)) {

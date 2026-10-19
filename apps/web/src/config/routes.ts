@@ -1,4 +1,3 @@
-// apps/web/src/config/routes.ts
 export const ROUTES = {
     HOME: '/',
     LOGIN: '/giris-yap',
@@ -24,11 +23,8 @@ export const ROUTES = {
     TAG: '/etiket',
     CART: '/sepet',
     MONTAGE: '/montaj-noktalari',
-    // Montaj noktası seçim sayfası (ALastik)
     MONTAGE_SELECT: '/montaj-noktasi-sec',
-    /** Kendi lastiğiyle montaj / balans / rot satın alma (yalnız alastik) */
     MONTAGE_BUY: '/montaj-satin-al',
-    /** @deprecated MONTAGE_SELECT kullanılmalı — eski ad geriye dönük uyumluluk için duruyor */
     ADDED_TO_CART: '/montaj-noktasi-sec',
     CHECKOUT: '/teslimat',
     PAYMENT: '/odeme',
@@ -39,36 +35,18 @@ export const ROUTES = {
 
 export type RouteKey = keyof typeof ROUTES;
 
-// ============================================
-// DYNAMIC ROUTE BUILDERS
-// ============================================
-
-/**
- * Ürün detay URL'i
- */
 export const buildProductUrl = (seoUrl: string): string => {
     return `${ROUTES.PRODUCT}/${seoUrl}`;
 };
 
-/**
- * Marka sayfası URL'i
- */
 export const buildBrandUrl = (seoUrl: string): string => {
     return `${ROUTES.BRAND}/${seoUrl}`;
 };
 
-/**
- * Kategori sayfası URL'i (sadece kategori)
- */
 export const buildCategoryUrl = (categorySlug: string): string => {
     return `${ROUTES.CATEGORY}/${categorySlug}`;
 };
 
-/**
- * Lastik arama URL'i (Kategori + Ebat)
- * @example buildTireSearchUrl("4-mevsim-lastikler", "205", "55", "16")
- * @returns /kategori/4-mevsim-lastikler/205-55-r16
- */
 export const buildTireSearchUrl = (
     categorySlug: string,
     genislik: string,
@@ -88,9 +66,6 @@ export const buildTireSearchUrl = (
     return `${baseUrl}?${params.toString()}`;
 };
 
-/**
- * Mevsim değerinden kategori slug'ı al
- */
 export const getSeasonSlugFromValue = (mevsimValue: string): string => {
     const mevsimMap: Record<string, string> = {
         "1": "tum-lastikler",
@@ -101,11 +76,6 @@ export const getSeasonSlugFromValue = (mevsimValue: string): string => {
     return mevsimMap[mevsimValue] || "tum-lastikler";
 };
 
-/**
- * Ebat slug'ını parse et
- * @param ebatSlug
- * @returns { genislik: "205", yukseklik: "55", cap: "16", formatted: "205/55R16" }
- */
 export const parseTireSize = (ebatSlug: string) => {
     const [genislik, yukseklik, capWithR] = ebatSlug.split('-');
     const cap = capWithR.replace(/^r/i, '');
@@ -119,23 +89,13 @@ export const parseTireSize = (ebatSlug: string) => {
     };
 };
 
-/**
- * Etiket sayfası URL'i
- */
 export const buildTagUrl = (seoUrl: string): string => {
     return `${ROUTES.TAG}/${seoUrl}`;
 };
-/**
- * Lastik ebat etiketi fallback URL'i
- * Etiket bulunamadığında kullanılır
- */
 export const buildTireSizeTagFallback = (width: number, aspectRatio: number, diameter: number): string => {
     return `${width}-${aspectRatio}-r${diameter}-lastik-fiyatlari`;
 };
 
-/**
- * Araç bilgisiyle etiket URL'i oluştur
- */
 export interface VehicleParams {
     make: string;
     makeName: string;
@@ -147,9 +107,6 @@ export interface VehicleParams {
     vehicleImage?: string;
 }
 
-/**
- * Blog detay URL'i
- */
 export const buildBlogUrl = (slug: string): string => {
     return `${ROUTES.BLOG}/${slug}`;
 };

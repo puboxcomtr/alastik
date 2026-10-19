@@ -1,7 +1,5 @@
 "use client";
 
-// Siparişlerim — filtrelenebilir + sıralanabilir tablo (DIA siparişleri).
-// Detay, invoice/proforma görünümünde modal popup olarak açılır.
 import { useEffect, useMemo, useState } from "react";
 import { API_ENDPOINTS } from "@src/config/api";
 import { SpinnerIcon, ViewIcon, CloseIcon } from "@components/b2b-theme/icons";
@@ -16,7 +14,6 @@ interface OrderRow {
   totalKurus: number;
   itemCount: number;
   productText: string;
-  /** Bayinin sepette yazdığı Sipariş Açıklaması (panel dışı siparişte boş) */
   orderNote?: string;
 }
 interface OrderItem { name: string; stockCode: string; quantity: number; unitPrice: number; listUnitPrice?: number; totalPrice: number; }
@@ -58,7 +55,6 @@ export default function SiparislerPage() {
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [applied, sort]);
 
-  // Modal
   const [modalNo, setModalNo] = useState<string | null>(null);
   const [detay, setDetay] = useState<OrderDetail | null>(null);
   const [detayErr, setDetayErr] = useState("");
@@ -71,7 +67,6 @@ export default function SiparislerPage() {
       .then((d) => { if (d?.success && d.data) setOrders(d.data.orders || []); else setError(true); }).catch(() => setError(true));
   }, []);
 
-  // Modal açılınca detay çek
   useEffect(() => {
     if (!modalNo) { setDetay(null); setDetayErr(""); return; }
     const token = localStorage.getItem("authToken");
@@ -179,7 +174,6 @@ export default function SiparislerPage() {
         <Pagination page={page} totalPages={totalPages} onChange={setPage} totalCount={rows.length} perPage={PER_PAGE} />
       ) : null}
 
-      {/* ── Invoice / proforma modal ── */}
       {modalNo ? (
         <div className="inv-overlay" onClick={() => setModalNo(null)}>
           <div className="inv-modal" onClick={(e) => e.stopPropagation()}>

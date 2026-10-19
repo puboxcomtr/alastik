@@ -1,6 +1,5 @@
 'use client';
 
-// 404 tasarımı: iki site için tema rengine göre uyarlanır
 import Link from 'next/link';
 import { Container } from 'react-bootstrap';
 import { ROUTES } from '@/src/config/routes';

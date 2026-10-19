@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import classnames from 'classnames';
 
-/* MUI */
 import Card from '@mui/material/Card';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -15,17 +14,14 @@ import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
 
-/* Dialog */
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 
-/* Toast */
 import { toast } from 'react-toastify';
 
-/* Tanstack */
 import { rankItem } from '@tanstack/match-sorter-utils';
 import {
   createColumnHelper,
@@ -80,14 +76,11 @@ const TranslationsPage = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loading, setLoading] = useState(true);
   
-  /* Modals */
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   
-  /* Edit/Delete State */
   const [translationToEdit, setTranslationToEdit] = useState(null);
   
-  /* Form State */
   const [formData, setFormData] = useState({
     key: '',
     value: '',
@@ -166,8 +159,6 @@ const TranslationsPage = () => {
     setEditModalOpen(true);
   };
 
-
-
   const handleAddSubmit = async () => {
     if (!formData.key.trim() || !formData.value.trim()) {
       toast.error('Anahtar ve değer zorunludur');
@@ -216,7 +207,6 @@ const TranslationsPage = () => {
       toast.error('Güncelleme sırasında hata oluştu');
     }
   };
-
 
   const columns = useMemo(
     () => [
@@ -305,7 +295,6 @@ const TranslationsPage = () => {
   return (
     <>
       <Card>
-        {/* Header ve Filtreler */}
         <div className='flex flex-col gap-4 p-5'>
           <div className='flex items-start justify-between flex-wrap gap-4'>
             <div className='flex flex-col gap-1'>
@@ -324,7 +313,6 @@ const TranslationsPage = () => {
             </Button>
           </div>
 
-          {/* Filtreler */}
           <div className='flex items-center gap-4 flex-wrap'>
             <DebouncedInput
               value={globalFilter ?? ''}
@@ -352,7 +340,6 @@ const TranslationsPage = () => {
           </div>
         </div>
 
-        {/* Tablo */}
         <div className='overflow-x-auto'>
           <table className={tableStyles.table}>
             <thead>
@@ -402,7 +389,6 @@ const TranslationsPage = () => {
           </table>
         </div>
 
-        {/* Pagination */}
         <TablePagination
           rowsPerPageOptions={[10, 15, 25]}
           component='div'
@@ -415,7 +401,6 @@ const TranslationsPage = () => {
         />
       </Card>
 
-      {/* Ekleme Dialog */}
       <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} maxWidth='sm' fullWidth>
         <DialogTitle>Yeni Çeviri Ekle</DialogTitle>
         <DialogContent>
@@ -471,7 +456,6 @@ const TranslationsPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Düzenleme Dialog */}
       <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)} maxWidth='sm' fullWidth>
         <DialogTitle>Çeviri Düzenle</DialogTitle>
         <DialogContent>

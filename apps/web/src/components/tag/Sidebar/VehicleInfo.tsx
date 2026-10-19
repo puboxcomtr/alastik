@@ -104,7 +104,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
             }
         }
 
-        // 2. FALLBACK: Giriş yok veya garaj boş → localStorage (search)
         try {
             const stored = localStorage.getItem('selectedVehicle');
 
@@ -112,12 +111,10 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                 const data = JSON.parse(stored) as VehicleData;
                 const isValid = data.timestamp && (Date.now() - data.timestamp) < 2 * 60 * 60 * 1000;
 
-                // source alanı eksikse 'search' varsayılır
                 if (isValid && data.make) {
                     setVehicle({ ...data, source: data.source || 'search' });
                     return;
                 } else if (data.timestamp && !isValid) {
-                    // Sadece süresi gerçekten dolmuşsa temizle
                     localStorage.removeItem('selectedVehicle');
                 }
             }
@@ -125,7 +122,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
             console.error('[VehicleInfo] localStorage read error:', error);
         }
 
-        // 3. Hiçbiri yoksa araç gösterme
         setVehicle(null);
     }, [mounted, isLoggedIn, vehicles, vehiclesLoading]);
 
@@ -144,7 +140,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                     vehicle.modification
                 );
 
-                // LASTIK EBATLARI
                 const groupedTires = wheelSizeService.parseGroupedTires(vehicleData);
                 const allTires = [
                     ...groupedTires.both.map(t => ({ ...t, position: 'both' })),
@@ -172,7 +167,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
 
                 setTireSizes(Array.from(uniqueTireSizes.values()));
 
-                // JANT EBATLARI
                 const groupedRims = parseGroupedRims(vehicleData);
                 const allRims = [
                     ...groupedRims.both.map(r => ({ ...r, position: 'both' })),
@@ -314,7 +308,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
         return null;
     }
 
-    // Araç Görseli 
     const vehicleInfoContent = (
         <>
             <div className="d-flex justify-content-between align-items-center">
@@ -333,7 +326,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
             </div>
             <Divider sx={{ my: 1.5 }} />
 
-            {/* Araç Görseli */}
             <div className="mb-3">
                 {vehicle.vehicleImage ? (
                     <img
@@ -372,7 +364,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
 
     return (
         <div className="vehicle-info-sidebar">
-            {/* ===== ARAÇ GÖRSELİ */}
             {isMobile ? (
                 <Accordion
                     defaultExpanded={false}
@@ -411,10 +402,8 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                         </div>
                     ) : (
                         <>
-                            {/* LASTİK ETİKETİ  */}
                             {tagType === 'tire_size' && (
                                 <>
-                                    {/* Ön/Arka Lastik */}
                                     {tireSizes.filter(s => s.position === 'both').length > 0 && (
                                         <>
                                             <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
@@ -456,7 +445,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                                         </>
                                     )}
 
-                                    {/* Ön Lastik */}
                                     {tireSizes.filter(s => s.position === 'front').length > 0 && (
                                         <>
                                             <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
@@ -498,7 +486,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                                         </>
                                     )}
 
-                                    {/* Arka Lastik */}
                                     {tireSizes.filter(s => s.position === 'rear').length > 0 && (
                                         <>
                                             <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
@@ -545,10 +532,8 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                                 </>
                             )}
 
-                            {/* JANT ETİKETİ  */}
                             {tagType === 'rim_pcd' && (
                                 <>
-                                    {/* Ön/Arka Jant */}
                                     {rimSizes.filter(s => s.position === 'both').length > 0 && (
                                         <>
                                             <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
@@ -590,7 +575,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                                         </>
                                     )}
 
-                                    {/* Ön Jant */}
                                     {rimSizes.filter(s => s.position === 'front').length > 0 && (
                                         <>
                                             <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>
@@ -632,7 +616,6 @@ export default function VehicleInfo({ currentSize, tagType }: VehicleInfoProps) 
                                         </>
                                     )}
 
-                                    {/* Arka Jant */}
                                     {rimSizes.filter(s => s.position === 'rear').length > 0 && (
                                         <>
                                             <Accordion defaultExpanded sx={{ boxShadow: "none", border: "none", "&:before": { display: "none" } }}>

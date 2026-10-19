@@ -3,14 +3,8 @@ const router = express.Router();
 const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const { authenticateAdmin, getClientIP } = require('../../../middleware/auth');
 
-// Tüm route'lar admin authentication gerektirir
 router.use(authenticateAdmin);
 
-/**
- * @route   GET /api/admin/user/activity-logs
- * @desc    İşlem kayıtları listesi
- * @access  Private
- */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -26,7 +20,6 @@ router.get('/', async (req, res) => {
             sortOrder = 'desc'
         } = req.query;
 
-        // Filtreler
         const filter = {};
 
         if (userId) {
@@ -55,11 +48,9 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-        // Query
         const logs = await ActivityLog.find(filter)
             .populate('user', 'firstName lastName email username')
             .sort(sort)
@@ -68,7 +59,6 @@ router.get('/', async (req, res) => {
 
         const total = await ActivityLog.countDocuments(filter);
 
-        // İstatistikler
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -81,14 +71,12 @@ router.get('/', async (req, res) => {
             failed: await ActivityLog.countDocuments({ status: 'failed' })
         };
 
-        // Modül bazlı istatistikler
         const moduleStats = await ActivityLog.aggregate([
             { $group: { _id: '$module', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
             { $limit: 10 }
         ]);
 
-        // Action bazlı istatistikler
         const actionStats = await ActivityLog.aggregate([
             { $group: { _id: '$action', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
@@ -120,11 +108,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/user/activity-logs/:id
- * @desc    İşlem kaydı detayı
- * @access  Private
- */
 router.get('/:id', async (req, res) => {
     try {
         const log = await ActivityLog.findById(req.params.id)
@@ -151,11 +134,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/user/activity-logs/user/:userId
- * @desc    Kullanıcıya ait işlem kayıtları
- * @access  Private
- */
 router.get('/user/:userId', async (req, res) => {
     try {
         const { limit = 50 } = req.query;
@@ -179,11 +157,6 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/user/activity-logs/stats/dashboard
- * @desc    Dashboard istatistikleri
- * @access  Private
- */
 router.get('/stats/dashboard', async (req, res) => {
     try {
         const today = new Date();
@@ -198,7 +171,6 @@ router.get('/stats/dashboard', async (req, res) => {
         const thisMonth = new Date(today);
         thisMonth.setMonth(thisMonth.getMonth() - 1);
 
-        // Zaman bazlı istatistikler
         const timeStats = {
             today: await ActivityLog.countDocuments({ createdAt: { $gte: today } }),
             yesterday: await ActivityLog.countDocuments({
@@ -208,13 +180,11 @@ router.get('/stats/dashboard', async (req, res) => {
             thisMonth: await ActivityLog.countDocuments({ createdAt: { $gte: thisMonth } })
         };
 
-        // Son aktiviteler
         const recentActivities = await ActivityLog.find()
             .sort({ createdAt: -1 })
             .limit(10)
             .populate('user', 'firstName lastName email');
 
-        // En aktif kullanıcılar (son 7 gün)
         const activeUsers = await ActivityLog.aggregate([
             { $match: { createdAt: { $gte: thisWeek } } },
             { $group: { _id: '$user', count: { $sum: 1 } } },
@@ -239,7 +209,6 @@ router.get('/stats/dashboard', async (req, res) => {
             }
         ]);
 
-        // Başarısız işlemler (son 24 saat)
         const failedActions = await ActivityLog.find({
             status: 'failed',
             createdAt: { $gte: today }
@@ -267,11 +236,6 @@ router.get('/stats/dashboard', async (req, res) => {
     }
 });
 
-/**
- * @route   DELETE /api/admin/user/activity-logs/cleanup
- * @desc    Eski kayıtları temizle
- * @access  Private (Super Admin)
- */
 router.delete('/cleanup', async (req, res) => {
     try {
         const { days = 90 } = req.body;
@@ -283,7 +247,6 @@ router.delete('/cleanup', async (req, res) => {
             createdAt: { $lt: cutoffDate }
         });
 
-        // Activity log
         await ActivityLog.logActivity({
             user: req.adminId,
             action: 'delete',

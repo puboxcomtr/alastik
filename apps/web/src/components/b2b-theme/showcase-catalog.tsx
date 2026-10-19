@@ -1,7 +1,4 @@
 'use client';
-// Sıfır Lastik / 2.El sekmeli katalog — ürünler PANELDEN yönetilen vitrinden gelir
-// (theme.showcaseFirst). Vitrin ürünleri (DIA) tema tablosunun Lastik formatına
-// dönüştürülüp mevcut Katalog bileşenine beslenir.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { Catalog } from '@components/b2b-theme/catalog';
@@ -16,11 +13,11 @@ export interface RawProduct {
         aciklama?: string;
         marka?: string;
         gercek_stok?: number;
-        ozelkod1kodu?: string; // mevsim
-        ozelkod3kodu?: string; // ebat
-        ozelkod5kodu?: string; // desen/model
-        ozelkod7kodu?: string; // ürün türü (LASTİK, 2.El Jant …)
-        ekalan5?: string; // üretim yılı (DOT) — sıfır ve 2.El lastikte dolu, ör. "2026"
+        ozelkod1kodu?: string;
+        ozelkod3kodu?: string;
+        ozelkod5kodu?: string;
+        ozelkod7kodu?: string;
+        ekalan5?: string;
         m_kategoriler?: { kategori_aciklama_1?: string }[];
         m_resimler?: { aws_url?: string; order_id?: string | number }[];
         m_birimler?: { fiyat1?: string | number; fiyat4?: string | number; fiyat4Ham?: string | number }[];
@@ -28,12 +25,9 @@ export interface RawProduct {
     };
     customData?: { seoUrl?: string; webPrice?: number; shippingIncludedPrice?: number; featuredImage?: string; delivery?: string };
     syncInfo?: { syncSource?: string };
-    perakendeKurus?: number | null; // API ?perakende=1 → LJA perakende fiyatı (plasiyer karşılaştırması)
+    perakendeKurus?: number | null;
 }
 
-// Sevkiyat süresi: kendi stoğumuz (DIA, XML değil) her zaman "Aynı Gün". XML
-// ürünlerde kendi sevkiyat alanı (customData.delivery) esas alınır; alan
-// dolu değilse (varsayılan same_day dahil) tedarikçi ürünü için "1-2 Gün".
 function resolveShipping(u: RawProduct): string {
     const isXml = u.syncInfo?.syncSource === 'xml_integration';
     if (!isXml) return 'Aynı Gün';
@@ -61,9 +55,6 @@ function isSecondHand(u: RawProduct): boolean {
     return (u.diaData?.m_kategoriler || []).some(k => String(k?.kategori_aciklama_1 || '').startsWith('İkinci El'));
 }
 
-// DOT (üretim yılı): DIA'da ekalan5 alanında dört haneli yıl olarak tutulur
-// (hem sıfır hem 2.El lastikte dolu, ör. "2026"). ekalan5 boşsa 2.El ürün
-// adındaki parantez içi yıla ("... (2022)") düşülür. Bulunamazsa null.
 function resolveDotYear(u: RawProduct): number | null {
     const ek = String(u.diaData?.ekalan5 || '').trim();
     if (/^(19|20)\d{2}$/.test(ek)) return parseInt(ek, 10);
@@ -73,7 +64,6 @@ function resolveDotYear(u: RawProduct): number | null {
     return Number.isFinite(yil) ? yil : null;
 }
 
-// Türkçe normalize: marka adı eşleştirmesi için (Lassa ↔ LASSA ↔ LASSA)
 export function normalizeBrand(s: string): string {
     return String(s || '')
         .toLocaleLowerCase('tr')
@@ -83,17 +73,10 @@ export function normalizeBrand(s: string): string {
 
 export type CariOran = { tanimlifiyat?: number; fiyatyuzde?: number };
 
-/** DIA görsellerini order_id'ye göre sıralar (ana/yandan görünüş order 1'de olmalı;
- *  ham dizi bazen sırasız geliyor → thumbnail yanlış görseli gösteriyordu). */
 function sortByOrder(images?: { aws_url?: string; order_id?: string | number }[]): { aws_url?: string; order_id?: string | number }[] {
   return [...(images || [])].sort((a, b) => (Number(a.order_id) || 99) - (Number(b.order_id) || 99));
 }
 
-/**
- * DIA depo dağılımını ürünün stok satırlarına uygular. Dağılım toplam stoktan azsa (stok listelenmemiş
- * bir depoda ya da XML ürününde hiç depo kaydı yoksa) kalan, ürünün KENDİ deposuna yazılır
- * (kendi stok: Merkez, XML: Fabrika); aynı adlı depo satırı varsa ona eklenir.
- */
 export function mergeDepotStocks(u: Tire, warehouses: { ad: string; adet: number }[]): Tire {
     const own = u.stocks[0];
     const prevTotal = u.stocks.reduce((s, st) => s + st.available, 0);
@@ -109,24 +92,11 @@ export function mergeDepotStocks(u: Tire, warehouses: { ad: string; adet: number
 }
 
 export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cariOran?: CariOran): Tire {
-    // Fiyat kurgusu (b2b):
-    //  - Kendi (Sabit) ürün: LİSTE fiyatı = m_birimler[0].fiyat1; satış (Cari)
-    //    fiyatı = fiyat1 × (Cari oranı). Oran DIA'daki "Sabit Fiyatlı Ürünler
-    //    <segment> | Cari" fiyat kartından gelir (/fiyat-orani → fiyatyuzde); yoksa
-    //    varsayılan %50. Üstü çizili liste + oranlı satış.
-    //  - XML (tedarikçi) ürün: webPrice geçerli; XML'de iskonto YOK, üstü çizili
-    //    liste de yok (liste = satış). Değerler KDV dahil; net = /1.2.
     const xmlKaynak = u.syncInfo?.syncSource === 'xml_integration'
         || /-XML$/i.test(u.diaData?.stokkartkodu || '');
-    // B2C İndirim Oranı (DIA birimindirimorani "AD: 46.00"). 0 ise indirim yok.
     const b2cOran = parseFloat(String(u.diaData?.birimindirimorani || '').replace(/[^0-9.]/g, ''))
         || Number(u.diaData?.b2c_indirimorani) || 0;
-    // Bayi fiyatı = DIA ham F4 (fiyat4Ham). Yanıttaki fiyat4, sitenin "Gösterilecek Fiyat" ayarıyla ezilebilir
-    // (ör. fiyat1 − B2C oranı); sipariş sunucuda ham F4'ten hesaplandığı için liste de onu kullanır.
     const fiyat4 = Number(u.diaData?.m_birimler?.[0]?.fiyat4Ham) || Number(u.diaData?.m_birimler?.[0]?.fiyat4) || 0;
-    // Kendi stok + indirim oranı 0 (2.El vb.) → cari iskonto UYGULANMAZ, bayi fiyatı
-    // (fiyat4) doğrudan kullanılır. Oran>0 → mevcut cari hesap (normalde ≈fiyat4 çıkar).
-    // İkinci el üründe hiçbir iskonto yoktur (cari iskontosu da): bayi fiyatı (fiyat4) doğrudan kullanılır
     const oranSifir = !xmlKaynak && (b2cOran === 0 || isSecondHand(u)) && fiyat4 > 0;
     const oran = (Number(cariOran?.fiyatyuzde) > 0 ? Number(cariOran?.fiyatyuzde) : 50) / 100;
     const listeFiyat = xmlKaynak
@@ -137,11 +107,8 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         : (oranSifir ? fiyat4 : Math.round(listeFiyat * oran * 100) / 100);
     const netKurus = satisFiyat > 0 ? Math.round((satisFiyat / 1.2) * 100) : 0;
     const kdvDahilKurus = satisFiyat > 0 ? Math.round(satisFiyat * 100) : 0;
-    // Oran 0'da üstü çizili liste gösterilmez (liste = satış).
     const listeKurus = oranSifir ? kdvDahilKurus : (listeFiyat > 0 ? Math.round(listeFiyat * 100) : kdvDahilKurus);
     const stok = Number(u.diaData?.gercek_stok || 0);
-    // XML (tedarikçi) ürünlerinin fiziksel deposu yok; stok "Fabrika" olarak
-    // etiketlenir (kendi stokta "Merkez"; canlı depo verisi gelince değişir).
     const isXmlProduct = u.syncInfo?.syncSource === 'xml_integration';
     const durum: ProductStatus = isSecondHand(u) ? 'ikinciEl' : 'sifir';
     const ad = u.diaData?.aciklama || '';
@@ -149,7 +116,6 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
     const brandName = u.diaData?.marka || '';
     const logo = brandLogo[normalizeBrand(brandName)] || null;
 
-    // AB Lastik Etiketi — DIA ürün özelliklerinden (boş olanlar atlanır)
     const ozellik = (ad2: string): string => {
         const v = (u.diaData?.m_urunOzellikleri || [])
             .find(o => (o.ozellikadi || '').trim() === ad2)?.detayaciklama;
@@ -170,7 +136,6 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         brandLogoUrl: logo && !logo.includes('gorsel-bulunamadi') ? logo : null,
         size: u.diaData?.ozelkod3kodu || '',
         pattern: u.diaData?.ozelkod5kodu || ad,
-        // Tam ürün adı: DIA açıklaması (marka baştaysa çıkarılır; marka ayrı sütunda logo).
         fullName: ad
             ? ad.replace(new RegExp('^\\s*' + brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '').trim() || ad
             : null,
@@ -184,8 +149,6 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         cTipi: /\bC\b/.test(ad),
         ev: /\bEV\b/i.test(ad),
         xl: /\bXL\b/i.test(ad),
-        // Görseller DIA order_id'sine göre sıralanır: ana/yandan görünüş order 1'de olmalı.
-        // Ham dizi bazen sırasız gelir (ör. [0]=order3) → thumbnail yanlış görseli gösteriyordu.
         imageUrl: u.customData?.featuredImage || sortByOrder(u.diaData?.m_resimler)[0]?.aws_url || null,
         images: sortByOrder(u.diaData?.m_resimler).map(r => r.aws_url).filter((x): x is string => Boolean(x)),
         xml: xmlKaynak,
@@ -199,7 +162,6 @@ export function rawToTire(u: RawProduct, brandLogo: Record<string, string>, cari
         fiyat: netKurus > 0
             ? { listeBirimKurus: listeKurus, birimNetKurus: netKurus, kdvDahilBirimKurus: kdvDahilKurus, priceSource: 'liste', kdvHaric: oranSifir }
             : null,
-        // Plasiyer karşılaştırması: LJA perakende fiyatı (API ?perakende=1 → u.perakendeKurus)
         perakendeKurus: (typeof u.perakendeKurus === 'number' && u.perakendeKurus > 0) ? u.perakendeKurus : null,
     };
 }
@@ -209,7 +171,6 @@ export function ShowcaseCatalog() {
 
     useEffect(() => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        // Marka logoları, vitrin ürünleri ve Cari fiyat oranı paralel çekilir
         Promise.all([
             fetch(API_ENDPOINTS.b2b.brands(), { headers: { 'X-Site': 'b2b' } }).then(r => r.json()).catch(() => null),
             fetch(API_ENDPOINTS.showcases.homepage(), { headers: { 'X-Site': 'b2b' } }).then(r => r.json()).catch(() => null),
@@ -222,9 +183,6 @@ export function ShowcaseCatalog() {
                 if (m?.name && m?.logo) brandLogo[normalizeBrand(m.name)] = m.logo;
                 if (m?.diaBrand && m?.logo) brandLogo[normalizeBrand(m.diaBrand)] = m.logo;
             }
-            // Tüm vitrinlerin (Sıfır + 2.El) ürünleri birleştirilir; ürün durumu
-            // (sıfır/2.El) render aşamasında ayrılır. Aynı ürün iki vitrinde varsa
-            // _key ile tekilleştirilir.
             const showcases = showcaseRes?.success && Array.isArray(showcaseRes.data) ? showcaseRes.data : [];
             const gorulen = new Set<string>();
             const raw: RawProduct[] = [];
@@ -236,7 +194,6 @@ export function ShowcaseCatalog() {
             const list = raw.map(u => rawToTire(u, brandLogo, cariOran));
             setUrunler(list);
 
-            // Depo bazlı stok (Maslak/Şişli/Fabrika) — tooltip için ayrıca çekilir
             const kodlar = raw.map(u => u.diaData?.stokkartkodu).filter(Boolean) as string[];
             fetchDepotStocks(kodlar).then(map => {
                 if (!map) return;
@@ -258,7 +215,5 @@ export function ShowcaseCatalog() {
         );
     }
 
-    // Sekmeli tek katalog: "Sıfır Lastik" sekmesi sıfır ürünleri, "2.El Lastik"
-    // sekmesi 2.El ürünleri gösterir (ayrım Katalog içindeki sekmeyle yapılır).
     return <Catalog products={products} />;
 }

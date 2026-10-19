@@ -1,4 +1,3 @@
-// GET /admin/analytics/live yanıtındaki `data` sözleşmesi
 
 export type LiveBehavior = {
     addedToCart: number

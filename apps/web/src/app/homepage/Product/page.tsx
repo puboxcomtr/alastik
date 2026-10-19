@@ -1,7 +1,6 @@
 'use client';
 import React from 'react';
 
-// Components
 import AlastikShowCaseProduct from '@components/alastik/homepage/Showcase/Product';
 import LjaShowCaseProduct from '@components/lastikjantavm/homepage/Showcase/Product';
 

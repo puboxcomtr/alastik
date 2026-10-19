@@ -11,12 +11,6 @@ const AYLAR = [
 ];
 const GUNLER = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"];
 
-/**
- * Vade Takvimi — açık faturaların aylık vade dağılımı.
- *
- * Gecikme hesabı gün başlangıcına göre yapılır; "vadesi bugün" olan fatura
- * gecikmiş sayılmaz.
- */
 export default function VadeTakvimiPage() {
   const [yil, setYil] = useState(TODAY.getUTCFullYear());
   const [ay, setAy] = useState(TODAY.getUTCMonth());
@@ -24,7 +18,6 @@ export default function VadeTakvimiPage() {
 
   const acikFaturalar = ACCOUNT_SUMMARY.invoices.filter((f) => f.kalanKurus > 0);
 
-  // Vade tarihi olan açık faturalar gün bazında toplanır.
   const gunToplam = new Map<string, number>();
   for (const f of acikFaturalar) {
     if (!f.vadeTarihi) continue;
@@ -32,10 +25,9 @@ export default function VadeTakvimiPage() {
     gunToplam.set(anahtar, (gunToplam.get(anahtar) ?? 0) + f.kalanKurus);
   }
 
-  // Takvim ızgarası: pazartesi başlangıçlı haftalar.
   const ilkGun = new Date(Date.UTC(yil, ay, 1));
   const kacGun = new Date(Date.UTC(yil, ay + 1, 0)).getUTCDate();
-  const baslangicKaydir = (ilkGun.getUTCDay() + 6) % 7; // Pzt=0
+  const baslangicKaydir = (ilkGun.getUTCDay() + 6) % 7;
   const hucreler: Date[] = [];
   for (let i = 0; i < baslangicKaydir; i++) {
     hucreler.push(new Date(Date.UTC(yil, ay, i - baslangicKaydir + 1)));

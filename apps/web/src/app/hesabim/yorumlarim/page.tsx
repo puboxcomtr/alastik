@@ -1,20 +1,15 @@
 'use client';
 
-// React & Next.js
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-// Bootstrap
 import { Col, Container, Row } from 'react-bootstrap';
 
-// Hooks
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 
-// Config
 import { ROUTES } from '@/src/config/routes';
 
-// Components
 import AccountSidebar from '@/src/components/account/Sidebar/Content';
 import ReviewsContent from '@/src/components/account/Content/Reviews';
 

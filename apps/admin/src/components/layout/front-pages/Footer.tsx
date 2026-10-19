@@ -1,4 +1,3 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -6,14 +5,11 @@ import Chip from '@mui/material/Chip'
 import TextField from '@mui/material/TextField'
 import IconButton from '@mui/material/IconButton'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Component Imports
 import Link from '@components/Link'
 import Logo from '@components/layout/shared/Logo'
 
-// Util Imports
 import { frontLayoutClasses } from '@layouts/utils/layoutClasses'
 
 

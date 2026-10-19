@@ -1,10 +1,3 @@
-/**
- * PayNkolay Ödeme Route'ları
- * Tek çekim ve banka kartı ödemeleri
- * 
- * apps/api/src/routes/web/payment/nkolay.js
- * app.use('/api/web/payments/nkolay', nkolayRouter)
- */
 
 const express = require('express');
 const router = express.Router();
@@ -14,13 +7,10 @@ const { clearOrderCart } = require('../../../utils/orderCart');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alastik.com';
-// Bankadan dönüşte müşteri SİPARİŞİN sitesine gönderilir (LJA siparişi alastik.com'a düşmesin).
-// Sipariş bulunamazsa (site bilinmiyorsa) varsayılan vitrin adresi kullanılır.
 const { getSiteUrl } = require('../../../config/sites');
 const frontendUrlFor = (site) => getSiteUrl(site) || FRONTEND_URL;
 const API_URL = process.env.API_URL || 'https://api.alastik.com';
 
-// ========== 3D SECURE BAŞLAT ==========
 router.post('/3d-init', async (req, res) => {
     try {
         const {
@@ -41,12 +31,10 @@ router.post('/3d-init', async (req, res) => {
             expYear
         });
 
-        // Validasyon
         if (!orderId || !cardNumber || !cardHolderName || !expMonth || !expYear || !cvc) {
             return res.status(400).json({ success: false, message: 'Eksik kart bilgisi' });
         }
 
-        // Siparişi bul
         const order = await WebOrder.findById(orderId);
         if (!order) {
             return res.status(404).json({ success: false, message: 'Sipariş bulunamadı' });
@@ -54,17 +42,14 @@ router.post('/3d-init', async (req, res) => {
 
         console.log('[Nkolay Route] Sipariş:', order.orderNumber, 'Tutar:', order.pricing.total);
 
-        // Müşteri IP'sini al
         const customerIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
             || req.headers['x-real-ip']
             || req.connection?.remoteAddress
             || '127.0.0.1';
 
-        // Callback URL'leri
         const successUrl = `${API_URL}/api/web/payments/nkolay/3d-callback/success`;
         const failUrl = `${API_URL}/api/web/payments/nkolay/3d-callback/fail`;
 
-        // Ödeme başlat
         const result = await NkolayService.processPayment({
             site: order.site,
             orderNumber: order.orderNumber,
@@ -87,7 +72,6 @@ router.post('/3d-init', async (req, res) => {
         });
 
         if (result.success && result.threeDHtml) {
-            // Sipariş ödeme bilgilerini güncelle
             order.payment = order.payment || {};
             order.payment.method = 'credit_card_3d';
             order.payment.gateway = 'nkolay';
@@ -97,8 +81,6 @@ router.post('/3d-init', async (req, res) => {
             order.payment.status = 'pending';
             await order.save();
 
-            // Nkolay HTML döndürüyor (Netahsilat'ta URL dönüyordu)
-            // Frontend bu HTML'i bir sayfada render edecek
             return res.json({
                 success: true,
                 threeDHtml: result.threeDHtml,
@@ -106,7 +88,6 @@ router.post('/3d-init', async (req, res) => {
             });
         }
 
-        // 3D'siz direkt başarılı (olası durum)
         if (result.success && result.directSuccess) {
             order.payment = order.payment || {};
             order.payment.method = 'credit_card';
@@ -120,7 +101,6 @@ router.post('/3d-init', async (req, res) => {
             await order.save();
             await clearOrderCart(order, 'nkolay-direct');
 
-            // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
             const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
             syncOrderToDiaBackground(order, 'nkolay-direct');
 
@@ -142,7 +122,6 @@ router.post('/3d-init', async (req, res) => {
     }
 });
 
-// ========== 3D CALLBACK - BAŞARILI ==========
 router.post('/3d-callback/success', async (req, res) => {
     let siteUrl = FRONTEND_URL;
     try {
@@ -154,7 +133,6 @@ router.post('/3d-callback/success', async (req, res) => {
         const bankMessage = req.body.BANK_MESSAGE || req.body.bankMessage || '';
         const responseCode = req.body.RESPONSE_CODE || req.body.responseCode;
 
-        // Siparişi bul (orderNumber = clientRefCode)
         const order = await WebOrder.findOne({
             $or: [
                 { orderNumber: clientRefCode },
@@ -168,7 +146,6 @@ router.post('/3d-callback/success', async (req, res) => {
         }
         siteUrl = frontendUrlFor(order.site);
 
-        // CompletePayment gerekli mi dene
         let finalSuccess = false;
         let finalAuthCode = authCode;
 
@@ -180,10 +157,8 @@ router.post('/3d-callback/success', async (req, res) => {
                 finalSuccess = true;
                 finalAuthCode = completeResult.authCode || authCode;
             } else {
-                // CompletePayment başarısız ise callback bilgileriyle devam et
-                // Bazı durumlarda CompletePayment gerekmeyebilir
                 console.log('[Nkolay Route] CompletePayment başarısız, callback bilgileriyle devam ediliyor');
-                finalSuccess = true; // Success callback'e geldiyse banka onaylamış demektir
+                finalSuccess = true;
             }
         } else {
             finalSuccess = true;
@@ -203,11 +178,9 @@ router.post('/3d-callback/success', async (req, res) => {
 
             console.log('[Nkolay Route] Ödeme başarılı, sipariş güncellendi:', order.orderNumber);
 
-            // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
             const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
             syncOrderToDiaBackground(order, 'nkolay-callback');
 
-            // Ödeme başarılı → mail tetikle (fire-and-forget)
             if (order.payment.status === 'paid') {
                 const customerMail = order.isGuest
                     ? (order.guestBillingAddress?.email || order.customerEmail)
@@ -234,7 +207,6 @@ router.post('/3d-callback/success', async (req, res) => {
             return res.redirect(`${siteUrl}/siparis-basarili?order=${order.orderNumber}`);
         }
 
-        // Buraya düşmemeli ama güvenlik için
         return res.redirect(`${siteUrl}/odeme/basarisiz?error=${encodeURIComponent('Ödeme doğrulanamadı')}`);
 
     } catch (error) {
@@ -243,7 +215,6 @@ router.post('/3d-callback/success', async (req, res) => {
     }
 });
 
-// ========== 3D CALLBACK - BAŞARISIZ ==========
 router.post('/3d-callback/fail', async (req, res) => {
     let siteUrl = FRONTEND_URL;
     try {
@@ -253,7 +224,6 @@ router.post('/3d-callback/fail', async (req, res) => {
         const clientRefCode = req.body.CLIENT_REFERENCE_CODE || req.body.clientRefCode;
         const errorMessage = req.body.RESPONSE_DATA || req.body.BANK_MESSAGE || req.body.ERROR_MESSAGE || 'Ödeme başarısız';
 
-        // Siparişi bul ve güncelle
         const order = await WebOrder.findOne({
             $or: [
                 { orderNumber: clientRefCode },
@@ -280,7 +250,6 @@ router.post('/3d-callback/fail', async (req, res) => {
     }
 });
 
-// ========== İPTAL ==========
 router.post('/cancel', async (req, res) => {
     try {
         const { referenceCode, amount, trxDate } = req.body;
@@ -289,7 +258,6 @@ router.post('/cancel', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Eksik bilgi: referenceCode, amount, trxDate gerekli' });
         }
 
-        // Site, referans kodundan bulunan siparişten çözülür (yoksa istekten)
         const cancelOrder = await WebOrder.findOne({ 'payment.referenceCode': referenceCode }).select('site').lean();
         const result = await NkolayService.cancelPayment({ referenceCode, amount, trxDate, site: cancelOrder?.site || req.site });
         return res.json(result);
@@ -300,7 +268,6 @@ router.post('/cancel', async (req, res) => {
     }
 });
 
-// ========== İADE ==========
 router.post('/refund', async (req, res) => {
     try {
         const { referenceCode, amount, trxDate } = req.body;
@@ -309,7 +276,6 @@ router.post('/refund', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Eksik bilgi: referenceCode, amount, trxDate gerekli' });
         }
 
-        // Site, referans kodundan bulunan siparişten çözülür (yoksa istekten)
         const refundOrder = await WebOrder.findOne({ 'payment.referenceCode': referenceCode }).select('site').lean();
         const result = await NkolayService.refundPayment({ referenceCode, amount, trxDate, site: refundOrder?.site || req.site });
         return res.json(result);

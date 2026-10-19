@@ -10,8 +10,6 @@ import { pushDataLayer, fireAdsConversion } from '@/src/lib/tracking';
 
 import { Order } from '@/src/types/order';
 
-
-// Components
 import OrderSummary from '@/src/components/payment/Success/OrderSummary';
 import PaymentProducts from '@/src/components/payment/Success/PaymentProducts';
 
@@ -21,7 +19,6 @@ declare global {
     }
 }
 
-
 export default function OrderSuccessPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -30,16 +27,13 @@ export default function OrderSuccessPage() {
     const [isValidAccess, setIsValidAccess] = useState(false);
     const conversionSentRef = useRef(false);
 
-    // Dönüşüm olayları — sipariş başarılı yüklendiğinde 1 kez tetikle
     useEffect(() => {
         if (!order || conversionSentRef.current) return;
         if (typeof window === 'undefined') return;
 
         conversionSentRef.current = true;
-        // Sipariş tutarı API yanıtında pricing.total altındadır (KDV dahil ödenen toplam)
         const orderValue = Number(order.pricing?.total ?? 0);
 
-        // GTM dönüşüm tetikleyicileri için dataLayer olayı (her iki site)
         pushDataLayer({
             event: 'purchase',
             value: orderValue,
@@ -47,7 +41,6 @@ export default function OrderSuccessPage() {
             transaction_id: orderNumber || ''
         });
 
-        // Google Ads dönüşümü — sitenin etiket haritasından (config/tracking.ts)
         fireAdsConversion('purchase', {
             value: orderValue,
             transaction_id: orderNumber || ''
@@ -55,7 +48,6 @@ export default function OrderSuccessPage() {
     }, [order, orderNumber]);
 
     useEffect(() => {
-        // Referrer kontrolü
         const referrer = document.referrer;
         const isFromOurSite = referrer.includes('alastik.com') || referrer.includes('localhost');
 
@@ -66,7 +58,6 @@ export default function OrderSuccessPage() {
 
         setIsValidAccess(true);
 
-        // Sipariş verilerini çek
         if (orderNumber) {
             orderService.getOrderByNumber(orderNumber).then(data => {
                 setOrder(data);

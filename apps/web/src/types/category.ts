@@ -1,4 +1,3 @@
-// apps/web/src/types/category.ts
 export interface ParentCategory {
     _id: string;
     name: string;

@@ -2,8 +2,6 @@ import { fetchAPI } from '@libs/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3082/api'
 
-
-// Backend'in döndürdüğü açıklayıcı mesajı korur; bağlantı hatasını anlaşılır hale getirir
 function menuError(error: any, fallback: string): Error {
     const message = String(error?.message || '')
     if (!message || /failed to fetch|networkerror|load failed/i.test(message)) {
@@ -94,7 +92,6 @@ export type ParentMenuOptionType = {
     menuType?: string
 }
 
-// Menü listesi
 export async function fetchMenus(params?: {
     displayArea?: string
     rowLevel?: number
@@ -114,7 +111,6 @@ export async function fetchMenus(params?: {
     }
 }
 
-// Tek menü getir
 export async function fetchMenu(id: string) {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/${id}`, {
@@ -125,7 +121,6 @@ export async function fetchMenu(id: string) {
     }
 }
 
-// Kategorileri getir (dropdown için)
 export async function fetchCategories(level?: 1 | 2) {
     const queryParams = level ? `?level=${level}` : ''
 
@@ -138,7 +133,6 @@ export async function fetchCategories(level?: 1 | 2) {
     }
 }
 
-// Sayfaları getir (dropdown için)
 export async function fetchPages() {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/options/pages`, {
@@ -149,7 +143,6 @@ export async function fetchPages() {
     }
 }
 
-// Blog yazılarını getir (dropdown için)
 export async function fetchBlogs() {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/options/blogs`, {
@@ -160,7 +153,6 @@ export async function fetchBlogs() {
     }
 }
 
-// Ürünleri ara (katalog büyük olduğundan sunucuda aranır)
 export async function fetchProducts(query: string) {
     const q = query ? `?q=${encodeURIComponent(query)}` : ''
 
@@ -173,7 +165,6 @@ export async function fetchProducts(query: string) {
     }
 }
 
-// Markaları getir (dropdown için, sunucuda aranır)
 export async function fetchBrands(query: string) {
     const q = query ? `?q=${encodeURIComponent(query)}` : ''
 
@@ -186,7 +177,6 @@ export async function fetchBrands(query: string) {
     }
 }
 
-// Etiketleri ara (çok sayıda olduğundan sunucuda aranır)
 export async function fetchTags(query: string) {
     const q = query ? `?q=${encodeURIComponent(query)}` : ''
 
@@ -199,7 +189,6 @@ export async function fetchTags(query: string) {
     }
 }
 
-// Ana menüleri getir (alt menü eklerken)
 export async function fetchParentMenus(displayArea?: string) {
     const queryParams = displayArea ? `?displayArea=${displayArea}` : ''
 
@@ -212,7 +201,6 @@ export async function fetchParentMenus(displayArea?: string) {
     }
 }
 
-// Yeni menü oluştur
 export async function createMenu(data: Partial<MenuType>) {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu`, {
@@ -224,7 +212,6 @@ export async function createMenu(data: Partial<MenuType>) {
     }
 }
 
-// Menü güncelle
 export async function updateMenu(id: string, data: Partial<MenuType>) {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/${id}`, {
@@ -236,7 +223,6 @@ export async function updateMenu(id: string, data: Partial<MenuType>) {
     }
 }
 
-// Sıralamayı toplu güncelle (sürükle-bırak)
 export async function updateMenuOrder(items: { id: string; order: number }[]) {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/order`, {
@@ -248,19 +234,16 @@ export async function updateMenuOrder(items: { id: string; order: number }[]) {
     }
 }
 
-// Menü sil
 export async function deleteMenu(id: string) {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/${id}`, {
             method: 'DELETE'
         })
     } catch (error: any) {
-        // Backend mesajını koru (örn. "Bu menüye bağlı alt menüler var")
         throw menuError(error, 'Menü silinemedi')
     }
 }
 
-// Menü grubunu (görüntüleme alanı) topluca sil
 export async function deleteMenuArea(area: 'header' | 'footer' | 'mobile') {
     try {
         return await fetchAPI(`${API_URL}/admin/design/menu/area/${area}`, {

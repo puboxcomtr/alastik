@@ -1,6 +1,4 @@
-// ** Fake user data and data type
 
-// ** Please remove below user data and data type in production and verify user with Real Database
 export type UserTable = {
   id: number
   name: string
@@ -8,8 +6,6 @@ export type UserTable = {
   image: string
   password: string
 }
-
-// =============== Fake Data ============================
 
 export const users: UserTable[] = [
   {

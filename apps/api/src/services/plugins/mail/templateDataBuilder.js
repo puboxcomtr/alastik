@@ -7,12 +7,9 @@ const { SITES, DEFAULT_SITE } = require('../../../config/sites')
 
 const resolveSite = (site) => (SITES[site] ? site : DEFAULT_SITE)
 
-// Bayi sitesinin teması (config/sites.js) ve vadeli ödeme yöntemi (WebOrder payment.method)
 const B2B_THEME = 'b2b'
 const B2B_CREDIT_METHOD = 'cari'
-// Bayi borç ödemesi makbuz maili şablonu
 const B2B_PAYMENT_RECEIPT_TEMPLATE = 'b2b_odeme_makbuzu'
-
 
 const buildCombinedAddress = (addr) => {
     if (!addr) return ''
@@ -39,14 +36,11 @@ const formatTRY = (value) => {
     })
 }
 
-// Sipariş şablonu için veri hazırla
-// options: { mode: 'preview' | 'real', orderId: string, guestOnly: boolean }
 const buildOrderTemplateData = async (options = {}) => {
     const { mode = 'preview', orderId = null, guestOnly = false } = options
 
     let order = null
 
-    // Gerçek mail: spesifik sipariş
     if (mode === 'real' && orderId) {
         order = await WebOrder.findById(orderId).lean()
 
@@ -54,7 +48,6 @@ const buildOrderTemplateData = async (options = {}) => {
             throw new Error(`Sipariş bulunamadı: ${orderId}`)
         }
     } else {
-        // Önizleme: seçili sitenin son siparişi (yoksa filtreler sırayla gevşetilir)
         const previewSite = options.site ? resolveSite(options.site) : null
         const withSite = (f) => (previewSite ? { ...f, site: previewSite } : f)
 
@@ -65,7 +58,6 @@ const buildOrderTemplateData = async (options = {}) => {
         }
         filters.push(withSite({ isActive: true, 'payment.status': 'paid' }))
         filters.push(withSite({ isActive: true }))
-        // Seçili sitede hiç sipariş yoksa herhangi bir siteninkiyle önizle
         filters.push({ isActive: true })
 
         for (const filter of filters) {
@@ -78,24 +70,19 @@ const buildOrderTemplateData = async (options = {}) => {
         }
     }
 
-    // Şirket bilgileri — gerçek mailde siparişin sitesi, önizlemede seçili site esas alınır
     const site = mode === 'real'
         ? (order.site || options.site)
         : (options.site || order.site)
     const companyData = await buildCompanyData(site)
 
-    // Müşteri bilgileri
     const member = order.memberSnapshot || {}
     const billing = order.billingSnapshot || order.guestBillingAddress || {}
     const shipping = order.shippingSnapshot || order.guestShippingAddress || {}
 
-    // Ürün ID'lerini topla
-    // Ürün anahtarlarını topla (DIA _key)
     const productKeys = (order.items || [])
         .map(item => item.productKey)
         .filter(Boolean)
 
-    // İlgili ürünleri tek seferde çek (_key ile eşleştir)
     const products = productKeys.length > 0
         ? await WebProduct.find({ _key: { $in: productKeys } })
             .select('_key customData diaData')
@@ -108,23 +95,19 @@ const buildOrderTemplateData = async (options = {}) => {
         productMap[p._key] = p
     })
 
-    // Görsel önceliği helper'ı (memory'deki görsel öncelik kuralı)
     const getProductImage = (product) => {
         if (!product) return ''
 
-        // 1. customData.featuredImage
         if (product.customData?.featuredImage) {
             return product.customData.featuredImage
         }
 
-        // 2. customData.customImages (order'a göre)
         if (product.customData?.customImages?.length > 0) {
             const sorted = [...product.customData.customImages].sort((a, b) => (a.order || 0) - (b.order || 0))
 
             return sorted[0]?.url || ''
         }
 
-        // 3. diaData.m_resimler (order_id'ye göre)
         if (product.diaData?.m_resimler?.length > 0) {
             const sorted = [...product.diaData.m_resimler].sort((a, b) => {
                 const aOrder = parseInt(a.order_id) || 0
@@ -139,7 +122,6 @@ const buildOrderTemplateData = async (options = {}) => {
         return ''
     }
 
-    // Sipariş kalemleri
     const orderItems = (order.items || []).map(item => {
         const product = item.productKey ? productMap[item.productKey] : null
         const productImage = getProductImage(product)
@@ -161,7 +143,6 @@ const buildOrderTemplateData = async (options = {}) => {
         }
     })
 
-    // Ödeme yöntemi metni
     const paymentMethodLabels = {
         credit_card: 'Kredi Kartı',
         credit_card_3d: 'Kredi Kartı (3D Secure)',
@@ -184,18 +165,15 @@ const buildOrderTemplateData = async (options = {}) => {
     const subtotalWithoutVat = subtotalWithVat / (1 + VAT_RATE)
     const vatAmountCalc = subtotalWithVat - subtotalWithoutVat
 
-    // IdeaSoft formatına uyumlu data objesi
     const data = {
         ...companyData,
 
-        // Sipariş
         transactionId: order.orderNumber || '',
         createdAt: order.createdAt || new Date(),
         body: '<p>Siparişiniz başarıyla oluşturuldu ve en kısa süre içerisinde işleme alınacaktır. Süreçle ilgili gelişmeler tarafınıza düzenli olarak bildirilecektir.</p>',
         currency: pricing.currency || 'TL',
         membershipType: order.isGuest ? 'Üyeliksiz Alışveriş' : 'Üye',
 
-        // Tutarlar
         amount: formatTRY(subtotalWithoutVat),
         taxAmount: formatTRY(vatAmountCalc),
         amountWithTax: formatTRY(subtotalWithVat),
@@ -208,7 +186,6 @@ const buildOrderTemplateData = async (options = {}) => {
         additionalServiceAmount: 0,
         orderCustomTaxLines: [],
 
-        // Ödeme
         paymentProviderName,
         paymentGatewayName,
         installment,
@@ -216,13 +193,11 @@ const buildOrderTemplateData = async (options = {}) => {
         installmentInfo: hasInstallment ? `${installment} Taksit x ${formatTRY(installmentAmount)} TL` : '',
         hasInstallment,
 
-        // Kargo
         shippingCompanyName: order.shipping?.carrier || '',
         shippingTrackingUrl: order.shipping?.trackingNumber
             ? `https://kargo-takip.com/${order.shipping.trackingNumber}`
             : '',
 
-        // Müşteri
         customer: {
             firstname: member.firstName || billing.fullName?.split(' ')[0] || 'Müşteri',
             surname: member.lastName || billing.fullName?.split(' ').slice(1).join(' ') || '',
@@ -234,7 +209,6 @@ const buildOrderTemplateData = async (options = {}) => {
             representativeEmail: ''
         },
 
-        // Teslimat adresi
         shippingAddress: {
             firstname: shipping.fullName?.split(' ')[0] || '',
             surname: shipping.fullName?.split(' ').slice(1).join(' ') || '',
@@ -243,7 +217,6 @@ const buildOrderTemplateData = async (options = {}) => {
             combinedAddress: buildCombinedAddress(shipping)
         },
 
-        // Fatura adresi
         billingAddress: {
             firstname: billing.fullName?.split(' ')[0] || billing.companyName?.split(' ')[0] || '',
             surname: billing.fullName?.split(' ').slice(1).join(' ') || billing.companyName?.split(' ').slice(1).join(' ') || '',
@@ -256,11 +229,8 @@ const buildOrderTemplateData = async (options = {}) => {
             identityRegistrationNumber: billing.tcNo || ''
         },
 
-        // Ürünler
         orderItems,
 
-        // Ek bilgiler
-        // Ek bilgiler
         giftNote: '',
         deliveryDetail: null,
         bankAccounts: await getBankAccountsForMail(order),
@@ -270,7 +240,6 @@ const buildOrderTemplateData = async (options = {}) => {
         pointPerComment: 0
     }
 
-    // Bayi (b2b) siparişi farklı yapıdadır: tutarlar KDV hariç ara toplam + KDV, müşteri = cari, adres DIA'dan
     if (isB2bSite(order.site)) {
         await applyB2bOrderData(order, data)
     }
@@ -278,10 +247,8 @@ const buildOrderTemplateData = async (options = {}) => {
     return { data }
 }
 
-// Bayi sitesi mi (config/sites.js tema tanımı)
 const isB2bSite = (site) => SITES[site]?.theme === B2B_THEME
 
-// b2b ödeme yöntemi adı (siparişteki payment.method + taksit; Cari Sipariş'te carinin vade günü)
 const b2bPaymentLabel = (payment = {}, member = null) => {
     if (payment.method === B2B_CREDIT_METHOD) {
         const days = Number(member?.diaCari?.paymentTermDays)
@@ -295,7 +262,6 @@ const b2bPaymentLabel = (payment = {}, member = null) => {
     return payment.method || 'Belirtilmemiş'
 }
 
-// b2b siparişi için şablon verisini düzeltir (perakende eşlemesinin üstüne yazar)
 const applyB2bOrderData = async (order, data) => {
     const WebMember = require('../../../models/web/user/WebMember')
     const Cargo = require('../../../models/admin/settings/Cargo')
@@ -308,7 +274,6 @@ const applyB2bOrderData = async (order, data) => {
     const companyTitle = order.customerName || ''
     const phone = [shipping.phone, member?.phone].find(v => v && v !== '-') || ''
 
-    // Tutarlar: subtotal = KDV hariç, total = KDV dahil genel toplam (kargo dahil)
     data.amount = formatTRY(pricing.subtotal)
     data.taxAmount = formatTRY(pricing.vatAmount)
     data.amountWithTax = formatTRY(pricing.total)
@@ -316,19 +281,16 @@ const applyB2bOrderData = async (order, data) => {
     data.finalAmount = formatTRY(pricing.total)
     data.promotionDiscount = pricing.discountAmount > 0 ? formatTRY(pricing.discountAmount) : 0
 
-    // Ödeme: taksitte vade farkı banka ile kart sahibi arasındadır; taksitli fiyat satırı gösterilmez
     data.paymentProviderName = b2bPaymentLabel(order.payment, member)
     data.hasInstallment = false
     data.installmentInfo = ''
     data.installmentAmount = 0
 
-    // Teslimat yöntemi adı (Kargo Firmaları tanımından)
     if (order.shipping?.method) {
         const cargo = await Cargo.findOne({ site: order.site, code: order.shipping.method }).select('name').lean()
         data.shippingCompanyName = cargo?.name || ''
     }
 
-    // Müşteri = cari (ünvan); sistem notu (ödeme/teslimat kodları) gösterilmez
     data.customer = {
         ...data.customer,
         firstname: companyTitle || 'Bayi',
@@ -355,17 +317,14 @@ const applyB2bOrderData = async (order, data) => {
         taxNumber: member?.diaCari?.vergiNo || '',
         identityRegistrationNumber: ''
     }
-    // Havale siparişinde banka hesapları gösterilir (perakende kuralıyla aynı)
 }
 
-// Sadece havale ödeme tipinde banka hesaplarını getir
 const getBankAccountsForMail = async (order) => {
     if (order.payment?.method !== 'bank_transfer') {
         return []
     }
 
     try {
-        // Siparişin sitesine ait banka hesapları
         const banks = await PaymentMethod.find({
             type: 'bank_transfer',
             isActive: true,
@@ -396,8 +355,6 @@ const getBankAccountsForMail = async (order) => {
     }
 }
 
-// Şirket bilgilerini DB'den çek (companyData) — site bazlı
-// websettings ve sitesettings koleksiyonlarında her site için ayrı kayıt vardır
 const buildCompanyData = async (site) => {
     const slug = resolveSite(site)
     const siteConf = SITES[slug]
@@ -426,7 +383,6 @@ const buildCompanyData = async (site) => {
 
         const mediaBaseUrl = (process.env.MEDIA_URL || process.env.API_PUBLIC_URL || 'https://api.alastik.com').replace(/\/$/, '')
 
-        // Öncelik: Tanımlar > Görseller > Mail Logo; yoksa tema logosu
         const toAbsolute = (u) => (u.startsWith('http') ? u : `${mediaBaseUrl}${u.startsWith('/') ? '' : '/'}${u}`)
         const logoSource = webSetting?.images?.mailLogo || themeVal.logo || ''
         const logoUrl = logoSource ? toAbsolute(logoSource) : ''
@@ -454,8 +410,6 @@ const buildCompanyData = async (site) => {
     return companyData
 }
 
-// İletişim Formu için veri hazırla
-// options: { mode: 'preview' | 'real', contactId, formData }
 const buildContactFormData = async (options = {}) => {
     const { mode = 'preview', contactId = null, formData = null } = options
 
@@ -468,7 +422,6 @@ const buildContactFormData = async (options = {}) => {
     let content = 'Merhaba, 205/55 R16 ebatında Pirelli Cinturato P7 modelinin stokta olup olmadığını öğrenebilir miyim? Ayrıca varsa fiyat bilgisini de paylaşabilirseniz çok memnun olurum. Teşekkürler.'
 
     if (mode === 'real') {
-        // Gerçek mail: önce direkt formData'dan, yoksa contactId ile DB'den çek
         if (formData) {
             contentSubject = formData.subject || ''
             fullName = `${formData.name || ''} ${formData.surname || ''}`.trim()
@@ -505,20 +458,14 @@ const buildContactFormData = async (options = {}) => {
     return { data }
 }
 
-// templateKey'e göre uygun veri builder'ı çalıştır
 const buildGuestOrderData = async (options = {}) => {
-    // Sipariş Şablonu ile aynı veri yapısını kullan
     const result = await buildOrderTemplateData({ ...options, guestOnly: true })
 
-    // Üyelik tipi ekle
     result.data.membershipType = 'Üyeliksiz Alışveriş'
 
     return result
 }
 
-// templateKey'e göre uygun veri builder'ı çalıştır
-// Hesap Aktivasyon Maili için veri hazırla (son aktif üyeden örnek)
-// Hesap Aktivasyon Maili için veri hazırla (sadece yöneticilere - adminusers)
 const buildAccountActivationData = async (options = {}) => {
     const companyData = await buildCompanyData(options.site)
 
@@ -537,7 +484,6 @@ const buildAccountActivationData = async (options = {}) => {
             email = adminUser.email || ''
         }
     } catch (e) {
-        // Admin yoksa default kullan
     }
 
     const data = {
@@ -549,7 +495,6 @@ const buildAccountActivationData = async (options = {}) => {
     return { data }
 }
 
-// Admin Şifremi Unuttum için veri hazırla (adminusers'tan örnek + reset url)
 const buildAdminPasswordResetData = async (options = {}) => {
     const companyData = await buildCompanyData(options.site)
 
@@ -568,10 +513,8 @@ const buildAdminPasswordResetData = async (options = {}) => {
             email = adminUser.email || ''
         }
     } catch (e) {
-        // Admin yoksa default kullan
     }
 
-    // Örnek reset URL (gerçek mailde token ile dolu olacak)
     const adminBaseUrl = (process.env.ADMIN_URL || 'https://admin.alastik.com').replace(/\/$/, '')
     const resetUrl = `${adminBaseUrl}/sifre-sifirla?token=ORNEK_TOKEN_DEGER`
 
@@ -585,15 +528,12 @@ const buildAdminPasswordResetData = async (options = {}) => {
     return { data }
 }
 
-// İptal/İade Talebi Bilgilendirme için veri hazırla
-// (en son iade/iptal durumundaki siparişten talep kodu örneklenir)
 const buildRefundRequestData = async (options = {}) => {
     const companyData = await buildCompanyData(options.site)
 
     let refundRequestCode = 'IADE-000001'
 
     try {
-        // İptal veya iade durumundaki son sipariş (varsa seçili siteden)
         const filter = {
             isActive: true,
             status: { $in: ['cancelled', 'returned'] }
@@ -607,7 +547,6 @@ const buildRefundRequestData = async (options = {}) => {
             refundRequestCode = order.orderNumber
         }
     } catch (e) {
-        // Sipariş yoksa default kullan
     }
 
     const data = {
@@ -618,9 +557,6 @@ const buildRefundRequestData = async (options = {}) => {
     return { data }
 }
 
-// Üye Hesap Aktivasyonu için veri hazırla (webmembers'tan örnek + activation url)
-// Üye Hesap Aktivasyonu için veri hazırla
-// options: { mode: 'preview' | 'real', memberId, activationToken }
 const buildMemberActivationData = async (options = {}) => {
     const { mode = 'preview', memberId = null, activationToken = null } = options
 
@@ -631,7 +567,6 @@ const buildMemberActivationData = async (options = {}) => {
     let token = activationToken || 'ORNEK_TOKEN_DEGER'
 
     if (mode === 'real' && memberId) {
-        // Gerçek mail: spesifik üye
         try {
             const db = mongoose.connection.db
             const member = await db.collection('webmembers').findOne({ _id: new mongoose.Types.ObjectId(memberId) })
@@ -644,7 +579,6 @@ const buildMemberActivationData = async (options = {}) => {
             console.error('[templateDataBuilder] Üye okunamadı:', e.message)
         }
     } else {
-        // Önizleme: son aktif üyeden örnek
         try {
             const db = mongoose.connection.db
             const member = await db.collection('webmembers').findOne(
@@ -657,11 +591,9 @@ const buildMemberActivationData = async (options = {}) => {
                 email = member.email || ''
             }
         } catch (e) {
-            // Member yoksa default kullan
         }
     }
 
-    // Activation URL (gerçek mailde gerçek token, önizlemede ORNEK_TOKEN_DEGER)
     const websiteUrl = (companyData.siteUrl || 'https://alastik.com').replace(/\/$/, '')
     const activationUrl = `${websiteUrl}/uye-aktivasyon?token=${token}`
 
@@ -675,8 +607,6 @@ const buildMemberActivationData = async (options = {}) => {
     return { data }
 }
 
-// Üye Şifremi Unuttum için veri hazırla
-// options: { mode: 'preview' | 'real', memberId, resetToken }
 const buildMemberPasswordResetData = async (options = {}) => {
     const { mode = 'preview', memberId = null, resetToken = null } = options
 
@@ -687,7 +617,6 @@ const buildMemberPasswordResetData = async (options = {}) => {
     let token = resetToken || 'ORNEK_TOKEN_DEGER'
 
     if (mode === 'real' && memberId) {
-        // Gerçek mail: spesifik üye
         try {
             const db = mongoose.connection.db
             const member = await db.collection('webmembers').findOne({ _id: new mongoose.Types.ObjectId(memberId) })
@@ -700,7 +629,6 @@ const buildMemberPasswordResetData = async (options = {}) => {
             console.error('[templateDataBuilder] Üye okunamadı:', e.message)
         }
     } else {
-        // Önizleme: son aktif üyeden örnek
         try {
             const db = mongoose.connection.db
             const member = await db.collection('webmembers').findOne(
@@ -713,11 +641,9 @@ const buildMemberPasswordResetData = async (options = {}) => {
                 email = member.email || ''
             }
         } catch (e) {
-            // Member yoksa default kullan
         }
     }
 
-    // Reset URL (gerçek mailde gerçek token, önizlemede ORNEK_TOKEN_DEGER)
     const websiteUrl = (companyData.siteUrl || 'https://alastik.com').replace(/\/$/, '')
     const resetUrl = `${websiteUrl}/sifre-sifirla?token=${token}`
 
@@ -731,8 +657,6 @@ const buildMemberPasswordResetData = async (options = {}) => {
     return { data }
 }
 
-// Üye İade/İptal Talebi (sonuç bildirimi) için veri hazırla
-// status: 'approved' | 'rejected'
 const buildMemberRefundResponseData = async (options = {}) => {
     const companyData = await buildCompanyData(options.site)
 
@@ -740,7 +664,6 @@ const buildMemberRefundResponseData = async (options = {}) => {
     let status = 'approved'
 
     try {
-        // İptal/iade durumundaki son sipariş (varsa seçili siteden)
         const filter = {
             isActive: true,
             status: { $in: ['cancelled', 'returned'] }
@@ -752,11 +675,9 @@ const buildMemberRefundResponseData = async (options = {}) => {
 
         if (order?.orderNumber) {
             refundRequestCode = order.orderNumber
-            // returned -> approved (iade onaylandı), cancelled -> rejected (iptal edildi)
             status = order.status === 'returned' ? 'approved' : 'rejected'
         }
     } catch (e) {
-        // Sipariş yoksa default kullan
     }
 
     const data = {
@@ -768,15 +689,12 @@ const buildMemberRefundResponseData = async (options = {}) => {
     return { data }
 }
 
-// Havale Bildirim Formu için veri hazırla
-// (havale ödeme yöntemli son siparişten örnek)
 const buildBankTransferNotificationData = async (options = {}) => {
     const companyData = await buildCompanyData(options.site)
 
     const previewSite = options.site ? resolveSite(options.site) : null
     const withSite = (f) => (previewSite ? { ...f, site: previewSite } : f)
 
-    // Havale/EFT ödeme yöntemli son sipariş (önce seçili site, yoksa filtreler gevşetilir)
     let order = null
     const filters = [
         withSite({ isActive: true, 'payment.method': 'bank_transfer' }),
@@ -796,13 +714,11 @@ const buildBankTransferNotificationData = async (options = {}) => {
     const member = order.memberSnapshot || {}
     const billing = order.billingSnapshot || order.guestBillingAddress || {}
 
-    // Üye adı: önce memberSnapshot, yoksa billingSnapshot.fullName
     const memberFirstname = member.firstName || billing.fullName?.split(' ')[0] || 'Müşteri'
     const memberSurname = member.lastName || billing.fullName?.split(' ').slice(1).join(' ') || ''
     const memberEmail = member.email || order.customerEmail || ''
     const memberPhone = member.phone || order.customerPhone || ''
 
-    // Tarih (sipariş tarihi)
     const orderDate = order.createdAt
         ? new Date(order.createdAt).toLocaleString('tr-TR', {
             day: '2-digit',
@@ -813,7 +729,6 @@ const buildBankTransferNotificationData = async (options = {}) => {
         })
         : ''
 
-    // Banka bilgileri (payment.bankTransfer'dan, yoksa boş)
     const bankTransfer = order.payment?.bankTransfer || {}
     const paymentGatewayName = bankTransfer.bankName || ''
     const accountName = bankTransfer.accountHolder || ''
@@ -846,8 +761,6 @@ const buildBankTransferNotificationData = async (options = {}) => {
 
     return { data }
 }
-// Bayi cari borç ödemesi (Ödeme Yap) makbuz maili
-// options: { mode: 'preview' | 'real', paymentId, site }
 const buildB2bPaymentReceiptData = async (options = {}) => {
     const B2bPayment = require('../../../models/web/user/B2bPayment')
     const WebMember = require('../../../models/web/user/WebMember')
@@ -859,7 +772,6 @@ const buildB2bPaymentReceiptData = async (options = {}) => {
         payment = await B2bPayment.findById(paymentId).lean()
         if (!payment) throw new Error(`Ödeme bulunamadı: ${paymentId}`)
     } else {
-        // Önizleme: seçili sitenin son başarılı ödemesi
         const filter = { status: 'paid', ...(options.site ? { site: resolveSite(options.site) } : {}) }
         payment = await B2bPayment.findOne(filter).sort({ paidAt: -1 }).lean()
     }
@@ -867,7 +779,6 @@ const buildB2bPaymentReceiptData = async (options = {}) => {
     const site = mode === 'real' ? (payment?.site || options.site) : (options.site || payment?.site)
     const companyData = await buildCompanyData(site)
     if (!payment) {
-        // Hiç ödeme yoksa örnek veriyle önizlenir
         return { data: { ...companyData, reference: 'TC0000000', paidAt: new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }), payerName: 'Örnek Bayi Ltd. Şti.', cariKodu: '120.1.01.000000', amount: formatTRY(1000), paymentMethod: 'Kredi Kartı - Tek Çekim', cardLastFour: '1234', bankName: '', authCode: '' } }
     }
 
@@ -890,7 +801,6 @@ const buildB2bPaymentReceiptData = async (options = {}) => {
     }
 }
 
-// templateKey'e göre uygun veri builder'ı çalıştır
 const buildData = async (templateKey, options = {}) => {
     if (templateKey === B2B_PAYMENT_RECEIPT_TEMPLATE) {
         return await buildB2bPaymentReceiptData(options)
@@ -935,7 +845,6 @@ const buildData = async (templateKey, options = {}) => {
         return await buildBankTransferNotificationData(options)
     }
 
-    // Default boş veri
     return { data: {} }
 }
 

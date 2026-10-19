@@ -12,7 +12,6 @@ import { locationService, City, District, Neighborhood } from '@/src/services/lo
 import { Address } from '@/src/types/adress';
 import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
 
-// Zod Schema
 const addressSchema = z.object({
     addressName: z.string().min(1, 'Adres adı zorunludur'),
     invoiceType: z.enum(['individual', 'corporate']),
@@ -248,7 +247,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
     const shippingDistrictId = watch('shippingDistrictId');
     const watchAll = watch();
 
-    // Modal açıldığında
     useEffect(() => {
         if (isOpen) {
             setInitialLoadDone(false);
@@ -256,7 +254,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
             setLinkedShippingAddress(null);
             loadCities();
 
-            // Edit modda linked shipping address'i yükle
             if (isEditMode && address?.linkedShippingAddressId) {
                 loadLinkedShippingAddress(address.linkedShippingAddressId);
             } else {
@@ -265,14 +262,12 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
         }
     }, [isOpen, address]);
 
-    // Linked shipping address yüklendiğinde form'u güncelle
     useEffect(() => {
         if (isOpen && address) {
             reset(getDefaultValues(address, linkedShippingAddress));
         }
     }, [linkedShippingAddress]);
 
-    // Edit modda fatura adresi il/ilçe/mahalle yükle
     useEffect(() => {
         const loadEditModeLocations = async () => {
             if (isOpen && isEditMode && cities.length > 0 && !initialLoadDone) {
@@ -284,7 +279,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
         loadEditModeLocations();
     }, [isOpen, isEditMode, cities, address, initialLoadDone]);
 
-    // Edit modda teslimat adresi il/ilçe/mahalle yükle
     useEffect(() => {
         const loadShippingEditModeLocations = async () => {
             if (isOpen && linkedShippingAddress && cities.length > 0 && !shippingInitialLoadDone) {
@@ -296,7 +290,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
         loadShippingEditModeLocations();
     }, [isOpen, linkedShippingAddress, cities, shippingInitialLoadDone]);
 
-    // Normal mod: şehir değişince ilçeleri yükle
     useEffect(() => {
         if (cityId && (initialLoadDone || !isEditMode)) {
             loadDistricts(cityId);
@@ -309,7 +302,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
         }
     }, [districtId]);
 
-    // Shipping normal mod
     useEffect(() => {
         if (shippingCityId && (shippingInitialLoadDone || !isEditMode || !linkedShippingAddress)) {
             loadShippingDistricts(shippingCityId);
@@ -453,7 +445,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
 
         setLoading(true);
         try {
-            // Fatura adresi verisi
             const billingData = {
                 addressName: data.addressName,
                 invoiceType: data.invoiceType,
@@ -482,7 +473,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                 isActive: true
             };
 
-            // Teslimat adresi verisi
             const shippingData = {
                 addressName: `${data.addressName} - Teslimat`,
                 invoiceType: 'individual' as const,
@@ -507,18 +497,13 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
             };
 
             if (isEditMode && address?._id) {
-                // GÜNCELLEME MODU
 
-                // 1. Fatura adresini güncelle
                 const billingResult = await addressService.updateAddress(address._id, billingData);
 
                 if (data.differentShipping) {
-                    // Farklı teslimat adresi istiyor
                     if (linkedShippingAddress?._id) {
-                        // Mevcut teslimat adresini güncelle
                         await addressService.updateAddress(linkedShippingAddress._id, shippingData);
                     } else {
-                        // Yeni teslimat adresi oluştur ve bağla
                         const newShipping = await addressService.createAddress(user.id, shippingData);
                         if (newShipping?._id) {
                             await addressService.updateAddress(address._id, {
@@ -528,13 +513,10 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         }
                     }
                 } else {
-                    // Farklı teslimat adresi istemiyor
                     if (linkedShippingAddress?._id) {
-                        // Mevcut teslimat adresini pasife al
                         await addressService.updateAddress(linkedShippingAddress._id, {
                             isActive: false
                         });
-                        // Bağlantıyı kaldır
                         await addressService.updateAddress(address._id, {
                             ...billingData,
                             linkedShippingAddressId: null
@@ -549,16 +531,12 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                 }
 
             } else {
-                // EKLEME MODU
 
-                // 1. Fatura adresini kaydet
                 const billingResult = await addressService.createAddress(user.id, billingData);
 
                 if (billingResult && data.differentShipping) {
-                    // 2. Teslimat adresini kaydet
                     const shippingResult = await addressService.createAddress(user.id, shippingData);
 
-                    // 3. Fatura adresine teslimat adresini bağla
                     if (shippingResult?._id) {
                         await addressService.updateAddress(billingResult._id, {
                             linkedShippingAddressId: shippingResult._id
@@ -597,15 +575,12 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
     return (
         <Modal open={isOpen} onClose={handleClose}>
             <Box sx={modalStyle}>
-                {/* Header */}
                 <div className="d-flex justify-content-between align-items-center p-3 border-bottom">
                     <h5 className="mb-0">{isEditMode ? 'Adresi Düzenle' : 'Yeni Adres Ekle'}</h5>
                     <button type="button" className="btn-close" onClick={handleClose}></button>
                 </div>
 
-                {/* Body */}
                 <div className="p-3">
-                    {/* Adres Adı */}
                     <div className="row mb-3">
                         <div className="col-12">
                             <label className="form-label">Adres Adı <span className="text-danger">*</span></label>
@@ -618,7 +593,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                             {errors.addressName && <div className="invalid-feedback">{errors.addressName.message}</div>}
                         </div>
                     </div>
-                    {/* Konum */}
                     <div className="row mb-3">
                         <div className="col-md-4">
                             <label className="form-label">İl <span className="text-danger">*</span></label>
@@ -667,7 +641,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         </div>
                     </div>
 
-                    {/* Adres Detay */}
                     <div className="row mb-3">
                         <div className="col-md-6">
                             <label className="form-label">Sokak / Cadde <span className="text-danger">*</span></label>
@@ -705,7 +678,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         </div>
                     </div>
 
-                    {/* Adres Notu */}
                     <div className="row mb-3">
                         <div className="col-12">
                             <label className="form-label">Adres Tarifi</label>
@@ -719,7 +691,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
 
                     <hr />
 
-                    {/* Fatura Tipi */}
                     <div className="row mb-3">
                         <div className="col-12">
                             <label className="form-label">Fatura Tipi</label>
@@ -733,7 +704,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         </div>
                     </div>
 
-                    {/* Bireysel */}
                     {invoiceType === 'individual' && (
                         <div className="row mb-3">
                             <div className="col-md-6">
@@ -758,7 +728,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         </div>
                     )}
 
-                    {/* Kurumsal */}
                     {invoiceType === 'corporate' && (
                         <>
                             <div className="row mb-3">
@@ -804,7 +773,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         </>
                     )}
 
-                    {/* Varsayılan */}
                     <div className="form-check mb-3">
                         <input
                             type="checkbox"
@@ -819,7 +787,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
 
                     <hr />
 
-                    {/* Farklı Teslimat Adresi */}
                     <div className="form-check mb-3">
                         <input
                             type="checkbox"
@@ -836,7 +803,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                         <div className="border rounded p-3 bg-light">
                             <h6 className="mb-3">Teslimat Adresi</h6>
 
-                            {/* Teslim Edilecek Kişi & Telefon */}
                             <div className="row mb-3">
                                 <div className="col-md-6">
                                     <label className="form-label">Teslim Edilecek Kişi <span className="text-danger">*</span></label>
@@ -866,7 +832,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                                 </div>
                             </div>
 
-                            {/* Konum */}
                             <div className="row mb-3">
                                 <div className="col-md-4">
                                     <label className="form-label">İl <span className="text-danger">*</span></label>
@@ -915,7 +880,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                                 </div>
                             </div>
 
-                            {/* Adres Detay */}
                             <div className="row mb-3">
                                 <div className="col-md-6">
                                     <label className="form-label">Sokak / Cadde <span className="text-danger">*</span></label>
@@ -953,7 +917,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                                 </div>
                             </div>
 
-                            {/* Adres Tarifi */}
                             <div className="row">
                                 <div className="col-12">
                                     <label className="form-label">Adres Tarifi</label>
@@ -968,7 +931,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, address }: Ad
                     )}
                 </div>
 
-                {/* Footer */}
                 <div className="d-flex justify-content-end gap-2 p-3 border-top">
                     <button type="button" className="btn btn-secondary" onClick={handleClose}>
                         İptal

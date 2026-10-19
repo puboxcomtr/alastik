@@ -4,15 +4,12 @@ import Link from 'next/link';
 
 import { buildProductUrl } from '@/src/config/routes';
 
-/* Metarial IO */
 import { Card, CardContent, Typography, IconButton, Box, Avatar } from '@mui/material';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
-// Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 
-// Swiper CSS
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';

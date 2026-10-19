@@ -1,14 +1,9 @@
 'use client';
-// Anasayfa cari özet kartları — GERÇEK DIA verisiyle (bakiye, limit, kalan limit).
-// Vadesi geçen borç, DIA ekstre servisine bağlanana kadar "—" gösterilir.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { formatKurus } from '@components/b2b-theme/lib/format';
 import { ACCOUNT_SUMMARY, REMAINING_LIMIT_KURUS, PENDING_ORDER_KURUS, DEALER } from '@components/b2b-theme/lib/sample-data';
 
-// STİL SEÇİM MODU: true iken kartlar örnek verinin dolu senaryosuyla çizilir
-// (kırmızı borç, yeşil kalan limit, gecikmiş ödeme) — tasarım seçimi bitince
-// false yapılır ve kartlar oturumdaki bayinin GERÇEK DIA verisine döner.
 const SAMPLE_MODE = false;
 
 interface AccountSummary {
@@ -42,10 +37,8 @@ export function AccountSummaryCards() {
     const bekleyen = SAMPLE_MODE ? PENDING_ORDER_KURUS : (ozet?.pendingOrderKurus ?? 0);
     const totalLimit = SAMPLE_MODE ? DEALER.creditLimitKurus : (ozet?.totalLimitKurus ?? 0);
     const loading = !SAMPLE_MODE && ozet === null;
-    // Vade tarihi: DIA ekstre servisine bağlanınca gerçek vadeden gelecek
     const vadeTarihi = '30.09.2026';
     const value = (kurus: number) => (loading ? '…' : formatKurus(kurus));
-    // Bakiye işaretlidir (alacaklı → negatif): muhasebe gösterimiyle (B) borçlu / (A) alacaklı
     const balanceText = loading ? '…' : `${formatKurus(Math.abs(bakiye))}${bakiye > 0 ? ' (B)' : bakiye < 0 ? ' (A)' : ''}`;
 
     return (

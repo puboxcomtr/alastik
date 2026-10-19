@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const WebAddress = require('../../../models/web/address/WebAddress');
 
-
-// GET - Kullanıcı adresleri
 router.get('/user/:userId', async (req, res) => {
     try {
         const addresses = await WebAddress.find({ userId: req.params.userId }).sort({ isDefault: -1, createdAt: -1 });
@@ -13,7 +11,6 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
-// GET - Session adresleri (misafir)
 router.get('/session/:sessionId', async (req, res) => {
     try {
         const addresses = await WebAddress.find({ sessionId: req.params.sessionId }).sort({ createdAt: -1 });
@@ -23,7 +20,6 @@ router.get('/session/:sessionId', async (req, res) => {
     }
 });
 
-// POST - Adres ekle
 router.post('/', async (req, res) => {
     try {
         const address = new WebAddress(req.body);
@@ -41,7 +37,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT - Adres güncelle
 router.put('/:id', async (req, res) => {
     try {
         const address = await WebAddress.findByIdAndUpdate(
@@ -66,7 +61,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// GET - Tek adres getir
 router.get('/:id', async (req, res) => {
     try {
         const address = await WebAddress.findById(req.params.id);
@@ -79,7 +73,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// DELETE - Adres sil
 router.delete('/:id', async (req, res) => {
     try {
         const address = await WebAddress.findByIdAndDelete(req.params.id);

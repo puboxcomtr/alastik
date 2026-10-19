@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -11,7 +9,6 @@ import DialogActions from '@mui/material/DialogActions'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
@@ -24,7 +21,6 @@ type Props = {
     onDeleted: (id: string) => void
 }
 
-// Yumuşak silme onayı: kayıt "Silinmiş" olur, siparişler ve geçmiş korunur
 const MemberDeleteDialog = ({ member, onClose, onDeleted }: Props) => {
     const [deleting, setDeleting] = useState(false)
 

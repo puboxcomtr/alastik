@@ -1,4 +1,3 @@
-// apps/api/src/services/plugins/xml/XmlWebProductSyncService.js
 
 const crypto = require('crypto');
 const XmlProduct = require('../../../models/plugins/xml/XmlProduct');
@@ -9,7 +8,6 @@ const { SITES, DEFAULT_SITE, SITE_SLUGS } = require('../../../config/sites');
 const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
 const { netMaliyetCarpani } = require('../../../config/xmlNetMaliyet');
 
-// XML ürünleri web listelerinde görünsün diye aktif ozelkod11 koduyla damgalanır
 function getAktifOzelkod() {
     const kod = getSyncRules().ozelkod11Kodu || 'E';
     return { kod, raw: `${kod} (${kod})` };
@@ -53,7 +51,6 @@ class XmlWebProductSyncService {
         let seoUrl = this.generateSeoUrl(text);
         if (!seoUrl) seoUrl = 'urun-' + productKey;
 
-        // DB'de çakışma var mı?
         const existing = await WebProduct.findOne({
             'customData.seoUrl': seoUrl,
             '_key': { $ne: productKey }
@@ -75,7 +72,6 @@ class XmlWebProductSyncService {
         return seoUrl;
     }
 
-    // Entegrasyon kurallarına göre xmlproduct'ı filtrele
     parseStok(val) {
         if (!val) return 0;
         return parseInt(parseFloat(String(val).replace(/,/g, '.'))) || 0;
@@ -96,10 +92,6 @@ class XmlWebProductSyncService {
         }
         return Math.ceil(sayi);
     }
-    // Kaynaklar arasından geçerli olanlardan en ucuzunu seç
-    // Geçerli kaynak: aktif entegrasyon + fiyat>0 + stok>0 + applyRules geçiyor
-    // Karşılaştırma NET MALİYET üzerinden yapılır (gelen fiyat × tedarikçi çarpanı: iskonto / KDV — bkz. config/xmlNetMaliyet.js).
-    // Yalnızca hangi kaynağın seçileceğini etkiler; seçilen kaynağın ham fiyatı ve fiyatlama kuralları aynen kullanılır.
     selectBestSource(candidates, integrationMap) {
         let secilen = null;
         let secilenFiyat = Infinity;
@@ -163,7 +155,6 @@ class XmlWebProductSyncService {
         return true;
     }
 
-    // Tüm sitelerin XML→web aktarımı (site verilmezse hepsi sırayla, kendi kapsamında)
     async fullSync(site = null) {
         if (!site) {
             const totals = { success: true, created: 0, updated: 0, filtered: 0, errors: 0 };
@@ -180,7 +171,6 @@ class XmlWebProductSyncService {
         return result;
     }
 
-    // Kargo dahil fiyatlar her site için ayrı hesaplanır (site fiyatı + sitenin XML kargosu)
     async updateShippingPrices() {
         const XmlShippingPriceUpdaterService = require('../../web/cargo/XmlShippingPriceUpdaterService');
         for (const s of SITE_SLUGS) {
@@ -193,7 +183,6 @@ class XmlWebProductSyncService {
         }
     }
 
-    // xmlproduct'tan webproducts'a tam aktarım — SADECE verilen sitenin kaynakları kapsamında
     async fullSyncForSite(site) {
         const operationId = `xml_web_full_sync_${site}_${Date.now()}`;
         console.log(`[XmlWebProductSync] Tam aktarım başladı (${site}): ${operationId}`);
@@ -217,8 +206,6 @@ class XmlWebProductSyncService {
 
         console.log(`[XmlWebProductSync] ${xmlProducts.length} diaKey'li ürün bulundu`);
 
-        // Aynı diaKey için en ucuz fiyatlı kaynağı seç
-        // Aynı diaKey için kaynakları grupla, en ucuz geçerliyi seç
         const diaKeyCandidates = {};
         for (const xmlProduct of xmlProducts) {
             const diaKey = String(xmlProduct.diaKey);
@@ -226,7 +213,6 @@ class XmlWebProductSyncService {
             diaKeyCandidates[diaKey].push(xmlProduct);
         }
 
-        // Bu sitenin hiçbir XML kaynağında kaydı kalmayan (eşleştirmesi kaldırılmış) web ürünlerini sil
         const knownDiaKeys = Object.keys(diaKeyCandidates);
         if (knownDiaKeys.length > 0) {
             const keyVariants = [...knownDiaKeys, ...knownDiaKeys.map(Number).filter(n => !Number.isNaN(n))];
@@ -251,7 +237,6 @@ class XmlWebProductSyncService {
             }
         }
 
-        // Hiçbir geçerli kaynak kalmayan ürünleri webproducts'tan sil
         if (invalidDiaKeys.length > 0) {
             const hideResult = await WebProduct.updateMany(
                 {
@@ -273,7 +258,6 @@ class XmlWebProductSyncService {
 
         const filteredXmlProducts = Object.values(diaKeyMap);
 
-        // Mevcut webproducts _key listesi
         const existingKeys = await WebProduct.distinct('_key');
         const existingKeySet = new Set(existingKeys);
 
@@ -284,7 +268,6 @@ class XmlWebProductSyncService {
         const XmlPricingRule = require('../../../models/plugins/xml/XmlPricingRule');
         const allPricingRules = await XmlPricingRule.find({ site }).lean();
 
-        // applyPricingRules yerine cache kullanan fonksiyon
         const applyPricingRulesFromCache = (hamFiyat, source, marka) => {
             const hesapla = (fiyat, rule) => {
                 switch (rule.tip) {
@@ -308,7 +291,6 @@ class XmlWebProductSyncService {
                 alastikPrice: Math.round(applyPlatform('alastik') * 100) / 100,
                 b2bPrice: Math.round(applyPlatform('b2b') * 100) / 100,
                 b2cPrice: Math.round(applyPlatform('b2c') * 100) / 100,
-                // Vitrine yazılan satış fiyatı sitenin fiyat platformundan hesaplanır (config/sites.js → xmlPricePlatform)
                 sitePrice: Math.round(applyPlatform(SITES[site]?.xmlPricePlatform || 'alastik') * 100) / 100
             };
         };
@@ -346,8 +328,6 @@ class XmlWebProductSyncService {
                 const isNew = !existingKeySet.has(diaKey);
                 const hamFiyatUpd = this.parseFiyat(rawFiyat);
 
-
-
                 if (isNew) {
                     const seoUrl = await this.generateUniqueSeoUrl(
                         diaData.aciklama || diaData.stokkartkodu || diaKey,
@@ -356,8 +336,6 @@ class XmlWebProductSyncService {
                     );
                     usedSeoUrls.add(seoUrl);
 
-                    // Dış (tedarikçi) görseller kendi sunucumuza aynalanır — vitrin ve
-                    // Merchant feed görselleri her zaman kendi alan adımızdan servis edilir
                     let mirroredImages = diaData.m_resimler;
                     try {
                         const ImageMirrorService = require('../../media/ImageMirrorService');
@@ -421,8 +399,6 @@ class XmlWebProductSyncService {
                         updateOne: {
                             filter: { _key: diaKey },
                             update: {
-                                // sites yalnızca ilk eklemede atanır; sonradan yapılan
-                                // site atamaları sync ile ezilmez
                                 $setOnInsert: {
                                     sites: [site]
                                 },
@@ -452,14 +428,11 @@ class XmlWebProductSyncService {
                     });
                     created++;
                 } else {
-                    // Mevcut ürün — m_birimler'i çekip güncelle
                     const existingProduct = await WebProduct.findOne(
                         { _key: diaKey },
                         { 'diaData.m_birimler': 1, 'diaData.m_resimler': 1, 'syncInfo.xmlSource': 1, 'customData.customImages': 1 }
                     ).lean();
 
-                    // Ürün başka sitenin kaynağından oluşmuşsa: siteyi ekle ve bu sitenin
-                    // satış fiyatını siteData'ya yaz (sahibin fiyat/stok alanlarına dokunulmaz)
                     const ownedBySite = siteCodes.includes(existingProduct?.syncInfo?.xmlSource);
                     if (!ownedBySite) {
                         bulkOps.push({
@@ -491,9 +464,6 @@ class XmlWebProductSyncService {
                         )
                         : [{ birimadi: 'Adet', birimkod: 'AD', carpan: 1, fiyat1: hamFiyatUpd, fiyat4: hamFiyatUpd, miktar: gercekStok }];
 
-                    // Görsel güncelleme: manuel görsel korumalı (customImages dolu) ürünlerde
-                    // görsel üzerine yazılmaz. Değilse kaynak görsel aynalanıp güncellenir —
-                    // aksi halde mevcut XML ürünlerinin görselleri HİÇ yenilenmiyordu.
                     const { getSyncRules } = require('../../../config/diaFilters');
                     const gorselKorumali = getSyncRules(site).manuelGorselKoru
                         && (existingProduct?.customData?.customImages?.length > 0);
@@ -513,7 +483,6 @@ class XmlWebProductSyncService {
 
                     bulkOps.push({
                         updateOne: {
-                            // Başka sitenin kaynağından oluşmuş ürün ezilmez (xmlSource site kapsamı)
                             filter: { _key: diaKey, 'syncInfo.xmlSource': { $in: siteCodes } },
                             update: {
                                 $set: {
@@ -563,7 +532,6 @@ class XmlWebProductSyncService {
         return { success: true, created, updated, filtered, errors };
     }
 
-    // 15 dakikada bir — sadece fiyat ve stok güncelle (site verilmezse tüm siteler)
     async quickSync(site = null) {
         if (!site) {
             const totals = { success: true, updated: 0, filtered: 0, errors: 0 };
@@ -605,9 +573,6 @@ class XmlWebProductSyncService {
 
         console.log(`[XmlWebProductSync] ${xmlProducts.length} ürün hızlı sync edilecek`);
 
-        // Aynı diaKey için en ucuz fiyatlı kaynağı seç
-        // Aynı diaKey için kaynakları grupla, en ucuz geçerliyi seç
-        // Quick sync için: pencereye giren diaKey'lerin TÜM kaynakları DB'den çek
         const windowDiaKeys = [...new Set(xmlProducts.map(p => String(p.diaKey)))];
         const allCandidates = await XmlProduct.find(
             {
@@ -684,7 +649,6 @@ class XmlWebProductSyncService {
                 alastikPrice: Math.round(applyPlatform('alastik') * 100) / 100,
                 b2bPrice: Math.round(applyPlatform('b2b') * 100) / 100,
                 b2cPrice: Math.round(applyPlatform('b2c') * 100) / 100,
-                // Vitrine yazılan satış fiyatı sitenin fiyat platformundan hesaplanır (config/sites.js → xmlPricePlatform)
                 sitePrice: Math.round(applyPlatform(SITES[site]?.xmlPricePlatform || 'alastik') * 100) / 100
             };
         };
@@ -721,7 +685,6 @@ class XmlWebProductSyncService {
                 const pricing = applyPricingRulesFromCache(hamFiyat, xmlProduct.source, marka);
                 const webPrice = pricing.sitePrice || hamFiyat || null;
 
-                // Başka sitenin kaynağından oluşmuş üründe yalnızca bu sitenin fiyatı güncellenir
                 bulkOps.push({
                     updateOne: {
                         filter: { _key: diaKey, 'syncInfo.xmlSource': { $nin: siteCodes } },
@@ -737,7 +700,6 @@ class XmlWebProductSyncService {
 
                 bulkOps.push({
                     updateOne: {
-                        // Sahip site: fiyat/stok alanları tam güncellenir (xmlSource site kapsamı)
                         filter: { _key: diaKey, 'syncInfo.xmlSource': { $in: siteCodes } },
                         update: {
                             $set: {
@@ -776,18 +738,11 @@ class XmlWebProductSyncService {
 
         console.log(`[XmlWebProductSync] Hızlı sync tamamlandı — güncellenen: ${updated}, filtrelenen: ${filtered}, hata: ${errors}`);
 
-        // Kargo dahil fiyatlar quickSync sarmalayıcısında (tüm siteler için bir kez) güncellenir
-
         return { success: true, updated, filtered, errors };
     }
-    // Silinen xmlproduct'ların hedefStokKodu'larını yeniden değerlendir
-    // - Başka kaynakta kaydı varsa en ucuzu seçip webproducts'ı günceller
-    // - Hiç kaynak kalmadıysa webproducts'ta stok 0 + gizli yapar
-    // Pasif entegrasyonların xmlproducts kayıtlarını sil ve webproducts'tan yeniden değerlendir
     async cleanupInactiveSources() {
         console.log('[XmlWebProductSync] Pasif kaynak temizliği başladı');
 
-        // Pasif olan VEYA excludeFromWebSync olan kaynakları topla
         const inactiveIntegrations = await WebXml.find(
             { $or: [{ isActive: false }, { excludeFromWebSync: true }] },
             { code: 1, name: 1, excludeFromWebSync: 1, isActive: 1, site: 1 }
@@ -797,20 +752,17 @@ class XmlWebProductSyncService {
             return { inactiveCount: 0, deletedXmlProducts: 0, reconsolidateStats: null };
         }
 
-        // Pasif olanların xmlproducts'ları silinmeli, excludeFromWebSync'lerin xmlproducts'ı korunur (XML export için lazım)
         const trulyInactive = inactiveIntegrations.filter(i => i.isActive === false).map(i => i.code);
         const excludedCodes = inactiveIntegrations.map(i => i.code);
 
         console.log(`[XmlWebProductSync] Tamamen pasif: ${trulyInactive.join(', ') || 'yok'}`);
         console.log(`[XmlWebProductSync] Web sync'ten dışlanan: ${excludedCodes.join(', ')}`);
 
-        // Dışlanan kaynaklardaki ürünlerin hedefStokKodu'larını SİLMEDEN ÖNCE topla (reconsolidate için)
         const staleProducts = await XmlProduct.find(
             { source: { $in: excludedCodes } },
             { mappedData: 1, source: 1 }
         ).lean();
 
-        // Sadece tamamen pasif olanların xmlproducts kayıtlarını sil
         let deletedCount = 0;
         if (trulyInactive.length > 0) {
             const deleteResult = await XmlProduct.deleteMany({ source: { $in: trulyInactive } });
@@ -818,7 +770,6 @@ class XmlWebProductSyncService {
             console.log(`[XmlWebProductSync] ${deletedCount} pasif kaynak xmlproduct silindi`);
         }
 
-        // Reconsolidate site bazlı yapılır — her sitenin kaynakları kendi kapsamında değerlendirilir
         let reconsolidateStats = null;
         for (const s of SITE_SLUGS) {
             const siteExcludedCodes = inactiveIntegrations
@@ -831,7 +782,6 @@ class XmlWebProductSyncService {
                 .map(p => p.mappedData?.hedefStokKodu)
                 .filter(Boolean);
 
-            // Ayrıca webproducts'ta pasif xmlSource'lu ürünlerin hedefStokKodu'larını da topla
             const orphanWebProducts = await WebProduct.find(
                 {
                     'syncInfo.syncSource': 'xml_integration',
@@ -906,12 +856,10 @@ class XmlWebProductSyncService {
                 alastikPrice: Math.round(applyPlatform('alastik') * 100) / 100,
                 b2bPrice: Math.round(applyPlatform('b2b') * 100) / 100,
                 b2cPrice: Math.round(applyPlatform('b2c') * 100) / 100,
-                // Vitrine yazılan satış fiyatı sitenin fiyat platformundan hesaplanır (config/sites.js → xmlPricePlatform)
                 sitePrice: Math.round(applyPlatform(SITES[site]?.xmlPricePlatform || 'alastik') * 100) / 100
             };
         };
 
-        // Kalan xmlproducts kayıtlarını toplu çek (sadece bu sitenin kaynakları)
         const remaining = await XmlProduct.find(
             {
                 diaKey: { $ne: null, $gt: '' },
@@ -921,7 +869,6 @@ class XmlWebProductSyncService {
             { diaKey: 1, rawData: 1, source: 1, mappedData: 1, status: 1 }
         ).lean();
 
-        // hedefStokKodu -> xmlproducts[]
         const grouped = {};
         for (const xp of remaining) {
             const hsk = xp.mappedData?.hedefStokKodu;
@@ -938,7 +885,6 @@ class XmlWebProductSyncService {
 
                 const candidates = grouped[hsk] || [];
                 if (candidates.length === 0) {
-                    // Hiç kaynak kalmadı — gizle (stok 0 + webVisible false)
                     bulkOps.push({
                         updateOne: {
                             filter: { 'diaData.anabarkod': hsk, 'syncInfo.syncSource': 'xml_integration', 'syncInfo.xmlSource': { $in: siteCodes } },
@@ -956,11 +902,9 @@ class XmlWebProductSyncService {
                     continue;
                 }
 
-                // En ucuz kaynağı seç (fullSync ile aynı mantık)
                 const secilen = this.selectBestSource(candidates, integrationMap);
 
                 if (!secilen) {
-                    // Geçerli kaynak yok — gizle (stok 0 + webVisible false)
                     bulkOps.push({
                         updateOne: {
                             filter: { 'diaData.anabarkod': hsk, 'syncInfo.syncSource': 'xml_integration', 'syncInfo.xmlSource': { $in: siteCodes } },
@@ -1068,7 +1012,6 @@ class XmlWebProductSyncService {
             const markaRules = platformRules.filter(r => r.marka === marka && r.marka !== '');
             const genelRules = platformRules.filter(r => r.marka === '');
 
-            // Markaya özel kural varsa sadece onu uygula, genel kuralı atlat
             const aktifRules = markaRules.length > 0 ? markaRules : genelRules;
             return aktifRules.reduce((f, r) => hesapla(f, r), hamFiyat);
         };

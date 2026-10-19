@@ -3,18 +3,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
-// DB Connect
 import { useThemeSettings } from '@hooks/Theme/useThemeSettings'
 
-// Bootstrap Library
 import { Container, Row, Col } from 'react-bootstrap'
 
-// Partials
 import SearchBox from '@components/alastik/Header/Middle/Partials/SearchBox';
 import ActionButtons from '@components/alastik/Header/Middle/Partials/ActionButton';
 import UstLinks from '@components/common/UstLinks';
 
-// Routes
 import { ROUTES } from '@/src/config/routes';
 
 interface MiddleProps {
@@ -28,8 +24,6 @@ export default function Main({ logo, siteName, onMenuOpen }: MiddleProps) {
 
     return (
         <Container className="navbar navbar-expand-lg d-block p-0">
-            {/* Üst ikonlu hızlı linkler — hesap ikonlarıyla (Sepetim) aynı sağ kenarda
-                hizalanması için ana satırla aynı Row/Col grid geometrisi kullanılır. */}
             <Row className='row-fluid'>
                 <Col xs="12" className="d-flex justify-content-end">
                     <UstLinks />

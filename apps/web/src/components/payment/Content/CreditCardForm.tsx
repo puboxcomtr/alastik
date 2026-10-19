@@ -1,4 +1,3 @@
-// apps/web/src/components/payment/Content/CreditCardForm.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -61,7 +60,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
     const [loading, setLoading] = useState(false);
     const [binChecked, setBinChecked] = useState(false);
 
-    // Site bazlı kredi kartı seçenekleri (panelden aç/kapa). Site, Origin'den çözülür.
     const [cardOpts, setCardOpts] = useState<{ tekCekim: boolean; taksit: boolean }>({ tekCekim: true, taksit: true });
     useEffect(() => {
         fetch(API_ENDPOINTS.payment.creditCardOptions())
@@ -70,7 +68,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
             .catch(() => {});
     }, []);
 
-    // Kart numarası formatla
     const formatCardNumber = (value: string) => {
         const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
         const matches = v.match(/\d{4,16}/g);
@@ -82,7 +79,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         return parts.length ? parts.join(' ') : v;
     };
 
-    // Son kullanma tarihi formatla
     const formatExpiry = (value: string) => {
         const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
         if (v.length >= 2) {
@@ -91,7 +87,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         return v;
     };
 
-    // BIN kontrolü (ilk 6 hane)
     useEffect(() => {
         const cleanNumber = cardNumber.replace(/\s/g, '');
 
@@ -107,7 +102,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         }
     }, [cardNumber, binChecked]);
 
-    // BIN sorgula
     const checkBin = async (bin: string) => {
         setLoading(true);
         try {
@@ -119,17 +113,14 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                 setBinChecked(true);
 
                 if (data.cardInfo.isDebitCard) {
-                    // Netahsilat banka kartı derse taksit gösterme
                     setInstallments([]);
                     setSelectedInstallment(1);
                     setSelectedVPosId(0);
                 } else if (data.hasInstallment && data.installments) {
-                    // Taksit seçeneklerini göster (1'den büyük olanlar) — taksit kapalıysa gizle
                     const multiInstallments = cardOpts.taksit
                         ? data.installments.filter((i: Installment) => i.installment > 1)
                         : [];
                     setInstallments(multiInstallments);
-                    // Varsayılan: tek çekim açıksa tek çekim; kapalıysa ilk taksit.
                     if (cardOpts.tekCekim || !multiInstallments.length) {
                         setSelectedInstallment(1);
                         setSelectedVPosId(0);
@@ -153,18 +144,13 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         }
     };
 
-    // Hangi gateway kullanılacak
     const getGateway = (): 'netahsilat' | 'nkolay' => {
         if (!cardInfo) return 'netahsilat';
-        // Banka kartı → Nkolay
         if (cardInfo.isDebitCard) return 'nkolay';
-        // Kredi kartı tek çekim → Nkolay
         if (selectedInstallment === 1) return 'nkolay';
-        // Kredi kartı taksitli → Netahsilat
         return 'netahsilat';
     };
 
-    // Form validasyonu ve data güncelleme
     useEffect(() => {
         const cleanNumber = cardNumber.replace(/\s/g, '');
         const [expMonth, expYear] = expiry.split('/');
@@ -196,19 +182,16 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         }
     }, [cardNumber, cardHolderName, expiry, cvc, selectedInstallment, selectedVPosId, binChecked, cardInfo]);
 
-    // Taksit seçimi
     const handleInstallmentSelect = (inst: Installment) => {
         setSelectedInstallment(inst.installment);
         setSelectedVPosId(inst.vPosId);
     };
 
-    // Tek çekim seçimi (banka kartı veya kredi kartı tek çekim)
     const handleSinglePaymentSelect = () => {
         setSelectedInstallment(1);
         setSelectedVPosId(0);
     };
 
-    // Para formatı
     const formatCurrency = (amount: number): string => {
         return new Intl.NumberFormat('tr-TR', {
             minimumFractionDigits: 2,
@@ -216,7 +199,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
         }).format(amount);
     };
 
-    // Taksitli tutar hesapla
     const calculateInstallmentAmount = (installment: number): string => {
         return formatCurrency(totalAmount / installment);
     };
@@ -224,7 +206,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
     return (
         <div className="p-3 bg-white">
             <div className="row g-3">
-                {/* Kart Üzerindeki İsim */}
                 <div className="col-12">
                     <label className="form-label">Kart Üzerindeki İsim Soyisim <span className="text-danger">*</span></label>
                     <div className='position-relative'>
@@ -246,7 +227,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     </div>
                 </div>
 
-                {/* Kart Numarası */}
                 <div className="col-12">
                     <label className="form-label">Kart Numarası <span className="text-danger">*</span></label>
                     <div className="position-relative">
@@ -269,7 +249,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     </div>
                 </div>
 
-                {/* Son Kullanma ve CVV */}
                 <div className="col-md-6">
                     <label className="form-label small">Son Kullanma Tarihi <span className="text-danger">*</span></label>
                     <input
@@ -303,7 +282,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     />
                 </div>
 
-                {/* Banka Kartı: Tek Çekim */}
                 {cardInfo && cardInfo.isDebitCard && cardOpts.tekCekim && (
                     <div className="col-12">
                         <hr />
@@ -330,13 +308,11 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     </div>
                 )}
 
-                {/* Kredi Kartı: Taksit Seçenekleri + Tek Çekim */}
                 {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length > 0 && (
                     <div className="col-12">
                         <hr />
                         <h6>Ödeme Seçenekleri</h6>
                         <div className="d-flex flex-column gap-2">
-                            {/* Tek Çekim (Nkolay) — site ayarı kapalıysa gizli */}
                             {cardOpts.tekCekim && (
                             <div
                                 onClick={handleSinglePaymentSelect}
@@ -366,7 +342,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                             </div>
                             )}
 
-                            {/* Taksitli Seçenekler (Netahsilat) */}
                             {installments
                                 .filter(inst => inst.installment > 1)
                                 .map((inst) => {
@@ -413,7 +388,6 @@ export default function CreditCardForm({ onCardDataChange, totalAmount }: Credit
                     </div>
                 )}
 
-                {/* Kredi Kartı Taksit Yok: Sadece Tek Çekim (tek çekim kapalıysa gizli) */}
                 {cardInfo && cardInfo.isCreditCard && !cardInfo.isDebitCard && installments.length === 0 && cardOpts.tekCekim && (
                     <div className="col-12">
                         <hr />

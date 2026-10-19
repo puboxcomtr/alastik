@@ -1,13 +1,10 @@
 const PAYMENT_PROVIDERS = {
-    // KREDİ KARTI SAĞLAYICILARI
     credit_card: {
         netahsilat: {
             code: 'netahsilat',
             name: 'Netahsilat',
             logo: '/images/providers/netahsilat.png',
             description: 'Türkiye\'nin lider sanal pos sağlayıcısı',
-            // PirPos SOAP servisi yalnız API kullanıcı adı + şifre kullanır.
-            // (Client Code / Store Key / Hash Key bu entegrasyonda kullanılmaz.)
             requiredFields: [
                 {
                     key: 'username',
@@ -85,7 +82,6 @@ const PAYMENT_PROVIDERS = {
         }
     },
 
-    // BANKA HAVALESİ
     bank_transfer: {
         akbank: {
             code: 'akbank',
@@ -185,7 +181,6 @@ const PAYMENT_PROVIDERS = {
         }
     }
 };
-// Helper fonksiyonlar
 const getProviderTemplate = (type, providerCode) => {
     return PAYMENT_PROVIDERS[type]?.[providerCode] || null;
 };

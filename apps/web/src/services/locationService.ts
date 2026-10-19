@@ -1,4 +1,3 @@
-// apps/web/src/services/locationService.ts
 import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface City {

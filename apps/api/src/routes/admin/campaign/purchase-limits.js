@@ -2,7 +2,6 @@ const express = require('express')
 const router = express.Router()
 const PurchaseLimit = require('../../../models/admin/campaign/PurchaseLimit')
 
-// Liste
 router.get('/', async (req, res) => {
     try {
         const {
@@ -53,7 +52,6 @@ router.get('/', async (req, res) => {
     }
 })
 
-// Detay
 router.get('/:id', async (req, res) => {
     try {
         const item = await PurchaseLimit.findOne({ _id: req.params.id, site: req.site }).lean()
@@ -67,7 +65,6 @@ router.get('/:id', async (req, res) => {
     }
 })
 
-// Ekle
 router.post('/', async (req, res) => {
     try {
         const {
@@ -101,7 +98,6 @@ router.post('/', async (req, res) => {
     }
 })
 
-// Güncelle
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -137,7 +133,6 @@ router.put('/:id', async (req, res) => {
     }
 })
 
-// Aktif/Pasif Toggle
 router.patch('/:id/toggle', async (req, res) => {
     try {
         const item = await PurchaseLimit.findOne({ _id: req.params.id, site: req.site })
@@ -153,7 +148,6 @@ router.patch('/:id/toggle', async (req, res) => {
     }
 })
 
-// Sil
 router.delete('/:id', async (req, res) => {
     try {
         const item = await PurchaseLimit.findOneAndDelete({ _id: req.params.id, site: req.site })

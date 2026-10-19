@@ -1,6 +1,3 @@
-/**
- * admin/src/views/modules/xmlListTable/XmlEditModal.tsx
- */
 
 'use client'
 
@@ -78,7 +75,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
 
     const [errors, setErrors] = useState<Record<string, string>>({})
 
-    // Veriyi yükle
     useEffect(() => {
         if (open && integrationId) {
             loadIntegration()
@@ -141,7 +137,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
             }))
         }
 
-        // Hata temizle
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }))
         }
@@ -301,7 +296,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                             />
                         </Grid>
 
-                        {/* Senkronizasyon Ayarları — her format için */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, mt: 2 }}>
                                 Senkronizasyon Ayarları
@@ -322,7 +316,6 @@ const XmlEditModal = ({ open, onClose, integrationId, onSuccess }: Props) => {
                             />
                         </Grid>
 
-                        {/* Credentials — sadece JSON/API formatında göster */}
                         {formData.format === 'json' && (
                             <>
                                 <Grid item xs={12}>

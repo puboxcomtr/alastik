@@ -17,7 +17,6 @@ import type { ThemeSettings as ThemeSettingsType } from '@/types/apps/themeTypes
 import { fetchAPI } from '@libs/api'
 import { siteHasLoginPopup, siteHasSalespersons } from '@/utils/activeSite'
 
-
 const menuItems = [
     { id: 'tab1', label: 'Genel Ayarlar' },
     { id: 'tab2', label: 'Footer' },
@@ -123,7 +122,6 @@ const ThemeSettings = () => {
     const [activeMenu, setActiveMenu] = useState('tab1')
     const [saving, setSaving] = useState(false)
     const [settings, setSettings] = useState<ThemeSettingsType>({})
-    // Aktif site tarayıcıda okunur (sunucu çıktısıyla uyuşmazlık olmasın diye yüklemeden sonra)
     const [hasLoginPopup, setHasLoginPopup] = useState(false)
     const [hasSalespersons, setHasSalespersons] = useState(false)
 

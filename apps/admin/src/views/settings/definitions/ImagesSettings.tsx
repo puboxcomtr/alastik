@@ -10,13 +10,11 @@ import { getSiteMediaUrl } from '@/utils/activeSite'
 
 type ImageField = 'mailLogo' | 'favicon'
 
-// Yükleme kutuları — alan adı, başlık, açıklama ve önizleme boyutu
 const IMAGE_BOXES: { field: ImageField; title: string; maxWidth: number; maxHeight: number }[] = [
     { field: 'mailLogo', title: 'Mail Logo', maxWidth: 200, maxHeight: 100 },
     { field: 'favicon', title: 'Favicon', maxWidth: 64, maxHeight: 64 }
 ]
 
-// Göreli medya yolunu aktif sitenin medya adresiyle tamamla
 const previewUrl = (url?: string) => {
     if (!url) return ''
     if (url.startsWith('http') || url.startsWith('data:')) return url

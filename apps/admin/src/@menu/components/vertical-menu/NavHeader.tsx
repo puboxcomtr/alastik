@@ -1,14 +1,10 @@
-// Third-party Imports
 import styled from '@emotion/styled'
 
-// Type Imports
 import type { ChildrenType } from '../../types'
 import type { VerticalNavContextProps } from '../../contexts/verticalNavContext'
 
-// Hook Imports
 import useVerticalNav from '../../hooks/useVerticalNav'
 
-// Util Imports
 import { verticalNavClasses } from '../../utils/menuClasses'
 
 type StyledNavHeaderProps = {
@@ -31,7 +27,6 @@ const StyledNavHeader = styled.div<StyledNavHeaderProps>`
 `
 
 const NavHeader = ({ children }: ChildrenType) => {
-  // Hooks
   const { isHovered, isCollapsed, collapsedWidth, transitionDuration } = useVerticalNav()
 
   return (

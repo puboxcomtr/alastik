@@ -5,10 +5,6 @@ const logger = require('../utils/logger');
 const router = express.Router();
 const tiresCatalogService = new TiresCatalogService();
 
-/**
- * Lastik markalarını getirir
- * GET /api/tires/brands
- */
 router.get('/brands', async (req, res) => {
     try {
         const options = {};
@@ -40,10 +36,6 @@ router.get('/brands', async (req, res) => {
     }
 });
 
-/**
- * Marka ürünlerini getirir
- * GET /api/tires/brands/:brandSlug/products
- */
 router.get('/brands/:brandSlug/products', async (req, res) => {
     try {
         const { brandSlug } = req.params;
@@ -97,10 +89,6 @@ router.get('/brands/:brandSlug/products', async (req, res) => {
     }
 });
 
-/**
- * Ürün detaylarını getirir
- * GET /api/tires/products/:brandSlug/:productSlug
- */
 router.get('/products/:brandSlug/:productSlug', async (req, res) => {
     try {
         const { brandSlug, productSlug } = req.params;
@@ -128,10 +116,6 @@ router.get('/products/:brandSlug/:productSlug', async (req, res) => {
     }
 });
 
-/**
- * Ürün BNB nedenlerini getirir
- * GET /api/tires/products/:brandSlug/:productSlug/bnb
- */
 router.get('/products/:brandSlug/:productSlug/bnb', async (req, res) => {
     try {
         const { brandSlug, productSlug } = req.params;
@@ -159,10 +143,6 @@ router.get('/products/:brandSlug/:productSlug/bnb', async (req, res) => {
     }
 });
 
-/**
- * Ürün modifikasyonlarını getirir
- * GET /api/tires/products/:brandSlug/:productSlug/modes
- */
 router.get('/products/:brandSlug/:productSlug/modes', async (req, res) => {
     try {
         const { brandSlug, productSlug } = req.params;
@@ -190,10 +170,6 @@ router.get('/products/:brandSlug/:productSlug/modes', async (req, res) => {
     }
 });
 
-/**
- * Ürün materyallerini getirir
- * GET /api/tires/products/:brandSlug/:productSlug/materials
- */
 router.get('/products/:brandSlug/:productSlug/materials', async (req, res) => {
     try {
         const { brandSlug, productSlug } = req.params;
@@ -223,11 +199,6 @@ router.get('/products/:brandSlug/:productSlug/materials', async (req, res) => {
     }
 });
 
-
-/**
- * Bölgeleri getirir
- * GET /api/tires/regions
- */
 router.get('/regions', async (req, res) => {
     try {
         const result = await tiresCatalogService.getRegions();
@@ -251,10 +222,6 @@ router.get('/regions', async (req, res) => {
     }
 });
 
-/**
- * Performans kategorilerini getirir
- * GET /api/tires/performance-categories
- */
 router.get('/performance-categories', async (req, res) => {
     try {
         const result = await tiresCatalogService.getPerformanceCategories();
@@ -278,10 +245,6 @@ router.get('/performance-categories', async (req, res) => {
     }
 });
 
-/**
- * Testleri getirir
- * GET /api/tires/tests
- */
 router.get('/tests', async (req, res) => {
     try {
         const options = {};
@@ -327,10 +290,6 @@ router.get('/tests', async (req, res) => {
     }
 });
 
-/**
- * Lastik arama yapar
- * GET /api/tires/search
- */
 router.get('/search', async (req, res) => {
     try {
         const query = req.query;
@@ -357,10 +316,6 @@ router.get('/search', async (req, res) => {
     }
 });
 
-/**
- * Gelişmiş lastik arama yapar
- * GET /api/tires/search/advanced
- */
 router.get('/search/advanced', async (req, res) => {
     try {
         const query = req.query;
@@ -387,10 +342,6 @@ router.get('/search/advanced', async (req, res) => {
     }
 });
 
-/**
- * Ürün adından lastik verilerini getirir
- * POST /api/tires/product-data
- */
 router.post('/product-data', async (req, res) => {
     try {
         const { productName } = req.body;
@@ -404,7 +355,6 @@ router.post('/product-data', async (req, res) => {
 
         logger.info('Ürün verisi isteniyor', { productName });
 
-        // Parse product name for mock data
         const parsed = tiresCatalogService.parseProductName(productName);
         if (!parsed) {
             return res.status(400).json({
@@ -415,7 +365,6 @@ router.post('/product-data', async (req, res) => {
 
         const { brand, product } = parsed;
 
-        // WheelSize API'den paralel olarak tüm verileri çek
         try {
             logger.info('WheelSize API\'den veri çekiliyor', {
                 productName,
@@ -429,7 +378,6 @@ router.post('/product-data', async (req, res) => {
                 ]
             });
 
-            // Paralel API çağrıları
             const [detailsResult, bnbResult, modesResult, materialsResult] = await Promise.allSettled([
                 tiresCatalogService.getProductDetails(brand, product),
                 tiresCatalogService.getProductBNB(brand, product),
@@ -437,7 +385,6 @@ router.post('/product-data', async (req, res) => {
                 tiresCatalogService.getProductMaterials(brand, product)
             ]);
 
-            // Sonuçları işle
             const result = {
                 brand,
                 product,
@@ -447,7 +394,6 @@ router.post('/product-data', async (req, res) => {
                 materials: materialsResult.status === 'fulfilled' ? materialsResult.value?.data : null
             };
 
-            // En az bir veri geldi mi kontrol et
             if (result.details || result.bnb || result.modes || result.materials) {
                 logger.info('WheelSize API\'den veri başarıyla alındı', {
                     productName,
@@ -471,7 +417,6 @@ router.post('/product-data', async (req, res) => {
                 });
             }
 
-            // Hiç veri gelmezse hata döndür
             throw new Error('WheelSize API\'den hiçbir veri alınamadı');
         } catch (apiError) {
             logger.error('WheelSize API hatası', {
@@ -505,10 +450,6 @@ router.post('/product-data', async (req, res) => {
     }
 });
 
-/**
- * Wheelsize ID ile tek ürün detayını getirir
- * GET /api/tires/wheelsize/:wheelsizeId
- */
 router.get('/wheelsize/:wheelsizeId', async (req, res) => {
     try {
         const { wheelsizeId } = req.params;
@@ -518,10 +459,8 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             userAgent: req.get('User-Agent')
         });
 
-        // Önce mevcut sistemimizden ürün bilgisini al
         let baseProduct = null;
         
-        // Wheelsize ürün listesinden ID'ye göre ürünü bul
         try {
             const wheelsizeResponse = await fetch(`http://wheelsizeapi.compiturk.com.tr/api/lastik/arama?limit=1000`);
             
@@ -533,9 +472,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             logger.warn('Wheelsize arama API hatası', { error: error.message });
         }
 
-        // baseProduct bulunamazsa, brand/name ipuçları ile devam etmeyi deneyeceğiz (fallback)
-
-        // Brand ve product slug'larını oluştur (query ipuçları + parser)
         const brandHint = (req.query.brand || '').toString();
         const nameHint = (req.query.name || '').toString();
 
@@ -552,7 +488,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
         const baseName = (baseProduct && (baseProduct.model || baseProduct.aciklama)) || nameHint || '';
         let productSlug = baseName ? slugify(baseName) : null;
 
-        // Parser ile daha güvenilir tespit
         if (nameHint) {
             const parsed = tiresCatalogService.parseProductName(nameHint);
             if (parsed) {
@@ -563,14 +498,12 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
 
         const product = baseProduct ? { ...baseProduct } : {};
 
-        // Wheelsize Catalog API'den detaylı bilgi al
         let enhancedProduct = { ...product };
         
         if (brandSlug && productSlug) {
             try {
                 logger.info('Wheelsize Catalog API çağrısı', { brandSlug, productSlug, wheelsizeId });
                 
-                // Genel ürün bilgisi
                 const catalogResponse = await fetch(
                     `http://wheelsizeapi.compiturk.com.tr/api/tires/catalog/${brandSlug}/${productSlug}/`
                 );
@@ -578,7 +511,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
                 if (catalogResponse.ok) {
                     const catalogData = await catalogResponse.json();
                     
-                    // Catalog verilerini mevcut ürün verisine ekle
                     enhancedProduct.catalogInfo = catalogData;
                     
                     logger.info('Wheelsize Catalog verisi alındı', { 
@@ -594,7 +526,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
                     });
                 }
 
-                // Ürün modları/varyantları
                 const modesResponse = await fetch(
                     `http://wheelsizeapi.compiturk.com.tr/api/tires/catalog/${brandSlug}/${productSlug}/modes`
                 );
@@ -605,7 +536,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
                     logger.info('Ürün modları alındı', { wheelsizeId, modesCount: modesData?.length || 0 });
                 }
 
-                // Buy/Not-Buy bilgileri
                 const bnbResponse = await fetch(
                     `http://wheelsizeapi.compiturk.com.tr/api/tires/catalog/${brandSlug}/${productSlug}/bnb`
                 );
@@ -632,7 +562,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             });
         }
 
-        // Eğer catalog verisi bulunamadıysa, arama ile doğru slug'ı tespit etmeyi dene
         if (!enhancedProduct.catalogInfo && brandSlug && (nameHint || baseName)) {
             try {
                 logger.info('Wheelsize Catalog SEARCH fallback', { wheelsizeId, brandSlug, query: nameHint || baseName });
@@ -642,7 +571,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
                     const resolvedBrand = first.brand?.slug || brandSlug;
                     const resolvedProduct = first.slug || first.product?.slug;
                     if (resolvedProduct) {
-                        // Tekrar catalog çağrılarını dene
                         logger.info('SEARCH ile slug bulundu, catalog çağrısı yapılıyor', { resolvedBrand, resolvedProduct });
                         const catalogResponse2 = await fetch(
                             `http://wheelsizeapi.compiturk.com.tr/api/tires/catalog/${resolvedBrand}/${resolvedProduct}/`
@@ -666,7 +594,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
                             enhancedProduct.buyNotBuy = await bnbResponse2.json();
                         }
 
-                        // Slugları güncelle
                         brandSlug = resolvedBrand;
                         productSlug = resolvedProduct;
                     }
@@ -678,9 +605,7 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             }
         }
 
-        // Dia stok kontrolü yap
         try {
-            // Tek ürün için Dia stok kontrolü
             if (baseProduct) {
             const diaStockResponse = await fetch('http://localhost:3082/api/lastik/dia-stok-kontrol', {
                 method: 'POST',
@@ -695,12 +620,10 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             if (diaStockResponse.ok) {
                 const diaData = await diaStockResponse.json();
                 if (diaData.success && diaData.data && diaData.data.length > 0) {
-                    // Dia verilerini mevcut veriye merge et
                     const diaProduct = diaData.data[0];
                     enhancedProduct = {
                         ...enhancedProduct,
                         ...diaProduct,
-                        // Catalog bilgilerini koru
                         catalogInfo: enhancedProduct.catalogInfo,
                         modes: enhancedProduct.modes,
                         buyNotBuy: enhancedProduct.buyNotBuy
@@ -715,7 +638,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             });
         }
 
-        // Eğer hiçbir veri elde edilemediyse (ne baseProduct ne de catalogInfo)
         if (!baseProduct && !enhancedProduct.catalogInfo && !enhancedProduct.modes && !enhancedProduct.buyNotBuy) {
             return res.status(404).json({
                 success: false,
@@ -724,7 +646,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             });
         }
 
-        // Ürün detaylarını formatla
         const productDetail = {
             _id: enhancedProduct._id || enhancedProduct.id,
             name: enhancedProduct.name || enhancedProduct.model || enhancedProduct.aciklama || enhancedProduct.catalogInfo?.display || 'Lastik',
@@ -752,7 +673,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             description: enhancedProduct.description || enhancedProduct.aciklama || null,
             diaStock: enhancedProduct.diaStock || null,
             diaProductCode: enhancedProduct.diaProductCode || null,
-            // Wheelsize Catalog bilgileri
             catalogInfo: enhancedProduct.catalogInfo || null,
             modes: enhancedProduct.modes || null,
             buyNotBuy: enhancedProduct.buyNotBuy || null,
@@ -781,7 +701,6 @@ router.get('/wheelsize/:wheelsizeId', async (req, res) => {
             hasRating: !!productDetail.rating
         });
 
-        // Terminal için veri özeti logu (çok büyük payload yerine özet)
         logger.info('Wheelsize ürün detayı DATA ÖZET', {
             wheelsizeId,
             dataSummary: {

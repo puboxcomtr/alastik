@@ -1,14 +1,10 @@
 'use client';
 
-// Homepage purchase chart — monthly REVENUE and PURCHASE QUANTITY from DIA sales
-// invoices. Left chart = revenue (net, VAT included), right chart = quantity.
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 
-// Ay etiketleri (kullanıcıya görünen metin Türkçe kalır).
 const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
-// Per-year line color (oldest → newest; current year is the most prominent).
 const LINE_COLORS = ['#94a3b8', '#5c86a6', '#111827'];
 
 interface PurchaseStats {
@@ -18,18 +14,15 @@ interface PurchaseStats {
   years: number[];
 }
 
-// TL format (revenue is already in TL, not kuruş).
 const tlFull = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function formatTL(v: number): string {
   return `${tlFull.format(v)}₺`;
 }
-// Compact axis format: 210.500 → "211B", 1.2M → "1,2M".
 function compactTL(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.', ',')}M`;
   if (v >= 1000) return `${Math.round(v / 1000)}B`;
   return String(Math.round(v));
 }
-// Rounds the axis top up to a clean value (for tidy labels).
 function niceCeil(v: number): number {
   if (v <= 0) return 1;
   const exp = Math.floor(Math.log10(v));
@@ -70,7 +63,6 @@ function LineChart({
   const xAt = (i: number) => padL + (plotW * i) / 11;
   const yAt = (v: number) => padT + plotH - (plotH * v) / max;
 
-  // Hovered point: series index (si) + month index (i). Also shown on tap.
   const [hover, setHover] = useState<{ si: number; i: number } | null>(null);
 
   const tooltip = (() => {
@@ -97,7 +89,6 @@ function LineChart({
 
   return (
     <svg className="chart-svg" viewBox={`0 0 ${W} ${H}`} role="img">
-      {/* Horizontal grid + y-axis labels */}
       {Array.from({ length: TICKS + 1 }, (_, t) => {
         const val = (max * t) / TICKS;
         const y = yAt(val);
@@ -111,14 +102,12 @@ function LineChart({
         );
       })}
 
-      {/* Month labels (x-axis) */}
       {MONTHS.map((m, i) => (
         <text key={m} className="axis-label" x={xAt(i)} y={H - 8} textAnchor="middle">
           {m}
         </text>
       ))}
 
-      {/* Year lines + points */}
       {series.map((s) => {
         const points = s.values.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ');
         return (
@@ -131,7 +120,6 @@ function LineChart({
         );
       })}
 
-      {/* Hover hit areas (invisible, wide) */}
       {series.map((s, si) =>
         s.values.map((v, i) => (
           <circle
@@ -194,7 +182,6 @@ export function PurchaseChart() {
 
   return (
     <div className="charts-grid">
-      {/* LEFT: revenue */}
       <div className="chart-card">
         <h2>Ciro</h2>
         <p className="chart-note">Aylık toplam fatura tutarı (KDV dahil)</p>
@@ -210,7 +197,6 @@ export function PurchaseChart() {
         </div>
       </div>
 
-      {/* RIGHT: quantity */}
       <div className="chart-card">
         <h2>Alım Adet</h2>
         <p className="chart-note">Aylık toplam ürün adedi (lastik + jant)</p>

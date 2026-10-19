@@ -52,7 +52,6 @@ export default function Contact() {
 
     return (
         <>
-            {/* Breadcrumb */}
             <section id="breadcumb">
                 <Container>
                     <div className='row-fluid'>

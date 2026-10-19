@@ -1,11 +1,8 @@
 'use client';
-// Anasayfa karşılama başlığı: "Hoşgeldiniz, <Cari Adı>" — ad oturumdan gelir,
-// yalnız baş harfleri büyük yazılır; cari adı kalındır.
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { PremiumCrown } from './premium-badge';
 
-/** Türkçe kurallarıyla her kelimenin yalnız baş harfini büyütür */
 function basHarfleriBuyut(text: string): string {
     return text
         .toLocaleLowerCase('tr-TR')
@@ -14,14 +11,12 @@ function basHarfleriBuyut(text: string): string {
         .join(' ');
 }
 
-/** Uzun cari adını kısaltır ve sonuna "…" ekler (tam adı title'da kalır). */
 const AD_MAKS = 28;
 function kisalt(text: string, max = AD_MAKS): string {
     if (text.length <= max) return text;
     return text.slice(0, max).trimEnd() + '…';
 }
 
-// authToken JWT'sinden impersonatedByName (plasiyer adı) çöz — impersonation'da onu göster
 function plasiyerAdi(token: string): string {
     try {
         const p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -40,7 +35,6 @@ export function WelcomeHeading() {
     useEffect(() => {
         const token = localStorage.getItem('authToken');
         if (token) {
-            // Plasiyer bayi adına girdiyse: bayi adı yerine PLASİYER adını göster
             const sp = plasiyerAdi(token);
             if (sp) { setAd(basHarfleriBuyut(sp)); return; }
             fetch(API_ENDPOINTS.b2b.me(), { headers: { Authorization: `Bearer ${token}` } })
@@ -52,7 +46,6 @@ export function WelcomeHeading() {
                 .catch(() => {});
             return;
         }
-        // Bayi seçilmeden plasiyer oturumu: plasiyer adını göster
         const pt = localStorage.getItem('plasiyerToken');
         if (!pt) return;
         setPlasiyer(true);

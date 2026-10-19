@@ -1,12 +1,3 @@
-/**
- * İçerik tarayıcı: ürün, sayfa, blog, kategori, marka ve etiket kayıtlarını vitrinin
- * bastığı etkin başlık/açıklama ile analiz motoruna verir, sonucu SeoContentScore'a yazar.
- *
- * Etkin başlık mantığı apps/web'deki generateMetadata'ların birebir karşılığıdır:
- *  - ürün/kategori/marka: elle girilmiş SEO alanı yoksa SeoSettings şablonu uygulanır
- *  - blog/sayfa: seo.metaTitle yoksa başlık, seo.metaDescription yoksa özet
- *  - etiket: seoTitle yoksa "etiket adı | site adı"
- */
 
 const crypto = require('crypto');
 const WebProduct = require('../../models/web/catalog/WebProduct');
@@ -21,7 +12,6 @@ const { CONTENT_TYPES } = require('../../models/admin/seo/SeoContentScore');
 const { DOMAIN_TO_SLUG, SITES } = require('../../config/sites');
 const { analyzeContent, mergeThresholds } = require('./contentAnalyzer');
 
-// Başlıklarda editörden kalan HTML varlıkları (&#39; &amp; ...) düz metne çevrilir
 const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&nbsp;': ' ' };
 const decodeEntities = (text) => String(text || '')
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
@@ -30,7 +20,7 @@ const decodeEntities = (text) => String(text || '')
 const OWN_HOSTS = Object.keys(DOMAIN_TO_SLUG);
 const BATCH_SIZE = 500;
 
-const scanState = new Map(); // site -> ilerleme
+const scanState = new Map();
 
 function applyTemplate(template, vars) {
     if (!template) return '';
@@ -44,10 +34,6 @@ async function loadSettings(site) {
     const siteName = String(settings?.other?.seoTag?.title || settings?.homepage?.title || '').split('|').pop().trim() || SITES[site]?.name || '';
     return { templates: settings || {}, thresholds: mergeThresholds(settings?.analysis), siteName };
 }
-
-// ---------------------------------------------------------------------------
-// Tip başına: sorgu, alan seçimi ve normalize edilmiş belge
-// ---------------------------------------------------------------------------
 
 const PRODUCT_FIELDS = '_key diaData.aciklama diaData.marka diaData.gercek_stok diaData.m_resimler customData.seoTitle customData.seoDescription customData.seoUrl customData.seoKeywords customData.focusKeyword customData.customDescription customData.siteDescriptions customData.siteData customData.customImages';
 
@@ -240,10 +226,6 @@ const isValidType = (type) => CONTENT_TYPES.includes(type);
 
 const normalizeKeyword = (text) => String(text || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
 
-/**
- * Site genelinde odak kelime → onu kullanan içerikler haritası (aynı kelime iki sayfada
- * olmasın diye). Kaynak koleksiyonlardan hafif alanlarla okunur; taramada bir kez kurulur.
- */
 async function buildKeywordUsageMap(site, S) {
     const map = new Map();
     for (const type of CONTENT_TYPES) {
@@ -265,7 +247,6 @@ function usedElsewhere(usageMap, keyword, type, refId) {
     return list.filter(u => !(u.type === type && String(u.refId) === String(refId))).slice(0, 5);
 }
 
-/** Form içi canlı analiz için: bu kelimeyi (kendisi hariç) kullanan içerikler */
 async function keywordUsage(site, keyword, exclude = {}) {
     if (!normalizeKeyword(keyword)) return [];
     const S = await loadSettings(site);
@@ -313,7 +294,6 @@ function toScoreDoc(site, type, built, analysis, scanId) {
     };
 }
 
-/** Tüm siteyi arka planda tarar; durum getScanState(site) ile izlenir */
 function scanSite(site) {
     const current = scanState.get(site);
     if (current?.running) return current;
@@ -350,7 +330,6 @@ function scanSite(site) {
                     state.total += ops.length;
                 }
             }
-            // Bu taramada görülmeyen (silinmiş / yayından kalkmış) kayıtların puanı kaldırılır
             await SeoContentScore.deleteMany({ site, scanId: { $ne: scanId } });
         } catch (e) {
             state.error = String(e?.message || e).slice(0, 220);
@@ -377,7 +356,6 @@ async function loadOne(type, site, refId) {
     return def.model.findOne(query);
 }
 
-/** Tek kaydı güncel veriden analiz eder ve puan tablosuna yazar */
 async function analyzeOne(site, type, refId) {
     if (!isValidType(type)) return null;
     const def = TYPE_DEFS[type];
@@ -393,7 +371,6 @@ async function analyzeOne(site, type, refId) {
     return { ...doc, content: undefined, analysis };
 }
 
-/** Odak anahtar kelimeyi kaynak belgeye yazar, ardından yeniden puanlar */
 async function setFocusKeyword(site, type, refId, keyword) {
     if (!isValidType(type)) return null;
     const def = TYPE_DEFS[type];
@@ -404,7 +381,6 @@ async function setFocusKeyword(site, type, refId, keyword) {
     return analyzeOne(site, type, refId);
 }
 
-/** Liste sekmesi üst özeti: durum ve tip dağılımı, son tarama zamanı */
 async function summary(site) {
     const [byStatus, byType, last] = await Promise.all([
         SeoContentScore.aggregate([{ $match: { site } }, { $group: { _id: '$status', count: { $sum: 1 } } }]),

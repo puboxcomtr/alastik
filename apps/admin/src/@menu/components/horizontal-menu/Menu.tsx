@@ -1,14 +1,11 @@
 'use client'
 
-// React Imports
 import { createContext, forwardRef, useMemo } from 'react'
 import type { ForwardRefRenderFunction, MenuHTMLAttributes, ReactElement } from 'react'
 
-// Third-party Imports
 import classnames from 'classnames'
 import { FloatingTree } from '@floating-ui/react'
 
-// Type Imports
 import type { MenuProps as VerticalMenuProps } from '../vertical-menu/Menu'
 import type {
   ChildrenType,
@@ -18,16 +15,12 @@ import type {
   RootStylesType
 } from '../../types'
 
-// Util Imports
 import { menuClasses } from '../../utils/menuClasses'
 
-// Styled Component Imports
 import StyledHorizontalMenu from '../../styles/horizontal/StyledHorizontalMenu'
 
-// Style Imports
 import styles from '../../styles/horizontal/horizontalUl.module.css'
 
-// Default Config Imports
 import { horizontalSubMenuToggleDuration } from '../../defaultConfigs'
 
 export type HorizontalMenuContextProps = {
@@ -63,7 +56,6 @@ export type MenuProps = HorizontalMenuContextProps &
 export const HorizontalMenuContext = createContext({} as HorizontalMenuContextProps)
 
 const Menu: ForwardRefRenderFunction<HTMLMenuElement, MenuProps> = (props, ref) => {
-  // Props
   const {
     children,
     className,

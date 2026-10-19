@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRightIcon, CardIcon, FileIcon, OrdersIcon, WalletIcon } from "./icons";
 import type { JSX } from "react";
 
-/** Anasayfa hızlı erişim blokları — grafiğin altında, markanın renkleriyle. */
 type QuickAction = {
   href: string;
   label: string;

@@ -1,15 +1,11 @@
 'use client'
 
-// Üye detay sayfası — tek sütun düzen: başlık, istatistik kartları, sepet bandı,
-// adres defteri, garaj (araçlar) ve siparişler
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
-// Next Imports
 import Link from 'next/link'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -21,10 +17,8 @@ import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 import MemberAnnotateDialog from '../MemberAnnotateDialog'
 import MemberDeleteDialog from '../MemberDeleteDialog'
@@ -37,7 +31,6 @@ import {
     fullName, initials, formatTRY, formatDate, formatDateTime, timeAgo
 } from '../types'
 
-// Başlık + sağda sayaç deseni (örnekteki kart başlıkları)
 const SectionCard = ({ title, count, children }: { title: string; count?: string; children: ReactNode }) => (
     <Card>
         <CardContent>
@@ -139,7 +132,6 @@ const MemberViewPage = () => {
         }
     }
 
-    // Sepeti Excel/CSV olarak indir (Türkçe Excel için BOM + noktalı virgül)
     const downloadCartCsv = () => {
         if (!cart?.items?.length) return
         const rows = [
@@ -160,7 +152,6 @@ const MemberViewPage = () => {
     return (
         <>
             <Grid container spacing={6}>
-                {/* Geri dön */}
                 <Grid size={{ xs: 12 }}>
                     <Link href={`/${locale}/apps/user/list`} className='flex items-center gap-1' style={{ color: 'var(--mui-palette-primary-main)' }}>
                         <i className='ri-arrow-left-line' />
@@ -168,7 +159,6 @@ const MemberViewPage = () => {
                     </Link>
                 </Grid>
 
-                {/* Başlık: avatar + ad + iletişim; sağda işlemler */}
                 <Grid size={{ xs: 12 }}>
                     <div className='flex flex-wrap items-center justify-between gap-4'>
                         <div className='flex items-center gap-4'>
@@ -210,7 +200,6 @@ const MemberViewPage = () => {
                     </div>
                 </Grid>
 
-                {/* İstatistik kartları */}
                 <Grid size={{ xs: 6, md: 3 }}>
                     <StatCard label='Sipariş' value={data.stats.orders.toLocaleString('tr-TR')} />
                 </Grid>
@@ -224,7 +213,6 @@ const MemberViewPage = () => {
                     <StatCard label='Son Giriş' value={formatDate(member.lastLoginAt)} />
                 </Grid>
 
-                {/* Sepet bandı */}
                 <Grid size={{ xs: 12 }}>
                     <Card>
                         <CardContent>
@@ -271,7 +259,6 @@ const MemberViewPage = () => {
                     </Card>
                 </Grid>
 
-                {/* Adres Defteri */}
                 <Grid size={{ xs: 12 }}>
                     <SectionCard title='Adres Defteri' count={`${data.addresses.length} adres`}>
                         {data.addresses.length === 0 ? (
@@ -296,7 +283,6 @@ const MemberViewPage = () => {
                     </SectionCard>
                 </Grid>
 
-                {/* Garaj */}
                 <Grid size={{ xs: 12 }}>
                     <SectionCard title='Garajım — Araçlar' count={`${vehicles.length} araç`}>
                         {vehicles.length === 0 ? (
@@ -326,7 +312,6 @@ const MemberViewPage = () => {
                     </SectionCard>
                 </Grid>
 
-                {/* Siparişler */}
                 <Grid size={{ xs: 12 }}>
                     <SectionCard title='Siparişler' count={data.orders.length ? `${data.stats.orders.toLocaleString('tr-TR')} sipariş` : undefined}>
                         {data.orders.length === 0 ? (

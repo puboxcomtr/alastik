@@ -1,64 +1,50 @@
-// Types
 import type { Metadata } from "next";
 import { cookies, headers } from 'next/headers';
 
 import { getSiteBySlug, DEFAULT_SITE } from '@src/config/siteConfig';
 import { getGtmId } from '@src/config/tracking';
 
-// Font
 import { Inter } from "next/font/google";
 
-// Toast
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Styles
 import "bootstrap/dist/css/bootstrap.min.css";
 import './globals.css';
 import 'remixicon/fonts/remixicon.css';
 
-// Library
 import ThemeRegistry from '@components/providers/ThemeRegistry';
 import Script from "next/script";
 
-// @import
 import MetaHead from "@components/layout/MetaHead";
 import SiteHeader from "@src/views/SiteHeader";
 import SiteFooter from "@src/views/SiteFooter";
 
-// Context
 import { BrandsProvider } from '@/src/context/BrandsContext';
 import { CartProvider } from '@/src/context/CartContext';
 import { FavouritesProvider } from '@/src/context/FavouritesContext';
 import { LoadingProvider } from '@/src/context/LoadingContext';
 
-// Global Loading Overlay
 import GlobalLoadingOverlay from '@components/common/GlobalLoadingOverlay';
 import AdsPhoneConversion from '@/src/components/layout/AdsPhoneConversion';
 import SnowEffect from '@/src/components/layout/SnowEffect';
 
-
-/* Modal */
 import TireSearchClient from '@components/layout/Modals/TireSearchClient';
 import MontageOfferModal from '@components/layout/Modals/MontageOffer';
 import TireSize from '@components/layout/Modals/TireSize';
 import Modal from '@components/ui/Modal';
 
-/* Theme Settings */
 import { getThemeSettings } from '@src/services/themeService';
 import { SettingsProvider } from '@src/context/SettingsContext';
 
-/* Site Status */
 import { isSiteActive } from '@src/hooks/Theme/useGeneralSettings';
 import UnderConstruction from '@src/views/maintenance/UnderConstruction';
 
-// Inter
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
 });
 
-/* Meta */
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
   const siteSlug = headersList.get('x-site') || DEFAULT_SITE;
@@ -67,7 +53,6 @@ export async function generateMetadata(): Promise<Metadata> {
     title: site.metaTitle,
     description: site.metaDescription,
     icons: { icon: site.favicon },
-    // Göreli canonical / og:image adresleri sitenin ana domain'iyle tamamlanır
     metadataBase: new URL(`https://${site.domains[0]}`),
   };
 }
@@ -77,10 +62,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Site durumunu kontrol et
   const siteActive = await isSiteActive();
 
-  // Admin token kontrolü - cookie'den
   const cookieStore = await cookies();
   const nextAuthToken = cookieStore.get('next-auth.session-token')?.value;
   const adminToken = cookieStore.get('adminToken')?.value;
@@ -104,7 +87,6 @@ export default async function RootLayout({
     <html lang="tr">
       <MetaHead />
       <body className={inter.variable}>
-        {/* Google Tag Manager (noscript) — site bazlı container; tanımsız sitede yüklenmez */}
         {getGtmId(site) ? (
           <noscript>
             <iframe
@@ -164,7 +146,6 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* UI güvenlik temizliği */}
         <Script id="ui-safety-cleanup" strategy="afterInteractive">
           {`
             (function(){
@@ -190,7 +171,6 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* JavaScript Files */}
         <Script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" strategy="afterInteractive" />
         <Script id="route-safety-guard" strategy="afterInteractive">
           {`
@@ -211,7 +191,6 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* Image Hostname Manager Initialize */}
         <Script id="image-hostname-manager" strategy="afterInteractive">
           {`
             if (typeof window !== 'undefined' && window.imageHostnameManager) {
@@ -220,7 +199,6 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* Google API Script */}
         <Script
           src="https://apis.google.com/js/api.js"
           strategy="lazyOnload"

@@ -1,19 +1,3 @@
-/**
- * b2b Ödeme Route'ları — /api/b2b/payment
- *
- * Paynet Özelleştirilmiş Form + 3D Secure akışı:
- *   1) Vitrin /siparis ile "pending" sipariş oluşturur (kredi kartında DIA'ya
- *      aktarılmaz). Yanıtta orderId + paymentToken (tek kullanımlık nonce) döner.
- *   2) GET /paynet/config → publishableKey + jsUrl ile kartı TARAYICIDA token'lar.
- *   3) paynet-custom.js kartı token'lar, 3D yönlendirmesini kendisi yapar ve
- *      form'u session_id/token_id + gizli alanlar (orderId, pt) ile
- *      POST /paynet/return adresine gönderir.
- *   4) /paynet/return tahsilatı yapar, siparişi "paid" işaretler, DIA'ya aktarır
- *      ve bayiyi vitrindeki sonuç sayfasına yönlendirir.
- *
- * Ham kart bilgisi bu sunucuya HİÇ gelmez. Dönüş POST'unda JWT bulunmadığı için
- * sipariş, orderId + paymentToken (payment.paymentGuid) ile doğrulanır.
- */
 
 const express = require('express');
 const router = express.Router();
@@ -27,46 +11,31 @@ const NetahsilatService = require('../../../services/plugins/payment/NetahsilatS
 const { SITES } = require('../../../config/sites');
 const { queueOrderMail, queuePaymentReceiptMail } = require('../../../services/web/b2b/b2bMail');
 
-// Taksitli yöntemde gösterilen en düşük taksit sayısı ("Tek Çekim" ayrı bir yöntemdir — Paynet)
 const MIN_INSTALLMENT_COUNT = 2;
-// Banka taksit tablosu önbelleği (site -> { at, data })
 const INSTALLMENT_TABLE_TTL_MS = 10 * 60 * 1000;
 const installmentTableCache = new Map();
 
-// ── GEÇİCİ SABİT KURAL (13 Eki 2026 — sonra panelden yönetilecek) ────────────────────
-// Akbank ve Garanti kartlarının TAKSİTLİ işlemleri NetTahsilat'tan çekilir.
-// Diğer tüm bankaların taksitli işlemleri (tek çekimler gibi) Paynet'ten çekilir.
-// Kartın bankası, NetTahsilat'ın kart BIN'ine verdiği sanal POS'tan anlaşılır.
-const NETAHSILAT_INSTALLMENT_VPOS_IDS = [24, 5]; // 24 = Akbank, 5 = Garanti
+const NETAHSILAT_INSTALLMENT_VPOS_IDS = [24, 5];
 const isNetahsilatInstallmentPos = (vPosId) => NETAHSILAT_INSTALLMENT_VPOS_IDS.includes(Number(vPosId));
 const INSTALLMENT_PROVIDERS = { NETAHSILAT: 'netahsilat', PAYNET: 'paynet' };
-// Kural dışı karta NetTahsilat taksiti istenirse (ör. yenilenmemiş sayfa)
 const INSTALLMENT_PROVIDER_MISMATCH_MESSAGE = 'Bu kartla taksitli ödeme için lütfen sayfayı yenileyip tekrar deneyiniz.';
-// PirPos 3D dönüş (callback) adresinin bağlı olacağı public API kökü.
 const API_PUBLIC_BASE = process.env.PUBLIC_API_URL || 'https://api.alastik.com';
 
-// Banka 3D dönüşünün (callback) bağlanacağı kök: sameOriginApi açık sitede sitenin kendi adresi
-// (doğrulanmış returnBase; nginx /api yolunu API'ye iletir), diğerlerinde ortak public API adresi
 function resolveCallbackBase(site, returnBase) {
     return SITES[site]?.sameOriginApi ? returnBase : API_PUBLIC_BASE;
 }
 
-// Verilen origin bu siteye ait mi? (açık yönlendirme koruması)
 function resolveReturnBase(site, returnOrigin) {
     const domains = SITES[site]?.domains || [];
     if (returnOrigin) {
         try {
             const host = new URL(returnOrigin).hostname.toLowerCase();
             if (domains.includes(host)) return `https://${host}`;
-        } catch (_) { /* geçersiz origin — varsayılana düş */ }
+        } catch (_) {  }
     }
     return `https://${domains[0] || ''}`;
 }
 
-/**
- * GET /paynet/config — aktif site için frontend token yapılandırması.
- * secretKey DÖNMEZ.
- */
 router.get('/paynet/config', authMiddleware, async (req, res) => {
     try {
         const config = await PaynetService.getPublicConfig(req.site);
@@ -80,10 +49,6 @@ router.get('/paynet/config', authMiddleware, async (req, res) => {
     }
 });
 
-/**
- * POST /paynet/ratios — kart BIN'i + tutar ile taksit oranları.
- * Body: { amount (TL), bin }. Yalnız BIN (ilk 6) gönderilir; tam kart numarası GELMEZ.
- */
 router.post('/paynet/ratios', authMiddleware, async (req, res) => {
     try {
         const b = req.body || {};
@@ -108,15 +73,6 @@ router.post('/paynet/ratios', authMiddleware, async (req, res) => {
     }
 });
 
-// ── NetTahsilat PirPos (Taksitli Ödeme) ─────────────────────────────
-// Taksit = NetTahsilat PirPos (Paynet DEĞİL). Kart 3D-init adımında sunucuya
-// gelir → PirPos'a iletilir (loglanmaz). Taksit tablosu BIN'den gelir.
-
-/**
- * POST /netahsilat/ratios — kart BIN'i + sepet tutarı ile taksit seçenekleri.
- * Body: { amount (TL), bin }. Yalnız BIN (ilk 6) gönderilir; tam kart no GELMEZ.
- * Tutar/komisyon SUNUCUDA hesaplanır (istemciye güvenilmez).
- */
 router.post('/netahsilat/ratios', authMiddleware, async (req, res) => {
     try {
         const b = req.body || {};
@@ -132,7 +88,6 @@ router.post('/netahsilat/ratios', authMiddleware, async (req, res) => {
         const r = await NetahsilatService.getPosByBin(bin, req.site);
         res.set('Cache-Control', 'no-store');
 
-        // Geçici sabit kural: kart Akbank / Garanti POS'una düşmüyorsa taksit Paynet'ten çekilir
         const netahsilatCard = (r?.installments || []).some((it) => isNetahsilatInstallmentPos(it.vPosId));
         if (!netahsilatCard) {
             const paynet = await PaynetService.getRatios({ site: req.site, amount: Math.round(amountTL * 100), bin });
@@ -152,7 +107,6 @@ router.post('/netahsilat/ratios', authMiddleware, async (req, res) => {
             return res.json({ success: true, data: { provider: INSTALLMENT_PROVIDERS.NETAHSILAT, cardInfo: r.cardInfo || null, options: [] } });
         }
         const options = (r.installments || [])
-            // Taksitli yöntemde "Tek Çekim" (1) gösterilmez — o ayrı bir yöntem (Paynet).
             .filter((it) => Number(it.installment) >= MIN_INSTALLMENT_COUNT && isNetahsilatInstallmentPos(it.vPosId))
             .map((it) => {
                 const komisyon = Number(it.commRate) || 0;
@@ -176,18 +130,8 @@ router.post('/netahsilat/ratios', authMiddleware, async (req, res) => {
     }
 });
 
-/**
- * GET /netahsilat/installment-table — tüm bankaların taksit seçenekleri ve komisyon oranları (karttan bağımsız, bilgi amaçlı).
- * Yanıt: { installments: [2, 3, ...], banks: [{ name, logo, rates: { "3": 0 } }] } — rates: taksit sayısı → komisyon oranı (%).
- * Banka adı / logosu panel kaydından (creditCardSettings.installmentBanks) gelir; tanımsızsa POS adı, logosuz.
- */
-// Paynet taksit oranları tablo için kullanılan örnek tutar (kuruş) — komisyon oranı tutardan bağımsız hesaplanır
 const PAYNET_TABLE_SAMPLE_AMOUNT_KURUS = 100000;
 
-/**
- * Paynet hesabında tanımlı en yüksek taksit sayısı ve komisyon oranı (%) — { installment, commRate } ya da null.
- * Tüm kart programlarında aynı taksitler tanımlı olduğundan bankalardan en yüksek taksit alınır.
- */
 async function paynetMaxInstallmentRate(site) {
     const result = await PaynetService.getRatios({ site, amount: PAYNET_TABLE_SAMPLE_AMOUNT_KURUS });
     let best = null;
@@ -210,18 +154,14 @@ router.get('/netahsilat/installment-table', authMiddleware, async (req, res) => 
         const r = await NetahsilatService.getVirtualPosList(req.site);
         if (!r?.success) return res.status(502).json({ success: false, message: 'Taksit oranları alınamadı.' });
 
-        // Panel kaydındaki banka gösterimi (görünen ad + logo), sanal POS kimliğine göre
         const PaymentMethod = require('../../../models/admin/order/PaymentMethod');
         const method = await PaymentMethod.findOne({
             site: req.site, provider: 'netahsilat', type: 'credit_card', isActive: true, isDeleted: { $ne: true }
         }).select('creditCardSettings.installmentBanks').lean();
         const bankMeta = new Map((method?.creditCardSettings?.installmentBanks || []).map(b => [Number(b.vPosId), b]));
 
-        // Geçici sabit kural: Akbank / Garanti dışındaki bankaların taksiti Paynet'ten çekilir — bu bankaların satırında
-        // Paynet hesabında tanımlı en yüksek taksit (ve komisyonu) gösterilir
         const paynetRate = await paynetMaxInstallmentRate(req.site);
 
-        // Aynı görünen adı taşıyan POS'lar tek satırda birleşir (taksit seçenekleri eklenir)
         const byName = new Map();
         for (const pos of r.poses) {
             const meta = bankMeta.get(Number(pos.vPosId));
@@ -247,12 +187,6 @@ router.get('/netahsilat/installment-table', authMiddleware, async (req, res) => 
     }
 });
 
-/**
- * POST /netahsilat/3d-init — taksitli ödeme için 3D başlatır (PirPos).
- * Kart bu adımda sunucuya gelir → PirPos'a iletilir (loglanmaz, saklanmaz).
- * Body: { orderId, pt, cardNumber, cardHolderName, expMonth, expYear, cvc,
- *         installment, vPosId, returnOrigin }. Yanıt: { success, threeDUrl }.
- */
 router.post('/netahsilat/3d-init', authMiddleware, async (req, res) => {
     try {
         const b = req.body || {};
@@ -294,7 +228,7 @@ router.post('/netahsilat/3d-init', authMiddleware, async (req, res) => {
             order.payment.installment = parseInt(installment);
             order.payment.referenceCode = result.referenceCode;
             order.payment.transactionId = result.transactionId;
-            order.payment.returnOrigin = returnBase; // callback'te doğru domaine dönmek için
+            order.payment.returnOrigin = returnBase;
             order.payment.status = 'pending';
             await order.save();
             return res.json({ success: true, threeDUrl: result.threeDUrl });
@@ -307,11 +241,6 @@ router.post('/netahsilat/3d-init', authMiddleware, async (req, res) => {
     }
 });
 
-/**
- * POST /netahsilat/3d-callback — PirPos 3D sonrası banka dönüşü (auth YOK).
- * Body: { PaymentGuid, status, OrderReference }. Sipariş payment.referenceCode
- * ile bulunur; başarıda CommitPayment → paid/confirmed → DIA → sonuç sayfası.
- */
 router.post('/netahsilat/3d-callback', async (req, res) => {
     const b = req.body || {};
     const paymentGuid = b.PaymentGuid || b.paymentguid;
@@ -323,7 +252,7 @@ router.post('/netahsilat/3d-callback', async (req, res) => {
     let order = null;
     try {
         order = orderReference ? await WebOrder.findOne({ 'payment.referenceCode': orderReference }) : null;
-    } catch (_) { /* aşağıda ele alınır */ }
+    } catch (_) {  }
 
     const base = order?.payment?.returnOrigin
         || `https://${((SITES[order?.site]?.domains) || SITES.b2b.domains || [])[0] || ''}`;
@@ -351,7 +280,7 @@ router.post('/netahsilat/3d-callback', async (req, res) => {
                 order.payment.paidAt = new Date();
                 order.payment.authCode = commit.authCode;
                 order.payment.transactionId = commit.transactionId || order.payment.transactionId;
-                order.payment.paymentGuid = undefined; // nonce tek kullanımlık
+                order.payment.paymentGuid = undefined;
                 await order.save();
                 try {
                     const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
@@ -359,7 +288,6 @@ router.post('/netahsilat/3d-callback', async (req, res) => {
                 } catch (e) {
                     console.error('[b2b-payment] NetTahsilat DIA aktarım hatası:', e.message);
                 }
-                // Sipariş maili + ödeme makbuzu (PDF)
                 queueOrderMail(order._id, { withReceipt: true });
                 return redir({ durum: 'basarili', siparis: order.orderNumber, tutar: order.pricing?.total });
             }
@@ -381,23 +309,9 @@ router.post('/netahsilat/3d-callback', async (req, res) => {
     }
 });
 
-/**
- * POST /paynet/return — paynet-custom.js'in 3D sonrası gönderdiği dönüş.
- * Body: { session_id, token_id, orderId, pt, returnOrigin }
- * JWT yok → sipariş orderId + pt (payment.paymentGuid) ile doğrulanır.
- */
-// Tarayıcıdaki Paynet hata mesajının kayda yazılan azami uzunluğu
 const CLIENT_ERROR_MAX_LENGTH = 300;
-// Paynet kart formu hata kaynakları (paynet-form.ts ile aynı)
 const PAYNET_CLIENT_ERROR_KINDS = { PAYMENT: 'payment', ORDER: 'order' };
 
-/**
- * POST /paynet/client-error — Paynet kart formu tarayıcıda hata verip 3D'ye geçmediğinde (kart bilgisi
- * hatası, kart/tutar reddi, zaman aşımı) mesajı bekleyen kayda yazar ve kaydı "başarısız" yapar.
- * Body: { kind: 'payment' | 'order', id, pt, message, code }. Yalnız kaydın sahibi bayi, tek kullanımlık
- * doğrulama anahtarıyla (pt) ve kayıt hâlâ beklemedeyken yazabilir. Sonradan gerçek bir Paynet dönüşü
- * gelirse dönüş işleyicileri kaydı yine işler (başarısız durumu tahsilatı engellemez).
- */
 router.post('/paynet/client-error', authMiddleware, async (req, res) => {
     try {
         const b = req.body || {};
@@ -443,7 +357,6 @@ router.post('/paynet/return', async (req, res) => {
     const orderId = b.orderId;
     const pt = b.pt;
     const base = resolveReturnBase(req.site, b.returnOrigin);
-    // Ödeme sonuç sayfasına yönlendirme kurucu (başarılı/başarısız + detay).
     const sonucUrl = (params) => {
         const clean = {};
         Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') clean[k] = String(v); });
@@ -469,13 +382,11 @@ router.post('/paynet/return', async (req, res) => {
             return fail('3D doğrulaması tamamlanmadı', { siparis: order.orderNumber, tutar: order.pricing?.total, kod: '3DS_INCOMPLETE' });
         }
 
-        // Taksitli (kkTaksit) siparişte bayinin seçtiği taksit sayısı formla gelir; tek çekim siparişi taksite çevrilemez
         const requestedInstallment = parseInt(b.installment) || 0;
         if (requestedInstallment >= MIN_INSTALLMENT_COUNT && Number(order.payment?.installment) >= MIN_INSTALLMENT_COUNT) {
             order.payment.installment = requestedInstallment;
         }
 
-        // SDK token'ı data-amount×100 (kuruş) ile oluşturur; charge da KURUŞ olmalı.
         const amountKurus = Math.round((Number(order.pricing?.total) || 0) * 100);
         if (amountKurus <= 0) return fail('Geçersiz tutar');
 
@@ -505,13 +416,12 @@ router.post('/paynet/return', async (req, res) => {
             });
         }
 
-        // Başarılı tahsilat
         order.payment.status = 'paid';
         order.payment.gateway = 'paynet';
         order.payment.transactionId = result.transactionId;
         order.payment.authCode = result.authCode;
         order.payment.paidAt = new Date();
-        order.payment.paymentGuid = undefined; // nonce tek kullanımlık
+        order.payment.paymentGuid = undefined;
         if (result.maskedCardNo) {
             order.payment.cardInfo = {
                 lastFourDigits: String(result.maskedCardNo).slice(-4),
@@ -522,16 +432,12 @@ router.post('/paynet/return', async (req, res) => {
         order.status = 'confirmed';
         await order.save();
 
-        // Ödeme onaylandı → DIA'ya aktar (b2b: sadece müşteri siparişi).
-        // syncOrderToDia site'a göre b2b DIA kullanıcısı/kilidini kendisi kullanır.
         try {
             const { syncOrderToDia } = require('../../../services/plugins/dia/DiaOrderService');
             await syncOrderToDia(order.toObject());
         } catch (e) {
             console.error('[b2b-payment] DIA aktarım hatası:', e.message);
-            // Ödeme başarılı; DIA aktarımı panelden manuel tamamlanabilir.
         }
-        // Sipariş maili + ödeme makbuzu (PDF)
         queueOrderMail(order._id, { withReceipt: true });
 
         return res.redirect(sonucUrl({ durum: 'basarili', siparis: order.orderNumber, tutar: order.pricing?.total }));
@@ -541,15 +447,6 @@ router.post('/paynet/return', async (req, res) => {
     }
 });
 
-// ── Cari borç TEK ÇEKİM (Peşin) — Paynet ────────────────────────────
-// Sipariş değil; carinin açık borcuna karşılık kart tahsilatı. Para Paynet ile
-// alınır, B2bPayment'e kaydedilir. DIA tahsilat fişi muhasebe tarafından girilir.
-
-/**
- * POST /tekcekim/baslat — tutar ile ödeme kaydı açar + frontend Paynet config.
- * Body: { amount (TL), installment? }. installment ≥ 2 ise Paynet taksitli ödeme kaydı açılır.
- * Yanıt: { paymentId, pt, reference, amountKurus, installment, config }.
- */
 router.post('/tekcekim/baslat', authMiddleware, async (req, res) => {
     try {
         const amountTL = Number(req.body?.amount);
@@ -592,11 +489,6 @@ router.post('/tekcekim/baslat', authMiddleware, async (req, res) => {
     }
 });
 
-/**
- * POST /tekcekim/return — paynet-custom.js'in 3D sonrası gönderdiği dönüş.
- * Body: { session_id, token_id, paymentId, pt, returnOrigin }. JWT yok →
- * ödeme paymentId + pt (paymentGuid) ile doğrulanır. Charge KURUŞ ile yapılır.
- */
 router.post('/tekcekim/return', async (req, res) => {
     const b = req.body || {};
     const sessionId = b.session_id;
@@ -605,7 +497,7 @@ router.post('/tekcekim/return', async (req, res) => {
     const pt = b.pt;
 
     let payment = null;
-    try { payment = paymentId ? await B2bPayment.findById(paymentId) : null; } catch (_) { /* aşağıda ele alınır */ }
+    try { payment = paymentId ? await B2bPayment.findById(paymentId) : null; } catch (_) {  }
 
     const base = resolveReturnBase(payment?.site || req.site, b.returnOrigin);
     const sonucUrl = (params) => {
@@ -628,7 +520,6 @@ router.post('/tekcekim/return', async (req, res) => {
             return fail('3D doğrulaması tamamlanmadı', { ref: payment.reference, tutar: tutarTL, kod: '3DS_INCOMPLETE' });
         }
 
-        // SDK token'ı data-amount×100 (kuruş) ile oluşturur; charge da KURUŞ olmalı.
         const result = await PaynetService.charge({
             site: payment.site,
             sessionId,
@@ -650,17 +541,15 @@ router.post('/tekcekim/return', async (req, res) => {
             });
         }
 
-        // Başarılı tahsilat — para alındı, kayıt işaretlenir. DIA tahsilat fişi manuel.
         payment.status = 'paid';
         payment.transactionId = result.transactionId;
         payment.authCode = result.authCode;
         payment.paidAt = new Date();
-        payment.paymentGuid = undefined; // nonce tek kullanımlık
+        payment.paymentGuid = undefined;
         if (result.maskedCardNo) {
             payment.cardInfo = { lastFourDigits: String(result.maskedCardNo).slice(-4), bankName: result.bankName || '' };
         }
         await payment.save();
-        // Ödeyen cariye makbuz maili (PDF ekli)
         queuePaymentReceiptMail(payment._id);
 
         return res.redirect(sonucUrl({ durum: 'basarili', ref: payment.reference, tutar: tutarTL }));
@@ -670,16 +559,6 @@ router.post('/tekcekim/return', async (req, res) => {
     }
 });
 
-// ── Cari borç TAKSİTLİ — NetTahsilat PirPos ─────────────────────────
-// Sipariş değil; carinin açık borcuna taksitli kart tahsilatı. Baz tutar şarj
-// edilir (vade farkı bankayla kart sahibi arasında). Taksit oranları /netahsilat/ratios
-// ile (BIN + tutar) alınır. Kart bu adımda sunucuya gelir → PirPos'a iletilir (saklanmaz).
-
-/**
- * POST /netahsilat/borc-init — cari borç için taksitli 3D başlatır (PirPos).
- * Body: { amount (TL), cardNumber, cardHolderName, expMonth, expYear, cvc,
- *         installment, vPosId, returnOrigin }. Yanıt: { success, threeDUrl }.
- */
 router.post('/netahsilat/borc-init', authMiddleware, async (req, res) => {
     try {
         const b = req.body || {};
@@ -751,10 +630,6 @@ router.post('/netahsilat/borc-init', authMiddleware, async (req, res) => {
     }
 });
 
-/**
- * POST /netahsilat/borc-callback — PirPos 3D sonrası banka dönüşü (auth YOK).
- * Ödeme referenceCode ile bulunur; başarıda CommitPayment → paid → /odeme-sonuc.
- */
 router.post('/netahsilat/borc-callback', async (req, res) => {
     const b = req.body || {};
     const paymentGuid = b.PaymentGuid || b.paymentguid;
@@ -764,7 +639,7 @@ router.post('/netahsilat/borc-callback', async (req, res) => {
     const errCode = b.errorcode || b.BankErrorCode || '';
 
     let payment = null;
-    try { payment = orderReference ? await B2bPayment.findOne({ referenceCode: orderReference }) : null; } catch (_) { /* aşağıda */ }
+    try { payment = orderReference ? await B2bPayment.findOne({ referenceCode: orderReference }) : null; } catch (_) {  }
 
     const base = payment?.returnOrigin || resolveReturnBase(payment?.site || req.site);
     const tutarTL = payment ? (payment.amountKurus / 100).toFixed(2) : '';
@@ -789,9 +664,8 @@ router.post('/netahsilat/borc-callback', async (req, res) => {
                 payment.paidAt = new Date();
                 payment.authCode = commit.authCode;
                 payment.transactionId = commit.transactionId || payment.transactionId;
-                payment.paymentGuid = undefined; // nonce tek kullanımlık
+                payment.paymentGuid = undefined;
                 await payment.save();
-                // Ödeyen cariye makbuz maili (PDF ekli)
                 queuePaymentReceiptMail(payment._id);
                 return redir({ durum: 'basarili', ref: payment.reference, tutar: tutarTL });
             }

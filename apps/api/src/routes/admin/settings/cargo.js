@@ -7,11 +7,9 @@ const WebBrand = require('../../../models/web/catalog/WebBrand');
 const { invalidateShippingRules } = require('../../../services/web/cargo/ShippingRuleService');
 const { assignMissingCargoNos } = require('../../../utils/cargoNo');
 
-// Adresteki kimlik: sıra numarası (ör. "1") ya da kayıt kimliği
 const CARGO_NO_PATTERN = /^\d{1,9}$/;
 const XmlShippingPriceUpdaterService = require('../../../services/web/cargo/XmlShippingPriceUpdaterService');
 
-// XML kargo değişince ürünlerin kargo dahil fiyatlarını güncelle (fire-and-forget)
 const triggerShippingUpdate = (cargo) => {
     if (cargo?.productType !== 'xml_integration') return;
     XmlShippingPriceUpdaterService.updateAll(cargo.site)
@@ -19,8 +17,6 @@ const triggerShippingUpdate = (cargo) => {
         .catch(e => console.error('[Cargo] Fiyat güncelleme hatası:', e.message));
 };
 
-// Liste
-/** Desi aralık listesini doğrular; hata varsa mesaj, yoksa null döner */
 function validateDesiRanges(ranges) {
     if (!Array.isArray(ranges)) return null;
     for (let i = 0; i < ranges.length; i++) {
@@ -36,11 +32,6 @@ function validateDesiRanges(ranges) {
 
 const SCOPE_TYPES = ['', 'category', 'brand', 'product', 'size'];
 
-
-/**
- * Kategori/marka kural listesini doğrular ve temizler.
- * Dönüş: { rules } | { error }
- */
 function cleanScopedRules(input, idField, nameField, withDiaBrand = false) {
     if (!Array.isArray(input)) return { error: 'Kural listesi geçersiz' };
     const seen = new Set();
@@ -76,7 +67,6 @@ function cleanScopedRules(input, idField, nameField, withDiaBrand = false) {
     return { rules };
 }
 
-/** Kapsamdaki ürünleri bulur: kategori (diaLevel/diaCategory) ya da marka (diaBrand ↔ diaData.marka) */
 async function findScopedProducts(site, { categoryId, brandId }, projection) {
     const base = { sites: site, 'syncInfo.diaStatus': 'synced' };
     if (categoryId) {
@@ -92,15 +82,10 @@ async function findScopedProducts(site, { categoryId, brandId }, projection) {
         const products = await WebProduct.find({ ...base, 'diaData.marka': { $regex: new RegExp(`^${brand.diaBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }, projection).lean();
         return { products, label: brand.customName || brand.name || brand.diaBrand };
     }
-    // Kapsam yoksa: seçili sitede yayındaki tüm ürünler (ebat bazlı genel kurallar)
     const products = await WebProduct.find(base, projection).lean();
     return { products, label: 'Tüm Ürünler' };
 }
 
-/**
- * Ürün ebatını özelliklerden (yoksa addan) çözer.
- * Lastik: 205/55R16, yanaksız 195R14C, kamyon 12R22.5 / 315/80R22.5, 5.00R12C; jant: 7.0x16
- */
 function extractProductSize(dia) {
     const props = {};
     for (const o of dia.m_urunOzellikleri || []) {
@@ -118,14 +103,12 @@ function extractProductSize(dia) {
         if (w && d) return a ? `${w}/${a}R${d}` : `${w}R${d}`;
     }
     const name = String(dia.aciklama || '');
-    // 205/55R16, 195R14C, 5.00R12C, 12R22.5, 12/R22.5, 315/80R22.5
     const tire = name.match(/(\d{1,3}(?:\.\d{1,2})?)(?:\/(\d{2,3})?)?\s*Z?R\s*(\d{2}(?:\.5)?)\s*(C)?(?![0-9])/i);
     if (tire) return `${tire[1]}${tire[2] ? `/${tire[2]}` : ''}R${tire[3]}${tire[4] ? 'C' : ''}`;
     const rim = name.match(/(\d{1,2}(?:\.\d)?)\s*x\s*(\d{2})/i);
     if (rim) return `${rim[1]}x${rim[2]}`;
     return null;
 }
-
 
 router.get('/', async (req, res) => {
     try {
@@ -142,10 +125,8 @@ router.get('/', async (req, res) => {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
-        // Numarası olmayan eski tanımlara sıra numarası ver (adreste 1, 2, 3 olarak kullanılır)
         await assignMissingCargoNos(req.site);
 
-        // Yalnızca seçili sitenin kargoları
         const filter = { site: req.site };
 
         if (search) {
@@ -186,15 +167,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Tekil
-/**
- * GET /sizes?categoryId=... | ?brandId=... — kapsamdaki (seçili sitede yayında) ürünlerin ebatları.
- * Lastik: Genişlik/Yanak + Jant Çapı (205/55R16); Jant: Jant Genişliği x Jant Çapı (7.0x16); yoksa addan regex.
- */
-/**
- * Hizmet bölgesi girdisini ({ cityId, districtId? }) adres veritabanındaki il / ilçe adlarıyla tamamlar.
- * Geçersiz kayıt varsa null döner. Bir ilin tamamı seçildiyse o ilin ilçe satırları gereksizdir, atılır.
- */
 async function resolveServiceAreas(input) {
     if (!Array.isArray(input)) return null;
     const AddressCity = require('../../../models/web/address/AddressCity');
@@ -218,7 +190,6 @@ async function resolveServiceAreas(input) {
     return result.filter(a => !a.districtId || !wholeCities.has(a.cityId));
 }
 
-/** GET /locations/cities — hizmet bölgesi seçimi için iller */
 router.get('/locations/cities', async (req, res) => {
     try {
         const AddressCity = require('../../../models/web/address/AddressCity');
@@ -229,7 +200,6 @@ router.get('/locations/cities', async (req, res) => {
     }
 });
 
-/** GET /locations/districts/:cityId — seçilen ilin ilçeleri */
 router.get('/locations/districts/:cityId', async (req, res) => {
     try {
         const AddressDistrict = require('../../../models/web/address/AddressDistrict');
@@ -267,7 +237,6 @@ router.get('/sizes', async (req, res) => {
     }
 });
 
-/** GET /brands — seçili sitede görünür markalar (kural seçimi için hafif liste) */
 router.get('/brands', async (req, res) => {
     try {
         const visibleField = `siteSettings.${req.site}.webVisible`;
@@ -292,7 +261,6 @@ router.get('/brands', async (req, res) => {
     }
 });
 
-/** GET /products?search=... — stok kodu / ürün adı araması (kural seçimi için, en fazla 30) */
 router.get('/products', async (req, res) => {
     try {
         const search = String(req.query.search || '').trim();
@@ -315,7 +283,6 @@ router.get('/products', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     try {
-        // Adres sıra numarasıyla (/desi/1) ya da kayıt kimliğiyle gelebilir
         const idParam = String(req.params.id || '');
         const filter = CARGO_NO_PATTERN.test(idParam)
             ? { cargoNo: Number(idParam), site: req.site }
@@ -339,7 +306,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Ekle
 router.post('/', async (req, res) => {
     try {
         const {
@@ -450,7 +416,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Güncelle
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -520,7 +485,6 @@ router.put('/:id', async (req, res) => {
         if (freeShippingThreshold !== undefined) cargo.freeShippingThreshold = Number(freeShippingThreshold) || 0;
         if (freeShippingDesiLimit !== undefined) cargo.freeShippingDesiLimit = Number(freeShippingDesiLimit) || 0;
 
-        // Kural kapsamı (genel / kategori / ürün / marka / desi / ebat)
         if (req.body.scopeType !== undefined) {
             const scopeType = String(req.body.scopeType || '');
             if (!SCOPE_TYPES.includes(scopeType)) {
@@ -529,7 +493,6 @@ router.put('/:id', async (req, res) => {
             cargo.scopeType = scopeType;
         }
 
-        // Kategori / marka bazlı kurallar (her biri için ayrı desi tablosu ya da ebat listesi)
         if (req.body.categoryRules !== undefined) {
             const out = cleanScopedRules(req.body.categoryRules, 'categoryId', 'categoryName');
             if (out.error) return res.status(400).json({ success: false, message: out.error });
@@ -540,7 +503,6 @@ router.put('/:id', async (req, res) => {
             if (out.error) return res.status(400).json({ success: false, message: out.error });
             cargo.brandRules = out.rules;
         }
-        // Ebat bazlı kurallar (tüm ürünler)
         if (req.body.sizeRules !== undefined) {
             if (!Array.isArray(req.body.sizeRules)) {
                 return res.status(400).json({ success: false, message: 'Ebat kuralları geçersiz' });
@@ -556,7 +518,6 @@ router.put('/:id', async (req, res) => {
             }
             cargo.sizeRules = sizeRules;
         }
-        // Ürün bazlı kurallar: stok kartı başına adet ücreti
         if (req.body.productRules !== undefined) {
             if (!Array.isArray(req.body.productRules)) {
                 return res.status(400).json({ success: false, message: 'Ürün kuralları geçersiz' });
@@ -615,7 +576,6 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        // Stoktaki ürünlerin genel ayarları (XML ayarlarından ayrı)
         for (const field of ['stockFixedPrice', 'stockFreeShippingThreshold', 'stockFreeShippingDesiLimit']) {
             if (req.body[field] !== undefined) cargo[field] = Math.max(0, Number(req.body[field]) || 0);
         }
@@ -627,7 +587,6 @@ router.put('/:id', async (req, res) => {
             cargo.stockShippingPriceMode = req.body.stockShippingPriceMode;
         }
 
-        // Stoktaki ürünlerin desi tablosu (XML tablosundan ayrı)
         if (req.body.stockDesiPricing !== undefined) {
             const { ranges, extraPerDesi } = req.body.stockDesiPricing || {};
             if (Array.isArray(ranges)) {
@@ -642,7 +601,6 @@ router.put('/:id', async (req, res) => {
             }
         }
 
-        // Hizmet bölgesi (il / ilçe): adlar adres veritabanından doğrulanarak yazılır
         if (req.body.serviceAreas !== undefined) {
             const areas = await resolveServiceAreas(req.body.serviceAreas);
             if (!areas) return res.status(400).json({ success: false, message: 'Hizmet bölgesinde geçersiz il veya ilçe var' });
@@ -668,7 +626,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Durum değiştir
 router.patch('/:id/status', async (req, res) => {
     try {
         const cargo = await Cargo.findOne({ _id: req.params.id, site: req.site });
@@ -699,7 +656,6 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
-// Sil
 router.delete('/:id', async (req, res) => {
     try {
         const cargo = await Cargo.findOneAndDelete({ _id: req.params.id, site: req.site });

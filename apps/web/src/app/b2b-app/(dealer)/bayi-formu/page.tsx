@@ -1,5 +1,3 @@
-// Montaj Noktası Bilgi ve Fiyat Formu — b2b bayi panelinde (/bayi-formu). LJA'daki formun aynısı; karşılama
-// ekranı yoktur, doğrudan forma başlar. Yalnız giriş yapmış bayi doldurur, kayıt bayiye bağlanır.
 import DealerForm from "@/src/components/lastikjantavm/dealerForm/DealerForm";
 
 export const metadata = {

@@ -13,7 +13,6 @@ export default function Adress({ company, emailInfo, loading }: AdressProps) {
 
     return (
         <section className="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 pt-5 pb-3 pb-md-4 pb-lg-3">
-            {/* Telefon */}
             <div className="col text-center pt-1 pt-sm-2 pt-md-3">
                 <div className="position-relative d-inline-block bg-body-tertiary text-dark-emphasis fs-xl rounded-circle p-4 mb-3">
                     <i className="ri-phone-line position-absolute top-50 start-50 translate-middle"></i>
@@ -37,7 +36,6 @@ export default function Adress({ company, emailInfo, loading }: AdressProps) {
                 </ul>
             </div>
 
-            {/* E-posta */}
             <div className="col text-center pt-1 pt-sm-2 pt-md-3">
                 <div className="position-relative d-inline-block bg-body-tertiary text-dark-emphasis fs-xl rounded-circle p-4 mb-3">
                     <i className="ri-mail-line position-absolute top-50 start-50 translate-middle"></i>
@@ -61,7 +59,6 @@ export default function Adress({ company, emailInfo, loading }: AdressProps) {
                 </ul>
             </div>
 
-            {/* Adres */}
             <div className="col text-center pt-1 pt-sm-2 pt-md-3">
                 <div className="position-relative d-inline-block bg-body-tertiary text-dark-emphasis fs-xl rounded-circle p-4 mb-3">
                     <i className="ri-map-pin-line position-absolute top-50 start-50 translate-middle"></i>
@@ -77,7 +74,6 @@ export default function Adress({ company, emailInfo, loading }: AdressProps) {
                 </ul>
             </div>
 
-            {/* Çalışma Saatleri */}
             <div className="col text-center pt-1 pt-sm-2 pt-md-3">
                 <div className="position-relative d-inline-block bg-body-tertiary text-dark-emphasis fs-xl rounded-circle p-4 mb-3">
                     <i className="ri-time-line position-absolute top-50 start-50 translate-middle"></i>

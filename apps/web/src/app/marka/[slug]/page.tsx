@@ -1,11 +1,9 @@
-/* Library */
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 
-/* Services */
 import { getBrandDetail } from '@/src/services/brandService';
 import { filterProducts } from '@/src/services/productService';
 import { getShowcaseSettings } from '@/src/services/settingsService';
@@ -17,15 +15,12 @@ import { getBrandSeo } from '@/src/services/brandSeoService';
 import { buildBrandContent, type BrandContent } from '@/src/lib/brandText';
 import BrandSeoContent from '@/src/components/lastikjantavm/brand/BrandSeoContent';
 
-
-/* Components - ALastik */
 import AlastikSidebar from '@components/alastik/category/Sidebar/Content';
 import AlastikCategoryTop from '@components/alastik/category/Top/Content';
 import AlastikCategoryTireSearch from '@components/alastik/category/Top/CategoryTireSearch';
 import AlastikMobileFilterSort from '@components/alastik/category/Top/MobileFilterSort';
 import AlastikPagination from '@components/alastik/category/Pagination/MainPagination';
 
-/* Components - LastikJantAVM */
 import LjaSidebar from '@components/lastikjantavm/category/Sidebar/Content';
 import LjaCategoryTop from '@components/lastikjantavm/category/Top/Content';
 import LjaCategoryTireSearch from '@components/lastikjantavm/category/Top/CategoryTireSearch';
@@ -35,21 +30,14 @@ import LjaPagination from '@components/lastikjantavm/category/Pagination/MainPag
 import Breadcrumb from '@/src/components/brand/Header/Breadcrumb';
 import SecondHandBanner from '@/src/components/category/SecondHandBanner';
 
-
-/* Context */
 import { ViewModeProvider } from '@/src/context/ViewModeContext';
 
-/* Product Mode */
 import AlastikViewModeProductList from '@components/alastik/shop/Product/Showcase/Mode';
 import LjaViewModeProductList from '@components/lastikjantavm/shop/Product/Showcase/Mode';
-// Next 15 dinamik parametreyi URL-kodlu verir ("ar%C4%B1zal%C4%B1-lastik"); servis tekrar kodladığı için
-// Türkçe karakterli marka adresleri 404 veriyordu. API'ye çözülmüş slug gönderilir.
 function decodeSlug(slug: string): string {
     try { return decodeURIComponent(slug); } catch { return slug; }
 }
 
-// LJA: marka profili + canlı stok özetinden üretilen başlık, açıklama ve sayfa metni.
-// Diğer sitelerde ve 2.El görünümünde null (mevcut davranış).
 async function ljaBrandContent(slug: string, durum?: string): Promise<BrandContent | null> {
     if ((headers().get('x-site') || 'alastik') !== 'lastikjantavm' || durum === '2-el') return null;
     const decoded = decodeSlug(slug);
@@ -89,12 +77,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         'marka-aciklamasi': brand.seoDescription || `${brand.name} lastik modellerini inceleyin.`
     };
 
-    // Custom seoTitle varsa sablonu atla, dogrudan goster
     const title = brand.seoTitle
         ? brand.seoTitle
         : (applyTemplate(tpl?.titleTemplate, vars) || brand.name);
 
-    // Custom seoDescription varsa sablonu atla
     const description = brand.seoDescription
         ? brand.seoDescription
         : (applyTemplate(tpl?.descriptionTemplate, vars) || vars['marka-aciklamasi']);
@@ -103,7 +89,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         title,
         description,
         keywords: applyTemplate(tpl?.keywordsTemplate, vars) || brand.seoKeywords?.join(', '),
-        // ?durum=2-el dahil filtre/sıralama adresleri noindex,follow
         ...(await canonicalMeta(`/marka/${slug}`, await searchParams))
     };
 }
@@ -130,17 +115,13 @@ export default async function BrandPage({ params, searchParams }: Props) {
     const showcaseSettings = await getShowcaseSettings();
     const currentPage = parseInt(filters.page || '1');
 
-    // LJA marka sayfasında Sıfır / 2.El sekmeleri: 2.El sekmesi ikinci-el kategorisini
-    // listeler, Sıfır sekmesi bu kategoriyi dışlar. Diğer sitelerde davranış değişmez.
     const hasConditionTabs = site === 'lastikjantavm';
     const isSecondHand = hasConditionTabs && filters.durum === '2-el';
 
     const productsData = await filterProducts({
         marka: brand.diaMarkaAck,
-        // İkinci El üst kategorisi jantları da içerir; marka sekmesi lastik alt kategorisini kullanır
         category: isSecondHand ? 'ikinci-el-arac-lastikleri' : undefined,
         haricKategori: hasConditionTabs && !isSecondHand ? 'ikinci-el' : undefined,
-        // Lastik parametreleri
         genislik: filters.genislik,
         yukseklik: filters.yanak,
         cap: filters.jant,
@@ -150,10 +131,8 @@ export default async function BrandPage({ params, searchParams }: Props) {
         yukEndeksi: filters.yukEndeksi,
         hizEndeksi: filters.hizEndeksi,
         uretim: filters.uretim,
-        // Jant parametreleri
         jantCap: filters.jantCap,
         bijon: filters.bijon,
-        // Ortak parametreler
         arac: filters.arac,
         fiyatMin: filters.fiyatMin ? parseInt(filters.fiyatMin) : undefined,
         fiyatMax: filters.fiyatMax ? parseInt(filters.fiyatMax) : undefined,
@@ -216,10 +195,8 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                         </Col>
                                     </Row>
 
-                                    {/* Ürün Listesi */}
                                     <ViewModeProductList products={productsData?.products || []} />
 
-                                    {/* Pagination */}
                                     {productsData?.pagination && (
                                         <Row>
                                             <Col md={12}>
@@ -232,7 +209,6 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                         </Row>
                                     )}
 
-                                    {/* 2.El ürünlere geçiş banner'ı (sadece LJA, sıfır görünümünde) */}
                                     {hasConditionTabs && !isSecondHand && (
                                         <Row>
                                             <Col md={12}>
@@ -245,7 +221,6 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                     )}
                                 </Col>
                                 <Col lg={12} className="order-3">
-                                    {/* Marka SEO içeriği */}
                                     {brand.description && (
                                         <Row>
                                             <Col md={12}>
@@ -256,7 +231,6 @@ export default async function BrandPage({ params, searchParams }: Props) {
                                             </Col>
                                         </Row>
                                     )}
-                                    {/* LJA marka metni, desen / ebat bağlantıları ve SSS */}
                                     {ljaContent && (
                                         <BrandSeoContent content={ljaContent} display={ljaContent.display} />
                                     )}

@@ -1,10 +1,9 @@
-// Üyeler modülü tipleri (API: /admin/members?view=table, /admin/members/:id)
 
 export type MemberStatus = 'pending' | 'active' | 'suspended' | 'deleted'
 
 export type MemberRow = {
     _id: string
-    memberNo?: number // site bazlı sıra no — detay adresi view/<memberNo>
+    memberNo?: number
     firstName: string
     lastName: string
     email: string
@@ -19,10 +18,8 @@ export type MemberRow = {
     adminTags?: string[]
     adminNote?: string
     cart?: { itemCount: number; total: number } | null
-    // b2b cari (DIA senkronundan)
     diaCreatedAt?: string | null
     salespersonName?: string
-    // b2b: Premium cari (DIA özel kodundan)
     premium?: boolean
     invoiceCount12m?: number
 }
@@ -155,10 +152,12 @@ export const formatTRY = (value: number) =>
 export const formatDate = (iso?: string | null) =>
     iso ? new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 
+export const formatShortDate = (iso?: string | null) =>
+    iso ? new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+
 export const formatDateTime = (iso?: string | null) =>
     iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
-/** "9 saat önce", "2 gün önce" */
 export const timeAgo = (iso?: string | null) => {
     if (!iso) return '—'
     const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
@@ -173,7 +172,6 @@ export const timeAgo = (iso?: string | null) => {
     return `${Math.floor(months / 12)} yıl önce`
 }
 
-/** Son aktiflik: son giriş ile son siparişten en yenisi */
 export const lastActivityOf = (m: { lastLoginAt?: string | null; lastOrderAt?: string | null }) => {
     const candidates = [m.lastLoginAt, m.lastOrderAt].filter(Boolean) as string[]
     if (!candidates.length) return null

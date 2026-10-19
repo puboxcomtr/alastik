@@ -90,7 +90,6 @@ const MediaLibrary = ({
     const [error, setError] = useState<string | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-    // Medya dosyalarını getir
     const fetchMediaFiles = useCallback(async (searchQuery = '', page = 1, forceRefresh = false) => {
         setLoading(true)
         setError(null)
@@ -124,7 +123,6 @@ const MediaLibrary = ({
         }
     }, [currentFolder])
 
-    // Klasörleri getir
     const fetchFolders = useCallback(async () => {
         try {
             const data: ApiResponse = await fetchAPI(API_ENDPOINTS.media.folders())
@@ -137,7 +135,6 @@ const MediaLibrary = ({
         }
     }, [])
 
-    // Effects
     useEffect(() => {
         if (open) {
             setCurrentPage(1)
@@ -166,7 +163,6 @@ const MediaLibrary = ({
         }
     }, [currentPage, fetchMediaFiles, searchTerm])
 
-    // Event handlers
     const handleFolderChange = (event: SelectChangeEvent) => {
         const newFolder = event.target.value as FolderKey
         setCurrentFolder(newFolder)
@@ -205,7 +201,6 @@ const MediaLibrary = ({
         }
     }
 
-    // Dosya yükleme
     const uploadFiles = async (files: File[]) => {
         if (files.length === 0) return
 
@@ -268,7 +263,6 @@ const MediaLibrary = ({
         }
     }
 
-    // Dropzone
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         accept: allowedTypes.reduce((acc, type) => {
             acc[type] = []
@@ -280,7 +274,6 @@ const MediaLibrary = ({
         disabled: uploading
     })
 
-    // Seçilenleri onayla
     const handleConfirm = () => {
         if (selectedFiles.length === 0) {
             toast.warning('Lütfen en az bir dosya seçin')
@@ -292,7 +285,6 @@ const MediaLibrary = ({
         onClose()
     }
 
-    // Utility functions
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return '0 Bytes'
         const k = 1024
@@ -474,7 +466,6 @@ const MediaLibrary = ({
                                                     }}
                                                 />
 
-                                                {/* Seçim işareti */}
                                                 {isSelected && (
                                                     <Box
                                                         sx={{
@@ -495,7 +486,6 @@ const MediaLibrary = ({
                                                         <i className='ri-check-line' style={{ fontSize: '14px' }} />
                                                     </Box>
                                                 )}
-                                                {/* Silme butonu */}
                                                 <IconButton
                                                     className="delete-button"
                                                     onClick={(e) => {
@@ -519,7 +509,6 @@ const MediaLibrary = ({
                                                 >
                                                     <i className='ri-delete-bin-line' style={{ fontSize: '14px' }} />
                                                 </IconButton>
-                                                {/* Seçim için tıklama alanı */}
                                                 <Box
                                                     onClick={() => handleFileSelect(file)}
                                                     sx={{

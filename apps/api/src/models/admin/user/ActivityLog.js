@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
 const activityLogSchema = new mongoose.Schema({
-    // İşlemin yapıldığı site (panelde seçili site)
     site: {
         type: String,
         enum: Object.keys(SITES),
@@ -53,13 +52,11 @@ const activityLogSchema = new mongoose.Schema({
     collection: 'activitylogs'
 });
 
-// Index'ler
 activityLogSchema.index({ user: 1, createdAt: -1 });
 activityLogSchema.index({ action: 1, module: 1 });
 activityLogSchema.index({ createdAt: -1 });
 activityLogSchema.index({ ipAddress: 1 });
 
-// Static metodlar
 activityLogSchema.statics.logActivity = function (data) {
     return this.create(data);
 };

@@ -1,4 +1,3 @@
-// apps/api/src/services/WheelSizeService.js
 const axios = require('axios');
 
 class WheelSizeService {
@@ -61,7 +60,6 @@ class WheelSizeService {
             region: this.defaultRegion
         });
 
-        // Slug'a göre unique yap
         const uniqueMap = new Map();
         modifications.forEach(mod => {
             if (mod.slug && !uniqueMap.has(mod.slug)) {
@@ -238,10 +236,8 @@ class WheelSizeService {
                 return { total: 0, makes: [] };
             }
 
-            // Marka > Model > Yıl grupla
             const grouped = {};
 
-            // Marka logolarını çek
             let makesLogoMap = {};
             try {
                 const allMakes = await this.request('/makes/', { region: this.defaultRegion });
@@ -272,7 +268,6 @@ class WheelSizeService {
                     };
                 }
 
-                // year_ranges array'ini parse et
                 if (v.year_ranges && Array.isArray(v.year_ranges)) {
                     v.year_ranges.forEach(range => {
                         const parts = range.split('-');
@@ -282,7 +277,6 @@ class WheelSizeService {
                 }
             });
 
-            // Set -> Array, sırala
             const makes = Object.values(grouped)
                 .map(make => ({
                     ...make,

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema({
-  // Temel bilgiler
   name: {
     type: String,
     required: [true, 'Ürün adı gereklidir'],
@@ -29,7 +28,6 @@ const ProductSchema = new mongoose.Schema({
     trim: true
   },
   
-  // Fiyat bilgileri
   price: {
     type: Number,
     required: [true, 'Fiyat gereklidir'],
@@ -47,7 +45,6 @@ const ProductSchema = new mongoose.Schema({
     max: [100, 'İndirim oranı 100\'den fazla olamaz']
   },
   
-  // Stok bilgileri
   stock: {
     type: Number,
     required: [true, 'Stok miktarı gereklidir'],
@@ -67,51 +64,43 @@ const ProductSchema = new mongoose.Schema({
     default: 'in_stock'
   },
   
-  // Lastik spesifikasyonları
   specifications: {
-    // Lastik ebatı (örn: 205/55R16)
     size: {
       type: String,
       required: [true, 'Lastik ebatı gereklidir'],
       trim: true
     },
     
-    // Genişlik (mm)
     width: {
       type: Number,
       required: [true, 'Lastik genişliği gereklidir'],
       min: [125, 'Geçersiz lastik genişliği']
     },
     
-    // Yanak yüksekliği (%)
     aspectRatio: {
       type: Number,
       required: [true, 'Yanak yüksekliği gereklidir'],
       min: [25, 'Geçersiz yanak yüksekliği']
     },
     
-    // Jant çapı (inç)
     rimDiameter: {
       type: Number,
       required: [true, 'Jant çapı gereklidir'],
       min: [12, 'Geçersiz jant çapı']
     },
     
-    // Mevsim
     season: {
       type: String,
       required: [true, 'Mevsim bilgisi gereklidir'],
       enum: ['yaz', 'kis', '4mevsim']
     },
     
-    // Yük endeksi
     loadIndex: {
       type: String,
       required: [true, 'Yük endeksi gereklidir'],
       trim: true
     },
     
-    // Hız endeksi
     speedIndex: {
       type: String,
       required: [true, 'Hız endeksi gereklidir'],
@@ -119,46 +108,39 @@ const ProductSchema = new mongoose.Schema({
       uppercase: true
     },
     
-    // Araç tipi
     vehicleType: {
       type: String,
       required: [true, 'Araç tipi gereklidir'],
       enum: ['otomobil', 'suv', 'kamyonet', 'kamyon', 'motosiklet']
     },
     
-    // Fuel efficiency (A-G)
     fuelEfficiency: {
       type: String,
       enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
     },
     
-    // Wet grip (A-G)
     wetGrip: {
       type: String,
       enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
     },
     
-    // Noise level (dB)
     noiseLevel: {
       type: Number,
       min: [60, 'Geçersiz gürültü seviyesi'],
       max: [80, 'Geçersiz gürültü seviyesi']
     },
     
-    // Runflat özelliği
     runflat: {
       type: Boolean,
       default: false
     },
     
-    // Reinforced (XL) özelliği
     reinforced: {
       type: Boolean,
       default: false
     }
   },
   
-  // Görsel ve medya
   images: [{
     url: {
       type: String,
@@ -171,7 +153,6 @@ const ProductSchema = new mongoose.Schema({
     }
   }],
   
-  // Açıklama
   description: {
     type: String,
     trim: true,
@@ -184,7 +165,6 @@ const ProductSchema = new mongoose.Schema({
     maxlength: [500, 'Kısa açıklama 500 karakterden fazla olamaz']
   },
   
-  // SEO bilgileri
   seo: {
     title: String,
     description: String,
@@ -196,7 +176,6 @@ const ProductSchema = new mongoose.Schema({
     }
   },
   
-  // Durum bilgileri
   status: {
     type: String,
     enum: ['active', 'inactive', 'draft', 'archived'],
@@ -213,7 +192,6 @@ const ProductSchema = new mongoose.Schema({
     default: false
   },
   
-  // Satış bilgileri
   salesCount: {
     type: Number,
     default: 0,
@@ -226,7 +204,6 @@ const ProductSchema = new mongoose.Schema({
     min: [0, 'Görüntüleme sayısı negatif olamaz']
   },
   
-  // Rating bilgileri
   rating: {
     average: {
       type: Number,
@@ -241,14 +218,12 @@ const ProductSchema = new mongoose.Schema({
     }
   },
   
-  // Tedarikçi bilgileri
   supplier: {
     name: String,
     code: String,
     contact: String
   },
   
-  // Tarih bilgileri
   createdAt: {
     type: Date,
     default: Date.now
@@ -269,7 +244,6 @@ const ProductSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes for performance
 ProductSchema.index({ brand: 1, category: 1 });
 ProductSchema.index({ 'specifications.season': 1, price: 1 });
 ProductSchema.index({ 'specifications.size': 1 });
@@ -279,7 +253,6 @@ ProductSchema.index({ isFeatured: 1, isActive: 1 });
 ProductSchema.index({ salesCount: -1 });
 ProductSchema.index({ 'rating.average': -1 });
 
-// Text search index
 ProductSchema.index({
   name: 'text',
   brand: 'text',
@@ -296,7 +269,6 @@ ProductSchema.index({
   }
 });
 
-// Virtual fields
 ProductSchema.virtual('isInStock').get(function() {
   return this.stock > 0 && this.stockStatus === 'in_stock';
 });
@@ -319,9 +291,7 @@ ProductSchema.virtual('formattedPrice').get(function() {
   }).format(this.price);
 });
 
-// Middleware
 ProductSchema.pre('save', function(next) {
-  // Update stock status based on stock level
   if (this.stock === 0) {
     this.stockStatus = 'out_of_stock';
   } else if (this.stock <= this.minStockLevel) {
@@ -330,18 +300,15 @@ ProductSchema.pre('save', function(next) {
     this.stockStatus = 'in_stock';
   }
   
-  // Update discount percentage
   if (this.originalPrice && this.price) {
     this.discountPercentage = Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
   }
   
-  // Update timestamp
   this.updatedAt = Date.now();
   
   next();
 });
 
-// Static methods
 ProductSchema.statics.findBySize = function(size) {
   return this.find({ 'specifications.size': size, isActive: true });
 };
@@ -362,7 +329,6 @@ ProductSchema.statics.findFeatured = function() {
   return this.find({ isFeatured: true, isActive: true });
 };
 
-// Instance methods
 ProductSchema.methods.updateStock = function(quantity) {
   this.stock += quantity;
   this.lastStockUpdate = Date.now();

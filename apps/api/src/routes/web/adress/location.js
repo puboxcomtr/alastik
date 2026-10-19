@@ -4,7 +4,6 @@ const AddressCity = require('../../../models/web/address/AddressCity');
 const AddressDistrict = require('../../../models/web/address/AddressDistrict');
 const AddressNeighborhood = require('../../../models/web/address/AddressNeighborhood');
 
-// GET /api/location/cities
 router.get('/cities', async (req, res) => {
     try {
         const cities = await AddressCity.find().sort({ cityName: 1 });
@@ -14,7 +13,6 @@ router.get('/cities', async (req, res) => {
     }
 });
 
-// GET /api/location/districts/:cityId
 router.get('/districts/:cityId', async (req, res) => {
     try {
         const districts = await AddressDistrict.find({ cityId: req.params.cityId }).sort({ districtName: 1 });
@@ -24,7 +22,6 @@ router.get('/districts/:cityId', async (req, res) => {
     }
 });
 
-// GET /api/location/neighborhoods/:districtId
 router.get('/neighborhoods/:districtId', async (req, res) => {
     try {
         const neighborhoods = await AddressNeighborhood.find({ districtId: req.params.districtId }).sort({ neighborhoodName: 1 });

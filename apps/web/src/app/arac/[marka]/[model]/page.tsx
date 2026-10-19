@@ -1,7 +1,3 @@
-// Araç modeli sayfası — /arac/<marka>/<model> (yalnızca lastikjantavm.com)
-// Uyumlu lastik (fabrika + alternatif ebatlar, stok), nesil/motor bazında ebatlar, uyumlu jant (PCD, göbek),
-// kar zinciri / paleti / çorabı. Veri: Wheel-Size (vehiclefitments) + sitenin etiket stokları.
-// Fabrika ebatlarında yeterli stok yoksa sayfa noindex,follow olur (kalite kapısı).
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -37,7 +33,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title: `${name} Lastik Ebatları, Uyumlu Jant ve Kar Zinciri | LastikJantAVM`,
         description: `${name}${d.summary.yearFrom ? ` (${years(d.summary.yearFrom, d.summary.yearTo)})` : ''} orijinal lastik ebatları${top ? ` ${top}` : ''}, bijon ${d.summary.boltPatterns.join(', ') || '-'}; uyumlu lastik, jant ve kar zinciri fiyatları.`,
         ...seo,
-        // Kalite kapısı: fabrika ebatlarında yeterli stok yoksa dizine eklenmez
         ...(d.stock.indexable ? {} : { robots: { index: false, follow: true } })
     };
 }

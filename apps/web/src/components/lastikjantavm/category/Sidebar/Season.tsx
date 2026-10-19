@@ -25,7 +25,6 @@ export default function Season({ seasonOptions = [], categorySlug, tagSlug }: Se
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // URL'den mevcut seçimleri al
     const currentSeasons = searchParams.get('mevsim')?.split(',').filter(Boolean) || [];
 
     const handleToggle = async (value: string) => {
@@ -48,7 +47,6 @@ export default function Season({ seasonOptions = [], categorySlug, tagSlug }: Se
         router.push(queryString ? `${pathname}?${queryString}` : pathname);
     };
 
-    // Seçenek yoksa veya tek seçenek varsa gösterme (filtrelemeye gerek yok)
     if (!seasonOptions || seasonOptions.length <= 1) {
         return null;
     }

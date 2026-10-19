@@ -1,21 +1,16 @@
 'use client'
 
-// Next Imports
 import dynamic from 'next/dynamic'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Styles Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
 export type VisitStats = {
@@ -24,7 +19,6 @@ export type VisitStats = {
     devices: { title: string; color: string; count: number; share: number }[]
 }
 
-// Seçili sitenin son 28 gün ziyaret istatistikleri (oturum kayıtlarından)
 const WebsiteStatistics = ({ visits }: { visits?: VisitStats }) => {
     const options = {
         chart: {

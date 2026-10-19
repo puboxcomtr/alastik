@@ -1,6 +1,3 @@
-// Anasayfa - site secici (server component)
-// x-site header'ina gore dogru temanin anasayfasini render eder.
-// ALastik ve LastikJantAVM tamamen ayri component agaclari kullanir.
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { getSeo } from '@src/services/seoService';
@@ -11,7 +8,6 @@ import { JsonLd, siteJsonLd } from '@/src/lib/structuredData';
 import HomeIntro from '@src/components/lastikjantavm/home/HomeIntro';
 
 export async function generateMetadata(): Promise<Metadata> {
-  // B2B (demo alan adı) arama motorlarına kapalıdır
   if (headers().get('x-site') === 'b2b') {
     return { robots: { index: false, follow: false } };
   }
@@ -38,7 +34,6 @@ export default async function Home() {
       {site === 'lastikjantavm' ? (
         <>
           <LastikJantAvmHomePage />
-          {/* Sunucu HTML'inde H1 + kısa tanıtım (ana sayfa istemci tarafında çizildiği için); alastik'te yok */}
           <HomeIntro />
         </>
       ) : <AlastikHomePage />}

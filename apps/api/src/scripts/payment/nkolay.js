@@ -1,20 +1,14 @@
-// apps/api/src/scripts/payment/nkolay.js
-// Kullanım: cd /var/www/alastik && node apps/api/src/scripts/payment/nkolay.js
 
 const crypto = require('crypto');
 const axios = require('axios');
 const FormData = require('form-data');
 
-// ========== YAPILANDIRMA ==========
 const config = {
-    // Canlı anahtarlar
     sx: '174508930|uhlJb77vPTZWFWKjrgzxZY+835onES/jaSCEWoKLCHhAK4Ne0DuoKHbPq1VWHrQWf8GTIS+cSV0/mwaUn5HOi5MPhZwBWZw3B/MlRZHGy15yO7uyrgCOkQASgBj7Ng3rCuJv4A==',
     merchantSecretKey: '_6GGpSsK2W2DzOdR7aEEA',
 
-    // Canlı URL
     baseUrl: 'https://paynkolay.nkolayislem.com.tr',
 
-    // Test kart bilgileri (Postman collection'dan)
     testCard: {
         cardNumber: '4546711234567894',
         cardHolderName: 'Test Kullanıcı',
@@ -24,9 +18,7 @@ const config = {
     }
 };
 
-// ========== HASH HESAPLAMA ==========
 function generateHash(params) {
-    // sx | clientRefCode | amount | successUrl | failUrl | rnd | customerKey | merchantSecretKey
     const hashString = [
         params.sx,
         params.clientRefCode,
@@ -34,7 +26,7 @@ function generateHash(params) {
         params.successUrl,
         params.failUrl,
         params.rnd,
-        params.customerKey || '', // Kart saklamıyorsak boş
+        params.customerKey || '',
         params.merchantSecretKey
     ].join('|');
 
@@ -47,7 +39,6 @@ function generateHash(params) {
     return hash;
 }
 
-// ========== TARIH FORMATLA ==========
 function getCurrentRnd() {
     const now = new Date();
     const dd = String(now.getDate()).padStart(2, '0');
@@ -56,11 +47,9 @@ function getCurrentRnd() {
     const hh = String(now.getHours()).padStart(2, '0');
     const min = String(now.getMinutes()).padStart(2, '0');
     const ss = String(now.getSeconds()).padStart(2, '0');
-    // Format: DD-MM-YYYY HH:MM:SS
     return `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
 }
 
-// ========== ÖDEME TESTİ ==========
 async function testPayment() {
     console.log('========================================');
     console.log('  Nkolay (PayNkolay) API Ödeme Testi');
@@ -78,7 +67,6 @@ async function testPayment() {
     console.log('  rnd:', rnd);
     console.log('  use3D: true');
 
-    // Hash hesapla
     const hashDatav2 = generateHash({
         sx: config.sx,
         clientRefCode,
@@ -90,14 +78,13 @@ async function testPayment() {
         merchantSecretKey: config.merchantSecretKey
     });
 
-    // Form data oluştur
     const form = new FormData();
     form.append('sx', config.sx);
     form.append('clientRefCode', clientRefCode);
     form.append('successUrl', successUrl);
     form.append('failUrl', failUrl);
     form.append('amount', amount);
-    form.append('installmentNo', '1'); // Tek çekim
+    form.append('installmentNo', '1');
     form.append('cardHolderName', config.testCard.cardHolderName);
     form.append('month', config.testCard.month);
     form.append('year', config.testCard.year);
@@ -108,8 +95,8 @@ async function testPayment() {
     form.append('rnd', rnd);
     form.append('hashDatav2', hashDatav2);
     form.append('environment', 'API');
-    form.append('currencyNumber', '949'); // TL
-    form.append('cardHolderIP', '85.105.100.1'); // Örnek IP
+    form.append('currencyNumber', '949');
+    form.append('cardHolderIP', '85.105.100.1');
 
     const url = `${config.baseUrl}/Vpos/v1/Payment`;
     console.log('\nİstek URL:', url);
@@ -139,5 +126,4 @@ async function testPayment() {
     }
 }
 
-// Çalıştır
 testPayment();

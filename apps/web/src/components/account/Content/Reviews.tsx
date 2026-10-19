@@ -69,7 +69,6 @@ export default function ReviewsContent({ reviews, loading }: Props) {
                             <div className="card border" key={review._id}>
                                 <div className="card-body p-3">
                                     <div className="d-flex gap-3">
-                                        {/* Ürün görseli */}
                                         {review.product?.seoUrl ? (
                                             <Link href={buildProductUrl(review.product.seoUrl)} className="flex-shrink-0">
                                                 {review.product.image ? (
@@ -92,7 +91,6 @@ export default function ReviewsContent({ reviews, loading }: Props) {
                                             </span>
                                         )}
 
-                                        {/* İçerik */}
                                         <div className="w-100 min-w-0">
                                             <div className="d-flex justify-content-between align-items-start mb-1">
                                                 <div>

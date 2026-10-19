@@ -2,9 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Setting = require('../../../models/admin/settings/Setting');
 
-/**
- * GET /api/general-settings/key/:key
- */
 router.get('/key/:key', async (req, res) => {
     try {
         const { key } = req.params;
@@ -30,9 +27,6 @@ router.get('/key/:key', async (req, res) => {
     }
 });
 
-/**
- * GET /api/general-settings/group/:group
- */
 router.get('/group/:group', async (req, res) => {
     try {
         const { group } = req.params;
@@ -51,10 +45,6 @@ router.get('/group/:group', async (req, res) => {
     }
 });
 
-/**
- * GET /api/general-settings/site-status
- * Site durumunu getir
- */
 router.get('/site-status', async (req, res) => {
     try {
         const setting = await Setting.findOne({ key: 'siteStatus', site: req.site }).lean();

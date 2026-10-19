@@ -33,7 +33,6 @@ import Paper from '@mui/material/Paper'
 
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Bizim standart hedef alanlarımız
 const TARGET_FIELDS = [
     { key: '', label: '-- Eşleştirme Yok --' },
     { key: 'stokKodu', label: 'Stok Kodu' },
@@ -84,15 +83,12 @@ const XmlRulesForm = ({ xmlData }: Props) => {
     const [saving, setSaving] = useState(false)
     const [loadingFields, setLoadingFields] = useState(true)
 
-    // Kaynak alanlar (XML'den otomatik çekilir)
     const [sourceFields, setSourceFields] = useState<SourceField[]>([])
 
-    // Alan eşleştirmeleri
     const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>(
         xmlData.rules?.fieldMappings || []
     )
 
-    // Filtreler
     const [availableCategories, setAvailableCategories] = useState<string[]>([])
     const [availableBrands, setAvailableBrands] = useState<string[]>([])
     const [availableYears, setAvailableYears] = useState<string[]>([])
@@ -118,11 +114,9 @@ const XmlRulesForm = ({ xmlData }: Props) => {
                     const fields: SourceField[] = sourceRes.data.fields
                     setSourceFields(fields)
 
-                    // Mevcut mapping yoksa boş başlat
                     if (!xmlData.rules?.fieldMappings?.length) {
                         setFieldMappings(fields.map(f => ({ source: f.key, target: '' })))
                     } else {
-                        // Yeni gelen alanları mevcut mapping'e ekle
                         const existingMap = new Map(xmlData.rules.fieldMappings.map(m => [m.source, m.target]))
                         setFieldMappings(fields.map(f => ({ source: f.key, target: existingMap.get(f.key) || '' })))
                     }
@@ -193,7 +187,6 @@ const XmlRulesForm = ({ xmlData }: Props) => {
                 <form onSubmit={handleSubmit}>
                     <Grid container spacing={4}>
 
-                        {/* Filtreler */}
                         <Grid item xs={12} md={4}>
                             <Card sx={{ height: '100%' }}>
                                 <CardHeader title='Kategori Filtrele' />
@@ -320,7 +313,6 @@ const XmlRulesForm = ({ xmlData }: Props) => {
                             </Card>
                         </Grid>
 
-                        {/* Alan Eşleştirme */}
                         <Grid item xs={12}>
                             <Card>
                                 <CardHeader
@@ -408,7 +400,6 @@ const XmlRulesForm = ({ xmlData }: Props) => {
                             </Card>
                         </Grid>
 
-                        {/* Kaydet */}
                         <Grid item xs={12}>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                                 <Button

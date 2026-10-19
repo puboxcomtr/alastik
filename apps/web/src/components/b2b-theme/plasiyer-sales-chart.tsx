@@ -1,12 +1,9 @@
 'use client';
-// Plasiyer satış grafiği — Bugün / Bu Ay / Bu Yıl sekmeleri (ŞİMDİLİK DEMO veri).
-// MUI (Materio benzeri tema): Card + ToggleButtonGroup + SVG bar grafik.
 import { useState } from 'react';
 import { Card, CardContent, Typography, Box, ToggleButton, ToggleButtonGroup, useTheme } from '@mui/material';
 
 type Nokta = { etiket: string; deger: number };
 
-// Demo veri setleri (sonra canlı bağlanacak)
 const VERI: Record<string, { toplam: string; birim: string; noktalar: Nokta[] }> = {
     bugun: {
         toplam: '38.400 ₺', birim: 'saatlik',
@@ -28,7 +25,6 @@ export function PlasiyerSalesChart() {
     const veri = VERI[tab];
     const maks = Math.max(...veri.noktalar.map(n => n.deger)) || 1;
 
-    // SVG çizim ölçüleri
     const W = 284, H = 120, pb = 16;
     const n = veri.noktalar.length;
     const bw = (W / n) * 0.6;

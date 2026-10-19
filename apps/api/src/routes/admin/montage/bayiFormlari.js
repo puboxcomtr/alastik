@@ -1,6 +1,3 @@
-// Admin: Montaj Noktası (Bayi) Bilgi ve Fiyat Formu kayıtları — /api/admin/montage/dealer-forms
-// (kimlik doğrulama admin/Index.js'teki ortak kapıdan gelir). Kayıtlar paneldeki seçili siteye göre
-// ayrılır (lastikjantavm / alastik / b2b); formu açık olmayan sitede liste boş görünür.
 const express = require('express');
 const XLSX = require('xlsx');
 const router = express.Router();
@@ -22,7 +19,6 @@ function filtre(site, q) {
     return f;
 }
 
-// Liste — GET /admin/montage/dealer-forms?search=&cityId=&page=&limit=
 router.get('/', async (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1); const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
@@ -39,7 +35,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Excel — GET /admin/montage/dealer-forms/export (her bayi bir satır, her alan bir sütun)
 router.get('/export', async (req, res) => {
     try {
         const kayitlar = await WebDealerForm.find(filtre(req.site, req.query)).sort({ cityName: 1, districtName: 1, bayiAdi: 1 }).lean();
@@ -68,11 +63,9 @@ router.get('/export', async (req, res) => {
     }
 });
 
-// Dosya — GET /admin/montage/dealer-forms/dosya/:ad (bayinin yüklediği görsel/PDF; yalnız oturum açmış admin görür)
 const fs = require('fs');
 const path = require('path');
 const DOSYA_TURU = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' };
-// Panel her isteği oturum anahtarıyla JSON olarak yaptığı için dosya da (Excel çıktısı gibi) base64 döner.
 router.get('/dosya/:ad', async (req, res) => {
     try {
         const ad = String(req.params.ad || '');
@@ -86,7 +79,6 @@ router.get('/dosya/:ad', async (req, res) => {
     }
 });
 
-// Detay — GET /admin/montage/dealer-forms/:id (cevaplar + okunaklı gösterim için tanım)
 router.get('/:id', async (req, res) => {
     try {
         if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ success: false, message: 'Geçersiz kayıt' });
@@ -98,13 +90,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Sil — DELETE /admin/montage/dealer-forms/:id
 router.delete('/:id', async (req, res) => {
     try {
         if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ success: false, message: 'Geçersiz kayıt' });
         const kayit = await WebDealerForm.findOneAndDelete({ _id: req.params.id, site: req.site }).lean();
         if (!kayit) return res.status(404).json({ success: false, message: 'Kayıt bulunamadı' });
-        // Kayıtla birlikte bayinin yüklediği dosyalar da silinir
         for (const d of Object.values(kayit.gorseller || {}).flat()) {
             if (form.DOSYA_KIMLIK.test(String(d))) fs.promises.unlink(path.join(form.GORSEL_DIZIN, String(d))).catch(() => { });
         }

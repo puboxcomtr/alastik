@@ -1,19 +1,15 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 
-// Type Imports
 import type { QueryRow } from '../types'
 
-// Util Imports
 import { formatDecimal, formatNumber } from '@/views/analytics/reports/format'
 
-// Component Imports
 import EmptyState from '@/views/analytics/reports/EmptyState'
 
 type MoversCardProps = {
@@ -23,7 +19,6 @@ type MoversCardProps = {
     emptyMessage: string
 }
 
-// Yükselen / düşen / yeni sorgular: kelime, pozisyon ve önceki döneme göre değişim
 const MoversCard = ({ title, rows, mode, emptyMessage }: MoversCardProps) => {
     const color = mode === 'up' ? 'success' : mode === 'down' ? 'error' : 'info'
     const icon = mode === 'up' ? 'ri-arrow-up-line' : mode === 'down' ? 'ri-arrow-down-line' : 'ri-sparkling-line'

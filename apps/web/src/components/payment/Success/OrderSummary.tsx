@@ -22,33 +22,27 @@ function OrderSummary({ order }: OrderSummaryProps) {
     const shipping = order.shippingSnapshot;
     const member = order.memberSnapshot;
 
-    // Aynı adres kontrolü
     const isSameAddress = !shipping ||
         (billing?.neighborhoodName === shipping?.neighborhoodName &&
             billing?.street === shipping?.street &&
             billing?.buildingNo === shipping?.buildingNo);
 
-    // Alıcı adı: Aynı adres ise üye bilgisi, farklı ise teslimat adresindeki kişi
     const recipientName = isSameAddress
         ? `${member?.firstName || ''} ${member?.lastName || ''}`.trim()
         : shipping?.fullName;
 
-    // Adres formatla
     const formatAddress = (addr: AddressSnapshot | null | undefined) => {
         if (!addr) return '-';
         return `${addr.neighborhoodName}, ${addr.street} No:${addr.buildingNo}${addr.floor ? ` Kat:${addr.floor}` : ''}${addr.apartmentNo ? ` D:${addr.apartmentNo}` : ''} ${addr.districtName}/${addr.cityName}`;
     };
 
-    // Ödeme yöntemi
     const paymentMethodText = order.payment.method === 'bank_transfer' ? 'Banka Havalesi' : 'Kredi Kartı';
 
-    // Iban Kopyalama
     const copyIban = (iban: string) => {
         navigator.clipboard.writeText(iban);
         setCopiedIban(iban);
         setTimeout(() => setCopiedIban(null), 2000);
     };
-    // Sipariş NO Kopyalama
     const copyOrderNumber = () => {
         navigator.clipboard.writeText(order.orderNumber);
         setCopiedOrderNumber(true);
@@ -57,7 +51,6 @@ function OrderSummary({ order }: OrderSummaryProps) {
 
     return (
         <div className='py-4'>
-            {/* Başarı Mesajı */}
             <div className="d-flex align-items-sm-center border-bottom pb-3 pb-md-4">
                 <div className="d-flex align-items-center justify-content-center bg-success text-white rounded-circle flex-shrink-0">
                     <i className="ci-check fs-3 p-2"></i>
@@ -75,17 +68,13 @@ function OrderSummary({ order }: OrderSummaryProps) {
                 </div>
             </div>
 
-            {/* Sipariş Detayları */}
             <div className="d-flex flex-column gap-4 pt-3 mt-3">
-                {/* Alıcı Bilgisi */}
                 <div>
                     <h3 className="h6 mb-2">Alıcı Adı Soyadı</h3>
                     <p className="fs-sm mb-0">{recipientName || '-'}</p>
                 </div>
 
-                {/* Adresler */}
                 {isSameAddress ? (
-                    // Aynı adres - tek kolon
                     <div>
                         <h3 className="h6 mb-2">Adres</h3>
                         <p className="fs-sm mb-0">{formatAddress(billing)}</p>
@@ -96,7 +85,6 @@ function OrderSummary({ order }: OrderSummaryProps) {
                         )}
                     </div>
                 ) : (
-                    // Farklı adres 
                     <div className='row'>
                         <div className="col-lg-6 mb-3 mb-lg-0">
                             <h3 className="h6 mb-2">Teslimat Adresi</h3>
@@ -114,7 +102,6 @@ function OrderSummary({ order }: OrderSummaryProps) {
                     </div>
                 )}
 
-                {/* Ödeme ve Toplam */}
                 <div className='row'>
                     <div className="col-lg-6 mb-3 mb-lg-0">
                         <h3 className="h6 mb-2">Ödeme Yöntemi</h3>

@@ -21,7 +21,6 @@ interface CustomerDetailProps {
 }
 
 const CustomerDetail = ({ isGuest, memberInfo }: CustomerDetailProps) => {
-    // Misafir ise bu kartı gösterme
     if (isGuest || !memberInfo) {
         return null
     }

@@ -3,10 +3,6 @@ import { DataSource } from "@components/b2b-theme/data-source";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 import { PURCHASE_ROWS } from "@components/b2b-theme/lib/sample-data";
 
-/**
- * Bayi Alım Adet Raporu — dönem bazlı alış özeti.
- * "Adet" ürün adedidir (sipariş satırı sayısı değil).
- */
 export default function AlimAdetPage() {
   const totalTire = PURCHASE_ROWS.reduce((t, s) => t + s.tireQty, 0);
   const totalRim = PURCHASE_ROWS.reduce((t, s) => t + s.rimQty, 0);

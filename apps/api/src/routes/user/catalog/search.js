@@ -9,13 +9,8 @@ const WebTag = require('../../../models/web/catalog/WebTag');
 const Setting = require('../../../models/admin/settings/Setting');
 const { getSiteVisibilityFilter } = require('../../../config/diaFilters');
 
-
-// POST /api/search/autocomplete
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Akıllı arama (alastik): "205 55 16 pirelli yaz" gibi yazımlarda mevsim kelimesi
-// ürün adında metin olarak aranmaz; diaData.ozelkod1kodu (Yaz / Kış / 4 Mevsim)
-// filtresine çevrilir. Kelime metinden çıkarılır, kalan kelimeler marka/model olarak aranır.
 const SMART_SEASON_SITES = new Set(['alastik']);
 const SEASON_WORD_RE = /(?:4|d[öo]rt)\s*mevsim|all\s*season|yazl[ıi]k|k[ıi][şs]l[ıi]k|(?<![\p{L}\d])yaz(?![\p{L}\d])|(?<![\p{L}\d])k[ıi][şs](?![\p{L}\d])/iu;
 const detectSeasonWord = (site, text) => {
@@ -29,9 +24,6 @@ const detectSeasonWord = (site, text) => {
     return { code, word: w, rest };
 };
 
-// Akıllı öneri listesi (alastik): sonuç sayfasıyla tutarlı olsun diye yalnızca bu
-// sitede yayınlanan ürünler (sites alanı) önerilir — başka sitenin ürünü sızmaz —,
-// stoklu ürünler üste alınır, aynı başlık tekrar listelenmez.
 const isSmartSite = (req) => SMART_SEASON_SITES.has(req.site);
 const findSuggestProducts = async (req, andConditions) => {
     const smart = isSmartSite(req);
@@ -56,7 +48,6 @@ const detectTireSize = (input) => {
     if (!match) return null;
     const [fullMatch, width, aspect, diameter] = match;
 
-    // Geçerli lastik ebat aralıklarını doğrula
     const widthNum = parseInt(width);
     const aspectNum = parseInt(aspect);
     const diameterNum = parseInt(diameter);
@@ -81,8 +72,6 @@ const detectTireSize = (input) => {
     };
 };
 
-
-// POST /api/search/autocomplete
 router.post('/autocomplete', async (req, res) => {
     try {
         const { query, limit = 10 } = req.body;
@@ -96,10 +85,8 @@ router.post('/autocomplete', async (req, res) => {
         const trimmedQuery = query.trim();
         const hasHyphen = trimmedQuery.includes('-');
 
-        // Tire içeren stok kodu (4433500-24-XML gibi) - kesin stok kodu
         const definiteStockCode = hasHyphen && /^\d{5,}(-[\w]+)*$/.test(trimmedQuery) ? trimmedQuery : null;
 
-        // 1) STOK KODU (kesin, tire içerenler önce)
         if (definiteStockCode) {
             const stockRegex = new RegExp(escapeRegex(definiteStockCode), 'i');
             const products = await WebProduct.find({
@@ -123,10 +110,8 @@ router.post('/autocomplete', async (req, res) => {
             });
         }
 
-        // 2) EBAT TESPİTİ
         const tireSize = detectTireSize(query);
 
-        // 3) Ebat değilse ve sadece sayıysa stok kodu olarak değerlendir
         const stockCode = !tireSize && /^\d{5,}$/.test(trimmedQuery) ? trimmedQuery : null;
         if (stockCode) {
             const stockRegex = new RegExp(escapeRegex(stockCode), 'i');
@@ -152,7 +137,6 @@ router.post('/autocomplete', async (req, res) => {
         }
 
         if (tireSize) {
-            // Ebat regex'leri
             const sizePatterns = tireSize.variations.map(v =>
                 new RegExp(escapeRegex(v).replace(/[\/\s]/g, '[/\\s]*'), 'i')
             );
@@ -163,8 +147,6 @@ router.post('/autocomplete', async (req, res) => {
                 { $or: sizePatterns.map(p => ({ 'diaData.aciklama': p })) }
             ];
 
-            // Ebat dışında ekstra metin varsa (marka/model adı), AND mantığıyla aciklama'da ara
-            // Akıllı arama: mevsim kelimesi ürün adında aranmaz, mevsim filtresine çevrilir
             const acSeason = detectSeasonWord(req.site, tireSize.remainder);
             const productRemainder = acSeason ? acSeason.rest : tireSize.remainder;
             if (acSeason) {
@@ -182,8 +164,6 @@ router.post('/autocomplete', async (req, res) => {
                 });
             }
 
-            // Etiketleri ebat ile bul
-            // Etiketleri ebat ile bul (ebat dışı kelime varsa onu da etikette ara)
             const tagAndConditions = [
                 { site: req.site },
                 { isActive: true },
@@ -228,8 +208,6 @@ router.post('/autocomplete', async (req, res) => {
             });
         }
 
-        // 3) GENEL ARAMA (Marka, kategori, etiket, ürün) - AND mantığı
-        // Akıllı arama: "pirelli yaz" → mevsim kelimesi filtreye, kalan "pirelli" metne
         const generalSeason = detectSeasonWord(req.site, query.trim());
         const generalText = generalSeason ? generalSeason.rest : query.trim();
         const words = generalText.split(/\s+/).filter(w => w.length >= 2);
@@ -240,7 +218,6 @@ router.post('/autocomplete', async (req, res) => {
 
         const wordRegexes = words.map(w => new RegExp(escapeRegex(w), 'i'));
 
-        // Marka: tek kelimeyle eşleşme (marka adı genelde tek kelimedir)
         const fullQueryRegex = new RegExp(escapeRegex(query.trim()), 'i');
         const brandQueryRegex = generalSeason && generalText.length >= 2
             ? new RegExp(escapeRegex(generalText), 'i')
@@ -280,7 +257,6 @@ router.post('/autocomplete', async (req, res) => {
             url: `/etiket/${t.seoUrl}`
         }));
 
-        // Ürün: Tüm kelimeler aciklama veya stokkartkodu/anabarkod'da AND mantığıyla geçmeli
         const productConditions = [
             { 'syncInfo.diaStatus': 'synced' },
             getSiteVisibilityFilter(req.site)
@@ -309,7 +285,6 @@ router.post('/autocomplete', async (req, res) => {
             url: `/urun/${p.customData.seoUrl || p._key}`
         }));
 
-        // Dağılım: Marka > Kategori > Etiket > Ürün
         const mixed = [];
         mixed.push(...results.brands);
         mixed.push(...results.categories);
@@ -329,7 +304,6 @@ router.post('/autocomplete', async (req, res) => {
     }
 });
 
-// GET /api/search/results
 router.get('/results', async (req, res) => {
     try {
         const { q, page = 1, limit = 24, sortBy, sortOrder, marka, mevsim, ozellik, yukEndeksi, hizEndeksi, uretim, fiyatMin, fiyatMax, arac, oem } = req.query;
@@ -357,7 +331,6 @@ router.get('/results', async (req, res) => {
 
         const isStockCode = !tireMatch && /^\d{5,}(-[\w]+)*$/.test(q.trim());
 
-        // Stok kodu aramasında katı filtre uygulamayalım, sadece görünür ürünler
         const filter = isStockCode
             ? {
                 'syncInfo.diaStatus': 'synced',
@@ -373,8 +346,6 @@ router.get('/results', async (req, res) => {
 
         const andConditions = [];
 
-        // İkinci el ürünler genel arama sonuçlarına karışmasın; kullanıcı açıkça
-        // "2.el" / "ikinci el" aramadıysa dışlanır (stok kodu aramaları hariç)
         const wantsSecondHand = /2\.?\s*el|ikinci\s*el/i.test(q);
         if (!isStockCode && !wantsSecondHand) {
             const secondHandCategory = await WebCategory.findOne({ slug: 'ikinci-el' }).lean();
@@ -400,26 +371,15 @@ router.get('/results', async (req, res) => {
                 ]
             });
         } else {
-            // Akıllı arama (b2b /products/filter ile aynı mantık): mevsim kelimesi →
-            // filtre; RAKAMLAR (ebat/kod) esnek eşleşir ("195 50 16" = "1955016" =
-            // "195/50R16"); HARF kelimeleri (marka/model) ayrı ayrı; TÜM parçalar
-            // birlikte (AND) sağlanır. Ebat ozelkod3kodu üzerinden yakalanır —
-            // m_urunOzellikleri (Genişlik/Yanak/Jant) eksik ürünler de gelir.
             const freeSeason = !mevsim ? detectSeasonWord(req.site, q.trim()) : null;
             const freeText = freeSeason ? freeSeason.rest : q.trim();
             if (freeSeason) {
                 andConditions.push({ 'diaData.ozelkod1kodu': freeSeason.code });
             }
 
-            // Rakamlar → ebat/ürün kodu esnek eşleşmesi (ayraç/R harfi serbest)
             const rakam = freeText.replace(/[^0-9]/g, '');
             if (rakam.length >= 3) {
                 const esnek = new RegExp(rakam.split('').join('\\D*'), 'i');
-                // Kısa rakam (3-6, ör. "205" genişlik / "20555") YALNIZ ebat alanında
-                // aranır — stok kodu/açıklamada 1..2..3 gibi gevşek eşleşip alakasız
-                // ürün getiriyordu. Gerçek stok kodu aramaları zaten isStockCode (>=5
-                // hane, tam eşleşme) ile ayrı işlenir. Tam ebat/uzun rakamda (>=7, ör.
-                // 2055516 veya 205551691 yük endeksli) stok kodu + açıklama da eklenir.
                 const rakamOr = [{ 'diaData.ozelkod3kodu': esnek }];
                 if (rakam.length >= 7) {
                     rakamOr.push({ 'diaData.stokkartkodu': esnek });
@@ -428,7 +388,6 @@ router.get('/results', async (req, res) => {
                 andConditions.push({ $or: rakamOr });
             }
 
-            // Harf kelimeleri (rakam içermeyen, en az 2 harf) → marka/model
             const kelimeler = freeText.split(/\s+/).filter(w => w.length >= 2 && /[a-zçğıiöşü]/i.test(w) && !/\d/.test(w));
             for (const word of kelimeler) {
                 const wordRegex = new RegExp(escapeRegex(word), 'i');
@@ -440,7 +399,6 @@ router.get('/results', async (req, res) => {
                 });
             }
 
-            // Ne yeterli rakam ne harf kelimesi çıktıysa ham metni geniş ara
             if (rakam.length < 3 && kelimeler.length === 0) {
                 const rgx = new RegExp(escapeRegex(freeText), 'i');
                 andConditions.push({
@@ -454,8 +412,6 @@ router.get('/results', async (req, res) => {
             }
         }
 
-        // Sidebar ebat filtreleri (genislik/yanak/jant query paramları) — q'dan
-        // bağımsız; seçiliyse yapısal özellik eşleşmesiyle ayrıca daraltır.
         {
             const { genislik, yanak, yukseklik, jant, cap } = req.query;
             if (genislik) {
@@ -517,21 +473,17 @@ router.get('/results', async (req, res) => {
             }
         }
 
-        // İkincil sıralama (katman içi)
         const skip = (pageNum - 1) * limitNum;
         const totalProducts = await WebProduct.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limitNum);
 
-        // Sıralama mantığı:
-        // - Default (sortBy yok): 4 katmanlı (Bizim Stoklu > XML Stoklu > Bizim Stoksuz > XML Stoksuz) + içinde stok adetine göre azalan
-        // - sortBy=price: 2 katman (Stoklular > Stoksuzlar), fiyat mantığı frontend ile aynı (shippingIncludedPrice > webPrice > fiyat4)
         const aggregatePipeline = [{ $match: filter }];
 
         if (sortBy === 'price') {
             aggregatePipeline.push({
                 $addFields: {
                     _hasStock: { $gt: [{ $ifNull: ['$diaData.gercek_stok', 0] }, 0] },
-                    _sortPrice: sortPriceExpr(req.site) // site bazlı: kargo dahil fiyat > satış fiyatı
+                    _sortPrice: sortPriceExpr(req.site)
                 }
             });
             aggregatePipeline.push({
@@ -543,7 +495,6 @@ router.get('/results', async (req, res) => {
                 $sort: { sortPriority: 1, _sortPrice: sortOrder === 'asc' ? 1 : -1 }
             });
         } else {
-            // Default 4 katmanlı sıralama + her katmanda stok adetine göre azalan
             aggregatePipeline.push({
                 $addFields: {
                     _isXml: { $eq: ['$syncInfo.syncSource', 'xml_integration'] },
@@ -600,7 +551,6 @@ router.get('/results', async (req, res) => {
     }
 });
 
-// POST /api/search/track
 router.post('/track', async (req, res) => {
     try {
         const { term } = req.body;

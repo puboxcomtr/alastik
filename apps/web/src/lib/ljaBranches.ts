@@ -1,5 +1,3 @@
-// LJA şube sayfaları için sunucu tarafı veri: şube kaydı (montaj noktası) + hizmet fiyatları.
-// Yalnızca server component / generateMetadata içinde kullanılır.
 import { API_ENDPOINTS, getServerSiteHeaders } from '@/src/config/api';
 import { filterProducts } from '@/src/services/productService';
 import { throwIfUnavailable, rethrowUnavailable, PAGE_FETCH_TIMEOUT } from '@/src/lib/apiError';
@@ -15,15 +13,12 @@ export interface BranchPoint {
     district: string;
     workingSchedule?: Record<string, { open: string; close: string }>;
     amenities: string[];
-    // price: vitrin fiyatı (sitede "+ KDV" olabilir); kdvDahilFiyat: müşterinin ödediği tutar
     services: Array<{ productKey: string; sku: string; name: string; price: number | null; kdvDahilFiyat?: number | null; isMontage?: boolean }>;
 }
 
 export interface ServiceRow {
     name: string;
-    // KDV dahil satış fiyatı (TL); 0 = ücretsiz / fiyata dahil
     price: number | null;
-    // Hizmet ürün sayfası (varsa)
     url: string | null;
 }
 
@@ -47,7 +42,6 @@ export const AMENITY_LABELS: Record<string, { label: string; icon: string }> = {
     headlight_check: { label: 'Far Kontrolü', icon: 'ri-lightbulb-line' }
 };
 
-// Şube kaydı; kayıt yoksa null (sayfa 404), API hatasında hata fırlatılır (sayfa 500)
 export async function getBranchPoint(branch: Branch): Promise<BranchPoint | null> {
     try {
         const res = await fetch(API_ENDPOINTS.montage.detail(branch.montagePointId), {
@@ -65,8 +59,6 @@ export async function getBranchPoint(branch: Branch): Promise<BranchPoint | null
     }
 }
 
-// Grubun hizmetleri: katalog kategorisindeki hizmet ürünleri (sitede görünen KDV dahil fiyatla);
-// montaj grubu için şube kaydındaki montaj hizmetleri
 export async function getGroupServices(group: ServiceGroup, point: BranchPoint): Promise<ServiceRow[]> {
     if (!group.categorySlug) {
         return point.services
@@ -94,7 +86,6 @@ export function mapUrl(branch: Branch): string {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(branch.mapQuery)}`;
 }
 
-// Şubenin yerel işletme verisi (AutoRepair) — şube ve hizmet sayfalarında
 export function branchJsonLd(origin: string, branch: Branch, point: BranchPoint) {
     const hours = DAYS
         .map(d => ({ d, h: point.workingSchedule?.[d.key] }))

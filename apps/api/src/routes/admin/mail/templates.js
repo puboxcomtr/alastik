@@ -4,15 +4,12 @@ const router = express.Router()
 
 const WebMailTemplate = require('../../../models/admin/mail/Template')
 
-// Liste - GET /admin/mail-templates
-// Frontend solda kategori bazlı liste yapacak, kategorize edip dönelim
 router.get('/', async (req, res) => {
     try {
         const items = await WebMailTemplate.find({ isActive: true, site: req.site })
             .sort({ category: 1, order: 1, name: 1 })
             .lean()
 
-        // Kategori bazında gruplandır
         const categoryMap = {}
 
         items.forEach(item => {
@@ -49,7 +46,6 @@ router.get('/', async (req, res) => {
     }
 })
 
-// Detay - GET /admin/mail-templates/:id
 router.get('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -84,7 +80,6 @@ router.get('/:id', async (req, res) => {
     }
 })
 
-// Güncelle (sadece content) - PATCH /admin/mail-templates/:id
 router.patch('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -114,7 +109,6 @@ router.patch('/:id', async (req, res) => {
     }
 })
 
-// Sıfırla - POST /admin/mail-templates/:id/reset
 router.post('/:id/reset', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -141,8 +135,6 @@ router.post('/:id/reset', async (req, res) => {
     }
 })
 
-// Önizleme - POST /admin/mail-templates/:id/preview
-// Body: { content?: string } -> kaydedilmemiş edit varsa frontend'den geçilebilir
 router.post('/:id/preview', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -158,10 +150,8 @@ router.post('/:id/preview', async (req, res) => {
         const { render } = require('../../../services/plugins/mail/templateRenderer')
         const { buildData } = require('../../../services/plugins/mail/templateDataBuilder')
 
-        // Edit edilmiş içerik gönderilmişse onu kullan, yoksa DB'deki content'i
         const templateContent = req.body?.content || item.content || item.defaultContent
 
-        // Önizleme, panelde seçili sitenin verileriyle üretilir
         const templateData = await buildData(item.templateKey, { site: req.site })
         const html = render(templateContent, templateData)
 

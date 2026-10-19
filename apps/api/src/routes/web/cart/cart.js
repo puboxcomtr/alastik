@@ -12,22 +12,10 @@ const { getCartRetentionDays, isValidSite } = require('../../../config/sites');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Sepeti isteğin geldiği siteye bağlar (panel "Aktif Sepet" listesi site bazlıdır).
- * Site bir kez yazılır; sonradan değişmez.
- */
 const attachSiteToCart = (req, cart) => {
     if (!cart.site && isValidSite(req.site)) cart.site = req.site;
 };
 
-/**
- * Ürünün kategori ayarına göre KDV gösterim biçimi (dahil / haric) ve oranı.
- * Vitrinle sepetin aynı sonucu vermesi için ürün listeleme ile AYNI yardımcıyı kullanır.
- */
-/**
- * Giriş yapmış üyenin kimliğini sepete bağlar (admin "Sepeti" görünümü için).
- * Token yoksa veya geçersizse SESSİZCE devam edilir — misafir sepet akışı asla etkilenmez.
- */
 const attachMemberToCart = (req, cart) => {
     try {
         const token = req.headers.authorization?.replace('Bearer ', '');
@@ -37,14 +25,9 @@ const attachMemberToCart = (req, cart) => {
             cart.userId = decoded.id;
         }
     } catch (e) {
-        // Misafir ya da süresi dolmuş token — yok say
     }
 };
 
-/**
- * Sepet kuralları (çap uyumu, önce montaj, adet kilidi, tek nokta) tüm sitelerde uygulanır.
- * Montaj adedi lastik adedini aşamaz (daha azı alınabilir), diğer hizmetler montaj gerektirir (3 Eyl 2026 kararı).
- */
 const cartRulesActive = () => true;
 const noReconcile = (items) => ({ items, changed: false, notes: [] });
 
@@ -57,39 +40,24 @@ const getPriceDisplay = async (product, site) => {
     };
 };
 
-// Stok tavanı uygulanan kalem türleri (montaj/hizmet kalemlerinde stok aranmaz)
 const STOCK_LIMITED_ITEM_TYPES = ['tire', 'product'];
 
-/**
- * Sepette gösterilecek birim fiyat
- * XML ürünleri için kargo dahil fiyat (shippingIncludedPrice), 
- * diğerleri için fiyat4 kullanılır
- */
 const getCartUnitPrice = (product, site) => {
     const isXml = product.syncInfo?.syncSource === 'xml_integration';
     if (isXml) {
-        // Sitenin kendi kargo dahil fiyatı (varsayılan site global alan, diğerleri siteData.<site>)
         const xmlShipping = resolveXmlShipping(product, site);
         if (xmlShipping?.shippingIncludedPrice > 0) {
             return xmlShipping.shippingIncludedPrice;
         }
     }
-    // Site fiyat kuralı (panel: Gösterilecek Fiyat + indirim modu); varsayılan ayarda null döner
     const sitePrice = resolveSitePrice(product, site);
-    // Fiyat gizli (__dinamik__16 seçili + dinamik yok): 0 döner → /add guard'ı sepete eklemeyi reddeder
     if (sitePrice === PRICE_HIDDEN) return 0;
     const basePrice = sitePrice !== null ? sitePrice : (product.diaData?.m_birimler?.[0]?.fiyat4 || 0);
-    // Kural tabanlı kargo payı (Kargo Tanımları): gösterim "fiyata dahil" ise birim fiyata eklenir;
-    // "fiyattan hariç" ise fiyat kargosuz kalır, kargo sepette ayrı satırdır (getCartExcludedShipping)
     const shipping = resolveUnitShipping(product, site, basePrice);
     if (!shipping || !(shipping.shippingPerUnit > 0) || shipping.excluded) return basePrice;
     return Math.round((basePrice + shipping.shippingPerUnit) * 100) / 100;
 };
 
-/**
- * Ürün fiyatından HARİÇ tutulan birim kargo ücreti (Kargo Kuralları'nda stoktaki ürünler için
- * "fiyattan hariç" seçiliyse). Fiyata dahilse ya da XML üründe 0 döner.
- */
 const getCartExcludedShipping = (product, site) => {
     if (product.syncInfo?.syncSource === 'xml_integration') return 0;
     const sitePrice = resolveSitePrice(product, site);
@@ -99,10 +67,6 @@ const getCartExcludedShipping = (product, site) => {
     return shipping && shipping.excluded && shipping.shippingPerUnit > 0 ? shipping.shippingPerUnit : 0;
 };
 
-/**
- * Ürün görselini öncelik sırasıyla getir
- * Frontend getProductImage helper'ı ile aynı mantık:
- */
 const getCartProductImage = (product) => {
     const customImages = product.customData?.customImages;
     if (customImages && customImages.length > 0) {
@@ -122,7 +86,6 @@ const getCartProductImage = (product) => {
     return null;
 };
 
-// Sepeti getir
 router.get('/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -135,7 +98,6 @@ router.get('/:sessionId', async (req, res) => {
                 data: { sessionId, items: [], totals: { subtotal: 0, kdv: 0, total: 0, itemCount: 0 } }
             });
         }
-        // Site alanı olmayan eski sepet: görüntülenirken siteye bağlanır (son hareket değişmez)
         if (!cart.site && isValidSite(req.site)) {
             cart.site = req.site;
             await WebCart.updateOne({ _id: cart._id }, { $set: { site: req.site } });
@@ -144,12 +106,10 @@ router.get('/:sessionId', async (req, res) => {
         const products = await WebProduct.find({ _key: { $in: productKeys } });
         const productMap = new Map(products.map(p => [p._key, p]));
 
-        // Montaj noktasına bağlı hizmetlerde noktaya özel fiyat (0 = ücretsiz) geçerlidir
         const montagePrices = await loadMontagePrices(cart.items, req.site);
 
         let hasChanges = false;
         const updatedItems = [];
-        // Stok düştüğü için adedi indirilen / çıkarılan kalemlerin müşteriye gösterilecek notları
         const stockNotes = [];
 
         for (const item of cart.items) {
@@ -161,7 +121,6 @@ router.get('/:sessionId', async (req, res) => {
 
             const montagePrice = montagePrices.get(`${item.montagePointId}:${item.productKey}`);
             const currentPrice = typeof montagePrice === 'number' ? montagePrice : getCartUnitPrice(product, req.site);
-            // Fiyattan hariç kargo (varsa) her okumada tazelenir; montaj noktası fiyatlı hizmette kargo olmaz
             const currentShipping = typeof montagePrice === 'number' ? 0 : getCartExcludedShipping(product, req.site);
             const currentOriginalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
             const currentImage = getCartProductImage(product);
@@ -184,14 +143,9 @@ router.get('/:sessionId', async (req, res) => {
                 hasChanges = true;
             }
 
-            // Tür bilgisi her okumada üründen türetilir (2.el lastik artık lastik sayılmaz gibi
-            // kural değişiklikleri eski sepet kalemlerine de işlesin)
             const described = CartRules.describeProduct(product);
             if (described.itemType !== item.itemType) hasChanges = true;
 
-            // Stok tavanı (kendi stoğumuzdaki ürün kalemleri): sepete eklendikten sonra stok düşmüş olabilir.
-            // Sipariş anındaki stok kontrolü bu kalemi reddedeceğinden müşteri ödeme adımına gelmeden bilgilendirilir:
-            // stok bittiyse kalem çıkarılır, azaldıysa adet stoğa indirilir.
             let quantity = item.quantity;
             if (STOCK_LIMITED_ITEM_TYPES.includes(described.itemType) && product.syncInfo?.syncSource !== 'xml_integration') {
                 const stock = Number(product.diaData?.gercek_stok) || 0;
@@ -207,8 +161,6 @@ router.get('/:sessionId', async (req, res) => {
                 }
             }
 
-            // KDV gösterim ayarı her okumada tazelenir: kategori ayarı panelden değişebilir
-            // ve bu alan eklenmeden önce oluşmuş eski sepetlerde hiç yoktur
             const kdvGosterim = await getPriceDisplay(product, req.site);
             if (item.priceDisplay !== kdvGosterim.priceDisplay || item.kdvRate !== kdvGosterim.kdvRate) {
                 hasChanges = true;
@@ -229,7 +181,6 @@ router.get('/:sessionId', async (req, res) => {
             });
         }
 
-        // Kural tutarlılığı: montaj adedi lastik adedi tavanına kırpılır, montajsız diğer hizmetler düşer
         const reconciled = cartRulesActive(req) ? CartRules.reconcile(updatedItems) : noReconcile(updatedItems);
         if (hasChanges || reconciled.changed) {
             cart.items = reconciled.items;
@@ -244,7 +195,6 @@ router.get('/:sessionId', async (req, res) => {
     }
 });
 
-// Sepete ürün ekle
 router.post('/add', async (req, res) => {
     try {
         const { sessionId, productKey, quantity = 1, montagePointId = '', ownTire = false } = req.body;
@@ -253,13 +203,11 @@ router.post('/add', async (req, res) => {
             return res.status(400).json({ success: false, message: 'sessionId ve productKey gerekli' });
         }
 
-        // Ürünü bul
         const product = await WebProduct.findOne({ _key: productKey });
         if (!product) {
             return res.status(404).json({ success: false, message: 'Urun bulunamadi' });
         }
 
-        // Montaj noktası bağı: nokta anonim etiketle sepete işlenir (ad/adres satın alma sonrası paylaşılır)
         let montagePointLabel = '';
         let montagePrice = null;
         if (montagePointId) {
@@ -271,36 +219,28 @@ router.post('/add', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Montaj noktası bulunamadı' });
             }
             montagePointLabel = `${point.city}${point.district ? ` / ${point.district}` : ''}`;
-            // Noktaya özel hizmet fiyatı (0 = ücretsiz); nokta bu hizmeti vermiyorsa katalog fiyatı
             const service = (point.services || []).find(s => String(s.productKey) === String(productKey));
-            // KDV dahil, komisyonlu müşteri fiyatı (kendi şubelerimize komisyon eklenmez)
             montagePrice = resolveMontageServicePrice(service, point, await getKomisyonOranlari(req.site));
         }
 
-        // Fiyat: noktaya özel fiyat varsa o, yoksa site fiyat kuralı (fiyat4)
         const unitPrice = montagePrice !== null ? montagePrice : getCartUnitPrice(product, req.site);
         if (unitPrice < 0 || (unitPrice === 0 && montagePrice === null)) {
             return res.status(400).json({ success: false, message: 'Urun fiyati bulunamadi' });
         }
 
-        // Sepeti bul veya oluştur
         let cart = await WebCart.findOne({ sessionId });
 
         if (!cart) {
             cart = new WebCart({ sessionId, items: [] });
         }
 
-        // Üye giriş yaptıysa sepeti üyeye bağla (misafirse hiçbir şey değişmez)
         attachMemberToCart(req, cart);
         attachSiteToCart(req, cart);
 
-        // Ürün zaten sepette mi?
         const existingIndex = cart.items.findIndex(item => item.productKey === productKey);
         const originalPrice = product.diaData?.m_birimler?.[0]?.fiyat1 || 0;
 
-        // Sepet kuralları (montaj: lastiğe uygun çap + lastik adedi; diğer hizmet: önce montaj)
         const described = CartRules.describeProduct(product);
-        // "Montaj Satın Al" sayfası (kendi lastiği): yalnızca bir montaj noktasından eklenen montaj kaleminde geçerlidir
         const ownTireMontage = Boolean(ownTire) && Boolean(montagePointId) && described.itemType === 'montage';
         const plainItems = cart.items.map(i => i.toObject());
         const rulesOn = cartRulesActive(req);
@@ -310,12 +250,10 @@ router.post('/add', async (req, res) => {
         if (rule.error) {
             return res.status(400).json({ success: false, message: rule.error });
         }
-        // Montaj + lastikli sepette adet tavanı: mevcut + eklenen adet lastik adedini aşamaz
         const montageCap = rulesOn && described.itemType === 'montage' && !ownTireMontage && CartRules.hasTires(plainItems)
             ? CartRules.tireCountForRange(plainItems, described.rimRange)
             : null;
 
-        // Stok tavanı kontrolü: sepetteki mevcut + eklenecek adet stoğu aşamaz
         const stock = product.diaData?.gercek_stok ?? 0;
         const currentQty = existingIndex > -1 ? cart.items[existingIndex].quantity : 0;
         const targetQty = montageCap !== null ? Math.min(currentQty + quantity, montageCap) : currentQty + quantity;
@@ -335,7 +273,6 @@ router.post('/add', async (req, res) => {
                 cart.items[existingIndex].montagePointLabel = montagePointLabel;
             }
         } else {
-            // Resim al
             const productImage = getCartProductImage(product);
 
             cart.items.push({
@@ -348,7 +285,6 @@ router.post('/add', async (req, res) => {
                 brandName: product.diaData?.marka || '',
                 quantity: targetQty,
                 unitPrice,
-                // Fiyattan hariç tutulan kargo (varsa); montaj noktası fiyatlı hizmette kargo olmaz
                 shippingPerUnit: montagePrice !== null ? 0 : getCartExcludedShipping(product, req.site),
                 originalPrice,
                 ...(await getPriceDisplay(product, req.site)),
@@ -357,12 +293,10 @@ router.post('/add', async (req, res) => {
             });
         }
 
-        // Montaj adedi lastik adedi tavanını aşıyorsa kırpılır
         const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
 
         cart.lastActivity = new Date();
-        // Saklama süresi site ayarından (config/sites.js → cartRetentionDays)
         cart.expiresAt = new Date(Date.now() + getCartRetentionDays(cart.site) * DAY_MS);
 
         await cart.save();
@@ -374,7 +308,6 @@ router.post('/add', async (req, res) => {
     }
 });
 
-// Ürün adedi güncelle
 router.put('/update', async (req, res) => {
     try {
         const { sessionId, productKey, quantity } = req.body;
@@ -388,7 +321,6 @@ router.put('/update', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Sepet bulunamadi' });
         }
 
-        // Üye giriş yaptıysa sepeti üyeye bağla (misafirse hiçbir şey değişmez)
         attachMemberToCart(req, cart);
         attachSiteToCart(req, cart);
 
@@ -397,14 +329,12 @@ router.put('/update', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Urun sepette bulunamadi' });
         }
 
-        // Lastikli sepette montaj adedi lastik adedini aşamaz
         const plainItems = cart.items.map(i => i.toObject());
         const rule = cartRulesActive(req) ? CartRules.validateQuantity(plainItems, plainItems[itemIndex], quantity) : {};
         if (rule.error) {
             return res.status(400).json({ success: false, message: rule.error });
         }
 
-        // Stok tavanı kontrolü: güncellenen adet stoğu aşamaz
         const product = await WebProduct.findOne({ _key: productKey });
         const stock = product?.diaData?.gercek_stok ?? 0;
         if (quantity > stock) {
@@ -416,7 +346,6 @@ router.put('/update', async (req, res) => {
 
         cart.items[itemIndex].quantity = quantity;
 
-        // Lastik adedi azaldıysa montaj adedi tavana kırpılır
         const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
         cart.lastActivity = new Date();
@@ -432,7 +361,6 @@ router.put('/update', async (req, res) => {
     }
 });
 
-// Ürünü sepetten kaldır
 router.delete('/remove', async (req, res) => {
     try {
         const { sessionId, productKey } = req.body;
@@ -445,7 +373,6 @@ router.delete('/remove', async (req, res) => {
         const removedTire = cart.items.find(item => item.productKey === productKey && item.itemType === 'tire');
         cart.items = cart.items.filter(item => item.productKey !== productKey);
 
-        // Lastik silinince ona bağlı montaj da silinir (lastik ve montaj birbirine bağlıdır)
         const removalNotes = [];
         if (cartRulesActive(req) && removedTire && removedTire.rimSize !== null && removedTire.rimSize !== undefined) {
             const remaining = cart.items.map(i => i.toObject());
@@ -460,7 +387,6 @@ router.delete('/remove', async (req, res) => {
             }
         }
 
-        // Montaj çıktıysa diğer hizmetler düşer; lastik azaldıysa montaj adedi tavana kırpılır
         const reconciled = cartRulesActive(req) ? CartRules.reconcile(cart.items.map(i => i.toObject())) : noReconcile(cart.items.map(i => i.toObject()));
         if (reconciled.changed) cart.items = reconciled.items;
         cart.lastActivity = new Date();
@@ -476,7 +402,6 @@ router.delete('/remove', async (req, res) => {
     }
 });
 
-// Sepeti temizle
 router.delete('/clear/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;

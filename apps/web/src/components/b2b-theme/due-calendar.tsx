@@ -1,16 +1,12 @@
 'use client';
 
-// Gelecek Vadeler — dealer's open sales INVOICES due-date calendar (monthly view).
-// Source: DIA sales invoices (ortalamavade + bekleyentutar). Overdue = red,
-// upcoming = brand highlight. Left column shows weekly total, right panel shows
-// the selected day's invoices.
 import { useState, useEffect, useMemo } from 'react';
 import { API_ENDPOINTS } from '@src/config/api';
 import { ArrowLeftIcon, ArrowRightIcon, CalendarIcon } from './icons';
 
 interface DueItem {
-  date: string; // YYYY-MM-DD
-  amount: number; // TL
+  date: string;
+  amount: number;
   invoiceNo: string;
 }
 
@@ -23,15 +19,13 @@ const tl0 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
 const formatFull = (v: number) => `${tl2.format(v)} TL`;
 const formatShort = (v: number) => `${tl0.format(v)} ₺`;
 
-/** Local date parts → YYYY-MM-DD (no timezone shift). */
 function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** 6-week (Monday-first) day grid for a month. */
 function buildWeeks(year: number, month: number): Date[][] {
   const first = new Date(year, month, 1);
-  const startOffset = (first.getDay() + 6) % 7; // Monday = 0
+  const startOffset = (first.getDay() + 6) % 7;
   const weeks: Date[][] = [];
   const cursor = new Date(year, month, 1 - startOffset);
   for (let w = 0; w < 6; w++) {
@@ -73,7 +67,6 @@ export function DueCalendar() {
       .catch(() => setError(true));
   }, []);
 
-  // date → { total, entries }
   const dayMap = useMemo(() => {
     const map = new Map<string, { total: number; entries: DueItem[] }>();
     (items || []).forEach((it) => {
@@ -121,7 +114,6 @@ export function DueCalendar() {
       <h2 className="due-heading">Gelecek Vadeler</h2>
 
       <div className="due-card">
-        {/* Left: calendar */}
         <div className="due-cal">
           <div className="due-cal-head">
             <div>
@@ -190,7 +182,6 @@ export function DueCalendar() {
           </table>
         </div>
 
-        {/* Right: selected day detail */}
         <aside className="due-detail">
           <div className="due-detail-head">
             <span className="due-detail-title">

@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useEffect, useState } from 'react'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -11,19 +9,14 @@ import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { PeriodSelection, ReportsData } from './types'
 
-// Util Imports
 import { formatDateLong, formatNumber, formatPercent, formatTRY, toNumber } from './format'
 
-// Component Imports
 import PeriodSelector, { PERIOD_LABELS } from './PeriodSelector'
 import KpiCard from './KpiCard'
 import TimeBarChart from './TimeBarChart'
@@ -50,7 +43,6 @@ const ReportsView = () => {
     const [data, setData] = useState<ReportsData | null>(null)
     const [loading, setLoading] = useState(true)
 
-    // Sadece mount'ta ve dönem değişince çekilir (site değişince sayfa zaten yenileniyor)
     useEffect(() => {
         let cancelled = false
 
@@ -111,7 +103,6 @@ const ReportsView = () => {
                 </Grid>
             ) : (
                 <>
-                    {/* KPI satırı 1 */}
                     <Grid size={{ xs: 12 }}>
                         <Grid container spacing={6}>
                             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
@@ -159,7 +150,6 @@ const ReportsView = () => {
                         </Grid>
                     </Grid>
 
-                    {/* KPI satırı 2 */}
                     <Grid size={{ xs: 12 }}>
                         <Grid container spacing={6}>
                             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -199,7 +189,6 @@ const ReportsView = () => {
                         </Grid>
                     </Grid>
 
-                    {/* Zamana göre tahsilat + satış dökümü */}
                     <Grid size={{ xs: 12 }}>
                         <Card>
                             <Grid container>
@@ -229,7 +218,6 @@ const ReportsView = () => {
                         </Card>
                     </Grid>
 
-                    {/* Zamana göre oturumlar + dönüşüm dökümü */}
                     <Grid size={{ xs: 12 }}>
                         <Card>
                             <Grid container>
@@ -260,12 +248,10 @@ const ReportsView = () => {
                         </Card>
                     </Grid>
 
-                    {/* Günün saatine göre yoğunluk */}
                     <Grid size={{ xs: 12 }}>
                         <HourDensityChart density={data.hourDensity} />
                     </Grid>
 
-                    {/* Oturum dökümleri */}
                     <Grid size={{ xs: 12, md: 6, lg: 3 }}>
                         <BreakdownList title='Cihaz Türüne Göre Oturumlar' items={data.byDevice} />
                     </Grid>
@@ -283,12 +269,10 @@ const ReportsView = () => {
                         <BreakdownList title='Açılış Sayfasına Göre Oturumlar' items={data.byLandingPage} />
                     </Grid>
 
-                    {/* Aylık trend */}
                     <Grid size={{ xs: 12 }}>
                         <MonthlyTrendCard trend={data.monthlyTrend} />
                     </Grid>
 
-                    {/* En çok satılan ürünler */}
                     <Grid size={{ xs: 12 }}>
                         <TopProductsTable products={data.topProducts} />
                     </Grid>

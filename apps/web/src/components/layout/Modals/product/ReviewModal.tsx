@@ -72,7 +72,6 @@ export default function ReviewModal() {
         return generalRating;
     };
 
-    // Event listener
     useEffect(() => {
         const handleOpen = (e: CustomEvent<ReviewModalData>) => {
             if (!isLoggedIn || !user) {
@@ -90,7 +89,6 @@ export default function ReviewModal() {
         };
     }, [isLoggedIn, user]);
 
-    // Garajdan kilometre cek
     const fetchGarageMileage = async () => {
         try {
             const res = await fetch(API_ENDPOINTS.user.vehicles(), {
@@ -108,7 +106,6 @@ export default function ReviewModal() {
         } catch (error) { }
     };
 
-    // Modal kapat ve sifirla
     const handleClose = () => {
         setOpen(false);
         setModalData(null);
@@ -181,7 +178,6 @@ export default function ReviewModal() {
                 })
             });
 
-
             const data = await res.json();
             if (data.success) {
                 toast.success('Yorumunuz başarıyla gonderildi. Onaylandıktan sonra yayınlanacaktır.');
@@ -199,13 +195,11 @@ export default function ReviewModal() {
     return (
         <Modal open={open} onClose={handleClose}>
             <Box className="position-absolute top-50 start-50 translate-middle bg-white rounded-3 shadow-lg p-4" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-                {/* Header */}
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h5 className="mb-0">Ürün Değerlendirme</h5>
                     <button type="button" className="btn-close" onClick={handleClose}></button>
                 </div>
 
-                {/* Puanlama Alanlari */}
                 {isLastik ? (
                     <div className="mb-3">
                         <label className="form-label fw-semibold">Değerlendirmeler</label>
@@ -264,7 +258,6 @@ export default function ReviewModal() {
                 )}
                 <hr />
 
-                {/* Yorum */}
                 <div className="mb-3">
                     <label className="form-label fw-semibold">Yorumunuz <span className="text-danger">*</span></label>
                     <textarea
@@ -277,7 +270,6 @@ export default function ReviewModal() {
                     <small className="d-flex justify-content-end fs-xs mt-1 text-muted">{comment.length}/500</small>
                 </div>
 
-                {/* Butonlar */}
                 <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary flex-grow-1" onClick={handleClose}>
                         İptal

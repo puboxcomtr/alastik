@@ -1,17 +1,13 @@
-// React Imports
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// MUI Imports
 import Radio from '@mui/material/Radio'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 
-// Component Imports
 import DirectionalIcon from '@components/DirectionalIcon'
 
-// Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
 type Props = {
@@ -22,7 +18,6 @@ type Props = {
 }
 
 const Details = ({ activeStep, isLastStep, handleNext, handlePrev }: Props) => {
-  // States
   const [value, setValue] = useState<string>('crm')
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {

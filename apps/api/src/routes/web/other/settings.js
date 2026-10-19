@@ -1,4 +1,3 @@
-// apps/api/src/routes/web/other/settings.js
 const express = require('express');
 const router = express.Router();
 const Setting = require('../../../models/admin/settings/Setting');
@@ -29,7 +28,6 @@ router.get('/:key', async (req, res) => {
     }
 });
 
-// GET /api/settings/group/:group - Grup bazlı ayarlar
 router.get('/group/:group', async (req, res) => {
     try {
         const { group } = req.params;
@@ -43,7 +41,6 @@ router.get('/group/:group', async (req, res) => {
             });
         }
 
-        // Key-value formatına dönüştür
         const settingsObj = {};
         settings.forEach(setting => {
             settingsObj[setting.key] = setting.value;
@@ -62,12 +59,10 @@ router.get('/group/:group', async (req, res) => {
     }
 });
 
-// GET /api/settings
 router.get('/', async (req, res) => {
     try {
         const settings = await Setting.find({ site: req.site }).lean();
 
-        // Gruplara göre organize et
         const groupedSettings = {};
         settings.forEach(setting => {
             if (!groupedSettings[setting.group]) {

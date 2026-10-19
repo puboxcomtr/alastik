@@ -1,7 +1,4 @@
 'use client';
-// Sayfa oluşturulurken beklenmeyen hata (ör. API geçici olarak yanıt vermedi).
-// HTTP 500 döner: Google bunu geçici sayar ve sayfayı dizinden düşürmeden tekrar dener
-// (eskiden bu durumda 404 dönüyor, ürünler "yok" sanılıyordu).
 import { useEffect } from 'react';
 import Link from 'next/link';
 

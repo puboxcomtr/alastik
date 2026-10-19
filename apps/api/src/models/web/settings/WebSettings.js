@@ -19,10 +19,8 @@ const webSettingsSchema = new mongoose.Schema({
     emailInfo: {
         email: { type: String, default: '' },
         orderEmail: { type: String, default: '' },
-        // "Biz Sizi Arayalım" formu taleplerinin gideceği adres (boşsa genel e-mail)
         callbackEmail: { type: String, default: '' }
     },
-    // Servis noktaları — hizmet ürünlerinin kartlarında iletişim bilgisi olarak gösterilir
     serviceInfo: {
         points: [{
             _id: false,

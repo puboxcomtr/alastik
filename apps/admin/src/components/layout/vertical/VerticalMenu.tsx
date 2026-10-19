@@ -1,40 +1,25 @@
-// React Imports
 import { useEffect, useState } from 'react'
 
-// Next Imports
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Chip from '@mui/material/Chip'
 import { useTheme } from '@mui/material/styles'
 
-// Third-party Imports
 import PerfectScrollbar from 'react-perfect-scrollbar'
 
-// Type Imports
 import type { getDictionary } from '@/utils/getDictionary'
 import type { VerticalMenuContextProps } from '@menu/components/vertical-menu/Menu'
 
-// Component Imports
 import { Menu, SubMenu, MenuItem, MenuSection } from '@menu/vertical-menu'
 
-// import { GenerateVerticalMenu } from '@components/GenerateMenu'
-
-// Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
 
-// Styled Component Imports
 import StyledVerticalNavExpandIcon from '@menu/styles/vertical/StyledVerticalNavExpandIcon'
 
-// Style Imports
 import menuItemStyles from '@core/styles/vertical/menuItemStyles'
 import menuSectionStyles from '@core/styles/vertical/menuSectionStyles'
 
-// Site Imports
 import { siteHasMontage, siteHasCampaigns, siteHasAnalytics, siteHasSeo, siteHasFinancialDiscounts, getMemberMenuLabels } from '@/utils/activeSite'
-
-// Menu Data Imports
-// import menuData from '@/data/navigation/verticalMenuData'
 
 type RenderExpandIconProps = {
   open?: boolean
@@ -53,16 +38,13 @@ const RenderExpandIcon = ({ open, transitionDuration }: RenderExpandIconProps) =
 )
 
 const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
-  // Hooks
   const theme = useTheme()
   const verticalNavOptions = useVerticalNav()
   const params = useParams()
 
-  // Vars
   const { isBreakpointReached, transitionDuration } = verticalNavOptions
   const { lang: locale } = params
 
-  // Aktif siteye göre menü görünürlüğü/etiketleri (localStorage yalnız client'ta okunur)
   const [showMontage, setShowMontage] = useState(true)
   const [showCampaigns, setShowCampaigns] = useState(true)
   const [showFinancialDiscounts, setShowFinancialDiscounts] = useState(false)
@@ -83,7 +65,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
 
   return (
     // eslint-disable-next-line lines-around-comment
-    /* Custom scrollbar instead of browser scroll, remove if you want browser scroll only */
     <ScrollWrapper
       {...(isBreakpointReached
         ? {
@@ -95,8 +76,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           onScrollY: container => scrollMenu(container, true)
         })}
     >
-      {/* Incase you also want to scroll NavHeader to scroll with Vertical Menu, remove NavHeader from above and paste it below this comment */}
-      {/* Vertical Menu */}
       <Menu
         popoutMenuOffset={{ mainAxis: 10 }}
         menuItemStyles={menuItemStyles(verticalNavOptions, theme)}
@@ -147,7 +126,6 @@ const VerticalMenu = ({ dictionary, scrollMenu }: Props) => {
           {showMontage && (
             <MenuItem icon={<i className='ri-map-pin-2-line' />} href={`/${locale}/apps/montage/list`}>Montaj Noktaları</MenuItem>
           )}
-          {/* Bayi (montaj noktası) bilgi ve fiyat formu cevapları */}
           <MenuItem icon={<i className='ri-file-list-3-line' />} href={`/${locale}/apps/montage/dealer-forms`}>Bayi Formları</MenuItem>
 
           <MenuSection label={dictionary['navigation'].seperator}></MenuSection>

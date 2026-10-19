@@ -1,13 +1,9 @@
-// React Imports
 import type { ChangeEvent, ReactNode } from 'react'
 
-// MUI Imports
 import type { Grid2Props } from '@mui/material/Grid2'
 
-// Type Imports
 import type { ThemeColor } from '@core/types'
 
-// Types of Horizontal Custom Inputs
 export type CustomInputHorizontalData = {
   value: string
   content?: ReactNode
@@ -44,7 +40,6 @@ export type CustomInputHorizontalProps = {
     }
 )
 
-// Types of Vertical Custom Inputs
 export type CustomInputVerticalData = {
   value: string
   title?: ReactNode
@@ -70,7 +65,6 @@ export type CustomInputVerticalProps = {
     }
 )
 
-// Types of Custom Inputs with Images
 export type CustomInputImgData = {
   alt?: string
   value: string

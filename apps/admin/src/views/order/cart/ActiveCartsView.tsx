@@ -1,9 +1,5 @@
 'use client'
 
-// Aktif Sepetler — vitrinde sepetine ürün eklemiş, henüz sipariş vermemiş ziyaretçiler (site bazlı).
-// Düzen Siparişler listesiyle (OrderListTable) aynıdır: başlık, Filtreler + arama çubuğu,
-// "Toplam N … bulundu" satırı, iki satırlı hücreler, aynı sayfalama.
-// Üye girişi yapılmış sepette müşteri bilgisi, yapılmamışsa "Ziyaretçi" gösterilir.
 import { Fragment, Suspense, useCallback, useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
 
@@ -40,13 +36,10 @@ import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 import { formatDateTime, formatTRY, timeAgo } from '@views/members/types'
 import { getSiteUrl, siteHasCartFollowUp } from '@/utils/activeSite'
 
-/** Ürünün vitrindeki sayfası (aktif sitenin adresi + /urun/<slug>); slug yoksa boş */
 const productUrl = (item?: { productSlug?: string } | null) => (item?.productSlug ? `${getSiteUrl()}/urun/${item.productSlug}` : '')
 
-// Dört haneli üretim yılı (jant vb. ürünlerde bu alan yıl olmayabilir)
 const YEAR_PATTERN = /^\d{4}$/
 
-/** Ürünün kısa künyesi: stok kodu · üretim yılı · stok · kaynak (yalnız dolu olanlar) */
 const productFacts = (item: { stockCode?: string; productionYear?: string; stock?: number | null; isXml?: boolean }) =>
     [
         item.stockCode ? `Stok Kodu: ${item.stockCode}` : '',
@@ -55,7 +48,6 @@ const productFacts = (item: { stockCode?: string; productionYear?: string; stock
         item.isXml ? 'XML' : ''
     ].filter(Boolean)
 
-/** Kapalı satır için kısa künye (etiketsiz): "126420-25 · 2025 · Stok: 1" — dar sütuna sığsın diye */
 const productFactsShort = (item: { stockCode?: string; productionYear?: string; stock?: number | null; isXml?: boolean }) =>
     [
         item.stockCode || '',
@@ -66,9 +58,7 @@ const productFactsShort = (item: { stockCode?: string; productionYear?: string; 
 
 type CartItem = {
     productKey: string
-    // Vitrindeki ürün sayfasının adresi için (customData.seoUrl)
     productSlug?: string
-    // Ürün kartından gelen bilgiler
     stockCode: string
     productionYear: string
     stock: number | null
@@ -86,7 +76,6 @@ type CartItem = {
 
 type CartRow = {
     _id: string
-    // Takip durumu: pending = Beklemede, contacted = İletişime Geçildi
     followUpStatus: CartStatus
     followUpAt: string | null
     followUpBy: string
@@ -105,8 +94,6 @@ const ROWS_PER_PAGE_OPTIONS = [10, 20, 50, 100]
 const DEFAULT_ROWS_PER_PAGE = 20
 const HOUR_MS = 60 * 60 * 1000
 
-// Sepet türü filtresi. Varsayılan: yalnız üye sepetleri; ziyaretçiler filtreden açılır.
-// Takip durumları (sekme + satırdaki seçim)
 type CartStatus = 'pending' | 'contacted'
 
 const CART_STATUSES: { value: CartStatus; label: string }[] = [
@@ -114,7 +101,6 @@ const CART_STATUSES: { value: CartStatus; label: string }[] = [
     { value: 'contacted', label: 'İletişime Geçildi' }
 ]
 
-// Sekmeler: tümü + durumlar
 const ALL_STATUSES = 'all'
 
 type StatusTab = typeof ALL_STATUSES | CartStatus
@@ -126,7 +112,6 @@ const CART_TYPES = [
 ]
 const DEFAULT_CART_TYPE = 'member'
 
-// Sepetin silinmesine kalan süre: "1 gün 4 saat", "3 saat", "1 saatten az"
 const remainingText = (iso: string | null) => {
     if (!iso) return '—'
     const left = new Date(iso).getTime() - Date.now()
@@ -146,7 +131,6 @@ const ActiveCartsList = () => {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // Sayfa adreste tutulur (?page=2)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
 
     const [rows, setRows] = useState<CartRow[]>([])
@@ -155,15 +139,11 @@ const ActiveCartsList = () => {
     const [limit, setLimit] = useState(DEFAULT_ROWS_PER_PAGE)
     const [openRow, setOpenRow] = useState<string | null>(null)
 
-    // Filtre çubuğu: taslak değerler Enter / Filtrele ile uygulanır (Siparişler listesiyle aynı davranış)
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [searchInput, setSearchInput] = useState('')
     const [typeInput, setTypeInput] = useState(DEFAULT_CART_TYPE)
     const [active, setActive] = useState({ search: '', type: DEFAULT_CART_TYPE })
-    // Durum sekmesi + sekme sayaçları
     const [statusTab, setStatusTab] = useState<StatusTab>(ALL_STATUSES)
-    // Takip durumu (sekmeler + Durum sütunu) yalnız bu özelliği olan sitede gösterilir (bayi sitesinde yok).
-    // Seçili site tarayıcıdan okunana kadar (null) gösterilmez — bayi sitesinde sekmeler bir an bile çıkmaz.
     const [followUpSetting, setFollowUpSetting] = useState<boolean | null>(null)
     useEffect(() => { setFollowUpSetting(siteHasCartFollowUp()) }, [])
     const followUpEnabled = followUpSetting === true
@@ -236,7 +216,6 @@ const ActiveCartsList = () => {
         if (page !== 1) setPage(1)
     }
 
-    // Satırdaki durum seçimi: sunucuya yazar, listeyi ve sekme sayaçlarını tazeler
     const changeCartStatus = async (row: CartRow, status: CartStatus) => {
         if (status === row.followUpStatus) return
 
@@ -459,7 +438,6 @@ const ActiveCartsList = () => {
                                             </td>
                                             {followUpEnabled ? (
                                             <td>
-                                                {/* Durum: seçim satırı açıp kapatmasın diye tıklama yukarı taşınmaz */}
                                                 <div className='flex flex-col items-start' onClick={e => e.stopPropagation()}>
                                                     <TextField
                                                         select
@@ -573,7 +551,6 @@ const ActiveCartsList = () => {
     )
 }
 
-// useSearchParams kullanan liste Suspense içinde olmalıdır
 const ActiveCartsView = () => (
     <Suspense>
         <ActiveCartsList />

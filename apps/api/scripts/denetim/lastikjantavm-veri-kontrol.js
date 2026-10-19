@@ -1,14 +1,3 @@
-/**
- * LastikJantAVM haftalık denetim — veri kontrolleri.
- * Satıştaki (aktif, stoklu, gizlenmemiş) lastikjantavm ürünlerinde, Stok (DIA) ve XML ayrımıyla:
- *   1. Görselsiz  2. Açıklamasız  3. Fiyatsız  4. Kargo dahil fiyatı eksik XML ürünler
- * Çıktı: stdout'a markdown bölümleri (haftalık rapora eklenir).
- *
- * LJA farkı: fiyat ve kargo alanları site bazlıdır —
- *   Stok (DIA) satış fiyatı fiyat1 tabanlıdır (fiyat1 × B2C oran),
- *   XML vitrin fiyatı customData.siteData.lastikjantavm.xmlPrice,
- *   kargo dahil fiyat customData.siteData.lastikjantavm.shippingIncludedPrice.
- */
 require('/var/www/alastik/node_modules/dotenv').config({ path: '/var/www/alastik/apps/api/.env.production' });
 const mongoose = require('/var/www/alastik/apps/api/node_modules/mongoose');
 
@@ -16,7 +5,6 @@ const SITE = 'lastikjantavm';
 const ORNEK_LIMIT = 20;
 const siteAlan = (alan) => `customData.siteData.${SITE}.${alan}`;
 
-// Satışta sayılma koşulu: aktif kart, stoklu, site listesinde ve gizlenmemiş
 const satistaFiltre = {
     sites: SITE,
     'diaData.durum': 'A',
@@ -25,7 +13,6 @@ const satistaFiltre = {
     [`customData.siteData.${SITE}.webVisible`]: { $ne: false }
 };
 
-// Ürün grupları: kendi stok (DIA) ve XML kaynaklı
 const GRUPLAR = [
     ['Stok (DIA)', { 'syncInfo.syncSource': { $ne: 'xml_integration' } }],
     ['XML', { 'syncInfo.syncSource': 'xml_integration' }]
@@ -35,10 +22,6 @@ function tabloSatirlari(docs) {
     return docs.map(d => `| ${d.diaData?.stokkartkodu || d._key} | ${(d.diaData?.aciklama || '').slice(0, 70)} |`);
 }
 
-/**
- * Gruplu bölüm üretir. ekFiltre tüm gruplara uygulanır;
- * grupEkFiltre verilirse grup adına göre o gruba özel ek filtre uygulanır (fiyat alanı gruba göre değişir).
- */
 async function grupluBolum(col, projection, baslik, ekFiltre, grupEkFiltre = {}) {
     const parcalar = [`## ${baslik}`, ''];
     for (const [grupAdi, grupFiltre] of GRUPLAR) {
@@ -60,7 +43,6 @@ async function grupluBolum(col, projection, baslik, ekFiltre, grupEkFiltre = {})
     const col = mongoose.connection.db.collection('webproducts');
     const projection = { _key: 1, 'diaData.stokkartkodu': 1, 'diaData.aciklama': 1 };
 
-    // 1. Görselsiz: özel görsel yok + öne çıkan görsel yok + DIA görseli yok
     console.log(await grupluBolum(col, projection, '1. Görselsiz ürünler', {
         $and: [
             { $or: [{ 'customData.customImages': { $exists: false } }, { 'customData.customImages': { $size: 0 } }] },
@@ -69,7 +51,6 @@ async function grupluBolum(col, projection, baslik, ekFiltre, grupEkFiltre = {})
         ]
     }));
 
-    // 2. Açıklamasız: ne genel açıklama ne LJA site açıklaması var
     console.log(await grupluBolum(col, projection, '2. Açıklamasız ürünler', {
         $and: [
             { $or: [{ 'customData.customDescription': { $exists: false } }, { 'customData.customDescription': { $in: [null, ''] } }] },
@@ -77,16 +58,11 @@ async function grupluBolum(col, projection, baslik, ekFiltre, grupEkFiltre = {})
         ]
     }));
 
-    // 3. Fiyatsız — LJA'da fiyat kaynağı gruba göre değişir:
-    //    Stok (DIA): satış = fiyat1 × B2C oran → fiyat1 > 0 değilse fiyatsız.
-    //    XML: vitrin fiyatı siteData.lastikjantavm.xmlPrice > 0 değilse fiyatsız.
-    // Dizi yolunda $in:[null] tuzağına düşmemek için $not/$gt kullanılır.
     console.log(await grupluBolum(col, projection, '3. Fiyatı olmayan ürünler', {}, {
         'Stok (DIA)': { 'diaData.m_birimler.0.fiyat1': { $not: { $gt: 0 } } },
         'XML': { [siteAlan('xmlPrice')]: { $not: { $gt: 0 } } }
     }));
 
-    // 4. XML üründe kargo dahil fiyat eksik (kargo fiyata gömülü olduğundan müşteri fiyatı eksik kalır)
     const kargoFiltre = {
         ...satistaFiltre,
         'syncInfo.syncSource': 'xml_integration',
@@ -102,24 +78,19 @@ async function grupluBolum(col, projection, baslik, ekFiltre, grupEkFiltre = {})
             : ['Bulgu yok.', ''])
     ].join('\n'));
 
-    // 5. XML eşleştirme istatistikleri (kaynak başına):
-    //    "gerçek karta eşleşen" = diaKey gerçek DIA stok kartına bağlı;
-    //    "otomatik -XML kart"  = diaKey ozelkod10kodu='XML' olan otomatik açılmış karta bağlı;
-    //    "eşleşmeyen"          = diaKey yok.
     const dbNative = mongoose.connection.db;
     const aktifKaynaklar = await dbNative.collection('webxml')
         .find({ site: SITE, isActive: true }, { projection: { code: 1, name: 1 } }).toArray();
     const kaynakKodlari = aktifKaynaklar.map(k => k.code);
     const kaynakAdi = Object.fromEntries(aktifKaynaklar.map(k => [k.code, k.name || k.code]));
 
-    // Otomatik -XML kartların key kümesi (diastocks)
     const xmlKartKeys = new Set(
         (await dbNative.collection('diastocks')
             .find({ ozelkod10kodu: 'XML' }, { projection: { _key: 1 } }).toArray()
         ).map(d => String(d._key))
     );
 
-    const sayilar = {}; // source -> { toplam, gercek, otoXml, eslesmeyen }
+    const sayilar = {};
     const cursor = dbNative.collection('xmlproducts')
         .find({ source: { $in: kaynakKodlari } }, { projection: { source: 1, diaKey: 1 } });
     for await (const xp of cursor) {

@@ -1,7 +1,5 @@
-// Type Imports
 import type { Skin } from '@core/types'
 
-// Override Imports
 import Accordion from './accordion'
 import Alerts from './alerts'
 import Autocomplete from './autocomplete'

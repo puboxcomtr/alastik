@@ -2,32 +2,27 @@ const mongoose = require('mongoose');
 const { SITE_SLUGS } = require('../../../config/sites');
 
 const descriptionTemplateSchema = new mongoose.Schema({
-    // Şablon adı (örn. "Pirelli Scorpion Verde Açıklaması")
     name: {
         type: String,
         required: true,
         trim: true
     },
 
-    // Şablon içeriği (HTML formatında)
     content: {
         type: String,
         default: ''
     },
 
-    // Atanmış modeller (ozelkod5kodu değerleri, örn. ["Agilis 3", "P Zero"])
     models: {
         type: [String],
         default: []
     },
 
-    // Aktif/Pasif
     isActive: {
         type: Boolean,
         default: true
     },
 
-    // Son uygulanma bilgileri
     lastAppliedAt: {
         type: Date,
         default: null

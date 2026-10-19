@@ -1,7 +1,3 @@
-/**
- * Netahsilat Ödeme Route'ları
- * /api/web/payments/netahsilat
- */
 
 const express = require('express');
 const router = express.Router();
@@ -11,12 +7,9 @@ const { clearOrderCart } = require('../../../utils/orderCart');
 const { sendTemplateMail } = require('../../../services/plugins/mail/mailOrchestrator');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alastik.com';
-// Bankadan dönüşte müşteri SİPARİŞİN sitesine gönderilir (LJA siparişi alastik.com'a düşmesin).
-// Sipariş bulunamazsa (site bilinmiyorsa) varsayılan vitrin adresi kullanılır.
 const { getSiteUrl } = require('../../../config/sites');
 const frontendUrlFor = (site) => getSiteUrl(site) || FRONTEND_URL;
 
-// BIN ile kart bilgisi ve taksit seçenekleri
 router.get('/bin/:bin', async (req, res) => {
     try {
         const { bin } = req.params;
@@ -33,7 +26,6 @@ router.get('/bin/:bin', async (req, res) => {
     }
 });
 
-// 3D Secure başlat
 router.post('/3d-init', async (req, res) => {
     try {
         const {
@@ -70,7 +62,6 @@ router.post('/3d-init', async (req, res) => {
 
         console.log('Sipariş bulundu:', order.orderNumber, 'Tutar:', order.pricing.total);
 
-        // ProcessPayment ile 3D başlat
         const result = await NetahsilatService.processPayment({
             orderNumber: order.orderNumber,
             customerName: (order.customerName || order.billingSnapshot?.fullName || order.shippingSnapshot?.fullName || order.guestShippingAddress?.fullName || '').trim(),
@@ -90,7 +81,6 @@ router.post('/3d-init', async (req, res) => {
         console.log('ProcessPayment Result:', result);
 
         if (result.success && result.threeDUrl) {
-            // Sipariş durumunu güncelle
             order.payment = order.payment || {};
             order.payment.method = 'credit_card_3d';
             order.payment.gateway = 'netahsilat';
@@ -114,22 +104,17 @@ router.post('/3d-init', async (req, res) => {
     }
 });
 
-
-// 3D Callback - Bankadan dönüş (POST)
 router.post('/3d-callback', async (req, res) => {
     let siteUrl = FRONTEND_URL;
     try {
         console.log('3D Callback Body:', req.body);
 
-        // Netahsilat parametreleri (küçük/büyük harf karışık)
         const paymentGuid = req.body.PaymentGuid || req.body.paymentguid;
         const status = req.body.status || req.body.Status;
         const orderReference = req.body.orderreference || req.body.OrderReference;
         const errorMessage = req.body.errormessage || req.body.BankMessage || '';
         const errorCode = req.body.errorcode || req.body.BankErrorCode || '';
 
-        // Aynı 3D dönüşü tekrar gelirse (tarayıcıda geri / yenile ile form yeniden gönderilir) ödeme zaten alınmıştır:
-        // CommitPayment ikinci kez başarısız döner ve ödenmiş sipariş yanlışlıkla "başarısız" olurdu — durum değiştirilmez
         if (orderReference) {
             const alreadyPaid = await WebOrder.findOne({ 'payment.referenceCode': orderReference, 'payment.status': 'paid' })
                 .select('site orderNumber').lean();
@@ -139,13 +124,11 @@ router.post('/3d-callback', async (req, res) => {
             }
         }
 
-        // İşlem başarılıysa CommitPayment yap
         if (status === 'SUCCESS' && paymentGuid) {
             const commitResult = await NetahsilatService.commitPayment(paymentGuid, req.site);
             console.log('CommitPayment Result:', commitResult);
 
             if (commitResult.success) {
-                // Siparişi bul ve güncelle
                 const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
                 if (order) {
                     siteUrl = frontendUrlFor(order.site);
@@ -158,11 +141,9 @@ router.post('/3d-callback', async (req, res) => {
                     await order.save();
                     await clearOrderCart(order, 'netahsilat-success');
 
-                    // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
                     const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
                     syncOrderToDiaBackground(order, 'netahsilat-3d');
 
-                    // Ödeme başarılı → mail tetikle (fire-and-forget)
                     if (order.payment.status === 'paid' && !order.payment.mailSent) {
                         order.payment.mailSent = true;
                         await order.save();
@@ -196,7 +177,6 @@ router.post('/3d-callback', async (req, res) => {
             }
         }
 
-        // Başarısız işlem
         const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
         if (order) {
             siteUrl = frontendUrlFor(order.site);
@@ -215,7 +195,6 @@ router.post('/3d-callback', async (req, res) => {
     }
 });
 
-// 3D Commit - Frontend'den çağrılacak (JSON response)
 router.post('/3d-commit', async (req, res) => {
     try {
         const { paymentGuid, orderReference } = req.body;
@@ -224,11 +203,9 @@ router.post('/3d-commit', async (req, res) => {
             return res.status(400).json({ success: false, message: 'PaymentGuid gerekli' });
         }
 
-        // CommitPayment çağır
         const commitResult = await NetahsilatService.commitPayment(paymentGuid, req.site);
 
         if (commitResult.success) {
-            // Siparişi bul ve güncelle
             const order = await WebOrder.findOne({
                 $or: [
                     { 'payment.referenceCode': orderReference },
@@ -244,14 +221,11 @@ router.post('/3d-commit', async (req, res) => {
                 order.payment.authCode = commitResult.authCode;
                 order.payment.paymentGuid = paymentGuid;
                 await order.save();
-                // Bu uçtaki sipariş araması geniştir; yalnız referans birebir eşleşiyorsa sepet silinir
                 if (orderReference && order.payment.referenceCode === orderReference) await clearOrderCart(order, 'netahsilat-commit-success');
 
-                // Kredi kartı ödemesi onaylandı → DIA'ya otomatik aktar (arka planda)
                 const { syncOrderToDiaBackground } = require('../../../services/plugins/dia/DiaOrderService');
                 syncOrderToDiaBackground(order, 'netahsilat-callback');
 
-                // Ödeme başarılı → mail tetikle (fire-and-forget)
                 if (order.payment.status === 'paid' && !order.payment.mailSent) {
                     order.payment.mailSent = true;
                     await order.save();
@@ -291,7 +265,6 @@ router.post('/3d-commit', async (req, res) => {
             });
         }
 
-        // Başarısız
         const order = await WebOrder.findOne({ 'payment.referenceCode': orderReference });
         if (order) {
             order.payment.status = 'failed';
@@ -312,7 +285,6 @@ router.post('/3d-commit', async (req, res) => {
     }
 });
 
-// İşlem sorgula
 router.get('/transaction/:orderNumber', async (req, res) => {
     try {
         const { orderNumber } = req.params;
@@ -323,6 +295,5 @@ router.get('/transaction/:orderNumber', async (req, res) => {
         return res.status(500).json({ success: false, message: 'Sunucu hatası' });
     }
 });
-
 
 module.exports = router;

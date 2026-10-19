@@ -1,10 +1,8 @@
 'use client'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
@@ -18,7 +16,6 @@ const TABS = [
 
 export type SeoTabKey = (typeof TABS)[number]['key']
 
-// SEO modülünün dört sekmesi; her sekme ayrı sayfadır, çubuk hepsinde aynıdır
 const SeoTabs = ({ active }: { active: SeoTabKey }) => {
     const { lang: locale } = useParams()
     const pathname = usePathname()

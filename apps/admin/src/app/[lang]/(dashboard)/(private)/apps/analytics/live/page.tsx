@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Page */
 import LiveView from '@/views/analytics/live/LiveView'
 
 const AnalyticsLivePage = () => {

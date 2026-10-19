@@ -3,13 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 
-/* Components */
 import PageForm from '@/views/pages/edit/[id]/PageForm'
 
-/* API */
 import { getPageById, type PageType } from '@/utils/api/pages' 
 
-/* MUI */
 import CircularProgress from '@mui/material/CircularProgress'
 import Box from '@mui/material/Box'
 import Alert from '@mui/material/Alert'

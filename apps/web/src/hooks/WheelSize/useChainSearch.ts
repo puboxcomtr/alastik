@@ -11,7 +11,6 @@ export function useChainSearch() {
     const [selectedYukseklik, setSelectedYukseklik] = useState('');
     const [selectedCap, setSelectedCap] = useState('');
 
-
     useEffect(() => {
         const fetchWidths = async () => {
             setLoading(true);
@@ -94,7 +93,6 @@ export function useChainSearch() {
             params.set('yanak', selectedYukseklik);
             params.set('jant', selectedCap);
 
-            // kar-zinciri üst kategoridir (kar paleti + kar çorabı alt kategorileri); eski adres 404 veriyordu
             const url = `/kategori/kar-zinciri?${params.toString()}`;
             window.location.href = url;
         },

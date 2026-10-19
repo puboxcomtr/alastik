@@ -7,16 +7,13 @@ import { showToast } from "./toast";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 import { AnimatedMoney } from "@components/b2b-theme/animated-money";
 import { ArrowRightIcon, CartIcon, CloseIcon, TrashIcon } from "./icons";
-import { fetchCartFinancialDiscounts, financialDiscountPct, productShippingKurus, BASE_PAYMENT_METHOD, type FinancialDiscounts } from "./lib/financial-discounts";
+import { fetchCartFinancialDiscounts, financialDiscountPct, productShippingKurus, catalogShipping, BASE_PAYMENT_METHOD, type FinancialDiscounts } from "./lib/financial-discounts";
 
-/** Üst bardan açılan sepet paneli. */
 export function CartPanel() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const sepet = useCart();
 
-  // Finansal iskontolar (panel): sepet paneli taban ödeme yöntemine (Cari Sipariş) göre iskontolu fiyatı gösterir —
-  // ürün listesindeki fiyatla aynı. Ödeme yöntemi sepet sayfasında değiştirilince tutar orada yeniden hesaplanır.
   const [financial, setFinancial] = useState<FinancialDiscounts>({ tier: "", discounts: {} });
   const cartCodes = sepet.lines.map((l) => l.urun.stockCode).filter(Boolean).sort().join(",");
   useEffect(() => {
@@ -30,8 +27,7 @@ export function CartPanel() {
   }, [cartCodes]);
   const linePct = (line: (typeof sepet.lines)[number]) =>
     line.urun.xml ? 0 : financialDiscountPct(financial.discounts, line.urun.stockCode, BASE_PAYMENT_METHOD) ?? 0;
-  // Birim fiyat: iskontolu ürün + kargo payı (iskontosuz; fiyata dahil değilse de toplamda yer alır)
-  const lineShip = (line: (typeof sepet.lines)[number]) => productShippingKurus(financial.shipping, line.urun.stockCode);
+  const lineShip = (line: (typeof sepet.lines)[number]) => productShippingKurus(catalogShipping(financial), line.urun.stockCode);
   const lineUnitKurus = (line: (typeof sepet.lines)[number]) =>
     Math.round(line.kdvDahilBirimKurus * (1 - linePct(line) / 100)) + (lineShip(line).excluded ? 0 : lineShip(line).kurus);
   const lineTotalKurus = (line: (typeof sepet.lines)[number]) =>

@@ -1,15 +1,12 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 
-// Styles Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Type Imports
 import type { LiveRecentSale } from './types'
 import { formatTRY } from './types'
 
@@ -21,7 +18,6 @@ const formatSaleDate = (value: string) => {
     return date.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-// Son satışlar listesi (sipariş no, tarih, tutar). Sipariş detay rotası id ile çalıştığından bağlantı verilmez.
 const RecentSalesCard = ({ sales }: { sales?: LiveRecentSale[] | null }) => {
     const rows = Array.isArray(sales) ? sales.filter(sale => sale && sale.orderNumber) : []
 

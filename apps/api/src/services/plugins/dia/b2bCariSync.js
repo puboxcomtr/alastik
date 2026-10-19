@@ -1,27 +1,16 @@
-/**
- * b2b cari bilgilerini DIA'dan Mongo'ya senkronlar (bakiye, borç/alacak, risk
- * limiti, segment/ozelkod2). Worker'da periyodik çalışır (diaLock içinde).
- *
- * Uçlar (/cari-ozet, /fiyat-orani, /odeme-yontemleri, sipariş segmenti) canlı
- * DIA yerine WebMember.diaCari'den okur — DIA tek-oturum çakışması ve gecikmesi
- * kullanıcıya yansımaz. 2135 bayi tek tek değil, ~100'lük chunk'larla toplu çekilir.
- */
 const { DiaOrderService } = require('./DiaOrderService');
 const WebMember = require('../../../models/web/user/WebMember');
 const { getPremiumRule, resolvePremium } = require('./b2bPremium');
+const { reapplyBalance } = require('./b2bInvoiceReport');
 
 const kurus = v => Math.round((parseFloat(v) || 0) * 100);
 
-/**
- * @param {object} [options]
- * @param {string} [options.memberId] verilirse yalnız o cari senkronlanır (admin "Cariyi Güncelle")
- */
 async function syncB2bCari(logger = console, { memberId } = {}) {
     const query = { site: 'b2b', diaCustomerKey: { $exists: true, $ne: null } };
     if (memberId) query._id = memberId;
     const members = await WebMember.find(
         query,
-        { diaCustomerKey: 1, diaCustomerCode: 1, phone: 1, 'diaCari.firmaTuru': 1, 'diaCari.salespersonKey': 1, 'diaCari.diaCreatedAt': 1 }
+        { diaCustomerKey: 1, diaCustomerCode: 1, phone: 1, 'diaCari.firmaTuru': 1, 'diaCari.salespersonKey': 1, 'diaCari.diaCreatedAt': 1, 'diaCari.agingItems': 1 }
     ).lean();
     if (!members.length) return { total: 0, updated: 0, chunks: 0, bosChunk: 0 };
 
@@ -29,7 +18,6 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
     await svc.init().catch(() => {});
     await svc.login();
     const F = { session_id: svc.sessionId, firma_kodu: svc.firmaKodu, donem_kodu: svc.donemKodu };
-    // Premium cari kuralı (hangi özel kod / hangi değer) panel ayarından okunur
     const premiumRule = getPremiumRule(svc.settings);
 
     const CHUNK = 100;
@@ -37,15 +25,11 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
     let updated = 0, bosChunk = 0, chunks = 0;
     const matched = new Set();
 
-    // Satış elemanı (plasiyer) master'ı: _key → kullaniciadi. Cari kartı yalnız
-    // satış elemanının KODUNU taşır; giriş kullanıcısına eşleme buradan yapılır.
     const satisElemani = {};
     try {
         const r = await svc.sendRequest('/api/v3/scf/json', {
             scf_satiselemani_listele: { ...F, limit: 1000, offset: 0 }
         });
-        // kodu/aciklama DIA'da tutarsız: bazen kodu tam ad + aciklama kısaltma ("KADİR KARAER"/"KK"),
-        // bazen tersi ("KD"/"KAAN DEMİR"). Ada benzeyeni seç: boşluk içeren > daha uzun.
         const adSec = (...adaylar) => adaylar
             .map(v => String(v || '').trim()).filter(Boolean)
             .sort((a, b) => (Number(/\s/.test(b)) - Number(/\s/.test(a))) || (b.length - a.length))[0] || '';
@@ -59,7 +43,6 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
         logger.warn?.('[b2bCariSync] satış elemanı listesi alınamadı: ' + e.message);
     }
 
-    // Ödeme planı _key → vade günü (planın ilk kalemindeki "+30" gibi gün). Plan sayısı az; senkron başına bir kez sorulur.
     const planDays = new Map();
     const termDaysOf = async (planKey) => {
         if (!planKey) return null;
@@ -76,7 +59,6 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
         return days;
     };
 
-    // DIA tarih metni ("2025-12-11 14:44:11", İstanbul saati) → Date
     const diaTarih = (v) => {
         const s = String(v || '').trim();
         if (!/^\d{4}-\d{2}-\d{2}/.test(s)) return null;
@@ -84,10 +66,7 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
         return isNaN(d.getTime()) ? null : d;
     };
 
-    // Bir kart satırını ilgili üyeye yazar
     const writeRow = (ops, m, row) => {
-        // DIA `bakiye` İŞARETSİZDİR (alacaklı cari de pozitif gelir) ve `borc`/`alacak` hep 0 döner.
-        // İşaretli bakiye `orjbakiye` (alacaklı → negatif); toplamlar `borctoplam`/`alacaktoplam`.
         const borc = kurus(row.borctoplam), alacak = kurus(row.alacaktoplam);
         const bakiye = String(row.orjbakiye ?? '').trim() !== '' ? kurus(row.orjbakiye) : (borc - alacak);
         const spKey = String(row._key_scf_satiselemani || '').trim();
@@ -102,29 +81,26 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
             'diaCari.paymentTermDays': row.__termDays ?? null,
             'diaCari.syncedAt': new Date()
         };
-        // Premium: DIA kaynaklıdır, her senkronda yeniden belirlenir (DIA'da kaldırılırsa Normal'e döner)
+        if (Array.isArray(m.diaCari?.agingItems)) {
+            const due = reapplyBalance(m.diaCari.agingItems, bakiye);
+            set['diaCari.agingItems'] = due.agingItems;
+            set['diaCari.dueItems'] = due.dueItems;
+            set['diaCari.overdueKurus'] = due.overdueKurus;
+        }
         if (premiumRule) {
             const tier = resolvePremium(row, premiumRule);
             set['diaCari.premium'] = tier.premium;
             set['diaCari.premiumCode'] = tier.code;
         }
-        // ── Profil verileri DIA'dan YALNIZ İLK KEZ alınır, sonra DB'de tutulur ──
-        // (finansal alanlar + segment + DIA son güncellenme her senkronda güncellenir)
-        // Plasiyer: kayıtlı değilse
         if (!m.diaCari?.salespersonKey && spKey && spKey !== '0') {
             set['diaCari.salespersonKey'] = spKey;
-            // Tam ad master'dan; master'da yoksa cari kartındaki metin
             set['diaCari.salespersonName'] = satisElemani[spKey]?.ad || String(row.satiselemani || '').trim();
             set['diaCari.salespersonUsername'] = satisElemani[spKey]?.kullanici || '';
         }
-        // Telefon: kayıtlı değilse (boş / "-"); cep öncelikli, yoksa sabit
         const tel = String(row.ceptel || '').trim() || String(row.telefon1 || '').trim();
         if (tel && (!m.phone || m.phone === '-')) set.phone = tel;
-        // Fatura bilgileri DIA'dan YALNIZ İLK KEZ alınır, sonra bizim DB'de tutulur:
-        // carinin kaydında firma türü varsa bu dört alana dokunulmaz.
         if (!m.diaCari?.firmaTuru) {
             const kayitTuru = String(row.carikayitturu || '').trim().toUpperCase();
-            // Şahıs (SHS) → bireysel; diğer her şey → kurumsal
             set['diaCari.firmaTuru'] = kayitTuru === 'SHS' ? 'bireysel' : 'kurumsal';
             set['diaCari.vergiNo'] = String(row.verginumarasi || '').trim();
             set['diaCari.vergiDairesi'] = String(row.vergidairesi || '').trim();
@@ -143,7 +119,6 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
         'carikayitturu', 'verginumarasi', 'vergidairesi', 'tckimlikno'];
     if (premiumRule) cols.push(premiumRule.codeColumn, premiumRule.textColumn);
 
-    // Bir chunk'ı verilen alan (field: '_key' veya 'carikartkodu') ile çeker ve yazar
     async function processBatch(batch, field, valueOf) {
         const vals = batch.map(valueOf).filter(Boolean);
         if (!vals.length) return;
@@ -163,10 +138,9 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
         } catch (e) {
             try { svc.sessionId = null; await svc.login(); F.session_id = svc.sessionId; } catch (_) {}
         }
-        if (!rows.length) { bosChunk++; await sleep(500); return; } // boş — eski veriyi koru
+        if (!rows.length) { bosChunk++; await sleep(500); return; }
         const byVal = {};
         for (const row of rows) byVal[String(field === '_key' ? row._key : row.carikartkodu)] = row;
-        // Ödeme planlarının vade günleri (yalnız ilk görülen planlar DIA'dan okunur)
         for (const row of rows) row.__termDays = await termDaysOf(parseInt(row._key_scf_odeme_plani) || 0);
         const ops = [];
         for (const m of batch) {
@@ -180,12 +154,10 @@ async function syncB2bCari(logger = console, { memberId } = {}) {
         await sleep(250);
     }
 
-    // 1) _key IN ile toplu (hızlı, çoğu cari)
     for (let i = 0; i < members.length; i += CHUNK) {
         await processBatch(members.slice(i, i + CHUNK), '_key', m => String(m.diaCustomerKey || ''));
     }
 
-    // 2) _key ile eşleşmeyenleri carikartkodu ile dene (bazı carilerin _key'i listede dönmüyor)
     const kalanlar = members.filter(m => !matched.has(String(m._id)) && m.diaCustomerCode);
     for (let i = 0; i < kalanlar.length; i += CHUNK) {
         await processBatch(kalanlar.slice(i, i + CHUNK), 'carikartkodu', m => String(m.diaCustomerCode || ''));

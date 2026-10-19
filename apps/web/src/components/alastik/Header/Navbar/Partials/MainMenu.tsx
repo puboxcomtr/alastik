@@ -19,7 +19,6 @@ export default function MainMenu({ handleClose }: MainMenuProps) {
     const sitePhone = definition?.companyInfo?.phone2 || '';
     const sitePhoneTel = sitePhone.replace(/\D/g, '');
 
-    // Alt menüleri başlıklara göre grupla
     const groupChildrenByHeading = (children: any[]) => {
         const groups: { heading: string; items: any[] }[] = [];
         let currentGroup: { heading: string; items: any[] } | null = null;

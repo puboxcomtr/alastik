@@ -1,5 +1,4 @@
 'use client';
-// Anasayfa "Biz Sizi Arayalım" formu — tüm alanlar tek satırda (masaüstü), mobilde alt alta
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { API_ENDPOINTS } from '@/src/config/api';
@@ -10,10 +9,8 @@ type Options = { topics: Option[]; timeSlots: Option[] };
 
 const EMPTY_FORM = { name: '', phone: '', topic: '', timeSlot: '' };
 
-// WhatsApp bağlantısı: 0532 123 45 67 -> https://wa.me/905321234567
 const whatsappUrl = (phone: string): string => `https://wa.me/${phone.replace(/\D/g, '').replace(/^0/, '90')}`;
 
-// Telefonu "0532 123 45 67" biçiminde göster
 const formatPhone = (value: string): string => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
     const parts = [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7, 9), digits.slice(9, 11)].filter(Boolean);
@@ -26,7 +23,6 @@ export default function CallbackForm({ site = 'lastikjantavm' }: { site?: string
     const [form, setForm] = useState(EMPTY_FORM);
     const [sending, setSending] = useState(false);
     const { definition } = useDefinition();
-    // Servis noktaları (Tanımlar > Servis Noktaları) — WhatsApp butonları buradan üretilir
     const servicePoints: { name: string; phone: string }[] = (definition?.serviceInfo?.points || []).filter((p: any) => p?.name && p?.phone);
 
     useEffect(() => {
@@ -81,7 +77,6 @@ export default function CallbackForm({ site = 'lastikjantavm' }: { site?: string
         <section id="callback_form" className="container mb-4">
             <div className="row-fluid">
                 <div className="text-white rounded-4 px-4 px-lg-5 py-4" style={{ backgroundColor: '#000' }}>
-                    {/* Üst satır: başlık (sol) + WhatsApp butonları (sağ) */}
                     <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                         <div>
                             <h2 className="h4 mb-1 text-white">Biz Sizi Arayalım</h2>
@@ -98,7 +93,6 @@ export default function CallbackForm({ site = 'lastikjantavm' }: { site?: string
                                         className="btn d-inline-flex align-items-center text-start rounded-3 px-3 py-2"
                                         style={{ backgroundColor: '#25D366', color: '#fff', border: 'none', lineHeight: 1.2 }}
                                     >
-                                        {/* İkon iki satırlı metnin dikey ortasında */}
                                         <i className="ri-whatsapp-line me-2" style={{ fontSize: '1.75rem' }}></i>
                                         <span className="d-flex flex-column">
                                             <span className="fw-semibold">{point.name}</span>

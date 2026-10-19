@@ -1,7 +1,5 @@
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 
-/* @Import Page */
 import DesiPricingPage from '@views/cargo/DesiPricingPage'
 
 const CargoDesiPricingPage = () => {

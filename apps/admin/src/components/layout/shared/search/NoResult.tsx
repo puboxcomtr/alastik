@@ -1,14 +1,10 @@
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { Locale } from '@configs/i18n'
 
-// Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
 
 type NoResultData = {
@@ -36,7 +32,6 @@ const noResultData: NoResultData[] = [
 ]
 
 const NoResult = ({ searchValue, setOpen }: { searchValue: string; setOpen: (value: boolean) => void }) => {
-  // Hooks
   const { lang: locale } = useParams()
 
   return (

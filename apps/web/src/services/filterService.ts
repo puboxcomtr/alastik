@@ -49,14 +49,11 @@ export async function getTireFilterOptions(
         if (brandSlug) params.append('brand', brandSlug);
         if (searchQuery) params.append('q', searchQuery);
 
-        // Cascading için aktif filtreleri ekle
         if (activeFilters) {
             const filterKeys = [
-                // Lastik
                 'genislik', 'yanak', 'jant', 'arac', 'marka',
                 'mevsim', 'oem', 'yukEndeksi', 'hizEndeksi',
                 'ozellik', 'uretim',
-                // Jant
                 'jantGenisligi', 'jantCap', 'bijonSayisi', 'bijon',
                 'gobekCapi', 'et', 'renk'
             ];

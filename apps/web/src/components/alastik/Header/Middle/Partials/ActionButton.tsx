@@ -5,25 +5,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 
-// MUI
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
 
-// Icons
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
 import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 
-// Hooks
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import { useCart } from '@/src/context/CartContext';
 
-// Routes
 import { ROUTES } from '@/src/config/routes';
 
 interface ActionButtonsProps {
@@ -131,7 +127,6 @@ export default function ActionButtons({ onMenuOpen, onSearchToggle }: ActionButt
                 </Menu>
             )}
 
-            {/* Kendi lastiğiyle montaj satın alma */}
             <Tooltip title="Montaj Satın Al">
                 <Link
                     href={ROUTES.MONTAGE_BUY}

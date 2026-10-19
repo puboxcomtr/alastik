@@ -88,11 +88,9 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
 
   return (
     <section className="row row-cols-1 row-cols-md-2 g-0 overflow-hidden rounded-5">
-      {/* Form */}
       <div className="col bg-body-tertiary py-5 px-4 px-xl-5">
         <div className="py-md-2 px-md-1 px-lg-3 mx-lg-3">
 
-          {/* Konu */}
           <div className="position-relative mb-4">
             <label className="form-label">Konu <span className="text-danger">*</span></label>
             <FormControl fullWidth>
@@ -120,7 +118,6 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
             </FormControl>
           </div>
 
-          {/* Ad Soyad */}
           <Row className="mb-4">
             <Col md={6} className="mb-4 mb-md-0">
               <label className="form-label">Adınız <span className="text-danger">*</span></label>
@@ -144,7 +141,6 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
             </Col>
           </Row>
 
-          {/* Email Telefon */}
           <Row className="mb-4">
             <Col md={6} className="mb-4 mb-md-0">
               <label className="form-label">E-posta <span className="text-danger">*</span></label>
@@ -168,7 +164,6 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
             </Col>
           </Row>
 
-          {/* Mesaj */}
           <div className="position-relative mb-4">
             <label className="form-label">Mesajınız <span className="text-danger">*</span></label>
             <TextField
@@ -181,7 +176,6 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
             />
           </div>
 
-          {/* Gönder */}
           <div className="pt-2">
             <button
               className="btn btn-lg btn-dark rounded-pill"
@@ -194,7 +188,6 @@ export default function ContactForm({ formData, sending, handleChange, handleSub
         </div>
       </div>
 
-      {/* Sağ Görsel */}
       <div className="col position-relative d-none d-md-block" style={{ minHeight: '500px' }}>
         <img
           src={bgImage}

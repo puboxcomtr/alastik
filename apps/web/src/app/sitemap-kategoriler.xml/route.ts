@@ -1,4 +1,3 @@
-// Kategori sitemap'i (/kategori/<seoUrl>)
 import { getSiteBase, fetchSitemapData, urlsetXml, xmlResponse } from '@/src/lib/sitemap';
 
 export const dynamic = 'force-dynamic';

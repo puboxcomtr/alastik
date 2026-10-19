@@ -1,11 +1,6 @@
-// LJA araç markası sayfaları (/arac/<marka>) için elle yazılmış marka profilleri (yalnızca lastikjantavm.com).
-// Sayılar (model sayısı, ebatlar, jant çapları, bijon) burada YOK — onlar canlı araç verisinden gelir
-// (bkz. lib/vehicleBrandText.ts). Burada yalnızca değişmeyen bilgiler durur: marka tanıtımı,
-// lastik seçiminde markaya özgü notlar ve sık sorulan sorular.
 
 export interface VehicleBrandProfile {
     display: string;
-    // Markanın konumu, tek cümle; "Marka, …" diye başlayan cümlenin devamı (meta açıklama ve giriş için)
     tagline: string;
     about: string[];
     tireIntro?: string;

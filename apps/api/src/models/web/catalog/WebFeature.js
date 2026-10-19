@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 const { SITES } = require('../../../config/sites');
 
-// Site başına yayınlanmış ürün sayısı — sync hesaplar; 0 ise o sitede listelenmez
-// Yönetim alanları (isActive/displayLocation/sıralar) tanımsızsa kök (ortak) değer geçerlidir
 const siteFeatureSettingsSchema = new mongoose.Schema({
     productCount: { type: Number, default: 0 },
     isActive: { type: Boolean },
@@ -56,14 +54,12 @@ const webFeatureSchema = new mongoose.Schema({
         lowercase: true
     },
 
-    // İstatistikler
     productCount: {
         type: Number,
         default: 0
     },
     siteSettings: siteSettingsShape,
 
-    // Senkronizasyon Bilgileri
     lastSync: {
         type: Date,
         default: Date.now
@@ -77,7 +73,6 @@ const webFeatureSchema = new mongoose.Schema({
     collection: 'webfeatures'
 });
 
-// Index'ler
 webFeatureSchema.index({ featureName: 1, featureValue: 1 }, { unique: true });
 webFeatureSchema.index({ featureName: 1, isActive: 1 });
 webFeatureSchema.index({ displayLocation: 1 });

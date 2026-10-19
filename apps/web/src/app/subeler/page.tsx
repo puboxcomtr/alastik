@@ -1,4 +1,3 @@
-// LJA şubeleri listesi — /subeler (yalnızca lastikjantavm.com)
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

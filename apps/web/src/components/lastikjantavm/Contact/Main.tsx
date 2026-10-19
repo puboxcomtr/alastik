@@ -1,8 +1,5 @@
 'use client';
 
-// LastikJantAVM iletişim sayfası — ortak Contact bileşeninden ayrıldı.
-// İki şube (Mecidiyeköy + Maslak 1453) harita, telefon grupları ve
-// her şubenin yanında kendi iletişim formu ile listelenir.
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { Container, Row, Col } from 'react-bootstrap';
@@ -78,7 +75,6 @@ const textareaSx = {
 
 const EMPTY_FORM = { name: '', surname: '', email: '', phone: '', subject: '', message: '' };
 
-// Şube kartının yanında duran kompakt iletişim formu — her şube için ayrı örnek
 function BranchContactForm({ branchName }: { branchName: string }) {
     const [formData, setFormData] = useState({ ...EMPTY_FORM });
     const [sending, setSending] = useState(false);
@@ -131,7 +127,6 @@ function BranchContactForm({ branchName }: { branchName: string }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    // Hangi şubeye yazıldığı mesajın başına eklenir
                     message: `[${branchName}]\n${formData.message}`
                 })
             });
@@ -252,7 +247,6 @@ function BranchContactForm({ branchName }: { branchName: string }) {
 export default function LastikJantAvmContact() {
     return (
         <>
-            {/* Breadcrumb */}
             <section id="breadcumb">
                 <Container>
                     <div className='row-fluid'>
@@ -265,7 +259,6 @@ export default function LastikJantAvmContact() {
                 </Container>
             </section>
 
-            {/* Şubeler — her şubenin yanında kendi iletişim formu */}
             <section id="branches">
                 <Container>
                     <div className='row-fluid'>

@@ -14,25 +14,19 @@ interface CartItem {
     quantity: number;
     unitPrice: number;
     kdvRate: number;
-    /** Kategori ayarı: 'haric' ise fiyat KDV hariç gösterilir */
     priceDisplay?: 'dahil' | 'haric';
     montagePointId?: string;
     montagePointLabel?: string;
-    // Sepet kuralları: kalem türü, lastik jant çapı, montaj hizmetinin çap aralığı
     itemType?: 'tire' | 'montage' | 'service' | 'product';
     rimSize?: number | null;
     rimRange?: { min: number; max: number } | null;
 }
 
 interface CartTotals {
-    /** Tüm kalemler, KDV hariç (montaj dahil) */
     subtotal: number;
-    /** Montaj/hizmet hariç ürünler, KDV hariç */
     productsSubtotal?: number;
-    /** Montaj ve hizmet kalemleri, KDV hariç */
     montage?: number;
     kdv: number;
-    /** Ürün fiyatından hariç tutulan kargo (KDV dahil); fiyata dahilse 0 / tanımsız */
     shipping?: number;
     total: number;
     itemCount: number;
@@ -51,7 +45,6 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Sunucunun sepet kurallarıyla yaptığı otomatik düzeltmeleri (montaj adedi, düşen hizmetler) bildirir
 const notifyRuleNotes = (notes?: string[]) => {
     (notes || []).forEach(note => toast.info(note));
 };
@@ -67,7 +60,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (cart) {
                 setItems(cart.items || []);
                 setTotals(cart.totals || { subtotal: 0, kdv: 0, total: 0, itemCount: 0 });
-                // Stok azaldığı için adedi düşen / çıkarılan kalemler müşteriye bildirilir
                 (cart.notes || []).forEach((note: string) => toast.warning(note));
             }
         } catch (error) {
@@ -87,11 +79,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (result.success) {
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
-                // Boş mesaj = bildirim gösterme (mobil satın alma çubuğu kendi onay panelini açar)
                 if (successMessage) toast.success(successMessage);
                 notifyRuleNotes(result.notes);
 
-                // GTM dönüşüm tetikleyicileri için dataLayer olayı + Google Ads dönüşümü
                 const addedItem = (result.data.items || []).find((i: CartItem) => i.productKey === productKey);
                 const addedValue = addedItem ? Math.round(addedItem.unitPrice * quantity * 100) / 100 : undefined;
                 pushDataLayer({
@@ -135,7 +125,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 notifyRuleNotes(result.notes);
                 setItems(result.data.items || []);
                 setTotals(result.data.totals || totals);
-                // Boş mesaj = bildirim gösterme
                 if (successMessage) toast.success(successMessage);
             } else {
                 toast.error(result.message || 'Silme işlemi başarısız oldu');

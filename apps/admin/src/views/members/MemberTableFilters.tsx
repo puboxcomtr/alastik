@@ -1,10 +1,8 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// MUI Imports
 import CardContent from '@mui/material/CardContent'
 import Grid from '@mui/material/Grid2'
 import TextField from '@mui/material/TextField'
@@ -21,7 +19,6 @@ export type MemberFilters = {
 
 const EMPTY: MemberFilters = { search: '', status: '', hasOrders: '', from: '', to: '' }
 
-// Ürün listesindeki filtre kartıyla aynı düzen: alanlar + Uygula / Temizle
 const MemberTableFilters = ({ onFilterChange }: { onFilterChange: (filters: MemberFilters) => void }) => {
     const [filters, setFilters] = useState<MemberFilters>(EMPTY)
 

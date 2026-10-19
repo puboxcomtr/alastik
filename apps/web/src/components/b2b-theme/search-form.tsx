@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react";
 import { SearchIcon } from "@components/b2b-theme/icons";
 
-/**
- * Katalog query kutusu. Arama tarayıcıda yapıldığı için page yenilenmez;
- * girilen text `onSearch` ile yukarı bildirilir.
- */
 export function SearchForm({
   q,
   onSearch,
@@ -17,13 +13,11 @@ export function SearchForm({
   q: string;
   onSearch: (q: string) => void;
   placeholder?: string;
-  /** Dışarıdaki bir submit butonunun form={formId} ile bağlanabilmesi için */
   formId?: string;
   butonGizle?: boolean;
 }) {
   const [text, setMetin] = useState(q);
 
-  // Dışarıdan q değişince (ör. Temizle) kutuyu eşitle
   useEffect(() => {
     setMetin(q);
   }, [q]);

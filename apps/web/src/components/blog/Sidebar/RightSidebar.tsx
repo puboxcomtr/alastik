@@ -35,10 +35,6 @@ function itemUrl(item: MenuItemType): string {
   return '#';
 }
 
-/**
- * Panelden "Blog Menü" alanına eklenen menüler.
- * Statik bloklarla aynı görünümü kullanır; menü yoksa hiçbir şey basılmaz.
- */
 function MenuGroups({ groups }: { groups: MenuGroupType[] }) {
   if (!groups.length) return null;
 
@@ -68,9 +64,6 @@ function MenuGroups({ groups }: { groups: MenuGroupType[] }) {
   );
 }
 
-/**
- * Sidebar tamamen panelden yönetilir; "Blog Menü" alanına eklenen her menü bir kutu olur.
- */
 function SidebarContent({ groups }: { groups: MenuGroupType[] }) {
   return <MenuGroups groups={groups} />;
 }
@@ -87,17 +80,15 @@ export default function Sidebar() {
       .then((data) => {
         if (!iptal && data?.success) setGroups(data.data || []);
       })
-      .catch(() => { /* menü yüklenemezse sidebar gösterilmez */ });
+      .catch(() => {  });
 
     return () => { iptal = true; };
   }, []);
 
-  // Panelde tanımlı menü yoksa sidebar hiç basılmaz
   if (groups.length === 0) return null;
 
   return (
     <>
-      {/* Mobil Buton */}
       <div className="d-lg-none my-3">
         <button
           className="btn btn-outline-dark btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
@@ -108,7 +99,6 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Mobil Offcanvas */}
       <Offcanvas show={show} onHide={() => setShow(false)} placement="end">
         <Offcanvas.Header closeButton>
           <Offcanvas.Title>{groups.length === 1 ? groups[0].name : 'Menü'}</Offcanvas.Title>
@@ -118,7 +108,6 @@ export default function Sidebar() {
         </Offcanvas.Body>
       </Offcanvas>
 
-      {/* Desktop Sidebar */}
       <div className="d-none d-lg-block">
         <SidebarContent groups={groups} />
       </div>

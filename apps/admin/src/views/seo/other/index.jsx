@@ -1,4 +1,3 @@
-// apps/admin/src/views/seo/other/index.jsx
 'use client'
 
 import { useState } from 'react'
@@ -19,7 +18,6 @@ import Chip from '@mui/material/Chip'
 const Other = ({ formData, setFormData, handleSave, saving }) => {
     const [selectedPage, setSelectedPage] = useState('newProducts')
 
-    // Tüm sayfa listesi
     const pages = [
         { key: 'newProducts', label: 'Yeni Ürünler Sayfası' },
         { key: 'discountedProducts', label: 'İndirimli Ürünler Sayfası' },
@@ -41,13 +39,11 @@ const Other = ({ formData, setFormData, handleSave, saving }) => {
         { key: 'orderTracking', label: 'Sipariş Takibi Sayfası' }
     ]
 
-    // Seçili sayfa verisi
     const currentPageData = formData.other?.[selectedPage] || { title: '', description: '' }
 
     return (
         <Card>
             <Grid container>
-                {/* Sol Menü */}
                 <Grid size={{ xs: 12, md: 3 }}>
                     <CardHeader title='Sayfalar' />
                     <Divider />
@@ -65,7 +61,6 @@ const Other = ({ formData, setFormData, handleSave, saving }) => {
                     </List>
                 </Grid>
 
-                {/* Sağ İçerik */}
                 <Grid size={{ xs: 12, md: 9 }}>
                     <CardHeader
                         title={pages.find(p => p.key === selectedPage)?.label || 'SEO Ayarları'}
@@ -87,7 +82,6 @@ const Other = ({ formData, setFormData, handleSave, saving }) => {
                                 </div>
                             </Grid>
 
-                            {/* SEO Title */}
                             <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
@@ -116,7 +110,6 @@ const Other = ({ formData, setFormData, handleSave, saving }) => {
                                 />
                             </Grid>
 
-                            {/* SEO Description */}
                             <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
@@ -147,7 +140,6 @@ const Other = ({ formData, setFormData, handleSave, saving }) => {
                                 />
                             </Grid>
 
-                            {/* Kaydet Butonu */}
                             <Grid size={{ xs: 12 }} className='flex gap-4 flex-wrap justify-end'>
                                 <Button
                                     variant='contained'

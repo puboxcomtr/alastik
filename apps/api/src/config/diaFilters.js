@@ -1,28 +1,15 @@
-/**
- * TÜM DIA SYNC İŞLEMLERİ İÇİN MERKEZI FİLTRELER
- *
- * Kurallar artık hardcoded değil: webdia (DiaSettings, site=alastik) kaydındaki
- * sync.durumFiltre / sync.ozelkod11Filtre / sync.hashKontrol alanlarından okunur.
- * 60 sn'lik cache ile senkron API korunur; DB'ye ulaşılamazsa varsayılanlar geçerlidir.
- */
 
 const { SITE_SLUGS, DEFAULT_SITE } = require('./sites');
 
 const DEFAULT_AKTARIM = { mode: 'tumu', filterType: 'urun', products: [], categories: [], brands: [] };
-// Her Zaman Dahil listesi — boşken hiçbir ürünü eşleştirmez (etkisizdir)
 const DEFAULT_ZORUNLU_DAHIL = { filterType: 'kategori', products: [], categories: [], brands: [] };
 const DEFAULT_SYNC_RULES = { durum: 'A', ozelkod11Kodu: 'E', b2cKodu: '', b2bKodu: '', hashKontrol: true, aktarim: DEFAULT_AKTARIM, zorunluDahil: DEFAULT_ZORUNLU_DAHIL };
 
-// Site bazlı kurallar: her site kendi DiaSettings kaydından (webdia) okunur.
-// Bir ürünün hangi sitelerde yayınlanacağı (WebProduct.sites) bu kurallarla belirlenir.
 const rulesBySite = {};
 SITE_SLUGS.forEach(slug => { rulesBySite[slug] = { ...DEFAULT_SYNC_RULES }; });
 let rulesLoadedAt = 0;
 const RULES_TTL_MS = 60 * 1000;
 
-// ARTIK BOŞ: webproducts koleksiyonu tek doğruluk kaynağıdır — aktarım aşamasında
-// (passesWebFilter) filtrelenir, listelemede ek diaData filtresi uygulanmaz.
-// Route'lar bu diziyi referansla iterasyon için kullanır; boş kalır.
 const MAIN_DIA_FILTERS = [];
 
 function settingsToRules(s) {
@@ -64,33 +51,23 @@ function refreshRulesFromDb() {
             }).catch(() => { });
         });
     } catch (e) {
-        // Model/DB hazır değilse mevcut kurallarla devam
     }
 }
 
-/**
- * İlgili sitenin güncel sync kurallarını döndürür (60 sn'de bir DB'den tazelenir)
- */
 function getSyncRules(site = DEFAULT_SITE) {
     if (Date.now() - rulesLoadedAt > RULES_TTL_MS) refreshRulesFromDb();
     return rulesBySite[site] || rulesBySite[DEFAULT_SITE];
 }
 
-/**
- * Tüm sitelerin kurallarını { site: rules } olarak döndürür
- */
 function getAllSyncRules() {
     if (Date.now() - rulesLoadedAt > RULES_TTL_MS) refreshRulesFromDb();
     return rulesBySite;
 }
 
-// Kategori filtreleri kaldırıldı - Web panel kontrolü ile yapılacak
 const CATEGORY_FILTERS = [];
 
-// Hariç tutulan kategoriler kaldırıldı - Web panel kontrolü ile yapılacak  
 const EXCLUDED_CATEGORIES = [];
 
-// Sync türleri için ek filtreler (boş)
 const SYNC_SPECIFIC_FILTERS = {
     names: [],
     codes: [],
@@ -99,7 +76,6 @@ const SYNC_SPECIFIC_FILTERS = {
     all: []
 };
 
-// DIA API'dan çekilecek alanlar
 const DIA_FIELDS = [
     '_key',
     'stokkartkodu',
@@ -117,12 +93,10 @@ const DIA_FIELDS = [
     'durum',
     'b2c_gonder',
     'b2b_gonder',
-    // LJA fiyatlaması: fiyat1 üzerinden uygulanan B2C indirim oranı
     'b2c_indirimorani',
     'birimindirimorani',
     'ozelkod5',
     'ozelkod5kodu',
-    // Grup kodu — hizmet kartları DIA'da ozelkod6 = "Hizmet (Hizmet)" ile işaretlidir
     'ozelkod6',
     'ozelkod6kodu',
     'ozelkod11',
@@ -151,69 +125,40 @@ const FILTER_DESCRIPTIONS = {
     "ozelkod11": "Özel Kod 11 (E)"
 };
 
-/**
- * DIA API çekim filtreleri — ARTIK BOŞ: DIA'dan her şey filtresiz çekilir,
- * tüm ürünler diastocks'a yazılır. durum/ozelkod11/aktarım kuralları
- * yalnızca webproducts aktarım aşamasında (passesWebFilter) uygulanır.
- */
 function getBasicFilters() {
-    getSyncRules(); // gerekiyorsa DB'den tazele (listeleme kuralları için)
+    getSyncRules();
     return [];
 }
 
-/**
- * DIA API fields listesini döndürür
- */
 function getDiaFields() {
     return [...DIA_FIELDS];
 }
 
-/**
- * Custom fields listesi ile override edebilir
- */
 function getDiaFieldsCustom(customFields = null) {
     return customFields ? customFields : getDiaFields();
 }
 
-/**
- * Sync türüne göre filtreler
- */
 function getFiltersForSyncType(syncType) {
     const basicFilters = getBasicFilters();
     const specificFilters = SYNC_SPECIFIC_FILTERS[syncType] || [];
     return [...basicFilters, ...specificFilters];
 }
 
-/**
- * Kategori filtreleri - artık boş döndürür
- */
 function getCategoryFilter() {
     return [];
 }
 
-/**
- * Mevcut sync türlerini döndürür
- */
 function getAvailableSyncTypes() {
     return Object.keys(SYNC_SPECIFIC_FILTERS);
 }
 
-/**
- * Filtre açıklamalarını döndürür
- */
 function getFilterDescriptions() {
     return { ...FILTER_DESCRIPTIONS };
 }
 
-/**
- * Filtre konfigürasyonunu loglar
- */
 function logFilterConfig() {
 }
 
-/**
- * Araç Tipi Eşleştirmeleri
- */
 const WEB_DISPLAY_LABELS = {
     vehicleTypes: {
         'otolastik': 'Otomobil',
@@ -224,25 +169,12 @@ const WEB_DISPLAY_LABELS = {
     }
 };
 
-/**
- * Tüm ürün listelemeleri için ORTAK filtre
- * Admin & Web'de aynı kurallar geçerli
- */
-/**
- * Hizmet kategorisi KDV kuralı:
- * Bu kategorideki ürünlerin fiyat4 değeri DIA'da KDV hariç girilir (kdvdurumu4='H');
- * web satış fiyatı KDV dahil olmalıdır. Kural senkron sırasında, fiyat webproducts'a
- * yazılırken TEK noktada uygulanır — vitrin/sepet/sipariş ek hesap yapmaz.
- * DİKKAT: kdvdurumu4='H' bayrağı lastiklerde de mevcut; kural yalnızca bu kategoriyle sınırlıdır.
- */
 const SERVICE_VAT_RULE = {
     categoryLevel1: 'Hizmetlerimiz',
     defaultRate: 20
 };
 
 function getProductListFilters(site) {
-    // webproducts zaten aktarım aşamasında filtrelenmiş küme — ek diaData filtresi yok.
-    // site verilirse yalnızca o sitede yayınlanan (sites alanı) ürünler listelenir.
     const filters = { 'syncInfo.diaStatus': 'synced' };
     if (site) filters.sites = site;
     return filters;
@@ -252,12 +184,6 @@ function getVehicleTypeLabel(code) {
     return WEB_DISPLAY_LABELS.vehicleTypes[code] || code;
 }
 
-/**
- * Site bazlı ürün görünürlük filtresi.
- * Site ayarı (customData.siteData.<slug>.webVisible) varsa o geçerlidir,
- * yoksa ortak customData.webVisible değerine düşer.
- * Sorguya $or olarak eklenmeli ($and içinde kullanılabilir).
- */
 function getSiteVisibilityFilter(site) {
     const siteField = `customData.siteData.${site}.webVisible`;
     return {
@@ -268,7 +194,6 @@ function getSiteVisibilityFilter(site) {
     };
 }
 module.exports = {
-    // Ana exports
     MAIN_DIA_FILTERS,
     getSyncRules,
     getAllSyncRules,
@@ -281,7 +206,6 @@ module.exports = {
 
     SERVICE_VAT_RULE,
 
-    // Fonksiyonlar
     getProductListFilters,
     getSiteVisibilityFilter,
     getBasicFilters,

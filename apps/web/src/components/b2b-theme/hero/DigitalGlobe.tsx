@@ -9,25 +9,7 @@ import NetworkArcs from './NetworkArcs';
 import { HERO_COLORS, HERO_CONFIG } from './hero-config';
 import { clamp01, introAlpha, lerp } from './hero-easing';
 
-/**
- * The digital globe assembly.
- *
- * Layers, inside out: a navy core sphere with a steel fresnel edge (a custom
- * two-uniform shader — no lighting maths, so it costs almost nothing), the
- * dotted continents, the lat/long grid, the supply-network arcs, and a
- * restrained gold atmosphere halo.
- *
- * Everything geographic lives inside the `spinRef` group: HeroScene drives
- * that group's rotation, so continents, grid and routes turn together as one
- * planet. The atmosphere sits outside the spin — a halo has no geography, and
- * keeping it still avoids any visible swimming of the rim glow.
- *
- * Not a photorealistic Earth by design: no satellite textures, no clouds, no
- * terrain. This is the brand's "global network" object, in the site's navy
- * and gold.
- */
-
-const CORE_VERTEX_SHADER = /* glsl */ `
+const CORE_VERTEX_SHADER =  `
   varying vec3 vNormal;
   varying vec3 vViewDirection;
 
@@ -39,7 +21,7 @@ const CORE_VERTEX_SHADER = /* glsl */ `
   }
 `;
 
-const CORE_FRAGMENT_SHADER = /* glsl */ `
+const CORE_FRAGMENT_SHADER =  `
   uniform vec3 uBaseColor;
   uniform vec3 uFresnelColor;
   uniform float uOpacity;
@@ -55,7 +37,7 @@ const CORE_FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
-const ATMOSPHERE_FRAGMENT_SHADER = /* glsl */ `
+const ATMOSPHERE_FRAGMENT_SHADER =  `
   uniform vec3 uGlowColor;
   uniform float uStrength;
 
@@ -70,7 +52,6 @@ const ATMOSPHERE_FRAGMENT_SHADER = /* glsl */ `
 `;
 
 type DigitalGlobeProps = {
-  /** HeroScene rotates this group — the planet's independent spin. */
   spinRef: RefObject<THREE.Group | null>;
   dotDensity: number;
   prefersReducedMotion: boolean;
@@ -125,12 +106,9 @@ function DigitalGlobe({ spinRef, dotDensity, prefersReducedMotion, startedAt }: 
       ? 1
       : clamp01(introAlpha(elapsed, intro.globeIn.at, intro.globeIn.duration));
 
-    // Fully opaque once revealed: even a 3% see-through sphere lets the
-    // brightly lit rim spokes ghost through the dark ocean side.
     coreMaterial.uniforms.uOpacity.value = revealed;
     atmosphereMaterial.uniforms.uStrength.value = globe.atmosphereStrength * revealed;
 
-    // The globe grows in with its own stage, independent of the tire's.
     if (spinRef.current?.parent) {
       const scale = lerp(intro.globeFromScale, 1, revealed);
       spinRef.current.parent.scale.setScalar(scale);
@@ -139,17 +117,8 @@ function DigitalGlobe({ spinRef, dotDensity, prefersReducedMotion, startedAt }: 
 
   return (
     <group>
-      {/* Axial tilt wrapper; the spin group inside turns about the tilted
-          axis. The X lean tips the dot-dense northern latitudes toward the
-          camera — see cameraLean in hero-config. */}
       <group rotation={[globe.cameraLean, 0, globe.axialTilt]}>
         <group ref={spinRef} rotation={[0, globe.initialYaw, 0]}>
-          {/* Drawn before everything else on the globe. The core is transparent
-              (it fades in), so three.js depth-sorts it against its siblings by
-              geometry centre — and the jittered dot cloud's centre sits a
-              random hair either side of the sphere's. On the losing half of
-              page loads the core painted over the continents, leaving only
-              the dots past the limb. An explicit order removes the coin flip. */}
           <mesh material={coreMaterial} renderOrder={-1}>
             <sphereGeometry args={[globe.radius, 64, 48]} />
           </mesh>
@@ -159,7 +128,6 @@ function DigitalGlobe({ spinRef, dotDensity, prefersReducedMotion, startedAt }: 
         </group>
       </group>
 
-      {/* Halo outside the spin: a glow has no geography to rotate. */}
       <mesh material={atmosphereMaterial} scale={globe.atmosphereScale}>
         <sphereGeometry args={[globe.radius, 48, 32]} />
       </mesh>

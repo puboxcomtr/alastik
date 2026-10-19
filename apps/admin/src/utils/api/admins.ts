@@ -1,4 +1,3 @@
-// apps/admin/src/utils/api/admins.ts
 import { apiClient } from './apiClient'
 
 export type AdminType = {
@@ -18,9 +17,7 @@ export type AdminType = {
 }
 
 const apiClientWithAuth = async (endpoint: string, options: any = {}) => {
-    // Client-side check
     if (typeof window === 'undefined') {
-        // Server-side: Token olmadan devam et
         return apiClient(endpoint, options)
     }
 
@@ -40,7 +37,6 @@ const apiClientWithAuth = async (endpoint: string, options: any = {}) => {
         })
     } catch (error) {
         console.error('Auth token alınamadı:', error)
-        // Token alınamazsa normal apiClient kullan
         return apiClient(endpoint, options)
     }
 }

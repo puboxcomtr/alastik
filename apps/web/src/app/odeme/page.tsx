@@ -10,14 +10,12 @@ import { orderService } from '@/src/services/orderService';
 import { getCartSessionId } from '@/src/services/cartService';
 import { CardFormData } from '@/src/components/payment/Content/CreditCardForm';
 
-// Components
 import PaymentTitle from '@/src/components/payment/Content/PaymentTitle';
 import PaymentContent from '@/src/components/payment/Content/PaymentContent';
 import PaymentSidebar from '@/src/components/payment/Sidebar/PaymentSidebar';
 
 import { API_ENDPOINTS } from '@/src/config/api';
 import { pushDataLayer, fireAdsConversion } from '@/src/lib/tracking';
-
 
 export default function PaymentPage() {
     const router = useRouter();
@@ -29,7 +27,6 @@ export default function PaymentPage() {
 
     const totalAmount = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
 
-    // GTM dönüşüm tetikleyicileri için begin_checkout olayı — sepet yüklenince 1 kez
     const beginCheckoutSentRef = useRef(false);
     useEffect(() => {
         if (beginCheckoutSentRef.current || items.length === 0) return;
@@ -88,7 +85,6 @@ export default function PaymentPage() {
                 guestShippingAddress: checkoutData.isGuest
                     ? (checkoutData.useSameAddress ? checkoutData.billing : checkoutData.shipping)
                     : null,
-                // Backend items ve pricing'i kendi hesaplayacak (güvenlik)
                 items: items.map(item => ({
                     productKey: item.productKey,
                     quantity: item.quantity,
@@ -100,7 +96,6 @@ export default function PaymentPage() {
             };
 
             const { order, message, removed } = await orderService.createOrderDetailed(orderData);
-            // Stok yetersizliğinden siparişe alınamayan kalemler: müşteriye hangi üründen kaç adet kaldığı söylenir
             const removedNotes = removed.map(item =>
                 item.kalan > 0
                     ? `${item.name}: stokta ${item.kalan} adet kaldı (sepetinizde ${item.istenen} adet var)`
@@ -110,7 +105,6 @@ export default function PaymentPage() {
             if (!order) {
                 if (removedNotes.length > 0) {
                     removedNotes.forEach(note => toast.error(note));
-                    // Sepet stoğa göre güncellenir (adet indirilir / kalem çıkar) ve müşteri sepete döner
                     await refreshCart();
                     router.push(ROUTES.CART);
                 } else {
@@ -119,16 +113,13 @@ export default function PaymentPage() {
                 setProcessing(false);
                 return;
             }
-            // Sipariş oluştu ama bazı kalemler stok yetersizliğinden dışarıda kaldı
             removedNotes.forEach(note => toast.warning(`${note} — bu ürün siparişinize eklenemedi`));
 
-            // Kredi kartı ile ödeme
             if (cardData && cardData.isValid) {
                 const gateway = cardData.gateway || 'netahsilat';
 
                 try {
                     if (gateway === 'nkolay') {
-                        // ===== NKOLAY (Tek çekim + Banka kartı) =====
                         const response = await fetch(API_ENDPOINTS.payment.nkolayInit(), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -163,7 +154,6 @@ export default function PaymentPage() {
                         }
 
                     } else {
-                        // ===== NETAHSILAT (Taksitli) =====
                         const response = await fetch(API_ENDPOINTS.payment.threeDInit(), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -200,7 +190,6 @@ export default function PaymentPage() {
                 }
             }
 
-            // Havale/EFT ile ödeme
             setOrderCompleted(true);
             sessionStorage.removeItem('checkoutData');
             sessionStorage.setItem('orderSuccess', order.orderNumber);

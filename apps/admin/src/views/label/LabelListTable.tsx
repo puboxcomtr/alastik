@@ -4,11 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import classnames from 'classnames'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 import { getSiteUrl } from '@/utils/activeSite'
 
-// MUI Imports
 import type { TextFieldProps } from '@mui/material/TextField'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -30,7 +28,6 @@ import Switch from '@mui/material/Switch'
 
 import { toast } from 'react-toastify'
 
-// Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
   createColumnHelper,
@@ -47,7 +44,6 @@ import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 import LabelFilters, { TagFilters, defaultFilters } from './LabelFilter'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 declare module '@tanstack/table-core' {
@@ -127,7 +123,6 @@ const LabelListTable = () => {
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
 
-  // URL'den sayfalama durumunu oku
   const [page, setPage] = useState(() => {
     const p = searchParams.get('page')
     return p ? parseInt(p) : 1
@@ -138,7 +133,6 @@ const LabelListTable = () => {
   })
   const [totalCount, setTotalCount] = useState(0)
 
-  // URL'i güncelle
   const updateURL = (newPage: number, newLimit: number, newFilters?: TagFilters) => {
     const f = newFilters || filters
     const params = new URLSearchParams()

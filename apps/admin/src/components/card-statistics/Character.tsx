@@ -1,14 +1,11 @@
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 
-// Types Imports
 import type { CardStatsCharacterProps } from '@/types/pages/widgetTypes'
 
 const CardStatWithImage = (props: CardStatsCharacterProps) => {
-  // Props
   const { title, src, stats, trendNumber, trend, chipText, chipColor } = props
 
   return (

@@ -9,7 +9,6 @@ interface FetchOptions extends RequestInit {
 }
 
 export async function apiClient<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-    // Bearer token (fetchAPI ile aynı davranış: client tarafında session'dan alınır)
     let token: string | undefined
 
     if (typeof window !== 'undefined') {
@@ -32,7 +31,6 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
         }
     }
 
-    // Body varsa JSON'a çevir (FormData olduğu gibi gönderilir)
     if (body !== undefined) {
         config.body = isFormData || typeof body === 'string' ? body : JSON.stringify(body)
     }

@@ -1,4 +1,3 @@
-// apps/admin/src/views/pages/settings/connections/index.jsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -21,12 +20,10 @@ const Connections = () => {
   const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
-    // Site Ek Ayarları
     tax: false,
     personalData: false,
     postCode: false,
     
-    // Site Genel Ayarları
     siteStatus: '0'
   })
 

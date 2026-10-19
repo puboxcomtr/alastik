@@ -23,8 +23,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Kategori SEO içeriği (admin editöründen gelen HTML):
-   başlıklar gövde metniyle aynı boyutta görünür, alan kendi içinde kaydırılır */
 .category-seo-content {
   max-height: 320px;
   overflow-y: auto;
@@ -42,9 +40,6 @@ body {
   margin-bottom: 0.5rem;
 }
 
-/* Kategori sidebar menüleri: başlık sabit, uzun listeler kendi içinde YUKARIDAN AŞAĞI kaydırılır.
-   flex-wrap: nowrap şart — Bootstrap .nav sınıfı wrap uyguladığı için yükseklik sınırlanınca
-   öğeler alta değil yana yeni sütuna taşıyor ve yatay kaydırma oluşuyordu. */
 .category-menu ul {
   flex-wrap: nowrap;
   max-height: 280px;
@@ -53,8 +48,6 @@ body {
   padding-right: 8px;
 }
 
-/* Videolu ürün rozeti — dikkat çekmesi için yanıp söner.
-   Hareket azaltma tercihi açık olan kullanıcılarda sabit kalır. */
 @keyframes videoBadgeBlink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.2; }
@@ -70,21 +63,16 @@ body {
   }
 }
 
-/* LJA anasayfa blog bölümü: geniş ekranda sol/sağ sütun arasındaki dikey ayraç */
 @media (min-width: 992px) {
   .lja-blog-divider {
     border-right: 1px solid var(--cz-border-color, #e0e5eb);
   }
 }
 
-/* Ürün Butonları (kart etiketleri) — köşesiz. Renkler her butonun panel tanımından gelir ve
-   satır içi stille uygulanır (components/alastik/shop/Product/ProductButtons); burada yalnız
-   biçim ve renk tanımlı olmayan buton için sitenin ana rengi vardır. */
 .product-button {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  /* Mobilde kart dar (≈165px): en uzun etiket taşmasın diye yatay boşluk dar tutulur */
   padding: 0.4rem 0.45rem;
   max-width: 100%;
   border-radius: 0;

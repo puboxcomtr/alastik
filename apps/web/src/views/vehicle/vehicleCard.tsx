@@ -1,24 +1,18 @@
 'use client';
 
-/* React & Next.js */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
-/* Types */
 import type { Vehicle } from '@/src/types/vehicle';
 
-/* Hooks */
 import { useVehicles } from '@/src/hooks/WheelSize/useVehicles';
 import { useTranslations } from '@/src/hooks/Theme/useTranslations';
 
-/* Services */
 import wheelSizeService from '@/src/services/wheelSizeService';
 
-/* Utils & Config */
 import { buildTagUrl, buildTireSizeTagFallback } from '@/src/config/routes';
 
-/* External Libraries */
 import { toast } from 'react-toastify';
 
 interface VehicleCardProps {

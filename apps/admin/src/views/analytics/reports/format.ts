@@ -1,4 +1,3 @@
-// Raporlar sayfası biçimlendirme yardımcıları (tr-TR)
 
 export const toNumber = (value: unknown): number =>
     typeof value === 'number' && Number.isFinite(value) ? value : 0
@@ -13,7 +12,6 @@ export const formatTRY = (value: number): string =>
 
 export const formatPercent = (value: number): string => `%${formatDecimal(value, 1)}`
 
-// Eksen etiketleri için kısa sayı: 1.250 -> 1,3k, 2.400.000 -> 2,4M
 export const formatCompact = (value: number): string => {
     const n = toNumber(value)
     const abs = Math.abs(n)
@@ -34,7 +32,6 @@ export const formatDateLong = (iso: string | null | undefined): string => {
     return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-// <input type="date"> için yerel tarih -> YYYY-MM-DD
 export const toDateInputValue = (date: Date): string => {
     const y = date.getFullYear()
     const m = `${date.getMonth() + 1}`.padStart(2, '0')

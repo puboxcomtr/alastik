@@ -1,18 +1,14 @@
 'use client';
-// Kategori sayfası sekmeleri — panelde kategoriye bağlanan menünün (Kategori Menüsü) kategori türündeki öğeleri
-// sayfa içinde sekme olur; her sekme kendi kategorisinin kataloğunu (filtreleri, sütunları, sayfalaması ile) gösterir.
 import { useEffect, useState } from 'react';
 import { CategoryCatalog } from '@components/b2b-theme/category-catalog';
 
 export type CategoryTab = { slug: string; label: string };
 
-// Adres çubuğunda aktif sekmeyi taşıyan parametre (CategoryCatalog adresi yeniden yazarken korur)
 export const CATEGORY_TAB_PARAM = 'tab';
 
 export function CategoryTabs({ tabs }: { tabs: CategoryTab[] }) {
     const [active, setActive] = useState(tabs[0].slug);
 
-    // Başlangıç sekmesi adres çubuğundan; geri/ileri tuşlarında da adresle eşitlenir
     useEffect(() => {
         const sync = () => {
             const fromUrl = new URLSearchParams(window.location.search).get(CATEGORY_TAB_PARAM);
@@ -25,7 +21,6 @@ export function CategoryTabs({ tabs }: { tabs: CategoryTab[] }) {
 
     function select(slug: string) {
         if (slug === active) return;
-        // Sekme değişince önceki sekmenin filtreleri adresten temizlenir
         window.history.pushState(null, '', `${window.location.pathname}?${CATEGORY_TAB_PARAM}=${encodeURIComponent(slug)}`);
         setActive(slug);
     }

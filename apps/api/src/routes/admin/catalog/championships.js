@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const ChampionshipTire = require('../../../models/admin/catalog/ChampionshipTire');
 
-// Tüm şampiyonlukları getir
 router.get('/', async (req, res) => {
     try {
         const championships = await ChampionshipTire.find({ site: req.site }).sort({ name: 1 }).lean();
@@ -13,7 +12,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET Ürüne ait şampiyonluklar
 router.get('/product/:productKey', async (req, res) => {
     try {
         const championships = await ChampionshipTire.find({ productKey: req.params.productKey, site: req.site }).lean();
@@ -23,7 +21,6 @@ router.get('/product/:productKey', async (req, res) => {
     }
 });
 
-// PUT Ürüne bağla
 router.put('/:id/assign', async (req, res) => {
     try {
         const { productKey } = req.body;
@@ -41,7 +38,6 @@ router.put('/:id/assign', async (req, res) => {
     }
 });
 
-// PUT Üründen çıkar
 router.put('/:id/unassign', async (req, res) => {
     try {
         const championship = await ChampionshipTire.findOneAndUpdate(

@@ -1,13 +1,10 @@
-// MUI Imports
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import CardContent from '@mui/material/CardContent'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { PricingPlanType } from '@/types/pages/pricingTypes'
 
 type Props = {

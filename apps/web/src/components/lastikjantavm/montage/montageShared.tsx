@@ -1,6 +1,5 @@
 'use client';
 
-// Montaj noktası ortak tipler ve yardımcılar (LJA vitrini)
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useCart } from '@/src/context/CartContext';
@@ -13,25 +12,20 @@ export type MontageReview = {
     createdAt: string;
 };
 
-// Satın alma öncesi noktalar anonimdir: API ad/adres/telefon/görsel göndermez, konum ~1 km yuvarlanır
-// price: noktaya özel fiyat (0 = ücretsiz) veya katalog fiyatı; null ise fiyat bilinmiyor ("Sorunuz")
 export type MontageService = {
     productKey: string;
     sku: string;
     name: string;
     price: number | null;
-    // Sepet kuralları: montaj hizmeti mi, kapsadığı jant çapı aralığı
     isMontage?: boolean;
     rimRange?: { min: number; max: number } | null;
-    // 'haric': fiyat KDV hariçtir, "+ KDV" yazılır; sepete kdvDahilFiyat işlenir
     priceDisplay?: 'dahil' | 'haric';
     kdvDahilFiyat?: number | null;
 };
 
 export type MontagePoint = {
     _id: string;
-    name: string; // isPublicInfo değilse "Anlaşmalı Nokta"
-    // Panelde "Bilgileri Gözüksün" açıksa ad/adres/telefon gerçek değerlerle gelir
+    name: string;
     isPublicInfo?: boolean;
     address?: string;
     phone?: string;
@@ -43,9 +37,7 @@ export type MontagePoint = {
     services: MontageService[];
     amenities: string[];
     location?: { lat: number | null; lng: number | null };
-    // Tüm hizmetlerin en ucuzu (sibop vb. dahil)
     startingPrice: number | null;
-    // En düşük jant aralığındaki (13"-16") montaj hizmetinin 1 adet fiyatı; 0 = ücretsiz montaj
     montageStartingPrice: number | null;
     montageStartingPriceDisplay?: 'dahil' | 'haric';
     rating: { average: number | null; processAverage: number | null; locationAverage: number | null; count: number };
@@ -72,7 +64,6 @@ export const AMENITY_LABELS: Record<string, { label: string; icon: string }> = {
     headlight_check: { label: 'Far Kontrolü', icon: 'ri-lightbulb-line' },
 };
 
-/** Bugünkü çalışma saati ve şu an açık/kapalı bilgisi */
 export function todayStatus(point: MontagePoint): { label: string; isOpen: boolean } {
     const keys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const now = new Date();
@@ -99,9 +90,6 @@ export function Stars({ value, size = 16 }: { value: number | null; size?: numbe
     );
 }
 
-
-/** Hizmet satırı: adet + fiyat + Seç. Seçilen hizmet tekrar eklenemez ("Seçildi");
- * adet değişikliği sepetteki miktarı günceller. Harita yan kartı ve detay sayfası ortak kullanır. */
 export function ServiceRow({ service, compact = false, montagePointId }: { service: MontageService; compact?: boolean; montagePointId?: string }) {
     const { items, addToCart, updateQuantity, removeItem } = useCart();
     const cartItem = items.find(i => String(i.productKey) === String(service.productKey));
@@ -109,20 +97,16 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
     const [quantity, setQuantity] = useState(1);
     const [busy, setBusy] = useState(false);
 
-    // Sepet kuralları: montaj adedi uygun çaptaki lastik adedini aşamaz; diğer hizmetler montaj gerektirir
     const tires = items.filter(i => i.itemType === 'tire');
     const montageInCart = items.some(i => i.itemType === 'montage');
     const matchingTireCount = service.isMontage && service.rimRange
         ? tires.filter(t => t.rimSize !== null && t.rimSize !== undefined && t.rimSize >= service.rimRange!.min && t.rimSize <= service.rimRange!.max)
             .reduce((sum, t) => sum + t.quantity, 0)
         : 0;
-    // Tavan: lastikli sepette montaj adedi en fazla uygun çaptaki lastik adedi olabilir
     const montageCap = Boolean(service.isMontage) && tires.length > 0 && matchingTireCount > 0 ? matchingTireCount : null;
-    // Müşteri adet seçmediyse varsayılan lastik adedidir
     const [quantityTouched, setQuantityTouched] = useState(false);
     let ruleHint = '';
     if (service.isMontage && tires.length === 0) {
-        // Montaj yalnızca sıfır lastikle: jant, ikinci el vb. ürünlere montaj eklenemez
         ruleHint = 'Montaj yalnızca sıfır lastik ürünleriyle satın alınabilir';
     } else if (service.isMontage && matchingTireCount === 0) {
         ruleHint = 'Sepetinizdeki lastiklerin jant çapına uygun değil';
@@ -141,7 +125,6 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
         try {
             setBusy(true);
             if (selected) {
-                // Seçiliyken tekrar tıklama: hizmeti sepetten çıkarır
                 await removeItem(String(service.productKey), 'Hizmet sepetten çıkarıldı');
             } else {
                 await addToCart(service.productKey, shownQuantity, 'Hizmet sepete eklendi', montagePointId);
@@ -170,7 +153,6 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
 
     return (
         <div className="d-flex align-items-center gap-2 py-3 border-bottom">
-            {/* 3 bölge: sol hizmet adı, ortada adet, sağda fiyat + Seç */}
             <div className="flex-grow-1 fw-bold" style={{ fontSize: compact ? 13 : 15, minWidth: 0 }}>
                 {service.name}
                 {ruleHint && !selected && (
@@ -216,7 +198,6 @@ export function ServiceRow({ service, compact = false, montagePointId }: { servi
     );
 }
 
-/** Gruplu hizmet listesi: Lastik Montajı → Rot Ayarı → Jant Pres → diğerleri, aralarında ayraç */
 export function ServiceList({ services, compact = false, montagePointId }: { services: MontageService[]; compact?: boolean; montagePointId?: string }) {
     const groups = groupMontageServices(services);
     return (

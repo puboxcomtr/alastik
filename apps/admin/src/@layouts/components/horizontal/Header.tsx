@@ -1,23 +1,16 @@
-// MUI Imports
 import { useTheme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 import type { CSSObject } from '@emotion/styled'
 
-// Type Imports
 import type { ChildrenType } from '@core/types'
 
-// Config Imports
 import themeConfig from '@configs/themeConfig'
 
-// Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
-// Util Imports
 import { horizontalLayoutClasses } from '@layouts/utils/layoutClasses'
 
-// Styled Component Imports
 import StyledHeader from '@layouts/styles/horizontal/StyledHeader'
 
 type Props = ChildrenType & {
@@ -25,14 +18,11 @@ type Props = ChildrenType & {
 }
 
 const Header = (props: Props) => {
-  // Props
   const { children, overrideStyles } = props
 
-  // Hooks
   const { settings } = useSettings()
   const theme = useTheme()
 
-  // Vars
   const { navbarContentWidth } = settings
 
   const headerFixed = themeConfig.navbar.type === 'fixed'

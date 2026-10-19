@@ -22,7 +22,6 @@ export default function BrandSelector({ brands, selectedBrand, onBrandSelect, pl
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Dropdown dışına tıklandığında kapat
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -58,7 +57,6 @@ export default function BrandSelector({ brands, selectedBrand, onBrandSelect, pl
               className="me-2"
               style={{ objectFit: 'contain' }}
               onError={() => {
-                // Fallback handled by Next.js Image component
               }}
             />
             <span>{selectedBrandData.name}</span>
@@ -80,7 +78,6 @@ export default function BrandSelector({ brands, selectedBrand, onBrandSelect, pl
             zIndex: 1050 
           }}
         >
-          {/* Arama kutusu */}
           <div className="p-2 border-bottom sticky-top bg-white">
             <input
               type="text"
@@ -92,7 +89,6 @@ export default function BrandSelector({ brands, selectedBrand, onBrandSelect, pl
             />
           </div>
 
-          {/* Marka listesi */}
           <div className="p-1">
             {filteredBrands.length > 0 ? (
               filteredBrands.map((brand) => (
@@ -125,7 +121,6 @@ export default function BrandSelector({ brands, selectedBrand, onBrandSelect, pl
                       borderRadius: '4px'
                     }}
                     onError={() => {
-                      // Fallback handled by Next.js Image component
                     }}
                   />
                   <div>

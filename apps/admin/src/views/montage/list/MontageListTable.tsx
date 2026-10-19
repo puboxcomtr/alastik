@@ -1,11 +1,9 @@
 'use client'
 
-// React Imports
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
@@ -23,7 +21,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 
-// Third-party Imports
 import {
     createColumnHelper,
     flexRender,
@@ -33,10 +30,8 @@ import {
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI, getImageUrl } from '@libs/api'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
 type DaySchedule = { open: string; close: string }
@@ -70,7 +65,6 @@ type MontagePoint = {
     order: number
 }
 
-// Telefonu +90 xxx xxx xx xx biçiminde gösterir
 const formatPhoneDisplay = (value?: string) => {
     if (!value) return ''
 
@@ -95,11 +89,9 @@ const MontageListTable = () => {
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
 
-    // Silme onayı
     const [deleteTarget, setDeleteTarget] = useState<MontagePoint | null>(null)
     const [deleting, setDeleting] = useState(false)
 
-    // Excel içe aktarma
     const importInputRef = useRef<HTMLInputElement>(null)
     const [importFile, setImportFile] = useState<File | null>(null)
     const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
@@ -107,7 +99,6 @@ const MontageListTable = () => {
     const [importLoading, setImportLoading] = useState(false)
     const [downloadingTemplate, setDownloadingTemplate] = useState(false)
 
-    // Komisyon oranları (seçili site) — noktanın fiyatının üstüne eklenir, kendi şubelerimize uygulanmaz
     const [komisyon, setKomisyon] = useState({ degisim: '0', diger: '0' })
     const [komisyonKaydediliyor, setKomisyonKaydediliyor] = useState(false)
     const [kdvEkle, setKdvEkle] = useState(false)
@@ -207,7 +198,6 @@ const MontageListTable = () => {
         }
     }
 
-    // Şablonu API'den alıp indirir (base64 → xlsx dosyası)
     const handleDownloadTemplate = async () => {
         setDownloadingTemplate(true)
 
@@ -238,7 +228,6 @@ const MontageListTable = () => {
         }
     }
 
-    // Dosya seçilince önizleme için API'ye gönderir
     const handleImportFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
 
@@ -267,7 +256,6 @@ const MontageListTable = () => {
         }
     }
 
-    // Önizleme onaylanınca aynı dosyayı confirm ile gönderir
     const handleImportConfirm = async () => {
         if (!importFile) return
 
@@ -566,7 +554,6 @@ const MontageListTable = () => {
                 </div>
             </Card>
 
-            {/* Excel İçe Aktarma Önizlemesi */}
             <Dialog open={!!importRows} onClose={() => !importLoading && closeImportDialog()} maxWidth='md' fullWidth>
                 <DialogTitle>Excel İçe Aktarma Önizlemesi</DialogTitle>
                 <DialogContent>
@@ -645,7 +632,6 @@ const MontageListTable = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Silme Onayı */}
             <Dialog open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)}>
                 <DialogTitle>Montaj Noktasını Sil</DialogTitle>
                 <DialogContent>

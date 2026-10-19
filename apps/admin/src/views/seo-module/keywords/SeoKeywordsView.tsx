@@ -1,13 +1,10 @@
 'use client'
 
-// React Imports
 import { useCallback, useEffect, useState } from 'react'
 
-// Next Imports
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-// MUI Imports
 import Grid from '@mui/material/Grid2'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -21,23 +18,17 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 
-// Third-party Imports
 import { toast } from 'react-toastify'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Type Imports
 import type { KeywordSuggestion, KeywordSuggestions, KeywordsData, SeoPeriodSelection, TrackedKeyword } from '../types'
 import { buildPeriodQuery } from '../types'
 
-// Util Imports
 import { formatDecimal, formatNumber, formatPercent } from '@/views/analytics/reports/format'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Component Imports
 import SeoTabs from '../SeoTabs'
 import SeoPeriodSelector from '../SeoPeriodSelector'
 import EmptyState from '@/views/analytics/reports/EmptyState'

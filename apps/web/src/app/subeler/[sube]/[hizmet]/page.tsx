@@ -1,5 +1,3 @@
-// LJA şube × hizmet sayfası — /subeler/<sube>/<hizmet> (yalnızca lastikjantavm.com)
-// Örn. "Şişli Mecidiyeköy Lastik Tamiri ve Mantar Yama": şubeye özgü metin + canlı fiyat tablosu.
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -45,7 +43,6 @@ export default async function BranchServicePage({ params }: Props) {
     const pagePath = `/subeler/${branch.slug}/${group.slug}`;
     const otherBranches = BRANCHES.filter(b => b.slug !== branch.slug);
 
-    // Hizmet + fiyat teklifi (şube sağlayıcı olarak)
     const serviceLd = {
         '@context': 'https://schema.org',
         '@type': 'Service',

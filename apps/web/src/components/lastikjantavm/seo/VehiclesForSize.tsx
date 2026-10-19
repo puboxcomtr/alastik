@@ -1,6 +1,3 @@
-// "Bu ebadı kullanan araçlar" (server component) — ebat (etiket) ve lastik ürün sayfalarında.
-// Ziyaretçiye tek satırlık kapalı bir başlık olarak görünür (<details>); açınca modeller listelenir.
-// Bağlantılar sunucu HTML'inde bulunur. Yalnızca dizine açık araç sayfalarına bağlantı verilir.
 import React from 'react';
 import Link from 'next/link';
 import { getVehiclesBySize } from '@/src/services/vehicleService';

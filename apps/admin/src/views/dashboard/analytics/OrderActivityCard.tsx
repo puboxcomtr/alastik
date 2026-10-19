@@ -1,19 +1,16 @@
 'use client'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid2'
 
-// Components Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
 import { formatInt } from './format'
 import type { OverviewData } from './format'
 
-// Ödemesi alınmış siparişlerin akıştaki dağılımı
 const OrderActivityCard = ({ activity }: { activity: OverviewData['orderActivity'] }) => {
     const tiles = [
         { label: 'Onay Bekleyen', value: activity.awaitingApproval, icon: 'ri-time-line', color: 'warning' as const },

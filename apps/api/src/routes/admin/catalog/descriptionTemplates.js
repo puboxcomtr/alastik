@@ -8,9 +8,6 @@ const maybeAuth = process.env.DISABLE_AUTH === 'true'
     ? (req, res, next) => next()
     : authenticateAdmin;
 
-/**
- * Şablon Listesi
- */
 router.get('/', maybeAuth, async (req, res) => {
     try {
         const { search, page = 1, limit = 50 } = req.query;
@@ -56,9 +53,6 @@ router.get('/', maybeAuth, async (req, res) => {
     }
 });
 
-/**
- * Şablon Detay
- */
 router.get('/:id', maybeAuth, async (req, res) => {
     try {
         const template = await DescriptionTemplate.findOne({ _id: req.params.id, site: req.site }).lean();
@@ -86,9 +80,6 @@ router.get('/:id', maybeAuth, async (req, res) => {
     }
 });
 
-/**
- * Yeni Şablon
- */
 router.post('/', maybeAuth, async (req, res) => {
     try {
         const { name, content, models, isActive } = req.body;
@@ -116,9 +107,6 @@ router.post('/', maybeAuth, async (req, res) => {
     }
 });
 
-/**
- * Şablon Güncelleme
- */
 router.patch('/:id', maybeAuth, async (req, res) => {
     try {
         const { name, content, models, isActive } = req.body;
@@ -146,9 +134,6 @@ router.patch('/:id', maybeAuth, async (req, res) => {
     }
 });
 
-/**
- * Şablon Silme
- */
 router.delete('/:id', maybeAuth, async (req, res) => {
     try {
         const deleted = await DescriptionTemplate.findOneAndDelete({ _id: req.params.id, site: req.site });
@@ -162,10 +147,6 @@ router.delete('/:id', maybeAuth, async (req, res) => {
     }
 });
 
-/**
- * Şablonu Ürünlere Uygula
- * Body: { models: [...], overrideExisting: bool }
- */
 router.post('/:id/apply', maybeAuth, async (req, res) => {
     try {
         const template = await DescriptionTemplate.findOne({ _id: req.params.id, site: req.site });
@@ -222,11 +203,6 @@ router.post('/:id/apply', maybeAuth, async (req, res) => {
     }
 });
 
-
-/**
- * Tüm aktif şablonları toplu uygula
- * Body: { overrideExisting: bool }
- */
 router.post('/apply-all', maybeAuth, async (req, res) => {
     try {
         const overrideExisting = Boolean(req.body.overrideExisting);

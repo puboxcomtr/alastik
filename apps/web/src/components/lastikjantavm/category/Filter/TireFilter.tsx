@@ -61,7 +61,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
         setVehicleType(searchParams.get('arac') || 'all');
     }, [searchParams]);
 
-    // Backend ne döndürürse o göster (cascading sonucu)
     const enhancedWidths = options?.widths || [];
     const enhancedAspects = options?.aspects || [];
     const enhancedRims = options?.rims || [];
@@ -110,7 +109,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
 
     return (
         <Grid container sx={{ borderBottom: "1px solid #ddd" }}>
-            {/* Araç Tipi */}
             {enhancedVehicleTypes.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">Araç Tipi</Offcanvas.Title>
@@ -146,7 +144,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                 </Grid>
             )}
 
-            {/* Taban Genişliği */}
             {!hideEbatFilters && enhancedWidths.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
@@ -198,7 +195,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                 </Grid>
             )}
 
-            {/* Yanak Yüksekliği */}
             {!hideEbatFilters && enhancedAspects.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
@@ -250,7 +246,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                 </Grid>
             )}
 
-            {/* Jant Çapı */}
             {!hideEbatFilters && enhancedRims.length > 0 && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <Offcanvas.Title className="mb-2" as="h6">
@@ -302,7 +297,6 @@ export default function TireFilters({ hideEbatFilters = false, categorySlug, tag
                 </Grid>
             )}
 
-            {/* Filtreleri Temizle */}
             {(searchParams.get('genislik') || searchParams.get('yanak') || searchParams.get('jant') || searchParams.get('arac')) && (
                 <Grid size={12} sx={{ mb: 2, mt: 1 }}>
                     <button

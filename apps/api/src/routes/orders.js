@@ -6,19 +6,12 @@ const logger = require('../utils/logger');
 const router = express.Router();
 const { syncOrderToDia } = require('../services/DiaService');
 
-/**
- * Sipariş numarası oluştur
- */
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `ORD-${timestamp.slice(-6)}-${random}`;
 };
 
-/**
- * Sipariş oluştur
- * POST /api/orders/create
- */
 router.post('/create', authenticateUser, async (req, res) => {
   const startTime = Date.now();
   const requestId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -32,7 +25,6 @@ router.post('/create', authenticateUser, async (req, res) => {
       notes
     } = req.body;
 
-    // Kullanıcıyı ve sepetini getir
     const user = await User.findById(req.userId || req.user?.userId);
     logger.info('=== [ORDER][CREATE][USER_LOADED] ===', { requestId, hasUser: !!user });
     
@@ -44,7 +36,6 @@ router.post('/create', authenticateUser, async (req, res) => {
       });
     }
 
-    // Sepet kontrolü
     if (!user.activeCart.items || user.activeCart.items.length === 0) {
       logger.warn('=== [ORDER][CREATE][EMPTY_CART] ===', { requestId, userId: user._id });
       return res.status(400).json({
@@ -53,7 +44,6 @@ router.post('/create', authenticateUser, async (req, res) => {
       });
     }
 
-    // Adres kontrolü
     if (!shippingAddress) {
       logger.warn('=== [ORDER][CREATE][NO_ADDRESS] ===', { requestId });
       return res.status(400).json({
@@ -62,7 +52,6 @@ router.post('/create', authenticateUser, async (req, res) => {
       });
     }
 
-    // Ödeme yöntemi kontrolü
     if (!paymentMethod) {
       logger.warn('=== [ORDER][CREATE][NO_PAYMENT_METHOD] ===', { requestId });
       return res.status(400).json({
@@ -71,7 +60,6 @@ router.post('/create', authenticateUser, async (req, res) => {
       });
     }
 
-    // Sipariş öğelerini Order şemasına uygun hazırla
     const orderItems = user.activeCart.items.map(item => {
       const quantity = Math.max(1, item.quantity || 1);
       const unitPrice = Number(item.price) || 0;
@@ -104,13 +92,11 @@ router.post('/create', authenticateUser, async (req, res) => {
       };
     });
 
-    // Fiyat hesaplamaları
     const subtotal = orderItems.reduce((total, item) => total + item.totalPrice, 0);
     const vatAmount = orderItems.reduce((total, item) => total + (item.vatAmount || 0), 0);
-    const shippingCost = subtotal > 500 ? 0 : 50; // 500 TL üzeri ücretsiz kargo
+    const shippingCost = subtotal > 500 ? 0 : 50;
     const total = subtotal + vatAmount + shippingCost;
 
-    // Sipariş oluştur
     const order = new Order({
       orderNumber: generateOrderNumber(),
       userId: user._id,
@@ -147,7 +133,6 @@ router.post('/create', authenticateUser, async (req, res) => {
 
     await order.save();
     logger.info('=== [ORDER][CREATE][SAVED] ===', { requestId, orderId: order._id, orderNumber: order.orderNumber });
-    // DIA senkronizasyonunu arkaya at (fire-and-forget)
     (async () => {
       try {
         const result = await syncOrderToDia(order.toObject());
@@ -174,7 +159,6 @@ router.post('/create', authenticateUser, async (req, res) => {
         logger.error('=== [ORDER][DIA_SYNC][EXCEPTION] ===', { requestId, orderId: order._id, error: e.message });
       }
     })();
-    // Kullanıcı istatistiklerini güncelle
     if (!user.statistics) {
       user.statistics = { totalOrders: 0, totalSpent: 0, lastOrderDate: null };
     }
@@ -182,7 +166,6 @@ router.post('/create', authenticateUser, async (req, res) => {
     user.statistics.totalSpent = (user.statistics.totalSpent || 0) + total;
     user.statistics.lastOrderDate = new Date();
 
-    // Sepet geçmişini güncelle
     if (!user.cartHistory) {
       user.cartHistory = { totalCarts: 0, completedCarts: 0, averageCartValue: 0, lastCartDate: null };
     }
@@ -219,10 +202,6 @@ router.post('/create', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Kullanıcının siparişlerini getir
- * GET /api/orders
- */
 router.get('/', authenticateUser, async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
@@ -236,7 +215,7 @@ router.get('/', authenticateUser, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .select('-payment.threeDSecure.htmlContent'); // Hassas bilgileri gizle
+      .select('-payment.threeDSecure.htmlContent');
 
     const total = await Order.countDocuments(query);
 
@@ -259,10 +238,6 @@ router.get('/', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sipariş detayını getir
- * GET /api/orders/:orderId
- */
 router.get('/:orderId', authenticateUser, async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -292,10 +267,6 @@ router.get('/:orderId', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Siparişi sipariş numarasına göre getir
- * GET /api/orders/number/:orderNumber
- */
 router.get('/number/:orderNumber', authenticateUser, async (req, res) => {
   try {
     const { orderNumber } = req.params;
@@ -313,10 +284,6 @@ router.get('/number/:orderNumber', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Siparişi iptal et
- * POST /api/orders/:orderId/cancel
- */
 router.post('/:orderId/cancel', authenticateUser, async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -334,7 +301,6 @@ router.post('/:orderId/cancel', authenticateUser, async (req, res) => {
       });
     }
 
-    // İptal edilebilir durumda mı kontrol et
     if (!['pending', 'confirmed'].includes(order.status)) {
       return res.status(400).json({
         success: false,
@@ -342,7 +308,6 @@ router.post('/:orderId/cancel', authenticateUser, async (req, res) => {
       });
     }
 
-    // Siparişi iptal et
     order.status = 'cancelled';
     order.history.push({
       status: 'cancelled',
@@ -365,16 +330,11 @@ router.post('/:orderId/cancel', authenticateUser, async (req, res) => {
   }
 });
 
-/**
- * Sipariş durumu güncelle (Admin için)
- * PUT /api/orders/:orderId/status
- */
 router.put('/:orderId/status', authenticateUser, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status, reason, trackingNumber } = req.body;
     
-    // Admin kontrolü (basit - gerçek uygulamada role kontrolü yapılmalı)
     if (req.user.type !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -391,14 +351,12 @@ router.put('/:orderId/status', authenticateUser, async (req, res) => {
       });
     }
 
-    // Durumu güncelle
     order.status = status;
     
     if (trackingNumber) {
       order.shipping.trackingNumber = trackingNumber;
     }
 
-    // Durum geçmişine ekle
     order.history.push({
       status,
       note: reason,

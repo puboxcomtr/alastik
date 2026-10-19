@@ -6,7 +6,6 @@ const WebCallbackRequest = require('../../../models/web/content/WebCallbackReque
 const { CALLBACK_TOPICS, CALLBACK_TIME_SLOTS } = require('../../../config/callbackForm');
 const { SITES, DEFAULT_SITE } = require('../../../config/sites');
 
-
 router.post('/', async (req, res) => {
     try {
         const { name, surname, email, phone, subject, message } = req.body;
@@ -18,8 +17,6 @@ router.post('/', async (req, res) => {
         const contact = new WebContact({ site: req.site, name, surname, email, phone, subject, message });
         await contact.save();
 
-        // Mail tetikle (fire-and-forget)
-        // Hem gönderene hem admin'e aynı şablon gider
         sendTemplateMail({
             templateKey: 'iletisim_formu',
             context: {
@@ -49,12 +46,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /api/contact/callback/options — form seçenekleri (konu, uygun saat)
 router.get('/callback/options', (req, res) => {
     res.json({ success: true, data: { topics: CALLBACK_TOPICS, timeSlots: CALLBACK_TIME_SLOTS } });
 });
 
-// POST /api/contact/callback — "Biz Sizi Arayalım" talebi
 router.post('/callback', async (req, res) => {
     try {
         const name = String(req.body.name || '').trim();
@@ -82,7 +77,6 @@ router.post('/callback', async (req, res) => {
         });
         await request.save();
 
-        // Yöneticiye bildirim (iletişim formu şablonuyla) — fire-and-forget
         const details = [
             topic ? `Konu: ${topic.label}` : null,
             timeSlot ? `Uygun saat: ${timeSlot.label}` : null

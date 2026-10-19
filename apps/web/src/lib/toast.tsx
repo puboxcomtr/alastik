@@ -1,7 +1,6 @@
 import React from 'react';
 import { toast, ToastOptions, Slide } from 'react-toastify';
 
-// Default toast configuration
 const defaultOptions: ToastOptions = {
   position: "top-right",
   autoClose: 4000,
@@ -14,7 +13,6 @@ const defaultOptions: ToastOptions = {
   className: 'custom-toast',
 };
 
-// Success toast
 export const showSuccess = (message: string, options?: Partial<ToastOptions>) => {
   return toast.success(message, {
     ...defaultOptions,
@@ -23,7 +21,6 @@ export const showSuccess = (message: string, options?: Partial<ToastOptions>) =>
   });
 };
 
-// Error toast
 export const showError = (message: string, options?: Partial<ToastOptions>) => {
   return toast.error(message, {
     ...defaultOptions,
@@ -32,7 +29,6 @@ export const showError = (message: string, options?: Partial<ToastOptions>) => {
   });
 };
 
-// Warning toast
 export const showWarning = (message: string, options?: Partial<ToastOptions>) => {
   return toast.warning(message, {
     ...defaultOptions,
@@ -41,7 +37,6 @@ export const showWarning = (message: string, options?: Partial<ToastOptions>) =>
   });
 };
 
-// Info toast
 export const showInfo = (message: string, options?: Partial<ToastOptions>) => {
   return toast.info(message, {
     ...defaultOptions,
@@ -50,7 +45,6 @@ export const showInfo = (message: string, options?: Partial<ToastOptions>) => {
   });
 };
 
-// Loading toast
 export const showLoading = (message: string, options?: Partial<ToastOptions>) => {
   return toast.loading(message, {
     ...defaultOptions,
@@ -62,7 +56,6 @@ export const showLoading = (message: string, options?: Partial<ToastOptions>) =>
   });
 };
 
-// Promise toast - for async operations
 export const showPromise = <T,>(
   promise: Promise<T>,
   messages: {
@@ -79,7 +72,6 @@ export const showPromise = <T,>(
   });
 };
 
-// Shopping cart specific toasts
 export const cartToasts = {
   addedToCart: (productName: string) => {
     return showSuccess(`${productName} sepete eklendi!`, {
@@ -118,7 +110,6 @@ export const cartToasts = {
   }
 };
 
-// Auth specific toasts
 export const authToasts = {
   loginSuccess: (userName?: string) => {
     return showSuccess(userName ? `Hoş geldin ${userName}!` : 'Giriş başarılı!', {
@@ -169,7 +160,6 @@ export const authToasts = {
   }
 };
 
-// Order specific toasts
 export const orderToasts = {
   orderCreated: (orderNumber: string) => {
     return showSuccess(`Siparişiniz oluşturuldu! Sipariş No: ${orderNumber}`, {
@@ -202,7 +192,6 @@ export const orderToasts = {
   }
 };
 
-// API specific toasts
 export const apiToasts = {
   networkError: () => {
     return showError('Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.', {
@@ -227,7 +216,6 @@ export const apiToasts = {
   }
 };
 
-// Utility functions
 export const dismissToast = (toastId: string | number) => {
   toast.dismiss(toastId);
 };
@@ -236,7 +224,6 @@ export const dismissAllToasts = () => {
   toast.dismiss();
 };
 
-// Custom toast with action button
 export const showActionToast = (
   message: string,
   actionText: string,

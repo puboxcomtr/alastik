@@ -6,7 +6,6 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/src/hooks/Theme/useAuth';
 import { formatPhoneNumber, parsePhoneNumber, displayPhoneNumber } from '@/src/hooks/helper';
 
-
 interface ProfileProps {
     email: string;
     profile: {
@@ -22,7 +21,6 @@ interface ProfileProps {
 export default function ProfileContent({ email, profile, marketingConsent = false, onProfileChange, onMarketingChange }: ProfileProps) {
     const { getToken } = useAuth();
 
-    // Kişisel bilgiler
     const [editMode, setEditMode] = useState(false);
     const [form, setForm] = useState({
         firstName: profile.firstName || '',
@@ -36,7 +34,6 @@ export default function ProfileContent({ email, profile, marketingConsent = fals
         console.log('marketingConsent prop:', marketingConsent);
         setForm(prev => ({ ...prev, marketingConsent }));
     }, [marketingConsent]);
-    // Şifre değiştirme
     const [passwordMode, setPasswordMode] = useState(false);
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: '',
@@ -142,7 +139,6 @@ export default function ProfileContent({ email, profile, marketingConsent = fals
 
     return (
         <>
-            {/* Kişisel Bilgiler */}
             <div className="py-4">
                 <div className="nav flex-nowrap align-items-center justify-content-between pb-1 mb-3">
                     <h2 className="h6 mb-0">Kişisel Bilgiler</h2>
@@ -151,7 +147,6 @@ export default function ProfileContent({ email, profile, marketingConsent = fals
                     </a>
                 </div>
 
-                {/* Görüntüleme */}
                 <Collapse in={!editMode}>
                     <div>
                         <ul className="list-unstyled fs-sm m-0">
@@ -162,7 +157,6 @@ export default function ProfileContent({ email, profile, marketingConsent = fals
                     </div>
                 </Collapse>
 
-                {/* Düzenleme */}
                 <Collapse in={editMode}>
                     <div>
                         <form className="row g-3 g-sm-4" onSubmit={handleSave}>
@@ -239,7 +233,6 @@ export default function ProfileContent({ email, profile, marketingConsent = fals
                 </Collapse>
             </div>
 
-            {/* Şifre Değiştir */}
             <div className="border-bottom py-4">
                 <div className="nav flex-nowrap align-items-center justify-content-between pb-1 mb-3">
                     <h2 className="h6 mb-0">Şifre</h2>

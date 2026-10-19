@@ -5,7 +5,6 @@ const WebProduct = require('../../../models/web/catalog/WebProduct');
 const WebBrand = require('../../../models/web/catalog/WebBrand');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const WebTag = require('../../../models/web/catalog/WebTag');
-// Tek URL
 router.post('/notify', async (req, res) => {
     try {
         const { url, type = 'URL_UPDATED' } = req.body;
@@ -18,7 +17,6 @@ router.post('/notify', async (req, res) => {
     }
 });
 
-// Tip bazlı toplu bildirim
 router.post('/notify-all/:type', async (req, res) => {
     try {
         const { type } = req.params;

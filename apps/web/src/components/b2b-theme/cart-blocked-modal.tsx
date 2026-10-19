@@ -1,6 +1,4 @@
 "use client";
-// Vadesi geçen borcu olan bayi sepete ürün eklemeye ya da sipariş vermeye çalıştığında
-// ekranın ortasında açılan uyarı. Metin sunucudan gelir (/me → cartClosedMessage).
 import { useEffect } from "react";
 import { AlertIcon, CloseIcon } from "./icons";
 import { formatKurus } from "@components/b2b-theme/lib/format";

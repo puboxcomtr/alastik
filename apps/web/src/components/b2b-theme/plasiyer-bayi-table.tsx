@@ -1,7 +1,4 @@
 'use client';
-// Benim Bayilerim tablosu — Bayi Adı / Satın Aldığı Ürün Adeti / Toplam Ciro (hepsi sıralanabilir) + sayfalama.
-// MUI (Materio benzeri tema) — Card + Table + TableSortLabel + numaralı Pagination.
-// ŞİMDİLİK DEMO veri (frontend); sonra canlı bağlanacak.
 import { useMemo, useState } from 'react';
 import { Card, CardHeader, Divider, Typography, Box, Table, TableHead, TableBody, TableRow, TableCell, TableContainer, TableSortLabel, Pagination, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 
@@ -9,7 +6,6 @@ type Bayi = { id: number; ad: string; adet: number; ciro: number };
 type SiraAlan = 'ad' | 'adet' | 'ciro';
 type SiraYon = 'asc' | 'desc';
 
-// Demo bayi verisi üretimi (~40 kayıt → 8/sayfa = 5 sayfa)
 const ADLAR = [
     'Akif Ece Oto Lastik', 'Limanyolu Lastik Pazarlama', 'Modül Lastik Otomotiv', 'Bayram Oto Lastik',
     'Kartal Jant & Lastik', 'Deniz Otomotiv', 'Yıldız Lastik Servis', 'Merkez Jant', 'Anadolu Lastik',
@@ -30,11 +26,9 @@ const DEMO: Bayi[] = ADLAR.map((ad, i) => ({
 const SAYFA_ADET = 8;
 const tl = (n: number) => n.toLocaleString('tr-TR') + ' ₺';
 
-// Dönem katsayıları (demo): aylık taban, haftalık ~1/4, günlük ~1/30
 type Donem = 'gunluk' | 'haftalik' | 'aylik';
 const DONEM_KATSAYI: Record<Donem, number> = { gunluk: 1 / 30, haftalik: 0.25, aylik: 1 };
 
-// ── Popover demo verileri (satır bazında, id'den deterministik) ──
 const MARKALAR = ['Pirelli', 'Lassa', 'Michelin', 'Goodyear', 'Bridgestone', 'Petlas'];
 
 function iletisim(ad: string, id: number): { email: string; tel: string } {
@@ -44,7 +38,7 @@ function iletisim(ad: string, id: number): { email: string; tel: string } {
 }
 
 function markaDagilim(id: number, toplamAdet: number): { marka: string; adet: number }[] {
-    const n = 2 + (id % 2); // 2 veya 3 marka
+    const n = 2 + (id % 2);
     const secili = Array.from({ length: n }, (_, i) => MARKALAR[(id + i * 2) % MARKALAR.length]);
     const agir = secili.map((_, i) => ((id + i * 7) % 5) + 2);
     const toplamAgir = agir.reduce((a, b) => a + b, 0);
@@ -62,7 +56,6 @@ function vadeDagilim(ciro: number): { odenen: number; gelen: number; gecen: numb
     return { odenen, gelen, gecen: Math.max(0, ciro - odenen - gelen) };
 }
 
-// Tooltip içeriği: etiket/değer satırları
 function IpucuKutu({ satirlar }: { satirlar: [string, string][] }) {
     return (
         <Box sx={{ py: 0.25 }}>

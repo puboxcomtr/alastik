@@ -1,5 +1,3 @@
-// Server tarafında aktif siteye göre sayfa başlığı üretir.
-// Yalnızca server component / generateMetadata içinde kullanılabilir (next/headers).
 import { headers } from 'next/headers';
 import { SITES, DEFAULT_SITE, isValidSite, type SiteConfig } from '@/src/config/siteConfig';
 
@@ -8,7 +6,6 @@ export function getActiveSiteConfig(): SiteConfig {
     return isValidSite(slug) ? SITES[slug] : SITES[DEFAULT_SITE];
 }
 
-// "Hesabım | ALastik.com" / "Hesabım | LastikJantAVM" gibi başlık üretir
 export function siteTitle(pageTitle: string, separator: string = '|'): string {
     return `${pageTitle} ${separator} ${getActiveSiteConfig().brandTitle}`;
 }

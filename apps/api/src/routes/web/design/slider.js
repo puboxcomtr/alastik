@@ -3,11 +3,8 @@ const router = express.Router();
 const WebSlider = require('../../../models/web/design/WebSlider');
 const mongoose = require('mongoose');
 
-// GET /api/design/slider/:id
 router.get('/:id', async (req, res) => {
     try {
-        // Slider aktif/pasif değişikliği anında yansısın: tarayıcı/ara katman
-        // bu yanıtı önbelleğe almasın (aksi halde pasiflenen slayt görünmeye devam eder).
         res.set('Cache-Control', 'no-store');
 
         const { id } = req.params;
@@ -19,7 +16,6 @@ router.get('/:id', async (req, res) => {
             });
         }
 
-        // Yalnızca isteğin geldiği sitenin slider'ı
         const slider = await WebSlider.findOne({ _id: id, site: req.site });
 
         if (!slider) {

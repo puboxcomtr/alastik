@@ -1,15 +1,10 @@
-// Express router
 const express = require('express');
 const router = express.Router();
 
-// Models
 const Menu = require('../../../models/admin/design/Menu');
 const WebCategory = require('../../../models/web/catalog/WebCategory');
 const Page = require('../../../models/admin/content/Page');
 
-/**
- * Menü kayıtlarına hedef adı/URL bilgisini ekler (kategori adı, sayfa başlığı)
- */
 async function enrichMenus(menus) {
     return Promise.all(menus.map(async (menu) => {
         const enriched = { ...menu };
@@ -93,10 +88,6 @@ async function enrichMenus(menus) {
     }));
 }
 
-/**
- * Tek bir menü grubunu ağaç olarak döndürür (kategori sayfasında gösterilen menü).
- * Grubun adı ve altındaki öğeler birlikte döner.
- */
 router.get('/group/:id', async (req, res) => {
     try {
         const group = await Menu.findOne({ _id: req.params.id, site: req.site, isActive: true }).lean();
@@ -124,7 +115,6 @@ router.get('/group/:id', async (req, res) => {
             }));
         };
 
-        // Grubun kendi bağlantısı da çözümlenir (başlık tıklanabilir olabilir)
         const [enrichedGroup] = await enrichMenus([group]);
 
         res.json({
@@ -143,10 +133,6 @@ router.get('/group/:id', async (req, res) => {
     }
 });
 
-/**
- * Bir görüntüleme alanındaki tüm menü gruplarını döndürür.
- * Blog detay sayfasının sağ sidebar'ı bu ucu kullanır (alan: blog).
- */
 router.get('/area/:area', async (req, res) => {
     try {
         const { area } = req.params;
@@ -170,7 +156,6 @@ router.get('/area/:area', async (req, res) => {
             byParent.get(pid).push(item);
         });
 
-        // Kök öğeler grup başlığı, altındakiler bağlantı listesi olur
         const groups = (byParent.get('root') || []).map(group => ({
             _id: group._id,
             name: group.name,
@@ -187,8 +172,6 @@ router.get('/area/:area', async (req, res) => {
     }
 });
 
-// Üst link satırı (header üstündeki ikonlu hızlı linkler) — DÜZ liste (grup mantığı yok).
-// Her öğe: name, icon (remixicon), çözümlenmiş linkData/url, openNewTab.
 router.get('/ustlink', async (req, res) => {
     try {
         const menus = await Menu.find({ site: req.site, displayArea: 'ustlink', isActive: true })
@@ -238,8 +221,6 @@ router.get('/header', async (req, res) => {
             }
         });
 
-        // Menü grupları (heading + alt öğeli kök) üst bara terfi eder:
-        // grubun adı değil içindeki öğeler gösterilir
         const finalRoots = [];
         roots.forEach(node => {
             if (node.menuType === 'heading' && node.children.length > 0) {

@@ -1,4 +1,3 @@
-// apps/web/src/services/orderService.ts
 import { API_ENDPOINTS } from '@/src/config/api';
 
 export interface OrderItem {
@@ -8,23 +7,18 @@ export interface OrderItem {
     name: string;
     quantity: number;
     unitPrice: number;
-    // Hizmetin alınacağı montaj noktası (fiyat sunucuda noktaya göre çözülür)
     montagePointId?: string;
     totalPrice: number;
 }
 
-/** Stok yetersizliği nedeniyle siparişe alınmayan kalem (sunucu yanıtındaki cikarilanlar) */
 export interface RemovedOrderItem {
     productKey: string;
     stockCode: string;
     name: string;
-    /** müşterinin istediği adet */
     istenen: number;
-    /** stokta kalan (sipariş verilebilecek) adet */
     kalan: number;
 }
 
-/** Ödeme sayfasının gönderdiği sipariş isteği: kalemler yalnız ürün + adet taşır, fiyatı sunucu hesaplar */
 export interface CreateOrderRequest {
     items: { productKey: string; quantity: number; montagePointId?: string }[];
     [field: string]: unknown;
@@ -40,7 +34,6 @@ export interface CreateOrderData {
     shippingAddressId?: string;
     guestBillingAddress?: any;
     guestShippingAddress?: any;
-    // Siparişin verildiği sepetin oturum numarası (ödeme sonucu gelince sunucu o sepeti siler)
     cartSessionId?: string;
     items: OrderItem[];
     pricing: {
@@ -69,10 +62,6 @@ export const orderService = {
         }
     },
 
-    /**
-     * Sipariş oluşturur ve sunucunun yanıtını ayrıntısıyla döner: başarısızsa neden (message) ve
-     * stok yetersizliğinden çıkarılan kalemler (removed) müşteriye gösterilebilsin.
-     */
     async createOrderDetailed(data: CreateOrderRequest): Promise<{ order: any | null; message: string; removed: RemovedOrderItem[] }> {
         try {
             const res = await fetch(API_ENDPOINTS.order.create(), {

@@ -1,16 +1,9 @@
-/**
- * Lastik ürünleri için sahte yorum oluşturma scripti
- * Çalıştır: node apps/api/src/scripts/products/generateReviews.js
- */
 
 const mongoose = require('mongoose');
 
 const MONGODB_URI = 'mongodb://alastik:34gm4191M.@217.195.202.170:27017/alastik_db?authSource=admin';
 const USER_ID = '69737e403c1cdbe6de298b68';
 
-// ============================================
-// TÜRK İSİM HAVUZU
-// ============================================
 const firstNames = [
     'Ahmet', 'Mehmet', 'Ali', 'Mustafa', 'Hasan', 'Hüseyin', 'İbrahim', 'Ömer',
     'Burak', 'Emre', 'Fatih', 'Serkan', 'Murat', 'Oğuz', 'Cenk', 'Tolga',
@@ -38,9 +31,6 @@ const lastNames = [
     'Uysal', 'Karataş', 'Gündüz', 'Avcı', 'Işık', 'Elmas', 'Baran', 'Uslu'
 ];
 
-// ============================================
-// YORUM HAVUZU (comment DB'de zorunlu, frontend'de gizlenecek)
-// ============================================
 const commentPool = [
     'Yol tutuşu gayet iyi, yağmurda bile güven veriyor.',
     'Fiyat performans açısından oldukça memnunum.',
@@ -64,9 +54,6 @@ const commentPool = [
     'Daha önce farklı marka kullanıyordum, bu daha iyi.'
 ];
 
-// ============================================
-// HELPER FONKSİYONLAR
-// ============================================
 function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -79,7 +66,6 @@ function generateDisplayName() {
     return `${randomItem(firstNames)} ${randomItem(lastNames)}`;
 }
 
-// 3-5 arası ağırlıklı rating
 function generateRating() {
     const rand = Math.random();
     if (rand < 0.45) return 5;
@@ -87,7 +73,6 @@ function generateRating() {
     return 3;
 }
 
-// 7 alanın ortalaması 3-5 arası olacak şekilde rating seti üret
 function generateRatingSet() {
     let ratings;
     do {
@@ -112,9 +97,6 @@ function generateOrderDate() {
     return new Date(randomInt(sixMonthsAgo, now));
 }
 
-// ============================================
-// ANA FONKSİYON
-// ============================================
 async function run() {
     try {
         console.log('MongoDB bağlantısı kuruluyor...');
@@ -125,11 +107,9 @@ async function run() {
         const webproducts = db.collection('webproducts');
         const webreviews = db.collection('webreviews');
 
-        // 1. Mevcut yorumları sil
         const deleteResult = await webreviews.deleteMany({});
         console.log(`${deleteResult.deletedCount} mevcut yorum silindi.`);
 
-        // 2. Tüm lastik ürünlerini çek
         const products = await webproducts.find({
             'diaData.ozelkod7kodu': 'LASTİK'
         }).project({
@@ -144,7 +124,6 @@ async function run() {
             process.exit(0);
         }
 
-        // 3. Yorumları oluştur
         const userId = new mongoose.Types.ObjectId(USER_ID);
         let totalReviews = 0;
         const bulkReviews = [];
@@ -179,7 +158,6 @@ async function run() {
                 });
             }
 
-            // reviewStats hesapla
             const avg = overallRatings.reduce((a, b) => a + b, 0) / overallRatings.length;
             bulkStats.push({
                 updateOne: {
@@ -196,7 +174,6 @@ async function run() {
             totalReviews += reviewCount;
         }
 
-        // 4. Toplu yorum ekle
         console.log(`${totalReviews} yorum oluşturuluyor...`);
         const batchSize = 1000;
         for (let i = 0; i < bulkReviews.length; i += batchSize) {
@@ -205,7 +182,6 @@ async function run() {
             console.log(`Yorum batch ${Math.floor(i / batchSize) + 1}: ${batch.length} yorum eklendi.`);
         }
 
-        // 5. reviewStats güncelle
         console.log('reviewStats güncelleniyor...');
         for (let i = 0; i < bulkStats.length; i += batchSize) {
             const batch = bulkStats.slice(i, i + batchSize);

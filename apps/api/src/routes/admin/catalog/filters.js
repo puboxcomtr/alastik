@@ -7,10 +7,6 @@ const maybeAuth = process.env.DISABLE_AUTH === 'true'
     ? (req, res, next) => next()
     : authenticateAdmin;
 
-/**
- * Ürün Filtre Seçenekleri
- * GET /api/admin/filters/product-options
- */
 router.get('/product-options', maybeAuth, async (req, res) => {
     try {
         const baseFilter = {
@@ -117,10 +113,6 @@ router.get('/product-options', maybeAuth, async (req, res) => {
         });
     }
 });
-/**
- * Ana kategoriye bağlı alt kategoriler
- * GET /api/admin/filters/sub-categories?main_category=Otomobil Lastikleri
- */
 router.get('/sub-categories', maybeAuth, async (req, res) => {
     try {
         const { main_category } = req.query;

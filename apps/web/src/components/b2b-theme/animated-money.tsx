@@ -1,7 +1,5 @@
 "use client";
 
-// Para değeri değişince eski değerden yeni değere sayarak (artıp azalarak)
-// geçiş yapar. Sepette adet değişince fiyatlar yumuşak animasyonla güncellenir.
 import { useEffect, useRef, useState } from "react";
 import { formatKurus } from "@components/b2b-theme/lib/format";
 
@@ -15,7 +13,6 @@ export function AnimatedMoney({
   const [display, setDisplay] = useState(kurus);
   const displayRef = useRef(kurus);
 
-  // Her render'da güncel gösterilen değeri sakla (animasyon kesilirse buradan devam)
   useEffect(() => {
     displayRef.current = display;
   });
@@ -28,7 +25,7 @@ export function AnimatedMoney({
     const start = performance.now();
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3); // ease-out
+      const eased = 1 - Math.pow(1 - t, 3);
       setDisplay(Math.round(from + (to - from) * eased));
       if (t < 1) raf = requestAnimationFrame(step);
       else setDisplay(to);

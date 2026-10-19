@@ -1,7 +1,3 @@
-// İkinci el bilgi sayfası — /ikinci-el (yalnızca lastikjantavm.com)
-// LJA ikinci el ürün satmaz; menüdeki "İkinci El Lastik / Jant" bu sayfaya gelir, sayfa kardeş site
-// ikinciellastik.com'u tanıtır ve oraya yönlendirir. Bilgiler ikinciellastik.com'un garanti/iade/kontrol
-// sayfalarıyla aynıdır; orada değişirse burası da güncellenmeli.
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

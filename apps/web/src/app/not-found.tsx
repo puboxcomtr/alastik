@@ -1,6 +1,5 @@
 'use client';
 
-// Bilinmeyen tüm adresler tasarlanmış 404 sayfasına yönlendirilir
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 

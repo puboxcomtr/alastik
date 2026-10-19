@@ -1,9 +1,7 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
 import CardContent from '@mui/material/CardContent'
@@ -15,14 +13,11 @@ import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
 import type { BoxProps } from '@mui/material/Box'
 
-// Third-party Imports
 import { useDropzone } from 'react-dropzone'
 
-// Component Imports
 import Link from '@components/Link'
 import CustomAvatar from '@/@core/components/mui/Avatar'
 
-// Styled Component Imports
 import AppReactDropzone from '@/libs/styles/AppReactDropzone'
 
 type FileProp = {
@@ -31,7 +26,6 @@ type FileProp = {
   size: number
 }
 
-// Styled Dropzone Component
 const Dropzone = styled(AppReactDropzone)<BoxProps>(({ theme }) => ({
   '& .dropzone': {
     minHeight: 'unset',
@@ -46,10 +40,8 @@ const Dropzone = styled(AppReactDropzone)<BoxProps>(({ theme }) => ({
 }))
 
 const ProductImage = () => {
-  // States
   const [files, setFiles] = useState<File[]>([])
 
-  // Hooks
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles: File[]) => {
       setFiles(acceptedFiles.map((file: File) => Object.assign(file)))

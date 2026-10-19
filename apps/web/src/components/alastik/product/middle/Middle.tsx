@@ -1,14 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-/* ========================================
-   MUI Components
-   ======================================== */
 import { Grid, Typography, Rating, Link, Divider, Tooltip } from '@mui/material';
 
-/* ========================================
-   Custom Hooks & Helpers
-   ======================================== */
 import {
     getProductDetailFeatures,
     getProductSeason,
@@ -19,13 +13,9 @@ import {
 } from '@/src/hooks/Products/productHelpers';
 import { getRelatedBlogs } from '@/src/services/productService';
 
-/* ========================================
-   Layout Components
-   ======================================== */
 import AlternativeSizesModal from '@/src/components/layout/Modals/AlternativeSizesModal';
 import ShareProductModal from '@/src/components/layout/Modals/ShareProductModal';
 
-/* @import Page */
 interface MiddleProps {
     product: Product;
     productName: string;
@@ -88,7 +78,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                         </Grid>
                         <Grid size={12}>
                             <div className="d-flex align-items-end gap-4 mb-4">
-                                {/* Rating Component */}
                                 {reviewCount > 0 ? (
                                     <div className="d-flex gap-1">
                                         <Rating
@@ -115,7 +104,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                         Henüz Yorum Yok
                                     </Typography>
                                 )}
-                                {/* Test Sonuçları */}
                                 {blogCount > 0 && (
                                     <div className='d-flex gap-1'>
                                         <Link
@@ -290,7 +278,6 @@ export default function Middle({ product, productName, wheelSize, reviews }: Mid
                                 ))}
                             </ul>
 
-                            {/* Ürünü Paylaş */}
                             <div className="mt-3">
                                 <button
                                     type="button"

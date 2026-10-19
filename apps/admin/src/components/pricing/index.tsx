@@ -1,8 +1,6 @@
-// React Imports
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 
-// MUI Imports
 import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
@@ -10,21 +8,16 @@ import InputLabel from '@mui/material/InputLabel'
 import Grid from '@mui/material/Grid2'
 import { useTheme } from '@mui/material/styles'
 
-// Third-party Imports
 import classnames from 'classnames'
 
-// Type Imports
 import type { PricingPlanType } from '@/types/pages/pricingTypes'
 
-// Component Imports
 import PlanDetails from './PlanDetails'
 import DirectionalIcon from '@components/DirectionalIcon'
 
 const Pricing = ({ data }: { data?: PricingPlanType[] }) => {
-  // States
   const [pricingPlan, setPricingPlan] = useState<'monthly' | 'annually'>('annually')
 
-  // Hooks
   const theme = useTheme()
 
   const handleChange = (e: ChangeEvent<{ checked: boolean }>) => {

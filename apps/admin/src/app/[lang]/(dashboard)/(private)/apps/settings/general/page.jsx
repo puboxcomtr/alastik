@@ -1,7 +1,5 @@
-// Next Imports
 import dynamic from 'next/dynamic'
 
-// Component Imports
 import Settings from '@/views/settings'
 
 const Order = dynamic(() => import('@/views/settings/order'))
@@ -10,7 +8,6 @@ const Member = dynamic(() => import('@/views/settings/member'))
 const Campaign = dynamic(() => import('@/views/settings/campaign'))
 const Other = dynamic(() => import('@/views/settings/other'))
 
-// Vars
 const tabContentList = () => ({
     tab1: <Order />,
     tab2: <Showcase />,

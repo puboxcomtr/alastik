@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
 const { SITES } = require('../../../config/sites');
 
-// Site başına görünürlük/sıralama ayarları (siteSettings.<slug>)
 const siteCategorySettingsSchema = new mongoose.Schema({
   webVisible: { type: Boolean, default: true },
   webOrder: { type: Number, default: 0 },
-  // Sitede yayınlanmış ürün sayısı — sync hesaplar; 0 ise vitrin ve admin listesi kategoriyi göstermez
   productCount: { type: Number, default: 0 }
 }, { _id: false });
 
@@ -67,7 +65,6 @@ const webCategorySchema = new mongoose.Schema({
     enum: ['JANT', 'LASTİK'],
     default: 'LASTİK'
   },
-  // Eski ortak alanlar — geriye dönük uyumluluk için tutuluyor; okuma/yazma artık siteSettings üzerinden
   webVisible: {
     type: Boolean,
     default: true,
@@ -85,9 +82,7 @@ const webCategorySchema = new mongoose.Schema({
   },
   seoTitle: String,
   seoDescription: String,
-  // SEO analizi: odak anahtar kelime
   focusKeyword: String,
-  // Site başına içerik/SEO alanları — description/sliderId/seoKeywords tanımsızsa ortak alanlar geçerlidir
   siteContent: Object.keys(SITES).reduce((acc, slug) => {
     acc[slug] = {
       content: { type: String, default: '' },
@@ -96,17 +91,11 @@ const webCategorySchema = new mongoose.Schema({
       description: { type: String },
       seoKeywords: { type: [String], default: undefined },
       sliderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Slider' },
-      // Kategori sayfasında gösterilecek menüler (boş bırakılabilir, birden fazla olabilir)
       menuIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'Menu', default: undefined },
-      // Eski tek menü alanı — geriye dönük uyumluluk için korunur
       menuId: { type: mongoose.Schema.Types.ObjectId, ref: 'Menu' },
-      // Fiyat gösterimi: dahil = kayıtlı fiyat, haric = KDV çıkarılıp "+ KDV" ibaresiyle
       priceDisplay: { type: String, enum: ['dahil', 'haric'], default: 'dahil' },
-      // "haric" seçiliyken kullanılacak KDV oranı (%)
       vatRate: { type: Number, default: 20 },
-      // Açıkken bu kategorideki ürünlerde stok kodu gösterilmez
       hideStockCode: { type: Boolean, default: false },
-      // Kategori sayfasında gizlenecek sol filtre bölümleri (anahtarlar: config/categoryFilters.js)
       hiddenFilters: { type: [String], default: undefined }
     };
     return acc;

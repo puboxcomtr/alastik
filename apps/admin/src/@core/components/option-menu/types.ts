@@ -1,10 +1,7 @@
-// React Imports
 import type { ReactNode } from 'react'
 
-// Next Imports
 import type { LinkProps } from 'next/link'
 
-// MUI Imports
 import type { IconButtonProps } from '@mui/material/IconButton'
 import type { MenuItemProps } from '@mui/material/MenuItem'
 import type { DividerProps } from '@mui/material/Divider'

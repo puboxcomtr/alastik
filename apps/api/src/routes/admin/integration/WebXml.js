@@ -1,7 +1,3 @@
-/**
- * WebXml API Routes
- * Dosya: apps/api/src/routes/admin/webxml.js
- */
 
 const express = require('express');
 const router = express.Router();
@@ -16,15 +12,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 const { DEFAULT_SITE } = require('../../../config/sites');
 const { getXmlFieldValue } = require('../../../utils/xmlFieldPath');
 
-// XML modülü site bazlıdır: req.site (X-Site header) hangi sitenin kaynak/ürün/kural
-// verisinin görüneceğini belirler. Eski kayıtlarda site alanı yoksa varsayılan site kabul edilir.
 const docSite = (doc) => (doc && doc.site) || DEFAULT_SITE;
 const isOwnSite = (req, doc) => docSite(doc) === req.site;
 
-/**
- * GET /api/admin/webxml
- * Tüm XML entegrasyonlarını listele
- */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -36,7 +26,6 @@ router.get('/', async (req, res) => {
 
         const query = { site: req.site };
 
-        // Arama filtresi
         if (search) {
             query.$or = [
                 { name: { $regex: search, $options: 'i' } },
@@ -45,7 +34,6 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Aktif/Pasif filtresi
         if (isActive !== undefined) {
             query.isActive = isActive === 'true';
         }
@@ -61,7 +49,6 @@ router.get('/', async (req, res) => {
             WebXml.countDocuments(query)
         ]);
 
-        // Response formatla
         const formattedItems = items.map(item => ({
             id: item._id,
             name: item.name,
@@ -102,10 +89,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * POST /api/admin/integration/xml
- * Yeni entegrasyon ekle
- */
 router.post('/', async (req, res) => {
     try {
         const { name, format, apiUrl, isActive, credentials, syncInterval } = req.body;
@@ -118,7 +101,6 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Geçerli bir URL giriniz' });
         }
 
-        // name'den otomatik slug üret
         const code = name
             .toLowerCase()
             .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
@@ -130,7 +112,6 @@ router.post('/', async (req, res) => {
         let finalCode = code;
         const existing = await WebXml.findOne({ code: finalCode });
         if (existing && !isOwnSite(req, existing)) {
-            // Kod başka sitede kullanılıyor — site ekiyle benzersizleştir
             finalCode = `${code}_${req.site}`;
         }
         const stillExisting = await WebXml.findOne({ code: finalCode });
@@ -166,10 +147,6 @@ router.post('/', async (req, res) => {
         res.status(500).json({ success: false, message: 'Entegrasyon eklenirken hata oluştu', error: error.message });
     }
 });
-// ============================================
-// POST /api/admin/integration/xml/sync-all
-// Tüm XML sync — arka planda worker üzerinden
-// ============================================
 router.post('/sync-all', async (req, res) => {
     try {
         const Queue = require('bull');
@@ -187,7 +164,7 @@ router.post('/sync-all', async (req, res) => {
         const job = await xmlSyncQueue.add(
             'manual-xml-sync',
             { type: 'manual', triggeredBy: 'admin', site: req.site, triggeredAt: new Date().toISOString() },
-            { timeout: 60 * 60 * 1000 } // 1 saat timeout
+            { timeout: 60 * 60 * 1000 }
         );
 
         res.json({
@@ -201,10 +178,6 @@ router.post('/sync-all', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/integration/xml/web-sync/full
-// XML ürünlerini webproducts'a tam aktarım
-// ============================================
 router.post('/web-sync/full', async (req, res) => {
     try {
         const XmlWebProductSyncService = require('../../../services/plugins/xml/XmlWebProductSyncService');
@@ -219,10 +192,6 @@ router.post('/web-sync/full', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/integration/xml/web-sync/quick
-// Fiyat ve stok hızlı güncelleme
-// ============================================
 router.post('/web-sync/quick', async (req, res) => {
     try {
         const XmlWebProductSyncService = require('../../../services/plugins/xml/XmlWebProductSyncService');
@@ -237,10 +206,6 @@ router.post('/web-sync/quick', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/integration/xml/products/export
-// Tüm XML ürünlerini Excel'e aktar
-// ============================================
 router.get('/products/export', async (req, res) => {
     try {
         const { source = '' } = req.query;
@@ -253,7 +218,6 @@ router.get('/products/export', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Kaynak bu sitede bulunamadı' });
         }
 
-        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
         const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const isFiltered = (item, intg) => {
@@ -338,10 +302,6 @@ router.get('/products/export', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-// ============================================
-// POST /api/admin/webxml/scheduler/run
-// Scheduler'ı manuel tetikle
-// ============================================
 router.post('/scheduler/run', async (req, res) => {
     try {
         const xmlSyncScheduler = require('../../../services/plugins/xml/XmlSyncScheduler');
@@ -361,10 +321,6 @@ router.post('/scheduler/run', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/integration/xml/mapping/export
-// Excel dışarı aktar
-// ============================================
 router.get('/mapping/export', async (req, res) => {
     try {
         const { source = '' } = req.query;
@@ -386,7 +342,6 @@ router.get('/mapping/export', async (req, res) => {
             'mappedData.hedefStokKodu': 1
         }).lean();
 
-        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
         const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const rows = items.map(item => {
@@ -417,10 +372,6 @@ router.get('/mapping/export', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/integration/xml/mapping/import
-// Excel içeri aktar
-// ============================================
 router.post('/mapping/import', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -440,7 +391,6 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
         for (const i of integrations) intgMap[i.code] = i;
         const siteCodes = Object.keys(intgMap);
 
-        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
         const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         let guncellenen = 0, atilan = 0;
@@ -451,18 +401,15 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
             const kaynak = String(row['Kaynak'] || '').trim();
 
             if (!xmlStokKodu) { atilan++; continue; }
-            // Başka sitenin kaynağına ait satırlar işlenmez
             if (kaynak && !intgMap[kaynak]) { atilan++; continue; }
             const hedefBos = hedefStokKodu === '';
 
             const query = kaynak ? { source: kaynak } : { source: { $in: siteCodes } };
 
-            // Önce sourceProductId ile dene
             const byId = await XmlProduct.findOne({ ...query, sourceProductId: xmlStokKodu });
             if (byId) {
                 let setData;
                 if (hedefBos) {
-                    // Hedef boş — eşleşmeyi tamamen sil
                     setData = {
                         mappedData: null,
                         status: 'pending',
@@ -475,7 +422,6 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
                     const eskiHedef = byId.mappedData?.hedefStokKodu || '';
                     const degisti = eskiHedef !== hedefStokKodu;
                     setData = { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() };
-                    // Hedef değiştiyse (veya eski boşsa) DIA eşleşmesini sıfırla
                     if (degisti) {
                         setData.diaKey = null;
                         setData.diaData = null;
@@ -490,7 +436,6 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
                 continue;
             }
 
-            // rawData içindeki stokKodu alanından bul
             const intg = kaynak ? intgMap[kaynak] : null;
             if (intg) {
                 const fieldMappings = intg.rules?.fieldMappings || [];
@@ -503,7 +448,6 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
                     if (byRaw) {
                         let setData;
                         if (hedefBos) {
-                            // Hedef boş — eşleşmeyi tamamen sil
                             setData = {
                                 mappedData: null,
                                 status: 'pending',
@@ -516,7 +460,6 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
                             const eskiHedef = byRaw.mappedData?.hedefStokKodu || '';
                             const degisti = eskiHedef !== hedefStokKodu;
                             setData = { mappedData: { hedefStokKodu: hedefStokKodu }, status: 'mapped', lastMappedAt: new Date() };
-                            // Hedef değiştiyse (veya eski boşsa) DIA eşleşmesini sıfırla
                             if (degisti) {
                                 setData.diaKey = null;
                                 setData.diaData = null;
@@ -546,10 +489,6 @@ router.post('/mapping/import', upload.single('file'), async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/integration/xml/all-products
-// Tüm kaynaklardan filtreli ürün listesi
-// ============================================
 router.get('/all-products', async (req, res) => {
     try {
         const {
@@ -561,7 +500,6 @@ router.get('/all-products', async (req, res) => {
             status = ''
         } = req.query;
 
-        // Sitenin tüm aktif entegrasyonlarını çek
         const integrations = await WebXml.find({ isActive: true, site: req.site }).lean();
         const integrationMap = {};
         for (const intg of integrations) {
@@ -593,7 +531,6 @@ router.get('/all-products', async (req, res) => {
             XmlProduct.countDocuments(query)
         ]);
 
-        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
         const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const getSourceField = (fieldMappings, target) => {
@@ -634,7 +571,6 @@ router.get('/all-products', async (req, res) => {
             };
         });
 
-        // Kaynak listesi
         const sources = integrations.map(i => ({ code: i.code, name: i.name }));
 
         res.json({
@@ -655,10 +591,6 @@ router.get('/all-products', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/integration/xml/products
-// XML ürün listesi (source bazlı)
-// ============================================
 router.get('/products', async (req, res) => {
     try {
         const {
@@ -686,7 +618,6 @@ router.get('/products', async (req, res) => {
             return m ? m.source : null;
         };
 
-        // Ortak XML alan yolu çözümleyicisi — dizinli ([0]) ve koşullu ([DEPOID=0]) yazımı destekler
         const getNestedValue = (obj, path) => getXmlFieldValue(obj, path) ?? '';
 
         const brandField = getSourceField('marka');
@@ -704,10 +635,8 @@ router.get('/products', async (req, res) => {
         if (brand && brandField) query[`rawData.${brandField}`] = brand;
         if (year && yearField) query[`rawData.${yearField}`] = year;
 
-        // Kuralları uygula
         const rules = webXml?.rules || {};
 
-        // [N] → .N dönüştür (MongoDB dot notation)
         const toMongoPath = (p) => p ? p.replace(/\[(\d+)\]/g, '.$1') : p;
         const stokAdetiMongoField = toMongoPath(stokAdetiField);
         const hamFiyatMongoField = toMongoPath(hamFiyatField);
@@ -779,7 +708,6 @@ router.get('/products', async (req, res) => {
                 lastFetchedAt: item.lastFetchedAt,
                 lastSyncedToDiaAt: item.lastSyncedToDiaAt,
                 diaKey: item.diaKey || null,
-                // Mapping'e göre standart alanlar
                 stokKodu: getNestedValue(rd, stokKoduField),
                 urunAdi: getNestedValue(rd, urunAdiField),
                 marka: getNestedValue(rd, brandField),
@@ -788,7 +716,6 @@ router.get('/products', async (req, res) => {
                 gorselUrl: getNestedValue(rd, gorselField),
                 uretimYili: getNestedValue(rd, yearField),
                 kategori: getNestedValue(rd, categoryField),
-                // Ham veri de gelsin
                 rawData: rd
             };
         });
@@ -811,20 +738,15 @@ router.get('/products', async (req, res) => {
         res.status(500).json({ success: false, message: 'XML ürünleri listelenirken hata oluştu', error: error.message });
     }
 });
-// ============================================
-// GET /api/admin/integration/xml/webproducts/export.xml
-// WebProducts XML dışa aktarım (XML kaynaklı ürünler)
-// ============================================
 router.get('/webproducts/export.xml', async (req, res) => {
     try {
         const WebProduct = require('../../../models/web/catalog/WebProduct');
-        const { type } = req.query; // 'jant' | 'lastik' | undefined
+        const { type } = req.query;
 
         const integrations = await WebXml.find({}, { code: 1, name: 1 }).lean();
         const intgNameMap = {};
         for (const i of integrations) intgNameMap[i.code] = i.name;
 
-        // Kod içinde "jant" geçen XML kaynakları
         const jantSources = integrations
             .filter(i => /jant/i.test(i.code))
             .map(i => i.code);
@@ -837,7 +759,6 @@ router.get('/webproducts/export.xml', async (req, res) => {
                 (r.source === '' || r.source === source) &&
                 (r.marka === '' || r.marka === marka)
             ).sort((a, b) => {
-                // Önce kaynak+marka eşleşmesi, sonra sadece kaynak, en son genel
                 const aScore = (a.source ? 1 : 0) + (a.marka ? 1 : 0);
                 const bScore = (b.source ? 1 : 0) + (b.marka ? 1 : 0);
                 return bScore - aScore;
@@ -861,7 +782,6 @@ router.get('/webproducts/export.xml', async (req, res) => {
             return Math.round(fiyat * 100) / 100;
         };
 
-        // Site seçimi: ?site= parametresi > X-Site/Host (req.site)
         const { isValidSite } = require('../../../config/sites');
         const querySite = (req.query.site || '').toString().trim().toLowerCase();
         const feedSite = isValidSite(querySite) ? querySite : req.site;
@@ -900,7 +820,6 @@ router.get('/webproducts/export.xml', async (req, res) => {
             return (val === undefined || val === null || val === '') ? '-' : escape(val);
         };
 
-        // Sabit özellik şemaları (lastik / jant)
         const LASTIK_OZELLIK_SEMASI = [
             'Genişlik',
             'Yanak',
@@ -1013,7 +932,6 @@ router.get('/webproducts/export.xml', async (req, res) => {
             xml += `  <KaldirilmaTarihi/>\n`;
             xml += `  <RetentionUrun>Hayir</RetentionUrun>\n`;
 
-            // UrunAgaciDetay
             const kategoriler = d.m_kategoriler?.[0] || {};
             xml += `  <UrunAgaciDetay>\n`;
             xml += `    <Grup1>${escape(kategoriler.kategori_aciklama_1)}</Grup1>\n`;
@@ -1049,10 +967,6 @@ router.get('/webproducts/export.xml', async (req, res) => {
         res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><error>Hata oluştu</error>');
     }
 });
-// ============================================
-// GET /api/admin/integration/xml/:source/export.xml
-// xmlproducts'tan XML çıktısı üret
-// ============================================
 router.get('/:source/export.xml', async (req, res) => {
     try {
         const { source } = req.params;
@@ -1086,7 +1000,6 @@ router.get('/:source/export.xml', async (req, res) => {
 
         let items = [];
 
-        // Saatte tek istek hakkı olan kaynaklarda (Keskin) dışa aktarım tedarikçiye istek atmaz; son çekilen veriyi kullanır
         const tekIstekGrubu = require('../../../services/plugins/xml/xmlSaatlikTekIstek').grupOf(source);
         if (tekIstekGrubu) {
             items = await XmlProduct.find({ source }, { rawData: 1 }).lean();
@@ -1139,7 +1052,6 @@ router.get('/:source/export.xml', async (req, res) => {
                 url += (url.includes('?') ? '&' : '?') + `token=${webXml.credentials.token}`;
             }
 
-            // Pagination destekli API (totalPages varsa)
             if (webXml.credentials?.apiKey?.startsWith('lstk_')) {
                 const allProducts = [];
                 let pageNumber = 1;
@@ -1172,7 +1084,6 @@ router.get('/:source/export.xml', async (req, res) => {
             const stok = parseFloat(getVal(rd, stokAdetiField)) || 0;
             const fiyat = parseFloat(getVal(rd, hamFiyatField)) || 0;
 
-            // Kuralları uygula
             const rules = webXml.rules || {};
             if (rules.filters?.onlyInStock && stok <= 0) continue;
             if (rules.filters?.onlyWithPrice && !fiyat) continue;
@@ -1207,12 +1118,6 @@ router.get('/:source/export.xml', async (req, res) => {
     }
 });
 
-
-
-// ============================================
-// GET /api/admin/integration/xml/pricing/rules
-// Tüm fiyatlandırma kurallarını listele
-// ============================================
 router.get('/pricing/rules', async (req, res) => {
     try {
         const kurallar = await XmlPricingRule.find({ site: req.site }).sort({ platform: 1, sira: 1, createdAt: 1 }).lean();
@@ -1222,10 +1127,6 @@ router.get('/pricing/rules', async (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/integration/xml/pricing/rules
-// Yeni fiyatlandırma kuralı ekle
-// ============================================
 router.post('/pricing/rules', async (req, res) => {
     try {
         const { platform, source, marka, tip, deger, aciklama } = req.body;
@@ -1258,10 +1159,6 @@ router.post('/pricing/rules', async (req, res) => {
     }
 });
 
-// ============================================
-// DELETE /api/admin/integration/xml/pricing/rules/:id
-// Fiyatlandırma kuralı sil
-// ============================================
 router.delete('/pricing/rules/:id', async (req, res) => {
     try {
         const rule = await XmlPricingRule.findById(req.params.id).lean();
@@ -1275,10 +1172,6 @@ router.delete('/pricing/rules/:id', async (req, res) => {
     }
 });
 
-// ============================================
-// DELETE /api/admin/integration/xml/mapping/:productId
-// Eşleşmeyi kaldır
-// ============================================
 router.delete('/mapping/:productId', async (req, res) => {
     try {
         const xmlProduct = await XmlProduct.findById(req.params.productId, { diaKey: 1, source: 1 }).lean();
@@ -1287,7 +1180,6 @@ router.delete('/mapping/:productId', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
         }
 
-        // Ürünün kaynağı bu siteye ait olmalı
         const sourceIntg = await WebXml.findOne({ code: xmlProduct.source }, { site: 1 }).lean();
         if (sourceIntg && !isOwnSite(req, sourceIntg)) {
             return res.status(404).json({ success: false, message: 'Ürün bu sitede bulunamadı' });
@@ -1298,7 +1190,6 @@ router.delete('/mapping/:productId', async (req, res) => {
             { $set: { mappedData: null, status: 'pending', lastMappedAt: null, diaKey: null, diaData: null, diaDataHash: null } }
         );
 
-        // Aynı DIA kartını kullanan başka XML kaynağı kalmadıysa web ürününü sil
         let webDeleted = 0;
         if (xmlProduct.diaKey) {
             const otherSource = await XmlProduct.exists({ _id: { $ne: xmlProduct._id }, diaKey: xmlProduct.diaKey });
@@ -1323,10 +1214,6 @@ router.delete('/mapping/:productId', async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/admin/integration/xml/:id/source-fields
-// XML URL'den ilk ürünü çekip alanları tespit et
-// ============================================
 router.get('/:id/source-fields', async (req, res) => {
     try {
         const integration = await WebXml.findById(req.params.id).lean();
@@ -1351,7 +1238,6 @@ router.get('/:id/source-fields', async (req, res) => {
         }
 
         let existingSample = await XmlProduct.findOne({ source: integration.code }).lean();
-        // Saatte tek istek hakkı olan kaynaklarda (Keskin) alan listesi için tedarikçiye istek atılmaz
         const tekIstekGrubu = require('../../../services/plugins/xml/xmlSaatlikTekIstek').grupOf(integration.code);
         if (!existingSample && tekIstekGrubu) {
             existingSample = await XmlProduct.findOne({ source: tekIstekGrubu.desen }).lean();
@@ -1488,16 +1374,8 @@ router.get('/:id/source-fields', async (req, res) => {
     }
 });
 
-
-
-/**
- * GET /api/admin/webxml/:id
- * Tek bir entegrasyon detayı
- */
 router.get('/:id', async (req, res) => {
     try {
-        // Not: Detay ucu site kilidine tabi DEĞİL — id zaten tek bir kaydı işaret eder ve
-        // admin rules sayfası bu ucu sunucu tarafında (X-Site bilgisi olmadan) çağırır.
         const item = await WebXml.findById(req.params.id).lean();
 
         if (!item) {
@@ -1539,11 +1417,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-
-/**
- * PUT /api/admin/webxml/:id
- * Entegrasyon güncelle
- */
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -1613,10 +1486,6 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-/**
- * PATCH /api/admin/webxml/:id/status
- * Sadece aktif/pasif durumunu değiştir
- */
 router.patch('/:id/status', async (req, res) => {
     try {
         const { isActive } = req.body;
@@ -1666,10 +1535,6 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
-/**
- * POST /api/admin/integration/xml/:id/sync
- * Manuel senkronizasyon başlat (Mollaoğlu Tatko)
- */
 router.post('/:id/sync', async (req, res) => {
     try {
         let integration = await WebXml.findById(req.params.id);
@@ -1690,8 +1555,6 @@ router.post('/:id/sync', async (req, res) => {
             req.params.id = xmlIntegration._id.toString();
         }
 
-        // Saatte tek istek hakkı olan kaynaklar (Keskin): burada ayrı istek atılmaz; istek kilidi, tek istek + iki
-        // siteye yazma ve silme koruması zamanlayıcıdaki ortak akışta uygulanır.
         const saatlikTekIstek = require('../../../services/plugins/xml/xmlSaatlikTekIstek');
         if (saatlikTekIstek.grupOf(integration.code)) {
             const xmlSyncScheduler = require('../../../services/plugins/xml/XmlSyncScheduler');
@@ -1717,7 +1580,6 @@ router.post('/:id/sync', async (req, res) => {
         }
         if (integration.credentials?.appKey) headers['APP-KEY'] = integration.credentials.appKey;
         if (integration.credentials?.secretKey) headers['SECRET-KEY'] = integration.credentials.secretKey;
-
 
         let url = integration.apiUrl;
         if (integration.credentials?.token && !url.includes('token=')) {
@@ -1753,7 +1615,6 @@ router.post('/:id/sync', async (req, res) => {
                 return converted;
             });
         } else if (integration.credentials?.apiKey?.startsWith('lstk_')) {
-            // Lastikistan — pagination destekli
             const allProducts = [];
             let pageNumber = 1;
             let totalPages = 1;
@@ -1839,7 +1700,6 @@ router.post('/:id/sync', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ürün listesi bulunamadı veya boş' });
         }
 
-        // Unver: STOK.DEPO array'inde DEPOID=0 (Tüm Depolar) entry'sini başa al (site kopyaları dahil)
         if (/^unver/.test(integration.code)) {
             products = products.map(p => {
                 const depoList = p?.STOK?.DEPO;
@@ -1978,10 +1838,6 @@ router.post('/:id/sync', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-// ============================================
-// GET /api/admin/webxml/:id/filter-options
-// XML kaynağına özel kategori ve marka listesi
-// ============================================
 router.get('/:id/filter-options', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1996,7 +1852,6 @@ router.get('/:id/filter-options', async (req, res) => {
 
         const sourceCode = webXml.code;
 
-        // fieldMappings'ten ilgili alanları bul
         const fieldMappings = webXml.rules?.fieldMappings || [];
         const getSourceField = (target) => {
             const mapping = fieldMappings.find(m => m.target === target);
@@ -2019,7 +1874,6 @@ router.get('/:id/filter-options', async (req, res) => {
                 : Promise.resolve([])
         ]);
 
-        // Alfabetik sırala
         const sortedCategories = categories.filter(Boolean).sort((a, b) =>
             a.localeCompare(b, 'tr', { sensitivity: 'base' })
         );
@@ -2028,7 +1882,6 @@ router.get('/:id/filter-options', async (req, res) => {
             a.localeCompare(b, 'tr', { sensitivity: 'base' })
         );
 
-        // Yılları büyükten küçüğe sırala (YENİ)
         const sortedYears = years.filter(Boolean).sort((a, b) => b - a);
 
         res.json({
@@ -2036,12 +1889,12 @@ router.get('/:id/filter-options', async (req, res) => {
             data: {
                 categories: sortedCategories,
                 brands: sortedBrands,
-                years: sortedYears,  // YENİ
+                years: sortedYears,
                 meta: {
                     source: sourceCode,
                     categoryCount: sortedCategories.length,
                     brandCount: sortedBrands.length,
-                    yearCount: sortedYears.length  // YENİ
+                    yearCount: sortedYears.length
                 }
             }
         });
@@ -2056,10 +1909,6 @@ router.get('/:id/filter-options', async (req, res) => {
     }
 });
 
-// ============================================
-// PUT /api/admin/webxml/:id/rules
-// XML kurallarını güncelle
-// ============================================
 router.put('/:id/rules', async (req, res) => {
     try {
         const { id } = req.params;
@@ -2104,6 +1953,5 @@ router.put('/:id/rules', async (req, res) => {
         });
     }
 });
-
 
 module.exports = router;

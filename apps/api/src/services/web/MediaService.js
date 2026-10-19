@@ -4,9 +4,6 @@ const fs = require('fs');
 const { MEDIA_CONFIG, getUploadDir, getUrlPrefix, getFullPath, getConfig, getCategoryFromUrl } = require('../../config/media');
 
 class MediaService {
-    /**
-     * Slug oluştur (Türkçe karakterleri dönüştür)
-     */
     static slugify(text) {
         const trMap = {
             'ç': 'c', 'Ç': 'c',
@@ -31,9 +28,6 @@ class MediaService {
             .replace(/^-|-$/g, '');
     }
 
-    /**
-     * Benzersiz dosya adı oluştur
-     */
     static generateFileName(originalName, baseName = null) {
         const ext = path.extname(originalName).toLowerCase();
         const nameWithoutExt = baseName || path.basename(originalName, ext);
@@ -42,9 +36,6 @@ class MediaService {
         return `${slug}${ext}`;
     }
 
-    /**
-     * Dosya adı çakışmasını çöz
-     */
     static resolveFileConflict(uploadDir, fileName) {
         const ext = path.extname(fileName);
         const nameWithoutExt = path.basename(fileName, ext);
@@ -60,9 +51,6 @@ class MediaService {
         return finalName;
     }
 
-    /**
-     * Multer storage oluştur
-     */
     static createStorage(category) {
         const uploadDir = getUploadDir(category);
 
@@ -70,7 +58,6 @@ class MediaService {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        // this.slugify'i disarida tanimla
         const slugify = MediaService.slugify;
 
         return multer.diskStorage({
@@ -82,7 +69,6 @@ class MediaService {
                 const nameWithoutExt = path.basename(file.originalname, ext);
                 const slug = slugify(nameWithoutExt);
 
-                // Cakisma kontrolu
                 let finalName = `${slug}${ext}`;
                 let counter = 1;
 
@@ -96,9 +82,6 @@ class MediaService {
         });
     }
 
-    /**
-     * Multer file filter oluştur
-     */
     static createFileFilter(category) {
         const config = getConfig(category);
 
@@ -115,12 +98,6 @@ class MediaService {
         };
     }
 
-    /**
-     * Multer upload middleware oluştur (tek veya çoklu)
-     * @param {string} category - Media kategorisi (slider, brand, vs.)
-     * @param {string} fieldName - Form field adı
-     * @param {number} maxCount - Maksimum dosya sayısı (1 = single, >1 = array)
-     */
     static createUploader(category, fieldName = 'image', maxCount = 1) {
         const config = getConfig(category);
 
@@ -130,24 +107,17 @@ class MediaService {
             fileFilter: this.createFileFilter(category)
         });
 
-        // Tek dosya mı çoklu mu?
         if (maxCount === 1) {
             return upload.single(fieldName);
         }
         return upload.array(fieldName, maxCount);
     }
 
-    /**
-     * Dosya URL'i oluştur
-     */
     static getFileUrl(category, fileName) {
         const urlPrefix = getUrlPrefix(category);
         return `${urlPrefix}/${fileName}`;
     }
 
-    /**
-     * Dosya sil
-     */
     static deleteFile(urlPath) {
         if (!urlPath) return false;
 
@@ -167,9 +137,6 @@ class MediaService {
         }
     }
 
-    /**
-     * Dosya var mı kontrol et
-     */
     static fileExists(urlPath) {
         if (!urlPath) return false;
 
@@ -177,9 +144,6 @@ class MediaService {
         return fullPath ? fs.existsSync(fullPath) : false;
     }
 
-    /**
-     * Eski dosyayı sil (güncelleme işlemlerinde kullan)
-     */
     static deleteOldFile(oldUrl, newUrl) {
         if (oldUrl === newUrl) return false;
         if (!oldUrl) return false;

@@ -1,26 +1,12 @@
-/**
- * Vitrin yanıtlarından diğer sitelere ait ürün alanlarını çıkarır.
- *
- * Ürün belgesi tüm sitelerin açıklama ve ayarlarını (customData.siteDescriptions / siteData)
- * ve yayınlandığı site listesini (sites) taşır. Vitrin yalnızca ziyaret edilen sitenin alanlarını
- * kullanır; diğer sitelerin metinleri sayfa kaynağına (SSR verisi) düşmesin diye yanıt gönderilmeden
- * önce silinir. Siteler arama motorları için birbirinden bağımsız görünmelidir.
- *
- * Yalnızca vitrin rotalarında, fiyat uygulandıktan SONRA çağrılır. Feed servisleri ve admin
- * rotaları belgeyi birden fazla site için kullandığından burada çağrılmamalıdır.
- */
 const { SITES } = require('../config/sites');
 
 const SITE_KEYS = Object.keys(SITES);
 const PER_SITE_FIELDS = ['siteDescriptions', 'siteData'];
 
-// Ürün metinlerinde karşı sitenin adı geçiyorsa ziyaret edilen sitenin adı yazılır (veri değişmez).
-// Büyük/küçük harfe duyarlı: "yapıda lastik" gibi sıradan kelimeler etkilenmez.
 const BRAND_SWAPS = {
     lastikjantavm: { name: 'LastikJantAVM', domain: 'lastikjantavm.com', names: /\bALastik\.com\b|\bALastik\b|\bA Lastik\b/g, domains: /\balastik\.com\b/g },
     alastik: { name: 'ALastik', domain: 'alastik.com', names: /\bLastikJantAVM\.com\b|\bLastikJantAVM\b|\bLastikjantavm\b|\bLastik Jant AVM\b/g, domains: /\blastikjantavm\.com\b/gi }
 };
-// Ekler yeni ada göre uyumlanır: LastikJantAVM'de/den, ALastik'te/ten; -in, -i, -e, -le
 function fixSuffix(suffix, site) {
     const s = suffix.toLocaleLowerCase('tr-TR');
     const lja = site === 'lastikjantavm';
@@ -37,7 +23,6 @@ function swapBrand(text, site) {
     if (!rule || typeof text !== 'string' || !text) return text;
     const withSuffix = (re, repl) => new RegExp(`(?:${re.source})(?:(['’])([a-zçğıöşü]{1,3})\\b)?`, re.flags.includes('g') ? re.flags : `${re.flags}g`);
     return text
-        // Alan adında ek ".com" okunuşuna göredir ("…com’dan"); değişmez
         .replace(rule.domains, rule.domain)
         .replace(withSuffix(rule.names), (_, q, suf) => rule.name + (suf ? q + fixSuffix(suf, site) : ''));
 }
@@ -58,7 +43,6 @@ function scrubOtherSites(doc, site) {
         if (cd.siteDescriptions && typeof cd.siteDescriptions[site] === 'string') cd.siteDescriptions[site] = swapBrand(cd.siteDescriptions[site], site);
         const own = cd.siteData && cd.siteData[site];
         if (own && typeof own === 'object') for (const field of TEXT_FIELDS) if (typeof own[field] === 'string') own[field] = swapBrand(own[field], site);
-        // Ortak açıklamadaki LJA'ya özgü sınıf adları (stil tanımı yok) diğer sitede nötr adla verilir
         if (site !== 'lastikjantavm' && typeof cd.customDescription === 'string') {
             cd.customDescription = cd.customDescription.replace(/\bljavm-(title|list)\b/g, 'pd-$1');
         }
@@ -73,7 +57,6 @@ function scrubOtherSitesMany(docs, site) {
     return docs;
 }
 
-// Yanıt içinde ürün belgelerini (customData + diaData/_key taşıyan nesneler) bulup temizler
 function scrubDeep(node, site, depth) {
     if (!node || typeof node !== 'object' || depth > 4) return;
     if (Array.isArray(node)) { for (const item of node) scrubDeep(item, site, depth + 1); return; }
@@ -84,8 +67,6 @@ function scrubDeep(node, site, depth) {
     }
 }
 
-// Express ara katmanı: vitrin ürün rotalarının res.json yanıtı gönderilmeden önce temizlenir.
-// Temizlik hata verirse yanıt olduğu gibi gönderilir (vitrin akışı etkilenmez).
 function scrubResponseMiddleware(req, res, next) {
     const send = res.json.bind(res);
     res.json = (body) => {

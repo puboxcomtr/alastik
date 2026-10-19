@@ -29,7 +29,6 @@ export default function CartPage() {
                         <Col lg={12}>
                             <CartTitle />
                         </Col>
-                        {/* <Col lg={12}><CartCampaign /> </Col> */}
                     </Row>
                 </div>
             </Container>

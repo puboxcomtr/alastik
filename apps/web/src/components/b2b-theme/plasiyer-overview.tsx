@@ -1,10 +1,4 @@
 'use client';
-// Plasiyer anasayfası (bayi seçmeden devam).
-//  - Üstte 3 özet kartı (Erişilebilen Bayi gerçek; Ciro/Sipariş şimdilik STATİK demo)
-//  - Altta iki sütun: SOL = atanan bayiler tablosu, SAĞ = plasiyer profil + satış grafiği
-//  - Altta tam genişlik: Bayi Takip (mini CRM)
-//  MUI (Materio benzeri tema) ile; yalnız bu alan ThemeProvider ile sarılır.
-//  ŞİMDİLİK SADECE FRONTEND — canlı değil, sonra bağlanacak.
 import { useEffect, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { Box, Card, CardContent, Typography, Avatar, Stack, Divider } from '@mui/material';
@@ -19,7 +13,6 @@ import { PlasiyerSalesReport } from '@components/b2b-theme/plasiyer-sales-report
 const STATIK_CIRO = '1.284.750 ₺';
 const STATIK_SIPARIS = '312';
 
-// Plasiyer özeti — statik demo (sonra canlı bağlanacak)
 const STATIK_ATANAN_BAYI = '128';
 const STATIK_HEDEF_GUNLUK = '15 adet';
 const STATIK_HEDEF_AYLIK = '350 adet';
@@ -33,7 +26,6 @@ function basHarfler(ad: string): string {
     return ad.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toLocaleUpperCase('tr') || '').join('') || 'PL';
 }
 
-// Türkçe kurallarıyla her kelimenin yalnız baş harfini büyütür (EMİR BAHÇECİOĞLU → Emir Bahçecioğlu)
 function duzAd(ad: string): string {
     return ad
         .toLocaleLowerCase('tr-TR')
@@ -82,19 +74,16 @@ export function PlasiyerOverview() {
     return (
         <ThemeProvider theme={plasiyerTheme}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {/* Özet kartları */}
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 3 }}>
                     <OzetKart etiket="Erişilebilen Bayi" deger={bayiSayisi === null ? '…' : bayiSayisi} ipucu="Adına işlem yapabileceğiniz cari" icon={<GroupsOutlinedIcon />} />
                     <OzetKart etiket="Bu Ay Ciro" deger={STATIK_CIRO} ipucu="Carilerinizin toplam siparişleri (demo)" icon={<TrendingUpOutlinedIcon />} />
                     <OzetKart etiket="Bu Ay Sipariş" deger={STATIK_SIPARIS} ipucu="Carilerinizin toplam sipariş adedi (demo)" icon={<ReceiptLongOutlinedIcon />} />
                 </Box>
 
-                {/* İçerik: sol atanan bayiler + sağ profil/grafik */}
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 340px' }, gap: 3, alignItems: 'start' }}>
                     <PlasiyerBayiTable />
 
                     <Stack spacing={3}>
-                        {/* Profil kartı */}
                         <Card>
                             <CardContent sx={{ textAlign: 'center' }}>
                                 <Avatar sx={{ width: 72, height: 72, mx: 'auto', mb: 1.5, bgcolor: 'primary.main', color: '#000', fontSize: 26, fontWeight: 700 }}>{basHarfler(plasiyerAd)}</Avatar>
@@ -119,7 +108,6 @@ export function PlasiyerOverview() {
                     </Stack>
                 </Box>
 
-                {/* Satış Raporu grafiği (Günlük/Haftalık/Aylık) */}
                 <PlasiyerSalesReport />
             </Box>
         </ThemeProvider>

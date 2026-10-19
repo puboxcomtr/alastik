@@ -3,12 +3,9 @@ import { redirect } from 'next/navigation'
 import { toast } from 'react-toastify'
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 
-// Auth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
-// Component Imports
 import AdminForm from '@/views/manager/add/AddAdmin'
-
 
 const AdminAddPage = async () => {
     const session = await getServerSession(authOptions)

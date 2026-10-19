@@ -4,11 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import classnames from 'classnames'
 
-// API Imports
 import { API_ENDPOINTS, fetchAPI } from '@libs/api'
 import { getSiteHeader } from '@/utils/activeSite'
 
-// MUI Imports
 import type { TextFieldProps } from '@mui/material/TextField'
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -24,7 +22,6 @@ import Switch from '@mui/material/Switch'
 
 import { toast } from 'react-toastify'
 
-// Tanstack Imports
 import { rankItem } from '@tanstack/match-sorter-utils'
 import {
     createColumnHelper,
@@ -40,10 +37,8 @@ import {
 import type { ColumnDef, FilterFn } from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 
-// Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
-// Component Imports
 import XmlEditModal from './XmlEditModal'
 import XmlAddModal from './XmlAddModal'
 

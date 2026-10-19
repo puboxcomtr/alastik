@@ -3,14 +3,8 @@ const router = express.Router();
 const ActivityLog = require('../../../models/admin/user/ActivityLog');
 const { authenticateAdmin, getClientIP } = require('../../../middleware/auth');
 
-// Tüm route'lar admin authentication gerektirir
 router.use(authenticateAdmin);
 
-/**
- * @route   GET /api/admin/activity-logs
- * @desc    İşlem kayıtları listesi
- * @access  Private
- */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -26,7 +20,6 @@ router.get('/', async (req, res) => {
             sortOrder = 'desc'
         } = req.query;
 
-        // Filtreler (yalnızca seçili sitenin kayıtları)
         const filter = { site: req.site };
 
         if (userId) {
@@ -55,11 +48,9 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-        // Query
         const logs = await ActivityLog.find(filter)
             .populate('user', 'firstName lastName email username')
             .sort(sort)
@@ -68,7 +59,6 @@ router.get('/', async (req, res) => {
 
         const total = await ActivityLog.countDocuments(filter);
 
-        // İstatistikler (seçili site)
         const stats = {
             total: await ActivityLog.countDocuments({ site: req.site }),
             today: await ActivityLog.countDocuments({
@@ -79,7 +69,6 @@ router.get('/', async (req, res) => {
             failed: await ActivityLog.countDocuments({ site: req.site, status: 'failed' })
         };
 
-        // Modül bazlı istatistikler
         const moduleStats = await ActivityLog.aggregate([
             { $match: { site: req.site } },
             { $group: { _id: '$module', count: { $sum: 1 } } },
@@ -111,11 +100,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/activity-logs/:id
- * @desc    İşlem kaydı detayı
- * @access  Private
- */
 router.get('/:id', async (req, res) => {
     try {
         const log = await ActivityLog.findById(req.params.id)
@@ -142,11 +126,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/admin/activity-logs/user/:userId
- * @desc    Kullanıcıya ait işlem kayıtları
- * @access  Private
- */
 router.get('/user/:userId', async (req, res) => {
     try {
         const { limit = 50 } = req.query;
@@ -170,11 +149,6 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
-/**
- * @route   DELETE /api/admin/activity-logs/cleanup
- * @desc    Eski kayıtları temizle
- * @access  Private (Super Admin)
- */
 router.delete('/cleanup', async (req, res) => {
     try {
         const { days = 90 } = req.body;

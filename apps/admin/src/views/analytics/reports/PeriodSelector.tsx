@@ -1,19 +1,15 @@
 'use client'
 
-// React Imports
 import { useState } from 'react'
 
-// MUI Imports
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
-// Type Imports
 import type { PeriodKey, PeriodSelection } from './types'
 
-// Util Imports
 import { toDateInputValue } from './format'
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {

@@ -5,14 +5,6 @@ const AdminUser = require('../../models/admin/user/AdminUser');
 const { authenticate } = require('../../middleware/auth');
 const router = express.Router();
 
-/*
-=======================================================================
-ADMIN AUTH ENDPOİNTLERI
-/api/admin/* endpointleri için
-=======================================================================
-*/
-
-// Admin Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -83,7 +75,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Admin Profile
 router.get('/profile', authenticate, async (req, res) => {
   try {
     if (req.user.type !== 'admin') {
@@ -116,7 +107,6 @@ router.get('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Admin Logout
 router.post('/logout', authenticate, async (req, res) => {
   try {
     res.json({
@@ -130,7 +120,6 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
-// Change Password
 router.post('/change-password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;

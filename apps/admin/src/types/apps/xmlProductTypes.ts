@@ -32,6 +32,5 @@ export type XmlProductType = {
     runFlat: string
     kdvOrani: string
 
-    // Ham veri
     rawData: Record<string, any>
 }
